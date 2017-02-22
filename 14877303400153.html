@@ -1,0 +1,281 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+    
+  运行时类与对象 - ACEfish的博客
+  
+  </title>
+ <meta name="description" content="ACEfish的博客记录作为一个程序员的成长历程">
+ <link href="atom.xml" rel="alternate" title="ACEfish的博客" type="application/atom+xml">
+    <link rel="stylesheet" href="asset/css/foundation.min.css" />
+    <link rel="stylesheet" href="asset/css/docs.css" />
+
+    <script src="asset/js/vendor/modernizr.js"></script>
+    <script src="asset/js/vendor/jquery.js"></script>
+    <script src="asset/highlightjs/highlight.pack.js"></script>
+    <link href="asset/highlightjs/styles/github.css" media="screen, projection" rel="stylesheet" type="text/css">
+    <script>hljs.initHighlightingOnLoad();</script>
+    
+  </head>
+  <body class="antialiased hide-extras">
+    
+    <div class="marketing off-canvas-wrap" data-offcanvas>
+      <div class="inner-wrap">
+
+
+<nav class="top-bar docs-bar hide-for-small" data-topbar>
+
+<div id="header">
+    <h1><a href="index.html">ACEfish的博客</a></h1>
+</div>
+
+</nav>
+        <nav class="tab-bar show-for-small">
+  <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
+    <span> &nbsp; ACEfish的博客</span>
+  </a>
+</nav>
+
+<aside class="left-off-canvas-menu">
+      <ul class="off-canvas-list">
+      <li><a href="index.html">Home</a></li>
+      
+        <li class="divider"></li>
+        <li><label>iOSDevelop</label></li>
+
+          
+
+      
+        <li class="divider"></li>
+        <li><label>2017年。。。</label></li>
+
+          
+            <li><a title="学习内容" href="14873143857948.html">学习内容</a></li>
+          
+            <li><a title="2017年规划" href="14863579240552.html">2017年规划</a></li>
+          
+
+      
+        <li class="divider"></li>
+        <li><label>English</label></li>
+
+          
+            <li><a title="英语短句" href="14869807190601.html">英语短句</a></li>
+          
+
+      
+      </ul>
+    </aside>
+
+<a class="exit-off-canvas" href="#"></a>
+
+        <section id="main-content" role="main" class="scroll-container">
+
+          <div class="row">
+            <div class="large-3 medium-3 columns">
+              <div class="hide-for-small">
+                <div class="sidebar">
+                <nav>
+                  <ul id="side-nav" class="side-nav">
+
+                    
+                      <li class="side-title"><span>iOSDevelop</span></li>
+                        
+
+                    
+                      <li class="side-title"><span>2017年。。。</span></li>
+                        
+                          <li><a title="学习内容" href="14873143857948.html">学习内容</a></li>
+                        
+                          <li><a title="2017年规划" href="14863579240552.html">2017年规划</a></li>
+                        
+
+                    
+                      <li class="side-title"><span>English</span></li>
+                        
+                          <li><a title="英语短句" href="14869807190601.html">英语短句</a></li>
+                        
+
+                    
+                  </ul>
+                </nav>
+                </div>
+              </div>
+            </div>
+            <div class="large-9 medium-9 columns">
+
+ <div class="markdown-body">
+<h1>运行时类与对象</h1>
+
+<h2 id="toc_0">Class</h2>
+
+<p>Objective-C类是由Class类型来表示的，它实际上是一个指向<code>objc_class</code>结构体的指针。</p>
+
+<pre><code class="language-Objc">//定义为:
+typedef struct objc_class *Class;
+</code></pre>
+
+<p>在<code>objc/runtime.h</code>中objc_class结构体定义如下:</p>
+
+<pre><code class="language-Objc">truct objc_class {
+    Class isa  OBJC_ISA_AVAILABILITY;
+#if !__OBJC2__
+    Class super_class                       OBJC2_UNAVAILABLE;  // 父类
+    const char *name                        OBJC2_UNAVAILABLE;  // 类名
+    long version                            OBJC2_UNAVAILABLE;  // 类的版本信息，默认为0
+    long info                               OBJC2_UNAVAILABLE;  // 类信息，供运行期使用的一些位标识
+    long instance_size                      OBJC2_UNAVAILABLE;  // 该类的实例变量大小
+    struct objc_ivar_list *ivars            OBJC2_UNAVAILABLE;  // 该类的成员变量链表
+    struct objc_method_list **methodLists   OBJC2_UNAVAILABLE;  // 方法定义的链表
+    struct objc_cache *cache                OBJC2_UNAVAILABLE;  // 方法缓存
+    struct objc_protocol_list *protocols    OBJC2_UNAVAILABLE;  // 协议链表
+#endif
+} OBJC2_UNAVAILABLE;
+/**
+    1.isa：需要注意的是在Objective-C中，所有的类自身也是一个对象，这个对象的Class里面也有一个
+    isa指针，它指向metaClass(元类)
+    2.super_class：指向该类的父类，如果该类已经是最顶层的根类(如NSObject或NSProxy)，则
+    super_class为NULL。
+    3.cache：用于缓存最近使用的方法。一个接收者对象接收到一个消息时，它会根据isa指针去查找能够
+    响应这个消息的对象。在实际使用中，这个对象只有一部分方法是常用的，很多方法其实很少用或者根本
+    用不上。这种情况下，如果每次消息来时，我们都是methodLists中遍历一遍，性能势必很差。这时，
+    cache就派上用场了。在我们每次调用过一个方法后，这个方法就会被缓存到cache列表中，下次调用的
+    时候runtime就会优先去cache中查找，如果cache没有，才去methodLists中查找方法。这样，对于那
+    些经常用到的方法的调用，但提高了调用的效率。
+    4.version：我们可以使用这个字段来提供类的版本信息。这对于对象的序列化非常有用，它以让我们
+    识别出不同类定义版本中实例变量布局的改变。
+*/
+</code></pre>
+
+<pre><code class="language-objc">    NSArray *array = [[NSArray alloc] init];
+    其流程是：
+    1. `[NSArray alloc]`先被执行。因为NSArray没有`+alloc`方法，于是去父类NSObject去查找。
+    2. 检测NSObject是否响应`+alloc`方法，发现响应，于是检测NSArray类，并根据其所需的内存空间大小开始分配内存空间，然后把`isa`指针指向NSArray类。同时，`+alloc`也被加进cache列表里面。
+    3. 接着，执行`-init`方法，如果NSArray响应该方法，则直接将其加入`cache`；如果不响应，则去父类查找。
+    4. 在后期的操作中，如果再以`[[NSArray alloc] init]`这种方式来创建数组，则会直接从cache中取出相应的方法，直接调用。
+    //objc_object与id
+    `objc_object`是表示一个类的实例的结构体，它的定义如下(`objc/objc.h`)：
+    //objc
+    struct objc_object {
+        Class isa  OBJC_ISA_AVAILABILITY;
+    };
+    typedef struct objc_object *id;
+    /**
+    可以看到，这个结构体只有一个字体，即指向其类的isa指针。这样，当我们向一个Objective-C对象发
+    送消息时，运行时库会根据实例对象的isa指针找到这个实例对象所属的类。Runtime库会在类的方法列
+    表及父类的方法列表中去寻找与消息对应的selector指向的方法。找到后即运行这个方法。
+    当创建一个特定类的实例对象时，分配的内存包含一个objc_object数据结构，然后是类的实例变量的数
+    据。NSObject类的alloc和allocWithZone:方法使用函数`class_createInstance`来创建objc_object数据结构。
+    */
+</code></pre>
+
+<h4 id="toc_1">objc_cache</h4>
+
+<p>此处为上面所说的cache的<a href="http://southpeak.github.io/2014/10/25/objective-c-runtime-1/">demo</a>:为一个objc_cache结构体的指针</p>
+
+<pre><code class="language-objc">struct objc_cache {
+    unsigned int mask /* total = mask + 1 */                 OBJC2_UNAVAILABLE;
+    /*
+    mask：一个整数，指定分配的缓存bucket的总数。在方法查找过程中，Objective-C runtime使用这
+    个字段来确定开始线性查找数组的索引位置。指向方法selector的指针与该字段做一个AND位操作
+    (index = (mask &amp; selector))。这可以作为一个简单的hash散列算法。
+    */
+    unsigned int occupied                                    OBJC2_UNAVAILABLE;
+    //occupied：一个整数，指定实际占用的缓存bucket的总数
+    Method buckets[1]                                        OBJC2_UNAVAILABLE;
+    /**
+        buckets：指向Method数据结构指针的数组。这个数组可能包含不超过mask+1个元素。需要注意的
+        是，指针可能是NULL，表示这个缓存bucket没有被占用，另外被占用的bucket可能是不连续的。
+        这个数组可能会随着时间而增长。
+    */
+};
+</code></pre>
+
+<h4 id="toc_2">元类(Meta Class)</h4>
+
+<p>所有的类自身也是一个对象，我们可以向这个对象发送消息(即调用类方法)<br/>
+<code>NSArray *array = [NSArray array];</code><br/>
++array消息发送给了NSArray类，而这个NSArray也是一个对象。既然是对象，那么它也是一个objc_object指针，它包含一个指向其类的一个isa指针。那么这些就有一个问题了，这个isa指针指向什么呢？为了调用+array方法，这个类的isa指针必须指向一个包含这些类方法的一个objc_class结构体。这就引出了meta-class的概念<br/>
+<strong>meta-class是一个类对象的类</strong><br/>
+因此:<code>objc_class</code> 的isa指向的是元类，<code>objc_object</code>的isa指向的是实例对象所属的类.当我们向一个对象发送消息时，runtime会在这个对象所属的这个类的方法列表中查找方法；而向一个类发送消息时，会在这个类的<code>meta-class</code>的方法列表中查找。<br/>
+补充:<br/>
+<code>meta-class</code>也是一个类，也可以向它发送一个消息，那么它的isa又是指向什么呢？为了不让这种结构无限延伸下去，Objective-C的设计者让所有的<code>meta-class</code>的isa指向<code>基类的meta-class</code>，以此作为它们的所属类。即，任何NSObject继承体系下的<code>meta-class</code>都使用NSObject的<code>meta-class</code>作为自己的所属类，而基类的<code>meta-class</code>的isa指针是指向它自己。这样就形成了一个完美的闭环。因此:<br/>
+<em>对NSObject继承体系来说，其实例方法对体系中的所有实例、类和meta-class都是有效的；而类方法对于体系内的所有类和meta-class都是有效的</em></p>
+
+
+</div>
+
+<br /><br />
+<hr />
+
+<div class="row clearfix">
+  <div class="large-6 columns">
+	<div class="text-left" style="padding:15px 0px;">
+		
+	        <a href="14877347224030.html"  title="Previous Post: 运行时常用方法:">&laquo; 运行时常用方法:</a>
+	    
+	</div>
+  </div>
+  <div class="large-6 columns">
+	<div class="text-right" style="padding:15px 0px;">
+		
+	        <a href="14877247419344.html" 
+	        title="Next Post: Objc Runtime">Objc Runtime &raquo;</a>
+	    
+	</div>
+  </div>
+</div>
+
+<div class="row">
+<div style="padding:0px 0.93em;" class="share-comments">
+
+</div>
+</div>
+<script type="text/javascript">
+	$(function(){
+		var currentURL = '14877303400153.html';
+		$('#side-nav a').each(function(){
+			if($(this).attr('href') == currentURL){
+				$(this).parent().addClass('active');
+			}
+		});
+	});
+</script>  
+</div></div>
+
+
+<div class="page-bottom">
+  <div class="row">
+  <hr />
+  <div class="small-9 columns">
+  <p class="copyright">Copyright &copy; 2015
+Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a>,&nbsp; 
+Theme used <a target="_blank" href="http://github.com">GitHub CSS</a>.</p>
+  </div>
+  <div class="small-3 columns">
+  <p class="copyright text-right"><a href="#header">TOP</a></p>
+  </div>
+   
+  </div>
+</div>
+
+        </section>
+      </div>
+    </div>
+    
+    
+    <script src="asset/js/foundation.min.js"></script>
+    <script src="asset/js/foundation/foundation.offcanvas.js"></script>
+    <script>
+      $(document).foundation();
+
+     
+    </script>
+    
+
+
+  </body>
+</html>
