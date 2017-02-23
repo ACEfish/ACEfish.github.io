@@ -4,13 +4,13 @@
   <title><![CDATA[ACEfish的博客]]></title>
   <link href="https://acefish.github.io/atom.xml" rel="self"/>
   <link href="https://acefish.github.io/"/>
-  <updated>2017-02-22T11:31:10+08:00</updated>
+  <updated>2017-02-23T08:56:29+08:00</updated>
   <id>https://acefish.github.io/</id>
   <author>
     <name><![CDATA[]]></name>
     
   </author>
-  <generator uri="http://www.mweb.im">MWeb</generator>
+  <generator uri="http://www.coderforart.com/">CoderForArt</generator>
 
   
   <entry>
@@ -20,8 +20,9 @@
     <id>https://acefish.github.io/14877347224030.html</id>
     <content type="html"><![CDATA[
 <ol>
-<li><p>objc_allocateClassPair<br/>
-Creates a new class and metaclass:</p>
+<li><p>objc_allocateClassPair</p>
+
+<p>Creates a new class and metaclass:</p>
 
 <pre><code class="language-Objc">Class objc_allocateClassPair(Class superclass, const char *name, size_t extraBytes);
 /**
@@ -40,25 +41,27 @@ The string to use as the new class&#39;s name. The string will be copied.
 <p>例如:<br/>
 <code>Class newClass = objc_allocateClassPair([NSError class], &quot;TestClass&quot;, 0);</code><br/>
     运行时创建了一个NSError的子类TestClass</p></li>
-<li><p>class_addMethod<br/>
-Adds a new method to a class with a given name and implementation.<br/>
-type:几种取值<a href="https://developer.apple.com/library/prerelease/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtTypeEncodings.html#//apple_ref/doc/uid/TP40008048-CH100">查看</a><br/>
-```Objc<br/>
-BOOL class_addMethod(Class cls, SEL name, IMP imp, const char <em>types);<br/>
-/</em>*<br/>
-cls: The class to which to add a method.<br/>
-name: A selector that specifies the name of the method being added<br/>
-imp: A function which is the implementation of the new method. The function <br/>
-must take at least two arguments—self and _cmd.<br/>
-types: An array of characters that describe the types of the arguments to the <br/>
-method. the second and third characters must be “@:” (the first character is <br/>
-the return type).</p>
+<li><p>class_addMethod</p>
 
-<p>return:成功YES 失败NO<br/>
-*/<br/>
-``<code><br/>
-栗子:<br/>
-</code>class_addMethod(newClass, @selector(testMetaClass), (IMP)TestMetaClass, &quot;v@:&quot;);`<br/>
+<p>Adds a new method to a class with a given name and implementation.<br/>
+type:几种取值<a href="https://developer.apple.com/library/prerelease/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtTypeEncodings.html#//apple_ref/doc/uid/TP40008048-CH100">查看</a></p>
+
+<pre><code class="language-Objc">BOOL class_addMethod(Class cls, SEL name, IMP imp, const char *types);
+/**
+cls: The class to which to add a method.
+name: A selector that specifies the name of the method being added
+imp: A function which is the implementation of the new method. The function 
+must take at least two arguments—self and _cmd.
+types: An array of characters that describe the types of the arguments to the 
+method. the second and third characters must be “@:” (the first character is 
+the return type).
+
+return:成功YES 失败NO
+*/
+</code></pre>
+
+<p>栗子:<br/>
+<code>class_addMethod(newClass, @selector(testMetaClass), (IMP)TestMetaClass, &quot;v@:&quot;);</code><br/>
 为这个新类添加一个方法testMetaClass，这个方法的实现是TestMetaClass函数</p></li>
 <li></li>
 </ol>
@@ -161,11 +164,198 @@ typedef struct objc_class *Class;
 <p>所有的类自身也是一个对象，我们可以向这个对象发送消息(即调用类方法)<br/>
 <code>NSArray *array = [NSArray array];</code><br/>
 +array消息发送给了NSArray类，而这个NSArray也是一个对象。既然是对象，那么它也是一个objc_object指针，它包含一个指向其类的一个isa指针。那么这些就有一个问题了，这个isa指针指向什么呢？为了调用+array方法，这个类的isa指针必须指向一个包含这些类方法的一个objc_class结构体。这就引出了meta-class的概念<br/>
-<strong>meta-class是一个类对象的类</strong><br/>
-因此:<code>objc_class</code> 的isa指向的是元类，<code>objc_object</code>的isa指向的是实例对象所属的类.当我们向一个对象发送消息时，runtime会在这个对象所属的这个类的方法列表中查找方法；而向一个类发送消息时，会在这个类的<code>meta-class</code>的方法列表中查找。<br/>
+<strong>meta-class是一个类对象的类</strong></p>
+
+<p>meta-class之所以重要，是因为它存储着一个类的所有类方法。每个类都会有一个单独的meta-class，因为每个类的类方法基本不可能完全相同。</p>
+
+<p>因此:<code>objc_class</code> 的isa指向的是元类，<code>objc_object</code>的isa指向的是实例对象所属的类.当我们向一个对象发送消息时，runtime会在这个对象所属的这个类的方法列表中查找方法；而向一个类发送消息时，会在这个类的<code>meta-class</code>的方法列表中查找。<br/>
 补充:<br/>
 <code>meta-class</code>也是一个类，也可以向它发送一个消息，那么它的isa又是指向什么呢？为了不让这种结构无限延伸下去，Objective-C的设计者让所有的<code>meta-class</code>的isa指向<code>基类的meta-class</code>，以此作为它们的所属类。即，任何NSObject继承体系下的<code>meta-class</code>都使用NSObject的<code>meta-class</code>作为自己的所属类，而基类的<code>meta-class</code>的isa指针是指向它自己。这样就形成了一个完美的闭环。因此:<br/>
 <em>对NSObject继承体系来说，其实例方法对体系中的所有实例、类和meta-class都是有效的；而类方法对于体系内的所有类和meta-class都是有效的</em></p>
+
+<p>Demo:</p>
+
+<pre><code class="language-Objc">void TestMetaClass(id self, SEL _cmd) {
+    NSLog(@&quot;This objcet is %p&quot;, self);
+    NSLog(@&quot;Class is %@, super class is %@&quot;, [self class], [self superclass]);
+    Class currentClass = [self class];
+    for (int i = 0; i &lt; 4; i++) {
+        NSLog(@&quot;Following the isa pointer %d times gives %p&quot;, i, currentClass);
+        currentClass = objc_getClass((__bridge void *)currentClass);
+    }
+    NSLog(@&quot;NSObject&#39;s class is %p&quot;, [NSObject class]);
+    NSLog(@&quot;NSObject&#39;s meta class is %p&quot;, objc_getClass((__bridge void *)[NSObject class]));
+}
+#pragma mark -
+@implementation Test
+- (void)ex_registerClassPair {
+    Class newClass = objc_allocateClassPair([NSError class], &quot;TestClass&quot;, 0);
+    class_addMethod(newClass, @selector(testMetaClass), (IMP)TestMetaClass, &quot;v@:&quot;);
+    objc_registerClassPair(newClass);
+    id instance = [[newClass alloc] initWithDomain:@&quot;some domain&quot; code:0 userInfo:nil];
+    [instance performSelector:@selector(testMetaClass)];
+}
+@end
+
+//运行结果
+2014-10-20 22:57:07.352 mountain[1303:41490] This objcet is 0x7a6e22b0
+2014-10-20 22:57:07.353 mountain[1303:41490] Class is TestStringClass, super class is NSError
+2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 0 times gives 0x7a6e21b0
+2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 1 times gives 0x0
+2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 2 times gives 0x0
+2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 3 times gives 0x0
+2014-10-20 22:57:07.353 mountain[1303:41490] NSObject&#39;s class is 0xe10000
+2014-10-20 22:57:07.354 mountain[1303:41490] NSObject&#39;s meta class is 0x0
+//注意:我们在一个类对象调用class方法是无法获取meta-class，它只是返回类而已。
+</code></pre>
+
+<hr/>
+
+<h2 id="toc_3">类与对象操作函数</h2>
+
+<p>runtime提供的操作类的方法主要就是针对<code>objc_class</code>结构体中的各个字段的</p>
+
+<h4 id="toc_4">类名</h4>
+
+<pre><code class="language-Objc">// 获取类的类名
+const char * class_getName ( Class cls );
+//如果传入的cls为Nil，则返回一个字字符串。
+</code></pre>
+
+<h4 id="toc_5">父类(super_class)和元类(meta-class)</h4>
+
+<pre><code class="language-Objc">// 获取类的父类
+Class class_getSuperclass ( Class cls );
+// 判断给定的Class是否是一个元类
+BOOL class_isMetaClass ( Class cls );
+</code></pre>
+
+<p><code>class_getSuperclass</code>函数，当cls为Nil或者cls为根类时，返回Nil。不过通常我们可以使用NSObject类的superclass方法来达到同样的目的。<br/>
+<code>class_isMetaClass</code>函数，如果是cls是元类，则返回YES；如果否或者传入的cls为Nil，则返回NO。</p>
+
+<h4 id="toc_6">实例变量大小(instance_size)</h4>
+
+<pre><code class="language-Objc">// 获取实例大小
+size_t class_getInstanceSize ( Class cls );
+
+</code></pre>
+
+<h4 id="toc_7">成员变量(ivars)及属性</h4>
+
+<p>在<code>objc_class</code>中，所有的成员变量、属性的信息是放在链表<code>ivars</code>中的。<code>ivars</code>是一个数组，数组中每个元素是指向Ivar(变量信息)的指针。runtime提供了丰富的函数来操作这一字段。大体上可以分为以下几类：</p>
+
+<ol>
+<li>成员变量操作函数，主要包含以下函数：</li>
+</ol>
+
+<pre><code class="language-Objc">// 获取类中指定名称实例成员变量的信息
+Ivar class_getInstanceVariable ( Class cls, const char *name );
+// 获取类成员变量的信息:
+Ivar class_getClassVariable ( Class cls, const char *name );
+// 添加成员变量
+BOOL class_addIvar ( Class cls, const char *name, size_t size, uint8_t alignment, const char *types );
+// 获取整个成员变量列表(所有成员变量包括 属性创建的_成员变量 和直接_成员变量 创建；包括.h和.m中创建的)
+Ivar * class_copyIvarList ( Class cls, unsigned int *outCount );
+</code></pre>
+
+<p><code>class_getInstanceVariable</code>函数，它返回一个指向包含name指定的成员变量信息的objc_ivar结构体的指针(Ivar)。<br/>
+<code>class_getInstanceVariable</code>函数，它返回一个指向包含name指定的成员变量信息的objc_ivar结构体的指针(Ivar)。<br/>
+Objective-C不支持往已存在的类中添加实例变量，因此不管是系统库提供的提供的类，还是我们自定义的类，都无法动态添加成员变量。但如果我们<em>通过运行时来创建一个类</em>的话，又应该如何给它添加成员变量呢？这时我们就可以使用<code>class_addIvar</code>函数了。不过需要注意的是，这个方法只能在<code>objc_allocateClassPai</code>函数与<code>objc_registerClassPair</code>之间调用。另外，这个类也不能是元类。成员变量的按字节最小对齐量是<code>1&lt;&lt;alignment</code>。这取决于ivar的类型和机器的架构。如果变量的类型是指针类型，则传递<code>log2(sizeof(pointer_type))</code>。<br/>
+<code>class_copyIvarList</code>函数，它返回一个指向成员变量信息的数组，数组中每个元素是指向该成员变量信息的<code>objc_ivar</code>结构体的指针。这个数组不包含在父类中声明的变量。<code>outCount</code>指针返回数组的大小。需要注意的是，我们<code>必须使用free()</code>来释放这个数组。</p>
+
+<ol>
+<li>属性操作函数</li>
+</ol>
+
+<pre><code class="language-Objc">// 获取指定的属性
+objc_property_t class_getProperty ( Class cls, const char *name );
+// 获取属性列表(获取所有属性包括.h和.m中的)
+objc_property_t * class_copyPropertyList ( Class cls, unsigned int *outCount );
+// 为类添加属性
+BOOL class_addProperty ( Class cls, const char *name, const objc_property_attribute_t *attributes, unsigned int attributeCount );
+// 替换类的属性
+void class_replaceProperty ( Class cls, const char *name, const objc_property_attribute_t *attributes, unsigned int attributeCount );
+
+</code></pre>
+
+<h4 id="toc_8">方法</h4>
+
+<pre><code class="language-Objc">// 添加方法
+BOOL class_addMethod ( Class cls, SEL name, IMP imp, const char *types );
+// 获取实例方法
+Method class_getInstanceMethod ( Class cls, SEL name );
+// 获取类方法
+Method class_getClassMethod ( Class cls, SEL name );
+// 获取所有方法的数组(传入类获取所有实例方法包括.h和.m注意还有属性创建的方法以及.cxx_destruct(与dealloc有关)) 
+//（传入元类获取类方法）
+Method * class_copyMethodList ( Class cls, unsigned int *outCount );
+// 替代方法的实现
+IMP class_replaceMethod ( Class cls, SEL name, IMP imp, const char *types );
+// 返回方法的具体实现
+IMP class_getMethodImplementation ( Class cls, SEL name );
+IMP class_getMethodImplementation_stret ( Class cls, SEL name );
+// 类实例是否响应指定的selector
+BOOL class_respondsToSelector ( Class cls, SEL sel );
+
+IMP imp；
+imp();//即可执行这个方法
+</code></pre>
+
+<p><code>class_addMethod</code>的实现会覆盖父类的方法实现，但不会取代本类中已存在的实现，如果本类中包含一个同名的实现，则函数会返回NO。如果要修改已存在实现，可以使用<code>method_setImplementation</code>。一个Objective-C方法是一个简单的C函数，它至少包含两个参数–self和_cmd。所以，我们的实现函数(IMP参数指向的函数)至少需要两个参数，如下所示：</p>
+
+<pre><code class="language-Objc">void myMethodIMP(id self, SEL _cmd)
+{
+    // implementation ....
+}
+</code></pre>
+
+<p>与成员变量不同的是，我们可以为类动态添加方法，不管这个类是否已存在。<br/>
+参数types是一个描述传递给方法的参数类型的字符数组</p>
+
+<p><code>class_getInstanceMethod</code>、<code>class_getClassMethod函数</code>，与<code>class_copyMethodList</code>不同的是，这两个函数都会去搜索父类的实现</p>
+
+<p><code>class_copyMethodList</code>函数，返回包含所有实例方法的数组，如果需要获取类方法，则可以使用<code>class_copyMethodList(object_getClass(cls), &amp;count)</code>(一个类的实例方法是定义在元类里面)。该列表不包含父类实现的方法。outCount参数返回方法的个数。在获取到列表后，我们需要使用free()方法来释放它。</p>
+
+<p><code>class_replaceMethod</code>函数，该函数的行为可以分为两种：如果类中不存在name指定的方法，则类似于<code>class_addMethod</code>函数一样会添加方法；如果类中已存在name指定的方法，则类似于<code>method_setImplementation</code>一样替代原方法的实现。</p>
+
+<p><code>class_getMethodImplementation</code>函数，该函数在向类实例发送消息时会被调用，并返回一个指向方法实现函数的指针。这个函数会比<code>method_getImplementation(class_getInstanceMethod(cls, name))</code>更快。返回的函数指针可能是一个指向runtime内部的函数，而不一定是方法的实际实现。例如，如果类实例无法响应selector，则返回的函数指针将是运行时消息转发机制的一部分</p>
+
+<p><code>class_respondsToSelector</code>函数，我们通常使用NSObject类的<code>respondsToSelector:</code>或<code>instancesRespondToSelector:</code>方法来达到相同目的。</p>
+
+<h4 id="toc_9">协议(objc_protocol_list)</h4>
+
+<pre><code class="language-Objc">// 添加协议
+BOOL class_addProtocol ( Class cls, Protocol *protocol );
+// 返回类是否实现指定的协议
+BOOL class_conformsToProtocol ( Class cls, Protocol *protocol );
+// 返回类实现的协议列表
+Protocol * class_copyProtocolList ( Class cls, unsigned int *outCount );
+</code></pre>
+
+<p><code>class_conformsToProtocol</code>函数可以使用NSObject类的<code>conformsToProtocol:</code>方法来替代。</p>
+
+<p><code>class_copyProtocolList</code>函数返回的是一个数组，在使用后我们需要使用<code>free()</code>手动释放。</p>
+
+<h4 id="toc_10">版本(version)</h4>
+
+<pre><code class="language-Objc">// 获取版本号
+int class_getVersion ( Class cls );
+// 设置版本号
+void class_setVersion ( Class cls, int version );
+
+</code></pre>
+
+<h4 id="toc_11">其它</h4>
+
+<pre><code class="language-Objc">Class objc_getFutureClass ( const char *name );
+void objc_setFutureClass ( Class cls, const char *name );
+//通常我们不直接使用这两个函数
+</code></pre>
+
+<p><strong>注意:</strong><br/>
+SEL :Defines an opaque type that represents a method selector<br/>
+Method:An opaque type that represents a method in a class definition<br/>
+IMP:A pointer to the start of a method implementation.</p>
 
 ]]></content>
   </entry>
