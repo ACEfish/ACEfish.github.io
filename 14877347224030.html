@@ -459,6 +459,47 @@ if (numClasses &gt; 0) {
 }
 </code></pre>
 
+<h2 id="toc_14">Method Swizzing</h2>
+
+<p>例如，我们想跟踪在程序中每一个view controller展示给用户的次数：当然，我们可以在每个view controller的viewDidAppear中添加跟踪代码；但是这太过麻烦，需要在每个view controller中写重复的代码。创建一个子类可能是一种实现方式，但需要同时创建UIViewController, UITableViewController, UINavigationController及其它UIKit中view controller的子类，这同样会产生许多重复的代码。</p>
+
+<pre><code class="language-objc">#import &lt;objc/runtime.h&gt;
+@implementation UIViewController (Tracking)
++ (void)load {
+    static dispatch_once_t onceToken;
+    dispatch_once(&amp;onceToken, ^{
+        Class class = [self class];         
+        // When swizzling a class method, use the following:
+        // Class class = object_getClass((id)self);
+        SEL originalSelector = @selector(viewWillAppear:);
+        SEL swizzledSelector = @selector(xxx_viewWillAppear:);
+        Method originalMethod = class_getInstanceMethod(class, originalSelector);
+        Method swizzledMethod = class_getInstanceMethod(class, swizzledSelector);
+        BOOL didAddMethod = class_addMethod(class,
+                originalSelector,
+                method_getImplementation(swizzledMethod),
+                method_getTypeEncoding(swizzledMethod));
+        if (didAddMethod) {
+            class_replaceMethod(class,
+                swizzledSelector,
+                method_getImplementation(originalMethod),
+                method_getTypeEncoding(originalMethod));
+        } else {
+            method_exchangeImplementations(originalMethod, swizzledMethod);
+        }
+    });
+}
+#pragma mark - Method Swizzling
+- (void)xxx_viewWillAppear:(BOOL)animated {
+    [self xxx_viewWillAppear:animated];
+    NSLog(@&quot;viewWillAppear: %@&quot;, self);
+}
+</code></pre>
+
+<p>在这里，我们通过method swizzling修改了UIViewController的@selector(viewWillAppear:)对应的函数指针，使其实现指向了我们自定义的xxx_viewWillAppear的实现。这样，当UIViewController及其子类的对象调用viewWillAppear时，都会打印一条日志信息。</p>
+
+<p>上面的例子很好地展示了使用method swizzling来一个类中注入一些我们新的操作。当然，还有许多场景可以使用method swizzling，在此不多举例。</p>
+
 
     
 
@@ -554,6 +595,24 @@ if (numClasses &gt; 0) {
 	      
 		      
 			      <li class="post">
+			        <a href="14882730004281.html">拾遗</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14879278087290.html">协议与分类</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14879241904124.html">Method Swizzling</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="14878317610028.html">成员变量与属性</a>
 			      </li>
 		     
@@ -561,24 +620,6 @@ if (numClasses &gt; 0) {
 		      
 			      <li class="post">
 			        <a href="14878317569666.html">方法与消息</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14877347224030.html">运行时实例:</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14877303400153.html">类与对象</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14877247419344.html">Objc Runtime</a>
 			      </li>
 		     
 		  
