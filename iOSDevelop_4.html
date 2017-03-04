@@ -122,6 +122,92 @@
 	<article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
 		<div class="meta">
 			<div class="date">
+				<time datetime="2017-02-11T11:38:19+08:00" itemprop="datePublished">2017/2/11 11:38 上午</time>
+			</div>
+			<div class="tags">posted in 
+			
+			    <a class='category' href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a>&nbsp;
+			 
+			</div>
+		</div>
+		<h1 class="title" itemprop="name"><a href="14867842994268.html" itemprop="url">
+		容易忘记的易错点</a></h1>
+		<div class="entry-content" itemprop="articleBody">
+			
+			<ol>
+<li><p>@property属性中如果是copy属性要记得：
+<strong>注意：</strong>
+在重写setter方法时要记得加上 </p>
+
+<pre><code class="language-Object-c">_name = [name copy]
+</code></pre>
+
+<p>在内部的init方法中 也要记得加copy，即在内部直接给属性变量赋值时记得加copy</p>
+
+<pre><code class="language-Object-c">//这里尽量不要用self.实例变量 而用 _实例变量
+- initWithSpId:(SInt32)spId spName:(NSString *)spName type:(SInt32)spType spPinyin:(NSString *)spPinyin spLetter:(NSString *)spLetter {
+if (self = [super init]) {
+    _spId = spId;
+    _spName = [spName copy];
+    _type = spType;
+}
+return self;
+}
+</code></pre></li>
+<li><p>注意在修改navigation时是只修改了navigationItem还是修改了NavigationBar
+如果是仅仅修改了navigationItem那就只对本控制器有效 push或者pop了都不影响，一般有以下几种情况:</p>
+
+<ol>
+<li><p>修改了navigationItem的元素</p>
+
+<pre><code class="language-Object-c">self.navigationItem.title = @&quot;title&quot;;
+self.navigationItem.titleView = [[UIView alloc] init];
+</code></pre></li>
+<li><p>修改了navigationItem的BarButtonItem</p>
+
+<pre><code class="language-Object-c">self.navigationItem.leftBarButtonItem = [UIBarButtonItem itemWithTarget:self action:@selector(popViewController) image:@&quot;general_arrow_back_white&quot; highImage:@&quot;general_arrow_back_orange&quot;];
+</code></pre>
+
+<p><strong>一般我们可以通过这种方法拦截返回点击事件，比如全局控制器的返回按键已经写好，而我们想要拦截点击事件就可以用这种方法,写一个同一样式的按键触发不同的事件</strong>
+这些修改是不影响的整个navigationBar的仅此不需要在视图控制器消失时做额外的操作</p></li>
+</ol>
+
+<p>而如果是修改了navigationBar 那就对全局有影响了,需要在控制器消失时做额外还原处理,一般情况如下:</p>
+
+<pre><code class="language-Object-c">//修改背景图片
+[self.navigationController.navigationBar setShadowImage:[UIImage new]];
+//修改背景颜色
+[self.navigationController.navigationBar lt_setBackgroundColor:[UIColor clearColor]];
+//修改navigationBar的整体字体颜色
+[self.navigationController.navigationBar setTitleTextAttributes:
+ [NSDictionary dictionaryWithObjectsAndKeys:[UIColor whiteColor],NSForegroundColorAttributeName,nil]];
+ //隐藏navigationBar
+self.navigationController.navigationBar.hidden = YES;
+</code></pre>
+
+<p>此时我们需要在退出时做一下还原操作</p>
+
+<pre><code class="language-Object-c">[super viewWillDisappear:animated];
+[self.navigationController.navigationBar lt_reset];
+[self.navigationController.navigationBar setTitleTextAttributes:
+[NSDictionary dictionaryWithObjectsAndKeys:[UIColor blackColor],NSForegroundColorAttributeName,nil]];
+self.navigationController.navigationBar.hidden = NO;
+</code></pre></li>
+<li><p>NSClassFromString(@&quot;UIView&quot;)
+从字符串中获取类名</p></li>
+<li></li>
+</ol>
+
+
+			
+			
+		</div>
+
+	</article>
+ 
+	<article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+		<div class="meta">
+			<div class="date">
 				<time datetime="2017-02-10T10:03:15+08:00" itemprop="datePublished">2017/2/10 10:3 上午</time>
 			</div>
 			<div class="tags">posted in 
@@ -313,53 +399,6 @@ refreshHead.lastUpdatedTimeLabel.hidden = YES;
 <strong>接下来进入正题</strong>.</p>
 
 <h4 id="toc_1">Transition</h4>
-
-
-			
-			
-		</div>
-
-	</article>
- 
-	<article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
-		<div class="meta">
-			<div class="date">
-				<time datetime="2017-02-04T09:08:38+08:00" itemprop="datePublished">2017/2/4 9:8 上午</time>
-			</div>
-			<div class="tags">posted in 
-			
-			    <a class='category' href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a>&nbsp;
-			 
-			</div>
-		</div>
-		<h1 class="title" itemprop="name"><a href="14861705181412.html" itemprop="url">
-		小知识</a></h1>
-		<div class="entry-content" itemprop="articleBody">
-			
-			<ol>
-<li>判断字符character是不是英文字母 是的话返回1 否则返回0<br/>
-<code>
-isalpha(chanracter)
-</code><br/></li>
-<li><p>判断一个字符串是否全为空格</p>
-
-<pre><code class="language-Object-c">[[string stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]] length]==0
-</code></pre></li>
-<li><p>数组排序方法</p>
-
-<pre><code class="language-Object-c">NSSortDescriptor *timeDescriptor = [[NSSortDescriptor alloc] initWithKey:@&quot;creatTime&quot; ascending:NO];
-NSArray *inviteNoticeArray = [noticeRecordModelArray sortedArrayUsingDescriptors:@[timeDescriptor]];
-</code></pre></li>
-<li><p>自动调节字体大小
-<code>adjustsFontSizeToFitWidth</code>这个属性的意思是根据UILabel的宽度来自动适应字体大小，但要注意的是，这个属性不会让字体变大，只会缩小，所以开始的时候，可以设置字体fontSize大一点。</p></li>
-<li><p>%s 为c语言字符串的输入输出控制格式</p></li>
-<li><p>NSString 转化为 char *
-<code>objc
-NSString * str＝ @“Test”;
-const char * a =[str UTF8String];
-</code></p></li>
-<li></li>
-</ol>
 
 
 			

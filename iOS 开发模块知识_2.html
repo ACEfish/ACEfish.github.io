@@ -122,6 +122,48 @@
 	<article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
 		<div class="meta">
 			<div class="date">
+				<time datetime="2017-02-17T16:18:30+08:00" itemprop="datePublished">2017/2/17 16:18 下午</time>
+			</div>
+			<div class="tags">posted in 
+			
+			    <a class='category' href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a>&nbsp;
+			 
+			</div>
+		</div>
+		<h1 class="title" itemprop="name"><a href="14873195104181.html" itemprop="url">
+		NSRunLoop</a></h1>
+		<div class="entry-content" itemprop="articleBody">
+			
+			<p>实际上，Run loop并不像 GCD 或者操作队列那样是一种并发机制，因为它并不能并行执行任务。不过在<code>主 dispatch/operation</code>队列中， <code>run loop</code> 将直接配合任务的执行，它提供了一种异步执行代码的机制。</p>
+
+<p><strong>一个 run loop 总是绑定到某个特定的线程中。main run loop 是与主线程相关的</strong>
+在每一个 Cocoa 和 CocoaTouch 程序中，这个 main run loop 都扮演了一个核心角色，它负责处理 UI 事件、计时器，以及其它内核相关事件。无论你什么时候设置<code>计时器</code>、使用<code>NSURLConnection</code>或者调用 <code>performSelector:withObject:afterDelay:</code>，其实背后都是 run loop 在处理这些异步任务。</p>
+
+<p>run loop 可以运行在不同的模式中，每种模式都定义了一组事件，供 run loop 做出响应。这在对应 main run loop 中暂时性的将某个任务优先执行的一种聪明的做法。
+* NSDefalutRunLoopMode : 默认Mode, 通常主线程在这个模式下运行
+* UITrackingRunLoopMode : 滑动ScrollView是会切换到这个模式
+* NSRunLoopCommonModes: 包括上面两个模式</p>
+
+<p>例1:滑动ScrollView后系统把RunLoop切换为UITrackingRunLoopMode,因此加载默认模式中的定时器并不会执行,只有滚动停止回到默认模式才会继续执行。我们可以把定时器设为 <code>NSRunLoopCommonModes</code>的模式，并添加到 run loop 中；
+<code>[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];</code></p>
+
+<p>例2:当tableview的cell从网络异步加载图片, 加载完成后在主线程刷新显示图片, 这时滑动tableview会造成卡顿. 通常的思路是tableview滑动的时候延迟加载图片, 等停止滑动时再显示图片. 这里我们可以通过RunLoop来实现.
+<code>[self.cellImageView performSelector:@sector(setImage:) withObject:downloadedImage afterDelay:0 inModes:@[NSDefaultRunLoopMode]];</code></p>
+
+<p>主线程一般来说都已经配置好了 main run loop。然而其他线程默认情况下都没有设置 run loop。你也可以自行为其他线程设置 run loop ，但是一般来说我们很少需要这么做。大多数时间使用 main run loop 会容易得多。如果你需要处理一些很重的工作，但是又不想在主线程里做，你仍然可以在你的代码在 main run loop 中被调用后将工作分配给其他队列。Chris 在他关于<a href="https://objccn.io/issue-2-2/">常见的后台实践</a>的文章里阐述了一些关于这种模式的很好的例子。</p>
+
+<p>如果你真需要在别的线程中添加一个 run loop ，那么不要忘记在 run loop 中至少添加一个 input source 。如果 run loop 中没有设置好的 input source，那么每次运行这个 run loop ，它都会立即退出。</p>
+
+
+			
+			
+		</div>
+
+	</article>
+ 
+	<article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+		<div class="meta">
+			<div class="date">
 				<time datetime="2017-02-17T15:03:43+08:00" itemprop="datePublished">2017/2/17 15:3 下午</time>
 			</div>
 			<div class="tags">posted in 
@@ -579,7 +621,7 @@ dispatch_sync(privateConcurrentQueue, ^{
   [operation start];   
 </code></pre>
 
-<pre><code class="language-Object-c">/**
+<pre><code class="language-Object-c">/**[]()
     在没有使用NSOperationQueue、单独使用NSInvocationOperation的情况下，
     NSInvocationOperation在主线程执行操作，并没有开启新线程。
 */
@@ -1304,63 +1346,6 @@ dispatch_async(backgroundQueue, ^{
 
 <p>我们建议采纳的安全模式是这样的：
 <strong>从主线程中提取出要使用到的数据，并利用一个操作队列在后台处理相关的数据，最后回到主队列中来发送你在后台队列中得到的结果。使用这种方式，你不需要自己做任何锁操作，这也就大大减少了犯错误的几率。</strong></p>
-
-
-			
-			
-		</div>
-
-	</article>
- 
-	<article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
-		<div class="meta">
-			<div class="date">
-				<time datetime="2017-02-16T15:35:47+08:00" itemprop="datePublished">2017/2/16 15:35 下午</time>
-			</div>
-			<div class="tags">posted in 
-			
-			    <a class='category' href='%E6%B5%8B%E8%AF%95.html'>测试</a>&nbsp;
-			 
-			</div>
-		</div>
-		<h1 class="title" itemprop="name"><a href="14872305472033.html" itemprop="url">
-		UI测试</a></h1>
-		<div class="entry-content" itemprop="articleBody">
-			
-			<p>关于iOS的UI自动化测试，Xcode 7 Apple从新提供了一个新的框架UITest，使用XCTest.framework，Xcode可以自动录制UI测试的动作流，还有就是可以使用<code>XCTest UI testing API</code></p>
-
-<h4 id="toc_0"><a href="http://www.itnose.net/detail/6507467.html">基础知识</a></h4>
-
-<p>核心的三个类:<code>XCUIApplication</code> <code>XCUIElement</code> <code>XCUIElementQuery</code>
-<strong>XCUIApplication类</strong> 是Application的代理，就像我们项目工程中的AppDelegate，这个对象用来启动或者是终止UI测试程序，还可以在启动的时候设置一些启动参数，在获取程序中的UI元素的时候，就是通过这个类的实例。这个类继承自XCUIElement类
-<strong>XCUIElement类</strong> 是XCTest.framework对应用中的所有UI控件的抽象，在UI测试中，没有UIKit中的UI类型，只是用这个类的实例表示所有的UI控件，以及相应的交互方法，例如：执行手势（tap，press，swipe），滑动控件交互，拾取器交互，这个类采取了XCUIElementAttributes协议（描述UI元素的属性：Identity，Value，Interaction State，Size），XCUIElementTypeQueryProvider协议(为指定类型的子代元素提供ready-made查询，子代元素查询包含button，具体实现是:@property(readonly, copy) XCUIElementQuery *buttons;等一系列对UIKit中元素的映射)
-<strong>XCUIElementQuery类</strong> 是定位UI元素的查询，这个类使用类似key-value的机制得到XCUIElement的实例，使用Type(XCUIElementType枚举)，Predicate，Identifier创建query，使用elementAtIndex:, elementMatchingPredicate,elementMatchingType: identifier:方法访问匹配到的UI元素，此类采用XCUIElementTypeQueryProvider协议</p>
-
-<p>XCTest一共提供了三种UI测试对象
-    XCUIApplication 当前测试应用target
-    XCUIElementQuery 定位查询当前UI中xctuielement的一个类
-    XCUIElement UI测试中任何一个item项都被抽象成一个XCUIElement类型
-因此:当我们获取了录制生成的代码以后，根据UITest提供的三种对象，我可以在此来对测试代码进行修改，调试,我们同样可以使用断言语句来进行测试</p>
-
-<h4 id="toc_1">UI测试Demo</h4>
-
-<ol>
-<li><p>创建项目时勾选UITest</p></li>
-<li><p>打开DemoUiTest.m,创建 - (void)testUI函数,同时将光标留在函数内
-<img src="media/14872305472033/14872344264789.png" alt=""/>
-点击下面的红色按钮，开始recorder操作，程序运行起来后，点击APP界面进行操作,然后光标处就会生成测试代码</p></li>
-<li><p>进行测试
-之后我们测试只需要点击test函数前的测试按钮测试这个函数 或者command+u 来进行全部测试
-此时刚才的一连串动作会一步一步连续执行下来</p></li>
-<li><p>我们此时可以通过修改这段代码来进行我们想要的测试
-比如：</p>
-
-<ul>
-<li>通过添加循环语句来测试一直执行是否会出现问题,判断内存问题等</li>
-<li>通过添加断言来判断运行中元素或情况与我们预想是否一致</li>
-</ul></li>
-<li></li>
-</ol>
 
 
 			

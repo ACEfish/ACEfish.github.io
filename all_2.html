@@ -122,6 +122,173 @@
 	<article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
 		<div class="meta">
 			<div class="date">
+				<time datetime="2017-02-18T09:59:30+08:00" itemprop="datePublished">2017/2/18 9:59 上午</time>
+			</div>
+			<div class="tags">posted in 
+			
+			    <a class='category' href='%E6%B5%8B%E8%AF%95.html'>测试</a>&nbsp;
+			 
+			</div>
+		</div>
+		<h1 class="title" itemprop="name"><a href="14873831706932.html" itemprop="url">
+		OCMock</a></h1>
+		<div class="entry-content" itemprop="articleBody">
+			
+			<h3 id="toc_0">Mock介绍</h3>
+
+<p>对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。</p>
+
+<h3 id="toc_1">OCMock介绍</h3>
+
+<p><a href="http://ocmock.org/features/">官方网站</a>
+根据要mock的对象的class来创建一个对应的对象，并且设置好该对象的属性和调用预定方法后的动作（例如返回一个值，调用代码块，发送消息等等），然后将其记录到一个数组中，接下来开发者主动调用该方法，最后做一个verify（验证），从而判断该方法是否被调用，或者调用过程中是否抛出异常等。</p>
+
+<h4 id="toc_2">1.OCMock中简单使用</h4>
+
+<ol>
+<li><p>class mock一个对象</p>
+
+<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
+//创建mock object当做类的实例
+</code></pre></li>
+<li><p>Stubbing methods that return objects
+<code>Object-c
+/**
+意的就是有参数的方法，参数是可以具体指定的，也就是说只有满足你指定的具体参数的调用才会被mock指定的返回值。例子中的[OCMArg any]是指任意参数。
+*/
+//没有参数的方法
+OCMStub([mockClass someMethod]).andReturn(anObject);
+//有参数的方法
+OCMStub([mockClass someMethod:[OCMArg any]]).andReturn(anObject);
+</code>
+注意:
+<strong>OCMock会在mock实例上没有找到相同名字的实例方法的时候去找同名的类方法。</strong></p></li>
+<li><p>Verify-after-running
+有些时候需要验证我们执行的代码流程是否调用了某个外部的方法，这个时候用OCMock就比较简单来实现。如果没有调用过这个方法的话，会立即抛一个异常出来。</p>
+
+<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
+//...
+//some code
+//...
+OCMVerify([mockClass someMethod]);
+</code></pre></li>
+<li><p>验证mock方法没有被调用
+验证代码没有调用某个方法
+如果方法被调用了，就将isCalled设置为YES，这样最后assert的时候就会报错。
+<code>Object-c
+static BOOL isCalled = false;
+id mockClass = OCMClassMock([SomeClass class]);
+OCMStub([mockClass someMethod]).andDo(^(NSInvocation *invocation){
+isCalled = YES;
+});
+//...
+//some code
+//...
+XCTAssertFalse(isCalled);
+</code></p></li>
+<li><p>验证mock方法传入的参数
+验证传递给外部调用的参数是否符合预期</p>
+
+<pre><code class="language-Objec-c">id mockClass = OCMClassMock([SomeClass class]);
+OCMStub([mockClass someMethod:[OCMArg checkWithBlock:^BOOL(id obj) {
+//...
+//some code
+//...
+return YES;
+]]);
+</code></pre></li>
+<li><p>mock单例</p>
+
+<p>如果我们mock的类是个单例的话，那么使用之前的方法进行mock是不会生效的。不过OCMock提供了一个很简单的解决方法，那就是调用单例返回mock</p>
+
+<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
+OCMStub([mockClass instanceMethod]).andReturn(mockClass);
+</code></pre></li>
+<li><p>The any constraint</p>
+
+<pre><code class="language-Object-c">OCMStub([mock someMethodWithAnArgument:[OCMArg any]])
+OCMStub([mock someMethodWithPointerArgument:[OCMArg anyPointer]])
+OCMStub([mock someMethodWithSelectorArgument:[OCMArg anySelector]])
+
+</code></pre></li>
+<li><p>处理block参数
+OCMock也可以处理block回调参数。block回调通常用于网络代码，数据库代码，或者在任何异步操作中。在这个例子中，思考下下面的方法：
+<code>- (void)downloadWeatherDataForZip:(NSString *)zip callback:(void (^)(NSDictionary *response))callback;</code></p></li>
+</ol>
+
+<p>在这个例子中，我们有一个下载天气压缩数据的方法，并且把下载下来的dictionary代理到一个block的回调中。在测试中，我们通过预定义的天气数据来测试回调处理。这也是明智的测试失败场景。你永远不会知道网络上会返回你什么东西！</p>
+
+<pre><code class="language-Object">OCMStub([groupModelMock downloadWeatherDataForZip:@&quot;80304&quot; callback:[OCMArg any]]]).andDo(^(NSInvocation *invocation){
+        //2. declare a block with same signature
+        void (^weatherStubResponse)(NSDictionary *dict);
+        //3. link argument 3 with with our block callback
+        [invoke getArgument:&amp;weatherStubResponse atIndex:3];
+        //4. invoke block with pre-defined input
+        NSDictionary *testResponse = @{@&quot;high&quot;: 43 , @&quot;low&quot;: 12};
+        weatherStubResponse(groupMemberMock);
+    });
+    /**
+        1.这个mock对象使用带NSInvocation参数的“andDo”方法。一个NSInvocation对象代表一
+        个‘objectivetified’（实在不知道这个什么鬼）表现的方法调用。通过这个NSinvocation对
+        象，使得拦截传递给我们的方法的block参数变得可能。
+        2.用与我们测试的方法中相同的方法签名声明一个block参数。
+        3.NSInvocation实例方法&quot;getArgument:atIndex:&quot;将赋值后的块函数传递都原始函数中定义
+        的块函数中。注意：在Objective-C中，传递给任意方法的前两个参数都是“self”和“_cmd”.这是
+        一个运行时的小功能以及用下标来获取NSInvocation参数时我们需要考虑的东西。
+        4.最后，传递这个回调的预定义字典。
+    */
+</code></pre>
+
+<h4 id="toc_3">2.OCMock简单示例</h4>
+
+<p><img src="media/14873831706932/14873839517952.png" alt=""/></p>
+
+<p>示例2：</p>
+
+<pre><code class="language-Object-c">- (void)testStrictMock3{
+
+    id classMock = OCMClassMock([TweetView class]);
+
+    //设置期望或预设，这个classMock需要执行addTweet方法且参数不为nil。  不然的话会抛出异常
+    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
+    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
+
+    /* 如果不执行以下代码的话会抛出异常 */
+    Tweet *testTweet = [[Tweet alloc] init];
+    testTweet.userName = @&quot;齐滇大圣&quot;;
+    [classMock addTweet:testTweet];
+
+    OCMVerifyAll(classMock);
+}
+</code></pre>
+
+<p>这表示一种友好的mock，不会在没有OCMExpect或OCMStub设置类的所有方法时抛出异常。以上代码把OCMExpect和OCMStub注释掉时不会报错。</p>
+
+<p>还有一种表示严格的mock：OCMStrictClassMock，如果把OCMExpect和OCMStub注释掉时会报错，它要求你执行类中的所有方法，所以比较适合用来测试必须实现的方法，代码如下：</p>
+
+<pre><code class="language-Object-c">- (void)testStrictMock3{
+    id classMock = OCMStrictClassMock([TweetView class]);
+    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
+    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
+
+    Tweet *testTweet = [[Tweet alloc] init];
+    testTweet.userName = @&quot;齐滇大圣&quot;;
+    [classMock addTweet:testTweet]; 
+
+    OCMVerifyAll(classMock);
+}
+</code></pre>
+
+
+			
+			
+		</div>
+
+	</article>
+ 
+	<article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+		<div class="meta">
+			<div class="date">
 				<time datetime="2017-02-17T16:18:30+08:00" itemprop="datePublished">2017/2/17 16:18 下午</time>
 			</div>
 			<div class="tags">posted in 
@@ -621,7 +788,7 @@ dispatch_sync(privateConcurrentQueue, ^{
   [operation start];   
 </code></pre>
 
-<pre><code class="language-Object-c">/**
+<pre><code class="language-Object-c">/**[]()
     在没有使用NSOperationQueue、单独使用NSInvocationOperation的情况下，
     NSInvocationOperation在主线程执行操作，并没有开启新线程。
 */
@@ -1024,275 +1191,6 @@ void (^completionBlock)(void); //用来设置完成后需要执行的操作
 		<div class="entry-content" itemprop="articleBody">
 			
 			<p><img src="media/14873143857948/14873143944782.jpg" alt=""/></p>
-
-
-			
-			
-		</div>
-
-	</article>
- 
-	<article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
-		<div class="meta">
-			<div class="date">
-				<time datetime="2017-02-17T10:01:47+08:00" itemprop="datePublished">2017/2/17 10:1 上午</time>
-			</div>
-			<div class="tags">posted in 
-			
-			    <a class='category' href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a>&nbsp;
-			 
-			</div>
-		</div>
-		<h1 class="title" itemprop="name"><a href="14872969075485.html" itemprop="url">
-		并发编程实践</a></h1>
-		<div class="entry-content" itemprop="articleBody">
-			
-			<h4 id="toc_0">1.<a href="https://developer.apple.com/reference/dispatch">GCD</a> OR <a href="https://developer.apple.com/reference/foundation/operationqueue">操作队列</a></h4>
-
-<p>这两个是目前我们在iOS中用的最多的两套API</p>
-
-<ul>
-<li>操作队列提供了在 GCD 中不那么容易复制的有用特性。其中最重要的一个就是可以取消在任务处理队列中的任务</li>
-<li>操作队列在管理操作间的依赖关系方面也容易一些</li>
-<li>CD 给予你更多的控制权力以及操作队列中所不能使用的底层函数
-扩展阅读:
-<a href="http://stackoverflow.com/questions/10373331/nsoperation-vs-grand-central-dispatch">StackOverflow: NSOperation vs. Grand Central Dispatch</a>
-<a href="http://eschatologist.net/blog/?p=232">Blog: When to use NSOperation vs. GCD</a></li>
-</ul>
-
-<h4 id="toc_1">2.后台的Core Data</h4>
-
-<p>在着手 Core Data 的并行处理之前，最好先打一些基础。我们强烈建议通读苹果的官方文档 <a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/CoreData/Articles/cdConcurrency.html">Concurrency with Core Data</a> </p>
-
-<blockquote>
-<p>Xcode 所提供的 Core Data 标准模版中，所设立的是运行在主线程中的一个存储调度 (persistent store coordinator)和一个托管对象上下文 (managed object context) 的方式。在很多情况下，这种模式可以运行良好。创建新的对象和修改已存在的对象开销都非常小，也都能在主线程中没有困难地完成。然后，如果你想要做大量的处理，那么把它放到一个后台上下文来做会比较好。一个典型的应用场景是将大量数据导入到 Core Data 中。</p>
-</blockquote>
-
-<p>示例:
-我们要导入一大组柏林的交通数据。在导入的过程中，我们展示一个进度条，如果耗时太长，我们希望可以取消当前的导入操作。同时，我们显示一个随着数据加入可以自动更新的 table view 来展示目前可用的数据。</p>
-
-<p>解决方案:
-我们创建一个<code>NSOperation</code> 的子类，将其叫做<code>ImportOperation</code>，我们通过重写 <code>main</code>方法，用来处理所有的导入工作。这里我们使用<code>NSPrivateQueueConcurrencyType</code>来创建一个独立并拥有自己的私有<code>dispatch queue</code>的 managed object context，这个 <code>context</code> 需要管理自己的队列。在队列中的所有操作必须使用<code>performBlock</code>或者<code>performBlockAndWait</code>来进行触发。</p>
-
-<pre><code class="language-Object-c">NSManagedObjectContext* context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
-context.persistentStoreCoordinator = self.persistentStoreCoordinator;
-context.undoManager = nil;
-//performBlockAndWait:Synchronously performs a given block on the receiver’s queue.
-[self.context performBlockAndWait:^
-{
-    [self import];
-}];
-</code></pre>
-
-<p>在这里我们重用了已经存在的<code>persistent store coordinator</code>。一般来说，初始化 managed object contexts 要么使用<code>NSPrivateQueueConcurrencyType</code>，要么使用 <code>NSMainQueueConcurrencyType</code>。</p>
-
-<p>导入文件内容</p>
-
-<pre><code class="language-Object-c">/**
-    在导入前，我们枚举文件中的各行，并对可以解析的每一行创建 managed object ：
-*/
-[lines enumerateObjectsUsingBlock:
-  ^(NSString* line, NSUInteger idx, BOOL* shouldStop)
-  {
-      NSArray* components = [line csvComponents];
-      if(components.count &lt; 5) {
-          NSLog(@&quot;couldn&#39;t parse: %@&quot;, components);
-          return;
-      }
-      [Stop importCSVComponents:components intoContext:context];
-  }];
-</code></pre>
-
-<pre><code class="language-Object-c">/**
-    在 view controller 中通过以下代码来开始操作：
-*/
-ImportOperation* operation = [[ImportOperation alloc]
-     initWithStore:self.store fileName:fileName];
-[self.operationQueue addOperation:operation];
-</code></pre>
-
-<pre><code class="language-Object-c">/**
-    至此为止，后台导入部分已经完成。接下来，我们要加入取消功能，这其实非常简单，只需要枚举的 block 中加一个判断就行了：
-*/
-if(self.isCancelled) {
-    *shouldStop = YES;
-    return;
-}
-</code></pre>
-
-<pre><code class="language-Object-c">/**
-    最后为了支持进度条，我们在 operation 中创建一个叫做 progressCallback 的属性。需要注意的是，更新进度条必须在主线程中完成，否则会导致 UIKit 崩溃。
-*/
-operation.progressCallback = ^(float progress)
-{
-    [[NSOperationQueue mainQueue] addOperationWithBlock:^
-    {
-        self.progressIndicator.progress = progress;
-    }];
-};
-//我们在枚举中来调用这个进度条更新的 block 的操作：
-
-self.progressCallback(idx / (float) count);
-
-</code></pre>
-
-<pre><code class="language-Object-c">  //  然而，如果你执行示例代码的话，你会发现它运行逐渐变得很慢，取消操作也有迟滞。这是因为主操作队列中塞满了要更新进度条的 block 操作。一个简单的解决方法是降低更新的频度，比如只在每导入一百行时更新一次：
-
-NSInteger progressGranularity = 100;
-
-if (idx % progressGranularity == 0) {
-    self.progressCallback(idx / (float) count);
-}
-
-</code></pre>
-
-<h5 id="toc_2">更新 Main Context</h5>
-
-<p>在让一切运转起来之前之前，还有一件事情要做。现在在后台 context 中导入的数据还不能传送到主 context 中，除非我们显式地让它这么去做。我们在<code>Store</code>类的设置<code>Core Data stack</code>的<code>init</code>方法中加入下面的代码：</p>
-
-<pre><code class="language-Object-c">[NSNotificationCenter defaultCenter]
-    addObserverForName:NSManagedObjectContextDidSaveNotification
-                object:nil
-                 queue:nil
-            usingBlock:^(NSNotification* note)
-{
-    NSManagedObjectContext *moc = self.mainManagedObjectContext;
-    if (note.object != moc)
-        [moc performBlock:^(){
-            [moc mergeChangesFromContextDidSaveNotification:note];
-        }];
-    }];
-}];
-/**
-    如果 block 在主队列中被作为参数传递的话，那么这个 block 也会在主队列中被执行。如果现在你运行程序的话，你会注意到 table view 会在完成导入数据后刷新数据，但是这个行为会阻塞用户大概几秒钟。
-    要修正这个问题，我们需要做一些无论如何都应该做的事情：批量保存。在导入较大的数据时，我们需要定期保存，逐渐导入，否则内存很可能就会被耗光，性能一般也会更坏。而且，定期保存也可以分散主线程在更新 table view 时的工作压力。
-    合理的保存的次数可以通过试错得到。保存太频繁的话，可能会在 I/O 操作上花太多时间；保存次数太少的话，应用会变得无响应。在经过一些尝试后，我们设定每 250 次导入就保存一次。改进后，导入过程变得很平滑，它可以适时更新 table view，也没有阻塞主 context 太久。
-*/
-</code></pre>
-
-<h5 id="toc_3">其他考虑</h5>
-
-<p>在导入操作时，我们将整个文件都读入到一个字符串中，然后将其分割成行。这种处理方式对于相对小的文件来说没有问题，但是对于大文件，最好采用惰性读取 (lazily read) 的方式逐行读入。本文最后的示例将使用输入流的方式来实现这个特性，在 StackOverflow 上 Dave DeLong 也提供了一段非常好的示例代码来说明这个问题。</p>
-
-<p>在 app 第一次运行时，除开将大量数据导入 Core Data 这一选择以外，你也可以在你的 app bundle 中直接放一个 sqlite 文件，或者从一个可以动态生成数据的服务器下载。如果使用这些方式的话，可以节省不少在设备上的处理时间。</p>
-
-<p>最后，最近对于 child contexts 有很多争议。我们的建议是不要在后台操作中使用它。如果你以主 context 的 child 的方式创建了一个后台 context 的话，保存这个后台 context 将阻塞主线程。而要是将主 context 作为后台 context 的 child 的话，实际上和与创建两个传统的独立 contexts 来说是没有区别的。因为你仍然需要手动将后台的改变合并回主 context 中去。</p>
-
-<p>设置一个 persistent store coordinator 和两个独立的 contexts 被证明了是在后台处理 Core Data 的好方法。除非你有足够好的理由，否则在处理时你应该坚持使用这种方式。</p>
-
-<p><a href="http://wiki.jikexueyuan.com/project/objc/concurrent-programming/2-2.html">扩展阅读</a></p>
-
-<h4 id="toc_4">3.后台 UI 代码</h4>
-
-<p>首先要强调：UIKit 只能在主线程上运行。而那部分不与 UIKit 直接相关，却会消耗大量时间的 UI 代码可以被移动到后台去处理，以避免其将主线程阻塞太久。但是在你将你的 UI 代码移到后台队列之前，你应该好好地测量哪一部分才是你代码中的瓶颈。这非常重要，否则你所做的优化根本是南辕北辙。</p>
-
-<p>如果你找到了你能够隔离出的昂贵操作的话，可以将其放到操作队列中去：</p>
-
-<pre><code class="language-Object-c">__weak id weakSelf = self;
-[self.operationQueue addOperationWithBlock:^{
-    NSNumber* result = findLargestMersennePrime();
-    [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-        MyClass* strongSelf = weakSelf;
-        strongSelf.textLabel.text = [result stringValue];
-    }];
-}];
-</code></pre>
-
-<blockquote>
-<p>如你所见，这些代码其实一点也不直接明了。我们首先声明了一个 weak 引用来参照 self，否则会形成循环引用（ block 持有了 self，私有的 operationQueue retain 了 block，而 self 又 retain 了 operationQueue ）。为了避免在运行 block 时访问到已被释放的对象，在 block 中我们又需要将其转回 strong 引用。</p>
-</blockquote>
-
-<h4 id="toc_5">4.后台绘制</h4>
-
-<p>如果你确定<code>drawRect:</code>是你的应用的性能瓶颈，那么你可以将这些绘制代码放到后台去做。但是在你这样做之前，检查下看看是不是有其他方法来解决，比如、考虑使用<code>core animation layers</code>或者预先渲染图片而不去做<code>Core Graphics</code>绘制。
-解决方案:
-其实解决起来也很简单，把<code>drawRect:</code>中的代码放到一个后台操作中去做就可以了。然后将原本打算绘制的视图用一个 image view 来替换，等到操作执行完后再去更新。在绘制的方法中，使用 <code>UIGraphicsBeginImageContextWithOptions</code>来取代<code>UIGraphicsGetCurrentContext ：</code></p>
-
-<pre><code class="language-Object-c">UIGraphicsBeginImageContextWithOptions(size, NO, 0);
-// drawing code here
-UIImage *i = UIGraphicsGetImageFromCurrentImageContext();
-UIGraphicsEndImageContext();
-return i;
-/**
-    通过在第三个参数中传入 0 ，设备的主屏幕的 scale 将被自动传入，这将使图片在普通设备和
-     retina 屏幕上都有良好的表现。
-*/
-</code></pre>
-
-<p>注意:
-如果你在 table view 或者是 collection view 的 cell 上做了自定义绘制的话，最好将它们放入 <code>operation</code> 的子类中去。你可以将它们添加到后台操作队列，也可以在用户将 cell 滚动出边界时的 <code>didEndDisplayingCell</code> 委托方法中进行取消。这些技巧都在 2012 年的<a href="https://developer.apple.com/videos/wwdc2012/">WWDC Session 211 -- Building Concurrent User Interfaces on iOS</a>中有详细阐述。</p>
-
-<p>除了在后台自己调度绘制代码，以也可以试试看使用 CALayer 的 drawsAsynchronously 属性。然而你需要精心衡量这样做的效果，因为有时候它能使绘制加速，有时候却适得其反。</p>
-
-<h4 id="toc_6">4.异步网络请求处理</h4>
-
-<p><strong>所有的网络请求都应该通过异步的方式进行</strong></p>
-
-<pre><code class="language-Object-c">// 警告：不要使用这些代码。
-dispatch_async(backgroundQueue, ^{
-   NSData* contents = [NSData dataWithContentsOfURL:url]
-   dispatch_async(dispatch_get_main_queue(), ^{
-      // 处理取到的日期
-   });
-});
-//这段代码问题：没有办法去取消这个同步的网络请求。它将阻塞住线程直到它完成。如果请求一直没结果，那就只能干等到超时
-</code></pre>
-
-<p>要解决上面的困境，我们可以使用<code>NSURLConnection</code>的异步方法，并且把所有操作转化为 operation 来执行. NSURLConnection 是通过<code>run loop</code>来发送事件的。因为事件发送不会花多少时间，因此最简单的是就只使用 main run loop 来做这个。然后，我们就可以用后台线程来处理输入的数据了。
-要处理URL 连接，我们重写自定义的 operation 子类中的 start 方法：</p>
-
-<pre><code class="language-Object-c">- (void)start
-{
-    NSURLRequest* request = [NSURLRequest requestWithURL:self.url];
-    self.isExecuting = YES;
-    self.isFinished = NO;
-    [[NSOperationQueue mainQueue] addOperationWithBlock:^
-    {
-        self.connection = [NSURLConnectionconnectionWithRequest:request
-                                                       delegate:self];
-    }];
-}
-</code></pre>
-
-<p>由于重写的是 start 方法，所以我们需要自己要管理操作的 isExecuting 和 isFinished 状态。要取消一个操作，我们需要取消 connection ，并且设定合适的标记，这样操作队列才知道操作已经完成。</p>
-
-<pre><code class="language-Object-c">- (void)connectionDidFinishLoading:(NSURLConnection *)connection
-{
-    self.data = self.buffer;
-    self.buffer = nil;
-    self.isExecuting = NO;
-    self.isFinished = YES;
-}
-</code></pre>
-
-<p><a href="https://github.com/objcio/issue-2-background-networking">Demo下载</a>
-因此:我们总结如下:建议<strong>要么你花时间来把事情做对做好，要么就直接使用像<code>AFNetworking</code>这样的框架</strong>
-其实 AFNetworking 还提供了不少好用的小工具，比如有个 UIImageView 的 category，来负责异步地从一个 URL 加载图片。在你的 table view 里使用的话，还能自动帮你处理取消加载操作，非常方便。</p>
-
-<h4 id="toc_7">5.进阶：后台文件 I/O</h4>
-
-<p>一次性将文件读入内存中对于较小的文件可能没什么问题,但是对于大文件来说就并不友好。
-我们将构建一个类，它负责<code>一行一行</code>读取文件而不是一次将整个文件读入内存，另外要在<code>后台队列处理文件</code>，以保持应用相应用户的操作。
-为了达到这个目的，我们使用能让我们异步处理文件的<code>NSInputStream</code></p>
-
-<blockquote>
-<p>如果你总是需要从头到尾来读/写文件的话，streams 提供了一个简单的接口来异步完成这个操作</p>
-</blockquote>
-
-<p>不管你是否使用 streams，大体上逐行读取一个文件的模式是这样的：</p>
-
-<ol>
-<li>建立一个中间缓冲层以提供，当没有找到换行符号的时候可以向其中添加数据</li>
-<li>从 stream 中读取一块数据</li>
-<li>对于这块数据中发现的每一个换行符，取中间缓冲层，向其中添加数据，直到（并包括）这个换行符，并将其输出</li>
-<li>将剩余的字节添加到中间缓冲层去</li>
-</ol>
-
-<p><strong>绝大部分时候，使用逐块读入的方式来处理大文件，是非常有用的技术。</strong></p>
-
-<h3 id="toc_8">总结</h3>
-
-<p><strong>在主队列中接收事件或者数据，然后用后台操作队列来执行实际操作，然后回到主队列去传递结果，遵循这样的原则来编写尽量简单的并行代码，将是保证高效正确的不二法则。</strong></p>
 
 
 			
