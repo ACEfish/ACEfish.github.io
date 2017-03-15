@@ -193,8 +193,7 @@ self.navigationController.navigationBar.hidden = YES;
 [NSDictionary dictionaryWithObjectsAndKeys:[UIColor blackColor],NSForegroundColorAttributeName,nil]];
 self.navigationController.navigationBar.hidden = NO;
 </code></pre></li>
-<li><p>NSClassFromString(@&quot;UIView&quot;)
-从字符串中获取类名</p></li>
+<li></li>
 <li></li>
 </ol>
 
@@ -289,8 +288,34 @@ refreshHead.lastUpdatedTimeLabel.hidden = YES;
 <p>但是:比如添加的CAAnimation动画是就算不移除也不会影响的释放的</p></li>
 <li><p>[self setValue:obj forKey:propertyKey];
 对象设置属性的KVC</p></li>
-<li></li>
+<li><p>frame、bounds、center、anchor、transform 关系：</p></li>
 </ol>
+
+<pre><code class="language-objc">-(CGRect) frame  
+{  
+     float x = center.x - layer.anchorPoint.x * bounds.width;   
+     float y = center.y - layer.anchorPoint.y * bounds.height;  
+     float width = bounds.width;
+     float height = bounds.height;  
+     return CGRectMake(x, y, width, height);
+}
+
+-(void) setFrame:(CGRect) rect
+{
+    center.x = rect.x + layer.anchorPoint.x * rect.width;
+    center.y = rect.y + layer.anchorPoint.y * rect.height;
+    bounds.width = rect.width;
+    bounds.height = rect.height;
+}
+</code></pre>
+
+<p>layer的position和 UIVIew的center是等效的 任何时候都是相等的</p>
+
+<p>所以当我们设置anchor为（0.0）因为bounds没变 center没变 因此frame会变化 而且center出现在左上角 </p>
+
+<p><strong>注意</strong>
+当一个view的transform被更改了，即不为CGAffineTransformIdentity。
+frame属性可能会更改，view的bounds，center不会变，layer的position不会变。这个很重要，这样保持了在transform后，view的frame虽然改变了，但是内部参考系是不变的，可以继续进行其他变换，只要不更改frame或center或layer的position。</p>
 
 
 			
@@ -336,7 +361,21 @@ NSArray *inviteNoticeArray = [noticeRecordModelArray sortedArrayUsingDescriptors
 NSString * str＝ @“Test”;
 const char * a =[str UTF8String];
 </code></p></li>
-<li></li>
+<li><p>按属性字段排序</p></li>
+</ol>
+
+<pre><code class="language-objc">    NSSortDescriptor *timeDescriptor = [[NSSortDescriptor alloc] initWithKey:@&quot;createTime&quot; ascending:NO];
+    NSArray *noticesArray = [[UserDataManager sharedInstance].userNotifyInfoArray sortedArrayUsingDescriptors:@[timeDescriptor]];
+</code></pre>
+
+<ol>
+<li><p>auyolayout拉伸压缩</p>
+
+<p><code>Content Hugging Priority</code>(控件抗拉伸优先级) 优先级越高越不容易被拉伸，默认是250。
+<code>Content Compression Resistance Priority</code>(控件抗压缩优先级) 和拉伸一样，优先级越高的越不容易和压缩，默认是750。</p></li>
+<li><p>NSClassFromString(@&quot;UIView&quot;)
+从字符串中获取类名</p></li>
+<li><p>对于一个视图遮盖林割爱一个视图,如果上面视图是hidden或者alpha值为0是可以点击到后面的视图,但是如果上面的视图是clearColor 那么是点不到后面的视图的</p></li>
 </ol>
 
 

@@ -157,8 +157,34 @@ refreshHead.lastUpdatedTimeLabel.hidden = YES;
 <p>但是:比如添加的CAAnimation动画是就算不移除也不会影响的释放的</p></li>
 <li><p>[self setValue:obj forKey:propertyKey];
 对象设置属性的KVC</p></li>
-<li></li>
+<li><p>frame、bounds、center、anchor、transform 关系：</p></li>
 </ol>
+
+<pre><code class="language-objc">-(CGRect) frame  
+{  
+     float x = center.x - layer.anchorPoint.x * bounds.width;   
+     float y = center.y - layer.anchorPoint.y * bounds.height;  
+     float width = bounds.width;
+     float height = bounds.height;  
+     return CGRectMake(x, y, width, height);
+}
+
+-(void) setFrame:(CGRect) rect
+{
+    center.x = rect.x + layer.anchorPoint.x * rect.width;
+    center.y = rect.y + layer.anchorPoint.y * rect.height;
+    bounds.width = rect.width;
+    bounds.height = rect.height;
+}
+</code></pre>
+
+<p>layer的position和 UIVIew的center是等效的 任何时候都是相等的</p>
+
+<p>所以当我们设置anchor为（0.0）因为bounds没变 center没变 因此frame会变化 而且center出现在左上角 </p>
+
+<p><strong>注意</strong>
+当一个view的transform被更改了，即不为CGAffineTransformIdentity。
+frame属性可能会更改，view的bounds，center不会变，layer的position不会变。这个很重要，这样保持了在transform后，view的frame虽然改变了，但是内部参考系是不变的，可以继续进行其他变换，只要不更改frame或center或layer的position。</p>
 
 		</div>
 	</article>
