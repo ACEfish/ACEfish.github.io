@@ -135,7 +135,7 @@
 
 <h4 id="toc_2">1.线程</h4>
 
-<p>线程（thread）是组成进程的子单元，操作系统的调度器可以对线程进行单独的调度。所有的并发编程 API 都是构建于线程之上的 —— 包括 GCD 和操作队列
+<p>线程（thread）是组成进程的子单元，操作系统的调度器可以对线程进行单独的调度。所有的并发编程 API 都是构建于线程之上的 —— 包括 GCD 和操作队列<br/>
 你可以使用 Instruments<a href="http://www.jianshu.com/p/9e94e42cfb01">Instruments学习传送门</a> 中的 <code>CPU strategy view</code> 来得知你的代码或者你在使用的框架代码是如何在多核 CPU 中调度执行的。</p>
 
 <p>开发者可以使用 <a href="https://en.wikipedia.org/wiki/POSIX_Threads">POSIX</a> 线程 API，或者 Objective-C 中提供的对该 API 的封装 <code>NSThread</code>，来创建自己的线程.</p>
@@ -190,14 +190,14 @@ for (NSUInteger i = 0; i &lt; threadCount; i++) {
 }
 </code></pre>
 
-<p>然后我们可以通过检测线程的isFinish属性来检测新生成的线程是否结束,并获取结果。虽然NSThred已经封装但是仍然体验非常糟糕
-<em>使用这样创建线程的问题：</em>
-直接使用线程可能会引发的一个问题是，如果你的代码和所基于的框架代码都创建自己的线程时，那么活动的线程数量有可能以指数级增长。这在大型工程中是一个常见问题。例如，在 8 核 CPU 中，你创建了 8 个线程来完全发挥 CPU 性能。然而在这些线程中你的代码所调用的框架代码也做了同样事情（因为它并不知道你已经创建的这些线程），这样会很快产生成成百上千的线程。代码的每个部分自身都没有问题，然而最后却还是导致了问题。使用线程并不是没有代价的，每个线程都会消耗一些内存和内核资源。
+<p>然后我们可以通过检测线程的isFinish属性来检测新生成的线程是否结束,并获取结果。虽然NSThred已经封装但是仍然体验非常糟糕<br/>
+<em>使用这样创建线程的问题：</em><br/>
+直接使用线程可能会引发的一个问题是，如果你的代码和所基于的框架代码都创建自己的线程时，那么活动的线程数量有可能以指数级增长。这在大型工程中是一个常见问题。例如，在 8 核 CPU 中，你创建了 8 个线程来完全发挥 CPU 性能。然而在这些线程中你的代码所调用的框架代码也做了同样事情（因为它并不知道你已经创建的这些线程），这样会很快产生成成百上千的线程。代码的每个部分自身都没有问题，然而最后却还是导致了问题。使用线程并不是没有代价的，每个线程都会消耗一些内存和内核资源。<br/>
 接下来，我们将介绍两个基于队列的并发编程 API ：GCD 和 operation queue 。它们通过集中管理一个被大家协同使用的线程池，来解决上面遇到的问题。</p>
 
 <h5 id="toc_3">Grand Central Dispatch（GCD）</h5>
 
-<p>苹果在 iOS 4 中引入GCD
+<p>苹果在 iOS 4 中引入GCD<br/>
 通过 GCD，开发者不用再直接跟线程打交道了，只需要向队列中添加代码块即可，GCD 在后端管理着一个<a href="https://en.wikipedia.org/wiki/Thread_pool">线程池</a>。GCD 不仅决定着你的代码块将在哪个线程被执行，它还根据可用的系统资源对这些线程进行管理。这样可以将开发者从线程管理的工作中解放出来，通过<code>集中的管理线程</code>，来缓解大量线程被创建的问题。</p>
 
 <p><strong>GCD给开发者带来最大便利我们只需要将工作考虑为一个队列，而不是一堆线程</strong></p>
@@ -210,19 +210,19 @@ for (NSUInteger i = 0; i &lt; threadCount; i++) {
 
 <h5 id="toc_4">Operation Queues</h5>
 
-<p>操作队列（<code>operation queue</code>）是由 GCD 提供的一个队列模型的 Cocoa 抽象.
+<p>操作队列（<code>operation queue</code>）是由 GCD 提供的一个队列模型的 Cocoa 抽象.<br/>
 <code>NSOperationQueue</code> 有两种不同类型的队列：<strong>主队列和自定义队列</strong>。主队列运行在主线程之上，而自定义队列在后台执行.在两种类型中，这些队列所处理的任务都使用<code>NSOperation</code>的子类来表述。</p>
 
-<p>你可以通过重写 main 或者 start 方法 来定义自己的 operations;前一种方法非常简单，开发者不需要管理一些状态属性（例如 isExecuting 和 isFinished），当 main 方法返回的时候，这个 operation 就结束了。这种方式使用起来非常简单，但是灵活性相对重写 start 来说要少一些。
-//注意：在NSThread和NSOperation中重写Main方法来自定义子类时不需要调用[super main]
-子类的是NSOperation即在队列中的任务，而不是NSOperationQueue
-<code>Object-c
-@implementation YourOperation
-    - (void)main
-    {
-        // 进行处理 ...
-    }
-@end
+<p>你可以通过重写 main 或者 start 方法 来定义自己的 operations;前一种方法非常简单，开发者不需要管理一些状态属性（例如 isExecuting 和 isFinished），当 main 方法返回的时候，这个 operation 就结束了。这种方式使用起来非常简单，但是灵活性相对重写 start 来说要少一些。<br/>
+//注意：在NSThread和NSOperation中重写Main方法来自定义子类时不需要调用[super main]<br/>
+子类的是NSOperation即在队列中的任务，而不是NSOperationQueue<br/>
+<code>Object-c<br/>
+@implementation YourOperation<br/>
+    - (void)main<br/>
+    {<br/>
+        // 进行处理 ...<br/>
+    }<br/>
+@end<br/>
 </code></p>
 
 <pre><code class="language-Object-c">//如果你希望拥有更多的控制权，以及在一个操作中可以执行异步任务，那么就重写 start 方法：

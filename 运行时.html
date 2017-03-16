@@ -119,7 +119,7 @@
 <pre><code class="language-objc">struct objc_super { id receiver; Class superClass; };
 </code></pre>
 
-<p><code>receiver</code>：即消息的实际接收者
+<p><code>receiver</code>：即消息的实际接收者<br/>
 <code>superClass</code>：指针当前类的父类</p>
 
 <p>当我们使用super来接收消息时，编译器会生成一个<code>objc_super</code>结构体。就上面的例子而言，这个结构体的<code>receiver</code>就是<code>MyViewController</code>对象，与<code>self</code>相同；<code>superClass</code>指向<code>MyViewController的父类UIViewController</code>。</p>
@@ -513,7 +513,7 @@ BOOL protocol_conformsToProtocol ( Protocol *proto, Protocol *other );
 
 <p>在<code>Objective-C Runtime Programming Guide</code>中的<a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtTypeEncodings.html#//apple_ref/doc/uid/TP40008048-CH100-SW1">Type Encoding</a>一节中列出了Objective-C中所有的类型编码,需要注意的是这些类型很多是与我们用于存档和分发的编码类型是相同的。但有一些不能在存档时使用。</p>
 
-<p><em>注：Objective-C不支持long double类型。@encode(long double)返回d，与double是一样的。</em>
+<p><em>注：Objective-C不支持long double类型。@encode(long double)返回d，与double是一样的。</em><br/>
 举个栗子:</p>
 
 <pre><code class="language-objc">float a[] = {1.0, 2.0, 3.0};
@@ -659,7 +659,7 @@ objc_property_attribute_t * property_copyAttributeList ( objc_property_t propert
 
 </code></pre>
 
-<p><code>property_copyAttributeValue</code>函数，返回的char *在使用完后需要调用free()释放.
+<p><code>property_copyAttributeValue</code>函数，返回的char *在使用完后需要调用free()释放.<br/>
 <code>property_copyAttributeList</code>函数，返回值在使用完后需要调用free()释放。</p>
 
                         
@@ -695,7 +695,7 @@ objc_property_attribute_t * property_copyAttributeList ( objc_property_t propert
                         
                         	<p>运行时中的<strong>消息处理机制</strong>消息的发送及消息的转发</p>
 
-<p>补充:类的方法链表中存储的是Method链表 而一个Method也是一个结构体指针,这个指针包含
+<p>补充:类的方法链表中存储的是Method链表 而一个Method也是一个结构体指针,这个指针包含<br/>
 一个方法 Method，其包含一个方法选标 SEL – 表示该方法的名称，一个types – 表示该方法参数的类型，一个 IMP  - 指向该方法的具体实现的函数指针。</p>
 
 <h2 id="toc_0">基础数据类型</h2>
@@ -716,7 +716,7 @@ NSLog(@&quot;sel : %p&quot;, sel1);
 
 <p>两个类之间不管有没有关系,只要方法名相同，那么方法的SEL就是一样的.每一个方法都对应着一个<code>SEL</code>。</p>
 
-<p>所以在Objective-C同一个类(及类的继承体系)中，不能存在2个同名的方法，即使参数类型不同也不行。相同的方法只能对应一个SEL。这也就导致Objective-C在处理相同方法名且参数个数相同但类型不同的方法方面的能力很差。
+<p>所以在Objective-C同一个类(及类的继承体系)中，不能存在2个同名的方法，即使参数类型不同也不行。相同的方法只能对应一个SEL。这也就导致Objective-C在处理相同方法名且参数个数相同但类型不同的方法方面的能力很差。<br/>
 例如:</p>
 
 <pre><code class="language-objc">    - (void)setWidth:(int)width;
@@ -728,7 +728,7 @@ NSLog(@&quot;sel : %p&quot;, sel1);
 
 <p>当然不同的类就算是select相同也没关系 .不同类的实例对象执行相同的selector时，会在各自的方法列表中去根据selector去寻找自己对应的IMP。</p>
 
-<p>工程中的所有的SEL组成一个Set集合，Set的特点就是唯一，因此SEL是唯一的。因此，如果我们想到这个方法集合中查找某个方法时，只需要去找到这个方法对应的SEL就行了，SEL实际上就是根据方法名hash化了的一个字符串，而对于字符串的比较仅仅需要比较他们的地址就可以了，可以说速度上无语伦比！
+<p>工程中的所有的SEL组成一个Set集合，Set的特点就是唯一，因此SEL是唯一的。因此，如果我们想到这个方法集合中查找某个方法时，只需要去找到这个方法对应的SEL就行了，SEL实际上就是根据方法名hash化了的一个字符串，而对于字符串的比较仅仅需要比较他们的地址就可以了，可以说速度上无语伦比！<br/>
 但是，有一个问题，就是数量增多会增大hash冲突而导致的性能下降（或是没有冲突，因为也可能用的是<code>perfect hash</code>）。但是不管使用什么样的方法加速，如果能够将总量减少（多个方法可能对应同一个SEL），那将是最犀利的方法。那么，我们就不难理解，为什么SEL仅仅是函数名了。</p>
 
 <p><em>本质上，<code>SEL</code>只是一个指向方法的指针（准确的说，只是一个根据方法名hash化了的KEY值，能唯一代表一个方法），它的存在只是为了加快方法的查询速度。</em></p>
@@ -743,10 +743,10 @@ NSSelectorFromString()方法
 
 <h3 id="toc_2">IMP</h3>
 
-<p><code>IMP</code>实际上是一个函数指针，指向方法实现的首地址。是函数指针而不是指针函数
+<p><code>IMP</code>实际上是一个函数指针，指向方法实现的首地址。是函数指针而不是指针函数<br/>
 IMP 是消息最终调用的执行代码，是方法真正的实现代码</p>
 
-<p><code>id (*IMP)(id, SEL, ...)</code>
+<p><code>id (*IMP)(id, SEL, ...)</code><br/>
 第一个参数是指向self的指针(如果是实例方法，则是类实例的内存地址；如果是类方法，则是指向元类的指针)，第二个参数是方法选择器(selector)，接下来是方法的实际参数列表。</p>
 
 <p>前面介绍过的<code>SEL</code>就是为了查找方法的最终实现<code>IMP</code>的。由于每个方法对应唯一的<code>SEL</code>，因此我们可以通过SEL方便快速准确地获得它所对应的IMP.取得IMP后，我们就获得了执行这个方法代码的入口点，此时，我们就可以像调用普通的C语言函数一样来使用这个函数指针了。</p>
@@ -771,12 +771,12 @@ struct objc_method {
 
 <p>我们可以看到该结构体中包含一个SEL和IMP，实际上相当于在SEL和IMP之间作了一个映射。有了SEL，我们便可以找到对应的IMP，从而调用方法的实现代码。</p>
 
-<p>查找IMP 时
-1，首先去该类的方法 cache 中查找，如果找到了就返回它；
-2，如果没有找到，就去该类的方法列表中查找。如果在该类的方法列表中找到了，则将 IMP 返回，并将它加入cache中缓存起来。根据最近使用原则，这个方法再次调用的可能性很大，缓存起来可以节省下次调用再次查找的开销。
+<p>查找IMP 时<br/>
+1，首先去该类的方法 cache 中查找，如果找到了就返回它；<br/>
+2，如果没有找到，就去该类的方法列表中查找。如果在该类的方法列表中找到了，则将 IMP 返回，并将它加入cache中缓存起来。根据最近使用原则，这个方法再次调用的可能性很大，缓存起来可以节省下次调用再次查找的开销。<br/>
 3，如果在该类的方法列表中没找到对应的 IMP，在通过该类结构中的 super_class指针在其父类结构的方法列表中去查找，直到在某个父类的方法列表中找到对应的IMP，返回它，并加入cache中。</p>
 
-<p>4，如果在自身以及所有父类的方法列表中都没有找到对应的 IMP，则进入下文中要讲的消息转发流程。
+<p>4，如果在自身以及所有父类的方法列表中都没有找到对应的 IMP，则进入下文中要讲的消息转发流程。<br/>
 是没有找到实现进入消息转发流程</p>
 
 <h4 id="toc_4">objc_method_description</h4>
@@ -868,7 +868,7 @@ objc_msgSend(receiver, selector, arg1, arg2, ...)
 <li>一个类的方法分发表，即<code>methodLists</code></li>
 </ol>
 
-<p>当我们创建一个新对象时，先为其分配内存，并初始化其成员变量。其中isa指针也会被初始化，让对象可以访问类及类的继承体系。
+<p>当我们创建一个新对象时，先为其分配内存，并初始化其成员变量。其中isa指针也会被初始化，让对象可以访问类及类的继承体系。<br/>
 <img src="media/14878317569666/14879130604804.jpg" alt=""/></p>
 
 <p>我们通过找类的方法链表找到Method，上图中selector 就是指 Method的 SEL,  address就是指Method的 IMP,因此对于一个实例对象的实例方法我们可以通过这样找到唯一的对应实现</p>
@@ -879,8 +879,8 @@ objc_msgSend(receiver, selector, arg1, arg2, ...)
 
 <h3 id="toc_9">隐藏参数</h3>
 
-<p><code>objc_msgSend</code>有两个隐藏参数：
-    1.消息的接收对象
+<p><code>objc_msgSend</code>有两个隐藏参数：<br/>
+    1.消息的接收对象<br/>
     2.方法的selector</p>
 
 <p>这两个参数为方法的实现提供了调用者的信息。之所以说是隐藏的，是因为它们在定义方法的源代码中没有声明。<em>它们是在编译期被插入实现代码的。</em></p>
@@ -901,10 +901,10 @@ objc_msgSend(receiver, selector, arg1, arg2, ...)
 
 <h3 id="toc_10">获取方法地址</h3>
 
-<p>Runtime中方法的动态绑定让我们写代码时更具灵活性，如我们可以把消息转发给我们想要的对象，或者随意交换一个方法的实现等。不过灵活性的提升也带来了性能上的一些损耗。毕竟我们需要去查找方法的实现，而不像函数调用来得那么直接。当然，方法的缓存一定程度上解决了这一问题。
+<p>Runtime中方法的动态绑定让我们写代码时更具灵活性，如我们可以把消息转发给我们想要的对象，或者随意交换一个方法的实现等。不过灵活性的提升也带来了性能上的一些损耗。毕竟我们需要去查找方法的实现，而不像函数调用来得那么直接。当然，方法的缓存一定程度上解决了这一问题。<br/>
 如果想要避开这种动态绑定方式，我们可以获取方法实现的地址，然后像调用函数一样来直接调用它。特别是当我们需要在一个循环内频繁地调用一个特定的方法时，通过这种方式可以提高程序的性能。</p>
 
-<p>NSObject类提供了<code>methodForSelector:</code>方法，让我们可以获取到方法的指针，然后通过这个指针来调用实现代码。我们需要将<code>methodForSelector:</code>返回的指针转换为合适的函数类型，函数参数和返回值都需要匹配上。
+<p>NSObject类提供了<code>methodForSelector:</code>方法，让我们可以获取到方法的指针，然后通过这个指针来调用实现代码。我们需要将<code>methodForSelector:</code>返回的指针转换为合适的函数类型，函数参数和返回值都需要匹配上。<br/>
 通过下面代码看看<code>methodForSelector</code>的使用:</p>
 
 <pre><code class="language-objc">void (*setter)(id, SEL, BOOL);
@@ -931,7 +931,7 @@ for (i = 0 ; i &lt; 1000 ; i++)
 
 <p>不过，我们这边想讨论下不使用respondsToSelector:判断的情况。这才是我们这一节的重点。</p>
 
-<p>当一个对象无法接收某一消息时，就会启动所谓”<strong>消息转发(message forwarding)</strong>“机制，
+<p>当一个对象无法接收某一消息时，就会启动所谓”<strong>消息转发(message forwarding)</strong>“机制，<br/>
 默认情况下，对象接收到未知的消息，会导致程序崩溃，通过控制台，我们可以看到以下异常信息：</p>
 
 <pre><code class="language-objc">-[SUTRuntimeMethod method]: unrecognized selector sent to instance 0x100111940
@@ -950,8 +950,8 @@ for (i = 0 ; i &lt; 1000 ; i++)
 
 <h3 id="toc_12">动态方法解析</h3>
 
-<p>对象在接收到未知的消息时，首先会调用所属类的类方法<code>+resolveInstanceMethod:</code>(实例方法)或者<code>+resolveClassMethod:</code>(类方法)。
-在这个方法中，我们有机会为该未知消息新增一个”处理方法””。不过使用该方法的前提是我们已经实现了该”处理方法”，只需要在运行时通过class_addMethod函数动态添加到类里面就可以了。
+<p>对象在接收到未知的消息时，首先会调用所属类的类方法<code>+resolveInstanceMethod:</code>(实例方法)或者<code>+resolveClassMethod:</code>(类方法)。<br/>
+在这个方法中，我们有机会为该未知消息新增一个”处理方法””。不过使用该方法的前提是我们已经实现了该”处理方法”，只需要在运行时通过class_addMethod函数动态添加到类里面就可以了。<br/>
 举个栗子:</p>
 
 <pre><code class="language-objc">void functionForMethod1(id self, SEL _cmd) {

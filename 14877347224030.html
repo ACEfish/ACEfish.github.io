@@ -309,7 +309,7 @@ if (numClasses &gt; 0) {
 
 <h3 id="toc_7">关联对象</h3>
 
-<p>假定我们想要动态地将一个Tap手势操作连接到任何UIView中，并且根据需要指定点击后的实际操作。这时候我们就可以将一个手势对象及操作的block对象关联到我们的UIView对象中。这项任务分两部分。
+<p>假定我们想要动态地将一个Tap手势操作连接到任何UIView中，并且根据需要指定点击后的实际操作。这时候我们就可以将一个手势对象及操作的block对象关联到我们的UIView对象中。这项任务分两部分。<br/>
 首先，如果需要，我们要创建一个手势识别对象并将它及block做为关联对象。如下代码所示：</p>
 
 <pre><code class="language-objc">- (void)setTapActionWithBlock:(void (^)(void))block
@@ -326,7 +326,7 @@ if (numClasses &gt; 0) {
 }
 </code></pre>
 
-<p>这段代码检测了手势识别的关联对象。如果没有，则创建并建立关联关系。同时，将传入的块对象连接到指定的key上。注意<code>block</code>对象的关联内存管理策略。
+<p>这段代码检测了手势识别的关联对象。如果没有，则创建并建立关联关系。同时，将传入的块对象连接到指定的key上。注意<code>block</code>对象的关联内存管理策略。<br/>
 手势识别对象需要一个<code>target</code>和<code>action</code>，所以接下来我们定义处理方法：</p>
 
 <pre><code class="language-objc">- (void)__handleActionForTapGesture:(UITapGestureRecognizer *)gesture
@@ -397,48 +397,48 @@ if (numClasses &gt; 0) {
 
 <h4 id="toc_11">备用接收者</h4>
 
-<p>使用这个方法通常是在对象内部，可能还有一系列其它对象能处理该消息，我们便可借这些对象来处理消息并返回，这样在对象外部看来，还是由该对象亲自处理了这一消息。
-```objc
-@interface SUTRuntimeMethodHelper : NSObject
-- (void)method2;
-@end
-@implementation SUTRuntimeMethodHelper
-- (void)method2 {
-    NSLog(@&quot;%@, %p&quot;, self, _cmd);
-}
+<p>使用这个方法通常是在对象内部，可能还有一系列其它对象能处理该消息，我们便可借这些对象来处理消息并返回，这样在对象外部看来，还是由该对象亲自处理了这一消息。<br/>
+```objc<br/>
+@interface SUTRuntimeMethodHelper : NSObject<br/>
+- (void)method2;<br/>
+@end<br/>
+@implementation SUTRuntimeMethodHelper<br/>
+- (void)method2 {<br/>
+    NSLog(@&quot;%@, %p&quot;, self, _cmd);<br/>
+}<br/>
 @end</p>
 
 <h1 id="toc_12">pragma mark -</h1>
 
-<p>@interface SUTRuntimeMethod () {
-    SUTRuntimeMethodHelper *_helper;
-}
-@end
-@implementation SUTRuntimeMethod
-+ (instancetype)object {
-    return [[self alloc] init];
-}
-- (instancetype)init {
-    self = [super init];
-    if (self != nil) {
-        <u>helper = [[SUTRuntimeMethodHelper alloc] init];
-    }
-    return self;
-}
-- (void)test {
-    [self performSelector:@selector(method2)];
-}
-- (id)forwardingTargetForSelector:(SEL)aSelector {
-    NSLog(@&quot;forwardingTargetForSelector&quot;);
-    NSString *selectorString = NSStringFromSelector(aSelector);
-    // 将消息转发给</u>helper来处理
-    if ([selectorString isEqualToString:@&quot;method2&quot;]) {
-        return _helper;
-    }
-    return [super forwardingTargetForSelector:aSelector];
-}
-@end
-```
+<p>@interface SUTRuntimeMethod () {<br/>
+    SUTRuntimeMethodHelper *_helper;<br/>
+}<br/>
+@end<br/>
+@implementation SUTRuntimeMethod<br/>
++ (instancetype)object {<br/>
+    return [[self alloc] init];<br/>
+}<br/>
+- (instancetype)init {<br/>
+    self = [super init];<br/>
+    if (self != nil) {<br/>
+        <u>helper = [[SUTRuntimeMethodHelper alloc] init];<br/>
+    }<br/>
+    return self;<br/>
+}<br/>
+- (void)test {<br/>
+    [self performSelector:@selector(method2)];<br/>
+}<br/>
+- (id)forwardingTargetForSelector:(SEL)aSelector {<br/>
+    NSLog(@&quot;forwardingTargetForSelector&quot;);<br/>
+    NSString *selectorString = NSStringFromSelector(aSelector);<br/>
+    // 将消息转发给</u>helper来处理<br/>
+    if ([selectorString isEqualToString:@&quot;method2&quot;]) {<br/>
+        return _helper;<br/>
+    }<br/>
+    return [super forwardingTargetForSelector:aSelector];<br/>
+}<br/>
+@end<br/>
+```<br/>
 这一步合适于我们只想将消息转发到另一个能处理该消息的对象上。但这一步无法对消息进行处理，如操作消息的参数和返回值。</p>
 
 <h4 id="toc_13">完整消息转发</h4>

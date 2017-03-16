@@ -144,10 +144,10 @@
 <p>Xcode 所提供的 Core Data 标准模版中，所设立的是运行在主线程中的一个存储调度 (persistent store coordinator)和一个托管对象上下文 (managed object context) 的方式。在很多情况下，这种模式可以运行良好。创建新的对象和修改已存在的对象开销都非常小，也都能在主线程中没有困难地完成。然后，如果你想要做大量的处理，那么把它放到一个后台上下文来做会比较好。一个典型的应用场景是将大量数据导入到 Core Data 中。</p>
 </blockquote>
 
-<p>示例:
+<p>示例:<br/>
 我们要导入一大组柏林的交通数据。在导入的过程中，我们展示一个进度条，如果耗时太长，我们希望可以取消当前的导入操作。同时，我们显示一个随着数据加入可以自动更新的 table view 来展示目前可用的数据。</p>
 
-<p>解决方案:
+<p>解决方案:<br/>
 我们创建一个<code>NSOperation</code> 的子类，将其叫做<code>ImportOperation</code>，我们通过重写 <code>main</code>方法，用来处理所有的导入工作。这里我们使用<code>NSPrivateQueueConcurrencyType</code>来创建一个独立并拥有自己的私有<code>dispatch queue</code>的 managed object context，这个 <code>context</code> 需要管理自己的队列。在队列中的所有操作必须使用<code>performBlock</code>或者<code>performBlockAndWait</code>来进行触发。</p>
 
 <pre><code class="language-Object-c">NSManagedObjectContext* context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
@@ -280,8 +280,8 @@ if (idx % progressGranularity == 0) {
 
 <h4 id="toc_5">4.后台绘制</h4>
 
-<p>如果你确定<code>drawRect:</code>是你的应用的性能瓶颈，那么你可以将这些绘制代码放到后台去做。但是在你这样做之前，检查下看看是不是有其他方法来解决，比如、考虑使用<code>core animation layers</code>或者预先渲染图片而不去做<code>Core Graphics</code>绘制。
-解决方案:
+<p>如果你确定<code>drawRect:</code>是你的应用的性能瓶颈，那么你可以将这些绘制代码放到后台去做。但是在你这样做之前，检查下看看是不是有其他方法来解决，比如、考虑使用<code>core animation layers</code>或者预先渲染图片而不去做<code>Core Graphics</code>绘制。<br/>
+解决方案:<br/>
 其实解决起来也很简单，把<code>drawRect:</code>中的代码放到一个后台操作中去做就可以了。然后将原本打算绘制的视图用一个 image view 来替换，等到操作执行完后再去更新。在绘制的方法中，使用 <code>UIGraphicsBeginImageContextWithOptions</code>来取代<code>UIGraphicsGetCurrentContext ：</code></p>
 
 <pre><code class="language-Object-c">UIGraphicsBeginImageContextWithOptions(size, NO, 0);
@@ -295,7 +295,7 @@ return i;
 */
 </code></pre>
 
-<p>注意:
+<p>注意:<br/>
 如果你在 table view 或者是 collection view 的 cell 上做了自定义绘制的话，最好将它们放入 <code>operation</code> 的子类中去。你可以将它们添加到后台操作队列，也可以在用户将 cell 滚动出边界时的 <code>didEndDisplayingCell</code> 委托方法中进行取消。这些技巧都在 2012 年的<a href="https://developer.apple.com/videos/wwdc2012/">WWDC Session 211 -- Building Concurrent User Interfaces on iOS</a>中有详细阐述。</p>
 
 <p>除了在后台自己调度绘制代码，以也可以试试看使用 CALayer 的 drawsAsynchronously 属性。然而你需要精心衡量这样做的效果，因为有时候它能使绘制加速，有时候却适得其反。</p>
@@ -314,7 +314,7 @@ dispatch_async(backgroundQueue, ^{
 //这段代码问题：没有办法去取消这个同步的网络请求。它将阻塞住线程直到它完成。如果请求一直没结果，那就只能干等到超时
 </code></pre>
 
-<p>要解决上面的困境，我们可以使用<code>NSURLConnection</code>的异步方法，并且把所有操作转化为 operation 来执行. NSURLConnection 是通过<code>run loop</code>来发送事件的。因为事件发送不会花多少时间，因此最简单的是就只使用 main run loop 来做这个。然后，我们就可以用后台线程来处理输入的数据了。
+<p>要解决上面的困境，我们可以使用<code>NSURLConnection</code>的异步方法，并且把所有操作转化为 operation 来执行. NSURLConnection 是通过<code>run loop</code>来发送事件的。因为事件发送不会花多少时间，因此最简单的是就只使用 main run loop 来做这个。然后，我们就可以用后台线程来处理输入的数据了。<br/>
 要处理URL 连接，我们重写自定义的 operation 子类中的 start 方法：</p>
 
 <pre><code class="language-Object-c">- (void)start
@@ -341,14 +341,14 @@ dispatch_async(backgroundQueue, ^{
 }
 </code></pre>
 
-<p><a href="https://github.com/objcio/issue-2-background-networking">Demo下载</a>
-因此:我们总结如下:建议<strong>要么你花时间来把事情做对做好，要么就直接使用像<code>AFNetworking</code>这样的框架</strong>
+<p><a href="https://github.com/objcio/issue-2-background-networking">Demo下载</a><br/>
+因此:我们总结如下:建议<strong>要么你花时间来把事情做对做好，要么就直接使用像<code>AFNetworking</code>这样的框架</strong><br/>
 其实 AFNetworking 还提供了不少好用的小工具，比如有个 UIImageView 的 category，来负责异步地从一个 URL 加载图片。在你的 table view 里使用的话，还能自动帮你处理取消加载操作，非常方便。</p>
 
 <h4 id="toc_7">5.进阶：后台文件 I/O</h4>
 
-<p>一次性将文件读入内存中对于较小的文件可能没什么问题,但是对于大文件来说就并不友好。
-我们将构建一个类，它负责<code>一行一行</code>读取文件而不是一次将整个文件读入内存，另外要在<code>后台队列处理文件</code>，以保持应用相应用户的操作。
+<p>一次性将文件读入内存中对于较小的文件可能没什么问题,但是对于大文件来说就并不友好。<br/>
+我们将构建一个类，它负责<code>一行一行</code>读取文件而不是一次将整个文件读入内存，另外要在<code>后台队列处理文件</code>，以保持应用相应用户的操作。<br/>
 为了达到这个目的，我们使用能让我们异步处理文件的<code>NSInputStream</code></p>
 
 <blockquote>
