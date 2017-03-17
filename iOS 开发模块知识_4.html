@@ -103,318 +103,454 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14872305472033.html">
+                <a class="clearlink" href="14877303400153.html">
                 
-                  <h1>UI测试</h1>
+                  <h1>类与对象</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>关于iOS的UI自动化测试，Xcode 7 Apple从新提供了一个新的框架UITest，使用XCTest.framework，Xcode可以自动录制UI测试的动作流，还有就是可以使用<code>XCTest UI testing API</code></p>
+                        	<h2 id="toc_0">Class</h2>
 
-<h4 id="toc_0"><a href="http://www.itnose.net/detail/6507467.html">基础知识</a></h4>
+<p>Objective-C类是由Class类型来表示的，它实际上是一个指向<code>objc_class</code>结构体的指针。</p>
 
-<p>核心的三个类:<code>XCUIApplication</code> <code>XCUIElement</code> <code>XCUIElementQuery</code><br/>
-<strong>XCUIApplication类</strong> 是Application的代理，就像我们项目工程中的AppDelegate，这个对象用来启动或者是终止UI测试程序，还可以在启动的时候设置一些启动参数，在获取程序中的UI元素的时候，就是通过这个类的实例。这个类继承自XCUIElement类<br/>
-<strong>XCUIElement类</strong> 是XCTest.framework对应用中的所有UI控件的抽象，在UI测试中，没有UIKit中的UI类型，只是用这个类的实例表示所有的UI控件，以及相应的交互方法，例如：执行手势（tap，press，swipe），滑动控件交互，拾取器交互，这个类采取了XCUIElementAttributes协议（描述UI元素的属性：Identity，Value，Interaction State，Size），XCUIElementTypeQueryProvider协议(为指定类型的子代元素提供ready-made查询，子代元素查询包含button，具体实现是:@property(readonly, copy) XCUIElementQuery *buttons;等一系列对UIKit中元素的映射)<br/>
-<strong>XCUIElementQuery类</strong> 是定位UI元素的查询，这个类使用类似key-value的机制得到XCUIElement的实例，使用Type(XCUIElementType枚举)，Predicate，Identifier创建query，使用elementAtIndex:, elementMatchingPredicate,elementMatchingType: identifier:方法访问匹配到的UI元素，此类采用XCUIElementTypeQueryProvider协议</p>
+<pre><code class="language-objc">//定义为:
+typedef struct objc_class *Class;
+</code></pre>
 
-<p>XCTest一共提供了三种UI测试对象<br/>
-    XCUIApplication 当前测试应用target<br/>
-    XCUIElementQuery 定位查询当前UI中xctuielement的一个类<br/>
-    XCUIElement UI测试中任何一个item项都被抽象成一个XCUIElement类型<br/>
-因此:当我们获取了录制生成的代码以后，根据UITest提供的三种对象，我可以在此来对测试代码进行修改，调试,我们同样可以使用断言语句来进行测试</p>
+<p>在<code>objc/runtime.h</code>中objc_class结构体定义如下:<br/>
+Class 是指向类结构体的指针,NSObject 的class 方法就返回这样一个指向其类结构的指针。</p>
 
-<h4 id="toc_1">UI测试Demo</h4>
+<pre><code class="language-objc">truct objc_class {
+    Class isa  OBJC_ISA_AVAILABILITY;
+#if !__OBJC2__
+    Class super_class                       OBJC2_UNAVAILABLE;  // 父类
+    const char *name                        OBJC2_UNAVAILABLE;  // 类名
+    long version                            OBJC2_UNAVAILABLE;  // 类的版本信息，默认为0
+    long info                               OBJC2_UNAVAILABLE;  // 类信息，供运行期使用的一些位标识
+    long instance_size                      OBJC2_UNAVAILABLE;  // 该类的实例变量大小
+    struct objc_ivar_list *ivars            OBJC2_UNAVAILABLE;  // 该类的成员变量链表
+    struct objc_method_list **methodLists   OBJC2_UNAVAILABLE;  // 方法定义的链表
+    struct objc_cache *cache                OBJC2_UNAVAILABLE;  // 方法缓存
+    struct objc_protocol_list *protocols    OBJC2_UNAVAILABLE;  // 协议链表
+#endif
+} OBJC2_UNAVAILABLE;
+/**
+    1.isa：需要注意的是在Objective-C中，所有的类自身也是一个对象，这个对象的Class里面也有一个
+    isa指针，它指向metaClass(元类)
+    2.super_class：指向该类的父类，如果该类已经是最顶层的根类(如NSObject或NSProxy)，则
+    super_class为NULL。
+    3.cache：用于缓存最近使用的方法。一个接收者对象接收到一个消息时，它会根据isa指针去查找能够
+    响应这个消息的对象。在实际使用中，这个对象只有一部分方法是常用的，很多方法其实很少用或者根本
+    用不上。这种情况下，如果每次消息来时，我们都是methodLists中遍历一遍，性能势必很差。这时，
+    cache就派上用场了。在我们每次调用过一个方法后，这个方法就会被缓存到cache列表中，下次调用的
+    时候runtime就会优先去cache中查找，如果cache没有，才去methodLists中查找方法。这样，对于那
+    些经常用到的方法的调用，但提高了调用的效率。
+    4.version：我们可以使用这个字段来提供类的版本信息。这对于对象的序列化非常有用，它以让我们
+    识别出不同类定义版本中实例变量布局的改变。
+    5.方法链表里面存储的是Method 类型的,Method中含有SEL和IMP.一个方法 Method，其包含一个方
+    法选标 SEL – 表示该方法的名称，一个types – 表示该方法参数的类型，一个 IMP  - 指向该方法
+    的具体实现的函数指针。
+*/
+</code></pre>
 
-<ol>
-<li><p>创建项目时勾选UITest</p></li>
-<li><p>打开DemoUiTest.m,创建 - (void)testUI函数,同时将光标留在函数内<br/>
-<img src="media/14872305472033/14872344264789.png" alt=""/><br/>
-点击下面的红色按钮，开始recorder操作，程序运行起来后，点击APP界面进行操作,然后光标处就会生成测试代码</p></li>
-<li><p>进行测试<br/>
-之后我们测试只需要点击test函数前的测试按钮测试这个函数 或者command+u 来进行全部测试<br/>
-此时刚才的一连串动作会一步一步连续执行下来</p></li>
-<li><p>我们此时可以通过修改这段代码来进行我们想要的测试<br/>
-比如：</p>
+<pre><code class="language-objc">    NSArray *array = [[NSArray alloc] init];
+    其流程是：
+    1. `[NSArray alloc]`先被执行。因为NSArray没有`+alloc`方法，于是去父类NSObject去查找。
+    2. 检测NSObject是否响应`+alloc`方法，发现响应，于是检测NSArray类，并根据其所需的内存空间大小开始分配内存空间，然后把`isa`指针指向NSArray类。同时，`+alloc`也被加进cache列表里面。
+    3. 接着，执行`-init`方法，如果NSArray响应该方法，则直接将其加入`cache`；如果不响应，则去父类查找。
+    4. 在后期的操作中，如果再以`[[NSArray alloc] init]`这种方式来创建数组，则会直接从cache中取出相应的方法，直接调用。
+    //objc_object与id
+    `objc_object`是表示一个类的实例的结构体，它的定义如下(`objc/objc.h`)：
+    //objc
+    struct objc_object {
+        Class isa  OBJC_ISA_AVAILABILITY;
+    };
+    typedef struct objc_object *id;
+    /**
+    可以看到，这个结构体只有一个字体，即指向其类的isa指针。这样，当我们向一个Objective-C对象发
+    送消息时，运行时库会根据实例对象的isa指针找到这个实例对象所属的类。Runtime库会在类的方法列
+    表及父类的方法列表中去寻找与消息对应的selector指向的方法。找到后即运行这个方法。
+    当创建一个特定类的实例对象时，分配的内存包含一个objc_object数据结构，然后是类的实例变量的数
+    据。NSObject类的alloc和allocWithZone:方法使用函数`class_createInstance`来创建objc_object数据结构。
+    */
+</code></pre>
 
-<ul>
-<li>通过添加循环语句来测试一直执行是否会出现问题,判断内存问题等</li>
-<li>通过添加断言来判断运行中元素或情况与我们预想是否一致</li>
-</ul></li>
-<li></li>
-</ol>
+<h4 id="toc_1">objc_cache</h4>
 
-                        
-                      </div>
-                  </div>
-                </a>
-                <div class="read-more clearfix">
-                  <div class="more-left left">
-                  
-                    <span class="date">2017/2/16</span>
-                    <span>posted in&nbsp;</span> 
-          				  
-          					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
-          				   
-                  </div>
-                  <div class="more-right right">
-                  <span class="comments">
-                      
+<p>此处为上面所说的cache的<a href="http://southpeak.github.io/2014/10/25/objective-c-runtime-1/">demo</a>:为一个objc_cache结构体的指针</p>
 
-                       
-                  </span>
-                  </div>
-                </div>
-              </div><!-- article -->
-        
-			<div class="article">
-                <a class="clearlink" href="14872162581601.html">
-                
-                  <h1>测试</h1>
-                  <div class="a-content">
-                      
-                      <div class="a-content-text">
-                        
-                        	<h5 id="toc_0">1.流行框架</h5>
+<pre><code class="language-objc">struct objc_cache {
+    unsigned int mask /* total = mask + 1 */                 OBJC2_UNAVAILABLE;
+    /*
+    mask：一个整数，指定分配的缓存bucket的总数。在方法查找过程中，Objective-C runtime使用这
+    个字段来确定开始线性查找数组的索引位置。指向方法selector的指针与该字段做一个AND位操作
+    (index = (mask &amp; selector))。这可以作为一个简单的hash散列算法。
+    */
+    unsigned int occupied                                    OBJC2_UNAVAILABLE;
+    //occupied：一个整数，指定实际占用的缓存bucket的总数
+    Method buckets[1]                                        OBJC2_UNAVAILABLE;
+    /**
+        buckets：指向Method数据结构指针的数组。这个数组可能包含不超过mask+1个元素。需要注意的
+        是，指针可能是NULL，表示这个缓存bucket没有被占用，另外被占用的bucket可能是不连续的。
+        这个数组可能会随着时间而增长。
+    */
+};
+</code></pre>
 
-<p>Apple自带的<code>XCTest</code>和第三方的<code>GHUnit</code>.他两之间的区别:XCTest：与Xcode深度集成。而且可以享受Apple后续对XCTest升级的福利。 GHUnit：集成度不如XCTest，安装麻烦。但是有自己的GUI界面。因为XCTest是苹果的，所以我们选择XCTest</p>
+<h4 id="toc_2">元类(Meta Class)</h4>
 
-<h5 id="toc_1">2.OCMock</h5>
+<p>所有的类自身也是一个对象，我们可以向这个对象发送消息(即调用类方法)<br/>
+<code>NSArray *array = [NSArray array];</code><br/>
++array消息发送给了NSArray类，而这个NSArray也是一个对象。既然是对象，那么它也是一个objc_object指针，它包含一个指向其类的一个isa指针。那么这些就有一个问题了，这个isa指针指向什么呢？为了调用+array方法，这个类的isa指针必须指向一个包含这些类方法的一个objc_class结构体。这就引出了meta-class的概念<br/>
+<strong>meta-class是一个类对象的类</strong></p>
 
-<p>mock测试是个很神奇而又很酷的技术，在测试过程中，对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。<br/>
-而我们在进行iOS测试时候是使用<code>OCMock</code>来进行对象的mock</p>
+<p>meta-class之所以重要，是因为它存储着一个类的所有类方法。每个类都会有一个单独的meta-class，因为每个类的类方法基本不可能完全相同。</p>
 
-<h5 id="toc_2">3.断言框架</h5>
+<p>因此:<code>objc_class</code> 的isa指向的是元类，<code>objc_object</code>的isa指向的是实例对象所属的类.当我们向一个对象发送消息时，runtime会在这个对象所属的这个类的方法列表中查找方法；而向一个类发送消息时，会在这个类的<code>meta-class</code>的方法列表中查找。<br/>
+补充:<br/>
+<code>meta-class</code>也是一个类，也可以向它发送一个消息，那么它的isa又是指向什么呢？为了不让这种结构无限延伸下去，Objective-C的设计者让所有的<code>meta-class</code>的isa指向<code>基类的meta-class</code>，以此作为它们的所属类。即，任何NSObject继承体系下的<code>meta-class</code>都使用NSObject的<code>meta-class</code>作为自己的所属类，而基类的<code>meta-class</code>的isa指针是指向它自己。这样就形成了一个完美的闭环。因此:<br/>
+<em>对NSObject继承体系来说，其实例方法对体系中的所有实例、类和meta-class都是有效的；而类方法对于体系内的所有类和meta-class都是有效的</em></p>
 
-<p>Expecta和OCHamcrest这两个都是断言的扩展框架。一开始我选择了Expecta，因为我后来有一段时间将测试文件用BDD框架Specta来写（当然这是后话），而Expecta 和Specta都出自同一个人之手，不论是教程文档都更加丰富。但是后来我废弃了BDD框架，还是用原生的XCTest，Expecta在使用中也遇到了一些问题，我就把我们的断言框架由Expecta切换到了OCHamcrest。<br/>
-原因有两点：<br/>
-<code><br/>
-1.Expecta不成熟，至笔者切换的时候才0.3.1版本，遇到很多框架自身的问题。case跑着跑着验证通不过了，再跑一次又过了，是不是还爆出个Expecta框架内部的crash。<br/>
-2.OCHamcrest更加成熟，而且可扩展性高，可以自定义自己的断言，更灵活。<br/>
-</code><br/>
-比如OCHamcrest不支持superClass验证，我们必须自己去比较，返回一个bool值，然后去判断bool是否为真。很麻烦。自己自定义个superClass的验证，就不需要每次都这么麻烦的写这么多代码了。而如果Expecta不支持的断言，那就永远不能支持了。 我们可以通过OCHamcrest这个特性，做一些符合自己app场景的特有断言。</p>
+<p>Demo:</p>
 
-<h5 id="toc_3">BDD Or Not</h5>
+<pre><code class="language-objc">void TestMetaClass(id self, SEL _cmd) {
+    NSLog(@&quot;This objcet is %p&quot;, self);
+    NSLog(@&quot;Class is %@, super class is %@&quot;, [self class], [self superclass]);
+    Class currentClass = [self class];
+    for (int i = 0; i &lt; 4; i++) {
+        NSLog(@&quot;Following the isa pointer %d times gives %p&quot;, i, currentClass);
+        currentClass = objc_getClass((__bridge void *)currentClass);
+    }
+    NSLog(@&quot;NSObject&#39;s class is %p&quot;, [NSObject class]);
+    NSLog(@&quot;NSObject&#39;s meta class is %p&quot;, objc_getClass((__bridge void *)[NSObject class]));
+}
+#pragma mark -
+@implementation Test
+- (void)ex_registerClassPair {
+    Class newClass = objc_allocateClassPair([NSError class], &quot;TestClass&quot;, 0);
+    class_addMethod(newClass, @selector(testMetaClass), (IMP)TestMetaClass, &quot;v@:&quot;);
+    objc_registerClassPair(newClass);
+    id instance = [[newClass alloc] initWithDomain:@&quot;some domain&quot; code:0 userInfo:nil];
+    [instance performSelector:@selector(testMetaClass)];
+}
+@end
 
-<p>BDD和TDD都是敏捷开发的技术;<br/>
-<strong>BDD</strong>（Behavior Driven Development），也就是行为驱动开发，它旨在解决具体问题，帮助开发人员确定应该测试些什么.此外，它提供了一个 <code>DSL</code>（译者注: Domain-specific language，域特定语言）鼓励开发者弄清楚他们的需求，并且它引入了一个通用语言帮助你轻易理解测试的目的。<br/>
-<strong>TDD</strong>（Test-Driven Development），就是测试驱动开发，通过测试来推动整个开发的进行<br/>
-目前使用比较多得是BDD框架:<br/>
-Cedar，Specta和Kiwi这3个框架就是目前Objc最流行的BDD测试框架<br/>
-    Specta和Kiwi的区别就是Kiwi包含了Specta和OCmock以及Expeata所有的功能<br/>
-除此之外还有Apple的XCTest:XCTest与Xcode深度集成，而且可以享受Apple后续对XCTest升级的福利</p>
-
-<p>XCTest 的优势和缺点都是由于它太简单了。你只需要创建一个类，使用 “test” 作为测试方法名的前缀，只需要这样就可以了，不需要再做其他的。和 Xcode 很好的集成性也是 XCTest 获得青睐的原因。你可以点击边栏上的小菱形按钮来运行测试用例，你也可以很容易的查看所有失败的测试用例，也可以在测试用例列表中点击某一行而快速的跳转到某一个测试用例。</p>
-
-<p>不幸的是，这已经是 XCTest 的全部优点了。在开发和测试中，使用 XCTest 时我们没有碰到任何的障碍，但是经常会想如果它能更方便一些就好了。XCTest 类看起来就像普通的类，而一个 BDD 测试套件的结构和其嵌套的上下文是显而易见的。并且这种为测试创建嵌套上下文的可能性也是最缺失的。嵌套的上下文允许我们在使独立的测试相对简单的情况下创建越来越具体的场景。当然，在 XCTest 中这也是可以的，比如在一些测试用例中调用自定义的 setup 方法，但这并不方便。</p>
-
-<p>BDD 框架的附加功能的重要性是取决于项目的大小。我们的结论是，XCTest 对中小型的工程来说是一个很好的选择，但是对于更大型的工程，就有必要参考一下像 Kiwi 或者 Specta 这样的 BDD 框架。</p>
-
-<h5 id="toc_4">4.UITests</h5>
-
-<p>通过代码化来实现自动点击界面，输入文字等功能</p>
-
-                        
-                      </div>
-                  </div>
-                </a>
-                <div class="read-more clearfix">
-                  <div class="more-left left">
-                  
-                    <span class="date">2017/2/16</span>
-                    <span>posted in&nbsp;</span> 
-          				  
-          					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
-          				   
-                  </div>
-                  <div class="more-right right">
-                  <span class="comments">
-                      
-
-                       
-                  </span>
-                  </div>
-                </div>
-              </div><!-- article -->
-        
-			<div class="article">
-                <a class="clearlink" href="14871584203378.html">
-                
-                  <h1>并发编程、NSThread&GCD&NSOpration&runLoop</h1>
-                  <div class="a-content">
-                      
-                      <div class="a-content-text">
-                        
-                        	<h4 id="toc_0">1.并发编程</h4>
-
-<p>并发所描述的概念就是同时运行多个任务。这些任务可能是以在单核 CPU 上分时（时间共享）的形式同时运行，也可能是在多核 CPU 上以真正的并行方式来运行。</p>
-
-<h4 id="toc_1">2.iOS 中的并发编程</h4>
-
-<p>常用并发编程API: <code>pthread</code> 、 <code>NSThread</code> 、<code>GCD</code> 、<code>NSOperationQueue</code>，以及 <code>NSRunLoop</code>。实际上把 run loop 也列在其中是有点奇怪，因为它并不能实现真正的并行，不过因为它与并发编程有莫大的关系，因此值得我们进行一些深入了解。</p>
+//运行结果
+2014-10-20 22:57:07.352 mountain[1303:41490] This objcet is 0x7a6e22b0
+2014-10-20 22:57:07.353 mountain[1303:41490] Class is TestStringClass, super class is NSError
+2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 0 times gives 0x7a6e21b0
+2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 1 times gives 0x0
+2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 2 times gives 0x0
+2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 3 times gives 0x0
+2014-10-20 22:57:07.353 mountain[1303:41490] NSObject&#39;s class is 0xe10000
+2014-10-20 22:57:07.354 mountain[1303:41490] NSObject&#39;s meta class is 0x0
+//注意:我们在一个类对象调用class方法是无法获取meta-class，它只是返回类而已。
+</code></pre>
 
 <hr/>
 
-<h4 id="toc_2">1.线程</h4>
+<h2 id="toc_3">类与对象操作函数</h2>
 
-<p>线程（thread）是组成进程的子单元，操作系统的调度器可以对线程进行单独的调度。所有的并发编程 API 都是构建于线程之上的 —— 包括 GCD 和操作队列<br/>
-你可以使用 Instruments<a href="http://www.jianshu.com/p/9e94e42cfb01">Instruments学习传送门</a> 中的 <code>CPU strategy view</code> 来得知你的代码或者你在使用的框架代码是如何在多核 CPU 中调度执行的。</p>
+<p>runtime提供的操作类的方法主要就是针对<code>objc_class</code>结构体中的各个字段的</p>
 
-<p>开发者可以使用 <a href="https://en.wikipedia.org/wiki/POSIX_Threads">POSIX</a> 线程 API，或者 Objective-C 中提供的对该 API 的封装 <code>NSThread</code>，来创建自己的线程.</p>
+<h4 id="toc_4">类名</h4>
 
-<p>//下面这个小示例利用 pthread 来在一百万个数字中查找最小值和最大值。其中并发执行了 4 个线程，可以看出来十分复杂;因为过于复杂这里不提供<a href="http://wiki.jikexueyuan.com/project/objc/concurrent-programming/2-1.html">代码</a></p>
-
-<p><code>NSThread</code> 是 Objective-C 对 pthread 的一个封装。通过封装，在 Cocoa 环境中，可以让代码看起来更加亲切。我们可以用NSThread定义一个这样的子类(在一百万个数字中查找最小值和最大值):</p>
-
-<pre><code class="language-Object-c">@interface FindMinMaxThread : NSThread
-@property (nonatomic) NSUInteger min;
-@property (nonatomic) NSUInteger max;
-- (instancetype)initWithNumbers:(NSArray *)numbers;
-@end
-
-@implementation FindMinMaxThread {
-    NSArray *_numbers;
-}
-
-- (instancetype)initWithNumbers:(NSArray *)numbers
-{
-    self = [super init];
-    if (self) {
-        _numbers = numbers;
-    }
-    return self;
-}
-
-- (void)main
-{
-    NSUInteger min;
-    NSUInteger max;
-    // 进行相关数据的处理
-    self.min = min;
-    self.max = max;
-}
-@end
+<pre><code class="language-objc">// 获取类的类名
+const char * class_getName ( Class cls );
+//如果传入的cls为Nil，则返回一个字字符串。
 </code></pre>
 
-<p><strong>要想启动一个新的线程，需要创建一个线程对象，然后调用它的 start 方法：</strong></p>
+<h4 id="toc_5">父类(super_class)和元类(meta-class)</h4>
 
-<pre><code class="language-Object-c">NSMutableSet *threads = [NSMutableSet set];
-NSUInteger numberCount = self.numbers.count;
-NSUInteger threadCount = 4;
-for (NSUInteger i = 0; i &lt; threadCount; i++) {
-    NSUInteger offset = (count / threadCount) * i;
-    NSUInteger count = MIN(numberCount - offset, numberCount / threadCount);
-    NSRange range = NSMakeRange(offset, count);
-    NSArray *subset = [self.numbers subarrayWithRange:range];
-    FindMinMaxThread *thread = [[FindMinMaxThread alloc] initWithNumbers:subset];
-    [threads addObject:thread];
-    [thread start];
-}
+<pre><code class="language-objc">// 获取类的父类
+Class class_getSuperclass ( Class cls );
+// 判断给定的Class是否是一个元类
+BOOL class_isMetaClass ( Class cls );
 </code></pre>
 
-<p>然后我们可以通过检测线程的isFinish属性来检测新生成的线程是否结束,并获取结果。虽然NSThred已经封装但是仍然体验非常糟糕<br/>
-<em>使用这样创建线程的问题：</em><br/>
-直接使用线程可能会引发的一个问题是，如果你的代码和所基于的框架代码都创建自己的线程时，那么活动的线程数量有可能以指数级增长。这在大型工程中是一个常见问题。例如，在 8 核 CPU 中，你创建了 8 个线程来完全发挥 CPU 性能。然而在这些线程中你的代码所调用的框架代码也做了同样事情（因为它并不知道你已经创建的这些线程），这样会很快产生成成百上千的线程。代码的每个部分自身都没有问题，然而最后却还是导致了问题。使用线程并不是没有代价的，每个线程都会消耗一些内存和内核资源。<br/>
-接下来，我们将介绍两个基于队列的并发编程 API ：GCD 和 operation queue 。它们通过集中管理一个被大家协同使用的线程池，来解决上面遇到的问题。</p>
+<p><code>class_getSuperclass</code>函数，当cls为Nil或者cls为根类时，返回Nil。不过通常我们可以使用NSObject类的superclass方法来达到同样的目的。<br/>
+<code>class_isMetaClass</code>函数，如果是cls是元类，则返回YES；如果否或者传入的cls为Nil，则返回NO。</p>
 
-<h5 id="toc_3">Grand Central Dispatch（GCD）</h5>
+<h4 id="toc_6">实例变量大小(instance_size)</h4>
 
-<p>苹果在 iOS 4 中引入GCD<br/>
-通过 GCD，开发者不用再直接跟线程打交道了，只需要向队列中添加代码块即可，GCD 在后端管理着一个<a href="https://en.wikipedia.org/wiki/Thread_pool">线程池</a>。GCD 不仅决定着你的代码块将在哪个线程被执行，它还根据可用的系统资源对这些线程进行管理。这样可以将开发者从线程管理的工作中解放出来，通过<code>集中的管理线程</code>，来缓解大量线程被创建的问题。</p>
+<pre><code class="language-objc">// 获取实例大小
+size_t class_getInstanceSize ( Class cls );
 
-<p><strong>GCD给开发者带来最大便利我们只需要将工作考虑为一个队列，而不是一堆线程</strong></p>
-
-<p>GCD 公开有 5 个不同的队列：运行在主线程中的 <code>main queue</code>，3 个不同优先级的<code>后台队列</code>，以及一个优先级更低的<code>后台队列（用于 I/O）</code>。 另外，开发者可以创建<code>自定义队列</code>：串行或者并行队列。自定义队列非常强大，<em>在自定义队列中被调度的所有 block 最终都将被放入到系统的全局队列中和线程池中</em>。</p>
-
-<p><img src="media/14871584203378/14872445768529.png" alt=""/></p>
-
-<p>我们强烈建议，<strong>在绝大多数情况下使用默认的优先级队列就可以</strong>。如果执行的任务需要访问一些共享的资源，那么在不同优先级的队列中调度这些任务很快就会造成不可预期的行为。这样可能会引起程序的完全挂起，因为低优先级的任务阻塞了高优先级任务，使它不能被执行。</p>
-
-<h5 id="toc_4">Operation Queues</h5>
-
-<p>操作队列（<code>operation queue</code>）是由 GCD 提供的一个队列模型的 Cocoa 抽象.<br/>
-<code>NSOperationQueue</code> 有两种不同类型的队列：<strong>主队列和自定义队列</strong>。主队列运行在主线程之上，而自定义队列在后台执行.在两种类型中，这些队列所处理的任务都使用<code>NSOperation</code>的子类来表述。</p>
-
-<p>你可以通过重写 main 或者 start 方法 来定义自己的 operations;前一种方法非常简单，开发者不需要管理一些状态属性（例如 isExecuting 和 isFinished），当 main 方法返回的时候，这个 operation 就结束了。这种方式使用起来非常简单，但是灵活性相对重写 start 来说要少一些。<br/>
-//注意：在NSThread和NSOperation中重写Main方法来自定义子类时不需要调用[super main]<br/>
-子类的是NSOperation即在队列中的任务，而不是NSOperationQueue<br/>
-<code>Object-c<br/>
-@implementation YourOperation<br/>
-    - (void)main<br/>
-    {<br/>
-        // 进行处理 ...<br/>
-    }<br/>
-@end<br/>
-</code></p>
-
-<pre><code class="language-Object-c">//如果你希望拥有更多的控制权，以及在一个操作中可以执行异步任务，那么就重写 start 方法：
-@implementation YourOperation
-    - (void)start
-    {
-        self.isExecuting = YES;
-        self.isFinished = NO;
-        // 开始处理，在结束时应该调用 finished ...
-    }
-
-    - (void)finished
-    {
-        self.isExecuting = NO;
-        self.isFinished = YES;
-    }
-@end
-/**
-    注意：这种情况下，你必须手动管理操作的状态。 为了让操作队列能够捕获到操作的改变，需要将状态的
-    属性以配合 KVO 的方式进行实现。如果你不使用它们默认的 setter 来进行设置的话，你就需要在合适
-    的时候发送合适的 KVO 消息。
-*/
 </code></pre>
 
-<p>为了能使用操作队列所提供的取消功能，你需要在长时间操作中时不时地检查<code>isCancelled</code>属性：</p>
+<h4 id="toc_7">成员变量(ivars)及属性</h4>
 
-<pre><code class="language-Object-c">- (void)main
-{
-    while (notDone &amp;&amp; !self.isCancelled) {
-        // 进行处理
-    }
-}
-</code></pre>
-
-<p>当你定义好 operation 类之后，就可以很容易的将一个 operation 添加到队列中：</p>
-
-<pre><code class="language-Object-c">    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
-    YourOperation *operation = [[YourOperation alloc] init];
-    [queue  addOperation:operation];
-</code></pre>
-
-<p>另外，你也可以将 block 添加到操作队列中。这有时候会非常的方便，比如你希望在主队列中调度一个一次性任务：</p>
-
-<pre><code class="language-Object-c">[[NSOperationQueue mainQueue] addOperationWithBlock:^{
-    // 代码...
-}];
-</code></pre>
-
-<p>虽然通过这种的方式在队列中添加操作会非常方便，但是定义你自己的 NSOperation 子类会在调试时很有帮助。如果你重写 <code>operation 的description</code>方法，就可以很容易的标示出在某个队列中当前被调度的所有操作 。</p>
-
-<p>除了提供基本的调度操作或 block 外，<em>操作队列还提供了在 GCD 中不太容易处理好的特性的功能：</em></p>
+<p>在<code>objc_class</code>中，所有的成员变量、属性的信息是放在链表<code>ivars</code>中的。<code>ivars</code>是一个数组，数组中每个元素是指向Ivar(变量信息)的指针。runtime提供了丰富的函数来操作这一字段。大体上可以分为以下几类：</p>
 
 <ol>
-<li>例如，你可以通过 maxConcurrentOperationCount 属性来控制一个特定队列中可以有多少个操作参与并发执行。将其设置为 1 的话，你将得到一个串行队列，这在以隔离为目的的时候会很有用。</li>
-<li><p>可以根据队列中 operation 的优先级对其进行排序，这不同于 GCD 的队列优先级，它只影响当前队列中所有被调度的 operation 的执行先后。如果你需要进一步在除了 5 个标准的优先级以外对 operation 的执行顺序进行控制的话，还可以在 operation 之间指定依赖关系，如下：</p>
+<li>成员变量操作函数，主要包含以下函数：</li>
+</ol>
 
-<pre><code class="language-Object-c">[intermediateOperation addDependency:operation1];
-[intermediateOperation addDependency:operation2];
-[finishedOperation addDependency:intermediateOperation];
+<pre><code class="language-objc">// 获取类中指定名称实例成员变量的信息
+Ivar class_getInstanceVariable ( Class cls, const char *name );
+// 获取类成员变量的信息:
+Ivar class_getClassVariable ( Class cls, const char *name );
+// 添加成员变量
+BOOL class_addIvar ( Class cls, const char *name, size_t size, uint8_t alignment, const char *types );
+// 获取整个成员变量列表(所有成员变量包括 属性创建的_成员变量 和直接_成员变量 创建；包括.h和.m中创建的)
+Ivar * class_copyIvarList ( Class cls, unsigned int *outCount );
+</code></pre>
+
+<p><code>class_getInstanceVariable</code>函数，它返回一个指向包含name指定的成员变量信息的objc_ivar结构体的指针(Ivar)。<br/>
+<code>class_getInstanceVariable</code>函数，它返回一个指向包含name指定的成员变量信息的objc_ivar结构体的指针(Ivar)。<br/>
+Objective-C不支持往已存在的类中添加实例变量，因此不管是系统库提供的提供的类，还是我们自定义的类，都无法动态添加成员变量。但如果我们<em>通过运行时来创建一个类</em>的话，又应该如何给它添加成员变量呢？这时我们就可以使用<code>class_addIvar</code>函数了。不过需要注意的是，这个方法只能在<code>objc_allocateClassPai</code>函数与<code>objc_registerClassPair</code>之间调用。另外，这个类也不能是元类。成员变量的按字节最小对齐量是<code>1&lt;&lt;alignment</code>。这取决于ivar的类型和机器的架构。如果变量的类型是指针类型，则传递<code>log2(sizeof(pointer_type))</code>。<br/>
+<code>class_copyIvarList</code>函数，它返回一个指向成员变量信息的数组，数组中每个元素是指向该成员变量信息的<code>objc_ivar</code>结构体的指针。这个数组不包含在父类中声明的变量。<code>outCount</code>指针返回数组的大小。需要注意的是，我们<code>必须使用free()</code>来释放这个数组。</p>
+
+<ol>
+<li>属性操作函数</li>
+</ol>
+
+<pre><code class="language-objc">// 获取指定的属性
+objc_property_t class_getProperty ( Class cls, const char *name );
+// 获取属性列表(获取所有属性包括.h和.m中的)
+objc_property_t * class_copyPropertyList ( Class cls, unsigned int *outCount );
+// 为类添加属性
+BOOL class_addProperty ( Class cls, const char *name, const objc_property_attribute_t *attributes, unsigned int attributeCount );
+// 替换类的属性
+void class_replaceProperty ( Class cls, const char *name, const objc_property_attribute_t *attributes, unsigned int attributeCount );
+
+</code></pre>
+
+<h4 id="toc_8">方法</h4>
+
+<pre><code class="language-objc">// 添加方法
+BOOL class_addMethod ( Class cls, SEL name, IMP imp, const char *types );
+// 获取实例方法
+Method class_getInstanceMethod ( Class cls, SEL name );
+// 获取类方法
+Method class_getClassMethod ( Class cls, SEL name );
+// 获取所有方法的数组(传入类获取所有实例方法包括.h和.m注意还有属性创建的方法以及.cxx_destruct(与dealloc有关)) 
+//（传入元类获取类方法）
+Method * class_copyMethodList ( Class cls, unsigned int *outCount );
+// 替代方法的实现
+IMP class_replaceMethod ( Class cls, SEL name, IMP imp, const char *types );
+// 返回方法的具体实现
+IMP class_getMethodImplementation ( Class cls, SEL name );
+IMP class_getMethodImplementation_stret ( Class cls, SEL name );
+// 类实例是否响应指定的selector
+BOOL class_respondsToSelector ( Class cls, SEL sel );
+
+IMP imp；
+imp();//即可执行这个方法
+
+</code></pre>
+
+<p>我们也可以将IMP转换为函数<br/>
+<code>void (* myMethodIMP)(id self, SEL _cmd) = (void *)imp;</code><br/>
+然后就可以通过执行函数来执行imp</p>
+
+<p><code>class_addMethod</code>的实现会覆盖父类的方法实现，但不会取代本类中已存在的实现，如果本类中包含一个同名的实现，则函数会返回NO。如果要修改已存在实现，可以使用<code>method_setImplementation</code>。一个Objective-C方法是一个简单的C函数，它至少包含两个参数–self和_cmd。所以，我们的实现函数(IMP参数指向的函数)至少需要两个参数，如下所示：</p>
+
+<pre><code class="language-objc">void myMethodIMP(id self, SEL _cmd)
+{
+    // implementation ....
+}
+</code></pre>
+
+<p><strong>与成员变量不同的是，我们可以为类动态添加方法，不管这个类是否已存在。</strong><br/>
+参数types是一个描述传递给方法的参数类型的字符数组</p>
+
+<p><code>class_getInstanceMethod</code>、<code>class_getClassMethod函数</code>，与<code>class_copyMethodList</code>不同的是，这两个函数都会去搜索父类的实现</p>
+
+<p><code>class_copyMethodList</code>函数，返回包含所有实例方法的数组，如果需要获取类方法，则可以使用<code>class_copyMethodList(object_getClass(cls), &amp;count)</code>(一个类的实例方法是定义在元类里面)。该列表不包含父类实现的方法。outCount参数返回方法的个数。在获取到列表后，我们需要使用free()方法来释放它。</p>
+
+<p><code>class_replaceMethod</code>函数，该函数的行为可以分为两种：如果类中不存在name指定的方法，则类似于<code>class_addMethod</code>函数一样会添加方法；如果类中已存在name指定的方法，则类似于<code>method_setImplementation</code>一样替代原方法的实现。</p>
+
+<p><code>class_getMethodImplementation</code>函数，该函数在向类实例发送消息时会被调用，并返回一个指向方法实现函数的指针。这个函数会比<code>method_getImplementation(class_getInstanceMethod(cls, name))</code>更快。返回的函数指针可能是一个指向runtime内部的函数，而不一定是方法的实际实现。例如，如果类实例无法响应selector，则返回的函数指针将是运行时消息转发机制的一部分</p>
+
+<p><code>class_respondsToSelector</code>函数，我们通常使用NSObject类的<code>respondsToSelector:</code>或<code>instancesRespondToSelector:</code>方法来达到相同目的。</p>
+
+<h4 id="toc_9">协议(objc_protocol_list)</h4>
+
+<pre><code class="language-objc">// 添加协议
+BOOL class_addProtocol ( Class cls, Protocol *protocol );
+// 返回类是否实现指定的协议
+BOOL class_conformsToProtocol ( Class cls, Protocol *protocol );
+// 返回类实现的协议列表
+Protocol * class_copyProtocolList ( Class cls, unsigned int *outCount );
+</code></pre>
+
+<p><code>class_conformsToProtocol</code>函数可以使用NSObject类的<code>conformsToProtocol:</code>方法来替代。</p>
+
+<p><code>class_copyProtocolList</code>函数返回的是一个数组，在使用后我们需要使用<code>free()</code>手动释放。</p>
+
+<h4 id="toc_10">版本(version)</h4>
+
+<pre><code class="language-objc">// 获取版本号
+int class_getVersion ( Class cls );
+// 设置版本号
+void class_setVersion ( Class cls, int version );
+
+</code></pre>
+
+<h4 id="toc_11">其它</h4>
+
+<pre><code class="language-objc">Class objc_getFutureClass ( const char *name );
+void objc_setFutureClass ( Class cls, const char *name );
+//通常我们不直接使用这两个函数
+</code></pre>
+
+<p><strong>注意:</strong><br/>
+SEL :Defines an opaque type that represents a method selector 消息<br/>
+Method:An opaque type that represents a method in a class definition 方法<br/>
+IMP:A pointer to the start of a method implementation. 实现</p>
+
+<p>实例对象执行方法</p>
+
+<h2 id="toc_12">动态创建类和对象</h2>
+
+<h4 id="toc_13">动态创建类</h4>
+
+<pre><code class="language-objc">// 创建一个新类和元类 我们在创建类时候已经创建了元类
+Class objc_allocateClassPair ( Class superclass, const char *name, size_t extraBytes );
+// 销毁一个类及其相关联的类
+void objc_disposeClassPair ( Class cls );
+// 在应用中注册由objc_allocateClassPair创建的类
+void objc_registerClassPair ( Class cls );
+</code></pre>
+
+<p><code>objc_allocateClassPair</code>函数：如果我们要创建一个根类，则superclass指定为Nil。extraBytes通常指定为0，该参数是分配给类和元类对象尾部的索引ivars的字节数。<br/>
+使用步骤:<br/>
+为了创建一个新类，我们需要调用<code>objc_allocateClassPair</code>。然后使用诸如<code>class_addMethod</code>，<code>class_addIvar</code>等函数来为新创建的类添加方法、实例变量和属性等。完成这些后，我们需要调用<code>objc_registerClassPair</code>函数来注册类，之后这个新类就可以在程序中使用了</p>
+
+<p>实例方法和实例变量应该添加到类自身上，而类方法应该添加到类的元类上。</p>
+
+<p><code>objc_disposeClassPair</code>函数用于销毁一个类，不过需要注意的是，如果程序运行中还存在类或其子类的实例，则不能调用针对类调用该方法</p>
+
+<h4 id="toc_14">动态创建对象</h4>
+
+<pre><code class="language-objc">// 创建类实例```objc
+id class_createInstance ( Class cls, size_t extraBytes );
+// 在指定位置创建类实例
+id objc_constructInstance ( Class cls, void *bytes );
+// 销毁类实例
+void * objc_destructInstance ( id obj );
+</code></pre>
+
+<p><code>class_createInstance</code>函数：创建实例时，会在默认的内存区域为类分配内存。extraBytes参数表示分配的额外字节数。这些额外的字节可用于存储在类定义中所定义的实例变量之外的实例变量。<code>该函数在ARC环境下无法使用</code>。</p>
+
+<p>调用class_createInstance的效果与+alloc方法类似。不过在使用class_createInstance时，我们需要确切的知道我们要用它来做什么。</p>
+
+<pre><code class="language-objc">id theObject = class_createInstance(NSString.class, sizeof(unsigned));
+ 
+id str1 = [theObject init];
+NSLog(@&quot;%@&quot;, [str1 class]);
+id str2 = [[NSString alloc] initWithString:@&quot;test&quot;];
+NSLog(@&quot;%@&quot;, [str2 class]);
+
+//输出结果:
+2014-10-23 12:46:50.781 RuntimeTest[4039:89088] NSString
+2014-10-23 12:46:50.781 RuntimeTest[4039:89088] __NSCFConstantString
 /**
-    这些简单的代码可以确保 operation1 和 operation2 在 intermediateOperation 之前执
-    行，当然，也会在 finishOperation 之前被执行。对于需要明确的执行顺序时，操作依赖是非常
-    强大的一个机制。它可以让你创建一些操作组，并确保这些操作组在依赖它们的操作被执行之前执
-    行，或者在并发队列中以串行的方式执行操作。
+使用class_createInstance函数获取的是NSString实例，而不是类簇中的默认占位符类__NSCFConstantString。
 */
 </code></pre>
 
-<p><em>从本质上来看，操作队列的性能比 GCD 要低那么一点，不过，大多数情况下这点负面影响可以忽略不计，操作队列是并发编程的首选工具。</em></p></li>
+<p><code>objc_constructInstance</code>函数：在指定的位置(bytes)创建类实例。</p>
+
+<p><code>objc_destructInstance</code>函数：销毁一个类的实例，但不会释放并移除任何与其相关的引用。</p>
+
+<h4 id="toc_15">实例操作函数</h4>
+
+<p>实例操作函数主要是针对我们创建的实例对象的一系列操作函数，我们可以使用这组函数来从实例对象中获取我们想要的一些信息，如实例对象中变量的值。</p>
+
+<ol>
+<li>针对整个对象进行操作的函数</li>
 </ol>
+
+<pre><code class="language-objc">// 返回指定对象的一份拷贝
+id object_copy ( id obj, size_t size );
+// 释放指定对象占用的内存
+id object_dispose ( id obj );
+</code></pre>
+
+<p>举个栗子:</p>
+
+<pre><code class="language-objc">//把对象a转换为其子类的对象b
+NSObject *a = [[NSObject alloc] init];
+id newB = object_copy(a, class_getInstanceSize(MyClass.class));
+//设置对象所属类
+object_setClass(newB, MyClass.class);
+object_dispose(a);
+</code></pre>
+
+<ol>
+<li>针对对象实例变量进行操作的函数</li>
+</ol>
+
+<pre><code class="language-objc">// 修改类实例的实例变量的值
+Ivar object_setInstanceVariable ( id obj, const char *name, void *value );
+// 获取对象实例变量的值
+Ivar object_getInstanceVariable ( id obj, const char *name, void **outValue );
+// 返回指向给定对象分配的任何额外字节的指针
+void * object_getIndexedIvars ( id obj );
+// 返回对象中实例变量的值
+id object_getIvar ( id obj, Ivar ivar );
+// 设置对象中实例变量的值
+void object_setIvar ( id obj, Ivar ivar, id value );
+</code></pre>
+
+<p>如果实例变量的Ivar已经知道，那么调用<code>object_getIvar</code>会比<code>object_getInstanceVariable</code>函数快，相同情况下，<code>object_setIvar</code>也比<code>object_setInstanceVariable</code>快</p>
+
+<ol>
+<li>针对对象的类进行操作的函数</li>
+</ol>
+
+<pre><code class="language-objc">// 返回给定对象的类名
+const char * object_getClassName ( id obj );
+// 返回对象的类
+Class object_getClass ( id obj );
+// 设置对象的类
+Class object_setClass ( id obj, Class cls );
+
+</code></pre>
+
+<h2 id="toc_16">获取类定义</h2>
+
+<p>Objective-C动态运行库会自动注册我们代码中定义的所有的类。我们也可以在运行时创建类定义并使用<code>objc_addClass</code>函数来注册它们。runtime提供了一系列函数来获取类定义相关的信息，这些函数主要包括：</p>
+
+<pre><code class="language-objc">// 获取已注册的类定义的列表
+int objc_getClassList ( Class *buffer, int bufferCount );
+// 创建并返回一个指向所有已注册类的指针列表
+Class * objc_copyClassList ( unsigned int *outCount );
+// 返回指定类的类定义
+Class objc_lookUpClass ( const char *name );
+Class objc_getClass ( const char *name );
+Class objc_getRequiredClass ( const char *name );
+// 返回指定类的元类
+Class objc_getMetaClass ( const char *name );
+</code></pre>
+
+<p><code>objc_getClassList</code>函数：获取已注册的类定义的列表。我们不能假设从该函数中获取的类对象是继承自NSObject体系的，所以在这些类上调用方法时，都应该先检测一下这个方法是否在这个类中实现。</p>
+
+<p>举个栗子：</p>
+
+<pre><code class="language-objc">int numClasses;
+Class * classes = NULL;
+numClasses = objc_getClassList(NULL, 0);
+if (numClasses &gt; 0) {
+    classes = malloc(sizeof(Class) * numClasses);
+    numClasses = objc_getClassList(classes, numClasses);
+    NSLog(@&quot;number of classes: %d&quot;, numClasses);
+    for (int i = 0; i &lt; numClasses; i++) {
+        Class cls = classes[i];
+        NSLog(@&quot;class name: %s&quot;, class_getName(cls));
+    }
+    free(classes);
+}
+//输出结果:
+
+</code></pre>
+
+<p>获取类定义的方法有三个：<code>objc_lookUpClass</code>, <code>objc_getClass</code>和<code>objc_getRequiredClass</code>。如果类在运行时未注册，则<code>objc_lookUpClass</code>会返回nil，而<code>objc_getClass</code>会调用类处理回调，并再次确认类是否注册，如果确认未注册，再返回nil。而<code>objc_getRequiredClass</code>函数的操作与<code>objc_getClass</code>相同，只不过如果没有找到类，则会杀死进程。</p>
+
+<p><code>objc_getMetaClass</code>函数：如果指定的类没有注册，则该函数会调用类处理回调，并再次确认类是否注册，如果确认未注册，再返回nil。不过，每个类定义都必须有一个有效的元类定义，所以这个函数总是会返回一个元类定义，不管它是否有效。</p>
 
                         
                       </div>
@@ -423,10 +559,10 @@ for (NSUInteger i = 0; i &lt; threadCount; i++) {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/15</span>
+                    <span class="date">2017/2/22</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
+          					    <span class="posted-in"><a href='%E8%BF%90%E8%A1%8C%E6%97%B6.html'>运行时</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -440,160 +576,221 @@ for (NSUInteger i = 0; i &lt; threadCount; i++) {
               </div><!-- article -->
         
 			<div class="article">
-                <a class="clearlink" href="14871449062159.html">
+                <a class="clearlink" href="14877247419344.html">
                 
-                  <h1>XCTest单元测试</h1>
+                  <h1>Objc Runtime</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h3 id="toc_0">1.基础知识</h3>
+                        	<p>Objective-C语言是一门动态语言，它将很多静态语言在编译和链接时期做的事放到了运行时来处理。<br/>
+当然这就意味着OC的不仅仅需要一个编译器还需要一个运行时的系统来执行编译代码.这个运行时系统即<code>Objc Runtime</code>。<code>Objc Runtime</code>其实是一个<code>Runtime</code>库，它基本上是用C和汇编写的，这个库使得C语言有了面向对象的能力。</p>
 
-<p>什么是单元测试:<br/>
-<strong>单元测试是开发者编写的一小段代码，用于检验被测代码中的一个很明确的功能是否正确。通常而言，一个单元测试是用于判断某个特定条件（或者场景）下某个特定函数的行为。</strong><br/>
-单元测试在程序里面可以理解一个模块一个方法，在每个可能存在的模块都进行测试，确保每个模块都没有问题，从而提高整体程序的质量。</p>
-
-<h3 id="toc_1">XCTest使用方法</h3>
+<p>Runtime作用：</p>
 
 <ol>
-<li><p><strong>测试用例被分到继承 <code>XCTestCase</code> 的不同子类中去</strong>。<br/>
-每个以 test 为开头的方法都是一个测试用例。<br/>
-自定义类</p></li>
-<li><p>命名<br/><br/>
-我们可以用比如<code>testThatIt</code>将重点转移到期望的结果上的测试用例<br/>
-<code>test + 要测试的方法和类名</code>，比如像 testHTTPRequest来测试一些特定类型的<br/>
-我们还可以采用category 来将它们按主题分类</p></li>
-<li><p>Given / When / Then<br/>
-根据 <code>Given-When-Then</code> 模式来组织我们的测试用例<br/>
-这三部分分别指:Given:通过创建模型对象或将被测试的系统设置到指定的状态，来设定测试环境<br/>
-When:包含了我们要测试的代码<br/>
-Then:检查我们行为的结果，这里通常为一些断言</p></li>
-<li><p>可重用代码<br/>
-整理所有有用的代码片段，并将它们加入到一个<code>公共类</code>中，为所有的测试用例服务,这个公共类非常实用。这个测试基础类能够运行自己的 -setUp 和 -tearDown 方法来配置环境。我们大部分情况用它来初始化测试用的 Core Data 栈，来重新设置我们的具有确定性的 NSUUID (这是那些可以让调试简单得多的一些东西中的一个)，并且设置一些后台的魔法来简化异步测试。</p></li>
-<li><p>Mock<br/>
-我们使用的Mock框架是OCMock，mock 是一个在方法调用时返回标准答案的对象</p></li>
-<li></li>
+<li>封装:在这个库中，对象可以用C语言中的结构体表示，而方法可以用C函数来实现，另外再加上了一些额外
+的特性。这些结构体和函数被runtime函数封装后，我们就可以在程序运行时创建，检查，修改类、对象
+和它们的方法了。</li>
+<li>找出方法的最终执行代码：当程序执行<code>[object doSomething]</code>时，会向消息接收者<code>(object)</code>发送一条消息(<code>doSomething</code>)，runtime会根据消息接收者是否能响应该消息而做出不同的反应。 </li>
 </ol>
 
-<h4 id="toc_2">XCTest使用范畴</h4>
+<p>使用方法:<br/>
+通过<code>objc_getClass</code>来获取对象的isa<br/>
+注意:我们在一个类对象调用class方法是无法获取meta-class，它只是返回类而已。</p>
 
-<p>Apple在Xcode 6中新增了UnitTest<br/>
-XCTest测试范畴：<br/>
-基本逻辑测试处理测试<br/>
-异步加载数据测试<br/>
-数据mock测试</p>
+<p>注意:在objc/runtime 方法中是基于c语言的 因此语法大多为c语言  比如：字符串 %s和“”（而不是%@和@“”）,  定义对象也没有*符号<br/>
+    例如:<br/>
+<code>Class MySubClass = objc_allocateClassPair([MyClass class], &quot;MySubClass&quot;, 0);</code></p>
 
-<p>XCTest常用基本测试工具<br/>
-XCTest常用的一些判断工具都是以XCT开头的</p>
-
-<p><strong>补充:</strong><code>代码覆盖率：</code>代码覆盖率 ＝ 实际执行的代码行数 / 整个工程总代码行数，直白来讲就是这样一个数值；  Xcode7以后Apple推出了更为人性化的<a href="http://www.cocoachina.com/ios/20150915/13163.html">工具</a>来统计代码覆盖率，<a href="http://www.jianshu.com/p/c9f8100a96e6">使用简介传送门</a></p>
-
-<h3 id="toc_3">用XCTest完成的最简单的测试Demo</h3>
+<h2 id="toc_0">参阅学习连接</h2>
 
 <ol>
-<li><p>创建项目时勾选</p>
-
-<p><img src="media/14871449062159/unitTest.png" alt="新建项目时勾选"/></p></li>
-<li><p>进入项目</p>
-
-<p><img src="media/14871449062159/unitTest2.png" alt="注意路径"/></p>
-
-<p>进入到这个类，<code>setUp</code>是每个测试方法调用前执行，<code>tearDown</code>是每个测试方法调用后执行。<code>testExample</code>是测试方法，和我们新建的没有差别。不过测试方法必须<code>testXXX</code>的格式，且不能有参数，不然不会识别为测试方法。测试方法的执行顺序是字典序排序。<br/>
-<img src="media/14871449062159/uinitTest5.png" alt="uinitTest5"/></p></li>
-<li><p>测试用例<br/><br/>
-点击上图箭头的开始图标即可测试这个文件中测试方法<br/>
-在测试方法前也有开始图标,点击即可测试这个方法<br/>
-<img src="media/14871449062159/uinitTest4.png" alt="开始测试" style="width:303px;"/></p>
-
-<p><strong>按快捷键Command + U进行单元测试，这个快捷键是全部测试</strong></p>
-
-<p><img src="media/14871449062159/uinitTest3.png" alt="测试方法出错"/><br/>
-这里我们<code>断言a=0</code>是错误的所以没有通过</p></li>
-<li><p>XCTest常见的断言</p>
-
-<pre><code class="language-Object-c">XCTFail(format…) 生成一个失败的测试；
-
-XCTAssertNil(a1, format...)为空判断，a1为空时通过，反之不通过；
-
-XCTAssertNotNil(a1, format…)不为空判断，a1不为空时通过，反之不通过；
-
-XCTAssert(expression, format...)当expression求值为TRUE时通过；
-
-XCTAssertTrue(expression, format...)当expression求值为TRUE时通过；
-
-XCTAssertFalse(expression, format...)当expression求值为False时通过；
-
-XCTAssertEqualObjects(a1, a2, format...)判断相等，[a1 isEqual:a2]值为TRUE时通过，其中一个不为空时，不通过；
-
-XCTAssertNotEqualObjects(a1, a2, format...)判断不等，[a1 isEqual:a2]值为False时通过；
-
-XCTAssertEqual(a1, a2, format...)判断相等（当a1和a2是 C语言标量、结构体或联合体时使用,实际测试发现NSString也可以）；
-
-XCTAssertNotEqual(a1, a2, format...)判断不等（当a1和a2是 C语言标量、结构体或联合体时使用）；
-
-XCTAssertEqualWithAccuracy(a1, a2, accuracy, format...)判断相等，（double或float类型）提供一个误差范围，当在误差范围（+/-accuracy）以内相等时通过测试；
-
-XCTAssertNotEqualWithAccuracy(a1, a2, accuracy, format...) 判断不等，（double或float类型）提供一个误差范围，当在误差范围以内不等时通过测试；
-
-XCTAssertThrows(expression, format...)异常测试，当expression发生异常时通过；反之不通过；（很变态） XCTAssertThrowsSpecific(expression, specificException, format...) 异常测试，当expression发生specificException异常时通过；反之发生其他异常或不发生异常均不通过；
-
-XCTAssertThrowsSpecificNamed(expression, specificException, exception_name, format...)异常测试，当expression发生具体异常、具体异常名称的异常时通过测试，反之不通过；
-
-XCTAssertNoThrow(expression, format…)异常测试，当expression没有发生异常时通过测试；
-
-XCTAssertNoThrowSpecific(expression, specificException, format...)异常测试，当expression没有发生具体异常、具体异常名称的异常时通过测试，反之不通过；
-
-XCTAssertNoThrowSpecificNamed(expression, specificException, exception_name, format...)异常测试，当expression没有发生具体异常、具体异常名称的异常时通过测试，反之不通过
-</code></pre>
-
-<p><strong>注意:</strong> 特别注意下XCTAssertEqualObjects和XCTAssertEqual。<br/>
-XCTAssertEqualObjects(a1, a2, format...)的判断条件是[a1 isEqual:a2]是否返回一个YES。XCTAssertEqual(a1, a2, format...)的判断条件是a1 == a2是否返回一个YES。对于后者，如果a1和a2都是基本数据类型变量，那么只有a1 == a2才会返回YES<br/>
-XCAssertEqual(a1, a2, format...)当a1和a2是 C语言标量、结构体或联合体时使用,实际测试发现NSString也可以</p></li>
-<li><p>性能测试用例的实现<br/>
-<img src="media/14871449062159/14872135691276.jpg" alt=""/></p></li>
-<li></li>
+<li><p><a href="http://southpeak.github.io/categories/objectivec/">南峰子博客</a></p></li>
+<li><p>常见type:几种取值<a href="https://developer.apple.com/library/prerelease/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtTypeEncodings.html#//apple_ref/doc/uid/TP40008048-CH100">查看</a></p></li>
+<li><p><a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtPropertyIntrospection.html#//apple_ref/doc/uid/TP40008048-CH101-SW6">Property Type String</a>。</p></li>
+<li><p>runtime<a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Introduction/Introduction.html">苹果官方文档</a></p></li>
+<li><p><a href="http://www.cocoanetics.com/2012/06/associated-objects/">关联对象</a></p></li>
+<li><p><a href="http://www.cnblogs.com/kesalin/archive/2011/08/15/objc_method_base.html">深入浅出cocoa消息</a></p></li>
+<li><p><a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Introduction/Introduction.html">苹果官方消息转发文档</a></p></li>
+<li><p><a href="http://blog.csdn.net/itianyi/article/details/8678452">iOS:Objective-C中Self和Super详解</a></p></li>
+<li><p><a href="https://developer.apple.com/reference/objectivec/objective_c_runtime">官方运行时文档</a></p></li>
+<li><p><a href="http://www.cocoachina.com/industry/20130819/6824.html">Objective-C的动态特性</a></p></li>
 </ol>
 
-<h4 id="toc_4">1. XCTest异步测试</h4>
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/2/22</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='%E8%BF%90%E8%A1%8C%E6%97%B6.html'>运行时</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
 
-<p>XCTestExpression类带入了<strong>异步测试</strong>,我们可以可以等待指定长度的时间，一直到某些条件符合的时候在开始测试。而不用再写很多的GCD代码控制<br/>
-我们可以定义这样的宏</p>
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+			<div class="article">
+                <a class="clearlink" href="14873831706932.html">
+                
+                  <h1>OCMock</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<h3 id="toc_0">Mock介绍</h3>
 
-<pre><code class="language-Object-c">#define WAIT do {\
-[self expectationForNotification:@&quot;RSBaseTest&quot; object:nil handler:nil];\
-[self waitForExpectationsWithTimeout:30 handler:nil];\
-} while (0);
+<p>对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。</p>
 
-#define NOTIFY \
-[[NSNotificationCenter defaultCenter]postNotificationName:@&quot;RSBaseTest&quot; object:nil];
+<h3 id="toc_1">OCMock介绍</h3>
+
+<p><a href="http://ocmock.org/features/">官方网站</a><br/>
+根据要mock的对象的class来创建一个对应的对象，并且设置好该对象的属性和调用预定方法后的动作（例如返回一个值，调用代码块，发送消息等等），然后将其记录到一个数组中，接下来开发者主动调用该方法，最后做一个verify（验证），从而判断该方法是否被调用，或者调用过程中是否抛出异常等。</p>
+
+<h4 id="toc_2">1.OCMock中简单使用</h4>
+
+<ol>
+<li><p>class mock一个对象</p>
+
+<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
+//创建mock object当做类的实例
+</code></pre></li>
+<li><p>Stubbing methods that return objects<br/>
+<code>Object-c<br/>
+/**<br/>
+意的就是有参数的方法，参数是可以具体指定的，也就是说只有满足你指定的具体参数的调用才会被mock指定的返回值。例子中的[OCMArg any]是指任意参数。<br/>
+*/<br/>
+//没有参数的方法<br/>
+OCMStub([mockClass someMethod]).andReturn(anObject);<br/>
+//有参数的方法<br/>
+OCMStub([mockClass someMethod:[OCMArg any]]).andReturn(anObject);<br/>
+</code><br/>
+注意:<br/>
+<strong>OCMock会在mock实例上没有找到相同名字的实例方法的时候去找同名的类方法。</strong></p></li>
+<li><p>Verify-after-running<br/>
+有些时候需要验证我们执行的代码流程是否调用了某个外部的方法，这个时候用OCMock就比较简单来实现。如果没有调用过这个方法的话，会立即抛一个异常出来。</p>
+
+<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
+//...
+//some code
+//...
+OCMVerify([mockClass someMethod]);
+</code></pre></li>
+<li><p>验证mock方法没有被调用<br/>
+验证代码没有调用某个方法<br/>
+如果方法被调用了，就将isCalled设置为YES，这样最后assert的时候就会报错。<br/>
+<code>Object-c<br/>
+static BOOL isCalled = false;<br/>
+id mockClass = OCMClassMock([SomeClass class]);<br/>
+OCMStub([mockClass someMethod]).andDo(^(NSInvocation *invocation){<br/>
+isCalled = YES;<br/>
+});<br/>
+//...<br/>
+//some code<br/>
+//...<br/>
+XCTAssertFalse(isCalled);<br/>
+</code></p></li>
+<li><p>验证mock方法传入的参数<br/>
+验证传递给外部调用的参数是否符合预期</p>
+
+<pre><code class="language-Objec-c">id mockClass = OCMClassMock([SomeClass class]);
+OCMStub([mockClass someMethod:[OCMArg checkWithBlock:^BOOL(id obj) {
+//...
+//some code
+//...
+return YES;
+]]);
+</code></pre></li>
+<li><p>mock单例</p>
+
+<p>如果我们mock的类是个单例的话，那么使用之前的方法进行mock是不会生效的。不过OCMock提供了一个很简单的解决方法，那就是调用单例返回mock</p>
+
+<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
+OCMStub([mockClass instanceMethod]).andReturn(mockClass);
+</code></pre></li>
+<li><p>The any constraint</p>
+
+<pre><code class="language-Object-c">OCMStub([mock someMethodWithAnArgument:[OCMArg any]])
+OCMStub([mock someMethodWithPointerArgument:[OCMArg anyPointer]])
+OCMStub([mock someMethodWithSelectorArgument:[OCMArg anySelector]])
+
+</code></pre></li>
+<li><p>处理block参数<br/>
+OCMock也可以处理block回调参数。block回调通常用于网络代码，数据库代码，或者在任何异步操作中。在这个例子中，思考下下面的方法：<br/>
+<code>- (void)downloadWeatherDataForZip:(NSString *)zip callback:(void (^)(NSDictionary *response))callback;</code></p></li>
+</ol>
+
+<p>在这个例子中，我们有一个下载天气压缩数据的方法，并且把下载下来的dictionary代理到一个block的回调中。在测试中，我们通过预定义的天气数据来测试回调处理。这也是明智的测试失败场景。你永远不会知道网络上会返回你什么东西！</p>
+
+<pre><code class="language-Object">OCMStub([groupModelMock downloadWeatherDataForZip:@&quot;80304&quot; callback:[OCMArg any]]]).andDo(^(NSInvocation *invocation){
+        //2. declare a block with same signature
+        void (^weatherStubResponse)(NSDictionary *dict);
+        //3. link argument 3 with with our block callback
+        [invoke getArgument:&amp;weatherStubResponse atIndex:3];
+        //4. invoke block with pre-defined input
+        NSDictionary *testResponse = @{@&quot;high&quot;: 43 , @&quot;low&quot;: 12};
+        weatherStubResponse(groupMemberMock);
+    });
+    /**
+        1.这个mock对象使用带NSInvocation参数的“andDo”方法。一个NSInvocation对象代表一
+        个‘objectivetified’（实在不知道这个什么鬼）表现的方法调用。通过这个NSinvocation对
+        象，使得拦截传递给我们的方法的block参数变得可能。
+        2.用与我们测试的方法中相同的方法签名声明一个block参数。
+        3.NSInvocation实例方法&quot;getArgument:atIndex:&quot;将赋值后的块函数传递都原始函数中定义
+        的块函数中。注意：在Objective-C中，传递给任意方法的前两个参数都是“self”和“_cmd”.这是
+        一个运行时的小功能以及用下标来获取NSInvocation参数时我们需要考虑的东西。
+        4.最后，传递这个回调的预定义字典。
+    */
 </code></pre>
 
-<p>异步网络测试用例</p>
+<h4 id="toc_3">2.OCMock简单示例</h4>
 
-<pre><code class="language-Object-c">-(void)testRequest{
-    // 1.获得请求管理者
-    AFHTTPRequestOperationManager *mgr = [AFHTTPRequestOperationManager manager];
-    mgr.responseSerializer.acceptableContentTypes = [NSSet setWithObjects:@&quot;text/html&quot;,nil];
-    // 2.发送GET请求
-    [mgr GET:@&quot;http://www.weather.com.cn/adat/sk/101110101.html&quot; parameters:nil success:^(AFHTTPRequestOperation *operation, id responseObject) {
-        NSLog(@&quot;responseObject:%@&quot;,responseObject);
-        XCTAssertNotNil(responseObject, @&quot;返回出错&quot;);
-        self.stAlertView = [[STAlertView alloc]initWithTitle:@&quot;验证码&quot; message:nil textFieldHint:@&quot;请输入手机验证码&quot; textFieldValue:nil cancelButtonTitle:@&quot;取消&quot; otherButtonTitle:@&quot;确定&quot; cancelButtonBlock:^{
-            //点击取消返回后执行
-            [self testAlertViewCancel];
-            NOTIFY //继续执行
-        } otherButtonBlock:^(NSString *b) {
-            //点击确定后执行
-            [self alertViewComfirm:b];
-            NOTIFY //继续执行
-        }];
-        [self.stAlertView show];
-    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-        NSLog(@&quot;error:%@&quot;,error);
-        XCTAssertNil(error, @&quot;请求出错&quot;);
-        NOTIFY //继续执行
-    }];
-    WAIT  //暂停
+<p><img src="media/14873831706932/14873839517952.png" alt=""/></p>
+
+<p>示例2：</p>
+
+<pre><code class="language-Object-c">- (void)testStrictMock3{
+
+    id classMock = OCMClassMock([TweetView class]);
+
+    //设置期望或预设，这个classMock需要执行addTweet方法且参数不为nil。  不然的话会抛出异常
+    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
+    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
+
+    /* 如果不执行以下代码的话会抛出异常 */
+    Tweet *testTweet = [[Tweet alloc] init];
+    testTweet.userName = @&quot;齐滇大圣&quot;;
+    [classMock addTweet:testTweet];
+
+    OCMVerifyAll(classMock);
+}
+</code></pre>
+
+<p>这表示一种友好的mock，不会在没有OCMExpect或OCMStub设置类的所有方法时抛出异常。以上代码把OCMExpect和OCMStub注释掉时不会报错。</p>
+
+<p>还有一种表示严格的mock：OCMStrictClassMock，如果把OCMExpect和OCMStub注释掉时会报错，它要求你执行类中的所有方法，所以比较适合用来测试必须实现的方法，代码如下：</p>
+
+<pre><code class="language-Object-c">- (void)testStrictMock3{
+    id classMock = OCMStrictClassMock([TweetView class]);
+    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
+    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
+
+    Tweet *testTweet = [[Tweet alloc] init];
+    testTweet.userName = @&quot;齐滇大圣&quot;;
+    [classMock addTweet:testTweet]; 
+
+    OCMVerifyAll(classMock);
 }
 </code></pre>
 
@@ -604,93 +801,10 @@ XCAssertEqual(a1, a2, format...)当a1和a2是 C语言标量、结构体或联合
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/15</span>
+                    <span class="date">2017/2/18</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
-          				   
-                  </div>
-                  <div class="more-right right">
-                  <span class="comments">
-                      
-
-                       
-                  </span>
-                  </div>
-                </div>
-              </div><!-- article -->
-        
-			<div class="article">
-                <a class="clearlink" href="14866309753746.html">
-                
-                  <h1>iOS中UISearchController</h1>
-                  <div class="a-content">
-                      
-                      <div class="a-content-text">
-                        
-                        	<h4 id="toc_0">1. 使用方法</h4>
-
-<pre><code class="language-Object-c">SearchResultController *vc = [[SearchResultController alloc] init];
-    self.searchController = [[SearchControllerOfContacts alloc] initWithSearchResultsController:vc];
-    [self.tableView setTableHeaderView:self.searchController.searchBar];
-    [self.searchController setSearchResultsUpdater:vc];
-    [self.searchController.searchBar setPlaceholder:NSLocalizedString(@&quot;昵称、手机号&quot;, nil)];
-    self.resultController = vc;
-</code></pre>
-
-<p>此处是设置searchBar为tableView的头视图<br/>
-<strong>注意</strong><br/>
-此处的searchConroller 和 searchResultcontroller都必须为该控制器的属性(即强引用住）</p>
-
-<h4 id="toc_1">2. 自定义的UISearchController</h4>
-
-<p>我们可以继承自UISearchController，重写其<code>initWithSearchResultsController</code>方法即可:</p>
-
-<pre><code class="language-Object-c">- (id)initWithSearchResultsController:(UIViewController *)searchResultsController
-{
-    if (self = [super initWithSearchResultsController:searchResultsController]) {
-        self.searchBar.layer.borderWidth = 1;
-        self.searchBar.layer.borderColor = [ITRGBColor(239.0, 239.0, 244.0, 1.0)CGColor];
-        [self.searchBar setBarTintColor:ITRGBColor(239.0, 239.0, 244.0, 1.0)];
-        [self.searchBar setValue:@&quot;取消&quot; forKey:@&quot;_cancelButtonText&quot;];
-        UITextField *tf = [[[self.searchBar.subviews firstObject] subviews] lastObject];
-        [tf.layer setMasksToBounds:YES];
-        [tf.layer setBorderWidth:0.5f];
-        [tf.layer setBorderColor:[UIColor colorWithWhite:0.5 alpha:0.3].CGColor];
-        [tf.layer setCornerRadius:5.0f];
-        
-    }
-    return self;
-}
-</code></pre>
-
-<h4 id="toc_2">3.深度解析UISearchController 以及其SearchResultControll原理</h4>
-
-<p>当UISearchController出现时，UISearchController也是一个控制器就相当于模态出来一个控制器<br/>
-<img src="media/14866309753746/UISearchController.png" alt="UISearchControlle的层级表示"/><br/>
-<img src="media/14866309753746/searchController_big.png" alt="searchController_big"/></p>
-
-<p>我们可以看出来 我们首先从原来控制器模态出来我们自己的UISearchController 而UISearchControllView就是这个控制器的View即蓝色部分  而搜索结果的显示即在其上加了一个View这个view即为我们的搜索结果控制器的view<br/>
-因此我们改变这个SearchControllView颜色并不会影响显示 但是如果把其上加上别的视图 就会影响结果的显示的<br/>
-<img src="media/14866309753746/searchController2.png" alt="searchControlle"/><br/>
-可以看到显示结果的View被我们后加的tableView挡住了,这时候我们可以<strong><code>sendSubviewToBack</code></strong>来直接将tableView放置到显示结果的view后面即可了</p>
-
-<h4 id="toc_3">3.UISearchController 上的searchBar原理</h4>
-
-<p>显示的searchBar是因为searcontroller上有一块searBarContainView 在其上放置了searchBar,还有背景图片 取消按钮等<br/>
-<img src="media/14866309753746/UISearchBar.png" alt="UISearchBa"/></p>
-
-                        
-                      </div>
-                  </div>
-                </a>
-                <div class="read-more clearfix">
-                  <div class="more-left left">
-                  
-                    <span class="date">2017/2/9</span>
-                    <span>posted in&nbsp;</span> 
-          				  
-          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -782,7 +896,7 @@ XCAssertEqual(a1, a2, format...)当a1和a2是 C语言标量、结构体或联合
 		  
 		      
 			      <li class="post">
-			        <a href="14894054496048.html"></a>
+			        <a href="14894054496048.html">变换</a>
 			      </li>
 		     
 		  

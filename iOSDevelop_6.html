@@ -103,224 +103,418 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14861705181412.html">
+                <a class="clearlink" href="14873146865194.html">
                 
-                  <h1>小知识</h1>
+                  <h1>[NSOperation](http://www.jianshu.com/p/4b1d77054b35)</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<ol>
-<li>判断字符character是不是英文字母 是的话返回1 否则返回0<br/>
-<code>
-isalpha(chanracter)
-</code><br/></li>
-<li><p>判断一个字符串是否全为空格</p>
+                        	<p>与GCD相比好处:<br/>
+1. NSOperation是基于GCD之上的更高一层封装, 拥有更多的API(e.g. suspend, resume, cancel等等).<br/>
+2. 在NSOperationQueue中, 可以指定各个NSOperation之间的依赖关系<br/>
+3. 用KVO可以方便的监测NSOperation的状态(isExecuted, isFinished, isCancelled).<br/>
+4. 更高的可定制能力, 你可以继承NSOperation实现可复用的逻辑模块.</p>
 
-<pre><code class="language-Object-c">[[string stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]] length]==0
-</code></pre></li>
-<li><p>数组排序方法</p>
+<h2 id="toc_0">NSOperation和NSOperationQueue</h2>
 
-<pre><code class="language-Object-c">NSSortDescriptor *timeDescriptor = [[NSSortDescriptor alloc] initWithKey:@&quot;creatTime&quot; ascending:NO];
-NSArray *inviteNoticeArray = [noticeRecordModelArray sortedArrayUsingDescriptors:@[timeDescriptor]];
-</code></pre></li>
-<li><p>自动调节字体大小<br/>
-<code>adjustsFontSizeToFitWidth</code>这个属性的意思是根据UILabel的宽度来自动适应字体大小，但要注意的是，这个属性不会让字体变大，只会缩小，所以开始的时候，可以设置字体fontSize大一点。</p></li>
-<li><p>%s 为c语言字符串的输入输出控制格式</p></li>
-<li><p>NSString 转化为 char *<br/>
-<code>objc<br/>
-NSString * str＝ @“Test”;<br/>
-const char * a =[str UTF8String];<br/>
-</code></p></li>
-<li><p>按属性字段排序</p></li>
-</ol>
+<p>NSOpration是苹果公司对GCD的封装，NSOperation和MSOprationQueue分别对应GCD中的任务和队列<br/><br/>
+因此操作步骤如下：<br/><br/>
+1. 将要执行的任务封装到NSOperation对象中<br/>
+2. 将任务添加到一个NSOprationQueue对象中</p>
 
-<pre><code class="language-objc">    NSSortDescriptor *timeDescriptor = [[NSSortDescriptor alloc] initWithKey:@&quot;createTime&quot; ascending:NO];
-    NSArray *noticesArray = [[UserDataManager sharedInstance].userNotifyInfoArray sortedArrayUsingDescriptors:@[timeDescriptor]];
+<h3 id="toc_1">添加任务</h3>
+
+<p><code>NSOperation</code>是一个抽象类，所以不能封装任务。但他有两个子类可以封装任务。分别为：NSInvocationOperation和NSBlockOperation。创建之后需要start启动，默认<strong>在当前队列同步执行</strong>当然也可以用<code>cancle</code>在中途取消任务</p>
+
+<p>在不使用NSOperationQueue，单独使用NSOperation的情况下系统同步执行操作:</p>
+
+<pre><code>//1.创建NSInvocationOperation对象
+  NSInvocationOperation *operation = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(run) object:nil];
+
+  //2.开始执行
+  [operation start];   
+</code></pre>
+
+<pre><code class="language-Object-c">/**[]()
+    在没有使用NSOperationQueue、单独使用NSInvocationOperation的情况下，
+    NSInvocationOperation在主线程执行操作，并没有开启新线程。
+*/
+</code></pre>
+
+<pre><code>   在swift中这种方法是不是类型安全的（推荐第二种）
+
+
+//1.创建NSBlockOperation对象
+  NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
+      NSLog(@&quot;%@&quot;, [NSThread currentThread]);
+  }];
+
+  //2.开始任务
+  [operation start];
+</code></pre>
+
+<p>默认会在当前线程中执行。但是<code>NSBlockOperation</code>还有一个方法<code>addExecutionBlock:</code>，通过这个方法会给Operation添加多个执行Block。这样的话Operation中的任务会并发执行，他会在主线程和其他多个线程执行这些任务<br/><br/>
+    ```Object-c<br/>
+     //1.创建NSBlockOperation对象<br/>
+      NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:<sup>{</sup><br/>
+          NSLog(@&quot;%@&quot;, [NSThread currentThread]);<br/>
+      }];</p>
+
+<pre><code>  //添加多个Block
+  for (NSInteger i = 0; i &lt; 5; i++) {
+      [operation addExecutionBlock:^{
+          NSLog(@&quot;第%ld次：%@&quot;, i, [NSThread currentThread]);
+      }];
+  }
+
+  //2.开始任务
+  [operation start];
+  /**
+    可以看出，blockOperationWithBlock:方法中的操作是在主线程中执行的，而
+    addExecutionBlock:方法中的操作是在其他线程中执行的。
+  */
+```
+</code></pre>
+
+<hr/>
+
+<h2 id="toc_2">自定义Operation</h2>
+
+<p>除了上面的两种 Operation 以外，我们还可以自定义 Operation。自定义 Operation 需要继承 NSOperation 类，并实现其 main() 方法，因为在调用 start() 方法的时候，内部会调用 main() 方法完成相关逻辑。<br/>
+在没有使用NSOperationQueue、单独使用自定义子类的情况下，是在主线程执行操作，并没有开启新线程。</p>
+
+<p>注意:<br/>
+<code>NSOperation</code>可以自己独立执行(直接调用<code>[operation start]</code>), 也可以放到<code>NSOperationQueue</code>里面执行, 这两种情况下是否并发执行是不同的.</p>
+
+<h5 id="toc_3">1. non-concurrent</h5>
+
+<p>NSOperation默认是非并发的(non-concurrent),果你把operation放到某个线程执行, 它会一直block住该线程, 直到<code>operation finished</code>.<br/>
+对于非并发的operation你只需要继承NSOperation, 然后重写main()方法即可<br/>
+示例:下载一张:</p>
+
+<pre><code class="language-Object-c">/**
+    由于NSOperation是可以cancel的, 所以你需要在operation程序内部执行过程中判断当前
+    operation是否已经被cancel了(isCancelled). 如果已经被cancel那就不往下执行了. 当你在外面
+    调用[operation cancel]后, isCancelled会被置为YES.
+*/
+
+@implementation YourOperation 
+
+- (void)main 
+{
+    @autoreleasepool {
+
+        if (self.isCancelled) return;
+
+        NSData *imageData = [[NSData alloc] initWithContentsOfURL:imageURL];
+
+        if (self.isCancelled) { imageData = nil; return; }
+
+        if (imageData) {
+            UIImage *downloadedImage = [UIImage imageWithData:imageData];
+        }
+
+        imageData = nil;
+
+        if (self.isCancelled) return;
+
+        [self.delegate performSelectorOnMainThread:@selector(imageDownloaderDidFinish:)                                                                  
+                                        withObject:downloadedImage
+                                     waitUntilDone:NO];
+    }
+}
+
+@end
+</code></pre>
+
+<h5 id="toc_4">1. Concurrent</h5>
+
+<p>NSOperation有三个状态量isCancelled, isExecuting和isFinished. isCancelled上面解释过. main函数执行完成后, isExecuting会被置为NO, 而isFinished则被置为YES.</p>
+
+<p>那肿么实现并发(concurrent)的NSOperation呢? 也很简单:<br/>
+1). 重写isConcurrent函数, 返回YES, 这个告诉系统各单位注意了我这个operation是要并发的.<br/>
+2). 重写start()函数.<br/>
+3). 重写isExecuting和isFinished函数<br/>
+4). 有必要时需要重写isCanceled函数</p>
+
+<blockquote>
+<p>为什么在并发情况下需要自己来设定isExecuting和isFinished这两个状态量呢? 因为在并发情况下系统不知道operation什么时候finished, operation里面的task一般来说是异步执行的, 也就是start函数返回了operation不一定就是finish了, 这个你自己来控制, 你什么时候将isFinished置为YES(发送相应的KVO消息), operation就什么时候完成了.</p>
+</blockquote>
+
+<pre><code class="language-Object-c">- (BOOL)isConcurrent {
+    return YES;
+}
+
+- (void)start 
+{
+    [self willChangeValueForKey:@&quot;isExecuting&quot;];
+    _isExecuting = YES;
+    [self didChangeValueForKey:@&quot;isExecuting&quot;];
+
+    NSURLRequest * request = [NSURLRequest requestWithURL:imageURL];
+    _connection = [[NSURLConnection alloc] initWithRequest:request
+                                                  delegate:self];
+    if (_connection == nil) [self finish];
+}
+
+- (void)finish
+{
+    self.connection = nil;
+
+    [self willChangeValueForKey:@&quot;isExecuting&quot;];
+    [self willChangeValueForKey:@&quot;isFinished&quot;];
+
+    _isExecuting = NO;
+    _isFinished = YES;
+
+    [self didChangeValueForKey:@&quot;isExecuting&quot;];
+    [self didChangeValueForKey:@&quot;isFinished&quot;];
+}
+
+#pragma mark - NSURLConnection delegate
+- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
+    // to do something...
+}
+
+- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
+    // to do something...
+}
+
+- (void)connectionDidFinishLoading:(NSURLConnection *)connection {
+    [self finish];
+}
+
+- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
+    [self finish];
+}
+
+@end
+</code></pre>
+
+<p>还有以下几点需要注意:<br/>
+*  operation的executing和finished状态量需要用willChangeValueForKey/didChangeValueForKey来触发KVO消息.<br/>
+*  在调用完NSURLConnection之后start函数就返回了, 后面就坐等connection的回调了<br/>
+*  在connection的didFinish或didFail回调里面设置operation的finish状态, 告诉系统operation执行完毕了.</p>
+
+<p><strong>注意:</strong><br/>
+如果你是在主线程调用的这个并发的operation, 那一切都是非常的perfect, 就算你当前在操作UI也不影响operation的下载操作. BUT, 如果你是在子线程调用的, 或者把operation加到了非main queue, 那么问题来了, 你会发现这货的NSURLConnection delegate不走了.</p>
+
+<blockquote>
+<p>这是runLoop的原因，主线程会自动创建一个RunLoop来保证程序一直运行. 但子线程默认不创建NSRunLoop, 所以子线程的任务一旦返回, 线程就over了.上面的并发operation当start函数返回后子线程就退出了, 当NSURLConnection的delegate回调时, 线程已经木有了, 所以你也就收不到回调了. 为了保证子线程持续live(等待connection回调), 你需要在子线程中加入RunLoop, 来保证它不会被kill掉.<br/>
+详细关于RunLoop的知识可以查看 <a href="%5B%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B%E3%80%81NSThread&amp;GCD&amp;NSOpration&amp;runLoop%5D(14871584203378.html)">并发编程Runloop</a></p>
+</blockquote>
+
+<p>对于这个问题:我们解决办法<br/>
+1. 让start函数在主线程运行(即使[operation start]是在子线程调用的).</p>
+
+<pre><code>```Object-c
+- (void)start 
+{
+    if (![NSThread isMainThread]) {
+        [self performSelectorOnMainThread:@selector(start)
+                           withObject:nil
+                        waitUntilDone:NO];
+        return;
+ }
+    // set up NSURLConnection...
+}
+
+或者
+
+   - (void)start
+   {
+       [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+       self.connection = [NSURLConnection connectionWithRequest:self.request delegate:self];
+       }];
+   }
+
+```
 </code></pre>
 
 <ol>
-<li><p>auyolayout拉伸压缩</p>
+<li><p>方法二是:让<code>operation</code>的start函数在子线程运行, 但是我们为它创建一个RunLoop. 然后把<code>URL connection schedule</code>到上面去. （这种方法不推荐）</p>
 
-<p><code>Content Hugging Priority</code>(控件抗拉伸优先级) 优先级越高越不容易被拉伸，默认是250。<br/>
-<code>Content Compression Resistance Priority</code>(控件抗压缩优先级) 和拉伸一样，优先级越高的越不容易和压缩，默认是750。</p></li>
-<li><p>NSClassFromString(@&quot;UIView&quot;)<br/>
-从字符串中获取类名</p></li>
-<li><p>对于一个视图遮盖林割爱一个视图,如果上面视图是hidden或者alpha值为0是可以点击到后面的视图,但是如果上面的视图是clearColor 那么是点不到后面的视图的</p></li>
-</ol>
+<pre><code class="language-Object-c">    //参考AFNetWorking的做法
+    + (void)networkRequestThreadEntryPoint:(id)__unused object 
+    {
+        @autoreleasepool {
+            [[NSThread currentThread] setName:@&quot;AFNetworking&quot;];
+            NSRunLoop *runLoop = [NSRunLoop currentRunLoop];
+            [runLoop addPort:[NSMachPort port] forMode:NSDefaultRunLoopMode];
+            [runLoop run];
+        }
+    }
 
-                        
-                      </div>
-                  </div>
-                </a>
-                <div class="read-more clearfix">
-                  <div class="more-left left">
-                  
-                    <span class="date">2017/2/4</span>
-                    <span>posted in&nbsp;</span> 
-          				  
-          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
-          				   
-                  </div>
-                  <div class="more-right right">
-                  <span class="comments">
-                      
+    + (NSThread *)networkRequestThread 
+    {
+        static NSThread *_networkRequestThread = nil;
+        static dispatch_once_t oncePredicate;
+        dispatch_once(&amp;oncePredicate, ^{
+            _networkRequestThread = [[NSThread alloc] initWithTarget:self selector:@selector(networkRequestThreadEntryPoint:) object:nil];
+            [_networkRequestThread start];
+        });
+        return _networkRequestThread;
+    }
 
-                       
-                  </span>
-                  </div>
-                </div>
-              </div><!-- article -->
-        
-			<div class="article">
-                <a class="clearlink" href="14861704124969.html">
-                
-                  <h1>iOS 滤镜</h1>
-                  <div class="a-content">
-                      
-                      <div class="a-content-text">
-                        
-                        	<hr/>
-
-<h3 id="toc_0">CIFilter实现滤镜效果</h3>
-
-<p>参考网址:<a href="http://www.jianshu.com/p/98ba256b034a" title="CoreImage滤镜学习 - 简书">CoreImage滤镜学习</a> </p>
-
-<h5 id="toc_1">CoreImage框架介绍</h5>
-
-<p>1.是一个图片框架 基于<code>OpenGL</code>顶层创建，底层用着色器来处理图像<br/><br/>
-2.利用GPU基于硬件加速来处理图像<br/><br/>
-3.CoreImage中有很多滤镜<br/><br/>
-4.它们能够一次给予一张图像或者视频帧多种视觉效果 -&gt; 滤镜链<br/><br/>
-5.滤镜可以连接起来组成一个滤镜链 把滤镜效果叠加起来处理图像</p>
-
-<h5 id="toc_2">CIFilter使用介绍</h5>
-
-<ol>
-<li><p><code>CIFilter</code>滤镜类中有很多的滤镜效果 这里不一一列举，可以按住command 点击CIFilter 进入接口文件 找到第128行-148行全部都是 效果分类  </p></li>
-<li><p>常用效果<br/><br/>
-我们使用时需要先找到需要的效果类型 比如我们使用<code>kCICategoryDistortionEffect</code>失真的效果类型，有了效果类型我们需要找到里面我们需要的效果.<br/><br/>
-<code>NSLog -&gt; [CIFilter filterNamesInCategory:刚才拷贝的分类];</code><br/><br/>
-比如<code>CIColorMonochrome </code>,然后就可以使用这个滤镜效果<br/><br/>
-<code>CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome”];</code><br/><br/>
-然后打印这个效果中包含了那些属性:<br/><br/>
-<code>NSLog(@&quot;%@&quot;,filter.attributes);</code><br/><br/>
-在里面我们可以看到好多属性，里面是多个字典的形式，找到我们想要修改的属性(key值) 然后在他对应的value里面查看一下他的属性类型，比如我们打印的CIColorMonochrome里面有一个inputColor，他是一个CIColor类型的，有默认值，这里我们写了一个CIColor来给他进行赋值.<br/><br/>
-赋值时需要用kvc的方式:<br/><br/>
-<code>[filter setValue:colorforKey:kCIInputColorKey];</code><br/><br/>
-<img src="media/14861704124969/DraggedImage.png" alt="DraggedImage"/></p></li>
-<li><p>实现滤镜效果代码<br/><br/>
-首先我们创建一个全局变量的UIImageView，然后让他初始化出来,这个就是我们要处理的图片 一般我们从手机相册中取出来:<br/><br/>
- @interface ViewController ()&lt;UINavigationControllerDelegate,UIImagePickerControllerDelegate&gt;<br/>
-    {<br/>
-         UIImageView *imageView;<br/>
-    }<br/>
-    @end<br/>
-    然后我们需要从相册中取出一张图片,保存起来:<br/>
-    //跳转相册的触发方法<br/>
-    - (void)doit{<br/>
-    UIImagePickerController *vc = [[UIImagePickerController alloc]init];<br/>
-    vc.delegate = self;<br/>
-    [self presentViewController:vc animated:YES completion:nil];</p>
-
-<pre><code>}
-//让图片显示在VC上面的方法
-- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary&lt;NSString *,id&gt; *)info
-{
-NSLog(@&quot;%@&quot;,info);
-//获得选中的图像
-UIImage *chooseImage = info[UIImagePickerControllerOriginalImage];
-//先是在试图空间上
-imageView.image = chooseImage;
-
-[self dismissViewControllerAnimated:YES completion:nil];
-}
+    - (void)start 
+    {
+        [self.lock lock];
+        if ([self isCancelled]) {
+            [self performSelector:@selector(cancelConnection) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];
+        } else if ([self isReady]) {
+            self.state = AFOperationExecutingState;
+            [self performSelector:@selector(operationDidStart) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];
+        }
+        [self.lock unlock];
+    }
 </code></pre>
 
-<p><strong>接下来就是对图片进行滤镜处理:</strong><br/>
-    - (void)addColorFilter{<br/>
-    //CIImage 保存图像数据的类<br/>
-    CIImage <em>inputImage = [CIImage imageWithCGImage:imageView.image.CGImage];<br/>
-    //先打印NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);进去找到需要设置的属性(查询效果分类中都有什么效果)  可以设置什么效果<br/>
-    //然后通过[CIFilter filterWithName:@&quot;&quot;];找到属性   具体效果的属性<br/>
-    //然后通过KVC的方式设置属性<br/>
-    NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);<br/>
-    /</em><br/>
-     1.查询 效果分类中 包含什么效果：filterNamesInCategory:<br/>
-     2.查询 使用的效果中 可以设置什么属性（KVC） attributes</p>
+<p>AFNetworking创建了一个新的子线程(在子线程中调用NSRunLoop *runloop = [NSRunLoop currentRunLoop]; 获取RunLoop对象的时候, 就会创建RunLoop), 然后把它加到RunLoop里面来保证它一直运行.</p>
 
-<pre><code> 使用步骤
- 1.需要添加滤镜的源图
- 2.初始化一个滤镜 设置滤镜（根据查询到的属性来设置）
- 3.把滤镜 输出的图像 和滤镜  合并 CIContext -&gt; 得到一个合成之后的图像
- 4.展示
- */
-//CIFilter 滤镜类  图片属性进行细节处理的类
-CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome&quot;];
-NSLog(@&quot;%@&quot;,filter.attributes);
-//这个属性是必须赋值的，假如你处理的是图片的话
-[filter setValue:inputImage forKey:kCIInputImageKey];
-CIColor *color = [CIColor colorWithRed:1.000 green:0.759 blue:0.592 alpha:1];
-[filter setValue:color forKey:kCIInputColorKey];
-//CIContext 上下文是实现对图像处理的具体对象 用来把滤镜和图片合成成为一张图片 滤镜对象输出的图像并不是合成之后的图像，需要使用图片处理的上下文 合并输出图像
-    CIContext *context = [CIContext contextWithOptions:nil];
-
-CIImage *outPutImage = filter.outputImage;
-//CGImageRef-&gt;图像中的数据
-    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];
-
-    imageView.image = [UIImage imageWithCGImage:image];
-
- }
-</code></pre>
-
-<p>注意：<br/><br/>
-对滤镜进行赋值之后图片就有了，但是我们这个时候拿出这个图片的时候发现他并没有发生变化，因为它只是单一进行了滤镜处理，还没有和原图片进行一个糅合。使用CIContext找到上下文对他进行糅合：<br/><br/>
-//extent得到图像的尺寸    合并一个包含源图   滤镜效果的图片<br/>
-    //1 滤镜输出的图像    2.合成之后图像的尺寸   图像.extent<br/>
-    CGImageRef imageRef = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
-注意:<br/><br/>
-假如你的图片消失了，请检查一下，第一步获取图片的时候一定要获得图片的CGImage再来来获取，不要直接使用imageView.image.CGImage。</p></li>
-<li><p>滤镜链:<br/><br/>
-在给一张图片添加多种滤镜效果的时候，我们把它称为<code>滤镜链</code>，我们再添加滤镜链的时候，就是把图片添加一层滤镜，然后，和原图片糅合处理，然后在处理之后的图片上再添加一层滤镜，并不是直接给一张图片添加了两层路径，所以称为滤镜链。<br/><br/>
-我们继续使用这个图片，在它添加第一层滤镜的时候做一些修改:  </p>
-
-<pre><code>//上接给效果属性赋值
-//把下面注释的给注释掉，然后添加一个方法
-    //CIContext
-//    CIContext *context = [CIContext contextWithOptions:nil];
-
-CIImage *outPutImage = filter.outputImage;
-[self addFilterLinkerWithImage:outPutImage];
-//    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];
-
-//    imageView.image = [UIImage imageWithCGImage:image];
-
-//再次添加滤镜  -&gt;  形成滤镜链
-- (void)addFilterLinkerWithImage:(CIImage *)image
-{
-CIFilter *filter = [CIFilter filterWithName:@&quot;CISepiaTone&quot;];
-[filter setValue:image forKey:kCIInputImageKey];
-CIContext *context = [CIContext contextWithOptions:nil];
-CGImageRef resultImage = [context createCGImage:filter.outputImage fromRect:filter.outputImage.extent];
-imageView.image = [UIImage imageWithCGImage:resultImage];
-//把添加好滤镜效果的图片   保存到相册
-//不可以直接保存 outputImage  -&gt;  这是一个没有吧滤镜效果和源图合成的图像
-UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishSavingWithError:contextInfo:), nil);
- }
-//保存图片回调
-- (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo
-{
-    NSLog(@&quot;保存成功&quot;);
-}
-</code></pre>
-
-<p>这样就是一个双重的滤镜效果,同时保存到了相册.</p></li>
+<blockquote>
+<p>这边我们可以简单的判断下当前start()的线程是子线程还是主线程, 如果是子线程则调用[NSRunLoop currentRunLoop]创新RunLoop, 否则就直接调用[NSRunLoop mainRunLoop], 当然在主线程下就没必要调用[runLoop run]了, 因为它本来就是一直run的.<br/>
+我们还可以使用CFRunLoop来启动和停止RunLoop<br/>
+<code>[self.connection scheduleInRunLoop:[NSRunLoop currentRunLoop]<br/>
+                       forMode:NSRunLoopCommonModes];<br/>
+CFRunLoopRun();<br/>
+</code><br/>
+等到该Operation结束的时候, 一定要记得调用<strong>CFRunLoopStop()</strong>停止当前线程的RunLoop, 让当前线程在operation finished之后可以退出.</p>
+</blockquote></li>
 </ol>
 
 <hr/>
 
-<h3 id="toc_3">系统自带简单的滤镜效果</h3>
+<h2 id="toc_5">NSOperationQueue</h2>
+
+<p>看过上面的内容就知道，我们可以调用一个 NSOperation 对象的 <code>start()</code> 方法来启动这个任务，但是这样做他们默认是 同步执行 的。就算是 <code>addExecutionBlock</code> 方法，也会在 当前线程和其他线程 中执行，也就是说还是会占用当前线程。这是就要用到队列 <code>NSOperationQueue</code> 了。而且，按类型来说的话一共有两种类型：主队列、其他队列。只要添加到队列，会自动调用任务的 <code>start()</code> 方法</p>
+
+<p>一旦NSOperation被add到Queue里面那么我们就不care它自身是不是并发设计的了, 因为被add到Queue里面的operation必定是并发的. 而且我们可以设置Queue的maxConcurrentOperationCount来指定最大的并发数(也就是几个operation可以同时被执行, <strong>如果这个值设为1, 那这个Queue就是串行队列了</strong>).<br/>
+ Queue会为每一个add到队列里面的operation创建一个线程来运行其start函数, 这样每个start都分布在不同的线程里面来实现operation们的并发执行.<br/>
+注意:<br/>
+** 我们这边所说的并发都是指NSOperation之间的并发(多个operation同时执行), 如果maxConcurrentOperationCount设置为1或者把operation放到[NSOperationQueue mainQueue]里面执行, 那它们只会顺序(Serial)执行, 当然就不可能并发了.**</p>
+
+<h5 id="toc_6">* 主队列</h5>
+
+<p>细心同学会发现，每套多线程方案都会有一个主线程。这是一个特殊的线程必须串行。凡是添加到主队列中的任务（NSOperation），都会放到主线程中执行<br/><br/>
+    //OBJECTIVE-C<br/>
+    NSOperationQueue *queue = [NSOperationQueue mainQueue];</p>
+
+<pre><code>//SWIFT
+let queue = NSOperationQueue.mainQueue()
+</code></pre>
+
+<h5 id="toc_7">* 其他队列</h5>
+
+<p>通过初始化产生的队列就是其他队列了，其他队列不需要名字<br/>
+<strong>注意：</strong>其他队列会在其他线程中并行执行<br/>
+```Object-c<br/>
+    //1.创建一个其他队列<br/><br/>
+    NSOperationQueue *queue = [[NSOperationQueue alloc] init];</p>
+
+<pre><code>//2.创建NSBlockOperation对象
+NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
+    NSLog(@&quot;%@&quot;, [NSThread currentThread]);
+}];
+
+//3.添加多个Block
+for (NSInteger i = 0; i &lt; 5; i++) {
+    [operation addExecutionBlock:^{
+        NSLog(@&quot;第%ld次：%@&quot;, i, [NSThread currentThread]);
+    }];
+}
+
+//4.队列添加任务
+[queue addOperation:operation];
+/**
+   NSInvocationOperation和NSOperationQueue结合后能够开启新线程，进行并发执行
+   NSBlockOperation和NSOperationQueue也能够开启新线程，进行并发执行
+*/
+</code></pre>
+
+<pre><code>
+`- (void)addOperationWithBlock:(void (^)(void))block;`
+无需先创建任务，在block中添加任务，直接将任务block加入到队列中,能够开启新线程，进行并发执行。
+
+****
+这时如果我们想要任务在其他线程串行执行  
+`NSOperationQueue`有个参数`maxConcurrentOperationCount`最大并发数，设置为1时就是串行了  
+`maxConcurrentOperationCount`默认情况下为-1，表示不进行限制，默认为并发执行。
+`maxConcurrentOperationCount`大于1时，进行并发执行，当然这个值不应超过系统限制，即使自己设置一个很大的值，系统也会自动调整
+###操作依赖
+`NSOperation`还有个实用功能添加依赖。比如有 3 个任务：A: 从服务器上下载一张图片，B：给这张图片加个水印，C：把图片返回给服务器。这时就可以用到依赖了:
+
+```Object-c
+    //1.任务一：下载图片
+    NSBlockOperation *operation1 = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@&quot;下载图片 - %@&quot;, [NSThread currentThread]);
+        [NSThread sleepForTimeInterval:1.0];
+    }];
+    
+    //2.任务二：打水印
+    NSBlockOperation *operation2 = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@&quot;打水印   - %@&quot;, [NSThread currentThread]);
+        [NSThread sleepForTimeInterval:1.0];
+    }];
+    
+    //3.任务三：上传图片
+    NSBlockOperation *operation3 = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@&quot;上传图片 - %@&quot;, [NSThread currentThread]);
+        [NSThread sleepForTimeInterval:1.0];
+    }];
+    
+    //4.设置依赖
+    [operation2 addDependency:operation1];      //任务二依赖任务一
+    [operation3 addDependency:operation2];      //任务三依赖任务二
+    
+    //5.创建队列并加入任务
+    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+    [queue addOperations:@[operation3, operation2, operation1] waitUntilFinished:NO];
+</code></pre>
+
+<p>注意不能添加互相依赖否则会锁死<br/><br/>
+可以用<code>removeDependency</code>来解除依赖</p>
+
+<p><strong>注意:</strong><br/>
+如果我在子线程调用[operation start]函数, 或者把operation放到非MainQueue里面执行, 但是在operation的内部把start抛到主线程来执行(利用主线程的main run loop), 那多个operation其实不都是要在主线程执行的么, 这样还能并发? Luckily, 仍然是并发执行的,当然这个并发指的是狭义并发也就是主线程进行伪并行<br/>
+<img src="media/14873146865194/14873217004353.jpg" alt=""/></p>
+
+<hr/>
+
+<h3 id="toc_8">其他方法</h3>
+
+<ul>
+<li><h5 id="toc_9">NSOperation</h5>
+
+<pre><code>BOOL executing; //判断任务是否正在执行
+
+BOOL finished; //判断任务是否完成
+
+void (^completionBlock)(void); //用来设置完成后需要执行的操作
+
+- (void)cancel; //取消任务 `NSOperation`提供的方法，可取消单个操作
+
+- (void)waitUntilFinished; //阻塞当前线程直到此任务执行完毕
+</code></pre></li>
+<li><h5 id="toc_10">NSOperationQueue</h5>
+
+<pre><code>NSUInteger operationCount; //获取队列的任务数
+
+- (void)cancelAllOperations; //取消队列中所有的任务
+
+- (void)waitUntilAllOperationsAreFinished; //阻塞当前线程直到此队列中的所有任务执行完毕
+
+[queue setSuspended:YES]; // 暂停queue
+
+[queue setSuspended:NO]; // 继续queue
+</code></pre></li>
+</ul>
+
+<hr/>
+
+<h3 id="toc_11">与君共勉</h3>
+
+<p><img src="media/14873146865194/14876658479087.jpg" alt=""/></p>
 
                         
                       </div>
@@ -329,10 +523,10 @@ UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishS
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/4</span>
+                    <span class="date">2017/2/17</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
+          					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -346,61 +540,259 @@ UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishS
               </div><!-- article -->
         
 			<div class="article">
-                <a class="clearlink" href="14861702798513.html">
+                <a class="clearlink" href="14872969075485.html">
                 
-                  <h1>ios中主要框架</h1>
+                  <h1>并发编程实践</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h4 id="toc_0">1. 系统框架层</h4>
+                        	<h4 id="toc_0">1.<a href="https://developer.apple.com/reference/dispatch">GCD</a> OR <a href="https://developer.apple.com/reference/foundation/operationqueue">操作队列</a></h4>
 
-<p>每个框架对应IOS系统里的一层，每层建立在它下面层的上面。应该尽量使用上层的框架来代替下面的框架。更高层次的框架是对底层框架基于对象的抽象。<br/><br/>
-<img src="media/14861702798513/DraggedImage.png" alt="DraggedImage"/></p>
+<p>这两个是目前我们在iOS中用的最多的两套API</p>
 
-<h4 id="toc_1">2. 两个基础框架</h4>
+<ul>
+<li>操作队列提供了在 GCD 中不那么容易复制的有用特性。其中最重要的一个就是可以取消在任务处理队列中的任务</li>
+<li>操作队列在管理操作间的依赖关系方面也容易一些</li>
+<li>CD 给予你更多的控制权力以及操作队列中所不能使用的底层函数
+扩展阅读:
+<a href="http://stackoverflow.com/questions/10373331/nsoperation-vs-grand-central-dispatch">StackOverflow: NSOperation vs. Grand Central Dispatch</a>
+<a href="http://eschatologist.net/blog/?p=232">Blog: When to use NSOperation vs. GCD</a></li>
+</ul>
 
-<p>iOS应用程序基于Foundation和UIKit框架<br/>
-<strong>Foundation</strong><br/><br/>
-Foundation框架为所有的应用程序提供基本系统服务你的应用程序，UIKit和其它的框架都是建立在Foundation框架上面的。Foundation框架是用Object-C对CoreFoundation框架里许多特性的封装。<br/><br/>
-使用Foundation可以:<br/>
-1. 创建和管理集合，比如数组和字典<br/>
-    2. 访问存储在应用程序里的图片和其它资源<br/>
-        3. 创建和管理字符串<br/>
-        4. 提交和接收通<br/>
-        5. 创建日期和时间对象<br/>
-        6. 自动发现IP网络上的设备<br/>
-        7. 操作URL流<br/>
-<strong>UIKit</strong><br/><br/>
-所有的iOS应用程序都基于UIKit，你不能是应用程序脱离这个框架。UIKit提供了在屏幕上绘制的机制，捕获事件，和创建通用用户界面元素。UIKit也通过管理显示在屏幕上的组件来组织复杂的项目。<br/>
-使用UIKit可以：<br/>
-1. 构建和管理你的用户界面<br/>
-    2. 捕获触摸和基于移动的事件<br/>
-        3. 呈现文字和web内容<br/>
-        4. 优化多任务程序<br/>
-        5. 创建定制的用户界面元素</p>
+<h4 id="toc_1">2.后台的Core Data</h4>
 
-<h4 id="toc_2">3. 其他重要框架</h4>
+<p>在着手 Core Data 的并行处理之前，最好先打一些基础。我们强烈建议通读苹果的官方文档 <a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/CoreData/Articles/cdConcurrency.html">Concurrency with Core Data</a> </p>
 
-<pre><code>Core Data , Core Graphics, CoreAnimation,和OpenGLES框架都是高级的技术
-1. **CoreData框架管着理应用程序数据模型**
-    Core Data提供对象的管理，使用CoreData，你可以创建模型对象，并管理这些对象。你管理这这些对象间的联系并修改数据。CoreData提供的内建SQLlite技术可以高效的管理数据。
-    使用CoreData可以:
-    - 在库里存储和接受对象
-    - 提供基本的undo/redo
-    - 自动验证属性值
-    - 过滤、分组和优化内存中的数据
-    - 用[NSFetchedResultsController]管理表视图中的结果
-    - 支持基于文档的应用程序
-2. **CoreGraphics框架帮助你创建图形
+<blockquote>
+<p>Xcode 所提供的 Core Data 标准模版中，所设立的是运行在主线程中的一个存储调度 (persistent store coordinator)和一个托管对象上下文 (managed object context) 的方式。在很多情况下，这种模式可以运行良好。创建新的对象和修改已存在的对象开销都非常小，也都能在主线程中没有困难地完成。然后，如果你想要做大量的处理，那么把它放到一个后台上下文来做会比较好。一个典型的应用场景是将大量数据导入到 Core Data 中。</p>
+</blockquote>
 
-3. **CoreAnimation允许你创建高级的动画和虚拟效果
-4. **OpenGL ES框架提供2D和3D绘图工具
+<p>示例:<br/>
+我们要导入一大组柏林的交通数据。在导入的过程中，我们展示一个进度条，如果耗时太长，我们希望可以取消当前的导入操作。同时，我们显示一个随着数据加入可以自动更新的 table view 来展示目前可用的数据。</p>
+
+<p>解决方案:<br/>
+我们创建一个<code>NSOperation</code> 的子类，将其叫做<code>ImportOperation</code>，我们通过重写 <code>main</code>方法，用来处理所有的导入工作。这里我们使用<code>NSPrivateQueueConcurrencyType</code>来创建一个独立并拥有自己的私有<code>dispatch queue</code>的 managed object context，这个 <code>context</code> 需要管理自己的队列。在队列中的所有操作必须使用<code>performBlock</code>或者<code>performBlockAndWait</code>来进行触发。</p>
+
+<pre><code class="language-Object-c">NSManagedObjectContext* context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+context.persistentStoreCoordinator = self.persistentStoreCoordinator;
+context.undoManager = nil;
+//performBlockAndWait:Synchronously performs a given block on the receiver’s queue.
+[self.context performBlockAndWait:^
+{
+    [self import];
+}];
 </code></pre>
 
+<p>在这里我们重用了已经存在的<code>persistent store coordinator</code>。一般来说，初始化 managed object contexts 要么使用<code>NSPrivateQueueConcurrencyType</code>，要么使用 <code>NSMainQueueConcurrencyType</code>。</p>
+
+<p>导入文件内容</p>
+
+<pre><code class="language-Object-c">/**
+    在导入前，我们枚举文件中的各行，并对可以解析的每一行创建 managed object ：
+*/
+[lines enumerateObjectsUsingBlock:
+  ^(NSString* line, NSUInteger idx, BOOL* shouldStop)
+  {
+      NSArray* components = [line csvComponents];
+      if(components.count &lt; 5) {
+          NSLog(@&quot;couldn&#39;t parse: %@&quot;, components);
+          return;
+      }
+      [Stop importCSVComponents:components intoContext:context];
+  }];
+</code></pre>
+
+<pre><code class="language-Object-c">/**
+    在 view controller 中通过以下代码来开始操作：
+*/
+ImportOperation* operation = [[ImportOperation alloc]
+     initWithStore:self.store fileName:fileName];
+[self.operationQueue addOperation:operation];
+</code></pre>
+
+<pre><code class="language-Object-c">/**
+    至此为止，后台导入部分已经完成。接下来，我们要加入取消功能，这其实非常简单，只需要枚举的 block 中加一个判断就行了：
+*/
+if(self.isCancelled) {
+    *shouldStop = YES;
+    return;
+}
+</code></pre>
+
+<pre><code class="language-Object-c">/**
+    最后为了支持进度条，我们在 operation 中创建一个叫做 progressCallback 的属性。需要注意的是，更新进度条必须在主线程中完成，否则会导致 UIKit 崩溃。
+*/
+operation.progressCallback = ^(float progress)
+{
+    [[NSOperationQueue mainQueue] addOperationWithBlock:^
+    {
+        self.progressIndicator.progress = progress;
+    }];
+};
+//我们在枚举中来调用这个进度条更新的 block 的操作：
+
+self.progressCallback(idx / (float) count);
+
+</code></pre>
+
+<pre><code class="language-Object-c">  //  然而，如果你执行示例代码的话，你会发现它运行逐渐变得很慢，取消操作也有迟滞。这是因为主操作队列中塞满了要更新进度条的 block 操作。一个简单的解决方法是降低更新的频度，比如只在每导入一百行时更新一次：
+
+NSInteger progressGranularity = 100;
+
+if (idx % progressGranularity == 0) {
+    self.progressCallback(idx / (float) count);
+}
+
+</code></pre>
+
+<h5 id="toc_2">更新 Main Context</h5>
+
+<p>在让一切运转起来之前之前，还有一件事情要做。现在在后台 context 中导入的数据还不能传送到主 context 中，除非我们显式地让它这么去做。我们在<code>Store</code>类的设置<code>Core Data stack</code>的<code>init</code>方法中加入下面的代码：</p>
+
+<pre><code class="language-Object-c">[NSNotificationCenter defaultCenter]
+    addObserverForName:NSManagedObjectContextDidSaveNotification
+                object:nil
+                 queue:nil
+            usingBlock:^(NSNotification* note)
+{
+    NSManagedObjectContext *moc = self.mainManagedObjectContext;
+    if (note.object != moc)
+        [moc performBlock:^(){
+            [moc mergeChangesFromContextDidSaveNotification:note];
+        }];
+    }];
+}];
+/**
+    如果 block 在主队列中被作为参数传递的话，那么这个 block 也会在主队列中被执行。如果现在你运行程序的话，你会注意到 table view 会在完成导入数据后刷新数据，但是这个行为会阻塞用户大概几秒钟。
+    要修正这个问题，我们需要做一些无论如何都应该做的事情：批量保存。在导入较大的数据时，我们需要定期保存，逐渐导入，否则内存很可能就会被耗光，性能一般也会更坏。而且，定期保存也可以分散主线程在更新 table view 时的工作压力。
+    合理的保存的次数可以通过试错得到。保存太频繁的话，可能会在 I/O 操作上花太多时间；保存次数太少的话，应用会变得无响应。在经过一些尝试后，我们设定每 250 次导入就保存一次。改进后，导入过程变得很平滑，它可以适时更新 table view，也没有阻塞主 context 太久。
+*/
+</code></pre>
+
+<h5 id="toc_3">其他考虑</h5>
+
+<p>在导入操作时，我们将整个文件都读入到一个字符串中，然后将其分割成行。这种处理方式对于相对小的文件来说没有问题，但是对于大文件，最好采用惰性读取 (lazily read) 的方式逐行读入。本文最后的示例将使用输入流的方式来实现这个特性，在 StackOverflow 上 Dave DeLong 也提供了一段非常好的示例代码来说明这个问题。</p>
+
+<p>在 app 第一次运行时，除开将大量数据导入 Core Data 这一选择以外，你也可以在你的 app bundle 中直接放一个 sqlite 文件，或者从一个可以动态生成数据的服务器下载。如果使用这些方式的话，可以节省不少在设备上的处理时间。</p>
+
+<p>最后，最近对于 child contexts 有很多争议。我们的建议是不要在后台操作中使用它。如果你以主 context 的 child 的方式创建了一个后台 context 的话，保存这个后台 context 将阻塞主线程。而要是将主 context 作为后台 context 的 child 的话，实际上和与创建两个传统的独立 contexts 来说是没有区别的。因为你仍然需要手动将后台的改变合并回主 context 中去。</p>
+
+<p>设置一个 persistent store coordinator 和两个独立的 contexts 被证明了是在后台处理 Core Data 的好方法。除非你有足够好的理由，否则在处理时你应该坚持使用这种方式。</p>
+
+<p><a href="http://wiki.jikexueyuan.com/project/objc/concurrent-programming/2-2.html">扩展阅读</a></p>
+
+<h4 id="toc_4">3.后台 UI 代码</h4>
+
+<p>首先要强调：UIKit 只能在主线程上运行。而那部分不与 UIKit 直接相关，却会消耗大量时间的 UI 代码可以被移动到后台去处理，以避免其将主线程阻塞太久。但是在你将你的 UI 代码移到后台队列之前，你应该好好地测量哪一部分才是你代码中的瓶颈。这非常重要，否则你所做的优化根本是南辕北辙。</p>
+
+<p>如果你找到了你能够隔离出的昂贵操作的话，可以将其放到操作队列中去：</p>
+
+<pre><code class="language-Object-c">__weak id weakSelf = self;
+[self.operationQueue addOperationWithBlock:^{
+    NSNumber* result = findLargestMersennePrime();
+    [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+        MyClass* strongSelf = weakSelf;
+        strongSelf.textLabel.text = [result stringValue];
+    }];
+}];
+</code></pre>
+
+<blockquote>
+<p>如你所见，这些代码其实一点也不直接明了。我们首先声明了一个 weak 引用来参照 self，否则会形成循环引用（ block 持有了 self，私有的 operationQueue retain 了 block，而 self 又 retain 了 operationQueue ）。为了避免在运行 block 时访问到已被释放的对象，在 block 中我们又需要将其转回 strong 引用。</p>
+</blockquote>
+
+<h4 id="toc_5">4.后台绘制</h4>
+
+<p>如果你确定<code>drawRect:</code>是你的应用的性能瓶颈，那么你可以将这些绘制代码放到后台去做。但是在你这样做之前，检查下看看是不是有其他方法来解决，比如、考虑使用<code>core animation layers</code>或者预先渲染图片而不去做<code>Core Graphics</code>绘制。<br/>
+解决方案:<br/>
+其实解决起来也很简单，把<code>drawRect:</code>中的代码放到一个后台操作中去做就可以了。然后将原本打算绘制的视图用一个 image view 来替换，等到操作执行完后再去更新。在绘制的方法中，使用 <code>UIGraphicsBeginImageContextWithOptions</code>来取代<code>UIGraphicsGetCurrentContext ：</code></p>
+
+<pre><code class="language-Object-c">UIGraphicsBeginImageContextWithOptions(size, NO, 0);
+// drawing code here
+UIImage *i = UIGraphicsGetImageFromCurrentImageContext();
+UIGraphicsEndImageContext();
+return i;
+/**
+    通过在第三个参数中传入 0 ，设备的主屏幕的 scale 将被自动传入，这将使图片在普通设备和
+     retina 屏幕上都有良好的表现。
+*/
+</code></pre>
+
+<p>注意:<br/>
+如果你在 table view 或者是 collection view 的 cell 上做了自定义绘制的话，最好将它们放入 <code>operation</code> 的子类中去。你可以将它们添加到后台操作队列，也可以在用户将 cell 滚动出边界时的 <code>didEndDisplayingCell</code> 委托方法中进行取消。这些技巧都在 2012 年的<a href="https://developer.apple.com/videos/wwdc2012/">WWDC Session 211 -- Building Concurrent User Interfaces on iOS</a>中有详细阐述。</p>
+
+<p>除了在后台自己调度绘制代码，以也可以试试看使用 CALayer 的 drawsAsynchronously 属性。然而你需要精心衡量这样做的效果，因为有时候它能使绘制加速，有时候却适得其反。</p>
+
+<h4 id="toc_6">4.异步网络请求处理</h4>
+
+<p><strong>所有的网络请求都应该通过异步的方式进行</strong></p>
+
+<pre><code class="language-Object-c">// 警告：不要使用这些代码。
+dispatch_async(backgroundQueue, ^{
+   NSData* contents = [NSData dataWithContentsOfURL:url]
+   dispatch_async(dispatch_get_main_queue(), ^{
+      // 处理取到的日期
+   });
+});
+//这段代码问题：没有办法去取消这个同步的网络请求。它将阻塞住线程直到它完成。如果请求一直没结果，那就只能干等到超时
+</code></pre>
+
+<p>要解决上面的困境，我们可以使用<code>NSURLConnection</code>的异步方法，并且把所有操作转化为 operation 来执行. NSURLConnection 是通过<code>run loop</code>来发送事件的。因为事件发送不会花多少时间，因此最简单的是就只使用 main run loop 来做这个。然后，我们就可以用后台线程来处理输入的数据了。<br/>
+要处理URL 连接，我们重写自定义的 operation 子类中的 start 方法：</p>
+
+<pre><code class="language-Object-c">- (void)start
+{
+    NSURLRequest* request = [NSURLRequest requestWithURL:self.url];
+    self.isExecuting = YES;
+    self.isFinished = NO;
+    [[NSOperationQueue mainQueue] addOperationWithBlock:^
+    {
+        self.connection = [NSURLConnectionconnectionWithRequest:request
+                                                       delegate:self];
+    }];
+}
+</code></pre>
+
+<p>由于重写的是 start 方法，所以我们需要自己要管理操作的 isExecuting 和 isFinished 状态。要取消一个操作，我们需要取消 connection ，并且设定合适的标记，这样操作队列才知道操作已经完成。</p>
+
+<pre><code class="language-Object-c">- (void)connectionDidFinishLoading:(NSURLConnection *)connection
+{
+    self.data = self.buffer;
+    self.buffer = nil;
+    self.isExecuting = NO;
+    self.isFinished = YES;
+}
+</code></pre>
+
+<p><a href="https://github.com/objcio/issue-2-background-networking">Demo下载</a><br/>
+因此:我们总结如下:建议<strong>要么你花时间来把事情做对做好，要么就直接使用像<code>AFNetworking</code>这样的框架</strong><br/>
+其实 AFNetworking 还提供了不少好用的小工具，比如有个 UIImageView 的 category，来负责异步地从一个 URL 加载图片。在你的 table view 里使用的话，还能自动帮你处理取消加载操作，非常方便。</p>
+
+<h4 id="toc_7">5.进阶：后台文件 I/O</h4>
+
+<p>一次性将文件读入内存中对于较小的文件可能没什么问题,但是对于大文件来说就并不友好。<br/>
+我们将构建一个类，它负责<code>一行一行</code>读取文件而不是一次将整个文件读入内存，另外要在<code>后台队列处理文件</code>，以保持应用相应用户的操作。<br/>
+为了达到这个目的，我们使用能让我们异步处理文件的<code>NSInputStream</code></p>
+
+<blockquote>
+<p>如果你总是需要从头到尾来读/写文件的话，streams 提供了一个简单的接口来异步完成这个操作</p>
+</blockquote>
+
+<p>不管你是否使用 streams，大体上逐行读取一个文件的模式是这样的：</p>
+
 <ol>
-<li><br/></li>
+<li>建立一个中间缓冲层以提供，当没有找到换行符号的时候可以向其中添加数据</li>
+<li>从 stream 中读取一块数据</li>
+<li>对于这块数据中发现的每一个换行符，取中间缓冲层，向其中添加数据，直到（并包括）这个换行符，并将其输出</li>
+<li>将剩余的字节添加到中间缓冲层去</li>
 </ol>
+
+<p><strong>绝大部分时候，使用逐块读入的方式来处理大文件，是非常有用的技术。</strong></p>
+
+<h3 id="toc_8">总结</h3>
+
+<p><strong>在主队列中接收事件或者数据，然后用后台操作队列来执行实际操作，然后回到主队列去传递结果，遵循这样的原则来编写尽量简单的并行代码，将是保证高效正确的不二法则。</strong></p>
 
                         
                       </div>
@@ -409,10 +801,96 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/4</span>
+                    <span class="date">2017/2/17</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
+          					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+			<div class="article">
+                <a class="clearlink" href="14872918920673.html">
+                
+                  <h1>并发编程中的问题</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<p>使用并发编程会带来许多陷阱<br/>
+优先级反转:也就是说低优先级的线程一直阻塞着高优先级的线程</p>
+
+<h4 id="toc_0">1.资源共享</h4>
+
+<p>并发编程中许多问题的根源就是在多线程中访问共享资源。资源可以是一个属性、一个对象，通用的内存、网络设备或者一个文件等等。<br/>
+这里我们举了一个<a href="https://en.wikipedia.org/wiki/Race_condition#Software">竞态条件</a>的例子:<br/>
+<img src="media/14872918920673/14872931592764.jpg" alt=""/><br/>
+这个时候我们需要保证线程B必须等线程A访问完该共享资源才会开始访问共享资源.这时候我们需要一种互斥机制:</p>
+
+<h4 id="toc_1">2.互斥锁</h4>
+
+<p><strong>互斥访问的意思就是同一时刻，只允许一个线程访问某个特定资源</strong><br/>
+首先需要获得一个共享资源的互斥锁，一旦某个线程对资源完成了操作，就释放掉这个互斥锁，这样别的线程就有机会访问该共享资源<br/>
+<img src="media/14872918920673/14872933923493.jpg" alt=""/><br/>
+因为现代 CPU 为了优化目的，往往会改变向内存读写数据的顺序（<a href="https://en.wikipedia.org/wiki/Out-of-order_execution">乱序执行</a>）因此还需要解决代码无序执行所带来的问题。如果不能确保 CPU 访问内存的顺序跟编程时的代码指令一样，那么仅仅依靠互斥访问是不够的。为了解决由 CPU 的优化策略引起的副作用，还需要引入<a href="https://en.wikipedia.org/wiki/Memory_barrier">内存屏障</a>。通过设置内存屏障，来确保没有无序执行的指令能跨过屏障而执行。</p>
+
+<p>(<a href="https://en.wikipedia.org/wiki/Lock_%28computer_science%29#Granularity">锁的竞争</a>是这样产生的：当一个或者多个线程尝试获取一个已经被别的线程获取过了的锁)<br/>
+获取和释放锁所是要带来开销的，因此你需要确保你不会频繁地进入和退出临界区段（比如获取和释放锁）。同时，如果你获取锁之后要执行一大段代码，这将带来锁竞争的风险：其它线程可能必须等待获取资源锁而无法工作。</p>
+
+<p>对于你的代码会如何在多核上运行的预测往往十分重要，你可以使用 Instrument 的 CPU strategy view 来检查是否有效的利用了 CPU 的可用核数，进而得出更好的想法，以此来优化代码。</p>
+
+<h4 id="toc_2">3.死锁</h4>
+
+<p>互斥锁解决了竞态条件的问题，但很不幸同时这也引入了一些其他问题，其中一个就是死锁。当多个线程在相互等待着对方的结束时，就会发生死锁，这时程序可能会被卡住。<br/>
+<img src="media/14872918920673/14872940417124.jpg" alt=""/><br/>
+你在线程之间共享的资源越多，你使用的锁也就越多，同时程序被死锁的概率也会变大。这也是为什么我们需要尽量减少线程间资源共享，并确保共享的资源尽量简单的原因之一。建议阅读一下底层<a href="https://objccn.io/issue-2-3/">并发编程 API</a> 中的全部使用异步分发一节。</p>
+
+<h4 id="toc_3">4.资源饥饿（Starvation）</h4>
+
+<p>锁定的共享资源会引起<a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writers_problem">读写问题</a>，大多数情况下，限制资源一次只能有一个线程进行读取访问其实是非常浪费的。因此，在资源上没有写入锁的时候，持有一个读取锁是被允许的。这种情况下，如果一个持有读取锁的线程在等待获取写入锁的时候，其他希望读取资源的线程则因为无法获得这个读取锁而导致<a href="https://en.wikipedia.org/wiki/Starvation_(computer_science)">资源饥饿</a>的发生。</p>
+
+<p>为了解决这个问题，我们需要使用一个比简单的读/写锁更聪明的方法，例如给定一个 <a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writer_lock">writer preference</a>，或者使用 <a href="https://en.wikipedia.org/wiki/Read-copy-update">read-copy-update</a> 算法。Daniel 在底层并发编程 API 中有介绍了如何用 GCD 实现一个多读取单写入的模式，这样就不会被写入资源饥饿的问题困扰了。</p>
+
+<h4 id="toc_4">5.优先级反转</h4>
+
+<p><code>优先级反转</code>是指程序在运行时低优先级的任务阻塞了高优先级的任务，有效的反转了任务的优先级。由于 GCD 提供了拥有不同优先级的后台队列，甚至包括一个 I/O 队列，所以我们最好了解一下优先级反转的可能性。</p>
+
+<blockquote>
+<p>高优先级和低优先级的任务之间共享资源时，就可能发生优先级反转。当低优先级的任务获得了共享资源的锁时，该任务应该迅速完成，并释放掉锁，这样高优先级的任务就可以在没有明显延时的情况下继续执行。然而高优先级任务会在低优先级的任务持有锁的期间被阻塞。如果这时候有一个中优先级的任务(该任务不需要那个共享资源)，那么它就有可能会抢占低优先级任务而被执行，因为此时高优先级任务是被阻塞的，所以中优先级任务是目前所有可运行任务中优先级最高的。此时，中优先级任务就会阻塞着低优先级任务，导致低优先级任务不能释放掉锁，这也就会引起高优先级任务一直在等待锁的释放。</p>
+
+<p>解决这个问题的方法，通常就是不要使用不同的优先级。通常最后你都会以让高优先级的代码等待低优先级的代码来解决问题。当你使用 GCD 时，总是使用默认的优先级队列（直接使用，或者作为目标队列）。如果你使用不同的优先级，很可能实际情况会让事情变得更糟糕。</p>
+</blockquote>
+
+<p><img src="media/14872918920673/14872951554551.jpg" alt=""/></p>
+
+<h3 id="toc_5">总结:</h3>
+
+<p>我们希望通过本文你能够了解到并发编程带来的复杂性和相关问题。并发编程中，无论是看起来多么简单的 API ，它们所能产生的问题会变得非常的难以观测，而且要想调试这类问题往往也都是非常困难的。</p>
+
+<p>但另一方面，并发实际上是一个非常棒的工具。它充分利用了现代多核 CPU 的强大计算能力。在开发中，关键的一点就是尽量让并发模型保持简单，这样可以限制所需要的锁的数量。</p>
+
+<p>我们建议采纳的安全模式是这样的：<br/>
+<strong>从主线程中提取出要使用到的数据，并利用一个操作队列在后台处理相关的数据，最后回到主队列中来发送你在后台队列中得到的结果。使用这种方式，你不需要自己做任何锁操作，这也就大大减少了犯错误的几率。</strong></p>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/2/17</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -436,7 +914,7 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
 			  </div>
 			  <div class="large-6 columns">
 			<p class="text-right" style="padding-top:25px;">
-			
+			 <a href="iOSDevelop_7.html">&raquo; Next Page</a> 
 			</p>
 			  </div>
 			</div>
@@ -504,7 +982,7 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
 		  
 		      
 			      <li class="post">
-			        <a href="14894054496048.html"></a>
+			        <a href="14894054496048.html">变换</a>
 			      </li>
 		     
 		  

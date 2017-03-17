@@ -1,0 +1,505 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+    
+  iOSDevelop - ACEfish的博客
+  
+  </title>
+  
+  
+  <link href="atom.xml" rel="alternate" title="ACEfish的博客" type="application/atom+xml">
+    <link rel="stylesheet" href="asset/css/foundation.min.css" />
+    <link rel="stylesheet" href="asset/css/docs.css" />
+    <script src="asset/js/vendor/modernizr.js"></script>
+    <script src="asset/js/vendor/jquery.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/github.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+<script type="text/javascript">
+  function before_search(){
+    var searchVal = 'site:acefish.github.io ' + document.getElementById('search_input').value;
+    document.getElementById('search_q').value = searchVal;
+    return true;
+  }
+</script>
+  </head>
+  <body class="antialiased hide-extras">
+    
+    <div class="marketing off-canvas-wrap" data-offcanvas>
+      <div class="inner-wrap">
+
+
+<nav class="top-bar docs-bar hide-for-small" data-topbar>
+
+
+  <section class="top-bar-section">
+  <div class="row">
+      <div style="position: relative;width:100%;"><div style="position: absolute; width:100%;">
+        <ul id="main-menu" class="left">
+        
+        <li id=""><a target="_self" href="index.html">Home</a></li>
+        
+        <li id=""><a target="_self" href="archives.html">Archives</a></li>
+        
+        </ul>
+
+        <ul class="right" id="search-wrap">
+          <li>
+<form target="_blank" onsubmit="return before_search();" action="http://google.com/search" method="get">
+    <input type="hidden" id="search_q" name="q" value="" />
+    <input tabindex="1" type="search" id="search_input"  placeholder="Search"/>
+</form>
+</li>
+          </ul>
+      </div></div>
+  </div>
+  </section>
+
+</nav>
+
+        <nav class="tab-bar show-for-small">
+  <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
+    <span> &nbsp; ACEfish的博客</span>
+  </a>
+</nav>
+
+<aside class="left-off-canvas-menu">
+      <ul class="off-canvas-list">
+       
+       <li><a href="index.html">HOME</a></li>
+    <li><a href="archives.html">Archives</a></li>
+    <li><a href="about.html">ABOUT</a></li>
+
+    <li><label>Categories</label></li>
+
+        
+            <li><a href="iOSDevelop.html">iOSDevelop</a></li>
+        
+            <li><a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html">2017年。。。</a></li>
+        
+            <li><a href="English.html">English</a></li>
+         
+
+      </ul>
+    </aside>
+
+<a class="exit-off-canvas" href="#"></a>
+
+
+        <section id="main-content" role="main" class="scroll-container">
+        
+       
+
+ <script type="text/javascript">
+	$(function(){
+		$('#menu_item_index').addClass('is_active');
+	});
+</script>
+<div class="row">
+	<div class="large-8 medium-8 columns">
+		<div class="markdown-body home-categories">
+		
+			<div class="article">
+                <a class="clearlink" href="14866309753746.html">
+                
+                  <h1>iOS中UISearchController</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<h4 id="toc_0">1. 使用方法</h4>
+
+<pre><code class="language-Object-c">SearchResultController *vc = [[SearchResultController alloc] init];
+    self.searchController = [[SearchControllerOfContacts alloc] initWithSearchResultsController:vc];
+    [self.tableView setTableHeaderView:self.searchController.searchBar];
+    [self.searchController setSearchResultsUpdater:vc];
+    [self.searchController.searchBar setPlaceholder:NSLocalizedString(@&quot;昵称、手机号&quot;, nil)];
+    self.resultController = vc;
+</code></pre>
+
+<p>此处是设置searchBar为tableView的头视图<br/>
+<strong>注意</strong><br/>
+此处的searchConroller 和 searchResultcontroller都必须为该控制器的属性(即强引用住）</p>
+
+<h4 id="toc_1">2. 自定义的UISearchController</h4>
+
+<p>我们可以继承自UISearchController，重写其<code>initWithSearchResultsController</code>方法即可:</p>
+
+<pre><code class="language-Object-c">- (id)initWithSearchResultsController:(UIViewController *)searchResultsController
+{
+    if (self = [super initWithSearchResultsController:searchResultsController]) {
+        self.searchBar.layer.borderWidth = 1;
+        self.searchBar.layer.borderColor = [ITRGBColor(239.0, 239.0, 244.0, 1.0)CGColor];
+        [self.searchBar setBarTintColor:ITRGBColor(239.0, 239.0, 244.0, 1.0)];
+        [self.searchBar setValue:@&quot;取消&quot; forKey:@&quot;_cancelButtonText&quot;];
+        UITextField *tf = [[[self.searchBar.subviews firstObject] subviews] lastObject];
+        [tf.layer setMasksToBounds:YES];
+        [tf.layer setBorderWidth:0.5f];
+        [tf.layer setBorderColor:[UIColor colorWithWhite:0.5 alpha:0.3].CGColor];
+        [tf.layer setCornerRadius:5.0f];
+        
+    }
+    return self;
+}
+</code></pre>
+
+<h4 id="toc_2">3.深度解析UISearchController 以及其SearchResultControll原理</h4>
+
+<p>当UISearchController出现时，UISearchController也是一个控制器就相当于模态出来一个控制器<br/>
+<img src="media/14866309753746/UISearchController.png" alt="UISearchControlle的层级表示"/><br/>
+<img src="media/14866309753746/searchController_big.png" alt="searchController_big"/></p>
+
+<p>我们可以看出来 我们首先从原来控制器模态出来我们自己的UISearchController 而UISearchControllView就是这个控制器的View即蓝色部分  而搜索结果的显示即在其上加了一个View这个view即为我们的搜索结果控制器的view<br/>
+因此我们改变这个SearchControllView颜色并不会影响显示 但是如果把其上加上别的视图 就会影响结果的显示的<br/>
+<img src="media/14866309753746/searchController2.png" alt="searchControlle"/><br/>
+可以看到显示结果的View被我们后加的tableView挡住了,这时候我们可以<strong><code>sendSubviewToBack</code></strong>来直接将tableView放置到显示结果的view后面即可了</p>
+
+<h4 id="toc_3">3.UISearchController 上的searchBar原理</h4>
+
+<p>显示的searchBar是因为searcontroller上有一块searBarContainView 在其上放置了searchBar,还有背景图片 取消按钮等<br/>
+<img src="media/14866309753746/UISearchBar.png" alt="UISearchBa"/></p>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/2/9</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+			<div class="article">
+                <a class="clearlink" href="14865484031774.html">
+                
+                  <h1>IOS开发小知识</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<ol>
+<li><p>MJRefresh使用小知识</p>
+
+<ol>
+<li><p>隐藏下拉刷新的时间Label  </p>
+
+<pre><code class="language-Object-c">MJRefreshHeader *refreshHead = [MJRefreshHeader headerWithRefreshingTarget:target refreshingAction:action];  
+refreshHead.lastUpdatedTimeLabel.hidden = YES;
+</code></pre></li>
+<li><p>上拉加载了所有数据<br/><br/>
+可以选择在尾视图显示加载完成:  </p>
+
+<pre><code class="language-Object-c">[refreshTableView.mj_footer endRefreshingWithNoMoreData];
+</code></pre>
+
+<p>也可以在加载完成后隐藏上拉加载的视图:</p>
+
+<pre><code class="language-Object-c">refreshTableView.mj_footer.hidden = YES;
+</code></pre></li>
+</ol></li>
+<li><p>对于tableView或者CollectionView的cell或者item 如果是以注册的方式初始化的话一定是会有的，因此就不需要if(!<code>cell</code>)的方式判空，因为一定是存在的<br/>
+对于collection的头尾市图方式是一样的 因为其头尾视图也是用注册方式的</p></li>
+<li><p>在我们使用属性时，编译器会自动编写访问这些属性所需要的方法，即“自动合成”.这个过程是编译器在编译期间执行的因此我们看不到这些合成方法。除了添加方法外,编译器还自动向类中添加适当类的实例变量。<br/>
+我们可以自己更改编译器的变量名字<br/>
+我们可以自己实现存取方法，如果你实现了一个 那么另外一个还是会由编译器合成。我们也可以用<code>@dynamic</code>关键字来阻止编译器自动合成存取方法.</p></li>
+<li><p>控制器在被pop后移出栈后会被释放，但有些时候会发现控制器出栈的时候不会调用dealloc方法，归根结底，是因为当前控制器被某个对象强引用了，控制器的引用计数不为0，系统无法帮你释放这部分内存<br/>
+以下几种原因:</p>
+
+<ol>
+<li>控制器中NSTimer没有被销毁</li>
+<li>控制器中的代理不是weak属性</li>
+<li>控制器中block的循环引用</li>
+</ol>
+
+<p>但是:比如添加的CAAnimation动画是就算不移除也不会影响的释放的</p></li>
+<li><p>[self setValue:obj forKey:propertyKey];<br/>
+对象设置属性的KVC</p></li>
+<li><p>frame、bounds、center、anchor、transform 关系：</p></li>
+</ol>
+
+<pre><code class="language-objc">-(CGRect) frame  
+{  
+     float x = center.x - layer.anchorPoint.x * bounds.width;   
+     float y = center.y - layer.anchorPoint.y * bounds.height;  
+     float width = bounds.width;
+     float height = bounds.height;  
+     return CGRectMake(x, y, width, height);
+}
+
+-(void) setFrame:(CGRect) rect
+{
+    center.x = rect.x + layer.anchorPoint.x * rect.width;
+    center.y = rect.y + layer.anchorPoint.y * rect.height;
+    bounds.width = rect.width;
+    bounds.height = rect.height;
+}
+</code></pre>
+
+<p>layer的position和 UIVIew的center是等效的 任何时候都是相等的</p>
+
+<p>所以当我们设置anchor为（0.0）因为bounds没变 center没变 因此frame会变化 而且center出现在左上角 </p>
+
+<p><strong>注意</strong><br/>
+当一个view的transform被更改了，即不为CGAffineTransformIdentity。<br/>
+frame属性可能会更改，view的bounds，center不会变，layer的position不会变。这个很重要，这样保持了在transform后，view的frame虽然改变了，但是内部参考系是不变的，可以继续进行其他变换，只要不更改frame或center或layer的position。</p>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/2/8</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+			<div class="article">
+                <a class="clearlink" href="14862735041818.html">
+                
+                  <h1>iOS 控制器转场</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<p>参考知识网站:<a href="https://github.com/seedante/iOS-Note/wiki/ViewController-Transition">iOS 视图控制器转场详解</a><br/><br/>
+我们平常所说的转场动画 = 转场+动画，两者互不相关。不管是简单的转场动画还是炫酷的转场动画，你想要的效果那是动画的事情，完全是另外一个话题。</p>
+
+<h4 id="toc_0">文章前言</h4>
+
+<p>视图控制器转换<code>View Controller Transition</code> : 在 NavigationController 里 push 或 pop 一个 View Controller，在 TabBarController 中切换到其他 View Controller，以 Modal 方式显示另外一个 View Controller，这些都是 View Controller Transition;<br/><br/>
+在iOS7之前我们只能使用系统提供的转场动画，仅仅够用而已，7之后开放了相关API允许我们进行转场动画的定制。<br/>
+如果对VC的结构不够了解推荐看:<a href="https://developer.apple.com/library/content/featuredarticles/ViewControllerPGforiPhoneOS/index.html#//apple_ref/doc/uid/TP40007457-CH2-SW1">View Controller Programming Guide for iOS</a><br/>
+<strong>接下来进入正题</strong>.</p>
+
+<h4 id="toc_1">Transition</h4>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/2/5</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+              
+
+
+			<div class="row">
+			  <div class="large-6 columns">
+			  <p class="text-left" style="padding-top:25px;">
+			   <a href="iOSDevelop_8.html">&laquo; Prev Page</a>  
+			  </p>
+			  </div>
+			  <div class="large-6 columns">
+			<p class="text-right" style="padding-top:25px;">
+			 <a href="iOSDevelop_10.html">&raquo; Next Page</a> 
+			</p>
+			  </div>
+			</div>
+		</div>
+	</div><!-- large 8 -->
+
+ <div class="large-4 medium-4 columns">
+  <div class="hide-for-small">
+    <div id="sidebar" class="sidebar">
+          <div id="site-info" class="site-info">
+            
+                <h1>ACEfish的博客</h1>
+                <div class="site-des"></div>
+                <div class="social">
+
+
+
+
+
+
+
+
+
+
+
+  <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
+                
+              	 </div>
+          	</div>
+
+             
+
+              <div id="site-categories" class="side-item ">
+                <div class="side-header">
+                  <h2>Categories</h2>
+                </div>
+                <div class="side-content">
+
+      	<p class="cat-list">
+        
+            <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
+        
+            <a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html"><strong>2017年。。。</strong></a>
+        
+            <a href="English.html"><strong>English</strong></a>
+         
+        </p>
+
+
+                </div>
+              </div>
+
+              <div id="site-categories" class="side-item">
+                <div class="side-header">
+                  <h2>Recent Posts</h2>
+                </div>
+                <div class="side-content">
+                <ul class="posts-list">
+	      
+		      
+			      <li class="post">
+			        <a href="14896343426276.html">专用图层</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14894054496048.html">变换</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14892022301750.html">图层几何学、视觉效果</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14892022094971.html">Core Animation</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14891313543932.html">小知识记录</a>
+			      </li>
+		     
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		   
+		  		</ul>
+                </div>
+              </div>
+        </div><!-- sidebar -->
+      </div><!-- hide for small -->
+</div><!-- large 4 -->
+
+</div><!-- row -->
+
+ <div class="page-bottom clearfix">
+  <div class="row">
+   <p class="copyright">Copyright &copy; 2015
+Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a>,&nbsp; 
+Theme used <a target="_blank" href="http://github.com">GitHub CSS</a>.</p>
+  </div>
+</div>
+
+        </section>
+      </div>
+    </div>
+
+  
+    
+
+    <script src="asset/js/foundation.min.js"></script>
+    <script>
+      $(document).foundation();
+      function fixSidebarHeight(){
+        var w1 = $('.markdown-body').height();
+          var w2 = $('#sidebar').height();
+          if (w1 > w2) { $('#sidebar').height(w1); };
+      }
+      $(function(){
+        fixSidebarHeight();
+      })
+      $(window).load(function(){
+          fixSidebarHeight();
+      });
+     
+    </script>
+
+    
+
+
+
+  </body>
+</html>
