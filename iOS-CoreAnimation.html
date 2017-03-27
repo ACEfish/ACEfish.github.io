@@ -392,7 +392,50 @@ return self;
 
 <p>大神写的自适应渐变淡出效果的<a href="https://github.com/nicklockwood/ReflectionView">ReflectView</a></p>
 
-<h4 id="toc_14">CAScrollLayer</h4>
+<h3 id="toc_14">CAScrollLayer</h3>
+
+<p>之前我们显示大图层中的一小部分是使用图层的<code>contentRect</code>属性,但是如果我们想要滑动可视区域的话这样就不是很好的办法.</p>
+
+<p><code>CALayey</code>提供了一个子类<code>CAScrollLayer</code>.<br/>
+ <code>CAScrollLayer</code> 有一个 <code>-scrollToPoint:</code>方法，它自动适应 <code>bounds</code> 的原点以便图层内容现在滑动的地方。</p>
+
+<p>因为<code>Core Animation</code>是不处理用户输入的,所以<code>CAScrollLayer</code>并不负责将触摸事件转换为滑动事件，既不渲染滚动条，也不实现任何iOS指定行为例如滑动反弹.</p>
+
+<pre><code class="language-objc">//来用 CAScrollLayer 来常见一个基本的 UIScrollView 替代品
++ (Class)layerClass
+{
+    return [CAScrollLayer class];
+}
+//添加平移手势
+//在平移手势中滚动视图
+CGPoint offset = self.bounds.origin;
+offset.x -= [recognizer translationInView:self].x;
+offset.y -= [recognizer translationInView:self].y;
+//scroll the layer
+[(CAScrollLayer *)self.layer scrollToPoint:offset];
+//reset the pan gesture translation
+[recognizer setTranslation:CGPointZero inView:self];
+//当然我们可以自己做边界检查
+</code></pre>
+
+<p>其实<strong><code>UIScrollView</code> 并没有用 <code>CAScrollLayer</code></strong>，事实上，就是简单的通过直接操作图层边界来实现滑动。</p>
+
+<p>那么这个<code>CAScrollLayer</code>的作用是什么呢?<br/>
+在<code>CAScrollerLayer</code>的头文件中有一个<code>CALayer (CALayerScrolling)</code>的扩展分类,实现了一些：</p>
+
+<pre><code class="language-objc">- (void)scrollPoint:(CGPoint)p;
+- (void)scrollRectToVisible:(CGRect)r;
+@property(readonly) CGRect visibleRect;
+</code></pre>
+
+<p>其实这些方法或者属性并不是给<code>CALayer</code>添加了滑动功能,事实上他们只是放置在<code>CAScrollLayer</code>中的图层的实用方法,<code>scrollPoint:</code>方法从图层树中查找并找到第一个可用的<code>CAScrollLayer</code>，然后滑动它使得指定点成为可视的。<code>scrollRectToVisible:</code>方法实现了同样的事情只不过是作用在一个矩形上的。<code>visibleRect</code> 属性决定图层（如果存在的话）的哪部分是当前的可视区域。当涉及到实现图层滑动的时候就可以用上了</p>
+
+<h3 id="toc_15">CATiledLayer</h3>
+
+<h3 id="toc_16">CAEmitterLayer</h3>
+
+<p>iOS后引入了一个新的 <code>CALayer</code> 子类叫做 <code>CAEmitterLayer</code><br/>
+ CAEmitterLayer 是一个高性能的粒子引擎，被用来创建实时例子动画如：烟雾，火，雨等等这些效果</p>
 
                         
                       </div>
@@ -1002,6 +1045,18 @@ button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
 	      
 		      
 			      <li class="post">
+			        <a href="14900564888280.html">蓝牙连接</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14899954232802.html">1.weak是怎么实现的</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="14896343426276.html">专用图层</a>
 			      </li>
 		     
@@ -1015,18 +1070,6 @@ button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
 		      
 			      <li class="post">
 			        <a href="14892022301750.html">图层几何学、视觉效果</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14892022094971.html">Core Animation</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14891313543932.html">小知识记录</a>
 			      </li>
 		     
 		  
