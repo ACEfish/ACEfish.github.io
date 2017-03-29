@@ -1,0 +1,400 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+    
+  缓冲 - ACEfish的博客
+  
+  </title>
+  
+  
+  <link href="atom.xml" rel="alternate" title="ACEfish的博客" type="application/atom+xml">
+    <link rel="stylesheet" href="asset/css/foundation.min.css" />
+    <link rel="stylesheet" href="asset/css/docs.css" />
+    <script src="asset/js/vendor/modernizr.js"></script>
+    <script src="asset/js/vendor/jquery.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/github.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+<script type="text/javascript">
+  function before_search(){
+    var searchVal = 'site:acefish.github.io ' + document.getElementById('search_input').value;
+    document.getElementById('search_q').value = searchVal;
+    return true;
+  }
+</script>
+  </head>
+  <body class="antialiased hide-extras">
+    
+    <div class="marketing off-canvas-wrap" data-offcanvas>
+      <div class="inner-wrap">
+
+
+<nav class="top-bar docs-bar hide-for-small" data-topbar>
+
+
+  <section class="top-bar-section">
+  <div class="row">
+      <div style="position: relative;width:100%;"><div style="position: absolute; width:100%;">
+        <ul id="main-menu" class="left">
+        
+        <li id=""><a target="_self" href="index.html">Home</a></li>
+        
+        <li id=""><a target="_self" href="archives.html">Archives</a></li>
+        
+        </ul>
+
+        <ul class="right" id="search-wrap">
+          <li>
+<form target="_blank" onsubmit="return before_search();" action="http://google.com/search" method="get">
+    <input type="hidden" id="search_q" name="q" value="" />
+    <input tabindex="1" type="search" id="search_input"  placeholder="Search"/>
+</form>
+</li>
+          </ul>
+      </div></div>
+  </div>
+  </section>
+
+</nav>
+
+        <nav class="tab-bar show-for-small">
+  <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
+    <span> &nbsp; ACEfish的博客</span>
+  </a>
+</nav>
+
+<aside class="left-off-canvas-menu">
+      <ul class="off-canvas-list">
+       
+       <li><a href="index.html">HOME</a></li>
+    <li><a href="archives.html">Archives</a></li>
+    <li><a href="about.html">ABOUT</a></li>
+
+    <li><label>Categories</label></li>
+
+        
+            <li><a href="iOSDevelop.html">iOSDevelop</a></li>
+        
+            <li><a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html">2017年。。。</a></li>
+        
+            <li><a href="English.html">English</a></li>
+         
+
+      </ul>
+    </aside>
+
+<a class="exit-off-canvas" href="#"></a>
+
+
+        <section id="main-content" role="main" class="scroll-container">
+        
+       
+
+ <script type="text/javascript">
+  $(function(){
+    $('#menu_item_index').addClass('is_active');
+  });
+</script>
+<div class="row">
+  <div class="large-8 medium-8 columns">
+      <div class="markdown-body article-wrap">
+       <div class="article">
+          
+          <h1>缓冲</h1>
+     
+        <div class="read-more clearfix">
+          <span class="date">2017/3/27</span>
+
+          <span>posted in&nbsp;</span> 
+          
+              <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
+           
+         
+          <span class="comments">
+            
+
+            
+          </span>
+
+        </div>
+      </div><!-- article -->
+
+      <div class="article-content">
+      <p><code>Core Animation</code>使用缓冲来使动画移动更平滑更自然。我们来试着研究如何对你的动画控制和自定义缓冲曲线。</p>
+
+<h3 id="toc_0">动画速度</h3>
+
+<p><code>velocity = change / time</code>（假设速度不变也就是“线性步调”）</p>
+
+<p>其实速度在动画整个移动过程中并不一定是恒定不变的,是有加速度的,为了实现这种加速度,一种方法是使用物理引擎来对运动物体的摩擦和动量来建模，然而这会使得计算过于复杂。我们称这种类型的方程为缓冲函数，幸运的是，<code>Core Animation</code>内嵌了一系列标准函数提供给我们使用。</p>
+
+<h4 id="toc_1">CAMediaTimingFunction</h4>
+
+<p>显式动画<code>CAAnimation</code>的<code>timingFunction</code>属性就是<code>CAMediaTimingFunction</code>类对象<br/>
+隐式动画用<code>CATransaction</code>的<code>+setAnimationTimingFunction:</code>方法，来调整动画时间函数</p>
+
+<p><code>CAMediaTimingFunction</code>用<code>+timingFunctionWithName:</code>方法构造对象：</p>
+
+<pre><code class="language-objc">//几种常量
+kCAMediaTimingFunctionLinear//。默认。线性计时函数
+kCAMediaTimingFunctionEaseIn//慢慢加速然后突然停止
+kCAMediaTimingFunctionEaseOut//全速开始 慢慢减速停止
+kCAMediaTimingFunctionEaseInEaseOut//慢慢加速然后再慢慢减速
+kCAMediaTimingFunctionDefault//类似淡入淡出但是加速和减速过程更慢
+/**
+    UIView 的动画方法默认kCAMediaTimingFunctionEaseInEaseOut
+    CAAinamtion 默认kCAMediaTimingFunctionLinear
+*/
+</code></pre>
+
+<pre><code class="language-objc">[CATransaction begin];
+[CATransaction setAnimationDuration:1.0];
+[CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut]];
+//set the position
+self.colorLayer.position = [[touches anyObject] locationInView:self.view];
+//commit transaction
+[CATransaction commit];
+</code></pre>
+
+<h4 id="toc_2">UIView 的动画缓冲</h4>
+
+<p>UIView 动画的缓冲选项，<code>options</code>参数</p>
+
+<pre><code class="language-objc">UIViewAnimationOptionCurveEaseInOut//默认
+UIViewAnimationOptionCurveEaseIn
+UIViewAnimationOptionCurveEaseOut
+UIViewAnimationOptionCurveLinear
+</code></pre>
+
+<pre><code class="language-objc">- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    //perform the animation
+    [UIView animateWithDuration:1.0 delay:0.0 options:UIViewAnimationOptionCurveEaseOut
+    animations:^{
+        //set the position
+        self.colorView.center = [[touches anyObject] locationInView:self.view];
+    }
+    completion:NULL];
+}
+</code></pre>
+
+<h4 id="toc_3">缓冲和关键帧动画</h4>
+
+<p>对于关键帧动画：我们不想给整个动画过程应用这个效果，我们希望对每个动画的过程重复这样的缓冲.<br/>
+<code>CAKeyframeAnimation</code> 有一个 <code>NSArray</code> 类型的<code>timingFunctions</code>属性，我们<br/>
+可以用它来对每次动画的步骤指定不同的计时函数。这个数组个数需要与<strong>关键帧(keyframes)个数减一</strong>,它是每两个关键帧之间的效果.</p>
+
+<pre><code class="language-objc">    //create a keyframe animation
+    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
+    animation.keyPath = @&quot;backgroundColor&quot;;
+    animation.duration = 2.0;
+    animation.values = @[
+    (__bridge id)[UIColor blueColor].CGColor,
+    (__bridge id)[UIColor redColor].CGColor,
+    (__bridge id)[UIColor greenColor].CGColor,
+    (__bridge id)[UIColor blueColor].CGColor ];
+    //add timing function
+    CAMediaTimingFunction *fn = [CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn];
+    animation.timingFunctions = @[fn, fn, fn];
+    //apply animation to layer
+    [self.colorLayer addAnimation:animation forKey:nil];
+</code></pre>
+
+
+    
+
+      </div>
+
+      <div class="row">
+        <div class="large-6 columns">
+        <p class="text-left" style="padding:15px 0px;">
+      
+        </p>
+        </div>
+        <div class="large-6 columns">
+      <p class="text-right" style="padding:15px 0px;">
+      
+          <a  href="14905958336865.html" 
+          title="Next Post: 图层时间">图层时间 &raquo;</a>
+      
+      </p>
+        </div>
+      </div>
+      <div class="comments-wrap">
+        <div class="share-comments">
+          
+
+          
+
+          
+        </div>
+      </div>
+    </div><!-- article-wrap -->
+  </div><!-- large 8 -->
+
+
+
+
+ <div class="large-4 medium-4 columns">
+  <div class="hide-for-small">
+    <div id="sidebar" class="sidebar">
+          <div id="site-info" class="site-info">
+            
+                <h1>ACEfish的博客</h1>
+                <div class="site-des"></div>
+                <div class="social">
+
+
+
+
+
+
+
+
+
+
+
+  <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
+                
+              	 </div>
+          	</div>
+
+             
+
+              <div id="site-categories" class="side-item ">
+                <div class="side-header">
+                  <h2>Categories</h2>
+                </div>
+                <div class="side-content">
+
+      	<p class="cat-list">
+        
+            <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
+        
+            <a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html"><strong>2017年。。。</strong></a>
+        
+            <a href="English.html"><strong>English</strong></a>
+         
+        </p>
+
+
+                </div>
+              </div>
+
+              <div id="site-categories" class="side-item">
+                <div class="side-header">
+                  <h2>Recent Posts</h2>
+                </div>
+                <div class="side-content">
+                <ul class="posts-list">
+	      
+		      
+			      <li class="post">
+			        <a href="14906168166224.html">缓冲</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14905958336865.html">图层时间</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14903444013647.html">CAAnimation</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14903384285214.html">显式动画</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14901616296287.html">UISlider</a>
+			      </li>
+		     
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		   
+		  		</ul>
+                </div>
+              </div>
+        </div><!-- sidebar -->
+      </div><!-- hide for small -->
+</div><!-- large 4 -->
+
+</div><!-- row -->
+
+ <div class="page-bottom clearfix">
+  <div class="row">
+   <p class="copyright">Copyright &copy; 2015
+Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a>,&nbsp; 
+Theme used <a target="_blank" href="http://github.com">GitHub CSS</a>.</p>
+  </div>
+</div>
+
+        </section>
+      </div>
+    </div>
+
+  
+    
+
+    <script src="asset/js/foundation.min.js"></script>
+    <script>
+      $(document).foundation();
+      function fixSidebarHeight(){
+        var w1 = $('.markdown-body').height();
+          var w2 = $('#sidebar').height();
+          if (w1 > w2) { $('#sidebar').height(w1); };
+      }
+      $(function(){
+        fixSidebarHeight();
+      })
+      $(window).load(function(){
+          fixSidebarHeight();
+      });
+     
+    </script>
+
+    
+
+
+
+  </body>
+</html>

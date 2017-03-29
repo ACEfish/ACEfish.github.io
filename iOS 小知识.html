@@ -103,6 +103,92 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
+                <a class="clearlink" href="14901616296287.html">
+                
+                  <h1>UISlider</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<pre><code class="language-objc">slider.continuous = YES;//默认YES  如果设置为NO，则每次滑块停止移动后才触发事件
+[slider addTarget:self action:@selector(sliderChange:) forControlEvents:UIControlEventValueChanged]; 
+//手动设置滑块的值，并是否动画移动过去：
+- (void)setValue:(float)value animated:(BOOL)animated; 
+//给滑动按钮设置图片 
+- (void)setThumbImage:(nullable UIImage *)image forState:(UIControlState)state; 
+//给滑道左侧设置图片 
+- (void)setMinimumTrackImage:(nullable UIImage *)image forState:(UIControlState)state; 
+//给滑道右侧设置图片 
+- (void)setMaximumTrackImage:(nullable UIImage *)image forState:(UIControlState)state;  
+@property(nullable,nonatomic,readonly) UIImage *currentThumbImage;  
+@property(nullable,nonatomic,readonly) UIImage *currentMinimumTrackImage;  
+@property(nullable,nonatomic,readonly) UIImage *currentMaximumTrackImage; 
+
+
+//定制UISlider
+- (CGRect)minimumValueImageRectForBounds:(CGRect)bounds;  //返回左边图片大小  
+- (CGRect)maximumValueImageRectForBounds:(CGRect)bounds;  //返回右边图片大小  
+- (CGRect)trackRectForBounds:(CGRect)bounds;              //返回滑道大小  
+
+
+//我们通常通过重写（而不是主动调用）这个方法来控制滑块大小来消除我们改变滑块图片导致的两端缝隙
+/**
+ @bounds The bounding rectangle of the slider.
+ @rect The drawing rectangle for the slider’s track, as returned by the `trackRectForBounds:` method.
+ @value The current value of the slider.
+ 
+ @return The computed drawing rectangle for the thumb image.
+*/
+- (CGRect)thumbRectForBounds:(CGRect)bounds trackRect:(CGRect)rect value:(float)value;  //返回滑块大小 
+
+
+</code></pre>
+
+<p>举个栗子：</p>
+
+<pre><code class="language-objc">//自定义滑块图片后这样可以消除两端间隙
+- (CGRect)thumbRectForBounds:(CGRect)bounds trackRect:(CGRect)rect value:(float)value
+{
+    rect.origin.x = rect.origin.x - 10 ;
+    rect.size.width = rect.size.width +20;
+    return CGRectInset ([super thumbRectForBounds:bounds trackRect:rect value:value], 10 , 10);
+}
+
+//还可以
+-(CGRect)trackRectForBounds:(CGRect)bounds {
+    bounds.origin.x=15;
+    bounds.origin.y=bounds.size.height/3;
+    bounds.size.height=bounds.size.height/5;
+    bounds.size.width=bounds.size.width-30;
+    returnbounds;
+}
+
+</code></pre>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/3/22</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+			<div class="article">
                 <a class="clearlink" href="14867842994268.html">
                 
                   <h1>容易忘记的易错点</h1>
@@ -110,35 +196,43 @@
                       
                       <div class="a-content-text">
                         
-                        	<ol>
-<li><p>@property属性中如果是copy属性要记得：<br/>
-<strong>注意：</strong><br/>
-在重写setter方法时要记得加上 </p>
+                        	<h3 id="toc_0">1. @property属性中如果是copy属性要记得：</h3>
 
-<pre><code class="language-Object-c">_name = [name copy]
+<pre><code>**注意：**
+在重写setter方法时要记得加上 
+
+``` Object-c
+_name = [name copy]
+```
+在内部的init方法中 也要记得加copy，即在内部直接给属性变量赋值时记得加copy
+
+```Object-c
+//这里尽量不要用self.实例变量 而用 _实例变量
 </code></pre>
 
-<p>在内部的init方法中 也要记得加copy，即在内部直接给属性变量赋值时记得加copy</p>
+<ul>
+<li><p>initWithSpId:(SInt32)spId spName:(NSString *)spName type:(SInt32)spType spPinyin:(NSString *)spPinyin spLetter:(NSString *)spLetter {<br/>
+if (self = [super init]) {<br/>
+    _spId = spId;<br/>
+    _spName = [spName copy];<br/>
+    _type = spType;<br/>
+}<br/>
+return self;<br/>
+}<br/>
+```</p>
 
-<pre><code class="language-Object-c">//这里尽量不要用self.实例变量 而用 _实例变量
-- initWithSpId:(SInt32)spId spName:(NSString *)spName type:(SInt32)spType spPinyin:(NSString *)spPinyin spLetter:(NSString *)spLetter {
-if (self = [super init]) {
-    _spId = spId;
-    _spName = [spName copy];
-    _type = spType;
-}
-return self;
-}
-</code></pre></li>
-<li><p>注意在修改navigation时是只修改了navigationItem还是修改了NavigationBar<br/>
-如果是仅仅修改了navigationItem那就只对本控制器有效 push或者pop了都不影响，一般有以下几种情况:</p>
+<h3 id="toc_1">2. 注意在修改navigation时是只修改了navigationItem还是修改了NavigationBar</h3>
+
+<p>如果是仅仅修改了navigationItem那就只对本控制器有效 push或者pop了都不影响，一般有以下几种情况:<br/>
+1. 修改了navigationItem的元素</p>
+
+<pre><code>```Object-c
+self.navigationItem.title = @&quot;title&quot;;
+self.navigationItem.titleView = [[UIView alloc] init];
+```
+</code></pre>
 
 <ol>
-<li><p>修改了navigationItem的元素</p>
-
-<pre><code class="language-Object-c">self.navigationItem.title = @&quot;title&quot;;
-self.navigationItem.titleView = [[UIView alloc] init];
-</code></pre></li>
 <li><p>修改了navigationItem的BarButtonItem</p>
 
 <pre><code class="language-Object-c">self.navigationItem.leftBarButtonItem = [UIBarButtonItem itemWithTarget:self action:@selector(popViewController) image:@&quot;general_arrow_back_white&quot; highImage:@&quot;general_arrow_back_orange&quot;];
@@ -168,10 +262,26 @@ self.navigationController.navigationBar.hidden = YES;
 [self.navigationController.navigationBar setTitleTextAttributes:
 [NSDictionary dictionaryWithObjectsAndKeys:[UIColor blackColor],NSForegroundColorAttributeName,nil]];
 self.navigationController.navigationBar.hidden = NO;
-</code></pre></li>
-<li></li>
-<li></li>
-</ol>
+</code></pre>
+
+<h3 id="toc_2">3. 隐藏tabbar</h3>
+
+<p>我们在某些界面需要隐藏Tabbar的时候，会出现原区域无法响应点击事件的问题。系统的Tabbar已经被我们hidden了，但是仍然无法响应事件，此时我们只要将系统的Tabbar的frame设置为CGRectZero即可。<br/>
+<code>objc<br/>
+[UIApplication sharedApplication].keyWindow.rootViewController).tabBar.frame <br/>
+= CGRectZero;<br/>
+</code></p></li>
+</ul>
+
+<h3 id="toc_3">4. 自动布局的动画</h3>
+
+<pre><code>用`xib`拉的视图或者`masonry`布局的视图在`[UIView animation...]`动画方法中都是可以直接改变`frame`或者`transform`来进行动画的
+我们可以直接改变`frame`包括宽、高、中心等 直接进行各种动画,而不用担心因为`autolayout`问题,毕竟masony或者xib拉约束都只是布局问题,在运行时还是会转成`frame`的.
+
+而通常我们拖约束线出去是为了:
+1. 在视图还没加载时用代码设置某个约束值  
+2. 真的是要改变某个约束值做动画（通常某个视图也和这个约束有关系）
+</code></pre>
 
                         
                       </div>
@@ -222,103 +332,6 @@ self.navigationController.navigationBar.hidden = NO;
                   <div class="more-left left">
                   
                     <span class="date">2017/2/10</span>
-                    <span>posted in&nbsp;</span> 
-          				  
-          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
-          				   
-                  </div>
-                  <div class="more-right right">
-                  <span class="comments">
-                      
-
-                       
-                  </span>
-                  </div>
-                </div>
-              </div><!-- article -->
-        
-			<div class="article">
-                <a class="clearlink" href="14865484031774.html">
-                
-                  <h1>IOS开发小知识</h1>
-                  <div class="a-content">
-                      
-                      <div class="a-content-text">
-                        
-                        	<ol>
-<li><p>MJRefresh使用小知识</p>
-
-<ol>
-<li><p>隐藏下拉刷新的时间Label  </p>
-
-<pre><code class="language-Object-c">MJRefreshHeader *refreshHead = [MJRefreshHeader headerWithRefreshingTarget:target refreshingAction:action];  
-refreshHead.lastUpdatedTimeLabel.hidden = YES;
-</code></pre></li>
-<li><p>上拉加载了所有数据<br/><br/>
-可以选择在尾视图显示加载完成:  </p>
-
-<pre><code class="language-Object-c">[refreshTableView.mj_footer endRefreshingWithNoMoreData];
-</code></pre>
-
-<p>也可以在加载完成后隐藏上拉加载的视图:</p>
-
-<pre><code class="language-Object-c">refreshTableView.mj_footer.hidden = YES;
-</code></pre></li>
-</ol></li>
-<li><p>对于tableView或者CollectionView的cell或者item 如果是以注册的方式初始化的话一定是会有的，因此就不需要if(!<code>cell</code>)的方式判空，因为一定是存在的<br/>
-对于collection的头尾市图方式是一样的 因为其头尾视图也是用注册方式的</p></li>
-<li><p>在我们使用属性时，编译器会自动编写访问这些属性所需要的方法，即“自动合成”.这个过程是编译器在编译期间执行的因此我们看不到这些合成方法。除了添加方法外,编译器还自动向类中添加适当类的实例变量。<br/>
-我们可以自己更改编译器的变量名字<br/>
-我们可以自己实现存取方法，如果你实现了一个 那么另外一个还是会由编译器合成。我们也可以用<code>@dynamic</code>关键字来阻止编译器自动合成存取方法.</p></li>
-<li><p>控制器在被pop后移出栈后会被释放，但有些时候会发现控制器出栈的时候不会调用dealloc方法，归根结底，是因为当前控制器被某个对象强引用了，控制器的引用计数不为0，系统无法帮你释放这部分内存<br/>
-以下几种原因:</p>
-
-<ol>
-<li>控制器中NSTimer没有被销毁</li>
-<li>控制器中的代理不是weak属性</li>
-<li>控制器中block的循环引用</li>
-</ol>
-
-<p>但是:比如添加的CAAnimation动画是就算不移除也不会影响的释放的</p></li>
-<li><p>[self setValue:obj forKey:propertyKey];<br/>
-对象设置属性的KVC</p></li>
-<li><p>frame、bounds、center、anchor、transform 关系：</p></li>
-</ol>
-
-<pre><code class="language-objc">-(CGRect) frame  
-{  
-     float x = center.x - layer.anchorPoint.x * bounds.width;   
-     float y = center.y - layer.anchorPoint.y * bounds.height;  
-     float width = bounds.width;
-     float height = bounds.height;  
-     return CGRectMake(x, y, width, height);
-}
-
--(void) setFrame:(CGRect) rect
-{
-    center.x = rect.x + layer.anchorPoint.x * rect.width;
-    center.y = rect.y + layer.anchorPoint.y * rect.height;
-    bounds.width = rect.width;
-    bounds.height = rect.height;
-}
-</code></pre>
-
-<p>layer的position和 UIVIew的center是等效的 任何时候都是相等的</p>
-
-<p>所以当我们设置anchor为（0.0）因为bounds没变 center没变 因此frame会变化 而且center出现在左上角 </p>
-
-<p><strong>注意</strong><br/>
-当一个view的transform被更改了，即不为CGAffineTransformIdentity。<br/>
-frame属性可能会更改，view的bounds，center不会变，layer的position不会变。这个很重要，这样保持了在transform后，view的frame虽然改变了，但是内部参考系是不变的，可以继续进行其他变换，只要不更改frame或center或layer的position。</p>
-
-                        
-                      </div>
-                  </div>
-                </a>
-                <div class="read-more clearfix">
-                  <div class="more-left left">
-                  
-                    <span class="date">2017/2/8</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
@@ -407,31 +420,31 @@ frame属性可能会更改，view的bounds，center不会变，layer的position�
 	      
 		      
 			      <li class="post">
-			        <a href="14900564888280.html">蓝牙连接</a>
+			        <a href="14906168166224.html">缓冲</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14899954232802.html">1.weak是怎么实现的</a>
+			        <a href="14905958336865.html">图层时间</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14896343426276.html">专用图层</a>
+			        <a href="14903444013647.html">CAAnimation</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14894054496048.html">变换</a>
+			        <a href="14903384285214.html">显式动画</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14892022301750.html">图层几何学、视觉效果</a>
+			        <a href="14901616296287.html">UISlider</a>
 			      </li>
 		     
 		  

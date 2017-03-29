@@ -103,18 +103,29 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14891313543932.html">
+                <a class="clearlink" href="14900564888280.html">
                 
-                  <h1>小知识记录</h1>
+                  <h1>蓝牙连接</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>CoreData中的NSManagedObjectContext在多线程中不安全,如果想要多线程访问CoreData的话，最好的方法是一个线程一个NSManagedObjectContext,每个NSManagedObjectContext对象实例都可以使用同一个NSPersistentStoreCoordinator实例，这个实例可以很安全的顺序访问永久存储，这是因为NSManagedObjectContext会在便用NSPersistentStoreCoordinator前上锁。</p>
+                        	<h4 id="toc_0">1. 获取蓝牙信号强度</h4>
 
-<p>ios5.0为NSManagedObjectContext提供了initWithConcurrentcyType方法，其中的一个NSPrivateQueueConcurrencyType，会自动的创建一个新线程来存放NSManagedObjectContext而且它还会自动创建NSPersistentStoreCoordinator,</p>
+<p><img src="media/14900564888280/14900565184282.jpg" alt=""/></p>
 
-<p>三层 NSManagedObjectContext 嵌套</p>
+<h4 id="toc_1">2. 后台读取蓝牙信号强度</h4>
+
+<p>如果程序在后台还需要获取蓝牙蓝牙信号强度，那么肯定是需要支持后台的，要设置后台模式，设置<code>use bluetooth LE accessories</code>这样我们在后台就可以继续读取<code>RSSI</code>和回调了<br/>
+<img src="media/14900564888280/14900567067529.jpg" alt=""/></p>
+
+<p>在实际使用的过程当中，发现设置了后台模式后，读取<code>RSSI</code>的值持续时间不够长，读取一会就不继续读取了，后来各种测试发现，自己使用一个定时器持续读取蓝牙设备的<code>battery</code>，之所以读取<code>battery</code>，是因为设备的<code>service</code>中存在读取<code>battery</code>的<code>serviceID</code>。试验中，发现如果不定时读取该值，在后台运行的时候读取<code>RSSI</code>值就会中断</p>
+
+<h4 id="toc_2">3.RSSI和距离关系</h4>
+
+<p>根据RSSI值，得到设备与手机之间的距离公式大概如下:<br/>
+<code>powe(10, (abs(rssi) - 59) / (10 * 2.0))</code>; <br/>
+大概有这么一个关系，不是很准确。</p>
 
                         
                       </div>
@@ -123,10 +134,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/10</span>
+                    <span class="date">2017/3/21</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='CoreData.html'>CoreData</a></span>
+          					    <span class="posted-in"><a href='iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html'>iOS开发知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -140,379 +151,80 @@
               </div><!-- article -->
         
 			<div class="article">
-                <a class="clearlink" href="14883679213714.html">
+                <a class="clearlink" href="14899954232802.html">
                 
-                  <h1>图层树和寄宿图</h1>
+                  <h1>1.weak是怎么实现的</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>注意点:<br/>
-1. <code>contentsScale</code> 并不关心屏幕的拉伸因素而总是默认为1.0。如果我们想以Retina的质量来渲染图层，我们就得手动设置图层的 contentsScale 属性。</p>
-
-<p><code>textLayer.contentsScale = [UIScreen mainScreen].scale;</code><br/>
-2. </p>
-
-<h2 id="toc_0">图层、视图</h2>
-
-<p>iOS中所有的视图都从UIView中派生而来。<code>UIView</code> 可以处理触摸事件，可以支持基于<code>Core Graphics</code>绘图，可以做仿射变换（例如旋转或者缩放），或者简单的类似于滑动或者渐变的动画。</p>
-
-<p><em><code>CALay</code>与UIView最大的不同是不处理用户的交互</em>，并不清楚具体的响应链（iOS通过视图层级关系用来传送触摸事件的机制），于是它并不能够响应事件，即使它提供了一些方法来判断是否一个触点在图层的范围之内</p>
-
-<p>每一个 UIView 都有一个 CALayer 实例的图层属性，视图的职责就是创建并管理这个图层，以确保当子视图在层级关系中添加或者被移除的时候，他们关联的图层也同样对应在层级关系树当中有相同的操作<br/>
-实际上视图的这些背后关联的图层才是真正用来在屏幕上显示和做动画， UIView 仅仅是对它的一个封装，提供了一些iOS类似于处理触摸的具体功能，以及<code>CoreAnimation</code>底层方法的高级接口。</p>
-
-<p>实际上，这里并不是两个层级关系，而是四个，每一个都扮演不同的角色，<strong>除了<br/>
-视图层级和图层树之外，还存在呈现树和渲染树</strong>。</p>
-
-<p>我们用CALayer处理UIView没有暴露出来的功能(UIView没有响应的高级接口，我们只能介入底层):</p>
-
-<ul>
-<li>阴影，圆角，带颜色的边框</li>
-<li>3D变换</li>
-<li>非矩形范围</li>
-<li>透明遮罩</li>
-<li>多级非线性动画</li>
-</ul>
-
-<p>标准的<code>Xcode</code>项目模板并没有包含<code>Core Animation</code>相关头文件。所以如果我们不给项目添加合适的库，是不能够使用任何图层相关的方法或者访问它的属性。所以首先需要添加<code>QuartzCore</code>框架</p>
-
-<p><strong>视图中的子视图就是图层中的子图层</strong></p>
-
-<h2 id="toc_1">寄宿图</h2>
-
-<p>CALayer的寄宿图（即<strong>图层中包含的图</strong>）</p>
-
-<h3 id="toc_2">contents属性</h3>
-
-<p>CALayer 有一个属性叫做<code>contents</code>，这个属性的类型被定义为<code>id</code>，意味着它可以是任何类型的对象。但是,在实践中，如果你给<code>contents</code>赋的不是<code>CGImage</code>，那么你得到的图层将是空白的。<br/>
-实际上真正应该赋值的类型是<code>CGImageRef</code>,它是指向<code>CGImage</code>的指针。<br/>
-UIImage有一个<code>CGImage</code>属性，它返回一个&quot;<code>CGImageRef</code>&quot;,如果你想把这个值直接赋值给<code>CALayer</code>的 <code>contents</code> ，那你将会得到一个编译错误。因为<code>CGImageRef</code>并不是一个真正的<code>Cocoa</code>对象，而是一个<code>Core Foundation</code>类型。</p>
-
-<pre><code class="language-objc">/**
-尽管Core Foundation类型跟Cocoa对象在运行时貌似很像（被称作toll-freebridging），
-他们并不是类型兼容的，不过你可以通过bridged关键字转换。
-*/
-layer.contents = (__bridge id)image.CGImage;
-/**
-    利用CALayer在一个普通的UIView中显示了一张图片。这不是一个UIImageView，它不是我们通常用来展示图片的方法。
-*/
-</code></pre>
-
-<h4 id="toc_3">contentGravity</h4>
-
-<p>我们这样设置的图片也会适应视图拉伸，CALay也有个属性<code>contentsGravity</code>,它是个NSString类型，<br/>
-类似于UIView的<code>contentMode</code>，<code>contentsGravity</code> 的目的是为了决定内容在图层的边界<br/>
-中怎么对齐，我们将使用<code>kCAGravityResizeAspect</code>，它的效果等同于<br/>
-<code>UIViewContentModeScaleAspectFit</code>.</p>
-
-<pre><code class="language-objc">self.layerView.layer.contentsGravity = kCAGravityResizeAspect;
-</code></pre>
-
-<h4 id="toc_4">contentScale</h4>
-
-<p><code>contentsScale</code>属性其实属于支持高分辨率（又称Hi-DPI或Retina）屏幕机制的一部分。它用来判断在绘制图层的时候应该为寄宿图创建的空间大小，和需要显示的图片的拉伸度（假设并没有设置<code>contentsGravity</code>属性）。UIView有一个类似功能但是非常少用到的<code>contentScaleFactor</code>属性。<br/>
-如果<code>contentsScale</code>设置为1.0，将会以每个点1个像素绘制图片，如果设置为2.0，则会以每个点2个像素绘制图片，这就是我们熟知的<code>Retina</code>屏幕。这并不会对我们在使用<code>kCAGravityResizeAspect</code>时产生任何影响，因为它就是拉伸图片以适应图层而已，根本不会考虑到分辨率问题。但是如果我们把<code>contentsGravity</code>设置为<code>kCAGravityCenter</code>（这个值并不会拉伸图片），那将会有很明显的变化</p>
-
-<pre><code class="language-objc">self.layerView.layer.contentsGravity = kCAGravityCenter;
-self.layerView.layer.contentsScale = image.scale;
-
-/**
-当用代码的方式来处理寄宿图的时候，一定要记住要手动的设置图层的 contentsScale 属性
-，否则，你的图片在Retina设备上就显示得不正确啦
-*/
-layer.contentsScale = [UIScreen mainScreen].scale;
-</code></pre>
-
-<h4 id="toc_5">maskToBounds</h4>
-
-<p>UIView有一个叫做<code>clipsToBounds</code>的属性可以用来决定是否显示超出边界的内容，CALayer对应的属性叫做<code>masksToBounds</code></p>
-
-<h4 id="toc_6">contentRect</h4>
-
-<p>CALayer的 <code>contentsRect</code> 属性允许我们在图层边框里显示寄宿图的一个子域。<br/>
-它使用单位坐标,指定0到1之间是一个相对值（像素和点就是绝对值）,相对于寄宿图的尺寸</p>
-
-<p>默认<code>contentRect</code>是{0，0，1，1},着整个寄宿图默认都是可见的，如果我们指定一个小一点的矩形，图片就会被裁剪<br/>
-事实上给 contentsRect 设置一个负数的原点或是大于{1, 1}的尺寸也是可以的。这种情况下，最外面的像素会被拉伸以填充剩下的区域。</p>
-
-<p><strong>iOS中的坐标系统:</strong></p>
-
-<ul>
-<li>点 —— 在iOS和Mac OS中最常见的坐标体系。点就像是虚拟的像素，也被称作逻辑像素。在标准设备上，一个点就是一个像素，但是在Retina设备上，一个点等于2*2个像素。iOS用点作为屏幕的坐标测算体系就是为了在Retina设备和普通设备上能有一致的视觉效果。</li>
-<li>像素 —— 物理像素坐标并不会用来屏幕布局，但是仍然与图片有相对关系。UIImage是一个屏幕分辨率解决方案，所以指定点来度量大小。但是一些底层的图片表示如CGImage就会使用像素，所以你要清楚在Retina设备和普通设备上，他们表现出来了不同的大小。</li>
-<li>单位 —— 对于与图片大小或是图层边界相关的显示，单位坐标是一个方便的度量方式， 当大小改变的时候，也不需要再次调整。单位坐标在OpenGL这种纹理坐标系统中用得很多，Core Animation中也用到了单位坐标。</li>
-</ul>
-
-<h4 id="toc_7">contentsCenter</h4>
-
-<p><code>contentsCenter</code>是一个CGRect,定义了一个固定的边框和一个在图层上可拉伸的区域.</p>
-
-<p>默认是{0，0，1，1},即当视图大小改变时会均匀大小的拉伸,但是当我们改变这个rect后,横向或者纵向拉伸图片时就只会拉伸我们选定的区域（是rect的区域被拉伸而不是rect之外区域被拉伸）</p>
-
-<p>工作起来的效果和<code>UIImage</code>里的<code>-resizableImageWithCapInsets:</code>方法效果非常类似，只是它可以运用到任何寄宿图，甚至包括在Core Graphics运行时绘制的图形</p>
-
-<p><strong>注意</strong><br/>
-这个属性我们是可以在xib中直接设置的:<br/>
-<img src="media/14883679213714/14891971745538.jpg" alt=""/></p>
-
-<h4 id="toc_8">Custom Drawing</h4>
-
-<p>当然我们设置寄宿图的方法不仅仅只有给<code>content</code>赋值CGImage，我们也可以用Core Grapic直接绘制。我们可以通过继承UIView并且重写<code>-drawRect:</code>方法进行自定义绘制  </p>
-
-<p><code>drawRect</code>方法并没有默认实现，因为对于UIView来说,寄宿图并不是必须的，但是当UIView检测到<code>-drawRect:</code>被调用就会为视图分配一个寄宿图，寄宿图的像素尺寸等于视图大小乘以 <code>contentsScale</code>的值。如果不需要寄宿图就没必要创建这个方法会造成cpu、内存浪费，空的方法也不行.  </p>
-
-<p>当视图在屏幕上出现的时候 <code>-drawRect:</code>方法就会被自动调用。<code>-drawRect:</code> 方法里面的代码利用<code>Core Graphics</code>去绘制一个寄宿图，然后内容就会被缓存起来直到它需要被更新(通常是因为开发者调用了<code>-setNeedsDisplay</code>方法,尽管影响到表现效果属性值被更改时，视图类型会自动重绘，如bounds属性)。  </p>
-
-<p>虽然<code>-drawRect:</code>方法是一个UIView方法，事实上都是底层的<code>CALayer</code>安排了重绘工作和保存了因此产生的图片。</p>
-
-<h4 id="toc_9">CALayeDelegate</h4>
-
-<p><strong>CALaye的代理</strong></p>
-
-<p><strong>这个并不常用</strong></p>
-
-<p>实现了 <code>CALayerDelegate</code> 协议，当<code>CALayer</code>需要一个内容特定的信息时，就会从协议中请求.<br/>
-当需要被重绘的时候，CALayer会请求他的代理给他一个寄宿图来显示.</p>
-
-<pre><code class="language-objc">//如果想直接设置contents属性时,可以这样
--(void)displayLayer:(CALayerCALayer *)layer;
-//如果代理不实现 -displayLayer: 方法 就会调用
-- (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx;
-/**
-    在调用这个方法之前CALayer创建一个合适尺寸的空寄宿图（尺寸由bounds
-    和contentScale决定）和一个coreGraphic绘制的上下文环境ctx
-*/ 
-</code></pre>
-
-<p>举个栗子:</p>
-
-<pre><code class="language-objc">CALayer *blueLayer = [CALayer layer];
-[self.layerView.layer addSublayer:blueLayer];
-[blueLayer display];//强制layer重绘
-
-//代理
-- (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx
-{
-    //draw a thick red circle
-    CGContextSetLineWidth(ctx, 10.0f);
-    CGContextSetStrokeColorWithColor(ctx, [UIColor redColor].CGColor);
-    CGContextStrokeEllipseInRect(ctx, layer.bounds);
-}
-
-</code></pre>
-
-<p><strong>注意</strong><br/>
-我们在blueLayer上显式地调用了<code>-display</code>。不同于UIView，当图层显示在屏幕上时，CALayer不会自动重绘它的内容。它把重绘的决定权交给了开发者。</p>
-
-<p>除非你创建了一个单独的图层，你几乎没有机会用到CALayerDelegate协议,因为当UIView创建了它的宿主图层时，它就会自动地把图层的<code>delegate</code>设置为它自己，并提供了一个<code>-displayLayer:</code>的实现</p>
-
-<p>当使用寄宿了视图的图层的时候，你也不必实现<code>-displayLayer:</code>和<code>-drawLayer:inContext:</code>方法来绘制你的寄宿图。通常做法是实现UIView的<code>-drawRect:</code>方法，UIView就会帮你做完剩下的工作，包括在需要重绘的时候调用<code>-display</code>方法。</p>
-
-                        
-                      </div>
-                  </div>
-                </a>
-                <div class="read-more clearfix">
-                  <div class="more-left left">
-                  
-                    <span class="date">2017/3/1</span>
-                    <span>posted in&nbsp;</span> 
-          				  
-          					    <span class="posted-in"><a href='iOS-CoreAnimation.html'>iOS-CoreAnimation</a></span>
-          				   
-                  </div>
-                  <div class="more-right right">
-                  <span class="comments">
-                      
-
-                       
-                  </span>
-                  </div>
-                </div>
-              </div><!-- article -->
-        
-			<div class="article">
-                <a class="clearlink" href="14882730004281.html">
-                
-                  <h1>拾遗</h1>
-                  <div class="a-content">
-                      
-                      <div class="a-content-text">
-                        
-                        	<h2 id="toc_0">super</h2>
-
-<p>在Objective-C中，如果我们需要在类的方法中调用父类的方法时，通常都会用到<code>super</code></p>
-
-<p>首先我们需要知道的是super与self不同。<code>self</code>是类的一个隐藏参数，每个方法的实现的第一个参数即为self。而<code>super</code>并不是隐藏参数，它实际上只是一个”编译器标示符”，它负责告诉编译器，当调用<code>viewDidLoad</code>方法时，去调用父类的方法，而不是本类中的方法。而它实际上与self指向的是相同的消息接收者。</p>
-
-<pre><code class="language-objc">struct objc_super { id receiver; Class superClass; };
-</code></pre>
-
-<p><code>receiver</code>：即消息的实际接收者<br/>
-<code>superClass</code>：指针当前类的父类</p>
-
-<p>当我们使用super来接收消息时，编译器会生成一个<code>objc_super</code>结构体。就上面的例子而言，这个结构体的<code>receiver</code>就是<code>MyViewController</code>对象，与<code>self</code>相同；<code>superClass</code>指向<code>MyViewController的父类UIViewController</code>。</p>
-
-<p>接下来，发送消息时，不是调用<code>objc_msgSend</code>函数，而是调用<code>objc_msgSendSuper</code>函数，其声明如下：</p>
-
-<pre><code class="language-objc">id objc_msgSendSuper ( struct objc_super *super, SEL op, ... );
-</code></pre>
-
-<p>该函数实际的操作是：从objc_super结构体指向的superClass的方法列表开始查找viewDidLoad的selector，找到后以objc-&gt;receiver去调用这个selector：</p>
-
-<pre><code class="language-objc">objc_msgSend(objc_super-&gt;receiver, @selector(viewDidLoad))
-</code></pre>
-
-<p>由于<code>objc_super-&gt;receiver</code>就是<code>self</code>本身，所以该方法实际与下面这个调用是相同的：</p>
-
-<p><code>objc_msgSend(self, @selector(viewDidLoad))</code></p>
-
-<pre><code>![](media/14882730004281/14883295157748.jpg)
-</code></pre>
-
-<h2 id="toc_1">库相关操作</h2>
-
-<p>库相关的操作主要是用于获取由系统提供的库相关的信息，主要包含以下函数</p>
-
-<pre><code class="language-objc">// 获取所有加载的Objective-C框架和动态库的名称
-const char ** objc_copyImageNames ( unsigned int *outCount );
-// 获取指定类所在动态库
-const char * class_getImageName ( Class cls );
-// 获取指定库或框架中所有类的类名
-const char ** objc_copyClassNamesForImage ( const char *image, unsigned int *outCount );
-</code></pre>
-
-<p>通过这几个函数，我们可以了解到某个类所有的库，以及某个库中包含哪些类。</p>
-
-<pre><code class="language-objc">NSLog(@&quot;获取指定类所在动态库&quot;);
-NSLog(@&quot;UIView&#39;s Framework: %s&quot;, class_getImageName(NSClassFromString(@&quot;UIView&quot;)));
-NSLog(@&quot;获取指定库或框架中所有类的类名&quot;);
-const char ** classes = objc_copyClassNamesForImage(class_getImageName(NSClassFromString(@&quot;UIView&quot;)), &amp;outCount);
-for (int i = 0; i &lt; outCount; i++) {
-    NSLog(@&quot;class name: %s&quot;, classes[i]);
-}
-//输出结果
-2014-11-08 12:57:32.689 [747:184013] 获取指定类所在动态库
-2014-11-08 12:57:32.690 [747:184013] UIView&#39;s Framework: /System/Library/Frameworks/UIKit.framework/UIKit
-2014-11-08 12:57:32.690 [747:184013] 获取指定库或框架中所有类的类名
-2014-11-08 12:57:32.691 [747:184013] class name: UIKeyboardPredictiveSettings
-2014-11-08 12:57:32.691 [747:184013] class name: _UIPickerViewTopFrame
-2014-11-08 12:57:32.691 [747:184013] class name: _UIOnePartImageView
-2014-11-08 12:57:32.692 [747:184013] class name: _UIPickerViewSelectionBar
-2014-11-08 12:57:32.692 [747:184013] class name: _UIPickerWheelView
-2014-11-08 12:57:32.692 [747:184013] class name: _UIPickerViewTestParameters
-......
-</code></pre>
-
-<h2 id="toc_2">块操作</h2>
-
-<p>block给我们带到极大的方便，苹果也不断提供一些使用block的新的API。同时，苹果在runtime中也提供了一些函数来支持针对block的操作，这些函数包括：</p>
-
-<pre><code class="language-objc">// 创建一个指针函数的指针，该函数调用时会调用特定的block
-IMP imp_implementationWithBlock ( id block );
-// 返回与IMP(使用imp_implementationWithBlock创建的)相关的block
-id imp_getBlock ( IMP anImp );
-// 解除block与IMP(使用imp_implementationWithBlock创建的)的关联关系，并释放block的拷贝
-BOOL imp_removeBlock ( IMP anImp );
-</code></pre>
-
-<p><code>imp_implementationWithBlock</code>函数：参数block的签名必须是<code>method_return_type ^(id self, method_args …)</code>形式的。该方法能让我们使用block作为IMP。如下代码所示：</p>
-
-<p>举个栗子：</p>
-
-<pre><code class="language-objc">@interface MyRuntimeBlock : NSObject
-@end    
-@implementation MyRuntimeBlock
-@end
-// 测试代码
-IMP imp = imp_implementationWithBlock(^(id obj, NSString *str) {
-    NSLog(@&quot;%@&quot;, str);
-});
-class_addMethod(MyRuntimeBlock.class, @selector(testBlock:), imp, &quot;v@:@&quot;);
-MyRuntimeBlock *runtime = [[MyRuntimeBlock alloc] init];
-[runtime performSelector:@selector(testBlock:) withObject:@&quot;hello world!&quot;];
-
-//输出结果
-2014-11-09 14:03:19.779 [1172:395446] hello world!
-</code></pre>
-
-<h2 id="toc_3">弱引用操作</h2>
-
-<pre><code class="language-objc">// 加载弱引用指针引用的对象并返回
-id objc_loadWeak ( id *location );
-// 存储__weak变量的新值
-id objc_storeWeak ( id *location, id obj );
-</code></pre>
-
-<p><code>objc_loadWeak</code>函数：该函数加载一个弱指针引用的对象，并在对其做retain和autoreleasing操作后返回它。这样，对象就可以在调用者使用它时保持足够长的生命周期。该函数典型的用法是在任何有使用<code>__weak</code>变量的表达式中使用。</p>
-
-<p><code>objc_storeWeak</code>函数：该函数的典型用法是用于<code>__weak</code>变量做为赋值对象时。</p>
-
-<h2 id="toc_4">宏定义</h2>
-
-<p>在runtime中，还定义了一些宏定义供我们使用，有些值我们会经常用到，如表示<code>BOOL</code>值的<code>YES/NO</code>；而有些值不常用，如<code>OBJC_ROOT_CLASS</code>。在此我们做一个简单的介绍。</p>
-
-<h3 id="toc_5">布尔值</h3>
-
-<pre><code class="language-objc">#define YES  (BOOL)1
-#define NO   (BOOL)0
-</code></pre>
-
-<p>这两个宏定义定义了表示布尔值的常量，需要注意的是YES的值是1，而不是非0值。</p>
-
-<h3 id="toc_6">空值</h3>
-
-<pre><code class="language-objc">#define nil  __DARWIN_NULL
-#define Nil  __DARWIN_NULL
-</code></pre>
-
-<p>其中nil用于空的实例对象，而Nil用于空类对象。</p>
-
-<h3 id="toc_7">分发函数原型</h3>
-
-<pre><code class="language-objc">#define OBJC_OLD_DISPATCH_PROTOTYPES  1
-</code></pre>
-
-<p>该宏指明分发函数是否必须转换为合适的函数指针类型。当值为0时，必须进行转换</p>
-
-<h3 id="toc_8">Objective-C根类</h3>
-
-<pre><code class="language-objc">#define OBJC_ROOT_CLASS
-</code></pre>
-
-<p>如果我们定义了一个Objective-C根类，则编译器会报错，指明我们定义的类没有指定一个基类。这种情况下，我们就可以使用这个宏定义来避过这个编译错误。该宏在iOS 7.0后可用。</p>
-
-<p>其实在NSObject的声明中，我们就可以看到这个宏的身影，如下所示：</p>
-
-<pre><code class="language-objc">__OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0)
-OBJC_ROOT_CLASS
-OBJC_EXPORT
-@interface NSObject &lt;NSObject&gt; {
-    Class isa  OBJC_ISA_AVAILABILITY;
-}
-</code></pre>
-
-<h3 id="toc_9">局部变量存储时长</h3>
-
-<pre><code class="language-objc">#define NS_VALID_UNTIL_END_OF_SCOPE
-</code></pre>
-
-<p>该宏表明存储在某些局部变量中的值在优化时不应该被编译器强制释放。</p>
-
-<p>我们将局部变量标记为id类型或者是指向ObjC对象类型的指针，以便存储在这些局部变量中的值在优化时不会被编译器强制释放。相反，这些值会在变量再次被赋值之前或者局部变量的作用域结束之前都会被保存。</p>
-
-<h3 id="toc_10">关联对象行为</h3>
-
-<pre><code class="language-objc">enum {
-   OBJC_ASSOCIATION_ASSIGN  = 0,
-   OBJC_ASSOCIATION_RETAIN_NONATOMIC  = 1,
-   OBJC_ASSOCIATION_COPY_NONATOMIC  = 3,
-   OBJC_ASSOCIATION_RETAIN  = 01401,
-   OBJC_ASSOCIATION_COPY  = 01403
+                        	<p>在Objective-C中，用__weak修饰的指针，会在所指向的那个Objective-C对象被释放后，自动指向nil。</p>
+
+<p>参考<a href="http://www.jianshu.com/p/fe9865814668">weak是怎么实现的</a></p>
+
+<p>通俗的解释就是，在Objective-C的运行时环境中，维护了一种<strong>weak表</strong>，这张<strong>哈希表</strong>用对象的首地址作为键，将由若干个__weak修饰的指针自身的地址组成的数组作为值。当一个Objective-C对象被释放后，通过这个对象的起始地址来找到所有指向它的__weak指针，并将它们指向nil。</p>
+
+<p>ARC下，编译器会生成一个全局的散列表数组，每个散列表的大小上限为128Byte，取这个数值也是为了和cache line size（64Byte）对齐，对于iOS系统，这个数组的大小为8*128（Byte），可以存放8张散列表<code>SideTable</code>结构体。<br/>
+一个对象的首地址经过哈希之后可以确定这个对象映射到那个<code>SideTable</code>。<br/>
+一个<code>SideTable</code>结构体中包含了一个<code>weak_table</code>:</p>
+
+<pre><code class="language-objc">struct SideTable {
+    //.......
+    weak_table_t weak_table;
+    //.......
+};
+
+struct weak_table_t {
+    weak_entry_t *weak_entries;
+    size_t    num_entries;
+    uintptr_t mask;
+    uintptr_t max_hash_displacement;
 };
 </code></pre>
 
+<p>根据对象首地址查找weak_entry的方法为weak_entry_for_referent()，可以看到其中对对象首地址做了一次哈希，得到了对应的index。如果发生碰撞，则index依次+1，遍历整个数组，检查是否能获得正确的weak_entry_t对象。</p>
+
+<pre><code class="language-objc">#define WEAK_INLINE_COUNT 4
+struct weak_entry_t {
+    DisguisedPtr&lt;objc_object&gt; referent;
+    union {
+        struct {
+            weak_referrer_t *referrers;//就是这个weak指针指向的对象地址
+            uintptr_t        out_of_line : 1;
+            uintptr_t        num_refs : PTR_MINUS_1;
+            uintptr_t        mask;
+            uintptr_t        max_hash_displacement;
+        };
+        struct {
+            // out_of_line=0 is LSB of one of these (don&#39;t care which)
+            weak_referrer_t  inline_referrers[WEAK_INLINE_COUNT];
+        };
+    };
+};
+</code></pre>
+
+<p>其中的<code>weak_referrer_t</code>实际就是指向Objective-C对象的指针的地址的类型：</p>
+
+<pre><code class="language-objc">typedef objc_object ** weak_referrer_t;
+</code></pre>
+
+<p>弱引用销毁过程:</p>
+
+<p>在<code>runtime</code>的代码中，可以找到一个叫做<code>weak_clear_no_lock</code>的方法，它的注释表明，这个方法会被<code>dealloc</code>方法调用，然后将被销毁对象所对应的所有弱引用指针都置为<code>nil</code>。</p>
+
+<p>过程:<br/>
+1. 利用即将被销毁的对象的首地址，找到对应的weak_entry_t。<br/>
+2. 从weak_entry_t对象中获取指向weak_referrer_t数组的指针。<br/>
+3. 遍历这个数组，对于数组中的每个元素，检查是否真的指向即将被销毁的对象的首地址，如果是，则将它指向nil，如果不是则报错。<br/>
+4. 释放这个weak_entry_t对象，并更新weak_table_t中的entry数目。如果有必要，对weak_table_t进行缩容。</p>
+
+<p>补充:<br/>
+当使用一个__weak指针时，<code>objc_loadWeakRetained()</code>和<code>objc_release()</code>函数都被调用了。</p>
+
+<p>其中<code>objc_loadWeakRetained()</code>会调用<code>retainWeakReference</code>方法，如果某个类重写了<code>retainWeakReference</code>方法并返回<code>NO</code>，则这个<code>__weak</code>指针获取的就永远是<code>nil</code>了。</p>
+
+<p>为什么需要在使用一个__weak指针时调用objc_loadWeakRetained()函数呢:是为了确保在使用这个__weak指针的过程中，指向的对象不被释放。</p>
+
                         
                       </div>
                   </div>
@@ -520,10 +232,510 @@ OBJC_EXPORT
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/28</span>
+                    <span class="date">2017/3/20</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E8%BF%90%E8%A1%8C%E6%97%B6.html'>运行时</a></span>
+          					    <span class="posted-in"><a href='iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html'>iOS开发知识</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+			<div class="article">
+                <a class="clearlink" href="14896343426276.html">
+                
+                  <h1>专用图层</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<p>是Core Animation图层不仅仅能作用于图片和颜色而已。</p>
+
+<p>补充点:<br/>
+想UIView的图层上添加另外一个UIView的图层是会有两个UIVIew的（UIView的层级关系）<br/>
+像一个纯Layer上添加另外一个UIView的图层,就仅仅只是添加了这个视图的图层,这个视图不会在视图的层级关系中体现.</p>
+
+<h3 id="toc_0">CAShapeLayer</h3>
+
+<p><code>CAShapeLayer</code> 是一个通过矢量图形而不是<code>bitmap</code>来绘制的图层子类.<br/><br/>
+即<code>CAShapeLayer</code>与<code>CGPath</code>搭配来绘制图形.与用<code>Core Graphics</code>直接向原始的<code>CALyer</code>的内容中绘制一个路径相比：  </p>
+
+<ul>
+<li>渲染快速（ CAShapeLayer 使用了硬件加速）</li>
+<li>高效使用内存（CAShapeLayer 不需要像普通 CALayer 一样创建一个寄宿图形）</li>
+<li>不会被图层边界剪裁掉（CAShapeLayer 可以在边界之外绘制）</li>
+<li>不会出现像素化（当你给 CAShapeLayer 做3D变换时，它不像一个有寄宿图的普通图层一样变得像素化）</li>
+</ul>
+
+<h4 id="toc_1">CGPath</h4>
+
+<p><code>CGPath</code>来创建形状,一定要闭合,可以设置一些属性lineWith、lineCap 、lineJoin等,但是一个图层只有一次机会设置,如果想要想用不同颜色或风格来绘制多个形状，就不得不为每个形状准备一个图层了。  </p>
+
+<pre><code class="language-objc">//create shape layer
+CAShapeLayer *shapeLayer = [CAShapeLayer layer];
+shapeLayer.strokeColor = [UIColor redColor].CGColor;
+shapeLayer.fillColor = [UIColor clearColor].CGColor;
+shapeLayer.lineWidth = 5;
+shapeLayer.lineJoin = kCALineJoinRound;
+shapeLayer.lineCap = kCALineCapRound;
+shapeLayer.path = path.CGPath;
+</code></pre>
+
+<h4 id="toc_2">圆角</h4>
+
+<p>我们虽然可以用<code>CALayer</code>的<code>cornerRadius</code>可以设置圆角，但是我使用<code>CAShapeLayer</code>来单独指定每个角的形状.</p>
+
+<pre><code class="language-objc">CGRect rect = CGRectMake(50, 50, 100, 100);
+CGSize radii = CGSizeMake(20, 20);
+UIRectCorner corners = UIRectCornerTopRight | UIRectCornerBottomRight | UIRectCornerBottomLeft;
+//create path
+UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:rect byRoundingCorners:corners cornerRadii:radii];
+</code></pre>
+
+<p>然后我们可以通过这个图层路径绘制一个既有直角又有圆角的视图,如果我们想依照此图形来剪裁视图内容，我们可以把<strong><code>CAShapeLayer</code>作为视图的宿主图层</strong>，而不是添加一个子视图</p>
+
+<h3 id="toc_3">CATextLayer</h3>
+
+<p>如果我们想要在一个图层中显示文字,我们可以通过借助图层的代理,直接将字符串用<code>Core<br/>
+Graphics</code>写入图层的内容--&gt;这就是UILabel实现  </p>
+
+<p>如果不用上面的方式,我们还有比较简单的方式:<br/>
+<code>Core Animation</code>提供了一个<code>CALayer</code>的子类<code>CATextLayer</code>，它以图层的形式包含了<code>UILabel</code>几乎所有的绘制特性，并且额外提供了一些新的特性。而且<code>CATextLayer</code>也要比 <code>UILabel</code> 渲染得快得多</p>
+
+<pre><code class="language-objc">CATextLayer *textLayer = [[CATextLayer alloc] init];
+    textLayer.frame = self.textLayerView.bounds;
+    [self.textLayerView.layer addSublayer:textLayer];
+    //用retina屏进行渲染,否则文字会像素化
+    textLayer.contentsScale = [UIScreen mainScreen].scale;
+    //颜色 默认黑色
+    textLayer.foregroundColor = [UIColor yellowColor].CGColor;
+    
+    textLayer.alignmentMode = kCAAlignmentJustified;
+    
+    //这个属性为yes后为根据内容进行多行显示,Yes就是一行
+    textLayer.wrapped = NO;
+    
+    UIFont *font = [UIFont systemFontOfSize:15];
+    CFStringRef fontName = (__bridge CFStringRef)(font.fontName);
+    CGFontRef fontRef = CGFontCreateWithFontName(fontName);
+    textLayer.font = fontRef;
+    //字体大小是单独设置的
+    textLayer.fontSize = 10;
+    //设置显示字体
+    textLayer.string = @&quot;zhe shi yi ge textLayer&quot;;
+</code></pre>
+
+<p><code>CATextLayer</code> 的 <code>font</code> 属性不是一个 <code>UIFont</code> 类型，而是一个 <code>CFTypeRef</code> 类型。这样可以根据你的具体需要来决定字体属性应该是用 <code>CGFontRef</code> 类型还是 <code>CTFontRef</code> 类型（<code>Core Text</code>字体）。</p>
+
+<p>因为 <code>CTFontRef</code> 和 <code>CGFontRef</code> 并不像UIFont一样包含点大小，因此我们需要<strong>单独设置字体大小</strong>;</p>
+
+<p>CATextLayer 的<code>string</code>属性是<code>id</code>类型的，因此我们可以用<code>NSString</code>和<code>NSAttributedString</code>来指定文本。  <strong>注意</strong>， <code>NSAttributedString</code> 并不是 <code>NSString</code> 的子类。属性化字符串是iOS用来渲染字体风格的机制，它以特定的方式来决定指定范围内的字符串的原始信息，比如字体，颜色，字重，斜体等。</p>
+
+<h4 id="toc_4">富文本</h4>
+
+<p>iOS6之后，苹果给UILabel和UIKit添加直接的属性字符串支持.从iOS3.2开始 CATextLayer 就已<br/>
+经支持属性化字符串了(可以这样支持低版本 不过他吗太低了吧)。<br/><br/>
+我们可以看下CATextLayer的富文本:</p>
+
+<pre><code class="language-objc">//convert UIFont to a CTFont
+CFStringRef fontName = (__bridge CFStringRef)font.fontName;
+CGFloat fontSize = font.pointSize;
+CTFontRef fontRef = CTFontCreateWithName(fontName, fontSize, NULL);
+
+//set text attributes
+NSDictionary *attribs = @{(__bridge id)kCTForegroundColorAttributeName:(__bridge id)[UIColor blackColor].CGColor, 
+(__bridge id)kCTFontAttributeName: (__bridge id)fontRef};
+[string setAttributes:attribs range:NSMakeRange(0, [text length])];
+
+attribs = @{(__bridge id)kCTForegroundColorAttributeName: (__bridge id)[UIColor redColor].CGColor,
+(__bridge id)kCTUnderlineStyleAttributeName:@(kCTUnderlineStyleSingle),(__bridge id)kCTFontAttributeName: (__bridge id)fontRef};
+[string setAttributes:attribs range:NSMakeRange(6, 5)];
+//release the CTFont we created earlier
+CFRelease(fontRef);
+//set layer text
+textLayer.string = string;
+
+</code></pre>
+
+<h4 id="toc_5">行距和字距</h4>
+
+<p>由于绘制的实现机制不同（<code>Core Text</code>和<code>WebKit</code>），用 <code>CATextLayer</code> 渲染和用 <code>UILabel</code> 渲染出的文本行距和字距也不是不尽相同的。(影响不大)</p>
+
+<h4 id="toc_6">UILabel替代品</h4>
+
+<p>CATextLayer 比 UILabel 有着更好的性能表现,虽然UILabel很好用,但是如果我们非要找个UILabel替代品的话,有以下方法:</p>
+
+<ol>
+<li><p>继承 UILabel后添加一个子图层 CATextLayer 并重写显示文本的方法。<br/>
+但是仍然会有由<code>UILabel</code>的<code>-drawRect:</code>方法创建的空寄宿图。而且由于CALayer不能自动布局,我们不能根据内容自动方法图层.</p></li>
+<li><p>用 CATextLayer 作为宿主图层的 UILabel 子类<br/>
+每一个 <code>UIView</code> 都是寄宿在一个 <code>CALayer</code> 的示例上。这个图层是由视图自动创建和管理的，这个图层一旦被创建就无法替代,但是我们可以继承了<code>UIView</code>，重写其<code>+layerClass</code>UIView 会在初始化的时候调用 +layerClass 方法，然后用它的返回类型来创建宿主图层。</p></li>
+</ol>
+
+<p>把 CATextLayer 作为宿主图层的另一好处就是视图自动设置了 contentsScale 属性。</p>
+
+<p><strong>用 <code>+layerClass</code> 来创建基于不同图层的视图是一个简单可复用的方法</strong></p>
+
+<h3 id="toc_7">CATransformLayer</h3>
+
+<p>我们之前说过所有图层都把他的子图层平面化到一个场景中,因此没法做出3D的层级体系变换.<code>CALayer</code>中存在<code>CATransfromLayer</code>，它不同于一般图层，它不显示自己内容，只有当存在了一个能作用于子图层的变换它才真正存在。</p>
+
+<p>我们在前面创建过一个立方体的固体对象,但是因为这次我们是向CATransformLayer上添加图层，而不是之前的<code>contaninView</code>,我们<strong>不能向一个没有寄宿图的图层上添加有寄宿图图层</strong>(就是不能向一个不是UIVIew的Layer中添加另外一个UIView的layer，否则在视图体系中显示的添加的这个不是视图而是图层),因此我们选择向<code>CATransfromLayer</code>添加立方体图层.</p>
+
+<pre><code class="language-objc">//举一段代码栗子
+//create cube layer
+CATransformLayer *cube = [CATransformLayer layer];
+//add cube face 1（添加立方体的一个面）
+CATransform3D ct = CATransform3DMakeTranslation(0, 0, 50);
+//[self faceWithTransform:ct] 这个方法根据Transform3D返回了一个这种变换的图层
+[cube addSublayer:[self faceWithTransform:ct]];
+//添加6个面后
+...
+//center the cube layer within the container
+CGSize containerSize = self.containerView.bounds.size;
+cube.position = CGPointMake(containerSize.width / 2.0, containerSize.height / 2.0);
+/**
+设置这个立方体的旋转（我们可以不用设置containerView的subTransform属性来进行立方体变换,而且可
+以有几个立方体就能变换几种）
+*/
+cube.transform = transform;
+
+//设置contaninView的sublayerTransform保证透视和灭点
+CATransform3D pt = CATransform3DIdentity;
+pt.m34 = -1.0 / 500.0;
+self.containerView.layer.sublayerTransform = pt;
+//将不同形状的cube添加
+[self.containerView.layer addSublayer:cube1];
+</code></pre>
+
+<h3 id="toc_8">CAGradientLayer</h3>
+
+<p><code>CAGradientLayer</code>是用来生成两种或更多颜色平滑渐变的（绘制使用了硬件加速）.<br/>
+<code>CAGradientLayer</code>只适合做这种渐变没法定制,例如做环形渐变等,那样的话只能用<code>Core Graphic</code>了</p>
+
+<h4 id="toc_9">基础渐变</h4>
+
+<p>这是最简单的渐变,这些渐变色彩放在一个数组中，并赋给<code>colors</code>(<code>CGColorRef</code>类型)属性。</p>
+
+<p>CAGradientLayer 也有<code>startPoint</code>和<code>endPoint</code>属性，他们决定了渐变的方向。这两个参数是以单位坐标系进行的定义，所以左上角坐标是{0, 0}，右下角坐标是{1, 1}。</p>
+
+<pre><code class="language-objc">CAGradientLayer *gradientLayer = [CAGradientLayer layer];
+gradientLayer.frame = self.containerView.bounds;
+[self.containerView.layer addSublayer:gradientLayer];
+//set gradient colors
+gradientLayer.colors = @[(__bridge id)[UIColor redColor].CGColor, (__bridge id)[UIColor blueColor].CGColor];
+//set gradient start and end points
+gradientLayer.startPoint = CGPointMake(0, 0);
+gradientLayer.endPoint = CGPointMake(1, 1);
+</code></pre>
+
+<p><img src="media/14896343426276/14897191786083.jpg" alt=""/></p>
+
+<h4 id="toc_10">多重渐变</h4>
+
+<p><code>colors</code>属性是个数组,因此可以设置很多颜色的多重渐变.默认这些颜色在我们指定的空间是均匀渲染的,但是我们可以设置<code>location</code>属性来调整空间。<br/>
+<code>location</code>属性浮点型数组(以<code>NSNumber</code>包装),是以单位坐标(针对做渐变区域的单位坐标)系进行标定。0.0代表着渐变的开始，1.0代表着结束。<br/>
+<code>loaction</code>属性不一定非要设置,但是如果设置了,数组大小一定要与<code>colors</code>数组大小相同,否则会得到白色渐变.  </p>
+
+<pre><code class="language-objc">gradientLayer.colors = @[(__bridge id)[UIColor redColor].CGColor,(__bridge id)[UIColor blueColor].CGColor,(__bridge id)[UIColor greenColor].CGColor];
+/**
+    这个数组的意义是0.0-0.25为红色到黄色的渐变区域,0.25-0.5为黄色到绿色的渐变区域,
+    0.5之后为绿色的完全区域
+*/
+    gradientLayer.locations = @[@(0.1),@(0.5),@(0.9)];
+    gradientLayer.startPoint = CGPointMake(0.25, 0.25);
+    gradientLayer.endPoint = CGPointMake(0.5, 0.5);
+</code></pre>
+
+<p><img src="media/14896343426276/14897305344880.jpg" alt=""/></p>
+
+<h3 id="toc_11">CAReplicatorLayer</h3>
+
+<p><code>CAReplicatorLayer</code>的目的是为了高效生成许多相似的图层。它会绘制一个或多个图层的子图层，并在每个复制体上应用不同的变换。</p>
+
+<h4 id="toc_12">重复图层</h4>
+
+<p><code>instanceCount</code>属性指定了图层需要重复多少次<br/>
+<code>instanceTransform</code> 指定了一个 <code>CATransform3D</code> 3D变换，复制图层在被创建时产生的和上一个制图层的位移(位移的锚点是<code>CAReplicatorlayer</code>的中心点)<br/>
+<code>instanceDelay</code>在短时间内的复制延时,一般用在动画上(支持动画的延时)<br/>
+ <code>preservesDepth</code>如果设置为YES,图层将保持于CATransformLayer类似的性质和相同的限制<br/>
+ <code>instanceColor</code>设置这些复制图层的颜色,默认位白色(注意有可能会和要复制的图层的颜色冲突)<br/>
+ 变换是逐步增加的，每个实例都是相对于前一实例布局。因此这些复制体最终不会出现在同一位置上</p>
+
+<pre><code class="language-objc">CAReplicatorLayer *replicator = [CAReplicatorLayer layer];
+replicator.frame = self.containerView.bounds;
+[self.containerView.layer addSublayer:replicator];
+//重复多少次
+replicator.instanceCount = 10;
+
+CATransform3D transform = CATransform3DIdentity;
+transform = CATransform3DTranslate(transform, 0, 200, 0);
+transform = CATransform3DRotate(transform, M_PI / 5.0, 0, 0, 1);
+transform = CATransform3DTranslate(transform, 0, -200, 0);
+replicator.instanceTransform = transform;
+
+replicator.instanceBlueOffset = -0.1;
+replicator.instanceGreenOffset = -0.1;
+
+CALayer *layer = [CALayer layer];
+layer.frame = CGRectMake(100.0f, 100.0f, 100.0f, 100.0f);
+layer.backgroundColor = [UIColor whiteColor].CGColor;
+[replicator addSublayer:layer];
+
+</code></pre>
+
+<p>由于我们设置了<code>instanceBlueOffset</code>和 <code>instanceGreenOffset</code>属性.的颜色也在变化.除了这两个还有<code>instanceBlueOffset</code> <code>instanceAlphaOffset</code>这都是改变某个颜色通道的值</p>
+
+<p><code>CAReplicatorLayer</code> 真正应用到实际程序上的场景比如：一个游戏中导弹的轨迹云，或者粒子爆炸（尽管iOS 5已经引入了 <code>CAEmitterLayer</code> ，它更适合创建任意的粒子效果）。除此之外，还有一个实际应用是：<code>反射</code>。</p>
+
+<h4 id="toc_13">反射</h4>
+
+<p>创建一个指定视图的镜像照片,我们只需要使用<code>CAReplicatorLayer</code>并用一个负比例变换创建一个复制图层即可.</p>
+
+<pre><code class="language-objc">+ (Class)layerClass
+{
+return [CAReplicatorLayer class];
+}
+- (void)setUp
+{
+//configure replicator
+CAReplicatorLayer *layer = (CAReplicatorLayer *)self.layer;
+layer.instanceCount = 2;
+//move reflection instance below original and flip vertically
+//核心代码是这个动画
+CATransform3D transform = CATransform3DIdentity;
+CGFloat verticalOffset = self.bounds.size.height + 2;
+transform = CATransform3DTranslate(transform, 0, verticalOffset, 0);
+transform = CATransform3DScale(transform, 1, -1, 0);
+layer.instanceTransform = transform;
+//reduce alpha of reflection layer
+layer.instanceAlphaOffset = -0.6;
+}
+- (id)initWithFrame:(CGRect)frame
+{
+//this is called when view is created in code
+if ((self = [super initWithFrame:frame])) {
+[self setUp];
+}
+return self;
+}
+- (void)awakeFromNib
+{
+//this is called when view is created from a nib
+[self setUp];
+}
+</code></pre>
+
+<p>这个镜像的是整个ReflectView视图内容(是视图层次)<br/>
+因为现在这个VIew的layer已经变为<code>CAReplicatorLayer</code>所以我们对这个layer本身改变什么是不会镜像的,当然如果add的Layer内容也会被镜像</p>
+
+<p>大神写的自适应渐变淡出效果的<a href="https://github.com/nicklockwood/ReflectionView">ReflectView</a></p>
+
+<h3 id="toc_14">CAScrollLayer</h3>
+
+<p>之前我们显示大图层中的一小部分是使用图层的<code>contentRect</code>属性,但是如果我们想要滑动可视区域的话这样就不是很好的办法.</p>
+
+<p><code>CALayey</code>提供了一个子类<code>CAScrollLayer</code>.<br/>
+ <code>CAScrollLayer</code> 有一个 <code>-scrollToPoint:</code>方法，它自动适应 <code>bounds</code> 的原点以便图层内容现在滑动的地方。</p>
+
+<p>因为<code>Core Animation</code>是不处理用户输入的,所以<code>CAScrollLayer</code>并不负责将触摸事件转换为滑动事件，既不渲染滚动条，也不实现任何iOS指定行为例如滑动反弹.</p>
+
+<pre><code class="language-objc">//来用 CAScrollLayer 来常见一个基本的 UIScrollView 替代品
++ (Class)layerClass
+{
+    return [CAScrollLayer class];
+}
+//添加平移手势
+//在平移手势中滚动视图
+CGPoint offset = self.bounds.origin;
+offset.x -= [recognizer translationInView:self].x;
+offset.y -= [recognizer translationInView:self].y;
+//scroll the layer
+[(CAScrollLayer *)self.layer scrollToPoint:offset];
+//reset the pan gesture translation
+[recognizer setTranslation:CGPointZero inView:self];
+//当然我们可以自己做边界检查
+</code></pre>
+
+<p>其实<strong><code>UIScrollView</code> 并没有用 <code>CAScrollLayer</code></strong>，事实上，就是简单的通过直接操作图层边界来实现滑动。</p>
+
+<p>那么这个<code>CAScrollLayer</code>的作用是什么呢?<br/>
+在<code>CAScrollerLayer</code>的头文件中有一个<code>CALayer (CALayerScrolling)</code>的扩展分类,实现了一些：</p>
+
+<pre><code class="language-objc">- (void)scrollPoint:(CGPoint)p;
+- (void)scrollRectToVisible:(CGRect)r;
+@property(readonly) CGRect visibleRect;
+</code></pre>
+
+<p>其实这些方法或者属性并不是给<code>CALayer</code>添加了滑动功能,事实上他们只是放置在<code>CAScrollLayer</code>中的图层的实用方法,<code>scrollPoint:</code>方法从图层树中查找并找到第一个可用的<code>CAScrollLayer</code>，然后滑动它使得指定点成为可视的。<code>scrollRectToVisible:</code>方法实现了同样的事情只不过是作用在一个矩形上的。<code>visibleRect</code> 属性决定图层（如果存在的话）的哪部分是当前的可视区域。当涉及到实现图层滑动的时候就可以用上了</p>
+
+<h3 id="toc_15">CATiledLayer</h3>
+
+<p>我们有可能会需要加载一张高像素图片,这时候我们不适合读取整张图片到内存中,因为载入大图会非常的慢,将会阻塞线程造成卡顿.<br/>
+能高效绘制在iOS上的图片也有一个大小限制。所有显示在屏幕上的图片最终都会被转化为<code>OpenGL</code>纹理，同时<code>OpenGL</code>有一个最大的纹理尺寸（通常是2048*2048，或4096*4096，这个取决于设备型号）。如果你想在单个纹理中显示一个比这大的图，即便图片已经存在于内存中了，你仍然会遇到很大的性能问题，因为<code>Core Animation</code>强制用CPU处理图片而不是更快的GPU</p>
+
+<p>这时候我们可以用<code>CATiledLayer</code>,它可以将大图分解成小片然后将他们单独按需载入<br/>
+<strong>CATiledLayer 很好地和 UIScrollView 集成在一起。</strong></p>
+
+<pre><code class="language-objc">- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    //add the tiled layer
+    
+    /**
+    CATiledLayer 很好地和 UIScrollView 集成在一起。除了设置图层和滑动视图边界
+    以适配整个图片大小，我们真正要做的就是实现 -drawLayer:inContext: 方法，当
+    需要载入新的小图时， CATiledLayer 就会调用到这个方法。
+    */
+    
+    CATiledLayer *tileLayer = [CATiledLayer layer];
+    tileLayer.frame = CGRectMake(0, 0, 2048, 2048);
+    tileLayer.delegate = self; [self.scrollView.layer addSublayer:tileLayer];
+    //configure the scroll view
+    self.scrollView.contentSize = tileLayer.frame.size;
+    //draw layer
+    [tileLayer setNeedsDisplay];
+}
+- (void)drawLayer:(CATiledLayer *)layer inContext:(CGContextRef)ctx
+{
+    //determine tile coordinate
+    CGRect bounds = CGContextGetClipBoundingBox(ctx);
+    NSInteger x = floor(bounds.origin.x / layer.tileSize.width);
+    NSInteger y = floor(bounds.origin.y / layer.tileSize.height);
+    //load tile image
+    NSString *imageName = [NSString stringWithFormat: @&quot;Snowman_%02i_%02i&quot;, x, y];
+    NSString *imagePath = [[NSBundle mainBundle] pathForResource:imageName ofType:@&quot;jpg&quot;];
+    
+    UIImage *tileImage = [UIImage imageWithContentsOfFile:imagePath];
+    //draw tile
+    UIGraphicsPushContext(ctx);
+    [tileImage drawInRect:bounds];
+    UIGraphicsPopContext();
+}
+</code></pre>
+
+<p><code>CATiledLayer</code> 的默认以淡入的方式载入小图,可以用 <code>fadeDuration</code> 属性改变淡入时长或直接禁用<br/>
+掉。</p>
+
+<p><code>CATiledLayer</code> （不同于大部分的<code>UIKit</code> 和<code>Core Animation</code>方法）支持多线程绘制，<code>-drawLayer:inContext:</code>方法可以在多个线程中同时地并发调用，所以请小心谨慎地确保你在这个方法中实现的绘制代码是线程安全的。</p>
+
+<p><strong>补充</strong><br/>
+我们在使用<code>CATiledLayer *tileLayer = [CATiledLayer layer];</code>时载入图片并不是以以Retina的分辨率显示,我们可以<code>tileLayer.contentsScale = [UIScreen mainScreen].scale;</code>我们只需要设<br/>
+置了<code>CATiledLayer</code>的<code>contentsScale</code>即可(因为size是以像素为单位的,所以改变了contentsScale 就自动有了默认的小图尺寸),而不需要手工更新小图的尺寸或是在<code>Retina</code>分辨率下指定一个不同的小图。</p>
+
+<p>我们需要做的是适应小图渲染代码以对应安排 <code>scale</code>的变化</p>
+
+<pre><code class="language-objc">CGRect bounds = CGContextGetClipBoundingBox(ctx);
+CGFloat scale = [UIScreen mainScreen].scale;
+NSInteger x = floor(bounds.origin.x / layer.tileSize.width * scale);
+NSInteger y = floor(bounds.origin.y / layer.tileSize.height * scale);
+</code></pre>
+
+<h3 id="toc_16">CAEmitterLayer</h3>
+
+<p>iOS后引入了一个新的 <code>CALayer</code> 子类叫做 <code>CAEmitterLayer</code><br/>
+<code>CAEmitterLayer</code> 是一个高性能的粒子引擎，被用来创建实时例子动画如：烟雾，火，雨等等这些效果</p>
+
+<p><code>CAEmitterLayer</code>是很多<code>CAEmitterCell</code>的容器.这些<code>CAEmitierCell</code>定义了一个粒子效果.我们就是为不同的粒子效果定义一个或多个<code>CAEmitterCell</code>作为模版，同时<code>CAEmitterLayer</code>负责基于这些模版实例化一个粒子流。</p>
+
+<p><code>CAEmitterCell</code>它有一个<code>contents</code>属性可以定义为一个<code>CGImage</code>，还有一些可设置属性控制着表现和行为。<br/>
+举个栗子:</p>
+
+<pre><code class="language-objc">- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    //create particle emitter layer
+    CAEmitterLayer *emitter = [CAEmitterLayer layer];
+    emitter.frame = self.containerView.bounds;
+    [self.containerView.layer addSublayer:emitter];
+    //configure emitter
+    emitter.renderMode = kCAEmitterLayerAdditive;
+    emitter.emitterPosition = CGPointMake(emitter.frame.size.width / 2.0, emitter.frame.size.height / 2.0);
+    //create a particle template
+    CAEmitterCell *cell = [[CAEmitterCell alloc] init];
+    cell.contents = (__bridge id)[UIImage imageNamed:@&quot;Spark.png&quot;].CGImage;
+    cell.birthRate = 150;
+    cell.lifetime = 5.0;
+    cell.color = [UIColor colorWithRed:1 green:0.5 blue:0.1 alpha:1.0].CGColor;
+    cell.alphaSpeed = -0.4;
+    cell.velocity = 50;
+    cell.velocityRange = 50;
+    cell.emissionRange = M_PI * 2.0;
+    //add particle template to emitter
+    emitter.emitterCells = @[cell];
+}
+@end
+</code></pre>
+
+<p><code>CAEMitterCell</code>的属性基本上可以分为三种：</p>
+
+<ul>
+<li>这种粒子某一属性的初始值。比如，<code>color</code>属性指定了一个可以混合图片内容颜色的混合色。在示例中，我们将它设置为桔色。</li>
+<li>粒子某一属性的变化范围。比如<code>emissionRange</code>属性的值是2π，这意味着粒子可以从360度任意位置反射出来。如果指定一个小一些的值，就可以创造出一个圆锥形</li>
+<li>指定值在时间线上的变化。比如，在示例中，我们将<code>alphaSpeed</code>设置为-0.4，就是说例子的透明度每过一秒就是减少0.4，这样就有发射出去之后逐渐消失的效果。</li>
+</ul>
+
+<p><code>CAEmitterLayer</code>的属性它自己控制着整个例子系统的位置和形状。一些属性比如 <code>birthRate</code>， <code>lifetime</code>和<code>celocity</code>，这些属性在<code>CAEmitterCell</code>中也有。这些属性会以相乘的方式作用在一起，这样你就可以用一个值来加速或者扩大整个例子系统。</p>
+
+<ul>
+<li><code>preservesDepth</code>，是否将3D例子系统平面化到一个图层（默认值）或者可以在3D空间中混合其他的图层</li>
+<li><code>renderMode</code>，控制着在视觉上粒子图片是如何混合的。示例中我们把它设置为<code>kCAEmitterLayerAdditive</code> ，它实现了这样一个效果：合并例子重叠部分的亮度使得看上去更亮。如果我们把它设置为默认的<code>kCAEmitterLayerUnordered</code>，效果就没那么好看了</li>
+</ul>
+
+<p><strong>注意</strong><br/>
+之前我们学习了<code>CAReplicatorLayer</code> 它的真正应用到实际程序上的场景比如：一个游戏中导弹的轨迹云,或者反射等</p>
+
+<h3 id="toc_17">CAEAGLLayer</h3>
+
+<p>再议</p>
+
+<h3 id="toc_18">AVPlayerLayer</h3>
+
+<p>它不是<code>Core Animation</code>框架的一部分，是在<code>AVFoundation</code>框架中的,但是它，提供了一个<code>CALayer</code> 子类来显示自定义的内容类型.</p>
+
+<p><code>AVPlayerLayer</code> 是用来在iOS上播放视频的。他是高级接口例如<code>MPMoivePlayer</code>的底层实现，提供了显示视频的底层控制。</p>
+
+<p><code>AVPlayerLayer</code>的使用相当简单：你可以用<code>+playerLayerWithPlayer:</code>方法创建一个已经绑定了视频播放器的图层，或者你可以先创建一个图层，然后用<code>player</code>属性绑定一个<code>AVPlayer</code>实例。</p>
+
+<pre><code class="language-objc">- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    //get video URL
+    NSURL *URL = [[NSBundle mainBundle] URLForResource:@&quot;Ship&quot; withExtension:@&quot;mp4&quot;];
+    //create player and player layer
+    AVPlayer *player = [AVPlayer playerWithURL:URL];
+    AVPlayerLayer *playerLayer = [AVPlayerLayer playerLayerWithPlayer:player];
+    //set player layer frame and attach it to our view
+    playerLayer.frame = self.containerView.bounds;
+    [self.containerView.layer addSublayer:playerLayer];
+    //play the video
+    [player play];
+}
+</code></pre>
+
+<p><strong>注意</strong><br/>
+因为Core Animation并不支持自动大小和自动布局,因此我们要考虑<code>AVPlayerLayer</code>添加到自己创建的视图View而不是直接加到控制器的View</p>
+
+<p>因为<code>AVPlayerLayer</code>是<code>CALayer</code>的子类，它继承了父类的所有特性。我们并不会受限于要在一个矩形中播放视频(我们可以对Layer进行3D，圆角，有色边框，蒙板，阴影等)。</p>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/3/16</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='%E5%9B%BE%E5%B1%82.html'>图层</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -609,31 +821,31 @@ OBJC_EXPORT
 	      
 		      
 			      <li class="post">
-			        <a href="14900564888280.html">蓝牙连接</a>
+			        <a href="14906168166224.html">缓冲</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14899954232802.html">1.weak是怎么实现的</a>
+			        <a href="14905958336865.html">图层时间</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14896343426276.html">专用图层</a>
+			        <a href="14903444013647.html">CAAnimation</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14894054496048.html">变换</a>
+			        <a href="14903384285214.html">显式动画</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14892022301750.html">图层几何学、视觉效果</a>
+			        <a href="14901616296287.html">UISlider</a>
 			      </li>
 		     
 		  

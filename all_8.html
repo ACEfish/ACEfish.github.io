@@ -103,48 +103,461 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14872305472033.html">
+                <a class="clearlink" href="14873195104181.html">
                 
-                  <h1>UI测试</h1>
+                  <h1>NSRunLoop</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>关于iOS的UI自动化测试，Xcode 7 Apple从新提供了一个新的框架UITest，使用XCTest.framework，Xcode可以自动录制UI测试的动作流，还有就是可以使用<code>XCTest UI testing API</code></p>
+                        	<p>实际上，Run loop并不像 GCD 或者操作队列那样是一种并发机制，因为它并不能并行执行任务。不过在<code>主 dispatch/operation</code>队列中， <code>run loop</code> 将直接配合任务的执行，它提供了一种异步执行代码的机制。</p>
 
-<h4 id="toc_0"><a href="http://www.itnose.net/detail/6507467.html">基础知识</a></h4>
+<p><strong>一个 run loop 总是绑定到某个特定的线程中。main run loop 是与主线程相关的</strong><br/>
+在每一个 Cocoa 和 CocoaTouch 程序中，这个 main run loop 都扮演了一个核心角色，它负责处理 UI 事件、计时器，以及其它内核相关事件。无论你什么时候设置<code>计时器</code>、使用<code>NSURLConnection</code>或者调用 <code>performSelector:withObject:afterDelay:</code>，其实背后都是 run loop 在处理这些异步任务。</p>
 
-<p>核心的三个类:<code>XCUIApplication</code> <code>XCUIElement</code> <code>XCUIElementQuery</code><br/>
-<strong>XCUIApplication类</strong> 是Application的代理，就像我们项目工程中的AppDelegate，这个对象用来启动或者是终止UI测试程序，还可以在启动的时候设置一些启动参数，在获取程序中的UI元素的时候，就是通过这个类的实例。这个类继承自XCUIElement类<br/>
-<strong>XCUIElement类</strong> 是XCTest.framework对应用中的所有UI控件的抽象，在UI测试中，没有UIKit中的UI类型，只是用这个类的实例表示所有的UI控件，以及相应的交互方法，例如：执行手势（tap，press，swipe），滑动控件交互，拾取器交互，这个类采取了XCUIElementAttributes协议（描述UI元素的属性：Identity，Value，Interaction State，Size），XCUIElementTypeQueryProvider协议(为指定类型的子代元素提供ready-made查询，子代元素查询包含button，具体实现是:@property(readonly, copy) XCUIElementQuery *buttons;等一系列对UIKit中元素的映射)<br/>
-<strong>XCUIElementQuery类</strong> 是定位UI元素的查询，这个类使用类似key-value的机制得到XCUIElement的实例，使用Type(XCUIElementType枚举)，Predicate，Identifier创建query，使用elementAtIndex:, elementMatchingPredicate,elementMatchingType: identifier:方法访问匹配到的UI元素，此类采用XCUIElementTypeQueryProvider协议</p>
+<p>run loop 可以运行在不同的模式中，每种模式都定义了一组事件，供 run loop 做出响应。这在对应 main run loop 中暂时性的将某个任务优先执行的一种聪明的做法。<br/>
+* NSDefalutRunLoopMode : 默认Mode, 通常主线程在这个模式下运行<br/>
+* UITrackingRunLoopMode : 滑动ScrollView是会切换到这个模式<br/>
+* NSRunLoopCommonModes: 包括上面两个模式</p>
 
-<p>XCTest一共提供了三种UI测试对象<br/>
-    XCUIApplication 当前测试应用target<br/>
-    XCUIElementQuery 定位查询当前UI中xctuielement的一个类<br/>
-    XCUIElement UI测试中任何一个item项都被抽象成一个XCUIElement类型<br/>
-因此:当我们获取了录制生成的代码以后，根据UITest提供的三种对象，我可以在此来对测试代码进行修改，调试,我们同样可以使用断言语句来进行测试</p>
+<p>例1:滑动ScrollView后系统把RunLoop切换为UITrackingRunLoopMode,因此加载默认模式中的定时器并不会执行,只有滚动停止回到默认模式才会继续执行。我们可以把定时器设为 <code>NSRunLoopCommonModes</code>的模式，并添加到 run loop 中；<br/>
+<code>[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];</code></p>
 
-<h4 id="toc_1">UI测试Demo</h4>
+<p>例2:当tableview的cell从网络异步加载图片, 加载完成后在主线程刷新显示图片, 这时滑动tableview会造成卡顿. 通常的思路是tableview滑动的时候延迟加载图片, 等停止滑动时再显示图片. 这里我们可以通过RunLoop来实现.<br/>
+<code>[self.cellImageView performSelector:@sector(setImage:) withObject:downloadedImage afterDelay:0 inModes:@[NSDefaultRunLoopMode]];</code></p>
+
+<p>主线程一般来说都已经配置好了 main run loop。然而其他线程默认情况下都没有设置 run loop。你也可以自行为其他线程设置 run loop ，但是一般来说我们很少需要这么做。大多数时间使用 main run loop 会容易得多。如果你需要处理一些很重的工作，但是又不想在主线程里做，你仍然可以在你的代码在 main run loop 中被调用后将工作分配给其他队列。Chris 在他关于<a href="https://objccn.io/issue-2-2/">常见的后台实践</a>的文章里阐述了一些关于这种模式的很好的例子。</p>
+
+<p>如果你真需要在别的线程中添加一个 run loop ，那么不要忘记在 run loop 中至少添加一个 input source 。如果 run loop 中没有设置好的 input source，那么每次运行这个 run loop ，它都会立即退出。</p>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/2/17</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+			<div class="article">
+                <a class="clearlink" href="14873150230777.html">
+                
+                  <h1>并发编程基础知识</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<p>基础容易混淆知识:</p>
 
 <ol>
-<li><p>创建项目时勾选UITest</p></li>
-<li><p>打开DemoUiTest.m,创建 - (void)testUI函数,同时将光标留在函数内<br/>
-<img src="media/14872305472033/14872344264789.png" alt=""/><br/>
-点击下面的红色按钮，开始recorder操作，程序运行起来后，点击APP界面进行操作,然后光标处就会生成测试代码</p></li>
-<li><p>进行测试<br/>
-之后我们测试只需要点击test函数前的测试按钮测试这个函数 或者command+u 来进行全部测试<br/>
-此时刚才的一连串动作会一步一步连续执行下来</p></li>
-<li><p>我们此时可以通过修改这段代码来进行我们想要的测试<br/>
-比如：</p>
+<li><p>串行(Serial) VS. 并行(Concurrent)<br/>
+串行和并行描述的是任务和任务之间的执行方式. 串行是任务A执行完了任务B才能执行, 它们俩只能顺序   执行. 并行则是任务A和任务B可以同时执行.</p></li>
+<li><p>同步(Synchronous) VS. 异步(Asynchronous)<br/>
+同步和异步描述的其实就是函数什么时候返回. 比如用来下载图片的函数A: {download image}, 同步函数只有在image下载结束之后才返回, 下载的这段时间函数A只能搬个小板凳在那儿坐等... 而异步函数, 立即返回. 图片会去下载, 但函数A不会去等它完成. So, 异步函数不会堵塞当前线程去执行下一个函数!</p></li>
+<li><p>并发(Concurrency) VS. 并行(Parallelism)</p>
 
-<ul>
-<li>通过添加循环语句来测试一直执行是否会出现问题,判断内存问题等</li>
-<li>通过添加断言来判断运行中元素或情况与我们预想是否一致</li>
-</ul></li>
-<li></li>
+<blockquote>
+<p>并发是程序的属性(property of the program), 而并行是计算机的属性(property of the machine).<br/>
+<img src="media/14873150230777/14873157020644.png" alt=""/></p>
+</blockquote>
+
+<p>并行和并发都是用来让不同的任务可以&quot;同时执行&quot;, 只是并发是伪同时, 而并行是真同时. 假设你有任务T1和任务T2(这里的任务可以是进程也可以是线程):</p>
+
+<blockquote>
+<p>其实我们平常说的并发编程包括狭义上的&quot;并行&quot;和&quot;并发&quot;, 你不能保证你的代码会被并行执行, 但你可以以并发的方式设计你的代码. 系统会判断在某一个时刻是否有可用的core(多核CPU核心), 如果有就并行(parallelism)执行, 否则就用context switch来分时并发(concurrency)执行. 最后再以Ray大神的话结尾: Parallelism requires Concurrency, but Concurrency does not guarantee Parallelism!</p>
+</blockquote></li>
 </ol>
 
+<h1 id="toc_0">iOS多线程</h1>
+
+<h2 id="toc_1">1.Pthrea</h2>
+
+<p>可以自己了解</p>
+
+<h2 id="toc_2">2.NSThread</h2>
+
+<p>经过苹果封装后直接面对对象的，可以直接操控线程对象，但是生命周期需要我们自己管理，偶尔使用。例如<strong>NSThrea mainthread</strong>可以获取当前线程类，知道当前线程的各种属性用于调试  </p>
+
+<h3 id="toc_3">创建线程并启动</h3>
+
+<ul>
+<li>先创建再启动<br/>
+<code>NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(run:) object:nil];
+[thread start];</code></li>
+<li><p>创建并启动<br/><br/>
+<code>[NSThread detachNewThreadSelector:@selector(run:) toTarget:self withObject:nil];</code>  </p>
+
+<ul>
+<li>用oc方法创建启动（不安全）<br/>
+<code>[self performSelectorInBackground:@selector(run:) withObject:nil];</code><br/></li>
+<li><p>其他方法  </p>
+
+<p>//取消线程</p>
+
+<ul>
+<li>(void)cancel;</li>
+</ul>
+
+<p>//启动线程<br/>
+- (void)start;</p>
+
+<p>//判断某个线程的状态的属性<br/>
+@property (readonly, getter=isExecuting) BOOL executing;<br/>
+@property (readonly, getter=isFinished) BOOL finished;<br/>
+@property (readonly, getter=isCancelled) BOOL cancelled;</p>
+
+<p>//设置和获取线程名字<br/>
+-(void)setName:(NSString *)n;<br/>
+-(NSString *)name;</p>
+
+<p>//获取当前线程信息<br/>
++ (NSThread *)currentThread;</p>
+
+<p>//获取主线程信息<br/>
++ (NSThread *)mainThread;</p>
+
+<p>//使当前线程暂停一段时间，或者暂停到某个时刻<br/>
++ (void)sleepForTimeInterval:(NSTimeInterval)time;<br/>
++ (void)sleepUntilDate:(NSDate *)date; </p></li>
+</ul></li>
+</ul>
+
+<h2 id="toc_4">3.GCD</h2>
+
+<p>Grand Central Dispatch,是苹果为多核并行运算提出的解决办法，或自动管理线程生命周期</p>
+
+<h3 id="toc_5">任务和队列</h3>
+
+<p>这是在GCD中此案有的重要概念：<strong>任务</strong>和<strong>队列</strong><br/>
+* 任务：即即操作，你想要干什么，说白了就是一段代码，在 GCD 中就是一个 Block，所以添加任务十分方便。任务有两种执行方式： <strong>同步执行</strong> 和 <strong>异步执行</strong>，他们之间的区别是<strong><em>是否会创建新的线程</em></strong>。     </p>
+
+<pre><code>    同步（sync）和异步（async）的主要区别是在于会不会阻塞当前线程，直到block中任务执行完毕；  
+    同步就是阻塞当前线程并等待block中的任务执行完毕，然后线程会继续向下执行，异步操作当前线程会继续向下执行
+</code></pre>
+
+<ul>
+<li>队列：用于存放任务。一共有两种队列，串行和并行队列
+<strong>串行队列</strong>：放在串行队列中的任务，GCD会FIFO的取出来，执行，然后取出下一个<br/></li>
+</ul>
+
+<p><strong>并行队列</strong>：在并行队列中的任务，GCD也会FIFO的取出来，但不同的是，取出来一个后就会放到别的线程，然后取出来再放到另一个线程，取的动作很快，看起来所有是同时执行。注意：GCD会根据系统资源控制并行数量，所以如果任务很多，并不会让人物同时执行  </p>
+
+<h3 id="toc_6">创建队列</h3>
+
+<ul>
+<li><h5 id="toc_7">主队列</h5>
+
+<p>特殊的 串行队列。它用于刷新 UI，任何需要刷新 UI 的工作都要在主队列执行，所以一般耗时的任务都要放到别的线程执行。</p>
+
+<pre><code>     //OBJECTIVE-C
+    dispatch_queue_t queue = ispatch_get_main_queue();
+
+      //SWIFT
+      let queue = ispatch_get_main_queue()  
+</code></pre></li>
+<li><h5 id="toc_8">自己创建的队列</h5>
+
+<p>自己可以创建 串行队列, 也可以创建 并行队列。看下面的代码（代码已更新），它有两个参数，第一个上面已经说了，第二个才是最重要的。第二个参数用来表示创建的队列是串行的还是并行的，传入 DISPATCH_QUEUE_SERIAL 或 NULL 表示创建串行队列。传入 DISPATCH_QUEUE_CONCURRENT 表示创建并行队列。</p>
+
+<p>queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, NULL);<br/>
+  dispatch_queue_t queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, DISPATCH_QUEUE_SERIAL);<br/>
+  //并行队列<br/>
+  dispatch_queue_t queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, DISPATCH_QUEUE_CONCURRENT);</p>
+
+<p>//SWIFT<br/>
+  //串行队列<br/>
+  let queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, nil);<br/>
+  let queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, DISPATCH_QUEUE_SERIAL)<br/>
+  //并行队列<br/>
+  let queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, DISPATCH_QUEUE_CONCURRENT)</p></li>
+<li><h4 id="toc_9">全局并行队列</h4>
+
+<p>一般只要是并行任务都加到这个队列<br/>
+  //OBJECTIVE-C<br/>
+  dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);</p>
+
+<p>//SWIFT<br/>
+  let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)</p></li>
+</ul>
+
+<h3 id="toc_10">创建任务</h3>
+
+<ul>
+<li><h5 id="toc_11">同步任务：会阻塞当前线程</h5>
+
+<pre><code>dispatch_sync(&lt;#queue#&gt;, ^{
+</code></pre>
+
+<p>//code here<br/>
+  NSLog(@&quot;%@&quot;, [NSThread currentThread]);<br/>
+    });</p></li>
+<li><h5 id="toc_12">异步任务：不会阻塞当前线程</h5>
+
+<pre><code>dispatch_async(&lt;#queue#&gt;, ^{
+    //code here
+    NSLog(@&quot;%@&quot;, [NSThread currentThread]);
+});
+</code></pre></li>
+</ul>
+
+<h3 id="toc_13">更好的理解同步异步以及各种队列的使用</h3>
+
+<pre><code>同步任务会阻塞当前线程，然后把block块中的任务放到指定队列中执行，等到block任务完成后会让当前线程继续往下执行  
+同步异步的重要区别在于派发方法是否需要等待 block 完成后才能返回.
+</code></pre>
+
+<h3 id="toc_14">队列组的使用</h3>
+
+<p>可以将很多丢列添加到一个组中，这样的话，当这个组中所有任务都执行完了，队列会通过一个方法通知我们  </p>
+
+<pre><code>//1.创建队列组
+dispatch_group_t group = dispatch_group_create();
+//2.创建队列
+dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+
+//3.多次使用队列组的方法执行任务, 只有异步方法
+//3.1.执行3次循环
+dispatch_group_async(group, queue, ^{
+    for (NSInteger i = 0; i &lt; 3; i++) {
+        NSLog(@&quot;group-01 - %@&quot;, [NSThread currentThread]);
+    }
+});
+
+//3.2.主队列执行8次循环
+dispatch_group_async(group, dispatch_get_main_queue(), ^{
+    for (NSInteger i = 0; i &lt; 8; i++) {
+        NSLog(@&quot;group-02 - %@&quot;, [NSThread currentThread]);
+    }
+});
+
+//3.3.执行5次循环
+dispatch_group_async(group, queue, ^{
+    for (NSInteger i = 0; i &lt; 5; i++) {
+        NSLog(@&quot;group-03 - %@&quot;, [NSThread currentThread]);
+    }
+});
+
+//4.都完成后会自动通知
+dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+    NSLog(@&quot;完成 - %@&quot;, [NSThread currentThread]);
+});
+SWIFT
+//1.创建队列组
+let group = dispatch_group_create()
+//2.创建队列
+let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
+
+//3.多次使用队列组的方法执行任务, 只有异步方法
+//3.1.执行3次循环
+dispatch_group_async(group, queue) { () -&gt; Void in
+    for _ in 0..&lt;3 {
+        NSLog(&quot;group-01 - %@&quot;, NSThread.currentThread())
+    }
+}
+
+//3.2.主队列执行8次循环
+dispatch_group_async(group, dispatch_get_main_queue()) { () -&gt; Void in
+    for _ in 0..&lt;8 {
+        NSLog(&quot;group-02 - %@&quot;, NSThread.currentThread())
+    }
+}
+
+//3.3.执行5次循环
+dispatch_group_async(group, queue) { () -&gt; Void in
+    for _ in 0..&lt;5 {
+        NSLog(&quot;group-03 - %@&quot;, NSThread.currentThread())
+    }
+}
+
+//4.都完成后会自动通知
+dispatch_group_notify(group, dispatch_get_main_queue()) { () -&gt; Void in
+    NSLog(&quot;完成 - %@&quot;, NSThread.currentThread())
+}
+</code></pre>
+
+<p><strong>关于GCD还有两点要说的</strong><br/><br/>
+* <code>func dispatch_barrier_async(_ queue: dispatch_queue_t, _ block: dispatch_block_t):</code><br/><br/>
+这个方法重点是传入的queue，当你传入的queue是通过<code>DISPATCH_QUEUE_CONCURRENT</code>参数自己创建的queue时，这个方法会阻塞这个queue（注意是阻塞queue，而不是阻塞当前线程），一直等到这个queue中排在他前面的任务都执行完成后才会开始执行自己，自己执行完毕后，再会取消阻塞，是这个queue中排在他后面的任务继续执行。但是如果你传入的是其他queue，那他和dispatch_async一样了<br/><br/>
+* <code>func dispatch_barrier_sync(_ queue: dispatch_queue_t, _ block: dispatch_block_t):</code><br/><br/>
+这个方法的使用和上一个一样，传入自定义的并发队列（<strong>DISPATCH_QUEUE_CONCURRENT</strong>），会阻塞queue，不同的是这个方法还会阻塞当前线程，，但是如果你传入其他queue就和dispatch_sync一样了  </p>
+
+<h3 id="toc_15">线程同步</h3>
+
+<ul>
+<li><h5 id="toc_16">互斥锁：</h5>
+
+<p>给需要同步的代码加一个互斥锁保证每次只有一个线程访问此代码块</p>
+
+<pre><code>    //OBJECTIVE-C
+    @synchronized(self) {
+        //需要执行的代码块
+    }
+    //SWIFT
+    objc_sync_enter(self)
+    //需要执行的代码块
+    objc_sync_exit(self)
+</code></pre></li>
+<li><h5 id="toc_17">同步执行：</h5>
+
+<p>我们可以使用多线程的知识，把多个线程都要执行此段代码添加到同一个串行队列，这样就实现了线程同步的概念。当然这里可以使用 <code>GCD</code> 和 <code>NSOperation</code> 两种方案，我都写出来。</p>
+
+<pre><code>//OBJECTIVE-C
+      //GCD
+      //需要一个全局变量queue，要让所有线程的这个操作都加到一个queue中
+      dispatch_sync(queue, ^{
+          NSInteger ticket = lastTicket;
+          [NSThread sleepForTimeInterval:0.1];
+          NSLog(@&quot;%ld - %@&quot;,ticket, [NSThread currentThread]);
+          ticket -= 1;
+          lastTicket = ticket;
+      });
+
+      //NSOperation &amp; NSOperationQueue
+      //重点：1. 全局的 NSOperationQueue, 所有的操作添加到同一个queue中
+      //       2. 设置 queue 的 maxConcurrentOperationCount 为 1
+      //       3. 如果后续操作需要Block中的结果，就需要调用每个操作的waitUntilFinished，阻塞当前线程，一直等到当前操作完成，才允许执行后面的。waitUntilFinished 要在添加到队列之后！
+
+      NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
+          NSInteger ticket = lastTicket;
+          [NSThread sleepForTimeInterval:1];
+          NSLog(@&quot;%ld - %@&quot;,ticket, [NSThread currentThread]);
+          ticket -= 1;
+          lastTicket = ticket;
+      }];
+
+      [queue addOperation:operation];
+
+      [operation waitUntilFinished];
+
+      //后续要做的事
+</code></pre></li>
+<li><h5 id="toc_18">延迟执行：</h5>
+
+<pre><code>//OBJECTIVE-C（这个方法在swift中去掉了）
+    // 3秒后自动调用self的run:方法，并且传递参数：@&quot;abc&quot;
+    [self performSelector:@selector(run:) withObject:@&quot;abc&quot; afterDelay:3];
+    //GCD
+    // 创建队列
+    dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+    // 设置延时，单位秒
+    double delay = 3; 
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), queue, ^{
+        // 3秒后需要执行的任务
+    });
+</code></pre></li>
+<li><h5 id="toc_19">单例模式：</h5>
+
+<pre><code>OBJECTIVE-C
+    @interface Tool : NSObject &lt;NSCopying&gt;
+
+    + (instancetype)sharedTool;
+
+    @end
+
+    @implementation Tool
+
+    static id _instance;
+
+    + (instancetype)sharedTool {
+        static dispatch_once_t onceToken;
+        dispatch_once(&amp;onceToken, ^{
+            _instance = [[Tool alloc] init];
+        });
+
+        return _instance;
+    }
+
+    @end
+    swift
+        class Tool: NSObject {
+        static let sharedTool = Tool()
+
+        // 私有化构造方法，阻止其他对象使用这个类的默认的&#39;()&#39;构造方法
+        private override init() {}
+        }
+</code></pre></li>
+</ul>
+
+<h3 id="toc_20">从其他线程回到主线程的方法</h3>
+
+<ul>
+<li><h5 id="toc_21">NSThread</h5>
+
+<pre><code>//Objective-C
+[self performSelectorOnMainThread:@selector(run) withObject:nil waitUntilDone:NO];
+
+//Swift
+//swift 取消了 performSelector 方法。
+</code></pre></li>
+<li><h5 id="toc_22">GCD</h5>
+
+<pre><code>//Objective-C
+dispatch_async(dispatch_get_main_queue(), ^{
+
+});
+
+//Swift
+dispatch_async(dispatch_get_main_queue(), { () -&gt; Void in
+
+})
+</code></pre></li>
+<li><h5 id="toc_23">NSOperationQueue</h5>
+
+<pre><code>//Objective-C
+[[NSOperationQueue mainQueue] addOperationWithBlock:^{
+
+}];
+
+//Swift
+NSOperationQueue.mainQueue().addOperationWithBlock { () -&gt; Void in
+
+}
+</code></pre></li>
+</ul>
+
+<h2 id="toc_24">评论补充</h2>
+
+<pre><code>同步派发(sync)会尽可能地在当前线程派发任务.但如果在其他队列往主队列同步派发,任务会在主线程执行.
+异步派发(async)也不绝对会另开线程.例如在主线程异步派发到主线程,派发依旧是异步的,任务也会在主线程执行.
+我感觉同步异步的重要区别在于派发方法是否需要等待 block 完成后才能返回.
+
+无论串行还是并发队列,任务启动顺序都是按照 FIFO 的,只是并发队列允许同一时间有多个任务执行都在执行.
+
+创建队列
+
+也可以自己创建并发队列.
+dispatch_queue_create(&quot;我是私有串行队列&quot;, DISPATCH_QUEUE_SERIAL);
+dispatch_queue_create(&quot;我是私有并发队列&quot;, DISPATCH_QUEUE_CONCURRENT);
+
+dispatch_async(dispatch_get_main_queue()) {
+// Swift 中用尾闭包写法感觉更美观.
+}
+
+关于同步,还有这么个东西:
+dispatch_barrier_async(privateConcurrentQueue, ^{
+// 写入操作会确保队列前面的操作执行完毕才开始,并会阻塞队列中后来的操作.
+});
+
+dispatch_sync(privateConcurrentQueue, ^{
+// 只要没有写入操作,多个读取操作是相对并行的.
+});
+</code></pre>
+
                         
                       </div>
                   </div>
@@ -152,10 +565,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/16</span>
+                    <span class="date">2017/2/17</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
+          					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -169,252 +582,418 @@
               </div><!-- article -->
         
 			<div class="article">
-                <a class="clearlink" href="14872162581601.html">
+                <a class="clearlink" href="14873146865194.html">
                 
-                  <h1>测试</h1>
+                  <h1>[NSOperation](http://www.jianshu.com/p/4b1d77054b35)</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h5 id="toc_0">1.流行框架</h5>
+                        	<p>与GCD相比好处:<br/>
+1. NSOperation是基于GCD之上的更高一层封装, 拥有更多的API(e.g. suspend, resume, cancel等等).<br/>
+2. 在NSOperationQueue中, 可以指定各个NSOperation之间的依赖关系<br/>
+3. 用KVO可以方便的监测NSOperation的状态(isExecuted, isFinished, isCancelled).<br/>
+4. 更高的可定制能力, 你可以继承NSOperation实现可复用的逻辑模块.</p>
 
-<p>Apple自带的<code>XCTest</code>和第三方的<code>GHUnit</code>.他两之间的区别:XCTest：与Xcode深度集成。而且可以享受Apple后续对XCTest升级的福利。 GHUnit：集成度不如XCTest，安装麻烦。但是有自己的GUI界面。因为XCTest是苹果的，所以我们选择XCTest</p>
+<h2 id="toc_0">NSOperation和NSOperationQueue</h2>
 
-<h5 id="toc_1">2.OCMock</h5>
+<p>NSOpration是苹果公司对GCD的封装，NSOperation和MSOprationQueue分别对应GCD中的任务和队列<br/><br/>
+因此操作步骤如下：<br/><br/>
+1. 将要执行的任务封装到NSOperation对象中<br/>
+2. 将任务添加到一个NSOprationQueue对象中</p>
 
-<p>mock测试是个很神奇而又很酷的技术，在测试过程中，对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。<br/>
-而我们在进行iOS测试时候是使用<code>OCMock</code>来进行对象的mock</p>
+<h3 id="toc_1">添加任务</h3>
 
-<h5 id="toc_2">3.断言框架</h5>
+<p><code>NSOperation</code>是一个抽象类，所以不能封装任务。但他有两个子类可以封装任务。分别为：NSInvocationOperation和NSBlockOperation。创建之后需要start启动，默认<strong>在当前队列同步执行</strong>当然也可以用<code>cancle</code>在中途取消任务</p>
 
-<p>Expecta和OCHamcrest这两个都是断言的扩展框架。一开始我选择了Expecta，因为我后来有一段时间将测试文件用BDD框架Specta来写（当然这是后话），而Expecta 和Specta都出自同一个人之手，不论是教程文档都更加丰富。但是后来我废弃了BDD框架，还是用原生的XCTest，Expecta在使用中也遇到了一些问题，我就把我们的断言框架由Expecta切换到了OCHamcrest。<br/>
-原因有两点：<br/>
-<code><br/>
-1.Expecta不成熟，至笔者切换的时候才0.3.1版本，遇到很多框架自身的问题。case跑着跑着验证通不过了，再跑一次又过了，是不是还爆出个Expecta框架内部的crash。<br/>
-2.OCHamcrest更加成熟，而且可扩展性高，可以自定义自己的断言，更灵活。<br/>
-</code><br/>
-比如OCHamcrest不支持superClass验证，我们必须自己去比较，返回一个bool值，然后去判断bool是否为真。很麻烦。自己自定义个superClass的验证，就不需要每次都这么麻烦的写这么多代码了。而如果Expecta不支持的断言，那就永远不能支持了。 我们可以通过OCHamcrest这个特性，做一些符合自己app场景的特有断言。</p>
+<p>在不使用NSOperationQueue，单独使用NSOperation的情况下系统同步执行操作:</p>
 
-<h5 id="toc_3">BDD Or Not</h5>
+<pre><code>//1.创建NSInvocationOperation对象
+  NSInvocationOperation *operation = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(run) object:nil];
 
-<p>BDD和TDD都是敏捷开发的技术;<br/>
-<strong>BDD</strong>（Behavior Driven Development），也就是行为驱动开发，它旨在解决具体问题，帮助开发人员确定应该测试些什么.此外，它提供了一个 <code>DSL</code>（译者注: Domain-specific language，域特定语言）鼓励开发者弄清楚他们的需求，并且它引入了一个通用语言帮助你轻易理解测试的目的。<br/>
-<strong>TDD</strong>（Test-Driven Development），就是测试驱动开发，通过测试来推动整个开发的进行<br/>
-目前使用比较多得是BDD框架:<br/>
-Cedar，Specta和Kiwi这3个框架就是目前Objc最流行的BDD测试框架<br/>
-    Specta和Kiwi的区别就是Kiwi包含了Specta和OCmock以及Expeata所有的功能<br/>
-除此之外还有Apple的XCTest:XCTest与Xcode深度集成，而且可以享受Apple后续对XCTest升级的福利</p>
+  //2.开始执行
+  [operation start];   
+</code></pre>
 
-<p>XCTest 的优势和缺点都是由于它太简单了。你只需要创建一个类，使用 “test” 作为测试方法名的前缀，只需要这样就可以了，不需要再做其他的。和 Xcode 很好的集成性也是 XCTest 获得青睐的原因。你可以点击边栏上的小菱形按钮来运行测试用例，你也可以很容易的查看所有失败的测试用例，也可以在测试用例列表中点击某一行而快速的跳转到某一个测试用例。</p>
+<pre><code class="language-Object-c">/**[]()
+    在没有使用NSOperationQueue、单独使用NSInvocationOperation的情况下，
+    NSInvocationOperation在主线程执行操作，并没有开启新线程。
+*/
+</code></pre>
 
-<p>不幸的是，这已经是 XCTest 的全部优点了。在开发和测试中，使用 XCTest 时我们没有碰到任何的障碍，但是经常会想如果它能更方便一些就好了。XCTest 类看起来就像普通的类，而一个 BDD 测试套件的结构和其嵌套的上下文是显而易见的。并且这种为测试创建嵌套上下文的可能性也是最缺失的。嵌套的上下文允许我们在使独立的测试相对简单的情况下创建越来越具体的场景。当然，在 XCTest 中这也是可以的，比如在一些测试用例中调用自定义的 setup 方法，但这并不方便。</p>
+<pre><code>   在swift中这种方法是不是类型安全的（推荐第二种）
 
-<p>BDD 框架的附加功能的重要性是取决于项目的大小。我们的结论是，XCTest 对中小型的工程来说是一个很好的选择，但是对于更大型的工程，就有必要参考一下像 Kiwi 或者 Specta 这样的 BDD 框架。</p>
 
-<h5 id="toc_4">4.UITests</h5>
+//1.创建NSBlockOperation对象
+  NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
+      NSLog(@&quot;%@&quot;, [NSThread currentThread]);
+  }];
 
-<p>通过代码化来实现自动点击界面，输入文字等功能</p>
+  //2.开始任务
+  [operation start];
+</code></pre>
 
-                        
-                      </div>
-                  </div>
-                </a>
-                <div class="read-more clearfix">
-                  <div class="more-left left">
-                  
-                    <span class="date">2017/2/16</span>
-                    <span>posted in&nbsp;</span> 
-          				  
-          					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
-          				   
-                  </div>
-                  <div class="more-right right">
-                  <span class="comments">
-                      
+<p>默认会在当前线程中执行。但是<code>NSBlockOperation</code>还有一个方法<code>addExecutionBlock:</code>，通过这个方法会给Operation添加多个执行Block。这样的话Operation中的任务会并发执行，他会在主线程和其他多个线程执行这些任务<br/><br/>
+    ```Object-c<br/>
+     //1.创建NSBlockOperation对象<br/>
+      NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:<sup>{</sup><br/>
+          NSLog(@&quot;%@&quot;, [NSThread currentThread]);<br/>
+      }];</p>
 
-                       
-                  </span>
-                  </div>
-                </div>
-              </div><!-- article -->
-        
-			<div class="article">
-                <a class="clearlink" href="14871584203378.html">
-                
-                  <h1>并发编程、NSThread&GCD&NSOpration&runLoop</h1>
-                  <div class="a-content">
-                      
-                      <div class="a-content-text">
-                        
-                        	<h4 id="toc_0">1.并发编程</h4>
+<pre><code>  //添加多个Block
+  for (NSInteger i = 0; i &lt; 5; i++) {
+      [operation addExecutionBlock:^{
+          NSLog(@&quot;第%ld次：%@&quot;, i, [NSThread currentThread]);
+      }];
+  }
 
-<p>并发所描述的概念就是同时运行多个任务。这些任务可能是以在单核 CPU 上分时（时间共享）的形式同时运行，也可能是在多核 CPU 上以真正的并行方式来运行。</p>
-
-<h4 id="toc_1">2.iOS 中的并发编程</h4>
-
-<p>常用并发编程API: <code>pthread</code> 、 <code>NSThread</code> 、<code>GCD</code> 、<code>NSOperationQueue</code>，以及 <code>NSRunLoop</code>。实际上把 run loop 也列在其中是有点奇怪，因为它并不能实现真正的并行，不过因为它与并发编程有莫大的关系，因此值得我们进行一些深入了解。</p>
+  //2.开始任务
+  [operation start];
+  /**
+    可以看出，blockOperationWithBlock:方法中的操作是在主线程中执行的，而
+    addExecutionBlock:方法中的操作是在其他线程中执行的。
+  */
+```
+</code></pre>
 
 <hr/>
 
-<h4 id="toc_2">1.线程</h4>
+<h2 id="toc_2">自定义Operation</h2>
 
-<p>线程（thread）是组成进程的子单元，操作系统的调度器可以对线程进行单独的调度。所有的并发编程 API 都是构建于线程之上的 —— 包括 GCD 和操作队列<br/>
-你可以使用 Instruments<a href="http://www.jianshu.com/p/9e94e42cfb01">Instruments学习传送门</a> 中的 <code>CPU strategy view</code> 来得知你的代码或者你在使用的框架代码是如何在多核 CPU 中调度执行的。</p>
+<p>除了上面的两种 Operation 以外，我们还可以自定义 Operation。自定义 Operation 需要继承 NSOperation 类，并实现其 main() 方法，因为在调用 start() 方法的时候，内部会调用 main() 方法完成相关逻辑。<br/>
+在没有使用NSOperationQueue、单独使用自定义子类的情况下，是在主线程执行操作，并没有开启新线程。</p>
 
-<p>开发者可以使用 <a href="https://en.wikipedia.org/wiki/POSIX_Threads">POSIX</a> 线程 API，或者 Objective-C 中提供的对该 API 的封装 <code>NSThread</code>，来创建自己的线程.</p>
+<p>注意:<br/>
+<code>NSOperation</code>可以自己独立执行(直接调用<code>[operation start]</code>), 也可以放到<code>NSOperationQueue</code>里面执行, 这两种情况下是否并发执行是不同的.</p>
 
-<p>//下面这个小示例利用 pthread 来在一百万个数字中查找最小值和最大值。其中并发执行了 4 个线程，可以看出来十分复杂;因为过于复杂这里不提供<a href="http://wiki.jikexueyuan.com/project/objc/concurrent-programming/2-1.html">代码</a></p>
+<h5 id="toc_3">1. non-concurrent</h5>
 
-<p><code>NSThread</code> 是 Objective-C 对 pthread 的一个封装。通过封装，在 Cocoa 环境中，可以让代码看起来更加亲切。我们可以用NSThread定义一个这样的子类(在一百万个数字中查找最小值和最大值):</p>
+<p>NSOperation默认是非并发的(non-concurrent),果你把operation放到某个线程执行, 它会一直block住该线程, 直到<code>operation finished</code>.<br/>
+对于非并发的operation你只需要继承NSOperation, 然后重写main()方法即可<br/>
+示例:下载一张:</p>
 
-<pre><code class="language-Object-c">@interface FindMinMaxThread : NSThread
-@property (nonatomic) NSUInteger min;
-@property (nonatomic) NSUInteger max;
-- (instancetype)initWithNumbers:(NSArray *)numbers;
-@end
-
-@implementation FindMinMaxThread {
-    NSArray *_numbers;
-}
-
-- (instancetype)initWithNumbers:(NSArray *)numbers
-{
-    self = [super init];
-    if (self) {
-        _numbers = numbers;
-    }
-    return self;
-}
-
-- (void)main
-{
-    NSUInteger min;
-    NSUInteger max;
-    // 进行相关数据的处理
-    self.min = min;
-    self.max = max;
-}
-@end
-</code></pre>
-
-<p><strong>要想启动一个新的线程，需要创建一个线程对象，然后调用它的 start 方法：</strong></p>
-
-<pre><code class="language-Object-c">NSMutableSet *threads = [NSMutableSet set];
-NSUInteger numberCount = self.numbers.count;
-NSUInteger threadCount = 4;
-for (NSUInteger i = 0; i &lt; threadCount; i++) {
-    NSUInteger offset = (count / threadCount) * i;
-    NSUInteger count = MIN(numberCount - offset, numberCount / threadCount);
-    NSRange range = NSMakeRange(offset, count);
-    NSArray *subset = [self.numbers subarrayWithRange:range];
-    FindMinMaxThread *thread = [[FindMinMaxThread alloc] initWithNumbers:subset];
-    [threads addObject:thread];
-    [thread start];
-}
-</code></pre>
-
-<p>然后我们可以通过检测线程的isFinish属性来检测新生成的线程是否结束,并获取结果。虽然NSThred已经封装但是仍然体验非常糟糕<br/>
-<em>使用这样创建线程的问题：</em><br/>
-直接使用线程可能会引发的一个问题是，如果你的代码和所基于的框架代码都创建自己的线程时，那么活动的线程数量有可能以指数级增长。这在大型工程中是一个常见问题。例如，在 8 核 CPU 中，你创建了 8 个线程来完全发挥 CPU 性能。然而在这些线程中你的代码所调用的框架代码也做了同样事情（因为它并不知道你已经创建的这些线程），这样会很快产生成成百上千的线程。代码的每个部分自身都没有问题，然而最后却还是导致了问题。使用线程并不是没有代价的，每个线程都会消耗一些内存和内核资源。<br/>
-接下来，我们将介绍两个基于队列的并发编程 API ：GCD 和 operation queue 。它们通过集中管理一个被大家协同使用的线程池，来解决上面遇到的问题。</p>
-
-<h5 id="toc_3">Grand Central Dispatch（GCD）</h5>
-
-<p>苹果在 iOS 4 中引入GCD<br/>
-通过 GCD，开发者不用再直接跟线程打交道了，只需要向队列中添加代码块即可，GCD 在后端管理着一个<a href="https://en.wikipedia.org/wiki/Thread_pool">线程池</a>。GCD 不仅决定着你的代码块将在哪个线程被执行，它还根据可用的系统资源对这些线程进行管理。这样可以将开发者从线程管理的工作中解放出来，通过<code>集中的管理线程</code>，来缓解大量线程被创建的问题。</p>
-
-<p><strong>GCD给开发者带来最大便利我们只需要将工作考虑为一个队列，而不是一堆线程</strong></p>
-
-<p>GCD 公开有 5 个不同的队列：运行在主线程中的 <code>main queue</code>，3 个不同优先级的<code>后台队列</code>，以及一个优先级更低的<code>后台队列（用于 I/O）</code>。 另外，开发者可以创建<code>自定义队列</code>：串行或者并行队列。自定义队列非常强大，<em>在自定义队列中被调度的所有 block 最终都将被放入到系统的全局队列中和线程池中</em>。</p>
-
-<p><img src="media/14871584203378/14872445768529.png" alt=""/></p>
-
-<p>我们强烈建议，<strong>在绝大多数情况下使用默认的优先级队列就可以</strong>。如果执行的任务需要访问一些共享的资源，那么在不同优先级的队列中调度这些任务很快就会造成不可预期的行为。这样可能会引起程序的完全挂起，因为低优先级的任务阻塞了高优先级任务，使它不能被执行。</p>
-
-<h5 id="toc_4">Operation Queues</h5>
-
-<p>操作队列（<code>operation queue</code>）是由 GCD 提供的一个队列模型的 Cocoa 抽象.<br/>
-<code>NSOperationQueue</code> 有两种不同类型的队列：<strong>主队列和自定义队列</strong>。主队列运行在主线程之上，而自定义队列在后台执行.在两种类型中，这些队列所处理的任务都使用<code>NSOperation</code>的子类来表述。</p>
-
-<p>你可以通过重写 main 或者 start 方法 来定义自己的 operations;前一种方法非常简单，开发者不需要管理一些状态属性（例如 isExecuting 和 isFinished），当 main 方法返回的时候，这个 operation 就结束了。这种方式使用起来非常简单，但是灵活性相对重写 start 来说要少一些。<br/>
-//注意：在NSThread和NSOperation中重写Main方法来自定义子类时不需要调用[super main]<br/>
-子类的是NSOperation即在队列中的任务，而不是NSOperationQueue<br/>
-<code>Object-c<br/>
-@implementation YourOperation<br/>
-    - (void)main<br/>
-    {<br/>
-        // 进行处理 ...<br/>
-    }<br/>
-@end<br/>
-</code></p>
-
-<pre><code class="language-Object-c">//如果你希望拥有更多的控制权，以及在一个操作中可以执行异步任务，那么就重写 start 方法：
-@implementation YourOperation
-    - (void)start
-    {
-        self.isExecuting = YES;
-        self.isFinished = NO;
-        // 开始处理，在结束时应该调用 finished ...
-    }
-
-    - (void)finished
-    {
-        self.isExecuting = NO;
-        self.isFinished = YES;
-    }
-@end
-/**
-    注意：这种情况下，你必须手动管理操作的状态。 为了让操作队列能够捕获到操作的改变，需要将状态的
-    属性以配合 KVO 的方式进行实现。如果你不使用它们默认的 setter 来进行设置的话，你就需要在合适
-    的时候发送合适的 KVO 消息。
+<pre><code class="language-Object-c">/**
+    由于NSOperation是可以cancel的, 所以你需要在operation程序内部执行过程中判断当前
+    operation是否已经被cancel了(isCancelled). 如果已经被cancel那就不往下执行了. 当你在外面
+    调用[operation cancel]后, isCancelled会被置为YES.
 */
-</code></pre>
 
-<p>为了能使用操作队列所提供的取消功能，你需要在长时间操作中时不时地检查<code>isCancelled</code>属性：</p>
+@implementation YourOperation 
 
-<pre><code class="language-Object-c">- (void)main
+- (void)main 
 {
-    while (notDone &amp;&amp; !self.isCancelled) {
-        // 进行处理
+    @autoreleasepool {
+
+        if (self.isCancelled) return;
+
+        NSData *imageData = [[NSData alloc] initWithContentsOfURL:imageURL];
+
+        if (self.isCancelled) { imageData = nil; return; }
+
+        if (imageData) {
+            UIImage *downloadedImage = [UIImage imageWithData:imageData];
+        }
+
+        imageData = nil;
+
+        if (self.isCancelled) return;
+
+        [self.delegate performSelectorOnMainThread:@selector(imageDownloaderDidFinish:)                                                                  
+                                        withObject:downloadedImage
+                                     waitUntilDone:NO];
     }
 }
+
+@end
 </code></pre>
 
-<p>当你定义好 operation 类之后，就可以很容易的将一个 operation 添加到队列中：</p>
+<h5 id="toc_4">1. Concurrent</h5>
 
-<pre><code class="language-Object-c">    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
-    YourOperation *operation = [[YourOperation alloc] init];
-    [queue  addOperation:operation];
+<p>NSOperation有三个状态量isCancelled, isExecuting和isFinished. isCancelled上面解释过. main函数执行完成后, isExecuting会被置为NO, 而isFinished则被置为YES.</p>
+
+<p>那肿么实现并发(concurrent)的NSOperation呢? 也很简单:<br/>
+1). 重写isConcurrent函数, 返回YES, 这个告诉系统各单位注意了我这个operation是要并发的.<br/>
+2). 重写start()函数.<br/>
+3). 重写isExecuting和isFinished函数<br/>
+4). 有必要时需要重写isCanceled函数</p>
+
+<blockquote>
+<p>为什么在并发情况下需要自己来设定isExecuting和isFinished这两个状态量呢? 因为在并发情况下系统不知道operation什么时候finished, operation里面的task一般来说是异步执行的, 也就是start函数返回了operation不一定就是finish了, 这个你自己来控制, 你什么时候将isFinished置为YES(发送相应的KVO消息), operation就什么时候完成了.</p>
+</blockquote>
+
+<pre><code class="language-Object-c">- (BOOL)isConcurrent {
+    return YES;
+}
+
+- (void)start 
+{
+    [self willChangeValueForKey:@&quot;isExecuting&quot;];
+    _isExecuting = YES;
+    [self didChangeValueForKey:@&quot;isExecuting&quot;];
+
+    NSURLRequest * request = [NSURLRequest requestWithURL:imageURL];
+    _connection = [[NSURLConnection alloc] initWithRequest:request
+                                                  delegate:self];
+    if (_connection == nil) [self finish];
+}
+
+- (void)finish
+{
+    self.connection = nil;
+
+    [self willChangeValueForKey:@&quot;isExecuting&quot;];
+    [self willChangeValueForKey:@&quot;isFinished&quot;];
+
+    _isExecuting = NO;
+    _isFinished = YES;
+
+    [self didChangeValueForKey:@&quot;isExecuting&quot;];
+    [self didChangeValueForKey:@&quot;isFinished&quot;];
+}
+
+#pragma mark - NSURLConnection delegate
+- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
+    // to do something...
+}
+
+- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
+    // to do something...
+}
+
+- (void)connectionDidFinishLoading:(NSURLConnection *)connection {
+    [self finish];
+}
+
+- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
+    [self finish];
+}
+
+@end
 </code></pre>
 
-<p>另外，你也可以将 block 添加到操作队列中。这有时候会非常的方便，比如你希望在主队列中调度一个一次性任务：</p>
+<p>还有以下几点需要注意:<br/>
+*  operation的executing和finished状态量需要用willChangeValueForKey/didChangeValueForKey来触发KVO消息.<br/>
+*  在调用完NSURLConnection之后start函数就返回了, 后面就坐等connection的回调了<br/>
+*  在connection的didFinish或didFail回调里面设置operation的finish状态, 告诉系统operation执行完毕了.</p>
 
-<pre><code class="language-Object-c">[[NSOperationQueue mainQueue] addOperationWithBlock:^{
-    // 代码...
-}];
+<p><strong>注意:</strong><br/>
+如果你是在主线程调用的这个并发的operation, 那一切都是非常的perfect, 就算你当前在操作UI也不影响operation的下载操作. BUT, 如果你是在子线程调用的, 或者把operation加到了非main queue, 那么问题来了, 你会发现这货的NSURLConnection delegate不走了.</p>
+
+<blockquote>
+<p>这是runLoop的原因，主线程会自动创建一个RunLoop来保证程序一直运行. 但子线程默认不创建NSRunLoop, 所以子线程的任务一旦返回, 线程就over了.上面的并发operation当start函数返回后子线程就退出了, 当NSURLConnection的delegate回调时, 线程已经木有了, 所以你也就收不到回调了. 为了保证子线程持续live(等待connection回调), 你需要在子线程中加入RunLoop, 来保证它不会被kill掉.<br/>
+详细关于RunLoop的知识可以查看 <a href="%5B%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B%E3%80%81NSThread&amp;GCD&amp;NSOpration&amp;runLoop%5D(14871584203378.html)">并发编程Runloop</a></p>
+</blockquote>
+
+<p>对于这个问题:我们解决办法<br/>
+1. 让start函数在主线程运行(即使[operation start]是在子线程调用的).</p>
+
+<pre><code>```Object-c
+- (void)start 
+{
+    if (![NSThread isMainThread]) {
+        [self performSelectorOnMainThread:@selector(start)
+                           withObject:nil
+                        waitUntilDone:NO];
+        return;
+ }
+    // set up NSURLConnection...
+}
+
+或者
+
+   - (void)start
+   {
+       [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+       self.connection = [NSURLConnection connectionWithRequest:self.request delegate:self];
+       }];
+   }
+
+```
 </code></pre>
-
-<p>虽然通过这种的方式在队列中添加操作会非常方便，但是定义你自己的 NSOperation 子类会在调试时很有帮助。如果你重写 <code>operation 的description</code>方法，就可以很容易的标示出在某个队列中当前被调度的所有操作 。</p>
-
-<p>除了提供基本的调度操作或 block 外，<em>操作队列还提供了在 GCD 中不太容易处理好的特性的功能：</em></p>
 
 <ol>
-<li>例如，你可以通过 maxConcurrentOperationCount 属性来控制一个特定队列中可以有多少个操作参与并发执行。将其设置为 1 的话，你将得到一个串行队列，这在以隔离为目的的时候会很有用。</li>
-<li><p>可以根据队列中 operation 的优先级对其进行排序，这不同于 GCD 的队列优先级，它只影响当前队列中所有被调度的 operation 的执行先后。如果你需要进一步在除了 5 个标准的优先级以外对 operation 的执行顺序进行控制的话，还可以在 operation 之间指定依赖关系，如下：</p>
+<li><p>方法二是:让<code>operation</code>的start函数在子线程运行, 但是我们为它创建一个RunLoop. 然后把<code>URL connection schedule</code>到上面去. （这种方法不推荐）</p>
 
-<pre><code class="language-Object-c">[intermediateOperation addDependency:operation1];
-[intermediateOperation addDependency:operation2];
-[finishedOperation addDependency:intermediateOperation];
+<pre><code class="language-Object-c">    //参考AFNetWorking的做法
+    + (void)networkRequestThreadEntryPoint:(id)__unused object 
+    {
+        @autoreleasepool {
+            [[NSThread currentThread] setName:@&quot;AFNetworking&quot;];
+            NSRunLoop *runLoop = [NSRunLoop currentRunLoop];
+            [runLoop addPort:[NSMachPort port] forMode:NSDefaultRunLoopMode];
+            [runLoop run];
+        }
+    }
+
+    + (NSThread *)networkRequestThread 
+    {
+        static NSThread *_networkRequestThread = nil;
+        static dispatch_once_t oncePredicate;
+        dispatch_once(&amp;oncePredicate, ^{
+            _networkRequestThread = [[NSThread alloc] initWithTarget:self selector:@selector(networkRequestThreadEntryPoint:) object:nil];
+            [_networkRequestThread start];
+        });
+        return _networkRequestThread;
+    }
+
+    - (void)start 
+    {
+        [self.lock lock];
+        if ([self isCancelled]) {
+            [self performSelector:@selector(cancelConnection) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];
+        } else if ([self isReady]) {
+            self.state = AFOperationExecutingState;
+            [self performSelector:@selector(operationDidStart) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];
+        }
+        [self.lock unlock];
+    }
+</code></pre>
+
+<p>AFNetworking创建了一个新的子线程(在子线程中调用NSRunLoop *runloop = [NSRunLoop currentRunLoop]; 获取RunLoop对象的时候, 就会创建RunLoop), 然后把它加到RunLoop里面来保证它一直运行.</p>
+
+<blockquote>
+<p>这边我们可以简单的判断下当前start()的线程是子线程还是主线程, 如果是子线程则调用[NSRunLoop currentRunLoop]创新RunLoop, 否则就直接调用[NSRunLoop mainRunLoop], 当然在主线程下就没必要调用[runLoop run]了, 因为它本来就是一直run的.<br/>
+我们还可以使用CFRunLoop来启动和停止RunLoop<br/>
+<code>[self.connection scheduleInRunLoop:[NSRunLoop currentRunLoop]<br/>
+                       forMode:NSRunLoopCommonModes];<br/>
+CFRunLoopRun();<br/>
+</code><br/>
+等到该Operation结束的时候, 一定要记得调用<strong>CFRunLoopStop()</strong>停止当前线程的RunLoop, 让当前线程在operation finished之后可以退出.</p>
+</blockquote></li>
+</ol>
+
+<hr/>
+
+<h2 id="toc_5">NSOperationQueue</h2>
+
+<p>看过上面的内容就知道，我们可以调用一个 NSOperation 对象的 <code>start()</code> 方法来启动这个任务，但是这样做他们默认是 同步执行 的。就算是 <code>addExecutionBlock</code> 方法，也会在 当前线程和其他线程 中执行，也就是说还是会占用当前线程。这是就要用到队列 <code>NSOperationQueue</code> 了。而且，按类型来说的话一共有两种类型：主队列、其他队列。只要添加到队列，会自动调用任务的 <code>start()</code> 方法</p>
+
+<p>一旦NSOperation被add到Queue里面那么我们就不care它自身是不是并发设计的了, 因为被add到Queue里面的operation必定是并发的. 而且我们可以设置Queue的maxConcurrentOperationCount来指定最大的并发数(也就是几个operation可以同时被执行, <strong>如果这个值设为1, 那这个Queue就是串行队列了</strong>).<br/>
+ Queue会为每一个add到队列里面的operation创建一个线程来运行其start函数, 这样每个start都分布在不同的线程里面来实现operation们的并发执行.<br/>
+注意:<br/>
+** 我们这边所说的并发都是指NSOperation之间的并发(多个operation同时执行), 如果maxConcurrentOperationCount设置为1或者把operation放到[NSOperationQueue mainQueue]里面执行, 那它们只会顺序(Serial)执行, 当然就不可能并发了.**</p>
+
+<h5 id="toc_6">* 主队列</h5>
+
+<p>细心同学会发现，每套多线程方案都会有一个主线程。这是一个特殊的线程必须串行。凡是添加到主队列中的任务（NSOperation），都会放到主线程中执行<br/><br/>
+    //OBJECTIVE-C<br/>
+    NSOperationQueue *queue = [NSOperationQueue mainQueue];</p>
+
+<pre><code>//SWIFT
+let queue = NSOperationQueue.mainQueue()
+</code></pre>
+
+<h5 id="toc_7">* 其他队列</h5>
+
+<p>通过初始化产生的队列就是其他队列了，其他队列不需要名字<br/>
+<strong>注意：</strong>其他队列会在其他线程中并行执行<br/>
+```Object-c<br/>
+    //1.创建一个其他队列<br/><br/>
+    NSOperationQueue *queue = [[NSOperationQueue alloc] init];</p>
+
+<pre><code>//2.创建NSBlockOperation对象
+NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
+    NSLog(@&quot;%@&quot;, [NSThread currentThread]);
+}];
+
+//3.添加多个Block
+for (NSInteger i = 0; i &lt; 5; i++) {
+    [operation addExecutionBlock:^{
+        NSLog(@&quot;第%ld次：%@&quot;, i, [NSThread currentThread]);
+    }];
+}
+
+//4.队列添加任务
+[queue addOperation:operation];
 /**
-    这些简单的代码可以确保 operation1 和 operation2 在 intermediateOperation 之前执
-    行，当然，也会在 finishOperation 之前被执行。对于需要明确的执行顺序时，操作依赖是非常
-    强大的一个机制。它可以让你创建一些操作组，并确保这些操作组在依赖它们的操作被执行之前执
-    行，或者在并发队列中以串行的方式执行操作。
+   NSInvocationOperation和NSOperationQueue结合后能够开启新线程，进行并发执行
+   NSBlockOperation和NSOperationQueue也能够开启新线程，进行并发执行
 */
 </code></pre>
 
-<p><em>从本质上来看，操作队列的性能比 GCD 要低那么一点，不过，大多数情况下这点负面影响可以忽略不计，操作队列是并发编程的首选工具。</em></p></li>
-</ol>
+<pre><code>
+`- (void)addOperationWithBlock:(void (^)(void))block;`
+无需先创建任务，在block中添加任务，直接将任务block加入到队列中,能够开启新线程，进行并发执行。
+
+****
+这时如果我们想要任务在其他线程串行执行  
+`NSOperationQueue`有个参数`maxConcurrentOperationCount`最大并发数，设置为1时就是串行了  
+`maxConcurrentOperationCount`默认情况下为-1，表示不进行限制，默认为并发执行。
+`maxConcurrentOperationCount`大于1时，进行并发执行，当然这个值不应超过系统限制，即使自己设置一个很大的值，系统也会自动调整
+###操作依赖
+`NSOperation`还有个实用功能添加依赖。比如有 3 个任务：A: 从服务器上下载一张图片，B：给这张图片加个水印，C：把图片返回给服务器。这时就可以用到依赖了:
+
+```Object-c
+    //1.任务一：下载图片
+    NSBlockOperation *operation1 = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@&quot;下载图片 - %@&quot;, [NSThread currentThread]);
+        [NSThread sleepForTimeInterval:1.0];
+    }];
+    
+    //2.任务二：打水印
+    NSBlockOperation *operation2 = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@&quot;打水印   - %@&quot;, [NSThread currentThread]);
+        [NSThread sleepForTimeInterval:1.0];
+    }];
+    
+    //3.任务三：上传图片
+    NSBlockOperation *operation3 = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@&quot;上传图片 - %@&quot;, [NSThread currentThread]);
+        [NSThread sleepForTimeInterval:1.0];
+    }];
+    
+    //4.设置依赖
+    [operation2 addDependency:operation1];      //任务二依赖任务一
+    [operation3 addDependency:operation2];      //任务三依赖任务二
+    
+    //5.创建队列并加入任务
+    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+    [queue addOperations:@[operation3, operation2, operation1] waitUntilFinished:NO];
+</code></pre>
+
+<p>注意不能添加互相依赖否则会锁死<br/><br/>
+可以用<code>removeDependency</code>来解除依赖</p>
+
+<p><strong>注意:</strong><br/>
+如果我在子线程调用[operation start]函数, 或者把operation放到非MainQueue里面执行, 但是在operation的内部把start抛到主线程来执行(利用主线程的main run loop), 那多个operation其实不都是要在主线程执行的么, 这样还能并发? Luckily, 仍然是并发执行的,当然这个并发指的是狭义并发也就是主线程进行伪并行<br/>
+<img src="media/14873146865194/14873217004353.jpg" alt=""/></p>
+
+<hr/>
+
+<h3 id="toc_8">其他方法</h3>
+
+<ul>
+<li><h5 id="toc_9">NSOperation</h5>
+
+<pre><code>BOOL executing; //判断任务是否正在执行
+
+BOOL finished; //判断任务是否完成
+
+void (^completionBlock)(void); //用来设置完成后需要执行的操作
+
+- (void)cancel; //取消任务 `NSOperation`提供的方法，可取消单个操作
+
+- (void)waitUntilFinished; //阻塞当前线程直到此任务执行完毕
+</code></pre></li>
+<li><h5 id="toc_10">NSOperationQueue</h5>
+
+<pre><code>NSUInteger operationCount; //获取队列的任务数
+
+- (void)cancelAllOperations; //取消队列中所有的任务
+
+- (void)waitUntilAllOperationsAreFinished; //阻塞当前线程直到此队列中的所有任务执行完毕
+
+[queue setSuspended:YES]; // 暂停queue
+
+[queue setSuspended:NO]; // 继续queue
+</code></pre></li>
+</ul>
+
+<hr/>
+
+<h3 id="toc_11">与君共勉</h3>
+
+<p><img src="media/14873146865194/14876658479087.jpg" alt=""/></p>
 
                         
                       </div>
@@ -423,7 +1002,7 @@ for (NSUInteger i = 0; i &lt; threadCount; i++) {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/15</span>
+                    <span class="date">2017/2/17</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
@@ -512,31 +1091,31 @@ for (NSUInteger i = 0; i &lt; threadCount; i++) {
 	      
 		      
 			      <li class="post">
-			        <a href="14900564888280.html">蓝牙连接</a>
+			        <a href="14906168166224.html">缓冲</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14899954232802.html">1.weak是怎么实现的</a>
+			        <a href="14905958336865.html">图层时间</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14896343426276.html">专用图层</a>
+			        <a href="14903444013647.html">CAAnimation</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14894054496048.html">变换</a>
+			        <a href="14903384285214.html">显式动画</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14892022301750.html">图层几何学、视觉效果</a>
+			        <a href="14901616296287.html">UISlider</a>
 			      </li>
 		     
 		  
