@@ -190,6 +190,113 @@ UIViewAnimationOptionCurveLinear
     [self.colorLayer addAnimation:animation forKey:nil];
 </code></pre>
 
+<h3 id="toc_4">自定义缓冲函数</h3>
+
+<p>除了<code>+functionWithName:</code>之外,<code>CAMediaTimingFunction</code>还有另一个构造函数<code>+functionWithControlPoints::::</code>（四个浮点参数）可以创建一个自定义的缓冲函数.</p>
+
+<h4 id="toc_5">三次贝塞尔曲线</h4>
+
+<p>曲线的斜率代表了速度，斜率的改变代表了加速度,</p>
+
+<p><code>CAMediaTimingFunction</code>使用了一个叫做三次贝塞尔曲线的函数，它只可以产出指定缓冲函数的子集,用四个点来定义，第一个和最后一个点代表了曲线的起点和终点,剩下中间两个点控制了曲线的形状（曲线并不一定要穿过这两个点）.</p>
+
+<p><img src="media/14906168166224/14907840742377.jpg" alt=""/></p>
+
+<p><code>CAMediaTimingFunction</code>有<code>- getControlPointAtIndex:values:</code>的方法(Index为0.1.2.3 分别代表着四个点)，可以用来检索曲线的点.使用它我们可以找到标准缓冲函数的点，然后用<code>UIBezierPath</code>和<code>CAShapeLayer</code> 来把它画出来。</p>
+
+<p><strong>曲线的起始和终点始终是{0, 0}和{1, 1}</strong></p>
+
+<pre><code class="language-objc">//可以通过改变常量来看各个函数
+CAMediaTimingFunction *function = [CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut];
+//get control points
+CGPoint controlPoint1, controlPoint2;
+[function getControlPointAtIndex:1 values:(float *)&amp;controlPoint1];
+[function getControlPointAtIndex:2 values:(float *)&amp;controlPoint2];
+//create curve
+UIBezierPath *path = [[UIBezierPath alloc] init];
+[path moveToPoint:CGPointZero];
+[path addCurveToPoint:CGPointMake(1, 1)
+controlPoint1:controlPoint1 controlPoint2:controlPoint2];
+//scale the path up to a reasonable size for display
+[path applyTransform:CGAffineTransformMakeScale(200, 200)];
+//create shape layer
+CAShapeLayer *shapeLayer = [CAShapeLayer layer];
+shapeLayer.strokeColor = [UIColor redColor].CGColor;
+shapeLayer.fillColor = [UIColor clearColor].CGColor;
+shapeLayer.lineWidth = 4.0f;
+shapeLayer.path = path.CGPath;
+[self.layerView.layer addSublayer:shapeLayer];
+//flip geometry so that 0,0 is in the bottom-left
+self.layerView.layer.geometryFlipped = YES;
+</code></pre>
+
+<pre><code class="language-objc">//要初始微弱，然后迅速上升，最后缓冲到终点
+[CAMediaTimingFunction functionWithControlPoints:1 :0 :0.75 :1];
+</code></pre>
+
+<p><img src="media/14906168166224/14907853432579.jpg" alt=""/></p>
+
+<h4 id="toc_6">更加复杂的动画曲线</h4>
+
+<p><img src="media/14906168166224/14907860935800.jpg" alt=""/></p>
+
+<p>实现这个效果方法:</p>
+
+<ul>
+<li>用 CAKeyframeAnimation 创建一个动画，然后分割成几个步骤，每个小步骤使用自己的计时函数。</li>
+<li>使用定时器逐帧更新实现动画</li>
+</ul>
+
+<h4 id="toc_7">基于关键帧的缓冲</h4>
+
+<p>我们用关键帧缓冲来实现上面的小球掉落动画<br/>
+很显然我们的每个关键帧就是就是每次反弹的峰值,</p>
+
+<pre><code class="language-objc">CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
+animation.keyPath = @&quot;position&quot;;
+animation.duration = 1.0;
+animation.delegate = self;
+animation.values = @[
+[NSValue valueWithCGPoint:CGPointMake(150, 32)],
+[NSValue valueWithCGPoint:CGPointMake(150, 268)],
+[NSValue valueWithCGPoint:CGPointMake(150, 140)],
+[NSValue valueWithCGPoint:CGPointMake(150, 268)],
+[NSValue valueWithCGPoint:CGPointMake(150, 220)],
+[NSValue valueWithCGPoint:CGPointMake(150, 268)],
+[NSValue valueWithCGPoint:CGPointMake(150, 250)],
+[NSValue valueWithCGPoint:CGPointMake(150, 268)]
+];
+animation.timingFunctions = @[
+[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn],
+[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut],
+[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn],
+[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut],
+[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn],
+[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut],
+[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn]
+];
+animation.keyTimes = @[@0.0, @0.3, @0.5, @0.7, @0.8, @0.9, @0.95, @1.0];
+//apply animation
+self.ballView.layer.position = CGPointMake(150, 268);
+[self.ballView.layer addAnimation:animation forKey:nil];
+</code></pre>
+
+<p>//这样计算每个关键帧也太麻烦了,一旦有修改又要计算关键帧的位置</p>
+
+<h4 id="toc_8">流程自动化</h4>
+
+<p>Core Animation的插值机制:传入起点和终点，然后在这两个点之间指定时间点产出一个新点的机制</p>
+
+<pre><code class="language-objc">/**
+简单的浮点起始值
+*/
+value = (endValue – startValue) × time + startValue;
+</code></pre>
+
+<p>这是对简单的浮点值进行插值,如果是比较复杂的类似CGPoint、CGColorRef或者CATransform3D等我们可以可以对其中的每个元素（CGPoint 中的x和y值、CGColorRef 中的红，蓝，绿，透明值，或者是 CATransform3D 中独立矩阵的坐标）用这种方法,我们可以在逻辑插值前将对象拆解,插值后再重新封装成对象.</p>
+
+<p>我们获得属性动画起始值的任意插值,就可以将动画分为许多独立关键帧</p>
+
                         
                       </div>
                   </div>
