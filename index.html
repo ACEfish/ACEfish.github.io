@@ -103,6 +103,49 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
+                <a class="clearlink" href="14913623029277.html">
+                
+                  <h1>基于定时器的动画</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<p>缓冲主要学习<code>CAMediaTimingFunction</code>通过来做加速减速等增强现实感.</p>
+
+<p>本章学习精确地控制一帧一帧展示的基于定时器的动画,来更加真实模拟物理交互或者根据用户输入来改变动画</p>
+
+<h3 id="toc_0">定时帧</h3>
+
+<p>iOS按照每秒60次刷新屏幕,<code>CAAnimation</code>计算出需要展示的新的帧。</p>
+
+<h4 id="toc_1">NSTimer</h4>
+
+<p>我们可以用NStimer来一秒钟更新60次，来做动画.</p>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/4/5</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+			<div class="article">
                 <a class="clearlink" href="14906168166224.html">
                 
                   <h1>缓冲</h1>
@@ -285,7 +328,9 @@ self.ballView.layer.position = CGPointMake(150, 268);
 
 <h4 id="toc_8">流程自动化</h4>
 
-<p>Core Animation的插值机制:传入起点和终点，然后在这两个点之间指定时间点产出一个新点的机制</p>
+<p>如果我们将动画分割为足够小的部分,那么就可以用直线来拼接为这些曲线</p>
+
+<p><code>Core Animation</code>的插值机制:传入起点和终点，然后在这两个点之间指定时间点产出一个新点的机制</p>
 
 <pre><code class="language-objc">/**
 简单的浮点起始值
@@ -295,7 +340,108 @@ value = (endValue – startValue) × time + startValue;
 
 <p>这是对简单的浮点值进行插值,如果是比较复杂的类似CGPoint、CGColorRef或者CATransform3D等我们可以可以对其中的每个元素（CGPoint 中的x和y值、CGColorRef 中的红，蓝，绿，透明值，或者是 CATransform3D 中独立矩阵的坐标）用这种方法,我们可以在逻辑插值前将对象拆解,插值后再重新封装成对象.</p>
 
-<p>我们获得属性动画起始值的任意插值,就可以将动画分为许多独立关键帧</p>
+<p>我们获得属性动画起始值的任意插值,就可以将动画分为许多独立关键帧,产出一个线性的关键帧动画.</p>
+
+<p>因为<code>Core Animation</code>是每秒60帧去渲染屏幕更新,因此我们每秒生成60个关键帧可以保证动画平滑</p>
+
+<pre><code class="language-objc">float interpolate(float from, float to, float time)
+{
+    return (to - from) * time + from;
+}
+- (id)interpolateFromValue:(id)fromValue toValue:(id)toValue time:(float)time
+{
+    if ([fromValue isKindOfClass:[NSValue class]]) {
+    //get type
+    const char *type = [fromValue objCType];
+    if (strcmp(type, @encode(CGPoint)) == 0) {
+    CGPoint from = [fromValue CGPointValue];
+    CGPoint to = [toValue CGPointValue];
+    CGPoint result = CGPointMake(interpolate(from.x, to.x, time), interpolate(from.y, to.y, time));
+    return [NSValue valueWithCGPoint:result];
+        }
+    }
+//provide safe default implementation
+    return (time &lt; 0.5)? fromValue: toValue;
+}
+
+- (void)animate
+{
+    //reset ball to top of screen
+    self.ballView.center = CGPointMake(150, 32);
+    //set up animation parameters
+    NSValue *fromValue = [NSValue valueWithCGPoint:CGPointMake(150, 32)];
+    NSValue *toValue = [NSValue valueWithCGPoint:CGPointMake(150, 268)];
+    CFTimeInterval duration = 1.0;
+    //generate keyframes
+    NSInteger numFrames = duration * 60;
+    NSMutableArray *frames = [NSMutableArray array];
+    for (int i = 0; i &lt; numFrames; i++) {
+        float time = 1 / (float)numFrames * i;
+        [frames addObject:[self interpolateFromValue:fromValue toValue:toValue time:time]];
+    }
+    //create keyframe animation
+    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
+    animation.keyPath = @&quot;position&quot;;
+    animation.duration = 1.0;
+    animation.delegate = self;
+    animation.values = frames;
+    //apply animation
+    [self.ballView.layer addAnimation:animation forKey:nil];
+}
+</code></pre>
+
+<p>但是上面的方式非常复杂,因为缓冲数学并不简单，我们可以直接使用现成的<a href="http://www.robertpenner.com/easing">缓冲函数</a>,例如:</p>
+
+<pre><code class="language-objc">//缓冲进入缓冲退出函数
+float quadraticEaseInOut(float t)
+{
+`return (t &lt; 0.5)? (2 * t * t): (-2 * t * t) + (4 * t) - 1;
+}
+</code></pre>
+
+<pre><code class="language-objc">//弹性小球 bounceEaseOut函数
+float bounceEaseOut(float t)
+{
+    if (t &lt; 4/11.0) {
+        return (121 * t * t)/16.0;
+    } else if (t &lt; 8/11.0) {
+        return (363/40.0 * t * t) - (99/10.0 * t) + 17/5.0;
+    } else if (t &lt; 9/10.0) {
+        return (4356/361.0 * t * t) - (35442/1805.0 * t) + 16061/1805.0
+    }
+        return (54/5.0 * t * t) - (513/25.0 * t) + 268/25.0;
+}
+</code></pre>
+
+<pre><code class="language-objc">//我们使用上面的弹性小球函数来实现
+- (void)animate
+{
+    //reset ball to top of screen
+    self.ballView.center = CGPointMake(150, 32);
+    //set up animation parameters
+    NSValue *fromValue = [NSValue valueWithCGPoint:CGPointMake(150, 32)];
+    NSValue *toValue = [NSValue valueWithCGPoint:CGPointMake(150, 268)];
+    CFTimeInterval duration = 1.0;
+    //generate keyframes
+    NSInteger numFrames = duration * 60;
+    NSMutableArray *frames = [NSMutableArray array];
+    for (int i = 0; i &lt; numFrames; i++) {
+        float time = 1/(float)numFrames * i;
+        //apply easing
+        time = bounceEaseOut(time);
+        //add keyframe
+        [frames addObject:[self interpolateFromValue:fromValue toValue:toValue time:time]];
+    }
+    //create keyframe animation
+    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
+    animation.keyPath = @&quot;position&quot;;
+    animation.duration = 1.0;
+    animation.delegate = self;
+    animation.values = frames;
+    //apply animation
+    [self.ballView.layer addAnimation:animation forKey:nil];
+}
+</code></pre>
 
                         
                       </div>
@@ -436,6 +582,8 @@ CFTimeInterval time = CACurrentMediaTime();
 
 <p>其实如果是这样的话,对于比较复杂的动画我们可以这样的方法,但是对于比较简单图层我们完全可以直接用移动手势来设置图层<code>transform</code>,</p>
 
+<p>w</p>
+
                         
                       </div>
                   </div>
@@ -447,59 +595,6 @@ CFTimeInterval time = CACurrentMediaTime();
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
-          				   
-                  </div>
-                  <div class="more-right right">
-                  <span class="comments">
-                      
-
-                       
-                  </span>
-                  </div>
-                </div>
-              </div><!-- article -->
-        
-			<div class="article">
-                <a class="clearlink" href="14903444013647.html">
-                
-                  <h1>CAAnimation</h1>
-                  <div class="a-content">
-                      
-                      <div class="a-content-text">
-                        
-                        	<h3 id="toc_0">keyPath</h3>
-
-<ol>
-<li><p>@&quot;backgroundColor&quot;  背景颜色<br/>
-<code>(__bridge id)[UIColor blueColor].CGColor</code></p></li>
-<li><p>@&quot;transform&quot;  动画<code>CATransform3D</code><br/>
-<code>animation.toValue = [NSValue valueWithCATransform3D:transform];</code></p></li>
-<li><p>@&quot;position&quot; 中心位置<br/>
-可以直接设置值<br/>
-也可以<strong>常用于CAKeyAnimation动画路径设置</strong></p></li>
-</ol>
-
-<pre><code class="language-objc">CAKeyframeAnimation *animation1 = [CAKeyframeAnimation animation];
-animation1.keyPath = @&quot;position&quot;;
-animation1.path = bezierPath.CGPath;
-animation1.rotationMode = kCAAnimationRotateAuto;
-</code></pre>
-
-<ol>
-<li></li>
-</ol>
-
-                        
-                      </div>
-                  </div>
-                </a>
-                <div class="read-more clearfix">
-                  <div class="more-left left">
-                  
-                    <span class="date">2017/3/24</span>
-                    <span>posted in&nbsp;</span> 
-          				  
-          					    <span class="posted-in"><a href='iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html'>iOS开发知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -585,6 +680,12 @@ animation1.rotationMode = kCAAnimationRotateAuto;
 	      
 		      
 			      <li class="post">
+			        <a href="14913623029277.html">基于定时器的动画</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="14906168166224.html">缓冲</a>
 			      </li>
 		     
@@ -604,12 +705,6 @@ animation1.rotationMode = kCAAnimationRotateAuto;
 		      
 			      <li class="post">
 			        <a href="14903384285214.html">显式动画</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14901616296287.html">UISlider</a>
 			      </li>
 		     
 		  

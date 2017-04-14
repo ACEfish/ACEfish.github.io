@@ -103,6 +103,179 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
+                <a class="clearlink" href="14861704124969.html">
+                
+                  <h1>iOS 滤镜</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<hr/>
+
+<h3 id="toc_0">CIFilter实现滤镜效果</h3>
+
+<p>参考网址:<a href="http://www.jianshu.com/p/98ba256b034a" title="CoreImage滤镜学习 - 简书">CoreImage滤镜学习</a> </p>
+
+<h5 id="toc_1">CoreImage框架介绍</h5>
+
+<p>1.是一个图片框架 基于<code>OpenGL</code>顶层创建，底层用着色器来处理图像<br/><br/>
+2.利用GPU基于硬件加速来处理图像<br/><br/>
+3.CoreImage中有很多滤镜<br/><br/>
+4.它们能够一次给予一张图像或者视频帧多种视觉效果 -&gt; 滤镜链<br/><br/>
+5.滤镜可以连接起来组成一个滤镜链 把滤镜效果叠加起来处理图像</p>
+
+<h5 id="toc_2">CIFilter使用介绍</h5>
+
+<ol>
+<li><p><code>CIFilter</code>滤镜类中有很多的滤镜效果 这里不一一列举，可以按住command 点击CIFilter 进入接口文件 找到第128行-148行全部都是 效果分类  </p></li>
+<li><p>常用效果<br/><br/>
+我们使用时需要先找到需要的效果类型 比如我们使用<code>kCICategoryDistortionEffect</code>失真的效果类型，有了效果类型我们需要找到里面我们需要的效果.<br/><br/>
+<code>NSLog -&gt; [CIFilter filterNamesInCategory:刚才拷贝的分类];</code><br/><br/>
+比如<code>CIColorMonochrome </code>,然后就可以使用这个滤镜效果<br/><br/>
+<code>CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome”];</code><br/><br/>
+然后打印这个效果中包含了那些属性:<br/><br/>
+<code>NSLog(@&quot;%@&quot;,filter.attributes);</code><br/><br/>
+在里面我们可以看到好多属性，里面是多个字典的形式，找到我们想要修改的属性(key值) 然后在他对应的value里面查看一下他的属性类型，比如我们打印的CIColorMonochrome里面有一个inputColor，他是一个CIColor类型的，有默认值，这里我们写了一个CIColor来给他进行赋值.<br/><br/>
+赋值时需要用kvc的方式:<br/><br/>
+<code>[filter setValue:colorforKey:kCIInputColorKey];</code><br/><br/>
+<img src="media/14861704124969/DraggedImage.png" alt="DraggedImage"/></p></li>
+<li><p>实现滤镜效果代码<br/><br/>
+首先我们创建一个全局变量的UIImageView，然后让他初始化出来,这个就是我们要处理的图片 一般我们从手机相册中取出来:<br/><br/>
+ @interface ViewController ()&lt;UINavigationControllerDelegate,UIImagePickerControllerDelegate&gt;<br/>
+    {<br/>
+         UIImageView *imageView;<br/>
+    }<br/>
+    @end<br/>
+    然后我们需要从相册中取出一张图片,保存起来:<br/>
+    //跳转相册的触发方法<br/>
+    - (void)doit{<br/>
+    UIImagePickerController *vc = [[UIImagePickerController alloc]init];<br/>
+    vc.delegate = self;<br/>
+    [self presentViewController:vc animated:YES completion:nil];</p>
+
+<pre><code>}
+//让图片显示在VC上面的方法
+- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary&lt;NSString *,id&gt; *)info
+{
+NSLog(@&quot;%@&quot;,info);
+//获得选中的图像
+UIImage *chooseImage = info[UIImagePickerControllerOriginalImage];
+//先是在试图空间上
+imageView.image = chooseImage;
+
+[self dismissViewControllerAnimated:YES completion:nil];
+}
+</code></pre>
+
+<p><strong>接下来就是对图片进行滤镜处理:</strong><br/>
+    - (void)addColorFilter{<br/>
+    //CIImage 保存图像数据的类<br/>
+    CIImage <em>inputImage = [CIImage imageWithCGImage:imageView.image.CGImage];<br/>
+    //先打印NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);进去找到需要设置的属性(查询效果分类中都有什么效果)  可以设置什么效果<br/>
+    //然后通过[CIFilter filterWithName:@&quot;&quot;];找到属性   具体效果的属性<br/>
+    //然后通过KVC的方式设置属性<br/>
+    NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);<br/>
+    /</em><br/>
+     1.查询 效果分类中 包含什么效果：filterNamesInCategory:<br/>
+     2.查询 使用的效果中 可以设置什么属性（KVC） attributes</p>
+
+<pre><code> 使用步骤
+ 1.需要添加滤镜的源图
+ 2.初始化一个滤镜 设置滤镜（根据查询到的属性来设置）
+ 3.把滤镜 输出的图像 和滤镜  合并 CIContext -&gt; 得到一个合成之后的图像
+ 4.展示
+ */
+//CIFilter 滤镜类  图片属性进行细节处理的类
+CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome&quot;];
+NSLog(@&quot;%@&quot;,filter.attributes);
+//这个属性是必须赋值的，假如你处理的是图片的话
+[filter setValue:inputImage forKey:kCIInputImageKey];
+CIColor *color = [CIColor colorWithRed:1.000 green:0.759 blue:0.592 alpha:1];
+[filter setValue:color forKey:kCIInputColorKey];
+//CIContext 上下文是实现对图像处理的具体对象 用来把滤镜和图片合成成为一张图片 滤镜对象输出的图像并不是合成之后的图像，需要使用图片处理的上下文 合并输出图像
+    CIContext *context = [CIContext contextWithOptions:nil];
+
+CIImage *outPutImage = filter.outputImage;
+//CGImageRef-&gt;图像中的数据
+    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];
+
+    imageView.image = [UIImage imageWithCGImage:image];
+
+ }
+</code></pre>
+
+<p>注意：<br/><br/>
+对滤镜进行赋值之后图片就有了，但是我们这个时候拿出这个图片的时候发现他并没有发生变化，因为它只是单一进行了滤镜处理，还没有和原图片进行一个糅合。使用CIContext找到上下文对他进行糅合：<br/><br/>
+//extent得到图像的尺寸    合并一个包含源图   滤镜效果的图片<br/>
+    //1 滤镜输出的图像    2.合成之后图像的尺寸   图像.extent<br/>
+    CGImageRef imageRef = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+注意:<br/><br/>
+假如你的图片消失了，请检查一下，第一步获取图片的时候一定要获得图片的CGImage再来来获取，不要直接使用imageView.image.CGImage。</p></li>
+<li><p>滤镜链:<br/><br/>
+在给一张图片添加多种滤镜效果的时候，我们把它称为<code>滤镜链</code>，我们再添加滤镜链的时候，就是把图片添加一层滤镜，然后，和原图片糅合处理，然后在处理之后的图片上再添加一层滤镜，并不是直接给一张图片添加了两层路径，所以称为滤镜链。<br/><br/>
+我们继续使用这个图片，在它添加第一层滤镜的时候做一些修改:  </p>
+
+<pre><code>//上接给效果属性赋值
+//把下面注释的给注释掉，然后添加一个方法
+    //CIContext
+//    CIContext *context = [CIContext contextWithOptions:nil];
+
+CIImage *outPutImage = filter.outputImage;
+[self addFilterLinkerWithImage:outPutImage];
+//    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];
+
+//    imageView.image = [UIImage imageWithCGImage:image];
+
+//再次添加滤镜  -&gt;  形成滤镜链
+- (void)addFilterLinkerWithImage:(CIImage *)image
+{
+CIFilter *filter = [CIFilter filterWithName:@&quot;CISepiaTone&quot;];
+[filter setValue:image forKey:kCIInputImageKey];
+CIContext *context = [CIContext contextWithOptions:nil];
+CGImageRef resultImage = [context createCGImage:filter.outputImage fromRect:filter.outputImage.extent];
+imageView.image = [UIImage imageWithCGImage:resultImage];
+//把添加好滤镜效果的图片   保存到相册
+//不可以直接保存 outputImage  -&gt;  这是一个没有吧滤镜效果和源图合成的图像
+UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishSavingWithError:contextInfo:), nil);
+ }
+//保存图片回调
+- (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo
+{
+    NSLog(@&quot;保存成功&quot;);
+}
+</code></pre>
+
+<p>这样就是一个双重的滤镜效果,同时保存到了相册.</p></li>
+</ol>
+
+<hr/>
+
+<h3 id="toc_3">系统自带简单的滤镜效果</h3>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/2/4</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+			<div class="article">
                 <a class="clearlink" href="14861702798513.html">
                 
                   <h1>ios中主要框架</h1>
@@ -255,6 +428,12 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
 	      
 		      
 			      <li class="post">
+			        <a href="14913623029277.html">基于定时器的动画</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="14906168166224.html">缓冲</a>
 			      </li>
 		     
@@ -274,12 +453,6 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
 		      
 			      <li class="post">
 			        <a href="14903384285214.html">显式动画</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14901616296287.html">UISlider</a>
 			      </li>
 		     
 		  

@@ -298,7 +298,9 @@ self.ballView.layer.position = CGPointMake(150, 268);
 
 <h4 id="toc_8">流程自动化</h4>
 
-<p>Core Animation的插值机制:传入起点和终点，然后在这两个点之间指定时间点产出一个新点的机制</p>
+<p>如果我们将动画分割为足够小的部分,那么就可以用直线来拼接为这些曲线</p>
+
+<p><code>Core Animation</code>的插值机制:传入起点和终点，然后在这两个点之间指定时间点产出一个新点的机制</p>
 
 <pre><code class="language-objc">/**
 简单的浮点起始值
@@ -308,7 +310,108 @@ value = (endValue – startValue) × time + startValue;
 
 <p>这是对简单的浮点值进行插值,如果是比较复杂的类似CGPoint、CGColorRef或者CATransform3D等我们可以可以对其中的每个元素（CGPoint 中的x和y值、CGColorRef 中的红，蓝，绿，透明值，或者是 CATransform3D 中独立矩阵的坐标）用这种方法,我们可以在逻辑插值前将对象拆解,插值后再重新封装成对象.</p>
 
-<p>我们获得属性动画起始值的任意插值,就可以将动画分为许多独立关键帧</p>
+<p>我们获得属性动画起始值的任意插值,就可以将动画分为许多独立关键帧,产出一个线性的关键帧动画.</p>
+
+<p>因为<code>Core Animation</code>是每秒60帧去渲染屏幕更新,因此我们每秒生成60个关键帧可以保证动画平滑</p>
+
+<pre><code class="language-objc">float interpolate(float from, float to, float time)
+{
+    return (to - from) * time + from;
+}
+- (id)interpolateFromValue:(id)fromValue toValue:(id)toValue time:(float)time
+{
+    if ([fromValue isKindOfClass:[NSValue class]]) {
+    //get type
+    const char *type = [fromValue objCType];
+    if (strcmp(type, @encode(CGPoint)) == 0) {
+    CGPoint from = [fromValue CGPointValue];
+    CGPoint to = [toValue CGPointValue];
+    CGPoint result = CGPointMake(interpolate(from.x, to.x, time), interpolate(from.y, to.y, time));
+    return [NSValue valueWithCGPoint:result];
+        }
+    }
+//provide safe default implementation
+    return (time &lt; 0.5)? fromValue: toValue;
+}
+
+- (void)animate
+{
+    //reset ball to top of screen
+    self.ballView.center = CGPointMake(150, 32);
+    //set up animation parameters
+    NSValue *fromValue = [NSValue valueWithCGPoint:CGPointMake(150, 32)];
+    NSValue *toValue = [NSValue valueWithCGPoint:CGPointMake(150, 268)];
+    CFTimeInterval duration = 1.0;
+    //generate keyframes
+    NSInteger numFrames = duration * 60;
+    NSMutableArray *frames = [NSMutableArray array];
+    for (int i = 0; i &lt; numFrames; i++) {
+        float time = 1 / (float)numFrames * i;
+        [frames addObject:[self interpolateFromValue:fromValue toValue:toValue time:time]];
+    }
+    //create keyframe animation
+    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
+    animation.keyPath = @&quot;position&quot;;
+    animation.duration = 1.0;
+    animation.delegate = self;
+    animation.values = frames;
+    //apply animation
+    [self.ballView.layer addAnimation:animation forKey:nil];
+}
+</code></pre>
+
+<p>但是上面的方式非常复杂,因为缓冲数学并不简单，我们可以直接使用现成的<a href="http://www.robertpenner.com/easing">缓冲函数</a>,例如:</p>
+
+<pre><code class="language-objc">//缓冲进入缓冲退出函数
+float quadraticEaseInOut(float t)
+{
+`return (t &lt; 0.5)? (2 * t * t): (-2 * t * t) + (4 * t) - 1;
+}
+</code></pre>
+
+<pre><code class="language-objc">//弹性小球 bounceEaseOut函数
+float bounceEaseOut(float t)
+{
+    if (t &lt; 4/11.0) {
+        return (121 * t * t)/16.0;
+    } else if (t &lt; 8/11.0) {
+        return (363/40.0 * t * t) - (99/10.0 * t) + 17/5.0;
+    } else if (t &lt; 9/10.0) {
+        return (4356/361.0 * t * t) - (35442/1805.0 * t) + 16061/1805.0
+    }
+        return (54/5.0 * t * t) - (513/25.0 * t) + 268/25.0;
+}
+</code></pre>
+
+<pre><code class="language-objc">//我们使用上面的弹性小球函数来实现
+- (void)animate
+{
+    //reset ball to top of screen
+    self.ballView.center = CGPointMake(150, 32);
+    //set up animation parameters
+    NSValue *fromValue = [NSValue valueWithCGPoint:CGPointMake(150, 32)];
+    NSValue *toValue = [NSValue valueWithCGPoint:CGPointMake(150, 268)];
+    CFTimeInterval duration = 1.0;
+    //generate keyframes
+    NSInteger numFrames = duration * 60;
+    NSMutableArray *frames = [NSMutableArray array];
+    for (int i = 0; i &lt; numFrames; i++) {
+        float time = 1/(float)numFrames * i;
+        //apply easing
+        time = bounceEaseOut(time);
+        //add keyframe
+        [frames addObject:[self interpolateFromValue:fromValue toValue:toValue time:time]];
+    }
+    //create keyframe animation
+    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
+    animation.keyPath = @&quot;position&quot;;
+    animation.duration = 1.0;
+    animation.delegate = self;
+    animation.values = frames;
+    //apply animation
+    [self.ballView.layer addAnimation:animation forKey:nil];
+}
+</code></pre>
 
 
     
@@ -318,6 +421,9 @@ value = (endValue – startValue) × time + startValue;
       <div class="row">
         <div class="large-6 columns">
         <p class="text-left" style="padding:15px 0px;">
+      
+          <a href="14913623029277.html" 
+          title="Previous Post: 基于定时器的动画">&laquo; 基于定时器的动画</a>
       
         </p>
         </div>
@@ -400,6 +506,12 @@ value = (endValue – startValue) × time + startValue;
 	      
 		      
 			      <li class="post">
+			        <a href="14913623029277.html">基于定时器的动画</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="14906168166224.html">缓冲</a>
 			      </li>
 		     
@@ -419,12 +531,6 @@ value = (endValue – startValue) × time + startValue;
 		      
 			      <li class="post">
 			        <a href="14903384285214.html">显式动画</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14901616296287.html">UISlider</a>
 			      </li>
 		     
 		  
