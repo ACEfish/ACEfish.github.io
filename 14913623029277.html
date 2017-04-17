@@ -135,6 +135,104 @@
 
 <p>我们可以用NStimer来一秒钟更新60次，来做动画.</p>
 
+<p>用<code>NSTimer</code>做动画的话需要几个属性来存储动画的<code>fromValue</code> ，<code>toValue</code>，<code>duration</code>和当前的 <code>timeOffset</code>。</p>
+
+<p><code>示例代码省略</code></p>
+
+<p>但是用<code>NSTimer</code>并不是一个很好的方案</p>
+
+<p>iOS中每个线程都管理了一个<code>NSRunloop</code>，通过循环来完成一些任务列表</p>
+
+<p>但是主线程的任务有:</p>
+
+<ul>
+<li>处理触摸事件</li>
+<li>发送和接受网络数据包</li>
+<li>执行使用gcd的代码</li>
+<li>处理定时器行为</li>
+<li>屏幕重绘</li>
+</ul>
+
+<p>当我们设置了一个NSTimer,会被插入到当前任务列表中,指定时间过去后才被执行.但是何时启动定时器并没有一个时间上限，而且它只会在列表中上一个任务完成之后开始执行。这通常会导致有几毫秒的延迟，但是如果上一个任务过了很久才完成就会导致延迟很长一段时间。</p>
+
+<p>屏幕重绘的频率是一秒钟六十次，但是和定时器行为一样，如果列表中上一个执行了很长时间，它也会延迟。这些延迟都是一个随机值，于是就不能保证定时器精准地一秒钟执行六十次。有时候发生在屏幕重绘之后，这就会使得更新屏幕会有个延迟，看起来就是动画卡壳了。有时候定时器会在屏幕更新的时候执行两次，于是动画看起来就跳动了。</p>
+
+<p>优化方法:</p>
+
+<ul>
+<li>我们可以用 CADisplayLink 让更新频率严格控制在每次屏幕刷新之后。</li>
+<li>基于真实帧的持续时间而不是假设的更新频率来做动画。</li>
+<li>调整动画计时器的 <code>run loop</code> 模式，这样就不会被别的事件干扰。</li>
+</ul>
+
+<h4 id="toc_2">CADisplayLink</h4>
+
+<p><code>CADisplayLink</code>是<code>CoreAnimation</code>提供的另一个类似<code>NSTimer</code>类,总是在屏幕完成一次更新之前启动,它和<code>NSTimer</code>的内部实现相同,只不过它不是以时间间隔秒为单位,<code>CADisplayLink</code> 有一个整型的<code>frameInterval</code> 属性，指定了间隔多少帧之后才执行。默认值是1，意味着每次屏幕更新之前都会执行一次。(我们可以根据动画的执行时间来确定多少帧执行一次)</p>
+
+<p>虽然<code>CADisplayLink</code>也不能保证每帧都按计划执行,出现丢帧情况,但是和<code>NSTimer</code>不同的是<code>NSTimer</code>一有机会就会开启,而<code>CADisplayLink</code>如果丢帧的话会直接忽略它们,在下一次更新时接着运行;</p>
+
+<pre><code class="language-objc">self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+
+- (void)step:(CADisplayLink *)timer
+{
+    //calculate time delta
+    CFTimeInterval thisStep = CACurrentMediaTime();
+    CFTimeInterval stepDuration = thisStep - self.lastStep;
+    self.lastStep = thisStep;
+    
+    self.timeOffset = MIN(self.timeOffset + stepDuration, self.duration);
+    //get normalized time offset (in range 0 - 1)
+    float time = self.timeOffset / self.duration;
+    //apply easing
+    time = bounceEaseOut(time);
+    //interpolate position
+    id position = [self interpolateFromValue:self.fromValue toValue:self.toValue
+    time:time];
+    //move ball view to new position
+    self.ballView.center = [position CGPointValue];
+    //stop the timer if we&#39;ve reached the end of the animation
+    if (self.timeOffset &gt;= self.duration) {
+        [self.timer invalidate];
+        self.timer = nil;
+    }
+}
+</code></pre>
+
+<h4 id="toc_3">Run Loop 模式</h4>
+
+<p>创建Run Loop时需要指定mode,iOS会根据指定的优先级,，而且当UI很活跃的时候的确会暂停一些别的任务.</p>
+
+<ul>
+<li>NSDefaultRunLoopMode - 标准优先级</li>
+<li>NSRunLoopCommonModes - 高优先级</li>
+<li>UITrackingRunLoopMode - 用于 UIScrollView 和别的控件的动画</li>
+</ul>
+
+<pre><code class="language-objc">/*我们可以同时加入 NSDefaultRunLoopMode 和 UITrackingRunLoopMode 
+    来保证它不会被滑动打断，也不会被其他UIKit控件动画影响性能
+**/
+self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:UITrackingRunLoop];
+</code></pre>
+
+<h3 id="toc_4">物理模拟</h3>
+
+<p>我们在上面的方法中，关键帧的实现中我们提前加计算了所有帧,这次我们按需要进行计算,这样我们可以根据用户输入实时修改动画的逻辑，或者和别的实时动画系统例如物理引擎进行整合。</p>
+
+<h4 id="toc_5">Chipmunk</h4>
+
+<p>基于物理学创建一个真实的重力模拟效果来取代当前基于缓冲的弹性动画,因为模拟物理效果太复杂了，我们直接使用开源的物理引擎,我这里使用<code>Chipmunk</code>，有很多版本包括和<code>Objective-C</code>绑定的<code>“indie”</code>版本<a href="http://chipmunk-physics.net/">下载地址</a></p>
+
+<p>我们只简单使用这个引擎中的几个类:</p>
+
+<ul>
+<li>cpSpace - 所有的物理结构体的容器。它有一个大小和一个可选的重力矢量</li>
+<li>cpBody - 一个固态无弹力的刚体。它有一个坐标，以及其他物理属性，例如质量，运动和摩擦系数等等。</li>
+<li>cpShape - 一个抽象的几何形状，用来检测碰撞。可以给结构体添加一个多边形，而且<code>cpShape</code>有各种子类来代表不同形状的类型。</li>
+</ul>
+
 
     
 
@@ -143,6 +241,9 @@
       <div class="row">
         <div class="large-6 columns">
         <p class="text-left" style="padding:15px 0px;">
+      
+          <a href="14921642710849.html" 
+          title="Previous Post: 动画">&laquo; 动画</a>
       
         </p>
         </div>
@@ -225,6 +326,12 @@
 	      
 		      
 			      <li class="post">
+			        <a href="14921642710849.html">动画</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="14913623029277.html">基于定时器的动画</a>
 			      </li>
 		     
@@ -244,12 +351,6 @@
 		      
 			      <li class="post">
 			        <a href="14903444013647.html">CAAnimation</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14903384285214.html">显式动画</a>
 			      </li>
 		     
 		  

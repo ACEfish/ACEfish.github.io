@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
     
-  iOS中UISearchController - ACEfish的博客
+  动画 - ACEfish的博客
   
   </title>
   
@@ -103,14 +103,14 @@
       <div class="markdown-body article-wrap">
        <div class="article">
           
-          <h1>iOS中UISearchController</h1>
+          <h1>动画</h1>
      
         <div class="read-more clearfix">
-          <span class="date">2017/2/9</span>
+          <span class="date">2017/4/14</span>
 
           <span>posted in&nbsp;</span> 
           
-              <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
+              <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
            
          
           <span class="comments">
@@ -123,57 +123,21 @@
       </div><!-- article -->
 
       <div class="article-content">
-      <h4 id="toc_0">1. 使用方法</h4>
+      <p>1.隐式动画<br/>
+    利用图层的属性动画来做动画<br/>
+    通过事务来控制动画的时间等属性<br/>
+    UIView的animateWithDuration:animations:方法创建的动画。<br/>
+2.显式动画<br/>
+    就是直接显式的向图层上添加一个动画<br/>
+    beginAnimations:context:和commitAnimations创建的动画。</p>
 
-<pre><code class="language-Object-c">SearchResultController *vc = [[SearchResultController alloc] init];
-    self.searchController = [[SearchControllerOfContacts alloc] initWithSearchResultsController:vc];
-    [self.tableView setTableHeaderView:self.searchController.searchBar];
-    [self.searchController setSearchResultsUpdater:vc];
-    [self.searchController.searchBar setPlaceholder:NSLocalizedString(@&quot;昵称、手机号&quot;, nil)];
-    self.resultController = vc;
-</code></pre>
+<p>之所以叫<strong><code>隐式</code>是因为我们并没有指定任何动画的类型</strong>.我们改变属性之后是<code>Core Animation</code>来决定如何并且何时去做动画（这是隐式当然也可以显式动画）.</p>
 
-<p>此处是设置searchBar为tableView的头视图<br/>
-<strong>注意</strong><br/>
-此处的searchConroller 和 searchResultcontroller都必须为该控制器的属性(即强引用住）</p>
+<p>隐式动画的动画执行的时间取决于当前<code>事务</code>的设置，动画类型取决于图层行为。</p>
 
-<h4 id="toc_1">2. 自定义的UISearchController</h4>
-
-<p>我们可以继承自UISearchController，重写其<code>initWithSearchResultsController</code>方法即可:</p>
-
-<pre><code class="language-Object-c">- (id)initWithSearchResultsController:(UIViewController *)searchResultsController
-{
-    if (self = [super initWithSearchResultsController:searchResultsController]) {
-        self.searchBar.layer.borderWidth = 1;
-        self.searchBar.layer.borderColor = [ITRGBColor(239.0, 239.0, 244.0, 1.0)CGColor];
-        [self.searchBar setBarTintColor:ITRGBColor(239.0, 239.0, 244.0, 1.0)];
-        [self.searchBar setValue:@&quot;取消&quot; forKey:@&quot;_cancelButtonText&quot;];
-        UITextField *tf = [[[self.searchBar.subviews firstObject] subviews] lastObject];
-        [tf.layer setMasksToBounds:YES];
-        [tf.layer setBorderWidth:0.5f];
-        [tf.layer setBorderColor:[UIColor colorWithWhite:0.5 alpha:0.3].CGColor];
-        [tf.layer setCornerRadius:5.0f];
-        
-    }
-    return self;
-}
-</code></pre>
-
-<h4 id="toc_2">3.深度解析UISearchController 以及其SearchResultControll原理</h4>
-
-<p>当UISearchController出现时，UISearchController也是一个控制器就相当于模态出来一个控制器<br/>
-<img src="media/14866309753746/UISearchController.png" alt="UISearchControlle的层级表示"/><br/>
-<img src="media/14866309753746/searchController_big.png" alt="searchController_big"/></p>
-
-<p>我们可以看出来 我们首先从原来控制器模态出来我们自己的UISearchController 而UISearchControllView就是这个控制器的View即蓝色部分  而搜索结果的显示即在其上加了一个View这个view即为我们的搜索结果控制器的view<br/>
-因此我们改变这个SearchControllView颜色并不会影响显示 但是如果把其上加上别的视图 就会影响结果的显示的<br/>
-<img src="media/14866309753746/searchController2.png" alt="searchControlle"/><br/>
-可以看到显示结果的View被我们后加的tableView挡住了,这时候我们可以<strong><code>sendSubviewToBack</code></strong>来直接将tableView放置到显示结果的view后面即可了</p>
-
-<h4 id="toc_3">3.UISearchController 上的searchBar原理</h4>
-
-<p>显示的searchBar是因为searcontroller上有一块searBarContainView 在其上放置了searchBar,还有背景图片 取消按钮等<br/>
-<img src="media/14866309753746/UISearchBar.png" alt="UISearchBa"/></p>
+<p>3.<br/>
+<code>CATransaction</code> 隐式动画<br/>
+<code>CATransition</code> 过渡动画</p>
 
 
     
@@ -184,16 +148,13 @@
         <div class="large-6 columns">
         <p class="text-left" style="padding:15px 0px;">
       
-          <a href="14866921954417.html" 
-          title="Previous Post: iOS中开发者知识">&laquo; iOS中开发者知识</a>
-      
         </p>
         </div>
         <div class="large-6 columns">
       <p class="text-right" style="padding:15px 0px;">
       
-          <a  href="14865484031774.html" 
-          title="Next Post: IOS开发小知识">IOS开发小知识 &raquo;</a>
+          <a  href="14913623029277.html" 
+          title="Next Post: 基于定时器的动画">基于定时器的动画 &raquo;</a>
       
       </p>
         </div>
