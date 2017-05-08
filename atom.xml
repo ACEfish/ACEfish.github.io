@@ -4,13 +4,376 @@
   <title><![CDATA[ACEfish的博客]]></title>
   <link href="https://acefish.github.io/atom.xml" rel="self"/>
   <link href="https://acefish.github.io/"/>
-  <updated>2017-04-14T14:46:36+08:00</updated>
+  <updated>2017-04-17T09:54:31+08:00</updated>
   <id>https://acefish.github.io/</id>
   <author>
     <name><![CDATA[]]></name>
     
   </author>
   <generator uri="http://www.mweb.im/">MWeb</generator>
+  
+  <entry>
+    <title type="html"><![CDATA[高效绘图]]></title>
+    <link href="https://acefish.github.io/14939015823586.html"/>
+    <updated>2017-05-04T20:39:42+08:00</updated>
+    <id>https://acefish.github.io/14939015823586.html</id>
+    <content type="html"><![CDATA[
+<p>关于绘制的性能<br/>
+提高绘制性能或者减少需要绘制的数量</p>
+
+<h3 id="toc_0">软件绘图</h3>
+
+<p>在<code>Core Animation</code>中的绘图通常是指<strong>软件绘图</strong><br/>
+在iOS中，软件绘图通常是由<code>Core Graphics</code>框架完成来完成。但是，在一些必要的情况下，相比<code>Core Animation</code>和<code>OpenGL</code>，<code>Core Graphics</code>要慢了不少。</p>
+
+<p>软件绘图不仅效率很低 而且很耗内存.CALayer只需要和自己相关的内存,只有他的寄宿图会消耗一点内存控件，即使直接赋给<code>contents</code>属性一张图片,也不需要增加额外的照片存储大小,如果相同的一张图片被多个图层作为<code>contents</code>属性，那么他们将会共用同一块内存，而不是复制内存块。</p>
+
+<p>但是如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</p>
+
+<p><strong>绘图代价很大，尽量避免重绘你的视图</strong></p>
+
+<h3 id="toc_1">矢量图形</h3>
+
+<p>我们用的矢量绘图包含:</p>
+
+<ul>
+<li>任意多边形</li>
+<li>斜线或曲线</li>
+<li>文本</li>
+<li>渐变</li>
+</ul>
+
+<p>实现一个划线应用:将用户的触摸手势转换成一个 UIBezierPath 上的点，然后绘制成视图。</p>
+
+<p>1.用<code>Core Graphic</code>基于<code>drawRect</code>绘制</p>
+
+<pre><code class="language-objc">- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    CGPoint point = [[touches anyObject] locationInView:self];
+    [self.path addLineToPoint:point];
+    [self setNeedsDisplay];
+}
+- (void)drawRect:(CGRect)rect
+{
+    [[UIColor clearColor] setFill];
+    [[UIColor redColor] setStroke];
+    [self.path stroke];
+}
+</code></pre>
+
+<p><code>[self setNeedsDisplay];</code>可以重绘视图,再次走<code>drawRect</code>方法,但是如果一直重绘而且绘制工作量增大就会导致帧数下降.</p>
+
+<p>2.用<code>CAShaperLayer</code>绘制</p>
+
+<pre><code class="language-objc">+ (Class)layerClass
+{
+    return [CAShapeLayer class];
+}
+</code></pre>
+
+<p><code>Core Animation</code>为这些图层类型提供了专门的类，并提供了硬件支持,比如<code>CAShapeLayer</code>可以绘制多边形，直线和曲线。 <code>CATextLayer</code>可以绘制文本。<code>CAGradientLayer</code>用来绘制渐变。这些总体上都比<code>Core Graphics</code>更快，同时他们也避免了创造一个寄宿图。(<strong>这些图层是CA提供的,而我们的绘图用的是CG</strong>)</p>
+
+<p>因此对于绘制矢量图层我们可以重写<code>UIView</code>的<code>layer</code>然后只需要将绘制的<code>path</code>赋值<code>CAShapeLayer</code>的<code>path</code>即可绘制，虽然性能依然下降但不明显几乎感觉不到帧率差异</p>
+
+<h3 id="toc_2">脏矩形</h3>
+
+<p>有时候我们没办法用<code>CAShapeLayer</code>等图层来代替<code>Core Graphics</code>，对于上面的例子,我们为了进一步提高性能,我们用一个“线刷”图片粘贴到用户手指触碰的地方</p>
+
+<p>我们如果在用户手指移动就重绘视图将图片粘贴到用户手指移动过的所有点,这样绘制越多就越慢,仍会引起性能问题</p>
+
+<p>为了减少不必要的绘制,Mac OS和iOS设备将会把屏幕区分为需要重绘的区域和不需要重绘的区域。<strong>那些需要重绘的部分被称作『脏区域』。</strong>为了方便我们通常指出包含需要重绘的视图的矩形位置,就是<strong>脏矩形</strong></p>
+
+<p>只改变了视图的部分区域的,重绘整个整个寄宿图就太浪费了,我们可以通过提供重绘区域.</p>
+
+<p>当检测到需要重绘的区域时通过<code>setNeedsDisplayInRect:</code>标记,这样就会在一次试图刷新时调用调用视图的<code>- drawRect:</code>（或图层代理的<code>- drawLayer:inContext:</code>方法）</p>
+
+<p>传入<code>- drawLayer:inContext:</code>的<code>CGContext</code>参数会自动被裁切以适应对应的矩形。为了确定矩形的尺寸大小，你可以用<code>CGContextGetClipBoundingBox()</code>方法来从上下文获得大小。调用<code>- drawRect()</code>会更简单，因为<code>CGRect</code>会作为参数直接传入。</p>
+
+<p>当然如果你的裁剪逻辑相当复杂,那还是是让<code>Core Graphics</code>来为你重绘吧，</p>
+
+<pre><code class="language-objc">- (void)addBrushStrokeAtPoint:(CGPoint)point
+{
+    //add brush stroke to array
+    [self.strokes addObject:[NSValue valueWithCGPoint:point]];
+    //set dirty rect
+    [self setNeedsDisplayInRect:[self brushRectForPoint:point]];
+}
+- (CGRect)brushRectForPoint:(CGPoint)point
+{
+    return CGRectMake(point.x - BRUSH_SIZE/2, point.y - BRUSH_SIZE/2, BRUSH_SIZE, BRUSH_SIZE);
+}
+- (void)drawRect:(CGRect)rect
+{
+    //redraw strokes
+    for (NSValue *value in self.strokes) {
+        //get point
+        CGPoint point = [value CGPointValue];
+        //get brush rect
+        CGRect brushRect = [self brushRectForPoint:point];
+        //only draw brush stroke if it intersects dirty rect
+        if (CGRectIntersectsRect(rect, brushRect)) {
+        //draw brush stroke
+        [[UIImage imageNamed:@&quot;Chalk.png&quot;] drawInRect:brushRect];
+        }
+    }
+}
+</code></pre>
+
+<h3 id="toc_3">异步绘制</h3>
+
+<p><code>UIKit</code>的单线程天性意味着寄宿图通畅要在主线程上更新，这意味着绘制会打断用户交互，甚至让整个<code>app</code>看起来处于无响应状态。</p>
+
+<p>为了可以避免用户等待绘制：</p>
+
+<h4 id="toc_4">CATiledLayer</h4>
+
+<p><code>CATiledLayer</code>除了将图层再次分割成独立更新的小块外<br/>
+<code>CATiledLayer</code>还有一个有趣的特性：在多个线程中为每个小块同时调用<code>- drawLayer:inContext:</code>方法。<br/>
+这就避免了阻塞用户交互而且能够利用多核心新片来更快地绘制。只有一个小块的<code>CATiledLayer</code>是实现异步更新图片视图的简单方法。</p>
+
+<h4 id="toc_5">drawsAsynchronously</h4>
+
+<p>苹果为<code>CALayer</code>引入了这个令人好奇的属性，<code>drawsAsynchronously</code>属性对传入<code>-drawLayer:inContext:</code>的<code>CGContext</code>进行改动，允许<code>CGContext</code>延缓绘制命令的执行以至于不阻塞用户交互。</p>
+
+<p>它与<code>CATiledLayer</code>使用的异步绘制并不相同。它自己的 <code>- drawLayer:inContext:</code>方法只会在主线程调用，但是<code>CGContext</code>并不等待每个绘制命令的结束。相反地，它会将命令加入队列，当方法返回时，在后台线程逐个执行真正的绘制。</p>
+
+<p>根据苹果的说法。这个特性在需要频繁重绘的视图上效果最好（比如我们的绘图应用，或者诸如UITableViewCell 之类的），对那些只绘制一次或很少重绘的图层内容来说没什么太大的帮助。</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[常用动画示例]]></title>
+    <link href="https://acefish.github.io/14925128921601.html"/>
+    <updated>2017-04-18T18:54:52+08:00</updated>
+    <id>https://acefish.github.io/14925128921601.html</id>
+    <content type="html"><![CDATA[
+<h3 id="toc_0">1.地震动画</h3>
+
+<p>适合一整个大视图的突然晃动</p>
+
+<pre><code class="language-objc">- (void)earthquake:(UIView*)itemView {
+    CGFloat t = 2.0;
+    CGAffineTransform leftQuake  = CGAffineTransformTranslate(CGAffineTransformIdentity, t, 0);
+    CGAffineTransform rightQuake = CGAffineTransformTranslate(CGAffineTransformIdentity, -t, 0); //水平晃动
+
+    itemView.transform = leftQuake;  // starting point
+
+    [UIView beginAnimations:@&quot;earthquake&quot; context:(__bridge void *)(itemView)];
+    [UIView setAnimationRepeatAutoreverses:YES]; // 如果不加这一句 整个动画感觉不连贯
+    [UIView setAnimationRepeatCount:5];
+    [UIView setAnimationDuration:0.07];
+    [UIView setAnimationDelegate:self];
+    [UIView setAnimationDidStopSelector:@selector(earthquakeEnded:finished:context:)];
+
+    itemView.transform = rightQuake; // end here &amp; auto-reverse
+
+    [UIView commitAnimations];
+}
+
+- (void)earthquakeEnded:(NSString *)animationID finished:(NSNumber *)finished context:(void *)context {
+    if ([finished boolValue]) {
+        UIView* item = (__bridge UIView *)context;
+        item.transform = CGAffineTransformIdentity;
+    }
+}
+</code></pre>
+
+<h3 id="toc_1">2.图标的抖动效果</h3>
+
+<pre><code class="language-objc">//开始抖动
+-(void)BeginWobble
+{
+
+    srand([[NSDate date] timeIntervalSince1970]);
+    float rand=(float)random();
+    CFTimeInterval t=rand*0.0000000001;
+
+    [UIView animateWithDuration:0.1 delay:t options:0  animations:^
+     {
+         要抖动的视图.transform=CGAffineTransformMakeRotation(-0.05);
+     } completion:^(BOOL finished)
+     {
+         [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionRepeat|UIViewAnimationOptionAutoreverse|UIViewAnimationOptionAllowUserInteraction  animations:^
+          {
+              要抖动的视图.transform=CGAffineTransformMakeRotation(0.05);
+          } completion:^(BOOL finished) {}];
+     }];
+}
+//停止抖动
+-(void)EndWobble
+{
+
+    [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionAllowUserInteraction|UIViewAnimationOptionBeginFromCurrentState animations:^
+     {
+         要抖动的视图.transform=CGAffineTransformIdentity;
+     } completion:^(BOOL finished) {}];
+}
+
+</code></pre>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[性能调优]]></title>
+    <link href="https://acefish.github.io/14924196525709.html"/>
+    <updated>2017-04-17T17:00:52+08:00</updated>
+    <id>https://acefish.github.io/14924196525709.html</id>
+    <content type="html"><![CDATA[
+<h3 id="toc_0">CPU &amp;&amp; GPU</h3>
+
+<p>绘图和动画处理方式:<code>CPU</code>(中央处理器)和<code>GPU</code>(图形处理器).<code>CPU</code>所做的工作都在软件层面，而<code>GPU</code>在硬件层面。</p>
+
+<p>我们可以用<code>CPU</code>做任何事情，但是对于图像处理，使用硬件更快，因为<code>GPU</code>使用图像对高度并行浮点运算做了优化。但是<code>GPU</code>也不是无限制使用的,一旦资源用完的性能就下降了(即使CPU没有完全占用)</p>
+
+<p>我们的优化就是智能使用<code>GPU</code>和<code>CPU</code>使他们都不会超过负荷,我们需要先了解这两个处理器分配工作的逻辑</p>
+
+<h4 id="toc_1">动画的舞台</h4>
+
+<p><strong>动画和屏幕上组合的图层实际上被一个单独的进程管理，而不是你的应用程序。这个进程就是所谓的渲染服务。</strong>在iOS6之后的版本中叫做<code>BackBoard</code>。</p>
+
+<p>当运行一段动画时,整个过程会分为4个阶段：</p>
+
+<ul>
+<li>布局 - 这是准备你的视图/图层的层级关系，以及设置图层属性（位置，背景色，边框等等）的阶段。</li>
+<li>显示 - 这是图层的寄宿图片被绘制的阶段。绘制有可能涉及你的<code>- drawRect:</code>和<code>-drawLayer:inContext:</code>方法的调用路径。</li>
+<li>准备 - 这是<code>Core Animation</code>准备发送动画数据到渲染服务的阶段。这同时也是<code>Core Animation</code>将要执行一些别的事务例如解码动画过程中将要显示的图片的时间点。</li>
+<li>提交 - 这是最后的阶段，<code>Core Animation</code>打包所有图层和动画属性，然后通过<code>IPC</code>（内部处理通信）发送到渲染服务进行显示。</li>
+</ul>
+
+<p>这些仅仅只是发生在应用程序内内,在动画在屏幕上显示之前仍然有其他工作，一旦打包的图层和动画到了渲染服务进程，他们会被<em>反序列化</em>形成一个叫做<strong>渲染树</strong>的图层树,使用这个树状结构，渲染服务对动画的每一帧做出如下工作：</p>
+
+<ul>
+<li>对所有的图层属性计算中间值，设置<code>OpenGL</code>几何形状（纹理化的三角形）来执行渲染</li>
+<li>在屏幕上渲染可见的三角形</li>
+</ul>
+
+<p>所以一共有六个阶段；最后两个阶段在动画过程中不停地重复。前五个阶段都在软件层面处理（通过CPU），只有最后一个被GPU执行。而且，你真正只能控制前两个阶段：布局和显示。Core Animation框架在内部处理剩下的事务，你也控制不了它。</p>
+
+<p>我们<br/>
+<strong>在布局和显示阶段，可以决定哪些由CPU执行，哪些交给GPU去做。</strong></p>
+
+<h4 id="toc_2">GPU相关操作</h4>
+
+<p>GPU为一个具体的任务做了优化：它用来采集图片和形状（三角形），运行变换，应用纹理和混合然后把它们输送到屏幕上。现代iOS设备上可编程的GPU在这些操作的执行上又很大的灵活性，但是<code>Core Animation</code>并没有暴露出直接的接口。除非你想绕开<code>Core Animation</code>并编写你自己的<code>OpenGL着色器</code>，从根本上解决硬件加速的问题，那么剩下的所有都还是需要在<code>CPU</code>的软件层面上完成。</p>
+
+<p>宽泛的说，<strong>大多数<code>CALayer</code>的属性都是用<code>GPU</code>来绘制</strong>。<br/>
+比如如果你设置图层背景或者边框的颜色，那么这些可以通过着色的三角板实时绘制出来。如果对一个<code>contents</code> 属性设置一张图片，然后裁剪它 - 它就会被纹理的三角形绘制出来，而不需要软件层面做任何绘制。</p>
+
+<p>但是有一些事情会降低（基于GPU）图层绘制:</p>
+
+<ul>
+<li>太多的几何结构<br/>
+太多的几何结构就需要太多的三角板来做变换,并不是GPU处理不了这么多几何结构,而是显示之前通过IPC发送到渲染服务器(图层实际上是由很多小物体组成的特别重量级的对象)时，会引起CPU的瓶颈，这就限制了一次展示的图层个数</li>
+<li><p>重绘</p>
+
+<p>主要由重叠的半透明图层引起。GPU的填充比率（用颜色填充像素的比率）是有限的，所以需要避免重（每一帧用相同的像素填充多次）的发生。</p></li>
+<li><p>离屏绘制<br/>
+发生在当不能直接在屏幕上绘制，并且必须绘制到离屏图片的上下文中的时候。离屏绘制发生在基于CPU或者是GPU的渲染，或者是为离屏图片分配额外内存，以及切换绘制上下文，这些都会降低<code>GPU</code>性能。对于特定图层效果的使用，比如圆角，图层遮罩，阴影或者是图层光栅化都会强制<code>Core Animation</code>提前渲染图层的离屏绘制。但这不意味着你需要避免使用这些效果，只是要明白这会带来性能的负面影响。</p></li>
+<li><p>过大的图片<br/>
+如果视图绘制超出GPU支持的<code>2048x2048</code>或者<code>4096x4096</code>尺寸的纹理，就必须要用CPU在图层每次显示之前对图片预处理，同样也会降低性能。</p></li>
+</ul>
+
+<h4 id="toc_3">CPU相关的操作</h4>
+
+<p>CPU的工作对于<code>Core Animation</code>发生在动画开始前。所以不会影响到帧率,但是会延时动画开始时间，让界面看起来比较迟钝</p>
+
+<p>延迟动画的开始时间的CPU操作:</p>
+
+<ul>
+<li><p>布局计算:<br/>
+视图层级过于复杂,视图修改或者呈现时计算图层帧率会消耗一部分时间</p></li>
+<li><p>视图懒加载<br/>
+iOS只会当视图控制器的视图显示到屏幕上时才会加载它。这对内存使用和程序启动时间很有好处，但是当呈现到屏幕上之前，按下按钮导致的许多工作都会不能被及时响应。比如控制器从数据库中获取数据，或者视图从一个nib文件中加载，或者涉及IO的图片显示（见后续“IO相关操作”），都会比CPU正常操作慢得多。</p></li>
+<li><p>Core Graphics绘制</p>
+
+<p>如果对视图实现了 -drawRect: 方法，或者 CALayerDelegate 的 -drawLayer:inContext: 方法，那么在绘制任何东西之前都会产生一个巨大的性能开销。为了支持对图层内容的任意绘制，Core Animation必须创建一个内存中等大小的寄宿图片。然后一旦绘制结束之后，必须把图片数据通过IPC传到渲染服务器。在此基础上，Core Graphics绘制就会变得十分缓慢，所以在一个对性能十分挑剔的场景下这样做十分不好。</p></li>
+<li><p>解压图片<br/>
+PNG或者JPEG压缩之后的图片文件会比同质量的位图小得多。为了节省内存，iOS通常直到真正绘制的时候才去解码图片，根据你加载图片的方式，第一次对图层内容赋值的时候，或者把它绘制<code>Core Graphics</code>中,需要解压,这样对于比较大的图片会占用时间</p></li>
+</ul>
+
+<p>当图层被成功打包，发送到渲染服务器之后，CPU仍然要做如下工作:<br/>
+为了显示屏幕上的图层，<code>Core Animation</code>必须对渲染树种的每个可见图层通过<code>OpenGL</code>循环转换成纹理三角板。由于GPU并不知晓<code>Core Animation</code>图层的任何结构，所以必须要由<code>CPU</code>做这些事情。CPU涉及的工作和图层个数成正比，所以如果在你的层级关系中有太多的图层，就会导致CPU每一帧的渲染，</p>
+
+<h4 id="toc_4">IO相关操作</h4>
+
+<p>上下文中的IO（输入/输出）指的是例如闪存或者网络接口的硬件访问。一些动画可能需要从闪存（甚至是远程URL）来加载。一个典型的例子就是两个视图控制器之间的过渡效果，这就需要从一个nib文件或者是它的内容中懒加载，或者一个旋转的图片，可能在内存中尺寸太大，需要动态滚动来加载。</p>
+
+<p>IO比内存访问更慢，所以如果动画涉及到IO，就是一个大问题。总的来说，这就需要使用聪敏但尴尬的技术，也就是多线程，缓存和投机加载（提前加载当前不需要的资源，但是之后可能需要用到）。</p>
+
+<h3 id="toc_5">测量，而不是猜测</h3>
+
+<p>有很多种诡计来优化动画，但如果盲目使用的话，可能会造成更多性能上的问题，而不是修复。<br/>
+我们需要正确测量性能</p>
+
+<h4 id="toc_6">真机测试，而不是模拟器</h4>
+
+<ol>
+<li>真机</li>
+<li>性能测试一定要用发布配置，而不是调试模式。因为当用发布环境打包的时候，编译器会引入一系列提高性能的优化，例如去掉调试符号或者移除并重新组织代码。你也可以自己做到这些，例如在发布环境禁用NSLog语句。你只关心发布性能，那才是你需要测试的点。</li>
+<li>最好在你支持的设备中性能最差的设备上测试.可能的话，测试不同的设备和iOS版本，因为苹果在不同的iOS版本和设备中做了一些改变，这也可能影响到一些性能。</li>
+</ol>
+
+<h4 id="toc_7">保持一致的帧率</h4>
+
+<p>我们可以在程序中用<code>CADisplayLink</code>来测量帧率,在屏幕上显示出来,但是应用内的FPS并不能完全真实的测量出<code>Core Animation</code>性能,它仅仅测出应用内的帧率.但是我们知道很多动画都在应用外发生(在渲染服务器进程中处理),当然应用内的<code>FPS</code>可以对一些性能问题提供参考,发现问题后,我们可以通过<strong><code>Instruments</code>工具集</strong>获取更多数据.</p>
+
+<h3 id="toc_8">Instruments</h3>
+
+<p><code>Instruments</code>中的<code>Leaks</code>工具来检测循环引用,</p>
+
+<p>应该始终将程序设置成发布选项。幸运的是，配置文件默认就是发布选项，所以你不需要在分析的时候调整编译策略。</p>
+
+<p>工具:<br/>
+1.时间分析器(timer profile)-用来测量被方法/函数打断的CPU使用情况<br/>
+2.Core Animation - 用来调试各种Core Animation性能问题。<br/>
+3.OpenGL ES驱动 - 用来调试GPU性能问题,这个工具在编写<code>Open GL</code>代码的时候很有用，但有时也用来处理<code>Core Animation</code>的工作。</p>
+
+<h4 id="toc_9">时间分析器</h4>
+
+<p>检测CPU使用情况,告诉我们程序中那个方法消耗大量CPU时间.查看CPU时间对于判断性能是不是和CPU相关，以及定位到函数都很有帮助</p>
+
+<p>我们可以通过选择一些选项来定位到我们关心的方法:</p>
+
+<ul>
+<li>通过线程分离 - 这可以通过执行的线程进行分组。如果代码被多线程分离的话，那么就可以判断到底是哪个线程造成了问题。</li>
+<li>隐藏系统库 - 可以隐藏所有苹果的框架代码，来帮助我们寻找哪一段代码造成了性能瓶颈。</li>
+<li>只显示Obj-C代码 - - 隐藏除了<code>Objective-C</code>之外的所有代码。大多数内部的<code>Core Animation</code>代码都是用<code>C</code>或者<code>C++</code>函数，所以这对我们集中精力到我们代码中显式调用的方法就很有用。</li>
+</ul>
+
+<h4 id="toc_10">Core Animation</h4>
+
+<p>这个工具用来检测<code>Core Animation</code>性能。给我们提供了周期性FPS，并考虑到了发生在程序之外的动画</p>
+
+<p>提供的调试选项:</p>
+
+<ul>
+<li>Color Blended Layers - 这个选项基于渲染程度对屏幕中的混合区域进行绿到红的高亮（也就是多个半透明图层的叠加）。由于重绘的原因，混合对GPU性能会有影响，同时也是滑动或者动画帧率下降的罪魁祸首之一。</li>
+<li>ColorHitsGreenandMissesRed - 当使用<code>shouldRasterizep</code>属性的时候，耗时图层会被缓存,然后当做扁平化的图片呈现.当缓存再生时，这个选项用红色对栅格化图层进行了高亮。如果频繁再生就意味着栅格化可能会有负面的性能影响</li>
+<li>Color Copied Images - 有时候寄宿图片的生成意味着Core Animation被强制生成一些图片，然后发送到渲染服务器，而不是简单的指向原始指针。这个选项把这些图片渲染成蓝色。复制图片对内存和CPU使用来说都是一项非常昂贵的操作，所以应该尽可能的避免</li>
+<li>Color Immediately - 通常<code>Core Animation</code> <code>Instruments</code>以每毫秒10次的频率更新图层调试颜色，我们可以通过勾选这个选项来设置每帧都更新（可能影响性能）</li>
+<li>Color Misaligned Images - 会高亮那些被缩放或者拉伸以及没有正确对齐到像素边界的图片</li>
+<li>Color Offscreen-Rendered Yellow - 会把那些需要离屏渲染的图层高亮成黄色。这些图层很可能需要用<code>shadowPath</code>或者<code>shouldRasterize</code>来优化。</li>
+<li>Color OpenGL Fast Path Blue - 会对任何直接使用<code>OpenGL</code>绘制的图层进行高亮。</li>
+<li>Flash Updated Regions - 这个选项会对重绘的内容高亮成黄色（也就是任何在软件层面使用Core Graphics绘制的图层）。这种绘图速度很慢,频繁发生的话说明有个隐藏bug或者通过增加缓存或者使用替代方案会有提升性能的空间。</li>
+</ul>
+
+<h4 id="toc_11">OpenGL ES驱动</h4>
+
+<p><code>OpenGL ES</code>驱动工具可以帮你测量GPU的利用率，是一个很好的判断和GPU相关动画性能的指示器.它类似<code>Core Animation</code>也提供显示<code>FPS</code>的工具</p>
+
+<p>其侧边栏选项卡中和性能相关的有:</p>
+
+<ul>
+<li>Renderer Utilization - 如果这个值超过了~50%，就意味着你的动画可能对帧率有所限制，很可能因为离屏渲染或者是重绘导致的过度混合。</li>
+<li>Tiler Utilization - 如果这个值超过了~50%，就意味着你的动画可能限制于几何结构方面，也就是在屏幕上有太多的图层占用了。</li>
+</ul>
+
+<h4 id="toc_12">一个找到性能瓶颈的实例</h4>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[动画]]></title>
@@ -152,6 +515,156 @@ self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)
 <li>cpBody - 一个固态无弹力的刚体。它有一个坐标，以及其他物理属性，例如质量，运动和摩擦系数等等。</li>
 <li>cpShape - 一个抽象的几何形状，用来检测碰撞。可以给结构体添加一个多边形，而且<code>cpShape</code>有各种子类来代表不同形状的类型。</li>
 </ul>
+
+<p>因为C语言是不支持引用计数的所以为了准确的创建和释放我们将<code>cpShape</code>和<code>cpBody</code>和<code>Crate</code>（木箱）类进行绑定，在木箱的<code>- init</code>方法中创建,<code>-dealloc</code>中释放。用视图控制器来管理<code>cpSpace</code></p>
+
+<p><code>Chipmunk</code>使用了一个和<code>UIKit</code>颠倒的坐标系（Y轴向上为正方向）。我们可以使用<code>geometryFlipped</code>属性翻转容器视图的集合坐标,这样模型和视图就共享一个坐标系了<br/>
+<strong>geometryFlipped</strong>设置layer的这个属性可以调整坐标系Y轴方向</p>
+
+<p>代码示例:</p>
+
+<pre><code class="language-objc">//创建木箱的image对象
+@interface Crate : UIImageView
+@property (nonatomic, assign) cpBody *body;
+@property (nonatomic, assign) cpShape *shape;
+@end
+
+@implementation Crate
+#define MASS 100
+- (id)initWithFrame:(CGRect)frame
+{
+    if ((self = [super initWithFrame:frame])) {
+        //set image
+        self.image = [UIImage imageNamed:@&quot;Crate.png&quot;];
+        self.contentMode = UIViewContentModeScaleAspectFill;
+        //create the body
+        self.body = cpBodyNew(MASS, cpMomentForBox(MASS, frame.size.width, frame.size.height));
+        //create the shape
+        cpVect corners[] = {
+            cpv(0, 0),
+            cpv(0, frame.size.height),
+            cpv(frame.size.width, frame.size.height),
+            cpv(frame.size.width, 0),
+        };
+    self.shape = cpPolyShapeNew(self.body, 4, corners, cpv(-frame.size.width/2, -frame.size.height/2));
+    //set shape friction &amp; elasticity
+    cpShapeSetFriction(self.shape, 0.5);
+    cpShapeSetElasticity(self.shape, 0.8);
+    //link the crate to the shape
+    //so we can refer to crate from callback later on
+    self.shape-&gt;data = (__bridge void *)self;
+    //set the body position to match view
+    cpBodySetPos(self.body, cpv(frame.origin.x + frame.size.width/2, 300 - frame.origin.y - frame.size.height/2));
+    }
+    return self;
+}
+- (void)dealloc
+{
+    //release shape and body
+    cpShapeFree(_shape);
+    cpBodyFree(_body);
+}
+@end
+
+//创建重力空间
+@interface ViewController ()
+@property (nonatomic, weak) IBOutlet UIView *containerView;
+@property (nonatomic, assign) cpSpace *space;
+@property (nonatomic, strong) CADisplayLink *timer;
+@property (nonatomic, assign) CFTimeInterval lastStep;
+@end
+
+@implementation ViewController
+#define GRAVITY 1000
+- (void)viewDidLoad
+{
+    //invert view coordinate system to match physics
+    self.containerView.layer.geometryFlipped = YES;
+    //set up physics space
+    self.space = cpSpaceNew();
+    cpSpaceSetGravity(self.space, cpv(0, -GRAVITY));
+    //add a crate
+    Crate *crate = [[Crate alloc] initWithFrame:CGRectMake(100, 0, 100, 100)];
+    [self.containerView addSubview:crate];
+    cpSpaceAddBody(self.space, crate.body);
+    cpSpaceAddShape(self.space, crate.shape);
+    //start the timer
+    self.lastStep = CACurrentMediaTime();
+    self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+    [self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+}
+
+void updateShape(cpShape *shape, void *unused)
+{
+    //get the crate object associated with the shape
+    Crate *crate = (__bridge Crate *)shape-&gt;data;
+    //update crate view position and angle to match physics shape
+    cpBody *body = shape-&gt;body;
+    crate.center = cpBodyGetPos(body);
+    crate.transform = CGAffineTransformMakeRotation(cpBodyGetAngle(body));
+}
+
+- (void)step:(CADisplayLink *)timer
+{
+    //calculate step duration
+    CFTimeInterval thisStep = CACurrentMediaTime();
+    CFTimeInterval stepDuration = thisStep - self.lastStep;
+    self.lastStep = thisStep;
+    //update physics
+    cpSpaceStep(self.space, stepDuration);
+    //update all the shapes
+    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
+}
+@end
+</code></pre>
+
+<h4 id="toc_6">添加用户交互</h4>
+
+<p>为了使木箱不掉落到屏幕外 我们在屏幕周围添加四条线来限制范围;</p>
+
+<p>通过给<code>cpSpace</code>添加四个<code>cpSegmentShape</code>对象（<code>cpSegmentShape</code>代表一条直线，所以四个拼起来就是一个矩形）。然后赋值给空间的<code>staticBody</code>属性(这是不受重力的结构体)，而不是像木箱那样会受重力的<code>cpBody</code>实例，因为我们不想这线画出屏幕或者被木箱击中消失。</p>
+
+<p>通过添加一个加速器,可以通过倾斜手机来调整重力矢量,在横屏模式下，要交换加速计矢量的x和y值，竖屏模式下再换回来.</p>
+
+<pre><code>代码省略
+</code></pre>
+
+<h4 id="toc_7">模拟时间以及固定的时间步长</h4>
+
+<p>在上面我们做动画的缓冲效果来说,都是计算每帧的持续时间，这样的话两个时间步长就是可变的,对于模拟物理效果并不理想:</p>
+
+<p>因此我们通过<strong>固定的时间步长</strong>来计算物理效果，还要保证在屏幕发生重绘时能够同步更新视图</p>
+
+<p>因为刚好我们的模型（在这个例子中就是Chipmunk的 cpSpace 中的 cpBody ）被视图（就是屏幕上代表木箱的 UIView 对象）分离，于是就很简单了。我们只需要根据屏幕刷新的时间跟踪时间步长，然后根据每帧去计算一个或者多个模拟出来的效果。</p>
+
+<pre><code class="language-objc">
+/**
+    通过每次 CADisplayLink 的启动来通知屏幕将要刷新，然后记录下当前的
+    CACurrentMediaTime() 。
+    在一个小增量中提前重复物理模拟（这里用120分之一秒）直到赶上显示的时间。然后更新我们的视图，
+    在屏幕刷新的时候匹配当前物理结构体的显示位置。
+*/
+
+#define SIMULATION_STEP (1/120.0)
+- (void)step:(CADisplayLink *)timer
+{
+    //calculate frame step duration
+    CFTimeInterval frameTime = CACurrentMediaTime();
+    //update simulation
+    while (self.lastStep &lt; frameTime) {
+        cpSpaceStep(self.space, SIMULATION_STEP);
+        self.lastStep += SIMULATION_STEP;
+    }
+    //update all the shapes
+    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
+}
+</code></pre>
+
+<h4 id="toc_8">避免死亡螺旋</h4>
+
+<p>在上面例子中我们随意选择了1/120秒来模拟物理效果,但是我们在场景很复杂，<code>cpSpaceStp()</code>计算也会超出1/120秒,这样就会造成延迟帧率,帧延迟的话，我们需要更多时间来同步真实时间,这样就越来越慢，直到应用程序卡死,这就是所谓的<code>死亡螺旋</code></p>
+
+<p>为了避免这种情况 我们需要留下足够的时间容错，如果物理计算超过了模拟时间的50%，就需要考虑增加模拟时间步长（或者简化场景）。如果模拟时间步长增加到超过1/60秒（一个完整的屏幕更新时间），你就需要减少动画帧率到一秒30帧或者增加<code>CADisplayLink</code>的<code>frameInterval</code>来保证不会随机丢帧，不然你的动画将会看起来不平滑。</p>
 
 ]]></content>
   </entry>
@@ -2521,319 +3034,6 @@ OBJC_EXPORT
    OBJC_ASSOCIATION_COPY  = 01403
 };
 </code></pre>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[协议与分类]]></title>
-    <link href="https://acefish.github.io/14879278087290.html"/>
-    <updated>2017-02-24T17:16:48+08:00</updated>
-    <id>https://acefish.github.io/14879278087290.html</id>
-    <content type="html"><![CDATA[
-<p>Objective-C中的分类允许我们通过给一个类添加方法来扩充它（但是通过<code>category</code>不能添加新的实例变量），并且我们不需要访问类中的代码就可以做到。</p>
-
-<p>@protocol声明了可以呗其他任何方法类实现的方法，协议仅仅是定义一个接口，而由其他的类去负责实现。</p>
-
-<h2 id="toc_0">基础数据类型</h2>
-
-<h3 id="toc_1">Category</h3>
-
-<p>Category是表示一个指向分类的结构体的指针</p>
-
-<pre><code class="language-objc">ypedef struct objc_category *Category;
-struct objc_category {
-    char *category_name                          OBJC2_UNAVAILABLE; // 分类名
-    char *class_name                             OBJC2_UNAVAILABLE; // 分类所属的类名
-    struct objc_method_list *instance_methods    OBJC2_UNAVAILABLE; // 实例方法列表
-    struct objc_method_list *class_methods       OBJC2_UNAVAILABLE; // 类方法列表
-    struct objc_protocol_list *protocols         OBJC2_UNAVAILABLE; // 分类所实现的协议列表
-</code></pre>
-
-<p>这个结构体主要包含了分类定义的实例方法与类方法，<code>instance_methods</code>列表是<code>objc_class</code>中方法列表的一个子集，而<code>class_methods</code>列表是元类方法列表的一个子集。</p>
-
-<h3 id="toc_2">Protocol</h3>
-
-<pre><code class="language-objc">typedef struct objc_object Protocol;
-</code></pre>
-
-<p><code>Protocol</code>其中实就是一个对象结构体。</p>
-
-<h2 id="toc_3">操作函数</h2>
-
-<p>Runtime并没有在<code>&lt;objc/runtime.h&gt;</code>头文件中提供针对分类的操作函数。因为这些分类中的信息都包含在<code>objc_class</code>中，我们可以通过针对<code>objc_class</code>的操作函数来获取分类的信息。</p>
-
-<p>而对于Protocol，runtime提供了一系列函数来对其进行操作，这些函数包括：</p>
-
-<pre><code class="language-objc">// 返回指定的协议
-Protocol * objc_getProtocol ( const char *name );
-// 获取运行时所知道的所有协议的数组
-Protocol ** objc_copyProtocolList ( unsigned int *outCount );
-// 创建新的协议实例
-Protocol * objc_allocateProtocol ( const char *name );
-// 在运行时中注册新创建的协议
-void objc_registerProtocol ( Protocol *proto );
-// 为协议添加方法
-void protocol_addMethodDescription ( Protocol *proto, SEL name, const char *types, BOOL isRequiredMethod, BOOL isInstanceMethod );
-// 添加一个已注册的协议到协议中
-void protocol_addProtocol ( Protocol *proto, Protocol *addition );
-// 为协议添加属性
-void protocol_addProperty ( Protocol *proto, const char *name, const objc_property_attribute_t *attributes, unsigned int attributeCount, BOOL isRequiredProperty, BOOL isInstanceProperty );
-// 返回协议名
-const char * protocol_getName ( Protocol *p );
-// 测试两个协议是否相等
-BOOL protocol_isEqual ( Protocol *proto, Protocol *other );
-// 获取协议中指定条件的方法的方法描述数组
-struct objc_method_description * protocol_copyMethodDescriptionList ( Protocol *p, BOOL isRequiredMethod, BOOL isInstanceMethod, unsigned int *outCount );
-// 获取协议中指定方法的方法描述
-struct objc_method_description protocol_getMethodDescription ( Protocol *p, SEL aSel, BOOL isRequiredMethod, BOOL isInstanceMethod );
-// 获取协议中的属性列表
-objc_property_t * protocol_copyPropertyList ( Protocol *proto, unsigned int *outCount );
-// 获取协议的指定属性
-objc_property_t protocol_getProperty ( Protocol *proto, const char *name, BOOL isRequiredProperty, BOOL isInstanceProperty );
-// 获取协议采用的协议
-Protocol ** protocol_copyProtocolList ( Protocol *proto, unsigned int *outCount );
-// 查看协议是否采用了另一个协议
-BOOL protocol_conformsToProtocol ( Protocol *proto, Protocol *other );
-</code></pre>
-
-<p><code>objc_getProtocol</code>函数，需要注意的是如果仅仅是声明了一个协议，而未在任何类中实现这个协议，则该函数返回的是nil。</p>
-
-<p><code>objc_copyProtocolList</code>函数，获取到的数组需要使用free来释放</p>
-
-<p><code>objc_allocateProtocol</code>函数，如果同名的协议已经存在，则返回nil</p>
-
-<p><code>objc_registerProtocol</code>函数，创建一个新的协议后，必须调用该函数以在运行时中注册新的协议。协议注册后便可以使用，但不能再做修改，即注册完后不能再向协议添加方法或协议</p>
-
-<p>需要强调的是，协议一旦注册后就不可再修改，即无法再通过调用<code>protocol_addMethodDescription</code>、<code>protocol_addProtocol</code>和p<code>rotocol_addProperty</code>往协议中添加方法等。</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Method Swizzling]]></title>
-    <link href="https://acefish.github.io/14879241904124.html"/>
-    <updated>2017-02-24T16:16:30+08:00</updated>
-    <id>https://acefish.github.io/14879241904124.html</id>
-    <content type="html"><![CDATA[
-<blockquote>
-<p>本文是由发表在南峰子博客的翻译由Mattt Thompson发表于<code>nshipster</code>的Method Swizzling文章</p>
-</blockquote>
-
-<p><code>Method Swizzling</code>是改变一个selector的实际实现的技术。通过这一技术，我们可以在运行时通过修改类的分发表中<code>selector</code>对应的函数，来修改方法的实现。</p>
-
-<p>本文讲一些Method Swiling中需要注意的问题:</p>
-
-<h2 id="toc_0">Swizzling应该总是在+load中执行</h2>
-
-<p>在Objective-C中，运行时会自动调用每个类的两个方法。+load会在类初始加载时调用，+initialize会在第一次调用类的类方法或实例方法之前被调用。这两个方法是可选的，且只有在实现了它们时才会被调用。由于method swizzling会影响到类的全局状态，因此要尽量避免在并发处理中出现竞争的情况。+load能保证在类的初始化过程中被加载，并保证这种改变应用级别的行为的一致性。相比之下，+initialize在其执行时不提供这种保证–事实上，如果在应用中没为给这个类发送消息，则它可能永远不会被调用。</p>
-
-<h2 id="toc_1">Swizzling应该总是在dispatch_once中执行</h2>
-
-<p>因为swizzling会改变全局状态，所以我们需要在运行时采取一些预防措施。原子性就是这样一种措施，它确保代码只被执行一次，不管有多少个线程。GCD的dispatch_once可以确保这种行为，我们应该将其作为method swizzling的最佳实践。</p>
-
-<h2 id="toc_2">选择器、方法与实现</h2>
-
-<p>在Objective-C中，选择器(selector)、方法(method)和实现(implementation)是运行时中一个特殊点，虽然在一般情况下，这些术语更多的是用在消息发送的过程描述中。</p>
-
-<p>以下是<code>Objective-C Runtime Reference</code>中的对这几个术语一些描述：  </p>
-
-<pre><code>1. Selector(typedef struct objc_selector *SEL)：用于在运行时中表示一个方法的名称。一个方法选择器是一个C字符串，它是在Objective-C运行时被注册的。选择器由编译器生成，并且在类被加载时由运行时自动做映射操作。
-2. Method(typedef struct objc_method *Method)：在类定义中表示方法的类型
-3. Implementation(typedef id (*IMP)(id, SEL, ...))：这是一个指针类型，指向方法实现函数的开始位置。这个函数使用为当前CPU架构实现的标准C调用规范。每一个参数是指向对象自身的指针(self)，第二个参数是方法选择器。然后是方法的实际参数。
-</code></pre>
-
-<p>理解这几个术语之间的关系最好的方式是：一个类维护一个运行时可接收的消息分发表；分发表中的每个入口是一个方法(Method)，其中key是一个特定名称，即选择器(SEL)，其对应一个实现(IMP)，即指向底层C函数的指针。</p>
-
-<p>为了swizzle一个方法，我们可以在分发表中将一个方法的现有的选择器映射到不同的实现，而将该选择器对应的原始实现关联到一个新的选择器中。（要将原来的实现映射到一个新的）</p>
-
-<h2 id="toc_3">调用_cmd</h2>
-
-<p>我们自己的实现代码:</p>
-
-<pre><code class="language-objc">- (void)xxx_viewWillAppear:(BOOL)animated {
-    [self xxx_viewWillAppear:animated];
-    NSLog(@&quot;viewWillAppear: %@&quot;, NSStringFromClass([self class]));
-}
-</code></pre>
-
-<p>咋看上去是会导致无限循环的。但令人惊奇的是，并没有出现这种情况。在<code>swizzling</code>的过程中，方法中的<code>[self xxx_viewWillAppear:animated]</code>已经被重新指定到UIViewController类的-<code>viewWillAppear:</code>中。在这种情况下，不会产生无限循环。不过如果我们调用的是<code>[self viewWillAppear:animated]</code>，则会产生无限循环，因为这个方法的实现在运行时已经被重新指定为<code>xxx_viewWillAppear:</code>了。</p>
-
-<h3 id="toc_4">注意事项</h3>
-
-<p>Swizzling通常被称作是一种黑魔法，容易产生不可预知的行为和无法预见的后果。虽然它不是最安全的，但如果遵从以下几点预防措施的话，还是比较安全的：</p>
-
-<ol>
-<li>总是调用方法的原始实现(除非有更好的理由不这么做)：API提供了一个输入与输出约定，但其内部实现是一个黑盒。Swizzle一个方法而不调用原始实现可能会打破私有状态底层操作，从而影响到程序的其它部分。</li>
-<li><p>避免冲突：给自定义的分类方法加前缀，从而使其与所依赖的代码库不会存在命名冲突。</p></li>
-<li><p>明白是怎么回事：简单地拷贝粘贴swizzle代码而不理解它是如何工作的，不仅危险，而且会浪费学习Objective-C运行时的机会。阅读Objective-C Runtime Reference和查看<objc/runtime.h>头文件以了解事件是如何发生的。</p></li>
-<li><p>小心操作：无论我们对Foundation, UIKit或其它内建框架执行Swizzle操作抱有多大信心，需要知道在下一版本中许多事可能会不一样。</p></li>
-<li></li>
-</ol>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[成员变量与属性]]></title>
-    <link href="https://acefish.github.io/14878317610028.html"/>
-    <updated>2017-02-23T14:36:01+08:00</updated>
-    <id>https://acefish.github.io/14878317610028.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">类型编码(Type Encoding)</h2>
-
-<p><strong>作为对Runtime的补充，编译器将每个方法的返回值和参数类型编码为一个字符串，并将其与方法的<code>selector</code>关联在一起。</strong>我们可以使用@encode编译器指令来获取它。当给定一个类型时，<code>@encode</code>返回这个类型的字符串编码。这些类型可以是诸如int、指针这样的基本类型，也可以是结构体、类等类型。任何可以作为<code>sizeof()</code>操作参数的类型都可以用于<code>@encode()</code>。</p>
-
-<p>在<code>Objective-C Runtime Programming Guide</code>中的<a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtTypeEncodings.html#//apple_ref/doc/uid/TP40008048-CH100-SW1">Type Encoding</a>一节中列出了Objective-C中所有的类型编码,需要注意的是这些类型很多是与我们用于存档和分发的编码类型是相同的。但有一些不能在存档时使用。</p>
-
-<p><em>注：Objective-C不支持long double类型。@encode(long double)返回d，与double是一样的。</em><br/>
-举个栗子:</p>
-
-<pre><code class="language-objc">float a[] = {1.0, 2.0, 3.0};
-NSLog(@&quot;array encoding type: %s&quot;, @encode(typeof(a)));
-//输出:
-2014-10-28 11:44:54.731 RuntimeTest[942:50791] array encoding type: [3f]
-</code></pre>
-
-<p>另外，还有些编码类型，@encode虽然不会直接返回它们，但它们可以作为协议中声明的方法的类型限定符。</p>
-
-<p>对于属性而言，还会有一些特殊的类型编码，以表明属性是只读、拷贝、retain等等，详情可以参考<a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtPropertyIntrospection.html#//apple_ref/doc/uid/TP40008048-CH101-SW6">Property Type String</a>。</p>
-
-<h2 id="toc_1">成员变量、属性</h2>
-
-<h3 id="toc_2">基础数据类型</h3>
-
-<h4 id="toc_3">Ivar</h4>
-
-<p>Ivar是表示实例变量的类型，其实际是一个指向objc_ivar结构体的指针</p>
-
-<pre><code class="language-objc">typedef struct objc_ivar *Ivar;
-struct objc_ivar {
-    char *ivar_name                 OBJC2_UNAVAILABLE;  // 变量名
-    char *ivar_type                 OBJC2_UNAVAILABLE;  // 变量类型
-    int ivar_offset                 OBJC2_UNAVAILABLE;  // 基地址偏移字节
-#ifdef __LP64__
-    int space                       OBJC2_UNAVAILABLE;
-#endif
-}
-</code></pre>
-
-<h4 id="toc_4">objc_property_t</h4>
-
-<p><code>objc_property_t</code>是表示Objective-C声明的属性的类型，其实际是指向objc_property结构体的指针</p>
-
-<p><code>typedef struct objc_property *objc_property_t;</code></p>
-
-<h5 id="toc_5">objc_property_attribute_t</h5>
-
-<p><code>objc_property_attribute_t</code>定义了属性的特性(attribute)，它是一个结构体</p>
-
-<pre><code class="language-objc">typedef struct {
-    const char *name;           // 特性名
-    const char *value;          // 特性值
-} objc_property_attribute_t;
-</code></pre>
-
-<h3 id="toc_6">关联对象(Associated Object)</h3>
-
-<p>关联对象类似于成员变量，不过是在运行时添加的。我们通常会把成员变量(Ivar)放在类声明的头文件中，或者放在类实现的@implementation后面。但这有一个缺点，我们不能在分类中添加成员变量。如果我们尝试在分类中添加新的成员变量，编译器会报错。</p>
-
-<p>Objective-C针对这一问题，提供了一个解决方案：即关联对象(<code>Associated Object</code>)。</p>
-
-<p>我们可以把关联对象想象成一个Objective-C对象(如字典)，这个对象通过给定的key连接到类的一个实例上。不过由于使用的是C接口，所以key是一个void指针(const void *)。我们还需要指定一个内存管理策略，以告诉Runtime如何管理这个对象的内存。这个内存管理的策略可以由以下值指定：</p>
-
-<pre><code class="language-objc">OBJC_ASSOCIATION_ASSIGN
-OBJC_ASSOCIATION_RETAIN_NONATOMIC
-OBJC_ASSOCIATION_COPY_NONATOMIC
-OBJC_ASSOCIATION_RETAIN
-OBJC_ASSOCIATION_COPY
-/**
-    当宿主对象被释放时，会根据指定的内存管理策略来处理关联对象。如果指定的策略是
-    assign，则宿主释放时，关联对象不会被释放；而如果指定的是retain或者是copy，则
-    宿主释放时，关联对象会被释放。我们甚至可以选择是否是自动retain/copy。当我们需
-    要在多个线程中处理访问关联对象的多线程代码时，这就非常有用了。
-*/
-</code></pre>
-
-<p>使用方法:</p>
-
-<pre><code class="language-objc">static char myKey;
-objc_setAssociatedObject(self, &amp;myKey, anObject, OBJC_ASSOCIATION_RETAIN);
-/**
-    Sets an associated value for a given object using a given key and association 
-    policy.
-    
-    object
-        The source object for the association.
-    key
-        The key for the association.
-    value
-        The value to associate with the key key for object. Pass nil to clear an 
-        existing association.
-*/
-</code></pre>
-
-<p>在这种情况下，self对象将获取一个新的关联的对象anObject，且内存管理策略是自动retain关联对象，当self对象释放时，会自动release关联对象。另外，如果我们使用同一个key来关联另外一个对象时，也会自动释放之前关联的对象，这种情况下，先前的关联对象会被妥善地处理掉，并且新的对象会使用它的内存。</p>
-
-<pre><code class="language-objc">id anObject = objc_getAssociatedObject(self, &amp;myKey);
-//Returns the value associated with a given object for a given key.
-/**
-object
-The source object for the association.
-key
-The key for the association.
-*/
-</code></pre>
-
-<p>我们可以使用<code>objc_removeAssociatedObjects</code>函数来移除一个关联对象，或者使用<code>objc_setAssociatedObject</code>函数将key指定的关联对象设置为nil。</p>
-
-<p>关联对象使用起来并不复杂。它让我们可以动态地增强类现有的功能。我们可以在实际编码中灵活地运用这一特性。</p>
-
-<h3 id="toc_7">成员变量、属性的操作方法</h3>
-
-<h4 id="toc_8">成员变量</h4>
-
-<p>成员变量包含以下方法:</p>
-
-<pre><code class="language-objc">// 获取成员变量名
-const char * ivar_getName ( Ivar v );
-// 获取成员变量类型编码
-const char * ivar_getTypeEncoding ( Ivar v );
-// 获取成员变量的偏移量
-ptrdiff_t ivar_getOffset ( Ivar v );
-</code></pre>
-
-<p><code>ivar_getOffset</code>函数，对于类型id或其它对象类型的实例变量，可以调用<code>object_getIvar</code>和<code>object_setIvar</code>来直接访问成员变量，而不使用偏移量。</p>
-
-<h4 id="toc_9">关联对象</h4>
-
-<p>关联操作函数</p>
-
-<pre><code class="language-objc">// 设置关联对象
-void objc_setAssociatedObject ( id object, const void *key, id value, objc_AssociationPolicy policy );
-// 获取关联对象
-id objc_getAssociatedObject ( id object, const void *key );
-// 移除关联对象
-void objc_removeAssociatedObjects ( id object );
-</code></pre>
-
-<h4 id="toc_10">属性</h4>
-
-<p>属性操作函数:</p>
-
-<pre><code class="language-objc">// 获取属性名
-const char * property_getName ( objc_property_t property );
-// 获取属性特性描述字符串
-const char * property_getAttributes ( objc_property_t property );
-// 获取属性中指定的特性
-char * property_copyAttributeValue ( objc_property_t property, const char *attributeName );
-// 获取属性的特性列表
-objc_property_attribute_t * property_copyAttributeList ( objc_property_t property, unsigned int *outCount );
-
-</code></pre>
-
-<p><code>property_copyAttributeValue</code>函数，返回的char *在使用完后需要调用free()释放.<br/>
-<code>property_copyAttributeList</code>函数，返回值在使用完后需要调用free()释放。</p>
 
 ]]></content>
   </entry>

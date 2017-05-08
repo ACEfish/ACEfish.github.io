@@ -103,489 +103,227 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14921642710849.html">
+                <a class="clearlink" href="14939015823586.html">
                 
-                  <h1>动画</h1>
+                  <h1>高效绘图</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>1.隐式动画<br/>
-    利用图层的属性动画来做动画<br/>
-    通过事务来控制动画的时间等属性<br/>
-    UIView的animateWithDuration:animations:方法创建的动画。<br/>
-2.显式动画<br/>
-    就是直接显式的向图层上添加一个动画<br/>
-    beginAnimations:context:和commitAnimations创建的动画。</p>
+                        	<p>关于绘制的性能<br/>
+提高绘制性能或者减少需要绘制的数量</p>
 
-<p>之所以叫<strong><code>隐式</code>是因为我们并没有指定任何动画的类型</strong>.我们改变属性之后是<code>Core Animation</code>来决定如何并且何时去做动画（这是隐式当然也可以显式动画）.</p>
+<h3 id="toc_0">软件绘图</h3>
 
-<p>隐式动画的动画执行的时间取决于当前<code>事务</code>的设置，动画类型取决于图层行为。</p>
+<p>在<code>Core Animation</code>中的绘图通常是指<strong>软件绘图</strong><br/>
+在iOS中，软件绘图通常是由<code>Core Graphics</code>框架完成来完成。但是，在一些必要的情况下，相比<code>Core Animation</code>和<code>OpenGL</code>，<code>Core Graphics</code>要慢了不少。</p>
 
-<p>3.<br/>
-<code>CATransaction</code> 隐式动画<br/>
-<code>CATransition</code> 过渡动画</p>
+<p>软件绘图不仅效率很低 而且很耗内存.CALayer只需要和自己相关的内存,只有他的寄宿图会消耗一点内存控件，即使直接赋给<code>contents</code>属性一张图片,也不需要增加额外的照片存储大小,如果相同的一张图片被多个图层作为<code>contents</code>属性，那么他们将会共用同一块内存，而不是复制内存块。</p>
 
-                        
-                      </div>
-                  </div>
-                </a>
-                <div class="read-more clearfix">
-                  <div class="more-left left">
-                  
-                    <span class="date">2017/4/14</span>
-                    <span>posted in&nbsp;</span> 
-          				  
-          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
-          				   
-                  </div>
-                  <div class="more-right right">
-                  <span class="comments">
-                      
+<p>但是如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</p>
 
-                       
-                  </span>
-                  </div>
-                </div>
-              </div><!-- article -->
-        
-			<div class="article">
-                <a class="clearlink" href="14913623029277.html">
-                
-                  <h1>基于定时器的动画</h1>
-                  <div class="a-content">
-                      
-                      <div class="a-content-text">
-                        
-                        	<p>缓冲主要学习<code>CAMediaTimingFunction</code>通过来做加速减速等增强现实感.</p>
+<p><strong>绘图代价很大，尽量避免重绘你的视图</strong></p>
 
-<p>本章学习精确地控制一帧一帧展示的基于定时器的动画,来更加真实模拟物理交互或者根据用户输入来改变动画</p>
+<h3 id="toc_1">矢量图形</h3>
 
-<h3 id="toc_0">定时帧</h3>
-
-<p>iOS按照每秒60次刷新屏幕,<code>CAAnimation</code>计算出需要展示的新的帧。</p>
-
-<h4 id="toc_1">NSTimer</h4>
-
-<p>我们可以用NStimer来一秒钟更新60次，来做动画.</p>
-
-<p>用<code>NSTimer</code>做动画的话需要几个属性来存储动画的<code>fromValue</code> ，<code>toValue</code>，<code>duration</code>和当前的 <code>timeOffset</code>。</p>
-
-<p><code>示例代码省略</code></p>
-
-<p>但是用<code>NSTimer</code>并不是一个很好的方案</p>
-
-<p>iOS中每个线程都管理了一个<code>NSRunloop</code>，通过循环来完成一些任务列表</p>
-
-<p>但是主线程的任务有:</p>
+<p>我们用的矢量绘图包含:</p>
 
 <ul>
-<li>处理触摸事件</li>
-<li>发送和接受网络数据包</li>
-<li>执行使用gcd的代码</li>
-<li>处理定时器行为</li>
-<li>屏幕重绘</li>
+<li>任意多边形</li>
+<li>斜线或曲线</li>
+<li>文本</li>
+<li>渐变</li>
 </ul>
 
-<p>当我们设置了一个NSTimer,会被插入到当前任务列表中,指定时间过去后才被执行.但是何时启动定时器并没有一个时间上限，而且它只会在列表中上一个任务完成之后开始执行。这通常会导致有几毫秒的延迟，但是如果上一个任务过了很久才完成就会导致延迟很长一段时间。</p>
+<p>实现一个划线应用:将用户的触摸手势转换成一个 UIBezierPath 上的点，然后绘制成视图。</p>
 
-<p>屏幕重绘的频率是一秒钟六十次，但是和定时器行为一样，如果列表中上一个执行了很长时间，它也会延迟。这些延迟都是一个随机值，于是就不能保证定时器精准地一秒钟执行六十次。有时候发生在屏幕重绘之后，这就会使得更新屏幕会有个延迟，看起来就是动画卡壳了。有时候定时器会在屏幕更新的时候执行两次，于是动画看起来就跳动了。</p>
+<p>1.用<code>Core Graphic</code>基于<code>drawRect</code>绘制</p>
 
-<p>优化方法:</p>
-
-<ul>
-<li>我们可以用 CADisplayLink 让更新频率严格控制在每次屏幕刷新之后。</li>
-<li>基于真实帧的持续时间而不是假设的更新频率来做动画。</li>
-<li>调整动画计时器的 <code>run loop</code> 模式，这样就不会被别的事件干扰。</li>
-</ul>
-
-<h4 id="toc_2">CADisplayLink</h4>
-
-<p><code>CADisplayLink</code>是<code>CoreAnimation</code>提供的另一个类似<code>NSTimer</code>类,总是在屏幕完成一次更新之前启动,它和<code>NSTimer</code>的内部实现相同,只不过它不是以时间间隔秒为单位,<code>CADisplayLink</code> 有一个整型的<code>frameInterval</code> 属性，指定了间隔多少帧之后才执行。默认值是1，意味着每次屏幕更新之前都会执行一次。(我们可以根据动画的执行时间来确定多少帧执行一次)</p>
-
-<p>虽然<code>CADisplayLink</code>也不能保证每帧都按计划执行,出现丢帧情况,但是和<code>NSTimer</code>不同的是<code>NSTimer</code>一有机会就会开启,而<code>CADisplayLink</code>如果丢帧的话会直接忽略它们,在下一次更新时接着运行;</p>
-
-<pre><code class="language-objc">self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-
-- (void)step:(CADisplayLink *)timer
+<pre><code class="language-objc">- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
 {
-    //calculate time delta
-    CFTimeInterval thisStep = CACurrentMediaTime();
-    CFTimeInterval stepDuration = thisStep - self.lastStep;
-    self.lastStep = thisStep;
-    
-    self.timeOffset = MIN(self.timeOffset + stepDuration, self.duration);
-    //get normalized time offset (in range 0 - 1)
-    float time = self.timeOffset / self.duration;
-    //apply easing
-    time = bounceEaseOut(time);
-    //interpolate position
-    id position = [self interpolateFromValue:self.fromValue toValue:self.toValue
-    time:time];
-    //move ball view to new position
-    self.ballView.center = [position CGPointValue];
-    //stop the timer if we&#39;ve reached the end of the animation
-    if (self.timeOffset &gt;= self.duration) {
-        [self.timer invalidate];
-        self.timer = nil;
-    }
+    CGPoint point = [[touches anyObject] locationInView:self];
+    [self.path addLineToPoint:point];
+    [self setNeedsDisplay];
+}
+- (void)drawRect:(CGRect)rect
+{
+    [[UIColor clearColor] setFill];
+    [[UIColor redColor] setStroke];
+    [self.path stroke];
 }
 </code></pre>
 
-<h4 id="toc_3">Run Loop 模式</h4>
+<p><code>[self setNeedsDisplay];</code>可以重绘视图,再次走<code>drawRect</code>方法,但是如果一直重绘而且绘制工作量增大就会导致帧数下降.</p>
 
-<p>创建Run Loop时需要指定mode,iOS会根据指定的优先级,，而且当UI很活跃的时候的确会暂停一些别的任务.</p>
+<p>2.用<code>CAShaperLayer</code>绘制</p>
 
-<ul>
-<li>NSDefaultRunLoopMode - 标准优先级</li>
-<li>NSRunLoopCommonModes - 高优先级</li>
-<li>UITrackingRunLoopMode - 用于 UIScrollView 和别的控件的动画</li>
-</ul>
-
-<pre><code class="language-objc">/*我们可以同时加入 NSDefaultRunLoopMode 和 UITrackingRunLoopMode 
-    来保证它不会被滑动打断，也不会被其他UIKit控件动画影响性能
-**/
-self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:UITrackingRunLoop];
-</code></pre>
-
-<h3 id="toc_4">物理模拟</h3>
-
-<p>我们在上面的方法中，关键帧的实现中我们提前加计算了所有帧,这次我们按需要进行计算,这样我们可以根据用户输入实时修改动画的逻辑，或者和别的实时动画系统例如物理引擎进行整合。</p>
-
-<h4 id="toc_5">Chipmunk</h4>
-
-<p>基于物理学创建一个真实的重力模拟效果来取代当前基于缓冲的弹性动画,因为模拟物理效果太复杂了，我们直接使用开源的物理引擎,我这里使用<code>Chipmunk</code>，有很多版本包括和<code>Objective-C</code>绑定的<code>“indie”</code>版本<a href="http://chipmunk-physics.net/">下载地址</a></p>
-
-<p>我们只简单使用这个引擎中的几个类:</p>
-
-<ul>
-<li>cpSpace - 所有的物理结构体的容器。它有一个大小和一个可选的重力矢量</li>
-<li>cpBody - 一个固态无弹力的刚体。它有一个坐标，以及其他物理属性，例如质量，运动和摩擦系数等等。</li>
-<li>cpShape - 一个抽象的几何形状，用来检测碰撞。可以给结构体添加一个多边形，而且<code>cpShape</code>有各种子类来代表不同形状的类型。</li>
-</ul>
-
-                        
-                      </div>
-                  </div>
-                </a>
-                <div class="read-more clearfix">
-                  <div class="more-left left">
-                  
-                    <span class="date">2017/4/5</span>
-                    <span>posted in&nbsp;</span> 
-          				  
-          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
-          				   
-                  </div>
-                  <div class="more-right right">
-                  <span class="comments">
-                      
-
-                       
-                  </span>
-                  </div>
-                </div>
-              </div><!-- article -->
-        
-			<div class="article">
-                <a class="clearlink" href="14906168166224.html">
-                
-                  <h1>缓冲</h1>
-                  <div class="a-content">
-                      
-                      <div class="a-content-text">
-                        
-                        	<p><code>Core Animation</code>使用缓冲来使动画移动更平滑更自然。我们来试着研究如何对你的动画控制和自定义缓冲曲线。</p>
-
-<h3 id="toc_0">动画速度</h3>
-
-<p><code>velocity = change / time</code>（假设速度不变也就是“线性步调”）</p>
-
-<p>其实速度在动画整个移动过程中并不一定是恒定不变的,是有加速度的,为了实现这种加速度,一种方法是使用物理引擎来对运动物体的摩擦和动量来建模，然而这会使得计算过于复杂。我们称这种类型的方程为缓冲函数，幸运的是，<code>Core Animation</code>内嵌了一系列标准函数提供给我们使用。</p>
-
-<h4 id="toc_1">CAMediaTimingFunction</h4>
-
-<p>显式动画<code>CAAnimation</code>的<code>timingFunction</code>属性就是<code>CAMediaTimingFunction</code>类对象<br/>
-隐式动画用<code>CATransaction</code>的<code>+setAnimationTimingFunction:</code>方法，来调整动画时间函数</p>
-
-<p><code>CAMediaTimingFunction</code>用<code>+timingFunctionWithName:</code>方法构造对象：</p>
-
-<pre><code class="language-objc">//几种常量
-kCAMediaTimingFunctionLinear//。默认。线性计时函数
-kCAMediaTimingFunctionEaseIn//慢慢加速然后突然停止
-kCAMediaTimingFunctionEaseOut//全速开始 慢慢减速停止
-kCAMediaTimingFunctionEaseInEaseOut//慢慢加速然后再慢慢减速
-kCAMediaTimingFunctionDefault//类似淡入淡出但是加速和减速过程更慢
-/**
-    UIView 的动画方法默认kCAMediaTimingFunctionEaseInEaseOut
-    CAAinamtion 默认kCAMediaTimingFunctionLinear
-*/
-</code></pre>
-
-<pre><code class="language-objc">[CATransaction begin];
-[CATransaction setAnimationDuration:1.0];
-[CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut]];
-//set the position
-self.colorLayer.position = [[touches anyObject] locationInView:self.view];
-//commit transaction
-[CATransaction commit];
-</code></pre>
-
-<h4 id="toc_2">UIView 的动画缓冲</h4>
-
-<p>UIView 动画的缓冲选项，<code>options</code>参数</p>
-
-<pre><code class="language-objc">UIViewAnimationOptionCurveEaseInOut//默认
-UIViewAnimationOptionCurveEaseIn
-UIViewAnimationOptionCurveEaseOut
-UIViewAnimationOptionCurveLinear
-</code></pre>
-
-<pre><code class="language-objc">- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+<pre><code class="language-objc">+ (Class)layerClass
 {
-    //perform the animation
-    [UIView animateWithDuration:1.0 delay:0.0 options:UIViewAnimationOptionCurveEaseOut
-    animations:^{
-        //set the position
-        self.colorView.center = [[touches anyObject] locationInView:self.view];
-    }
-    completion:NULL];
+    return [CAShapeLayer class];
 }
 </code></pre>
 
-<h4 id="toc_3">缓冲和关键帧动画</h4>
+<p><code>Core Animation</code>为这些图层类型提供了专门的类，并提供了硬件支持,比如<code>CAShapeLayer</code>可以绘制多边形，直线和曲线。 <code>CATextLayer</code>可以绘制文本。<code>CAGradientLayer</code>用来绘制渐变。这些总体上都比<code>Core Graphics</code>更快，同时他们也避免了创造一个寄宿图。(<strong>这些图层是CA提供的,而我们的绘图用的是CG</strong>)</p>
 
-<p>对于关键帧动画：我们不想给整个动画过程应用这个效果，我们希望对每个动画的过程重复这样的缓冲.<br/>
-<code>CAKeyframeAnimation</code> 有一个 <code>NSArray</code> 类型的<code>timingFunctions</code>属性，我们<br/>
-可以用它来对每次动画的步骤指定不同的计时函数。这个数组个数需要与<strong>关键帧(keyframes)个数减一</strong>,它是每两个关键帧之间的效果.</p>
+<p>因此对于绘制矢量图层我们可以重写<code>UIView</code>的<code>layer</code>然后只需要将绘制的<code>path</code>赋值<code>CAShapeLayer</code>的<code>path</code>即可绘制，虽然性能依然下降但不明显几乎感觉不到帧率差异</p>
 
-<pre><code class="language-objc">    //create a keyframe animation
-    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
-    animation.keyPath = @&quot;backgroundColor&quot;;
-    animation.duration = 2.0;
-    animation.values = @[
-    (__bridge id)[UIColor blueColor].CGColor,
-    (__bridge id)[UIColor redColor].CGColor,
-    (__bridge id)[UIColor greenColor].CGColor,
-    (__bridge id)[UIColor blueColor].CGColor ];
-    //add timing function
-    CAMediaTimingFunction *fn = [CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn];
-    animation.timingFunctions = @[fn, fn, fn];
-    //apply animation to layer
-    [self.colorLayer addAnimation:animation forKey:nil];
-</code></pre>
+<h3 id="toc_2">脏矩形</h3>
 
-<h3 id="toc_4">自定义缓冲函数</h3>
+<p>有时候我们没办法用<code>CAShapeLayer</code>等图层来代替<code>Core Graphics</code>，对于上面的例子,我们为了进一步提高性能,我们用一个“线刷”图片粘贴到用户手指触碰的地方</p>
 
-<p>除了<code>+functionWithName:</code>之外,<code>CAMediaTimingFunction</code>还有另一个构造函数<code>+functionWithControlPoints::::</code>（四个浮点参数）可以创建一个自定义的缓冲函数.</p>
+<p>我们如果在用户手指移动就重绘视图将图片粘贴到用户手指移动过的所有点,这样绘制越多就越慢,仍会引起性能问题</p>
 
-<h4 id="toc_5">三次贝塞尔曲线</h4>
+<p>为了减少不必要的绘制,Mac OS和iOS设备将会把屏幕区分为需要重绘的区域和不需要重绘的区域。<strong>那些需要重绘的部分被称作『脏区域』。</strong>为了方便我们通常指出包含需要重绘的视图的矩形位置,就是<strong>脏矩形</strong></p>
 
-<p>曲线的斜率代表了速度，斜率的改变代表了加速度,</p>
+<p>只改变了视图的部分区域的,重绘整个整个寄宿图就太浪费了,我们可以通过提供重绘区域.</p>
 
-<p><code>CAMediaTimingFunction</code>使用了一个叫做三次贝塞尔曲线的函数，它只可以产出指定缓冲函数的子集,用四个点来定义，第一个和最后一个点代表了曲线的起点和终点,剩下中间两个点控制了曲线的形状（曲线并不一定要穿过这两个点）.</p>
+<p>当检测到需要重绘的区域时通过<code>setNeedsDisplayInRect:</code>标记,这样就会在一次试图刷新时调用调用视图的<code>- drawRect:</code>（或图层代理的<code>- drawLayer:inContext:</code>方法）</p>
 
-<p><img src="media/14906168166224/14907840742377.jpg" alt=""/></p>
+<p>传入<code>- drawLayer:inContext:</code>的<code>CGContext</code>参数会自动被裁切以适应对应的矩形。为了确定矩形的尺寸大小，你可以用<code>CGContextGetClipBoundingBox()</code>方法来从上下文获得大小。调用<code>- drawRect()</code>会更简单，因为<code>CGRect</code>会作为参数直接传入。</p>
 
-<p><code>CAMediaTimingFunction</code>有<code>- getControlPointAtIndex:values:</code>的方法(Index为0.1.2.3 分别代表着四个点)，可以用来检索曲线的点.使用它我们可以找到标准缓冲函数的点，然后用<code>UIBezierPath</code>和<code>CAShapeLayer</code> 来把它画出来。</p>
+<p>当然如果你的裁剪逻辑相当复杂,那还是是让<code>Core Graphics</code>来为你重绘吧，</p>
 
-<p><strong>曲线的起始和终点始终是{0, 0}和{1, 1}</strong></p>
-
-<pre><code class="language-objc">//可以通过改变常量来看各个函数
-CAMediaTimingFunction *function = [CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut];
-//get control points
-CGPoint controlPoint1, controlPoint2;
-[function getControlPointAtIndex:1 values:(float *)&amp;controlPoint1];
-[function getControlPointAtIndex:2 values:(float *)&amp;controlPoint2];
-//create curve
-UIBezierPath *path = [[UIBezierPath alloc] init];
-[path moveToPoint:CGPointZero];
-[path addCurveToPoint:CGPointMake(1, 1)
-controlPoint1:controlPoint1 controlPoint2:controlPoint2];
-//scale the path up to a reasonable size for display
-[path applyTransform:CGAffineTransformMakeScale(200, 200)];
-//create shape layer
-CAShapeLayer *shapeLayer = [CAShapeLayer layer];
-shapeLayer.strokeColor = [UIColor redColor].CGColor;
-shapeLayer.fillColor = [UIColor clearColor].CGColor;
-shapeLayer.lineWidth = 4.0f;
-shapeLayer.path = path.CGPath;
-[self.layerView.layer addSublayer:shapeLayer];
-//flip geometry so that 0,0 is in the bottom-left
-self.layerView.layer.geometryFlipped = YES;
-</code></pre>
-
-<pre><code class="language-objc">//要初始微弱，然后迅速上升，最后缓冲到终点
-[CAMediaTimingFunction functionWithControlPoints:1 :0 :0.75 :1];
-</code></pre>
-
-<p><img src="media/14906168166224/14907853432579.jpg" alt=""/></p>
-
-<h4 id="toc_6">更加复杂的动画曲线</h4>
-
-<p><img src="media/14906168166224/14907860935800.jpg" alt=""/></p>
-
-<p>实现这个效果方法:</p>
-
-<ul>
-<li>用 CAKeyframeAnimation 创建一个动画，然后分割成几个步骤，每个小步骤使用自己的计时函数。</li>
-<li>使用定时器逐帧更新实现动画</li>
-</ul>
-
-<h4 id="toc_7">基于关键帧的缓冲</h4>
-
-<p>我们用关键帧缓冲来实现上面的小球掉落动画<br/>
-很显然我们的每个关键帧就是就是每次反弹的峰值,</p>
-
-<pre><code class="language-objc">CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
-animation.keyPath = @&quot;position&quot;;
-animation.duration = 1.0;
-animation.delegate = self;
-animation.values = @[
-[NSValue valueWithCGPoint:CGPointMake(150, 32)],
-[NSValue valueWithCGPoint:CGPointMake(150, 268)],
-[NSValue valueWithCGPoint:CGPointMake(150, 140)],
-[NSValue valueWithCGPoint:CGPointMake(150, 268)],
-[NSValue valueWithCGPoint:CGPointMake(150, 220)],
-[NSValue valueWithCGPoint:CGPointMake(150, 268)],
-[NSValue valueWithCGPoint:CGPointMake(150, 250)],
-[NSValue valueWithCGPoint:CGPointMake(150, 268)]
-];
-animation.timingFunctions = @[
-[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn],
-[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut],
-[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn],
-[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut],
-[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn],
-[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut],
-[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn]
-];
-animation.keyTimes = @[@0.0, @0.3, @0.5, @0.7, @0.8, @0.9, @0.95, @1.0];
-//apply animation
-self.ballView.layer.position = CGPointMake(150, 268);
-[self.ballView.layer addAnimation:animation forKey:nil];
-</code></pre>
-
-<p>//这样计算每个关键帧也太麻烦了,一旦有修改又要计算关键帧的位置</p>
-
-<h4 id="toc_8">流程自动化</h4>
-
-<p>如果我们将动画分割为足够小的部分,那么就可以用直线来拼接为这些曲线</p>
-
-<p><code>Core Animation</code>的插值机制:传入起点和终点，然后在这两个点之间指定时间点产出一个新点的机制</p>
-
-<pre><code class="language-objc">/**
-简单的浮点起始值
-*/
-value = (endValue – startValue) × time + startValue;
-</code></pre>
-
-<p>这是对简单的浮点值进行插值,如果是比较复杂的类似CGPoint、CGColorRef或者CATransform3D等我们可以可以对其中的每个元素（CGPoint 中的x和y值、CGColorRef 中的红，蓝，绿，透明值，或者是 CATransform3D 中独立矩阵的坐标）用这种方法,我们可以在逻辑插值前将对象拆解,插值后再重新封装成对象.</p>
-
-<p>我们获得属性动画起始值的任意插值,就可以将动画分为许多独立关键帧,产出一个线性的关键帧动画.</p>
-
-<p>因为<code>Core Animation</code>是每秒60帧去渲染屏幕更新,因此我们每秒生成60个关键帧可以保证动画平滑</p>
-
-<pre><code class="language-objc">float interpolate(float from, float to, float time)
+<pre><code class="language-objc">- (void)addBrushStrokeAtPoint:(CGPoint)point
 {
-    return (to - from) * time + from;
+    //add brush stroke to array
+    [self.strokes addObject:[NSValue valueWithCGPoint:point]];
+    //set dirty rect
+    [self setNeedsDisplayInRect:[self brushRectForPoint:point]];
 }
-- (id)interpolateFromValue:(id)fromValue toValue:(id)toValue time:(float)time
+- (CGRect)brushRectForPoint:(CGPoint)point
 {
-    if ([fromValue isKindOfClass:[NSValue class]]) {
-    //get type
-    const char *type = [fromValue objCType];
-    if (strcmp(type, @encode(CGPoint)) == 0) {
-    CGPoint from = [fromValue CGPointValue];
-    CGPoint to = [toValue CGPointValue];
-    CGPoint result = CGPointMake(interpolate(from.x, to.x, time), interpolate(from.y, to.y, time));
-    return [NSValue valueWithCGPoint:result];
+    return CGRectMake(point.x - BRUSH_SIZE/2, point.y - BRUSH_SIZE/2, BRUSH_SIZE, BRUSH_SIZE);
+}
+- (void)drawRect:(CGRect)rect
+{
+    //redraw strokes
+    for (NSValue *value in self.strokes) {
+        //get point
+        CGPoint point = [value CGPointValue];
+        //get brush rect
+        CGRect brushRect = [self brushRectForPoint:point];
+        //only draw brush stroke if it intersects dirty rect
+        if (CGRectIntersectsRect(rect, brushRect)) {
+        //draw brush stroke
+        [[UIImage imageNamed:@&quot;Chalk.png&quot;] drawInRect:brushRect];
         }
     }
-//provide safe default implementation
-    return (time &lt; 0.5)? fromValue: toValue;
-}
-
-- (void)animate
-{
-    //reset ball to top of screen
-    self.ballView.center = CGPointMake(150, 32);
-    //set up animation parameters
-    NSValue *fromValue = [NSValue valueWithCGPoint:CGPointMake(150, 32)];
-    NSValue *toValue = [NSValue valueWithCGPoint:CGPointMake(150, 268)];
-    CFTimeInterval duration = 1.0;
-    //generate keyframes
-    NSInteger numFrames = duration * 60;
-    NSMutableArray *frames = [NSMutableArray array];
-    for (int i = 0; i &lt; numFrames; i++) {
-        float time = 1 / (float)numFrames * i;
-        [frames addObject:[self interpolateFromValue:fromValue toValue:toValue time:time]];
-    }
-    //create keyframe animation
-    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
-    animation.keyPath = @&quot;position&quot;;
-    animation.duration = 1.0;
-    animation.delegate = self;
-    animation.values = frames;
-    //apply animation
-    [self.ballView.layer addAnimation:animation forKey:nil];
 }
 </code></pre>
 
-<p>但是上面的方式非常复杂,因为缓冲数学并不简单，我们可以直接使用现成的<a href="http://www.robertpenner.com/easing">缓冲函数</a>,例如:</p>
+<h3 id="toc_3">异步绘制</h3>
 
-<pre><code class="language-objc">//缓冲进入缓冲退出函数
-float quadraticEaseInOut(float t)
-{
-`return (t &lt; 0.5)? (2 * t * t): (-2 * t * t) + (4 * t) - 1;
+<p><code>UIKit</code>的单线程天性意味着寄宿图通畅要在主线程上更新，这意味着绘制会打断用户交互，甚至让整个<code>app</code>看起来处于无响应状态。</p>
+
+<p>为了可以避免用户等待绘制：</p>
+
+<h4 id="toc_4">CATiledLayer</h4>
+
+<p><code>CATiledLayer</code>除了将图层再次分割成独立更新的小块外<br/>
+<code>CATiledLayer</code>还有一个有趣的特性：在多个线程中为每个小块同时调用<code>- drawLayer:inContext:</code>方法。<br/>
+这就避免了阻塞用户交互而且能够利用多核心新片来更快地绘制。只有一个小块的<code>CATiledLayer</code>是实现异步更新图片视图的简单方法。</p>
+
+<h4 id="toc_5">drawsAsynchronously</h4>
+
+<p>苹果为<code>CALayer</code>引入了这个令人好奇的属性，<code>drawsAsynchronously</code>属性对传入<code>-drawLayer:inContext:</code>的<code>CGContext</code>进行改动，允许<code>CGContext</code>延缓绘制命令的执行以至于不阻塞用户交互。</p>
+
+<p>它与<code>CATiledLayer</code>使用的异步绘制并不相同。它自己的 <code>- drawLayer:inContext:</code>方法只会在主线程调用，但是<code>CGContext</code>并不等待每个绘制命令的结束。相反地，它会将命令加入队列，当方法返回时，在后台线程逐个执行真正的绘制。</p>
+
+<p>根据苹果的说法。这个特性在需要频繁重绘的视图上效果最好（比如我们的绘图应用，或者诸如UITableViewCell 之类的），对那些只绘制一次或很少重绘的图层内容来说没什么太大的帮助。</p>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/5/4</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='%E6%80%A7%E8%83%BD.html'>性能</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+			<div class="article">
+                <a class="clearlink" href="14925128921601.html">
+                
+                  <h1>常用动画示例</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<h3 id="toc_0">1.地震动画</h3>
+
+<p>适合一整个大视图的突然晃动</p>
+
+<pre><code class="language-objc">- (void)earthquake:(UIView*)itemView {
+    CGFloat t = 2.0;
+    CGAffineTransform leftQuake  = CGAffineTransformTranslate(CGAffineTransformIdentity, t, 0);
+    CGAffineTransform rightQuake = CGAffineTransformTranslate(CGAffineTransformIdentity, -t, 0); //水平晃动
+
+    itemView.transform = leftQuake;  // starting point
+
+    [UIView beginAnimations:@&quot;earthquake&quot; context:(__bridge void *)(itemView)];
+    [UIView setAnimationRepeatAutoreverses:YES]; // 如果不加这一句 整个动画感觉不连贯
+    [UIView setAnimationRepeatCount:5];
+    [UIView setAnimationDuration:0.07];
+    [UIView setAnimationDelegate:self];
+    [UIView setAnimationDidStopSelector:@selector(earthquakeEnded:finished:context:)];
+
+    itemView.transform = rightQuake; // end here &amp; auto-reverse
+
+    [UIView commitAnimations];
+}
+
+- (void)earthquakeEnded:(NSString *)animationID finished:(NSNumber *)finished context:(void *)context {
+    if ([finished boolValue]) {
+        UIView* item = (__bridge UIView *)context;
+        item.transform = CGAffineTransformIdentity;
+    }
 }
 </code></pre>
 
-<pre><code class="language-objc">//弹性小球 bounceEaseOut函数
-float bounceEaseOut(float t)
-{
-    if (t &lt; 4/11.0) {
-        return (121 * t * t)/16.0;
-    } else if (t &lt; 8/11.0) {
-        return (363/40.0 * t * t) - (99/10.0 * t) + 17/5.0;
-    } else if (t &lt; 9/10.0) {
-        return (4356/361.0 * t * t) - (35442/1805.0 * t) + 16061/1805.0
-    }
-        return (54/5.0 * t * t) - (513/25.0 * t) + 268/25.0;
-}
-</code></pre>
+<h3 id="toc_1">2.图标的抖动效果</h3>
 
-<pre><code class="language-objc">//我们使用上面的弹性小球函数来实现
-- (void)animate
+<pre><code class="language-objc">//开始抖动
+-(void)BeginWobble
 {
-    //reset ball to top of screen
-    self.ballView.center = CGPointMake(150, 32);
-    //set up animation parameters
-    NSValue *fromValue = [NSValue valueWithCGPoint:CGPointMake(150, 32)];
-    NSValue *toValue = [NSValue valueWithCGPoint:CGPointMake(150, 268)];
-    CFTimeInterval duration = 1.0;
-    //generate keyframes
-    NSInteger numFrames = duration * 60;
-    NSMutableArray *frames = [NSMutableArray array];
-    for (int i = 0; i &lt; numFrames; i++) {
-        float time = 1/(float)numFrames * i;
-        //apply easing
-        time = bounceEaseOut(time);
-        //add keyframe
-        [frames addObject:[self interpolateFromValue:fromValue toValue:toValue time:time]];
-    }
-    //create keyframe animation
-    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
-    animation.keyPath = @&quot;position&quot;;
-    animation.duration = 1.0;
-    animation.delegate = self;
-    animation.values = frames;
-    //apply animation
-    [self.ballView.layer addAnimation:animation forKey:nil];
+
+    srand([[NSDate date] timeIntervalSince1970]);
+    float rand=(float)random();
+    CFTimeInterval t=rand*0.0000000001;
+
+    [UIView animateWithDuration:0.1 delay:t options:0  animations:^
+     {
+         要抖动的视图.transform=CGAffineTransformMakeRotation(-0.05);
+     } completion:^(BOOL finished)
+     {
+         [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionRepeat|UIViewAnimationOptionAutoreverse|UIViewAnimationOptionAllowUserInteraction  animations:^
+          {
+              要抖动的视图.transform=CGAffineTransformMakeRotation(0.05);
+          } completion:^(BOOL finished) {}];
+     }];
 }
+//停止抖动
+-(void)EndWobble
+{
+
+    [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionAllowUserInteraction|UIViewAnimationOptionBeginFromCurrentState animations:^
+     {
+         要抖动的视图.transform=CGAffineTransformIdentity;
+     } completion:^(BOOL finished) {}];
+}
+
 </code></pre>
 
                         
@@ -595,10 +333,192 @@ float bounceEaseOut(float t)
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/27</span>
+                    <span class="date">2017/4/18</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
+          					    <span class="posted-in"><a href='%E5%B8%B8%E7%94%A8%E5%8A%A8%E7%94%BB.html'>常用动画</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+			<div class="article">
+                <a class="clearlink" href="14924196525709.html">
+                
+                  <h1>性能调优</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<h3 id="toc_0">CPU &amp;&amp; GPU</h3>
+
+<p>绘图和动画处理方式:<code>CPU</code>(中央处理器)和<code>GPU</code>(图形处理器).<code>CPU</code>所做的工作都在软件层面，而<code>GPU</code>在硬件层面。</p>
+
+<p>我们可以用<code>CPU</code>做任何事情，但是对于图像处理，使用硬件更快，因为<code>GPU</code>使用图像对高度并行浮点运算做了优化。但是<code>GPU</code>也不是无限制使用的,一旦资源用完的性能就下降了(即使CPU没有完全占用)</p>
+
+<p>我们的优化就是智能使用<code>GPU</code>和<code>CPU</code>使他们都不会超过负荷,我们需要先了解这两个处理器分配工作的逻辑</p>
+
+<h4 id="toc_1">动画的舞台</h4>
+
+<p><strong>动画和屏幕上组合的图层实际上被一个单独的进程管理，而不是你的应用程序。这个进程就是所谓的渲染服务。</strong>在iOS6之后的版本中叫做<code>BackBoard</code>。</p>
+
+<p>当运行一段动画时,整个过程会分为4个阶段：</p>
+
+<ul>
+<li>布局 - 这是准备你的视图/图层的层级关系，以及设置图层属性（位置，背景色，边框等等）的阶段。</li>
+<li>显示 - 这是图层的寄宿图片被绘制的阶段。绘制有可能涉及你的<code>- drawRect:</code>和<code>-drawLayer:inContext:</code>方法的调用路径。</li>
+<li>准备 - 这是<code>Core Animation</code>准备发送动画数据到渲染服务的阶段。这同时也是<code>Core Animation</code>将要执行一些别的事务例如解码动画过程中将要显示的图片的时间点。</li>
+<li>提交 - 这是最后的阶段，<code>Core Animation</code>打包所有图层和动画属性，然后通过<code>IPC</code>（内部处理通信）发送到渲染服务进行显示。</li>
+</ul>
+
+<p>这些仅仅只是发生在应用程序内内,在动画在屏幕上显示之前仍然有其他工作，一旦打包的图层和动画到了渲染服务进程，他们会被<em>反序列化</em>形成一个叫做<strong>渲染树</strong>的图层树,使用这个树状结构，渲染服务对动画的每一帧做出如下工作：</p>
+
+<ul>
+<li>对所有的图层属性计算中间值，设置<code>OpenGL</code>几何形状（纹理化的三角形）来执行渲染</li>
+<li>在屏幕上渲染可见的三角形</li>
+</ul>
+
+<p>所以一共有六个阶段；最后两个阶段在动画过程中不停地重复。前五个阶段都在软件层面处理（通过CPU），只有最后一个被GPU执行。而且，你真正只能控制前两个阶段：布局和显示。Core Animation框架在内部处理剩下的事务，你也控制不了它。</p>
+
+<p>我们<br/>
+<strong>在布局和显示阶段，可以决定哪些由CPU执行，哪些交给GPU去做。</strong></p>
+
+<h4 id="toc_2">GPU相关操作</h4>
+
+<p>GPU为一个具体的任务做了优化：它用来采集图片和形状（三角形），运行变换，应用纹理和混合然后把它们输送到屏幕上。现代iOS设备上可编程的GPU在这些操作的执行上又很大的灵活性，但是<code>Core Animation</code>并没有暴露出直接的接口。除非你想绕开<code>Core Animation</code>并编写你自己的<code>OpenGL着色器</code>，从根本上解决硬件加速的问题，那么剩下的所有都还是需要在<code>CPU</code>的软件层面上完成。</p>
+
+<p>宽泛的说，<strong>大多数<code>CALayer</code>的属性都是用<code>GPU</code>来绘制</strong>。<br/>
+比如如果你设置图层背景或者边框的颜色，那么这些可以通过着色的三角板实时绘制出来。如果对一个<code>contents</code> 属性设置一张图片，然后裁剪它 - 它就会被纹理的三角形绘制出来，而不需要软件层面做任何绘制。</p>
+
+<p>但是有一些事情会降低（基于GPU）图层绘制:</p>
+
+<ul>
+<li>太多的几何结构<br/>
+太多的几何结构就需要太多的三角板来做变换,并不是GPU处理不了这么多几何结构,而是显示之前通过IPC发送到渲染服务器(图层实际上是由很多小物体组成的特别重量级的对象)时，会引起CPU的瓶颈，这就限制了一次展示的图层个数</li>
+<li><p>重绘</p>
+
+<p>主要由重叠的半透明图层引起。GPU的填充比率（用颜色填充像素的比率）是有限的，所以需要避免重（每一帧用相同的像素填充多次）的发生。</p></li>
+<li><p>离屏绘制<br/>
+发生在当不能直接在屏幕上绘制，并且必须绘制到离屏图片的上下文中的时候。离屏绘制发生在基于CPU或者是GPU的渲染，或者是为离屏图片分配额外内存，以及切换绘制上下文，这些都会降低<code>GPU</code>性能。对于特定图层效果的使用，比如圆角，图层遮罩，阴影或者是图层光栅化都会强制<code>Core Animation</code>提前渲染图层的离屏绘制。但这不意味着你需要避免使用这些效果，只是要明白这会带来性能的负面影响。</p></li>
+<li><p>过大的图片<br/>
+如果视图绘制超出GPU支持的<code>2048x2048</code>或者<code>4096x4096</code>尺寸的纹理，就必须要用CPU在图层每次显示之前对图片预处理，同样也会降低性能。</p></li>
+</ul>
+
+<h4 id="toc_3">CPU相关的操作</h4>
+
+<p>CPU的工作对于<code>Core Animation</code>发生在动画开始前。所以不会影响到帧率,但是会延时动画开始时间，让界面看起来比较迟钝</p>
+
+<p>延迟动画的开始时间的CPU操作:</p>
+
+<ul>
+<li><p>布局计算:<br/>
+视图层级过于复杂,视图修改或者呈现时计算图层帧率会消耗一部分时间</p></li>
+<li><p>视图懒加载<br/>
+iOS只会当视图控制器的视图显示到屏幕上时才会加载它。这对内存使用和程序启动时间很有好处，但是当呈现到屏幕上之前，按下按钮导致的许多工作都会不能被及时响应。比如控制器从数据库中获取数据，或者视图从一个nib文件中加载，或者涉及IO的图片显示（见后续“IO相关操作”），都会比CPU正常操作慢得多。</p></li>
+<li><p>Core Graphics绘制</p>
+
+<p>如果对视图实现了 -drawRect: 方法，或者 CALayerDelegate 的 -drawLayer:inContext: 方法，那么在绘制任何东西之前都会产生一个巨大的性能开销。为了支持对图层内容的任意绘制，Core Animation必须创建一个内存中等大小的寄宿图片。然后一旦绘制结束之后，必须把图片数据通过IPC传到渲染服务器。在此基础上，Core Graphics绘制就会变得十分缓慢，所以在一个对性能十分挑剔的场景下这样做十分不好。</p></li>
+<li><p>解压图片<br/>
+PNG或者JPEG压缩之后的图片文件会比同质量的位图小得多。为了节省内存，iOS通常直到真正绘制的时候才去解码图片，根据你加载图片的方式，第一次对图层内容赋值的时候，或者把它绘制<code>Core Graphics</code>中,需要解压,这样对于比较大的图片会占用时间</p></li>
+</ul>
+
+<p>当图层被成功打包，发送到渲染服务器之后，CPU仍然要做如下工作:<br/>
+为了显示屏幕上的图层，<code>Core Animation</code>必须对渲染树种的每个可见图层通过<code>OpenGL</code>循环转换成纹理三角板。由于GPU并不知晓<code>Core Animation</code>图层的任何结构，所以必须要由<code>CPU</code>做这些事情。CPU涉及的工作和图层个数成正比，所以如果在你的层级关系中有太多的图层，就会导致CPU每一帧的渲染，</p>
+
+<h4 id="toc_4">IO相关操作</h4>
+
+<p>上下文中的IO（输入/输出）指的是例如闪存或者网络接口的硬件访问。一些动画可能需要从闪存（甚至是远程URL）来加载。一个典型的例子就是两个视图控制器之间的过渡效果，这就需要从一个nib文件或者是它的内容中懒加载，或者一个旋转的图片，可能在内存中尺寸太大，需要动态滚动来加载。</p>
+
+<p>IO比内存访问更慢，所以如果动画涉及到IO，就是一个大问题。总的来说，这就需要使用聪敏但尴尬的技术，也就是多线程，缓存和投机加载（提前加载当前不需要的资源，但是之后可能需要用到）。</p>
+
+<h3 id="toc_5">测量，而不是猜测</h3>
+
+<p>有很多种诡计来优化动画，但如果盲目使用的话，可能会造成更多性能上的问题，而不是修复。<br/>
+我们需要正确测量性能</p>
+
+<h4 id="toc_6">真机测试，而不是模拟器</h4>
+
+<ol>
+<li>真机</li>
+<li>性能测试一定要用发布配置，而不是调试模式。因为当用发布环境打包的时候，编译器会引入一系列提高性能的优化，例如去掉调试符号或者移除并重新组织代码。你也可以自己做到这些，例如在发布环境禁用NSLog语句。你只关心发布性能，那才是你需要测试的点。</li>
+<li>最好在你支持的设备中性能最差的设备上测试.可能的话，测试不同的设备和iOS版本，因为苹果在不同的iOS版本和设备中做了一些改变，这也可能影响到一些性能。</li>
+</ol>
+
+<h4 id="toc_7">保持一致的帧率</h4>
+
+<p>我们可以在程序中用<code>CADisplayLink</code>来测量帧率,在屏幕上显示出来,但是应用内的FPS并不能完全真实的测量出<code>Core Animation</code>性能,它仅仅测出应用内的帧率.但是我们知道很多动画都在应用外发生(在渲染服务器进程中处理),当然应用内的<code>FPS</code>可以对一些性能问题提供参考,发现问题后,我们可以通过<strong><code>Instruments</code>工具集</strong>获取更多数据.</p>
+
+<h3 id="toc_8">Instruments</h3>
+
+<p><code>Instruments</code>中的<code>Leaks</code>工具来检测循环引用,</p>
+
+<p>应该始终将程序设置成发布选项。幸运的是，配置文件默认就是发布选项，所以你不需要在分析的时候调整编译策略。</p>
+
+<p>工具:<br/>
+1.时间分析器(timer profile)-用来测量被方法/函数打断的CPU使用情况<br/>
+2.Core Animation - 用来调试各种Core Animation性能问题。<br/>
+3.OpenGL ES驱动 - 用来调试GPU性能问题,这个工具在编写<code>Open GL</code>代码的时候很有用，但有时也用来处理<code>Core Animation</code>的工作。</p>
+
+<h4 id="toc_9">时间分析器</h4>
+
+<p>检测CPU使用情况,告诉我们程序中那个方法消耗大量CPU时间.查看CPU时间对于判断性能是不是和CPU相关，以及定位到函数都很有帮助</p>
+
+<p>我们可以通过选择一些选项来定位到我们关心的方法:</p>
+
+<ul>
+<li>通过线程分离 - 这可以通过执行的线程进行分组。如果代码被多线程分离的话，那么就可以判断到底是哪个线程造成了问题。</li>
+<li>隐藏系统库 - 可以隐藏所有苹果的框架代码，来帮助我们寻找哪一段代码造成了性能瓶颈。</li>
+<li>只显示Obj-C代码 - - 隐藏除了<code>Objective-C</code>之外的所有代码。大多数内部的<code>Core Animation</code>代码都是用<code>C</code>或者<code>C++</code>函数，所以这对我们集中精力到我们代码中显式调用的方法就很有用。</li>
+</ul>
+
+<h4 id="toc_10">Core Animation</h4>
+
+<p>这个工具用来检测<code>Core Animation</code>性能。给我们提供了周期性FPS，并考虑到了发生在程序之外的动画</p>
+
+<p>提供的调试选项:</p>
+
+<ul>
+<li>Color Blended Layers - 这个选项基于渲染程度对屏幕中的混合区域进行绿到红的高亮（也就是多个半透明图层的叠加）。由于重绘的原因，混合对GPU性能会有影响，同时也是滑动或者动画帧率下降的罪魁祸首之一。</li>
+<li>ColorHitsGreenandMissesRed - 当使用<code>shouldRasterizep</code>属性的时候，耗时图层会被缓存,然后当做扁平化的图片呈现.当缓存再生时，这个选项用红色对栅格化图层进行了高亮。如果频繁再生就意味着栅格化可能会有负面的性能影响</li>
+<li>Color Copied Images - 有时候寄宿图片的生成意味着Core Animation被强制生成一些图片，然后发送到渲染服务器，而不是简单的指向原始指针。这个选项把这些图片渲染成蓝色。复制图片对内存和CPU使用来说都是一项非常昂贵的操作，所以应该尽可能的避免</li>
+<li>Color Immediately - 通常<code>Core Animation</code> <code>Instruments</code>以每毫秒10次的频率更新图层调试颜色，我们可以通过勾选这个选项来设置每帧都更新（可能影响性能）</li>
+<li>Color Misaligned Images - 会高亮那些被缩放或者拉伸以及没有正确对齐到像素边界的图片</li>
+<li>Color Offscreen-Rendered Yellow - 会把那些需要离屏渲染的图层高亮成黄色。这些图层很可能需要用<code>shadowPath</code>或者<code>shouldRasterize</code>来优化。</li>
+<li>Color OpenGL Fast Path Blue - 会对任何直接使用<code>OpenGL</code>绘制的图层进行高亮。</li>
+<li>Flash Updated Regions - 这个选项会对重绘的内容高亮成黄色（也就是任何在软件层面使用Core Graphics绘制的图层）。这种绘图速度很慢,频繁发生的话说明有个隐藏bug或者通过增加缓存或者使用替代方案会有提升性能的空间。</li>
+</ul>
+
+<h4 id="toc_11">OpenGL ES驱动</h4>
+
+<p><code>OpenGL ES</code>驱动工具可以帮你测量GPU的利用率，是一个很好的判断和GPU相关动画性能的指示器.它类似<code>Core Animation</code>也提供显示<code>FPS</code>的工具</p>
+
+<p>其侧边栏选项卡中和性能相关的有:</p>
+
+<ul>
+<li>Renderer Utilization - 如果这个值超过了~50%，就意味着你的动画可能对帧率有所限制，很可能因为离屏渲染或者是重绘导致的过度混合。</li>
+<li>Tiler Utilization - 如果这个值超过了~50%，就意味着你的动画可能限制于几何结构方面，也就是在屏幕上有太多的图层占用了。</li>
+</ul>
+
+<h4 id="toc_12">一个找到性能瓶颈的实例</h4>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/4/17</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='%E6%80%A7%E8%83%BD.html'>性能</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -684,6 +604,24 @@ float bounceEaseOut(float t)
 	      
 		      
 			      <li class="post">
+			        <a href="14939015823586.html">高效绘图</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14925128921601.html">常用动画示例</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14924196525709.html">性能调优</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="14921642710849.html">动画</a>
 			      </li>
 		     
@@ -691,24 +629,6 @@ float bounceEaseOut(float t)
 		      
 			      <li class="post">
 			        <a href="14913623029277.html">基于定时器的动画</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14906168166224.html">缓冲</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14905958336865.html">图层时间</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14903444013647.html">CAAnimation</a>
 			      </li>
 		     
 		  
