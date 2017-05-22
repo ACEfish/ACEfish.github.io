@@ -1,0 +1,365 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+    
+  ACEfish的博客
+  
+  </title>
+  
+  
+  <link href="atom.xml" rel="alternate" title="ACEfish的博客" type="application/atom+xml">
+    <link rel="stylesheet" href="asset/css/foundation.min.css" />
+    <link rel="stylesheet" href="asset/css/docs.css" />
+    <script src="asset/js/vendor/modernizr.js"></script>
+    <script src="asset/js/vendor/jquery.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/github.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+<script type="text/javascript">
+  function before_search(){
+    var searchVal = 'site:acefish.github.io ' + document.getElementById('search_input').value;
+    document.getElementById('search_q').value = searchVal;
+    return true;
+  }
+</script>
+  </head>
+  <body class="antialiased hide-extras">
+    
+    <div class="marketing off-canvas-wrap" data-offcanvas>
+      <div class="inner-wrap">
+
+
+<nav class="top-bar docs-bar hide-for-small" data-topbar>
+
+
+  <section class="top-bar-section">
+  <div class="row">
+      <div style="position: relative;width:100%;"><div style="position: absolute; width:100%;">
+        <ul id="main-menu" class="left">
+        
+        <li id=""><a target="_self" href="index.html">Home</a></li>
+        
+        <li id=""><a target="_self" href="archives.html">Archives</a></li>
+        
+        </ul>
+
+        <ul class="right" id="search-wrap">
+          <li>
+<form target="_blank" onsubmit="return before_search();" action="http://google.com/search" method="get">
+    <input type="hidden" id="search_q" name="q" value="" />
+    <input tabindex="1" type="search" id="search_input"  placeholder="Search"/>
+</form>
+</li>
+          </ul>
+      </div></div>
+  </div>
+  </section>
+
+</nav>
+
+        <nav class="tab-bar show-for-small">
+  <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
+    <span> &nbsp; ACEfish的博客</span>
+  </a>
+</nav>
+
+<aside class="left-off-canvas-menu">
+      <ul class="off-canvas-list">
+       
+       <li><a href="index.html">HOME</a></li>
+    <li><a href="archives.html">Archives</a></li>
+    <li><a href="about.html">ABOUT</a></li>
+
+    <li><label>Categories</label></li>
+
+        
+            <li><a href="iOSDevelop.html">iOSDevelop</a></li>
+        
+            <li><a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html">2017年。。。</a></li>
+        
+            <li><a href="English.html">English</a></li>
+         
+
+      </ul>
+    </aside>
+
+<a class="exit-off-canvas" href="#"></a>
+
+
+        <section id="main-content" role="main" class="scroll-container">
+        
+       
+
+ <script type="text/javascript">
+	$(function(){
+		$('#menu_item_index').addClass('is_active');
+	});
+</script>
+<div class="row">
+	<div class="large-8 medium-8 columns">
+		<div class="markdown-body home-categories">
+		
+			<div class="article">
+                <a class="clearlink" href="14866309753746.html">
+                
+                  <h1>iOS中UISearchController</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<h4 id="toc_0">1. 使用方法</h4>
+
+<pre><code class="language-Object-c">SearchResultController *vc = [[SearchResultController alloc] init];
+    self.searchController = [[SearchControllerOfContacts alloc] initWithSearchResultsController:vc];
+    [self.tableView setTableHeaderView:self.searchController.searchBar];
+    [self.searchController setSearchResultsUpdater:vc];
+    [self.searchController.searchBar setPlaceholder:NSLocalizedString(@&quot;昵称、手机号&quot;, nil)];
+    self.resultController = vc;
+</code></pre>
+
+<p>此处是设置searchBar为tableView的头视图<br/>
+<strong>注意</strong><br/>
+此处的searchConroller 和 searchResultcontroller都必须为该控制器的属性(即强引用住）</p>
+
+<h4 id="toc_1">2. 自定义的UISearchController</h4>
+
+<p>我们可以继承自UISearchController，重写其<code>initWithSearchResultsController</code>方法即可:</p>
+
+<pre><code class="language-Object-c">- (id)initWithSearchResultsController:(UIViewController *)searchResultsController
+{
+    if (self = [super initWithSearchResultsController:searchResultsController]) {
+        self.searchBar.layer.borderWidth = 1;
+        self.searchBar.layer.borderColor = [ITRGBColor(239.0, 239.0, 244.0, 1.0)CGColor];
+        [self.searchBar setBarTintColor:ITRGBColor(239.0, 239.0, 244.0, 1.0)];
+        [self.searchBar setValue:@&quot;取消&quot; forKey:@&quot;_cancelButtonText&quot;];
+        UITextField *tf = [[[self.searchBar.subviews firstObject] subviews] lastObject];
+        [tf.layer setMasksToBounds:YES];
+        [tf.layer setBorderWidth:0.5f];
+        [tf.layer setBorderColor:[UIColor colorWithWhite:0.5 alpha:0.3].CGColor];
+        [tf.layer setCornerRadius:5.0f];
+        
+    }
+    return self;
+}
+</code></pre>
+
+<h4 id="toc_2">3.深度解析UISearchController 以及其SearchResultControll原理</h4>
+
+<p>当UISearchController出现时，UISearchController也是一个控制器就相当于模态出来一个控制器<br/>
+<img src="media/14866309753746/UISearchController.png" alt="UISearchControlle的层级表示"/><br/>
+<img src="media/14866309753746/searchController_big.png" alt="searchController_big"/></p>
+
+<p>我们可以看出来 我们首先从原来控制器模态出来我们自己的UISearchController 而UISearchControllView就是这个控制器的View即蓝色部分  而搜索结果的显示即在其上加了一个View这个view即为我们的搜索结果控制器的view<br/>
+因此我们改变这个SearchControllView颜色并不会影响显示 但是如果把其上加上别的视图 就会影响结果的显示的<br/>
+<img src="media/14866309753746/searchController2.png" alt="searchControlle"/><br/>
+可以看到显示结果的View被我们后加的tableView挡住了,这时候我们可以<strong><code>sendSubviewToBack</code></strong>来直接将tableView放置到显示结果的view后面即可了</p>
+
+<h4 id="toc_3">3.UISearchController 上的searchBar原理</h4>
+
+<p>显示的searchBar是因为searcontroller上有一块searBarContainView 在其上放置了searchBar,还有背景图片 取消按钮等<br/>
+<img src="media/14866309753746/UISearchBar.png" alt="UISearchBa"/></p>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/2/9</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+              
+
+
+			<div class="row">
+			  <div class="large-6 columns">
+			  <p class="text-left" style="padding-top:25px;">
+			   <a href="all_44.html">&laquo; Prev Page</a>  
+			  </p>
+			  </div>
+			  <div class="large-6 columns">
+			<p class="text-right" style="padding-top:25px;">
+			 <a href="all_46.html">&raquo; Next Page</a> 
+			</p>
+			  </div>
+			</div>
+		</div>
+	</div><!-- large 8 -->
+
+ <div class="large-4 medium-4 columns">
+  <div class="hide-for-small">
+    <div id="sidebar" class="sidebar">
+          <div id="site-info" class="site-info">
+            
+                <h1>ACEfish的博客</h1>
+                <div class="site-des"></div>
+                <div class="social">
+
+
+
+
+
+
+
+
+
+
+
+  <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
+                
+              	 </div>
+          	</div>
+
+             
+
+              <div id="site-categories" class="side-item ">
+                <div class="side-header">
+                  <h2>Categories</h2>
+                </div>
+                <div class="side-content">
+
+      	<p class="cat-list">
+        
+            <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
+        
+            <a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html"><strong>2017年。。。</strong></a>
+        
+            <a href="English.html"><strong>English</strong></a>
+         
+        </p>
+
+
+                </div>
+              </div>
+
+              <div id="site-categories" class="side-item">
+                <div class="side-header">
+                  <h2>Recent Posts</h2>
+                </div>
+                <div class="side-content">
+                <ul class="posts-list">
+	      
+		      
+			      <li class="post">
+			        <a href="14951065647732.html">图层性能</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14945853244045.html">CGRect</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14940350647350.html">图像IO</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14939015823586.html">高效绘图</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14925128921601.html">常用动画示例</a>
+			      </li>
+		     
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		   
+		  		</ul>
+                </div>
+              </div>
+        </div><!-- sidebar -->
+      </div><!-- hide for small -->
+</div><!-- large 4 -->
+
+</div><!-- row -->
+
+ <div class="page-bottom clearfix">
+  <div class="row">
+   <p class="copyright">Copyright &copy; 2015
+Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a>,&nbsp; 
+Theme used <a target="_blank" href="http://github.com">GitHub CSS</a>.</p>
+  </div>
+</div>
+
+        </section>
+      </div>
+    </div>
+
+  
+    
+
+    <script src="asset/js/foundation.min.js"></script>
+    <script>
+      $(document).foundation();
+      function fixSidebarHeight(){
+        var w1 = $('.markdown-body').height();
+          var w2 = $('#sidebar').height();
+          if (w1 > w2) { $('#sidebar').height(w1); };
+      }
+      $(function(){
+        fixSidebarHeight();
+      })
+      $(window).load(function(){
+          fixSidebarHeight();
+      });
+     
+    </script>
+
+    
+
+
+
+  </body>
+</html>

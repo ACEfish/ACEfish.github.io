@@ -1,0 +1,690 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+    
+  iOSDevelop - ACEfish的博客
+  
+  </title>
+  
+  
+  <link href="atom.xml" rel="alternate" title="ACEfish的博客" type="application/atom+xml">
+    <link rel="stylesheet" href="asset/css/foundation.min.css" />
+    <link rel="stylesheet" href="asset/css/docs.css" />
+    <script src="asset/js/vendor/modernizr.js"></script>
+    <script src="asset/js/vendor/jquery.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/github.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+<script type="text/javascript">
+  function before_search(){
+    var searchVal = 'site:acefish.github.io ' + document.getElementById('search_input').value;
+    document.getElementById('search_q').value = searchVal;
+    return true;
+  }
+</script>
+  </head>
+  <body class="antialiased hide-extras">
+    
+    <div class="marketing off-canvas-wrap" data-offcanvas>
+      <div class="inner-wrap">
+
+
+<nav class="top-bar docs-bar hide-for-small" data-topbar>
+
+
+  <section class="top-bar-section">
+  <div class="row">
+      <div style="position: relative;width:100%;"><div style="position: absolute; width:100%;">
+        <ul id="main-menu" class="left">
+        
+        <li id=""><a target="_self" href="index.html">Home</a></li>
+        
+        <li id=""><a target="_self" href="archives.html">Archives</a></li>
+        
+        </ul>
+
+        <ul class="right" id="search-wrap">
+          <li>
+<form target="_blank" onsubmit="return before_search();" action="http://google.com/search" method="get">
+    <input type="hidden" id="search_q" name="q" value="" />
+    <input tabindex="1" type="search" id="search_input"  placeholder="Search"/>
+</form>
+</li>
+          </ul>
+      </div></div>
+  </div>
+  </section>
+
+</nav>
+
+        <nav class="tab-bar show-for-small">
+  <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
+    <span> &nbsp; ACEfish的博客</span>
+  </a>
+</nav>
+
+<aside class="left-off-canvas-menu">
+      <ul class="off-canvas-list">
+       
+       <li><a href="index.html">HOME</a></li>
+    <li><a href="archives.html">Archives</a></li>
+    <li><a href="about.html">ABOUT</a></li>
+
+    <li><label>Categories</label></li>
+
+        
+            <li><a href="iOSDevelop.html">iOSDevelop</a></li>
+        
+            <li><a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html">2017年。。。</a></li>
+        
+            <li><a href="English.html">English</a></li>
+         
+
+      </ul>
+    </aside>
+
+<a class="exit-off-canvas" href="#"></a>
+
+
+        <section id="main-content" role="main" class="scroll-container">
+        
+       
+
+ <script type="text/javascript">
+	$(function(){
+		$('#menu_item_index').addClass('is_active');
+	});
+</script>
+<div class="row">
+	<div class="large-8 medium-8 columns">
+		<div class="markdown-body home-categories">
+		
+			<div class="article">
+                <a class="clearlink" href="14877347224030.html">
+                
+                  <h1>运行时实例:</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<h2 id="toc_0">类与对象</h2>
+
+<pre><code class="language-Objc">//-----------------------------------------------------------
+// MyClass.h
+@interface MyClass : NSObject &lt;NSCopying, NSCoding&gt;
+@property (nonatomic, strong) NSArray *array;
+@property (nonatomic, copy) NSString *string;
+- (void)method1;
+- (void)method2;
++ (void)classMethod1;
+@end
+//-----------------------------------------------------------
+// MyClass.m
+#import &quot;MyClass.h&quot;
+@interface MyClass () {
+    NSInteger       _instance1;
+    NSString    *   _instance2;
+}
+@property (nonatomic, assign) NSUInteger integer;
+- (void)method3WithArg1:(NSInteger)arg1 arg2:(NSString *)arg2;
+@end
+@implementation MyClass
++ (void)classMethod1 {
+}
+- (void)method1 {
+    NSLog(@&quot;call method method1&quot;);
+}
+- (void)method2 {
+}
+- (void)method3WithArg1:(NSInteger)arg1 arg2:(NSString *)arg2 {
+    NSLog(@&quot;arg1 : %ld, arg2 : %@&quot;, arg1, arg2);
+}
+@end
+//-----------------------------------------------------------
+// main.h
+#import &quot;MyClass.h&quot;
+#import &quot;MySubClass.h&quot;
+#import &lt;objc/runtime.h&gt;
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+    
+        MyClass *myClass = [[MyClass alloc] init];
+        unsigned int outCount = 0;
+        Class cls = myClass.class;
+        // 类名
+        NSLog(@&quot;class name: %s&quot;, class_getName(cls));
+        NSLog(@&quot;==========================================================&quot;);
+        // 父类
+        NSLog(@&quot;super class name: %s&quot;, class_getName(class_getSuperclass(cls)));
+        NSLog(@&quot;==========================================================&quot;);
+        // 是否是元类
+        NSLog(@&quot;MyClass is %@ a meta-class&quot;, (class_isMetaClass(cls) ? @&quot;&quot; : @&quot;not&quot;));
+        NSLog(@&quot;==========================================================&quot;);
+        Class meta_class = objc_getMetaClass(class_getName(cls));
+        NSLog(@&quot;%s&#39;s meta-class is %s&quot;, class_getName(cls), class_getName(meta_class));
+        NSLog(@&quot;==========================================================&quot;);
+        // 变量实例大小
+        NSLog(@&quot;instance size: %zu&quot;, class_getInstanceSize(cls));
+        NSLog(@&quot;==========================================================&quot;);
+        // 成员变量
+        Ivar *ivars = class_copyIvarList(cls, &amp;outCount);
+        for (int i = 0; i &lt; outCount; i++) {
+            Ivar ivar = ivars[i];
+            NSLog(@&quot;instance variable&#39;s name: %s at index: %d&quot;, ivar_getName(ivar), i);
+        }
+        free(ivars);
+        Ivar string = class_getInstanceVariable(cls, &quot;_string&quot;);
+        if (string != NULL) {
+            NSLog(@&quot;instace variable %s&quot;, ivar_getName(string));
+        }
+        NSLog(@&quot;==========================================================&quot;);
+        // 属性操作
+        objc_property_t * properties = class_copyPropertyList(cls, &amp;outCount);
+        for (int i = 0; i &lt; outCount; i++) {
+            objc_property_t property = properties[i];
+            NSLog(@&quot;property&#39;s name: %s&quot;, property_getName(property));
+        }
+        free(properties);
+        objc_property_t array = class_getProperty(cls, &quot;array&quot;);
+        if (array != NULL) {
+            NSLog(@&quot;property %s&quot;, property_getName(array));
+        }
+        NSLog(@&quot;==========================================================&quot;);
+        // 方法操作
+        Method *methods = class_copyMethodList(cls, &amp;outCount);
+        for (int i = 0; i &lt; outCount; i++) {
+            Method method = methods[i];
+            NSLog(@&quot;method&#39;s signature: %s&quot;, method_getName(method));
+        }
+        free(methods);
+        Method method1 = class_getInstanceMethod(cls, @selector(method1));
+        if (method1 != NULL) {
+            NSLog(@&quot;method %s&quot;, method_getName(method1));
+        }
+        Method classMethod = class_getClassMethod(cls, @selector(classMethod1));
+        if (classMethod != NULL) {
+            NSLog(@&quot;class method : %s&quot;, method_getName(classMethod));
+        }
+        NSLog(@&quot;MyClass is%@ responsd to selector: method3WithArg1:arg2:&quot;, class_respondsToSelector(cls, @selector(method3WithArg1:arg2:)) ? @&quot;&quot; : @&quot; not&quot;);
+        IMP imp = class_getMethodImplementation(cls, @selector(method1));
+        imp();
+        NSLog(@&quot;==========================================================&quot;);
+        // 协议
+        Protocol * __unsafe_unretained * protocols = class_copyProtocolList(cls, &amp;outCount);
+        Protocol * protocol;
+        for (int i = 0; i &lt; outCount; i++) {
+            protocol = protocols[i];
+            NSLog(@&quot;protocol name: %s&quot;, protocol_getName(protocol));
+        }
+        NSLog(@&quot;MyClass is%@ responsed to protocol %s&quot;, class_conformsToProtocol(cls, protocol) ? @&quot;&quot; : @&quot; not&quot;, protocol_getName(protocol));
+        NSLog(@&quot;==========================================================&quot;);
+    }
+    return 0;
+}
+
+//输出结果
+
+
+</code></pre>
+
+<h3 id="toc_1">动态创建类</h3>
+
+<pre><code class="language-Objc">Class cls = objc_allocateClassPair(MyClass.class, &quot;MySubClass&quot;, 0);
+class_addMethod(cls, @selector(submethod1), (IMP)imp_submethod1, &quot;v@:&quot;);
+class_replaceMethod(cls, @selector(method1), (IMP)imp_submethod1, &quot;v@:&quot;);
+class_addIvar(cls, &quot;_ivar1&quot;, sizeof(NSString *), log(sizeof(NSString *)), &quot;i&quot;);
+objc_property_attribute_t type = {&quot;T&quot;, &quot;@\&quot;NSString\&quot;&quot;};
+objc_property_attribute_t ownership = { &quot;C&quot;, &quot;&quot; };
+objc_property_attribute_t backingivar = { &quot;V&quot;, &quot;_ivar1&quot;};
+objc_property_attribute_t attrs[] = {type, ownership, backingivar};
+class_addProperty(cls, &quot;property2&quot;, attrs, 3);
+objc_registerClassPair(cls);
+id instance = [[cls alloc] init];
+[instance performSelector:@selector(submethod1)];
+[instance performSelector:@selector(method1)];
+//输出
+2014-10-23 11:35:31.006 RuntimeTest[3800:66152] run sub method 1
+2014-10-23 11:35:31.006 RuntimeTest[3800:66152] run sub method 1
+
+</code></pre>
+
+<h3 id="toc_2">动态创建对象</h3>
+
+<pre><code class="language-Objc">id theObject = class_createInstance(NSString.class, sizeof(unsigned));
+ 
+id str1 = [theObject init];
+NSLog(@&quot;%@&quot;, [str1 class]);
+id str2 = [[NSString alloc] initWithString:@&quot;test&quot;];
+NSLog(@&quot;%@&quot;, [str2 class]);
+//输出
+2014-10-23 12:46:50.781 RuntimeTest[4039:89088] NSString
+2014-10-23 12:46:50.781 RuntimeTest[4039:89088] __NSCFConstantString
+
+</code></pre>
+
+<h3 id="toc_3">实例操作函数</h3>
+
+<h4 id="toc_4">对象拷贝</h4>
+
+<pre><code class="language-Objc">NSObject *a = [[NSObject alloc] init];
+id newB = object_copy(a, class_getInstanceSize(MyClass.class));
+object_setClass(newB, MyClass.class);
+object_dispose(a);
+</code></pre>
+
+<h4 id="toc_5">获取类定义（获取已注册类）</h4>
+
+<pre><code class="language-Objc">int numClasses;
+Class * classes = NULL;
+numClasses = objc_getClassList(NULL, 0);
+if (numClasses &gt; 0) {
+    classes = malloc(sizeof(Class) * numClasses);
+    numClasses = objc_getClassList(classes, numClasses);
+    NSLog(@&quot;number of classes: %d&quot;, numClasses);
+    for (int i = 0; i &lt; numClasses; i++) {
+        Class cls = classes[i];
+        NSLog(@&quot;class name: %s&quot;, class_getName(cls));
+    }
+    free(classes);
+}
+</code></pre>
+
+<h2 id="toc_6">成员变量、属性</h2>
+
+<h3 id="toc_7">关联对象</h3>
+
+<p>假定我们想要动态地将一个Tap手势操作连接到任何UIView中，并且根据需要指定点击后的实际操作。这时候我们就可以将一个手势对象及操作的block对象关联到我们的UIView对象中。这项任务分两部分。<br/>
+首先，如果需要，我们要创建一个手势识别对象并将它及block做为关联对象。如下代码所示：</p>
+
+<pre><code class="language-objc">- (void)setTapActionWithBlock:(void (^)(void))block
+{
+    UITapGestureRecognizer *gesture = objc_getAssociatedObject(self, &amp;kDTActionHandlerTapGestureKey);
+ 
+    if (!gesture)
+    {
+        gesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(__handleActionForTapGesture:)];
+        [self addGestureRecognizer:gesture];
+        objc_setAssociatedObject(self, &amp;kDTActionHandlerTapGestureKey, gesture, OBJC_ASSOCIATION_RETAIN);
+    }
+    objc_setAssociatedObject(self, &amp;kDTActionHandlerTapBlockKey, block, OBJC_ASSOCIATION_COPY);
+}
+</code></pre>
+
+<p>这段代码检测了手势识别的关联对象。如果没有，则创建并建立关联关系。同时，将传入的块对象连接到指定的key上。注意<code>block</code>对象的关联内存管理策略。<br/>
+手势识别对象需要一个<code>target</code>和<code>action</code>，所以接下来我们定义处理方法：</p>
+
+<pre><code class="language-objc">- (void)__handleActionForTapGesture:(UITapGestureRecognizer *)gesture
+{
+    if (gesture.state == UIGestureRecognizerStateRecognized)
+    {
+        void(^action)(void) = objc_getAssociatedObject(self, &amp;kDTActionHandlerTapBlockKey);
+        if (action)
+        {
+            action();
+        }
+    }
+}
+</code></pre>
+
+<h3 id="toc_8">设置属性</h3>
+
+<p>我们从服务端两个不同的接口获取相同的字典数据，但这两个接口是由两个人写的，相同的信息使用了不同的字段表示。我们在接收到数据时，可将这些数据保存在相同的对象中。对象类如下定义：</p>
+
+<pre><code class="language-objc">@interface MyObject: NSObject
+@property (nonatomic, copy) NSString    *   name;                  
+@property (nonatomic, copy) NSString    *   status;                 
+@end
+</code></pre>
+
+<p>接口A、B返回的字典数据如下所示：</p>
+
+<pre><code class="language-objc">@{@&quot;name1&quot;: &quot;张三&quot;, @&quot;status1&quot;: @&quot;start&quot;}
+@{@&quot;name2&quot;: &quot;张三&quot;, @&quot;status2&quot;: @&quot;end&quot;}
+</code></pre>
+
+<p>通常的方法是写两个方法分别做转换，不过如果能灵活地运用Runtime的话，可以只实现一个转换方法，为此，我们需要先定义一个映射字典(全局变量)</p>
+
+<pre><code class="language-objc">static NSMutableDictionary *map = nil;
+@implementation MyObject    
++ (void)load
+{
+    map = [NSMutableDictionary dictionary];
+    map[@&quot;name1&quot;]                = @&quot;name&quot;;
+    map[@&quot;status1&quot;]              = @&quot;status&quot;;
+    map[@&quot;name2&quot;]                = @&quot;name&quot;;
+    map[@&quot;status2&quot;]              = @&quot;status&quot;;
+}
+@end
+</code></pre>
+
+<p>上面的代码将两个字典中不同的字段映射到MyObject中相同的属性上，这样，转换方法可如下处理：</p>
+
+<pre><code class="language-objc">- (void)setDataWithDic:(NSDictionary *)dic
+{
+    [dic enumerateKeysAndObjectsUsingBlock:^(NSString *key, id obj, BOOL *stop) {
+        NSString *propertyKey = [self propertyForKey:key];
+        if (propertyKey)
+        {
+            objc_property_t property = class_getProperty([self class], [propertyKey UTF8String]);
+            // TODO: 针对特殊数据类型做处理
+            NSString *attributeString = [NSString stringWithCString:property_getAttributes(property) encoding:NSUTF8StringEncoding];
+            ...
+            [self setValue:obj forKey:propertyKey];
+        }
+    }];
+}
+</code></pre>
+
+<h2 id="toc_9">方法和消息</h2>
+
+<h3 id="toc_10">消息转发 -</h3>
+
+<h4 id="toc_11">备用接收者</h4>
+
+<p>使用这个方法通常是在对象内部，可能还有一系列其它对象能处理该消息，我们便可借这些对象来处理消息并返回，这样在对象外部看来，还是由该对象亲自处理了这一消息。<br/>
+```objc<br/>
+@interface SUTRuntimeMethodHelper : NSObject<br/>
+- (void)method2;<br/>
+@end<br/>
+@implementation SUTRuntimeMethodHelper<br/>
+- (void)method2 {<br/>
+    NSLog(@&quot;%@, %p&quot;, self, _cmd);<br/>
+}<br/>
+@end</p>
+
+<h1 id="toc_12">pragma mark -</h1>
+
+<p>@interface SUTRuntimeMethod () {<br/>
+    SUTRuntimeMethodHelper *_helper;<br/>
+}<br/>
+@end<br/>
+@implementation SUTRuntimeMethod<br/>
++ (instancetype)object {<br/>
+    return [[self alloc] init];<br/>
+}<br/>
+- (instancetype)init {<br/>
+    self = [super init];<br/>
+    if (self != nil) {<br/>
+        <u>helper = [[SUTRuntimeMethodHelper alloc] init];<br/>
+    }<br/>
+    return self;<br/>
+}<br/>
+- (void)test {<br/>
+    [self performSelector:@selector(method2)];<br/>
+}<br/>
+- (id)forwardingTargetForSelector:(SEL)aSelector {<br/>
+    NSLog(@&quot;forwardingTargetForSelector&quot;);<br/>
+    NSString *selectorString = NSStringFromSelector(aSelector);<br/>
+    // 将消息转发给</u>helper来处理<br/>
+    if ([selectorString isEqualToString:@&quot;method2&quot;]) {<br/>
+        return _helper;<br/>
+    }<br/>
+    return [super forwardingTargetForSelector:aSelector];<br/>
+}<br/>
+@end<br/>
+```<br/>
+这一步合适于我们只想将消息转发到另一个能处理该消息的对象上。但这一步无法对消息进行处理，如操作消息的参数和返回值。</p>
+
+<h4 id="toc_13">完整消息转发</h4>
+
+<pre><code class="language-objc">- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+    NSMethodSignature *signature = [super methodSignatureForSelector:aSelector];
+    if (!signature) {
+        if ([SUTRuntimeMethodHelper instancesRespondToSelector:aSelector]) {
+            signature = [SUTRuntimeMethodHelper instanceMethodSignatureForSelector:aSelector];
+        }
+    }
+    return signature;
+}
+- (void)forwardInvocation:(NSInvocation *)anInvocation {
+    if ([SUTRuntimeMethodHelper instancesRespondToSelector:anInvocation.selector]) {
+        [anInvocation invokeWithTarget:_helper];
+    }
+}
+</code></pre>
+
+<h2 id="toc_14">Method Swizzing</h2>
+
+<p>例如，我们想跟踪在程序中每一个view controller展示给用户的次数：当然，我们可以在每个view controller的viewDidAppear中添加跟踪代码；但是这太过麻烦，需要在每个view controller中写重复的代码。创建一个子类可能是一种实现方式，但需要同时创建UIViewController, UITableViewController, UINavigationController及其它UIKit中view controller的子类，这同样会产生许多重复的代码。</p>
+
+<pre><code class="language-objc">#import &lt;objc/runtime.h&gt;
+@implementation UIViewController (Tracking)
++ (void)load {
+    static dispatch_once_t onceToken;
+    dispatch_once(&amp;onceToken, ^{
+        Class class = [self class];         
+        // When swizzling a class method, use the following:
+        // Class class = object_getClass((id)self);
+        SEL originalSelector = @selector(viewWillAppear:);
+        SEL swizzledSelector = @selector(xxx_viewWillAppear:);
+        Method originalMethod = class_getInstanceMethod(class, originalSelector);
+        Method swizzledMethod = class_getInstanceMethod(class, swizzledSelector);
+        BOOL didAddMethod = class_addMethod(class,
+                originalSelector,
+                method_getImplementation(swizzledMethod),
+                method_getTypeEncoding(swizzledMethod));
+        if (didAddMethod) {
+            class_replaceMethod(class,
+                swizzledSelector,
+                method_getImplementation(originalMethod),
+                method_getTypeEncoding(originalMethod));
+        } else {
+            method_exchangeImplementations(originalMethod, swizzledMethod);
+        }
+    });
+}
+#pragma mark - Method Swizzling
+- (void)xxx_viewWillAppear:(BOOL)animated {
+    [self xxx_viewWillAppear:animated];
+    NSLog(@&quot;viewWillAppear: %@&quot;, self);
+}
+</code></pre>
+
+<p>在这里，我们通过method swizzling修改了UIViewController的@selector(viewWillAppear:)对应的函数指针，使其实现指向了我们自定义的xxx_viewWillAppear的实现。这样，当UIViewController及其子类的对象调用viewWillAppear时，都会打印一条日志信息。</p>
+
+<p>上面的例子很好地展示了使用method swizzling来一个类中注入一些我们新的操作。当然，还有许多场景可以使用method swizzling，在此不多举例。</p>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/2/22</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='%E8%BF%90%E8%A1%8C%E6%97%B6.html'>运行时</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+              
+
+
+			<div class="row">
+			  <div class="large-6 columns">
+			  <p class="text-left" style="padding-top:25px;">
+			   <a href="iOSDevelop_26.html">&laquo; Prev Page</a>  
+			  </p>
+			  </div>
+			  <div class="large-6 columns">
+			<p class="text-right" style="padding-top:25px;">
+			 <a href="iOSDevelop_28.html">&raquo; Next Page</a> 
+			</p>
+			  </div>
+			</div>
+		</div>
+	</div><!-- large 8 -->
+
+ <div class="large-4 medium-4 columns">
+  <div class="hide-for-small">
+    <div id="sidebar" class="sidebar">
+          <div id="site-info" class="site-info">
+            
+                <h1>ACEfish的博客</h1>
+                <div class="site-des"></div>
+                <div class="social">
+
+
+
+
+
+
+
+
+
+
+
+  <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
+                
+              	 </div>
+          	</div>
+
+             
+
+              <div id="site-categories" class="side-item ">
+                <div class="side-header">
+                  <h2>Categories</h2>
+                </div>
+                <div class="side-content">
+
+      	<p class="cat-list">
+        
+            <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
+        
+            <a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html"><strong>2017年。。。</strong></a>
+        
+            <a href="English.html"><strong>English</strong></a>
+         
+        </p>
+
+
+                </div>
+              </div>
+
+              <div id="site-categories" class="side-item">
+                <div class="side-header">
+                  <h2>Recent Posts</h2>
+                </div>
+                <div class="side-content">
+                <ul class="posts-list">
+	      
+		      
+			      <li class="post">
+			        <a href="14951065647732.html">图层性能</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14945853244045.html">CGRect</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14940350647350.html">图像IO</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14939015823586.html">高效绘图</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14925128921601.html">常用动画示例</a>
+			      </li>
+		     
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		   
+		  		</ul>
+                </div>
+              </div>
+        </div><!-- sidebar -->
+      </div><!-- hide for small -->
+</div><!-- large 4 -->
+
+</div><!-- row -->
+
+ <div class="page-bottom clearfix">
+  <div class="row">
+   <p class="copyright">Copyright &copy; 2015
+Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a>,&nbsp; 
+Theme used <a target="_blank" href="http://github.com">GitHub CSS</a>.</p>
+  </div>
+</div>
+
+        </section>
+      </div>
+    </div>
+
+  
+    
+
+    <script src="asset/js/foundation.min.js"></script>
+    <script>
+      $(document).foundation();
+      function fixSidebarHeight(){
+        var w1 = $('.markdown-body').height();
+          var w2 = $('#sidebar').height();
+          if (w1 > w2) { $('#sidebar').height(w1); };
+      }
+      $(function(){
+        fixSidebarHeight();
+      })
+      $(window).load(function(){
+          fixSidebarHeight();
+      });
+     
+    </script>
+
+    
+
+
+
+  </body>
+</html>

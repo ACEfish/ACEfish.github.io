@@ -103,119 +103,79 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14861705181412.html">
+                <a class="clearlink" href="14899954232802.html">
                 
-                  <h1>小知识</h1>
+                  <h1>1.weak是怎么实现的</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h3 id="toc_0">1. 判断字符character是不是英文字母 是的话返回1 否则返回0</h3>
+                        	<p>在Objective-C中，用__weak修饰的指针，会在所指向的那个Objective-C对象被释放后，自动指向nil。</p>
 
-<pre><code>isalpha(chanracter)
+<p>参考<a href="http://www.jianshu.com/p/fe9865814668">weak是怎么实现的</a></p>
+
+<p>通俗的解释就是，在Objective-C的运行时环境中，维护了一种<strong>weak表</strong>，这张<strong>哈希表</strong>用对象的首地址作为键，将由若干个__weak修饰的指针自身的地址组成的数组作为值。当一个Objective-C对象被释放后，通过这个对象的起始地址来找到所有指向它的__weak指针，并将它们指向nil。</p>
+
+<p>ARC下，编译器会生成一个全局的散列表数组，每个散列表的大小上限为128Byte，取这个数值也是为了和cache line size（64Byte）对齐，对于iOS系统，这个数组的大小为8*128（Byte），可以存放8张散列表<code>SideTable</code>结构体。<br/>
+一个对象的首地址经过哈希之后可以确定这个对象映射到那个<code>SideTable</code>。<br/>
+一个<code>SideTable</code>结构体中包含了一个<code>weak_table</code>:</p>
+
+<pre><code class="language-objc">struct SideTable {
+    //.......
+    weak_table_t weak_table;
+    //.......
+};
+
+struct weak_table_t {
+    weak_entry_t *weak_entries;
+    size_t    num_entries;
+    uintptr_t mask;
+    uintptr_t max_hash_displacement;
+};
 </code></pre>
 
-<h3 id="toc_1">2. 判断一个字符串是否全为空格</h3>
+<p>根据对象首地址查找weak_entry的方法为weak_entry_for_referent()，可以看到其中对对象首地址做了一次哈希，得到了对应的index。如果发生碰撞，则index依次+1，遍历整个数组，检查是否能获得正确的weak_entry_t对象。</p>
 
-<pre><code class="language-Object-c">[[string stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]] length]==0
+<pre><code class="language-objc">#define WEAK_INLINE_COUNT 4
+struct weak_entry_t {
+    DisguisedPtr&lt;objc_object&gt; referent;
+    union {
+        struct {
+            weak_referrer_t *referrers;//就是这个weak指针指向的对象地址
+            uintptr_t        out_of_line : 1;
+            uintptr_t        num_refs : PTR_MINUS_1;
+            uintptr_t        mask;
+            uintptr_t        max_hash_displacement;
+        };
+        struct {
+            // out_of_line=0 is LSB of one of these (don&#39;t care which)
+            weak_referrer_t  inline_referrers[WEAK_INLINE_COUNT];
+        };
+    };
+};
 </code></pre>
 
-<h3 id="toc_2">3. 数组排序方法</h3>
+<p>其中的<code>weak_referrer_t</code>实际就是指向Objective-C对象的指针的地址的类型：</p>
 
-<pre><code class="language-objc">NSSortDescriptor *timeDescriptor = [[NSSortDescriptor alloc] initWithKey:@&quot;creatTime&quot; ascending:NO];
-NSArray *inviteNoticeArray = [noticeRecordModelArray sortedArrayUsingDescriptors:@[timeDescriptor]];
+<pre><code class="language-objc">typedef objc_object ** weak_referrer_t;
 </code></pre>
 
-<h3 id="toc_3">4. 自动调节字体大小</h3>
+<p>弱引用销毁过程:</p>
 
-<pre><code>`adjustsFontSizeToFitWidth`这个属性的意思是根据UILabel的宽度来自动适应字体大小，但要注意的是，这个属性不会让字体变大，只会缩小，所以开始的时候，可以设置字体fontSize大一点。
-</code></pre>
+<p>在<code>runtime</code>的代码中，可以找到一个叫做<code>weak_clear_no_lock</code>的方法，它的注释表明，这个方法会被<code>dealloc</code>方法调用，然后将被销毁对象所对应的所有弱引用指针都置为<code>nil</code>。</p>
 
-<h3 id="toc_4">5. %s 为c语言字符串的输入输出控制格式</h3>
+<p>过程:<br/>
+1. 利用即将被销毁的对象的首地址，找到对应的weak_entry_t。<br/>
+2. 从weak_entry_t对象中获取指向weak_referrer_t数组的指针。<br/>
+3. 遍历这个数组，对于数组中的每个元素，检查是否真的指向即将被销毁的对象的首地址，如果是，则将它指向nil，如果不是则报错。<br/>
+4. 释放这个weak_entry_t对象，并更新weak_table_t中的entry数目。如果有必要，对weak_table_t进行缩容。</p>
 
-<h3 id="toc_5">6. NSString 转化为 char *</h3>
+<p>补充:<br/>
+当使用一个__weak指针时，<code>objc_loadWeakRetained()</code>和<code>objc_release()</code>函数都被调用了。</p>
 
-<pre><code>```objc
-NSString * str＝ @“Test”;
-const char * a =[str UTF8String];
-```
-</code></pre>
+<p>其中<code>objc_loadWeakRetained()</code>会调用<code>retainWeakReference</code>方法，如果某个类重写了<code>retainWeakReference</code>方法并返回<code>NO</code>，则这个<code>__weak</code>指针获取的就永远是<code>nil</code>了。</p>
 
-<h3 id="toc_6">7. 按属性字段排序</h3>
-
-<pre><code class="language-objc">    NSSortDescriptor *timeDescriptor = [[NSSortDescriptor alloc] initWithKey:@&quot;createTime&quot; ascending:NO];
-    NSArray *noticesArray = [[UserDataManager sharedInstance].userNotifyInfoArray sortedArrayUsingDescriptors:@[timeDescriptor]];
-</code></pre>
-
-<h3 id="toc_7">8. auyolayout拉伸压缩</h3>
-
-<pre><code>`Content Hugging Priority`(控件抗拉伸优先级) 优先级越高越不容易被拉伸，默认是250。
-`Content Compression Resistance Priority`(控件抗压缩优先级) 和拉伸一样，优先级越高的越不容易和压缩，默认是750。
-</code></pre>
-
-<h3 id="toc_8">9. 从字符串中获取类名</h3>
-
-<p>NSClassFromString(@&quot;UIView&quot;)</p>
-
-<h3 id="toc_9">10. 视图点击拦截</h3>
-
-<p>对于一个视图遮盖另外一个视图,如果上面视图是hidden或者alpha值为0是可以点击到后面的视图,但是如果上面的视图是clearColor 那么是点不到后面的视图的</p>
-
-<h3 id="toc_10">11. CGRectInset、 CGRectOffset</h3>
-
-<pre><code class="language-objc">    //该结构体的应用是以原rect为中心，再参考dx，dy，进行缩放或者放大。
-    CGRect CGRectInset (
-        CGRect rect,
-        CGFloat dx,
-        CGFloat dy
-    );
-</code></pre>
-
-<pre><code class="language-objc">    // 相对于源矩形原点rect（左上角的点）沿x轴和y轴偏移, 再rect基础上沿x轴和y轴偏移
-    CGRect CGRectOffset(
-　 　 CGRect rect,
-　　  CGFloat dx,
-　 　 CGFloat dy
-    );
-</code></pre>
-
-<h3 id="toc_11">12. 无限重复动画</h3>
-
-<pre><code class="language-objc">//我们可以通过指定这个“options:UIViewAnimationOptionRepeat”实现无限重复动画
-//注意这个‘delay’是动画开始前的延迟而不是动画重复之间的延时,动画重复之间的延时这里是没法设置的
-[UIView animateWithDuration:offset/50 delay:2 options:UIViewAnimationOptionRepeat animations:^{
-        self.firstLabel.transform = CGAffineTransformMakeTranslation(-offset, 0);
-        self.secondLabel.transform = CGAffineTransformMakeTranslation(-offset, 0);
-    } completion:^(BOOL finished) {
-        self.firstLabel.transform = CGAffineTransformIdentity;
-        self.secondLabel.transform = CGAffineTransformIdentity;
-    }];
-</code></pre>
-
-<h3 id="toc_12">13. KVC</h3>
-
-<p>所有的<code>NSObject</code>子类实现了KVC（键-值-编码）协议，可以用 <code>- setValue:forKey:</code>和<code>-valueForKey:</code>方法来存取属性，但是这个类需要有与之对应的属性.。但是<code>CAAnimation</code> 有一个不同的性能：它更像一个<code>NSDictionary</code>，可以让你随意设置键值对，即使和你使用的动画类所声明的属性并不匹配。</p>
-
-<h3 id="toc_13">14.改变push动画效果</h3>
-
-<p>[self.navigationController.view.layer addAnimation:transition forKey:nil];</p>
-
-<h3 id="toc_14">设置cell的accessView</h3>
-
-<p>设置cell的 accessView相当于把cell变短了<br/>
-<img src="media/14861705181412/14918746728664.jpg" alt=""/></p>
-
-<h3 id="toc_15">设置tableView分割线颜色</h3>
-
-<p>tableView.separatorColor = ICColorOfDividingLine;</p>
-
-<h3 id="toc_16">Json格式化option</h3>
-
-<p>//option为0 解析出来的字符串是没有被格式化的即没有回车换行<br/>
-[NSJSONSerialization dataWithJSONObject:self options:0 error:nil]</p>
-
-<p>//option为NSJSONWritingPrettyPrinted 解析出来的字符串是被格式化的即存在回车换行方便阅读<br/>
-[NSJSONSerialization dataWithJSONObject:self options:NSJSONWritingPrettyPrinted error:nil]</p>
+<p>为什么需要在使用一个__weak指针时调用objc_loadWeakRetained()函数呢:是为了确保在使用这个__weak指针的过程中，指向的对象不被释放。</p>
 
                         
                       </div>
@@ -224,263 +184,10 @@ const char * a =[str UTF8String];
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/4</span>
+                    <span class="date">2017/3/20</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
-          				   
-                  </div>
-                  <div class="more-right right">
-                  <span class="comments">
-                      
-
-                       
-                  </span>
-                  </div>
-                </div>
-              </div><!-- article -->
-        
-			<div class="article">
-                <a class="clearlink" href="14861704124969.html">
-                
-                  <h1>iOS 滤镜</h1>
-                  <div class="a-content">
-                      
-                      <div class="a-content-text">
-                        
-                        	<hr/>
-
-<h3 id="toc_0">CIFilter实现滤镜效果</h3>
-
-<p>参考网址:<a href="http://www.jianshu.com/p/98ba256b034a" title="CoreImage滤镜学习 - 简书">CoreImage滤镜学习</a> </p>
-
-<h5 id="toc_1">CoreImage框架介绍</h5>
-
-<p>1.是一个图片框架 基于<code>OpenGL</code>顶层创建，底层用着色器来处理图像<br/><br/>
-2.利用GPU基于硬件加速来处理图像<br/><br/>
-3.CoreImage中有很多滤镜<br/><br/>
-4.它们能够一次给予一张图像或者视频帧多种视觉效果 -&gt; 滤镜链<br/><br/>
-5.滤镜可以连接起来组成一个滤镜链 把滤镜效果叠加起来处理图像</p>
-
-<h5 id="toc_2">CIFilter使用介绍</h5>
-
-<ol>
-<li><p><code>CIFilter</code>滤镜类中有很多的滤镜效果 这里不一一列举，可以按住command 点击CIFilter 进入接口文件 找到第128行-148行全部都是 效果分类  </p></li>
-<li><p>常用效果<br/><br/>
-我们使用时需要先找到需要的效果类型 比如我们使用<code>kCICategoryDistortionEffect</code>失真的效果类型，有了效果类型我们需要找到里面我们需要的效果.<br/><br/>
-<code>NSLog -&gt; [CIFilter filterNamesInCategory:刚才拷贝的分类];</code><br/><br/>
-比如<code>CIColorMonochrome </code>,然后就可以使用这个滤镜效果<br/><br/>
-<code>CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome”];</code><br/><br/>
-然后打印这个效果中包含了那些属性:<br/><br/>
-<code>NSLog(@&quot;%@&quot;,filter.attributes);</code><br/><br/>
-在里面我们可以看到好多属性，里面是多个字典的形式，找到我们想要修改的属性(key值) 然后在他对应的value里面查看一下他的属性类型，比如我们打印的CIColorMonochrome里面有一个inputColor，他是一个CIColor类型的，有默认值，这里我们写了一个CIColor来给他进行赋值.<br/><br/>
-赋值时需要用kvc的方式:<br/><br/>
-<code>[filter setValue:colorforKey:kCIInputColorKey];</code><br/><br/>
-<img src="media/14861704124969/DraggedImage.png" alt="DraggedImage"/></p></li>
-<li><p>实现滤镜效果代码<br/><br/>
-首先我们创建一个全局变量的UIImageView，然后让他初始化出来,这个就是我们要处理的图片 一般我们从手机相册中取出来:<br/><br/>
- @interface ViewController ()&lt;UINavigationControllerDelegate,UIImagePickerControllerDelegate&gt;<br/>
-    {<br/>
-         UIImageView *imageView;<br/>
-    }<br/>
-    @end<br/>
-    然后我们需要从相册中取出一张图片,保存起来:<br/>
-    //跳转相册的触发方法<br/>
-    - (void)doit{<br/>
-    UIImagePickerController *vc = [[UIImagePickerController alloc]init];<br/>
-    vc.delegate = self;<br/>
-    [self presentViewController:vc animated:YES completion:nil];</p>
-
-<pre><code>}
-//让图片显示在VC上面的方法
-- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary&lt;NSString *,id&gt; *)info
-{
-NSLog(@&quot;%@&quot;,info);
-//获得选中的图像
-UIImage *chooseImage = info[UIImagePickerControllerOriginalImage];
-//先是在试图空间上
-imageView.image = chooseImage;
-
-[self dismissViewControllerAnimated:YES completion:nil];
-}
-</code></pre>
-
-<p><strong>接下来就是对图片进行滤镜处理:</strong><br/>
-    - (void)addColorFilter{<br/>
-    //CIImage 保存图像数据的类<br/>
-    CIImage <em>inputImage = [CIImage imageWithCGImage:imageView.image.CGImage];<br/>
-    //先打印NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);进去找到需要设置的属性(查询效果分类中都有什么效果)  可以设置什么效果<br/>
-    //然后通过[CIFilter filterWithName:@&quot;&quot;];找到属性   具体效果的属性<br/>
-    //然后通过KVC的方式设置属性<br/>
-    NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);<br/>
-    /</em><br/>
-     1.查询 效果分类中 包含什么效果：filterNamesInCategory:<br/>
-     2.查询 使用的效果中 可以设置什么属性（KVC） attributes</p>
-
-<pre><code> 使用步骤
- 1.需要添加滤镜的源图
- 2.初始化一个滤镜 设置滤镜（根据查询到的属性来设置）
- 3.把滤镜 输出的图像 和滤镜  合并 CIContext -&gt; 得到一个合成之后的图像
- 4.展示
- */
-//CIFilter 滤镜类  图片属性进行细节处理的类
-CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome&quot;];
-NSLog(@&quot;%@&quot;,filter.attributes);
-//这个属性是必须赋值的，假如你处理的是图片的话
-[filter setValue:inputImage forKey:kCIInputImageKey];
-CIColor *color = [CIColor colorWithRed:1.000 green:0.759 blue:0.592 alpha:1];
-[filter setValue:color forKey:kCIInputColorKey];
-//CIContext 上下文是实现对图像处理的具体对象 用来把滤镜和图片合成成为一张图片 滤镜对象输出的图像并不是合成之后的图像，需要使用图片处理的上下文 合并输出图像
-    CIContext *context = [CIContext contextWithOptions:nil];
-
-CIImage *outPutImage = filter.outputImage;
-//CGImageRef-&gt;图像中的数据
-    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];
-
-    imageView.image = [UIImage imageWithCGImage:image];
-
- }
-</code></pre>
-
-<p>注意：<br/><br/>
-对滤镜进行赋值之后图片就有了，但是我们这个时候拿出这个图片的时候发现他并没有发生变化，因为它只是单一进行了滤镜处理，还没有和原图片进行一个糅合。使用CIContext找到上下文对他进行糅合：<br/><br/>
-//extent得到图像的尺寸    合并一个包含源图   滤镜效果的图片<br/>
-    //1 滤镜输出的图像    2.合成之后图像的尺寸   图像.extent<br/>
-    CGImageRef imageRef = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
-注意:<br/><br/>
-假如你的图片消失了，请检查一下，第一步获取图片的时候一定要获得图片的CGImage再来来获取，不要直接使用imageView.image.CGImage。</p></li>
-<li><p>滤镜链:<br/><br/>
-在给一张图片添加多种滤镜效果的时候，我们把它称为<code>滤镜链</code>，我们再添加滤镜链的时候，就是把图片添加一层滤镜，然后，和原图片糅合处理，然后在处理之后的图片上再添加一层滤镜，并不是直接给一张图片添加了两层路径，所以称为滤镜链。<br/><br/>
-我们继续使用这个图片，在它添加第一层滤镜的时候做一些修改:  </p>
-
-<pre><code>//上接给效果属性赋值
-//把下面注释的给注释掉，然后添加一个方法
-    //CIContext
-//    CIContext *context = [CIContext contextWithOptions:nil];
-
-CIImage *outPutImage = filter.outputImage;
-[self addFilterLinkerWithImage:outPutImage];
-//    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];
-
-//    imageView.image = [UIImage imageWithCGImage:image];
-
-//再次添加滤镜  -&gt;  形成滤镜链
-- (void)addFilterLinkerWithImage:(CIImage *)image
-{
-CIFilter *filter = [CIFilter filterWithName:@&quot;CISepiaTone&quot;];
-[filter setValue:image forKey:kCIInputImageKey];
-CIContext *context = [CIContext contextWithOptions:nil];
-CGImageRef resultImage = [context createCGImage:filter.outputImage fromRect:filter.outputImage.extent];
-imageView.image = [UIImage imageWithCGImage:resultImage];
-//把添加好滤镜效果的图片   保存到相册
-//不可以直接保存 outputImage  -&gt;  这是一个没有吧滤镜效果和源图合成的图像
-UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishSavingWithError:contextInfo:), nil);
- }
-//保存图片回调
-- (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo
-{
-    NSLog(@&quot;保存成功&quot;);
-}
-</code></pre>
-
-<p>这样就是一个双重的滤镜效果,同时保存到了相册.</p></li>
-</ol>
-
-<hr/>
-
-<h3 id="toc_3">系统自带简单的滤镜效果</h3>
-
-                        
-                      </div>
-                  </div>
-                </a>
-                <div class="read-more clearfix">
-                  <div class="more-left left">
-                  
-                    <span class="date">2017/2/4</span>
-                    <span>posted in&nbsp;</span> 
-          				  
-          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
-          				   
-                  </div>
-                  <div class="more-right right">
-                  <span class="comments">
-                      
-
-                       
-                  </span>
-                  </div>
-                </div>
-              </div><!-- article -->
-        
-			<div class="article">
-                <a class="clearlink" href="14861702798513.html">
-                
-                  <h1>ios中主要框架</h1>
-                  <div class="a-content">
-                      
-                      <div class="a-content-text">
-                        
-                        	<h4 id="toc_0">1. 系统框架层</h4>
-
-<p>每个框架对应IOS系统里的一层，每层建立在它下面层的上面。应该尽量使用上层的框架来代替下面的框架。更高层次的框架是对底层框架基于对象的抽象。<br/><br/>
-<img src="media/14861702798513/DraggedImage.png" alt="DraggedImage"/></p>
-
-<h4 id="toc_1">2. 两个基础框架</h4>
-
-<p>iOS应用程序基于Foundation和UIKit框架<br/>
-<strong>Foundation</strong><br/><br/>
-Foundation框架为所有的应用程序提供基本系统服务你的应用程序，UIKit和其它的框架都是建立在Foundation框架上面的。Foundation框架是用Object-C对CoreFoundation框架里许多特性的封装。<br/><br/>
-使用Foundation可以:<br/>
-1. 创建和管理集合，比如数组和字典<br/>
-    2. 访问存储在应用程序里的图片和其它资源<br/>
-        3. 创建和管理字符串<br/>
-        4. 提交和接收通<br/>
-        5. 创建日期和时间对象<br/>
-        6. 自动发现IP网络上的设备<br/>
-        7. 操作URL流<br/>
-<strong>UIKit</strong><br/><br/>
-所有的iOS应用程序都基于UIKit，你不能是应用程序脱离这个框架。UIKit提供了在屏幕上绘制的机制，捕获事件，和创建通用用户界面元素。UIKit也通过管理显示在屏幕上的组件来组织复杂的项目。<br/>
-使用UIKit可以：<br/>
-1. 构建和管理你的用户界面<br/>
-    2. 捕获触摸和基于移动的事件<br/>
-        3. 呈现文字和web内容<br/>
-        4. 优化多任务程序<br/>
-        5. 创建定制的用户界面元素</p>
-
-<h4 id="toc_2">3. 其他重要框架</h4>
-
-<pre><code>Core Data , Core Graphics, CoreAnimation,和OpenGLES框架都是高级的技术
-1. **CoreData框架管着理应用程序数据模型**
-    Core Data提供对象的管理，使用CoreData，你可以创建模型对象，并管理这些对象。你管理这这些对象间的联系并修改数据。CoreData提供的内建SQLlite技术可以高效的管理数据。
-    使用CoreData可以:
-    - 在库里存储和接受对象
-    - 提供基本的undo/redo
-    - 自动验证属性值
-    - 过滤、分组和优化内存中的数据
-    - 用[NSFetchedResultsController]管理表视图中的结果
-    - 支持基于文档的应用程序
-2. **CoreGraphics框架帮助你创建图形
-
-3. **CoreAnimation允许你创建高级的动画和虚拟效果
-4. **OpenGL ES框架提供2D和3D绘图工具
-</code></pre>
-
-<ol>
-<li><br/></li>
-</ol>
-
-                        
-                      </div>
-                  </div>
-                </a>
-                <div class="read-more clearfix">
-                  <div class="more-left left">
-                  
-                    <span class="date">2017/2/4</span>
-                    <span>posted in&nbsp;</span> 
-          				  
-          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
+          					    <span class="posted-in"><a href='iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html'>iOS开发知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -504,7 +211,7 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
 			  </div>
 			  <div class="large-6 columns">
 			<p class="text-right" style="padding-top:25px;">
-			
+			 <a href="all_16.html">&raquo; Next Page</a> 
 			</p>
 			  </div>
 			</div>
@@ -566,6 +273,24 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
 	      
 		      
 			      <li class="post">
+			        <a href="14951065647732.html">图层性能</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14945853244045.html">CGRect</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14940350647350.html">图像IO</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="14939015823586.html">高效绘图</a>
 			      </li>
 		     
@@ -573,24 +298,6 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
 		      
 			      <li class="post">
 			        <a href="14925128921601.html">常用动画示例</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14924196525709.html">性能调优</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14921642710849.html">动画</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14913623029277.html">基于定时器的动画</a>
 			      </li>
 		     
 		  
