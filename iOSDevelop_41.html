@@ -103,99 +103,51 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14867842994268.html">
+                <a class="clearlink" href="14872162581601.html">
                 
-                  <h1>容易忘记的易错点</h1>
+                  <h1>测试</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h3 id="toc_0">1. @property属性中如果是copy属性要记得：</h3>
+                        	<h5 id="toc_0">1.流行框架</h5>
 
-<pre><code>**注意：**
-在重写setter方法时要记得加上 
+<p>Apple自带的<code>XCTest</code>和第三方的<code>GHUnit</code>.他两之间的区别:XCTest：与Xcode深度集成。而且可以享受Apple后续对XCTest升级的福利。 GHUnit：集成度不如XCTest，安装麻烦。但是有自己的GUI界面。因为XCTest是苹果的，所以我们选择XCTest</p>
 
-``` Object-c
-_name = [name copy]
-```
-在内部的init方法中 也要记得加copy，即在内部直接给属性变量赋值时记得加copy
+<h5 id="toc_1">2.OCMock</h5>
 
-```Object-c
-//这里尽量不要用self.实例变量 而用 _实例变量
-</code></pre>
+<p>mock测试是个很神奇而又很酷的技术，在测试过程中，对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。<br/>
+而我们在进行iOS测试时候是使用<code>OCMock</code>来进行对象的mock</p>
 
-<ul>
-<li><p>initWithSpId:(SInt32)spId spName:(NSString *)spName type:(SInt32)spType spPinyin:(NSString *)spPinyin spLetter:(NSString *)spLetter {<br/>
-if (self = [super init]) {<br/>
-    _spId = spId;<br/>
-    _spName = [spName copy];<br/>
-    _type = spType;<br/>
-}<br/>
-return self;<br/>
-}<br/>
-```</p>
+<h5 id="toc_2">3.断言框架</h5>
 
-<h3 id="toc_1">2. 注意在修改navigation时是只修改了navigationItem还是修改了NavigationBar</h3>
+<p>Expecta和OCHamcrest这两个都是断言的扩展框架。一开始我选择了Expecta，因为我后来有一段时间将测试文件用BDD框架Specta来写（当然这是后话），而Expecta 和Specta都出自同一个人之手，不论是教程文档都更加丰富。但是后来我废弃了BDD框架，还是用原生的XCTest，Expecta在使用中也遇到了一些问题，我就把我们的断言框架由Expecta切换到了OCHamcrest。<br/>
+原因有两点：<br/>
+<code><br/>
+1.Expecta不成熟，至笔者切换的时候才0.3.1版本，遇到很多框架自身的问题。case跑着跑着验证通不过了，再跑一次又过了，是不是还爆出个Expecta框架内部的crash。<br/>
+2.OCHamcrest更加成熟，而且可扩展性高，可以自定义自己的断言，更灵活。<br/>
+</code><br/>
+比如OCHamcrest不支持superClass验证，我们必须自己去比较，返回一个bool值，然后去判断bool是否为真。很麻烦。自己自定义个superClass的验证，就不需要每次都这么麻烦的写这么多代码了。而如果Expecta不支持的断言，那就永远不能支持了。 我们可以通过OCHamcrest这个特性，做一些符合自己app场景的特有断言。</p>
 
-<p>如果是仅仅修改了navigationItem那就只对本控制器有效 push或者pop了都不影响，一般有以下几种情况:<br/>
-1. 修改了navigationItem的元素</p>
+<h5 id="toc_3">BDD Or Not</h5>
 
-<pre><code>```Object-c
-self.navigationItem.title = @&quot;title&quot;;
-self.navigationItem.titleView = [[UIView alloc] init];
-```
-</code></pre>
+<p>BDD和TDD都是敏捷开发的技术;<br/>
+<strong>BDD</strong>（Behavior Driven Development），也就是行为驱动开发，它旨在解决具体问题，帮助开发人员确定应该测试些什么.此外，它提供了一个 <code>DSL</code>（译者注: Domain-specific language，域特定语言）鼓励开发者弄清楚他们的需求，并且它引入了一个通用语言帮助你轻易理解测试的目的。<br/>
+<strong>TDD</strong>（Test-Driven Development），就是测试驱动开发，通过测试来推动整个开发的进行<br/>
+目前使用比较多得是BDD框架:<br/>
+Cedar，Specta和Kiwi这3个框架就是目前Objc最流行的BDD测试框架<br/>
+    Specta和Kiwi的区别就是Kiwi包含了Specta和OCmock以及Expeata所有的功能<br/>
+除此之外还有Apple的XCTest:XCTest与Xcode深度集成，而且可以享受Apple后续对XCTest升级的福利</p>
 
-<ol>
-<li><p>修改了navigationItem的BarButtonItem</p>
+<p>XCTest 的优势和缺点都是由于它太简单了。你只需要创建一个类，使用 “test” 作为测试方法名的前缀，只需要这样就可以了，不需要再做其他的。和 Xcode 很好的集成性也是 XCTest 获得青睐的原因。你可以点击边栏上的小菱形按钮来运行测试用例，你也可以很容易的查看所有失败的测试用例，也可以在测试用例列表中点击某一行而快速的跳转到某一个测试用例。</p>
 
-<pre><code class="language-Object-c">self.navigationItem.leftBarButtonItem = [UIBarButtonItem itemWithTarget:self action:@selector(popViewController) image:@&quot;general_arrow_back_white&quot; highImage:@&quot;general_arrow_back_orange&quot;];
-</code></pre>
+<p>不幸的是，这已经是 XCTest 的全部优点了。在开发和测试中，使用 XCTest 时我们没有碰到任何的障碍，但是经常会想如果它能更方便一些就好了。XCTest 类看起来就像普通的类，而一个 BDD 测试套件的结构和其嵌套的上下文是显而易见的。并且这种为测试创建嵌套上下文的可能性也是最缺失的。嵌套的上下文允许我们在使独立的测试相对简单的情况下创建越来越具体的场景。当然，在 XCTest 中这也是可以的，比如在一些测试用例中调用自定义的 setup 方法，但这并不方便。</p>
 
-<p><strong>一般我们可以通过这种方法拦截返回点击事件，比如全局控制器的返回按键已经写好，而我们想要拦截点击事件就可以用这种方法,写一个同一样式的按键触发不同的事件</strong><br/>
-这些修改是不影响的整个navigationBar的仅此不需要在视图控制器消失时做额外的操作</p></li>
-</ol>
+<p>BDD 框架的附加功能的重要性是取决于项目的大小。我们的结论是，XCTest 对中小型的工程来说是一个很好的选择，但是对于更大型的工程，就有必要参考一下像 Kiwi 或者 Specta 这样的 BDD 框架。</p>
 
-<p>而如果是修改了navigationBar 那就对全局有影响了,需要在控制器消失时做额外还原处理,一般情况如下:</p>
+<h5 id="toc_4">4.UITests</h5>
 
-<pre><code class="language-Object-c">//修改背景图片
-[self.navigationController.navigationBar setShadowImage:[UIImage new]];
-//修改背景颜色
-[self.navigationController.navigationBar lt_setBackgroundColor:[UIColor clearColor]];
-//修改navigationBar的整体字体颜色
-[self.navigationController.navigationBar setTitleTextAttributes:
- [NSDictionary dictionaryWithObjectsAndKeys:[UIColor whiteColor],NSForegroundColorAttributeName,nil]];
- //隐藏navigationBar
-self.navigationController.navigationBar.hidden = YES;
-</code></pre>
-
-<p>此时我们需要在退出时做一下还原操作</p>
-
-<pre><code class="language-Object-c">[super viewWillDisappear:animated];
-[self.navigationController.navigationBar lt_reset];
-[self.navigationController.navigationBar setTitleTextAttributes:
-[NSDictionary dictionaryWithObjectsAndKeys:[UIColor blackColor],NSForegroundColorAttributeName,nil]];
-self.navigationController.navigationBar.hidden = NO;
-</code></pre>
-
-<h3 id="toc_2">3. 隐藏tabbar</h3>
-
-<p>我们在某些界面需要隐藏Tabbar的时候，会出现原区域无法响应点击事件的问题。系统的Tabbar已经被我们hidden了，但是仍然无法响应事件，此时我们只要将系统的Tabbar的frame设置为CGRectZero即可。<br/>
-<code>objc<br/>
-[UIApplication sharedApplication].keyWindow.rootViewController).tabBar.frame <br/>
-= CGRectZero;<br/>
-</code></p></li>
-</ul>
-
-<h3 id="toc_3">4. 自动布局的动画</h3>
-
-<pre><code>用`xib`拉的视图或者`masonry`布局的视图在`[UIView animation...]`动画方法中都是可以直接改变`frame`或者`transform`来进行动画的
-我们可以直接改变`frame`包括宽、高、中心等 直接进行各种动画,而不用担心因为`autolayout`问题,毕竟masony或者xib拉约束都只是布局问题,在运行时还是会转成`frame`的.
-
-而通常我们拖约束线出去是为了:
-1. 在视图还没加载时用代码设置某个约束值  
-2. 真的是要改变某个约束值做动画（通常某个视图也和这个约束有关系）
-</code></pre>
+<p>通过代码化来实现自动点击界面，输入文字等功能</p>
 
                         
                       </div>
@@ -204,10 +156,10 @@ self.navigationController.navigationBar.hidden = NO;
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/11</span>
+                    <span class="date">2017/2/16</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
+          					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -293,6 +245,24 @@ self.navigationController.navigationBar.hidden = NO;
 	      
 		      
 			      <li class="post">
+			        <a href="14955051645893.html">UIDatePicker</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14954386080339.html">GCD</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14954384117214.html">#pragma</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="14951065647732.html">图层性能</a>
 			      </li>
 		     
@@ -300,24 +270,6 @@ self.navigationController.navigationBar.hidden = NO;
 		      
 			      <li class="post">
 			        <a href="14945853244045.html">CGRect</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14940350647350.html">图像IO</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14939015823586.html">高效绘图</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14925128921601.html">常用动画示例</a>
 			      </li>
 		     
 		  
