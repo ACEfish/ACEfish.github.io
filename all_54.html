@@ -1,0 +1,400 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+    
+  ACEfish的博客
+  
+  </title>
+  
+  
+  <link href="atom.xml" rel="alternate" title="ACEfish的博客" type="application/atom+xml">
+    <link rel="stylesheet" href="asset/css/foundation.min.css" />
+    <link rel="stylesheet" href="asset/css/docs.css" />
+    <script src="asset/js/vendor/modernizr.js"></script>
+    <script src="asset/js/vendor/jquery.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/github.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+<script type="text/javascript">
+  function before_search(){
+    var searchVal = 'site:acefish.github.io ' + document.getElementById('search_input').value;
+    document.getElementById('search_q').value = searchVal;
+    return true;
+  }
+</script>
+  </head>
+  <body class="antialiased hide-extras">
+    
+    <div class="marketing off-canvas-wrap" data-offcanvas>
+      <div class="inner-wrap">
+
+
+<nav class="top-bar docs-bar hide-for-small" data-topbar>
+
+
+  <section class="top-bar-section">
+  <div class="row">
+      <div style="position: relative;width:100%;"><div style="position: absolute; width:100%;">
+        <ul id="main-menu" class="left">
+        
+        <li id=""><a target="_self" href="index.html">Home</a></li>
+        
+        <li id=""><a target="_self" href="archives.html">Archives</a></li>
+        
+        </ul>
+
+        <ul class="right" id="search-wrap">
+          <li>
+<form target="_blank" onsubmit="return before_search();" action="http://google.com/search" method="get">
+    <input type="hidden" id="search_q" name="q" value="" />
+    <input tabindex="1" type="search" id="search_input"  placeholder="Search"/>
+</form>
+</li>
+          </ul>
+      </div></div>
+  </div>
+  </section>
+
+</nav>
+
+        <nav class="tab-bar show-for-small">
+  <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
+    <span> &nbsp; ACEfish的博客</span>
+  </a>
+</nav>
+
+<aside class="left-off-canvas-menu">
+      <ul class="off-canvas-list">
+       
+       <li><a href="index.html">HOME</a></li>
+    <li><a href="archives.html">Archives</a></li>
+    <li><a href="about.html">ABOUT</a></li>
+
+    <li><label>Categories</label></li>
+
+        
+            <li><a href="iOSDevelop.html">iOSDevelop</a></li>
+        
+            <li><a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html">2017年。。。</a></li>
+        
+            <li><a href="English.html">English</a></li>
+         
+
+      </ul>
+    </aside>
+
+<a class="exit-off-canvas" href="#"></a>
+
+
+        <section id="main-content" role="main" class="scroll-container">
+        
+       
+
+ <script type="text/javascript">
+	$(function(){
+		$('#menu_item_index').addClass('is_active');
+	});
+</script>
+<div class="row">
+	<div class="large-8 medium-8 columns">
+		<div class="markdown-body home-categories">
+		
+			<div class="article">
+                <a class="clearlink" href="14867842994268.html">
+                
+                  <h1>容易忘记的易错点</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<h3 id="toc_0">1. @property属性中如果是copy属性要记得：</h3>
+
+<pre><code>**注意：**
+在重写setter方法时要记得加上 
+
+``` Object-c
+_name = [name copy]
+```
+在内部的init方法中 也要记得加copy，即在内部直接给属性变量赋值时记得加copy
+
+```Object-c
+//这里尽量不要用self.实例变量 而用 _实例变量
+</code></pre>
+
+<ul>
+<li><p>initWithSpId:(SInt32)spId spName:(NSString *)spName type:(SInt32)spType spPinyin:(NSString *)spPinyin spLetter:(NSString *)spLetter {<br/>
+if (self = [super init]) {<br/>
+    _spId = spId;<br/>
+    _spName = [spName copy];<br/>
+    _type = spType;<br/>
+}<br/>
+return self;<br/>
+}<br/>
+```</p>
+
+<h3 id="toc_1">2. 注意在修改navigation时是只修改了navigationItem还是修改了NavigationBar</h3>
+
+<p>如果是仅仅修改了navigationItem那就只对本控制器有效 push或者pop了都不影响，一般有以下几种情况:<br/>
+1. 修改了navigationItem的元素</p>
+
+<pre><code>```Object-c
+self.navigationItem.title = @&quot;title&quot;;
+self.navigationItem.titleView = [[UIView alloc] init];
+```
+</code></pre>
+
+<ol>
+<li><p>修改了navigationItem的BarButtonItem</p>
+
+<pre><code class="language-Object-c">self.navigationItem.leftBarButtonItem = [UIBarButtonItem itemWithTarget:self action:@selector(popViewController) image:@&quot;general_arrow_back_white&quot; highImage:@&quot;general_arrow_back_orange&quot;];
+</code></pre>
+
+<p><strong>一般我们可以通过这种方法拦截返回点击事件，比如全局控制器的返回按键已经写好，而我们想要拦截点击事件就可以用这种方法,写一个同一样式的按键触发不同的事件</strong><br/>
+这些修改是不影响的整个navigationBar的仅此不需要在视图控制器消失时做额外的操作</p></li>
+</ol>
+
+<p>而如果是修改了navigationBar 那就对全局有影响了,需要在控制器消失时做额外还原处理,一般情况如下:</p>
+
+<pre><code class="language-Object-c">//修改背景图片
+[self.navigationController.navigationBar setShadowImage:[UIImage new]];
+//修改背景颜色
+[self.navigationController.navigationBar lt_setBackgroundColor:[UIColor clearColor]];
+//修改navigationBar的整体字体颜色
+[self.navigationController.navigationBar setTitleTextAttributes:
+ [NSDictionary dictionaryWithObjectsAndKeys:[UIColor whiteColor],NSForegroundColorAttributeName,nil]];
+ //隐藏navigationBar
+self.navigationController.navigationBar.hidden = YES;
+</code></pre>
+
+<p>此时我们需要在退出时做一下还原操作</p>
+
+<pre><code class="language-Object-c">[super viewWillDisappear:animated];
+[self.navigationController.navigationBar lt_reset];
+[self.navigationController.navigationBar setTitleTextAttributes:
+[NSDictionary dictionaryWithObjectsAndKeys:[UIColor blackColor],NSForegroundColorAttributeName,nil]];
+self.navigationController.navigationBar.hidden = NO;
+</code></pre>
+
+<h3 id="toc_2">3. 隐藏tabbar</h3>
+
+<p>我们在某些界面需要隐藏Tabbar的时候，会出现原区域无法响应点击事件的问题。系统的Tabbar已经被我们hidden了，但是仍然无法响应事件，此时我们只要将系统的Tabbar的frame设置为CGRectZero即可。<br/>
+<code>objc<br/>
+[UIApplication sharedApplication].keyWindow.rootViewController).tabBar.frame <br/>
+= CGRectZero;<br/>
+</code></p></li>
+</ul>
+
+<h3 id="toc_3">4. 自动布局的动画</h3>
+
+<pre><code>用`xib`拉的视图或者`masonry`布局的视图在`[UIView animation...]`动画方法中都是可以直接改变`frame`或者`transform`来进行动画的
+我们可以直接改变`frame`包括宽、高、中心等 直接进行各种动画,而不用担心因为`autolayout`问题,毕竟masony或者xib拉约束都只是布局问题,在运行时还是会转成`frame`的.
+
+而通常我们拖约束线出去是为了:
+1. 在视图还没加载时用代码设置某个约束值  
+2. 真的是要改变某个约束值做动画（通常某个视图也和这个约束有关系）
+</code></pre>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/2/11</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+              
+
+
+			<div class="row">
+			  <div class="large-6 columns">
+			  <p class="text-left" style="padding-top:25px;">
+			   <a href="all_53.html">&laquo; Prev Page</a>  
+			  </p>
+			  </div>
+			  <div class="large-6 columns">
+			<p class="text-right" style="padding-top:25px;">
+			 <a href="all_55.html">&raquo; Next Page</a> 
+			</p>
+			  </div>
+			</div>
+		</div>
+	</div><!-- large 8 -->
+
+ <div class="large-4 medium-4 columns">
+  <div class="hide-for-small">
+    <div id="sidebar" class="sidebar">
+          <div id="site-info" class="site-info">
+            
+                <h1>ACEfish的博客</h1>
+                <div class="site-des"></div>
+                <div class="social">
+
+
+
+
+
+
+
+
+
+
+
+  <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
+                
+              	 </div>
+          	</div>
+
+             
+
+              <div id="site-categories" class="side-item ">
+                <div class="side-header">
+                  <h2>Categories</h2>
+                </div>
+                <div class="side-content">
+
+      	<p class="cat-list">
+        
+            <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
+        
+            <a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html"><strong>2017年。。。</strong></a>
+        
+            <a href="English.html"><strong>English</strong></a>
+         
+        </p>
+
+
+                </div>
+              </div>
+
+              <div id="site-categories" class="side-item">
+                <div class="side-header">
+                  <h2>Recent Posts</h2>
+                </div>
+                <div class="side-content">
+                <ul class="posts-list">
+	      
+		      
+			      <li class="post">
+			        <a href="14966582354331.html"></a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14964011409915.html">iOS 开发中的九种锁</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14958652887586.html">时间 时区</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14958642376440.html">定时器</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14957029093514.html">UITextView</a>
+			      </li>
+		     
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		   
+		  		</ul>
+                </div>
+              </div>
+        </div><!-- sidebar -->
+      </div><!-- hide for small -->
+</div><!-- large 4 -->
+
+</div><!-- row -->
+
+ <div class="page-bottom clearfix">
+  <div class="row">
+   <p class="copyright">Copyright &copy; 2015
+Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a>,&nbsp; 
+Theme used <a target="_blank" href="http://github.com">GitHub CSS</a>.</p>
+  </div>
+</div>
+
+        </section>
+      </div>
+    </div>
+
+  
+    
+
+    <script src="asset/js/foundation.min.js"></script>
+    <script>
+      $(document).foundation();
+      function fixSidebarHeight(){
+        var w1 = $('.markdown-body').height();
+          var w2 = $('#sidebar').height();
+          if (w1 > w2) { $('#sidebar').height(w1); };
+      }
+      $(function(){
+        fixSidebarHeight();
+      })
+      $(window).load(function(){
+          fixSidebarHeight();
+      });
+     
+    </script>
+
+    
+
+
+
+  </body>
+</html>

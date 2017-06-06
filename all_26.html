@@ -103,88 +103,79 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14879278087290.html">
+                <a class="clearlink" href="14899954232802.html">
                 
-                  <h1>协议与分类</h1>
+                  <h1>1.weak是怎么实现的</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>Objective-C中的分类允许我们通过给一个类添加方法来扩充它（但是通过<code>category</code>不能添加新的实例变量），并且我们不需要访问类中的代码就可以做到。</p>
+                        	<p>在Objective-C中，用__weak修饰的指针，会在所指向的那个Objective-C对象被释放后，自动指向nil。</p>
 
-<p>@protocol声明了可以呗其他任何方法类实现的方法，协议仅仅是定义一个接口，而由其他的类去负责实现。</p>
+<p>参考<a href="http://www.jianshu.com/p/fe9865814668">weak是怎么实现的</a></p>
 
-<h2 id="toc_0">基础数据类型</h2>
+<p>通俗的解释就是，在Objective-C的运行时环境中，维护了一种<strong>weak表</strong>，这张<strong>哈希表</strong>用对象的首地址作为键，将由若干个__weak修饰的指针自身的地址组成的数组作为值。当一个Objective-C对象被释放后，通过这个对象的起始地址来找到所有指向它的__weak指针，并将它们指向nil。</p>
 
-<h3 id="toc_1">Category</h3>
+<p>ARC下，编译器会生成一个全局的散列表数组，每个散列表的大小上限为128Byte，取这个数值也是为了和cache line size（64Byte）对齐，对于iOS系统，这个数组的大小为8*128（Byte），可以存放8张散列表<code>SideTable</code>结构体。<br/>
+一个对象的首地址经过哈希之后可以确定这个对象映射到那个<code>SideTable</code>。<br/>
+一个<code>SideTable</code>结构体中包含了一个<code>weak_table</code>:</p>
 
-<p>Category是表示一个指向分类的结构体的指针</p>
+<pre><code class="language-objc">struct SideTable {
+    //.......
+    weak_table_t weak_table;
+    //.......
+};
 
-<pre><code class="language-objc">ypedef struct objc_category *Category;
-struct objc_category {
-    char *category_name                          OBJC2_UNAVAILABLE; // 分类名
-    char *class_name                             OBJC2_UNAVAILABLE; // 分类所属的类名
-    struct objc_method_list *instance_methods    OBJC2_UNAVAILABLE; // 实例方法列表
-    struct objc_method_list *class_methods       OBJC2_UNAVAILABLE; // 类方法列表
-    struct objc_protocol_list *protocols         OBJC2_UNAVAILABLE; // 分类所实现的协议列表
+struct weak_table_t {
+    weak_entry_t *weak_entries;
+    size_t    num_entries;
+    uintptr_t mask;
+    uintptr_t max_hash_displacement;
+};
 </code></pre>
 
-<p>这个结构体主要包含了分类定义的实例方法与类方法，<code>instance_methods</code>列表是<code>objc_class</code>中方法列表的一个子集，而<code>class_methods</code>列表是元类方法列表的一个子集。</p>
+<p>根据对象首地址查找weak_entry的方法为weak_entry_for_referent()，可以看到其中对对象首地址做了一次哈希，得到了对应的index。如果发生碰撞，则index依次+1，遍历整个数组，检查是否能获得正确的weak_entry_t对象。</p>
 
-<h3 id="toc_2">Protocol</h3>
-
-<pre><code class="language-objc">typedef struct objc_object Protocol;
+<pre><code class="language-objc">#define WEAK_INLINE_COUNT 4
+struct weak_entry_t {
+    DisguisedPtr&lt;objc_object&gt; referent;
+    union {
+        struct {
+            weak_referrer_t *referrers;//就是这个weak指针指向的对象地址
+            uintptr_t        out_of_line : 1;
+            uintptr_t        num_refs : PTR_MINUS_1;
+            uintptr_t        mask;
+            uintptr_t        max_hash_displacement;
+        };
+        struct {
+            // out_of_line=0 is LSB of one of these (don&#39;t care which)
+            weak_referrer_t  inline_referrers[WEAK_INLINE_COUNT];
+        };
+    };
+};
 </code></pre>
 
-<p><code>Protocol</code>其中实就是一个对象结构体。</p>
+<p>其中的<code>weak_referrer_t</code>实际就是指向Objective-C对象的指针的地址的类型：</p>
 
-<h2 id="toc_3">操作函数</h2>
-
-<p>Runtime并没有在<code>&lt;objc/runtime.h&gt;</code>头文件中提供针对分类的操作函数。因为这些分类中的信息都包含在<code>objc_class</code>中，我们可以通过针对<code>objc_class</code>的操作函数来获取分类的信息。</p>
-
-<p>而对于Protocol，runtime提供了一系列函数来对其进行操作，这些函数包括：</p>
-
-<pre><code class="language-objc">// 返回指定的协议
-Protocol * objc_getProtocol ( const char *name );
-// 获取运行时所知道的所有协议的数组
-Protocol ** objc_copyProtocolList ( unsigned int *outCount );
-// 创建新的协议实例
-Protocol * objc_allocateProtocol ( const char *name );
-// 在运行时中注册新创建的协议
-void objc_registerProtocol ( Protocol *proto );
-// 为协议添加方法
-void protocol_addMethodDescription ( Protocol *proto, SEL name, const char *types, BOOL isRequiredMethod, BOOL isInstanceMethod );
-// 添加一个已注册的协议到协议中
-void protocol_addProtocol ( Protocol *proto, Protocol *addition );
-// 为协议添加属性
-void protocol_addProperty ( Protocol *proto, const char *name, const objc_property_attribute_t *attributes, unsigned int attributeCount, BOOL isRequiredProperty, BOOL isInstanceProperty );
-// 返回协议名
-const char * protocol_getName ( Protocol *p );
-// 测试两个协议是否相等
-BOOL protocol_isEqual ( Protocol *proto, Protocol *other );
-// 获取协议中指定条件的方法的方法描述数组
-struct objc_method_description * protocol_copyMethodDescriptionList ( Protocol *p, BOOL isRequiredMethod, BOOL isInstanceMethod, unsigned int *outCount );
-// 获取协议中指定方法的方法描述
-struct objc_method_description protocol_getMethodDescription ( Protocol *p, SEL aSel, BOOL isRequiredMethod, BOOL isInstanceMethod );
-// 获取协议中的属性列表
-objc_property_t * protocol_copyPropertyList ( Protocol *proto, unsigned int *outCount );
-// 获取协议的指定属性
-objc_property_t protocol_getProperty ( Protocol *proto, const char *name, BOOL isRequiredProperty, BOOL isInstanceProperty );
-// 获取协议采用的协议
-Protocol ** protocol_copyProtocolList ( Protocol *proto, unsigned int *outCount );
-// 查看协议是否采用了另一个协议
-BOOL protocol_conformsToProtocol ( Protocol *proto, Protocol *other );
+<pre><code class="language-objc">typedef objc_object ** weak_referrer_t;
 </code></pre>
 
-<p><code>objc_getProtocol</code>函数，需要注意的是如果仅仅是声明了一个协议，而未在任何类中实现这个协议，则该函数返回的是nil。</p>
+<p>弱引用销毁过程:</p>
 
-<p><code>objc_copyProtocolList</code>函数，获取到的数组需要使用free来释放</p>
+<p>在<code>runtime</code>的代码中，可以找到一个叫做<code>weak_clear_no_lock</code>的方法，它的注释表明，这个方法会被<code>dealloc</code>方法调用，然后将被销毁对象所对应的所有弱引用指针都置为<code>nil</code>。</p>
 
-<p><code>objc_allocateProtocol</code>函数，如果同名的协议已经存在，则返回nil</p>
+<p>过程:<br/>
+1. 利用即将被销毁的对象的首地址，找到对应的weak_entry_t。<br/>
+2. 从weak_entry_t对象中获取指向weak_referrer_t数组的指针。<br/>
+3. 遍历这个数组，对于数组中的每个元素，检查是否真的指向即将被销毁的对象的首地址，如果是，则将它指向nil，如果不是则报错。<br/>
+4. 释放这个weak_entry_t对象，并更新weak_table_t中的entry数目。如果有必要，对weak_table_t进行缩容。</p>
 
-<p><code>objc_registerProtocol</code>函数，创建一个新的协议后，必须调用该函数以在运行时中注册新的协议。协议注册后便可以使用，但不能再做修改，即注册完后不能再向协议添加方法或协议</p>
+<p>补充:<br/>
+当使用一个__weak指针时，<code>objc_loadWeakRetained()</code>和<code>objc_release()</code>函数都被调用了。</p>
 
-<p>需要强调的是，协议一旦注册后就不可再修改，即无法再通过调用<code>protocol_addMethodDescription</code>、<code>protocol_addProtocol</code>和p<code>rotocol_addProperty</code>往协议中添加方法等。</p>
+<p>其中<code>objc_loadWeakRetained()</code>会调用<code>retainWeakReference</code>方法，如果某个类重写了<code>retainWeakReference</code>方法并返回<code>NO</code>，则这个<code>__weak</code>指针获取的就永远是<code>nil</code>了。</p>
+
+<p>为什么需要在使用一个__weak指针时调用objc_loadWeakRetained()函数呢:是为了确保在使用这个__weak指针的过程中，指向的对象不被释放。</p>
 
                         
                       </div>
@@ -193,10 +184,10 @@ BOOL protocol_conformsToProtocol ( Protocol *proto, Protocol *other );
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/24</span>
+                    <span class="date">2017/3/20</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E8%BF%90%E8%A1%8C%E6%97%B6.html'>运行时</a></span>
+          					    <span class="posted-in"><a href='iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html'>iOS开发知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -282,31 +273,31 @@ BOOL protocol_conformsToProtocol ( Protocol *proto, Protocol *other );
 	      
 		      
 			      <li class="post">
-			        <a href="14955051645893.html">UIDatePicker</a>
+			        <a href="14966582354331.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954386080339.html">GCD</a>
+			        <a href="14964011409915.html">iOS 开发中的九种锁</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954384117214.html">#pragma</a>
+			        <a href="14958652887586.html">时间 时区</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14951065647732.html">图层性能</a>
+			        <a href="14958642376440.html">定时器</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14945853244045.html">CGRect</a>
+			        <a href="14957029093514.html">UITextView</a>
 			      </li>
 		     
 		  

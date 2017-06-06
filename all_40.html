@@ -103,67 +103,47 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14872918920673.html">
+                <a class="clearlink" href="14877247419344.html">
                 
-                  <h1>并发编程中的问题</h1>
+                  <h1>Objc Runtime</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>使用并发编程会带来许多陷阱<br/>
-优先级反转:也就是说低优先级的线程一直阻塞着高优先级的线程</p>
+                        	<p>Objective-C语言是一门动态语言，它将很多静态语言在编译和链接时期做的事放到了运行时来处理。<br/>
+当然这就意味着OC的不仅仅需要一个编译器还需要一个运行时的系统来执行编译代码.这个运行时系统即<code>Objc Runtime</code>。<code>Objc Runtime</code>其实是一个<code>Runtime</code>库，它基本上是用C和汇编写的，这个库使得C语言有了面向对象的能力。</p>
 
-<h4 id="toc_0">1.资源共享</h4>
+<p>Runtime作用：</p>
 
-<p>并发编程中许多问题的根源就是在多线程中访问共享资源。资源可以是一个属性、一个对象，通用的内存、网络设备或者一个文件等等。<br/>
-这里我们举了一个<a href="https://en.wikipedia.org/wiki/Race_condition#Software">竞态条件</a>的例子:<br/>
-<img src="media/14872918920673/14872931592764.jpg" alt=""/><br/>
-这个时候我们需要保证线程B必须等线程A访问完该共享资源才会开始访问共享资源.这时候我们需要一种互斥机制:</p>
+<ol>
+<li>封装:在这个库中，对象可以用C语言中的结构体表示，而方法可以用C函数来实现，另外再加上了一些额外
+的特性。这些结构体和函数被runtime函数封装后，我们就可以在程序运行时创建，检查，修改类、对象
+和它们的方法了。</li>
+<li>找出方法的最终执行代码：当程序执行<code>[object doSomething]</code>时，会向消息接收者<code>(object)</code>发送一条消息(<code>doSomething</code>)，runtime会根据消息接收者是否能响应该消息而做出不同的反应。 </li>
+</ol>
 
-<h4 id="toc_1">2.互斥锁</h4>
+<p>使用方法:<br/>
+通过<code>objc_getClass</code>来获取对象的isa<br/>
+注意:我们在一个类对象调用class方法是无法获取meta-class，它只是返回类而已。</p>
 
-<p><strong>互斥访问的意思就是同一时刻，只允许一个线程访问某个特定资源</strong><br/>
-首先需要获得一个共享资源的互斥锁，一旦某个线程对资源完成了操作，就释放掉这个互斥锁，这样别的线程就有机会访问该共享资源<br/>
-<img src="media/14872918920673/14872933923493.jpg" alt=""/><br/>
-因为现代 CPU 为了优化目的，往往会改变向内存读写数据的顺序（<a href="https://en.wikipedia.org/wiki/Out-of-order_execution">乱序执行</a>）因此还需要解决代码无序执行所带来的问题。如果不能确保 CPU 访问内存的顺序跟编程时的代码指令一样，那么仅仅依靠互斥访问是不够的。为了解决由 CPU 的优化策略引起的副作用，还需要引入<a href="https://en.wikipedia.org/wiki/Memory_barrier">内存屏障</a>。通过设置内存屏障，来确保没有无序执行的指令能跨过屏障而执行。</p>
+<p>注意:在objc/runtime 方法中是基于c语言的 因此语法大多为c语言  比如：字符串 %s和“”（而不是%@和@“”）,  定义对象也没有*符号<br/>
+    例如:<br/>
+<code>Class MySubClass = objc_allocateClassPair([MyClass class], &quot;MySubClass&quot;, 0);</code></p>
 
-<p>(<a href="https://en.wikipedia.org/wiki/Lock_%28computer_science%29#Granularity">锁的竞争</a>是这样产生的：当一个或者多个线程尝试获取一个已经被别的线程获取过了的锁)<br/>
-获取和释放锁所是要带来开销的，因此你需要确保你不会频繁地进入和退出临界区段（比如获取和释放锁）。同时，如果你获取锁之后要执行一大段代码，这将带来锁竞争的风险：其它线程可能必须等待获取资源锁而无法工作。</p>
+<h2 id="toc_0">参阅学习连接</h2>
 
-<p>对于你的代码会如何在多核上运行的预测往往十分重要，你可以使用 Instrument 的 CPU strategy view 来检查是否有效的利用了 CPU 的可用核数，进而得出更好的想法，以此来优化代码。</p>
-
-<h4 id="toc_2">3.死锁</h4>
-
-<p>互斥锁解决了竞态条件的问题，但很不幸同时这也引入了一些其他问题，其中一个就是死锁。当多个线程在相互等待着对方的结束时，就会发生死锁，这时程序可能会被卡住。<br/>
-<img src="media/14872918920673/14872940417124.jpg" alt=""/><br/>
-你在线程之间共享的资源越多，你使用的锁也就越多，同时程序被死锁的概率也会变大。这也是为什么我们需要尽量减少线程间资源共享，并确保共享的资源尽量简单的原因之一。建议阅读一下底层<a href="https://objccn.io/issue-2-3/">并发编程 API</a> 中的全部使用异步分发一节。</p>
-
-<h4 id="toc_3">4.资源饥饿（Starvation）</h4>
-
-<p>锁定的共享资源会引起<a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writers_problem">读写问题</a>，大多数情况下，限制资源一次只能有一个线程进行读取访问其实是非常浪费的。因此，在资源上没有写入锁的时候，持有一个读取锁是被允许的。这种情况下，如果一个持有读取锁的线程在等待获取写入锁的时候，其他希望读取资源的线程则因为无法获得这个读取锁而导致<a href="https://en.wikipedia.org/wiki/Starvation_(computer_science)">资源饥饿</a>的发生。</p>
-
-<p>为了解决这个问题，我们需要使用一个比简单的读/写锁更聪明的方法，例如给定一个 <a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writer_lock">writer preference</a>，或者使用 <a href="https://en.wikipedia.org/wiki/Read-copy-update">read-copy-update</a> 算法。Daniel 在底层并发编程 API 中有介绍了如何用 GCD 实现一个多读取单写入的模式，这样就不会被写入资源饥饿的问题困扰了。</p>
-
-<h4 id="toc_4">5.优先级反转</h4>
-
-<p><code>优先级反转</code>是指程序在运行时低优先级的任务阻塞了高优先级的任务，有效的反转了任务的优先级。由于 GCD 提供了拥有不同优先级的后台队列，甚至包括一个 I/O 队列，所以我们最好了解一下优先级反转的可能性。</p>
-
-<blockquote>
-<p>高优先级和低优先级的任务之间共享资源时，就可能发生优先级反转。当低优先级的任务获得了共享资源的锁时，该任务应该迅速完成，并释放掉锁，这样高优先级的任务就可以在没有明显延时的情况下继续执行。然而高优先级任务会在低优先级的任务持有锁的期间被阻塞。如果这时候有一个中优先级的任务(该任务不需要那个共享资源)，那么它就有可能会抢占低优先级任务而被执行，因为此时高优先级任务是被阻塞的，所以中优先级任务是目前所有可运行任务中优先级最高的。此时，中优先级任务就会阻塞着低优先级任务，导致低优先级任务不能释放掉锁，这也就会引起高优先级任务一直在等待锁的释放。</p>
-
-<p>解决这个问题的方法，通常就是不要使用不同的优先级。通常最后你都会以让高优先级的代码等待低优先级的代码来解决问题。当你使用 GCD 时，总是使用默认的优先级队列（直接使用，或者作为目标队列）。如果你使用不同的优先级，很可能实际情况会让事情变得更糟糕。</p>
-</blockquote>
-
-<p><img src="media/14872918920673/14872951554551.jpg" alt=""/></p>
-
-<h3 id="toc_5">总结:</h3>
-
-<p>我们希望通过本文你能够了解到并发编程带来的复杂性和相关问题。并发编程中，无论是看起来多么简单的 API ，它们所能产生的问题会变得非常的难以观测，而且要想调试这类问题往往也都是非常困难的。</p>
-
-<p>但另一方面，并发实际上是一个非常棒的工具。它充分利用了现代多核 CPU 的强大计算能力。在开发中，关键的一点就是尽量让并发模型保持简单，这样可以限制所需要的锁的数量。</p>
-
-<p>我们建议采纳的安全模式是这样的：<br/>
-<strong>从主线程中提取出要使用到的数据，并利用一个操作队列在后台处理相关的数据，最后回到主队列中来发送你在后台队列中得到的结果。使用这种方式，你不需要自己做任何锁操作，这也就大大减少了犯错误的几率。</strong></p>
+<ol>
+<li><p><a href="http://southpeak.github.io/categories/objectivec/">南峰子博客</a></p></li>
+<li><p>常见type:几种取值<a href="https://developer.apple.com/library/prerelease/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtTypeEncodings.html#//apple_ref/doc/uid/TP40008048-CH100">查看</a></p></li>
+<li><p><a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtPropertyIntrospection.html#//apple_ref/doc/uid/TP40008048-CH101-SW6">Property Type String</a>。</p></li>
+<li><p>runtime<a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Introduction/Introduction.html">苹果官方文档</a></p></li>
+<li><p><a href="http://www.cocoanetics.com/2012/06/associated-objects/">关联对象</a></p></li>
+<li><p><a href="http://www.cnblogs.com/kesalin/archive/2011/08/15/objc_method_base.html">深入浅出cocoa消息</a></p></li>
+<li><p><a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Introduction/Introduction.html">苹果官方消息转发文档</a></p></li>
+<li><p><a href="http://blog.csdn.net/itianyi/article/details/8678452">iOS:Objective-C中Self和Super详解</a></p></li>
+<li><p><a href="https://developer.apple.com/reference/objectivec/objective_c_runtime">官方运行时文档</a></p></li>
+<li><p><a href="http://www.cocoachina.com/industry/20130819/6824.html">Objective-C的动态特性</a></p></li>
+</ol>
 
                         
                       </div>
@@ -172,10 +152,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/17</span>
+                    <span class="date">2017/2/22</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
+          					    <span class="posted-in"><a href='%E8%BF%90%E8%A1%8C%E6%97%B6.html'>运行时</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -261,31 +241,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="14955051645893.html">UIDatePicker</a>
+			        <a href="14966582354331.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954386080339.html">GCD</a>
+			        <a href="14964011409915.html">iOS 开发中的九种锁</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954384117214.html">#pragma</a>
+			        <a href="14958652887586.html">时间 时区</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14951065647732.html">图层性能</a>
+			        <a href="14958642376440.html">定时器</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14945853244045.html">CGRect</a>
+			        <a href="14957029093514.html">UITextView</a>
 			      </li>
 		     
 		  

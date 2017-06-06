@@ -103,64 +103,73 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14901616296287.html">
+                <a class="clearlink" href="14925128921601.html">
                 
-                  <h1>UISlider</h1>
+                  <h1>常用动画示例</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<pre><code class="language-objc">slider.continuous = YES;//默认YES  如果设置为NO，则每次滑块停止移动后才触发事件
-[slider addTarget:self action:@selector(sliderChange:) forControlEvents:UIControlEventValueChanged]; 
-//手动设置滑块的值，并是否动画移动过去：
-- (void)setValue:(float)value animated:(BOOL)animated; 
-//给滑动按钮设置图片 
-- (void)setThumbImage:(nullable UIImage *)image forState:(UIControlState)state; 
-//给滑道左侧设置图片 
-- (void)setMinimumTrackImage:(nullable UIImage *)image forState:(UIControlState)state; 
-//给滑道右侧设置图片 
-- (void)setMaximumTrackImage:(nullable UIImage *)image forState:(UIControlState)state;  
-@property(nullable,nonatomic,readonly) UIImage *currentThumbImage;  
-@property(nullable,nonatomic,readonly) UIImage *currentMinimumTrackImage;  
-@property(nullable,nonatomic,readonly) UIImage *currentMaximumTrackImage; 
+                        	<h3 id="toc_0">1.地震动画</h3>
 
+<p>适合一整个大视图的突然晃动</p>
 
-//定制UISlider
-- (CGRect)minimumValueImageRectForBounds:(CGRect)bounds;  //返回左边图片大小  
-- (CGRect)maximumValueImageRectForBounds:(CGRect)bounds;  //返回右边图片大小  
-- (CGRect)trackRectForBounds:(CGRect)bounds;              //返回滑道大小  
+<pre><code class="language-objc">- (void)earthquake:(UIView*)itemView {
+    CGFloat t = 2.0;
+    CGAffineTransform leftQuake  = CGAffineTransformTranslate(CGAffineTransformIdentity, t, 0);
+    CGAffineTransform rightQuake = CGAffineTransformTranslate(CGAffineTransformIdentity, -t, 0); //水平晃动
 
+    itemView.transform = leftQuake;  // starting point
 
-//我们通常通过重写（而不是主动调用）这个方法来控制滑块大小来消除我们改变滑块图片导致的两端缝隙
-/**
- @bounds The bounding rectangle of the slider.
- @rect The drawing rectangle for the slider’s track, as returned by the `trackRectForBounds:` method.
- @value The current value of the slider.
- 
- @return The computed drawing rectangle for the thumb image.
-*/
-- (CGRect)thumbRectForBounds:(CGRect)bounds trackRect:(CGRect)rect value:(float)value;  //返回滑块大小 
+    [UIView beginAnimations:@&quot;earthquake&quot; context:(__bridge void *)(itemView)];
+    [UIView setAnimationRepeatAutoreverses:YES]; // 如果不加这一句 整个动画感觉不连贯
+    [UIView setAnimationRepeatCount:5];
+    [UIView setAnimationDuration:0.07];
+    [UIView setAnimationDelegate:self];
+    [UIView setAnimationDidStopSelector:@selector(earthquakeEnded:finished:context:)];
 
+    itemView.transform = rightQuake; // end here &amp; auto-reverse
 
-</code></pre>
-
-<p>举个栗子：</p>
-
-<pre><code class="language-objc">//自定义滑块图片后这样可以消除两端间隙
-- (CGRect)thumbRectForBounds:(CGRect)bounds trackRect:(CGRect)rect value:(float)value
-{
-    rect.origin.x = rect.origin.x - 10 ;
-    rect.size.width = rect.size.width +20;
-    return CGRectInset ([super thumbRectForBounds:bounds trackRect:rect value:value], 10 , 10);
+    [UIView commitAnimations];
 }
 
-//还可以
--(CGRect)trackRectForBounds:(CGRect)bounds {
-    bounds.origin.x=15;
-    bounds.origin.y=bounds.size.height/3;
-    bounds.size.height=bounds.size.height/5;
-    bounds.size.width=bounds.size.width-30;
-    returnbounds;
+- (void)earthquakeEnded:(NSString *)animationID finished:(NSNumber *)finished context:(void *)context {
+    if ([finished boolValue]) {
+        UIView* item = (__bridge UIView *)context;
+        item.transform = CGAffineTransformIdentity;
+    }
+}
+</code></pre>
+
+<h3 id="toc_1">2.图标的抖动效果</h3>
+
+<pre><code class="language-objc">//开始抖动
+-(void)BeginWobble
+{
+
+    srand([[NSDate date] timeIntervalSince1970]);
+    float rand=(float)random();
+    CFTimeInterval t=rand*0.0000000001;
+
+    [UIView animateWithDuration:0.1 delay:t options:0  animations:^
+     {
+         要抖动的视图.transform=CGAffineTransformMakeRotation(-0.05);
+     } completion:^(BOOL finished)
+     {
+         [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionRepeat|UIViewAnimationOptionAutoreverse|UIViewAnimationOptionAllowUserInteraction  animations:^
+          {
+              要抖动的视图.transform=CGAffineTransformMakeRotation(0.05);
+          } completion:^(BOOL finished) {}];
+     }];
+}
+//停止抖动
+-(void)EndWobble
+{
+
+    [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionAllowUserInteraction|UIViewAnimationOptionBeginFromCurrentState animations:^
+     {
+         要抖动的视图.transform=CGAffineTransformIdentity;
+     } completion:^(BOOL finished) {}];
 }
 
 </code></pre>
@@ -172,10 +181,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/22</span>
+                    <span class="date">2017/4/18</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
+          					    <span class="posted-in"><a href='%E5%B8%B8%E7%94%A8%E5%8A%A8%E7%94%BB.html'>常用动画</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -261,31 +270,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="14955051645893.html">UIDatePicker</a>
+			        <a href="14966582354331.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954386080339.html">GCD</a>
+			        <a href="14964011409915.html">iOS 开发中的九种锁</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954384117214.html">#pragma</a>
+			        <a href="14958652887586.html">时间 时区</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14951065647732.html">图层性能</a>
+			        <a href="14958642376440.html">定时器</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14945853244045.html">CGRect</a>
+			        <a href="14957029093514.html">UITextView</a>
 			      </li>
 		     
 		  

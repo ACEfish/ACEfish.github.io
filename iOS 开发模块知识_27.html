@@ -103,408 +103,156 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14873150230777.html">
+                <a class="clearlink" href="14873831706932.html">
                 
-                  <h1>并发编程基础知识</h1>
+                  <h1>OCMock</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>基础容易混淆知识:</p>
+                        	<h3 id="toc_0">Mock介绍</h3>
+
+<p>对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。</p>
+
+<h3 id="toc_1">OCMock介绍</h3>
+
+<p><a href="http://ocmock.org/features/">官方网站</a><br/>
+根据要mock的对象的class来创建一个对应的对象，并且设置好该对象的属性和调用预定方法后的动作（例如返回一个值，调用代码块，发送消息等等），然后将其记录到一个数组中，接下来开发者主动调用该方法，最后做一个verify（验证），从而判断该方法是否被调用，或者调用过程中是否抛出异常等。</p>
+
+<h4 id="toc_2">1.OCMock中简单使用</h4>
 
 <ol>
-<li><p>串行(Serial) VS. 并行(Concurrent)<br/>
-串行和并行描述的是任务和任务之间的执行方式. 串行是任务A执行完了任务B才能执行, 它们俩只能顺序   执行. 并行则是任务A和任务B可以同时执行.</p></li>
-<li><p>同步(Synchronous) VS. 异步(Asynchronous)<br/>
-同步和异步描述的其实就是函数什么时候返回. 比如用来下载图片的函数A: {download image}, 同步函数只有在image下载结束之后才返回, 下载的这段时间函数A只能搬个小板凳在那儿坐等... 而异步函数, 立即返回. 图片会去下载, 但函数A不会去等它完成. So, 异步函数不会堵塞当前线程去执行下一个函数!</p></li>
-<li><p>并发(Concurrency) VS. 并行(Parallelism)</p>
+<li><p>class mock一个对象</p>
 
-<blockquote>
-<p>并发是程序的属性(property of the program), 而并行是计算机的属性(property of the machine).<br/>
-<img src="media/14873150230777/14873157020644.png" alt=""/></p>
-</blockquote>
+<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
+//创建mock object当做类的实例
+</code></pre></li>
+<li><p>Stubbing methods that return objects<br/>
+<code>Object-c<br/>
+/**<br/>
+意的就是有参数的方法，参数是可以具体指定的，也就是说只有满足你指定的具体参数的调用才会被mock指定的返回值。例子中的[OCMArg any]是指任意参数。<br/>
+*/<br/>
+//没有参数的方法<br/>
+OCMStub([mockClass someMethod]).andReturn(anObject);<br/>
+//有参数的方法<br/>
+OCMStub([mockClass someMethod:[OCMArg any]]).andReturn(anObject);<br/>
+</code><br/>
+注意:<br/>
+<strong>OCMock会在mock实例上没有找到相同名字的实例方法的时候去找同名的类方法。</strong></p></li>
+<li><p>Verify-after-running<br/>
+有些时候需要验证我们执行的代码流程是否调用了某个外部的方法，这个时候用OCMock就比较简单来实现。如果没有调用过这个方法的话，会立即抛一个异常出来。</p>
 
-<p>并行和并发都是用来让不同的任务可以&quot;同时执行&quot;, 只是并发是伪同时, 而并行是真同时. 假设你有任务T1和任务T2(这里的任务可以是进程也可以是线程):</p>
+<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
+//...
+//some code
+//...
+OCMVerify([mockClass someMethod]);
+</code></pre></li>
+<li><p>验证mock方法没有被调用<br/>
+验证代码没有调用某个方法<br/>
+如果方法被调用了，就将isCalled设置为YES，这样最后assert的时候就会报错。<br/>
+<code>Object-c<br/>
+static BOOL isCalled = false;<br/>
+id mockClass = OCMClassMock([SomeClass class]);<br/>
+OCMStub([mockClass someMethod]).andDo(^(NSInvocation *invocation){<br/>
+isCalled = YES;<br/>
+});<br/>
+//...<br/>
+//some code<br/>
+//...<br/>
+XCTAssertFalse(isCalled);<br/>
+</code></p></li>
+<li><p>验证mock方法传入的参数<br/>
+验证传递给外部调用的参数是否符合预期</p>
 
-<blockquote>
-<p>其实我们平常说的并发编程包括狭义上的&quot;并行&quot;和&quot;并发&quot;, 你不能保证你的代码会被并行执行, 但你可以以并发的方式设计你的代码. 系统会判断在某一个时刻是否有可用的core(多核CPU核心), 如果有就并行(parallelism)执行, 否则就用context switch来分时并发(concurrency)执行. 最后再以Ray大神的话结尾: Parallelism requires Concurrency, but Concurrency does not guarantee Parallelism!</p>
-</blockquote></li>
+<pre><code class="language-Objec-c">id mockClass = OCMClassMock([SomeClass class]);
+OCMStub([mockClass someMethod:[OCMArg checkWithBlock:^BOOL(id obj) {
+//...
+//some code
+//...
+return YES;
+]]);
+</code></pre></li>
+<li><p>mock单例</p>
+
+<p>如果我们mock的类是个单例的话，那么使用之前的方法进行mock是不会生效的。不过OCMock提供了一个很简单的解决方法，那就是调用单例返回mock</p>
+
+<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
+OCMStub([mockClass instanceMethod]).andReturn(mockClass);
+</code></pre></li>
+<li><p>The any constraint</p>
+
+<pre><code class="language-Object-c">OCMStub([mock someMethodWithAnArgument:[OCMArg any]])
+OCMStub([mock someMethodWithPointerArgument:[OCMArg anyPointer]])
+OCMStub([mock someMethodWithSelectorArgument:[OCMArg anySelector]])
+
+</code></pre></li>
+<li><p>处理block参数<br/>
+OCMock也可以处理block回调参数。block回调通常用于网络代码，数据库代码，或者在任何异步操作中。在这个例子中，思考下下面的方法：<br/>
+<code>- (void)downloadWeatherDataForZip:(NSString *)zip callback:(void (^)(NSDictionary *response))callback;</code></p></li>
 </ol>
 
-<h1 id="toc_0">iOS多线程</h1>
-
-<h2 id="toc_1">1.Pthrea</h2>
-
-<p>可以自己了解</p>
-
-<h2 id="toc_2">2.NSThread</h2>
-
-<p>经过苹果封装后直接面对对象的，可以直接操控线程对象，但是生命周期需要我们自己管理，偶尔使用。例如<strong>NSThrea mainthread</strong>可以获取当前线程类，知道当前线程的各种属性用于调试  </p>
-
-<h3 id="toc_3">创建线程并启动</h3>
-
-<ul>
-<li>先创建再启动<br/>
-<code>NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(run:) object:nil];
-[thread start];</code></li>
-<li><p>创建并启动<br/><br/>
-<code>[NSThread detachNewThreadSelector:@selector(run:) toTarget:self withObject:nil];</code>  </p>
-
-<ul>
-<li>用oc方法创建启动（不安全）<br/>
-<code>[self performSelectorInBackground:@selector(run:) withObject:nil];</code><br/></li>
-<li><p>其他方法  </p>
-
-<p>//取消线程</p>
-
-<ul>
-<li>(void)cancel;</li>
-</ul>
-
-<p>//启动线程<br/>
-- (void)start;</p>
-
-<p>//判断某个线程的状态的属性<br/>
-@property (readonly, getter=isExecuting) BOOL executing;<br/>
-@property (readonly, getter=isFinished) BOOL finished;<br/>
-@property (readonly, getter=isCancelled) BOOL cancelled;</p>
-
-<p>//设置和获取线程名字<br/>
--(void)setName:(NSString *)n;<br/>
--(NSString *)name;</p>
-
-<p>//获取当前线程信息<br/>
-+ (NSThread *)currentThread;</p>
-
-<p>//获取主线程信息<br/>
-+ (NSThread *)mainThread;</p>
-
-<p>//使当前线程暂停一段时间，或者暂停到某个时刻<br/>
-+ (void)sleepForTimeInterval:(NSTimeInterval)time;<br/>
-+ (void)sleepUntilDate:(NSDate *)date; </p></li>
-</ul></li>
-</ul>
-
-<h2 id="toc_4">3.GCD</h2>
-
-<p>Grand Central Dispatch,是苹果为多核并行运算提出的解决办法，或自动管理线程生命周期</p>
-
-<h3 id="toc_5">任务和队列</h3>
-
-<p>这是在GCD中此案有的重要概念：<strong>任务</strong>和<strong>队列</strong><br/>
-* 任务：即即操作，你想要干什么，说白了就是一段代码，在 GCD 中就是一个 Block，所以添加任务十分方便。任务有两种执行方式： <strong>同步执行</strong> 和 <strong>异步执行</strong>，他们之间的区别是<strong><em>是否会创建新的线程</em></strong>。     </p>
-
-<pre><code>    同步（sync）和异步（async）的主要区别是在于会不会阻塞当前线程，直到block中任务执行完毕；  
-    同步就是阻塞当前线程并等待block中的任务执行完毕，然后线程会继续向下执行，异步操作当前线程会继续向下执行
-</code></pre>
-
-<ul>
-<li>队列：用于存放任务。一共有两种队列，串行和并行队列
-<strong>串行队列</strong>：放在串行队列中的任务，GCD会FIFO的取出来，执行，然后取出下一个<br/></li>
-</ul>
-
-<p><strong>并行队列</strong>：在并行队列中的任务，GCD也会FIFO的取出来，但不同的是，取出来一个后就会放到别的线程，然后取出来再放到另一个线程，取的动作很快，看起来所有是同时执行。注意：GCD会根据系统资源控制并行数量，所以如果任务很多，并不会让人物同时执行  </p>
-
-<h3 id="toc_6">创建队列</h3>
-
-<ul>
-<li><h5 id="toc_7">主队列</h5>
-
-<p>特殊的 串行队列。它用于刷新 UI，任何需要刷新 UI 的工作都要在主队列执行，所以一般耗时的任务都要放到别的线程执行。</p>
-
-<pre><code>     //OBJECTIVE-C
-    dispatch_queue_t queue = ispatch_get_main_queue();
-
-      //SWIFT
-      let queue = ispatch_get_main_queue()  
-</code></pre></li>
-<li><h5 id="toc_8">自己创建的队列</h5>
-
-<p>自己可以创建 串行队列, 也可以创建 并行队列。看下面的代码（代码已更新），它有两个参数，第一个上面已经说了，第二个才是最重要的。第二个参数用来表示创建的队列是串行的还是并行的，传入 DISPATCH_QUEUE_SERIAL 或 NULL 表示创建串行队列。传入 DISPATCH_QUEUE_CONCURRENT 表示创建并行队列。</p>
-
-<p>queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, NULL);<br/>
-  dispatch_queue_t queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, DISPATCH_QUEUE_SERIAL);<br/>
-  //并行队列<br/>
-  dispatch_queue_t queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, DISPATCH_QUEUE_CONCURRENT);</p>
-
-<p>//SWIFT<br/>
-  //串行队列<br/>
-  let queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, nil);<br/>
-  let queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, DISPATCH_QUEUE_SERIAL)<br/>
-  //并行队列<br/>
-  let queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, DISPATCH_QUEUE_CONCURRENT)</p></li>
-<li><h4 id="toc_9">全局并行队列</h4>
-
-<p>一般只要是并行任务都加到这个队列<br/>
-  //OBJECTIVE-C<br/>
-  dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);</p>
-
-<p>//SWIFT<br/>
-  let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)</p></li>
-</ul>
-
-<h3 id="toc_10">创建任务</h3>
-
-<ul>
-<li><h5 id="toc_11">同步任务：会阻塞当前线程</h5>
-
-<pre><code>dispatch_sync(&lt;#queue#&gt;, ^{
-</code></pre>
-
-<p>//code here<br/>
-  NSLog(@&quot;%@&quot;, [NSThread currentThread]);<br/>
-    });</p></li>
-<li><h5 id="toc_12">异步任务：不会阻塞当前线程</h5>
-
-<pre><code>dispatch_async(&lt;#queue#&gt;, ^{
-    //code here
-    NSLog(@&quot;%@&quot;, [NSThread currentThread]);
-});
-</code></pre></li>
-</ul>
-
-<h3 id="toc_13">更好的理解同步异步以及各种队列的使用</h3>
-
-<pre><code>同步任务会阻塞当前线程，然后把block块中的任务放到指定队列中执行，等到block任务完成后会让当前线程继续往下执行  
-同步异步的重要区别在于派发方法是否需要等待 block 完成后才能返回.
-</code></pre>
-
-<h3 id="toc_14">队列组的使用</h3>
-
-<p>可以将很多丢列添加到一个组中，这样的话，当这个组中所有任务都执行完了，队列会通过一个方法通知我们  </p>
-
-<pre><code>//1.创建队列组
-dispatch_group_t group = dispatch_group_create();
-//2.创建队列
-dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-
-//3.多次使用队列组的方法执行任务, 只有异步方法
-//3.1.执行3次循环
-dispatch_group_async(group, queue, ^{
-    for (NSInteger i = 0; i &lt; 3; i++) {
-        NSLog(@&quot;group-01 - %@&quot;, [NSThread currentThread]);
-    }
-});
-
-//3.2.主队列执行8次循环
-dispatch_group_async(group, dispatch_get_main_queue(), ^{
-    for (NSInteger i = 0; i &lt; 8; i++) {
-        NSLog(@&quot;group-02 - %@&quot;, [NSThread currentThread]);
-    }
-});
-
-//3.3.执行5次循环
-dispatch_group_async(group, queue, ^{
-    for (NSInteger i = 0; i &lt; 5; i++) {
-        NSLog(@&quot;group-03 - %@&quot;, [NSThread currentThread]);
-    }
-});
-
-//4.都完成后会自动通知
-dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-    NSLog(@&quot;完成 - %@&quot;, [NSThread currentThread]);
-});
-SWIFT
-//1.创建队列组
-let group = dispatch_group_create()
-//2.创建队列
-let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
-
-//3.多次使用队列组的方法执行任务, 只有异步方法
-//3.1.执行3次循环
-dispatch_group_async(group, queue) { () -&gt; Void in
-    for _ in 0..&lt;3 {
-        NSLog(&quot;group-01 - %@&quot;, NSThread.currentThread())
-    }
-}
-
-//3.2.主队列执行8次循环
-dispatch_group_async(group, dispatch_get_main_queue()) { () -&gt; Void in
-    for _ in 0..&lt;8 {
-        NSLog(&quot;group-02 - %@&quot;, NSThread.currentThread())
-    }
-}
-
-//3.3.执行5次循环
-dispatch_group_async(group, queue) { () -&gt; Void in
-    for _ in 0..&lt;5 {
-        NSLog(&quot;group-03 - %@&quot;, NSThread.currentThread())
-    }
-}
-
-//4.都完成后会自动通知
-dispatch_group_notify(group, dispatch_get_main_queue()) { () -&gt; Void in
-    NSLog(&quot;完成 - %@&quot;, NSThread.currentThread())
-}
-</code></pre>
-
-<p><strong>关于GCD还有两点要说的</strong><br/><br/>
-* <code>func dispatch_barrier_async(_ queue: dispatch_queue_t, _ block: dispatch_block_t):</code><br/><br/>
-这个方法重点是传入的queue，当你传入的queue是通过<code>DISPATCH_QUEUE_CONCURRENT</code>参数自己创建的queue时，这个方法会阻塞这个queue（注意是阻塞queue，而不是阻塞当前线程），一直等到这个queue中排在他前面的任务都执行完成后才会开始执行自己，自己执行完毕后，再会取消阻塞，是这个queue中排在他后面的任务继续执行。但是如果你传入的是其他queue，那他和dispatch_async一样了<br/><br/>
-* <code>func dispatch_barrier_sync(_ queue: dispatch_queue_t, _ block: dispatch_block_t):</code><br/><br/>
-这个方法的使用和上一个一样，传入自定义的并发队列（<strong>DISPATCH_QUEUE_CONCURRENT</strong>），会阻塞queue，不同的是这个方法还会阻塞当前线程，，但是如果你传入其他queue就和dispatch_sync一样了  </p>
-
-<h3 id="toc_15">线程同步</h3>
-
-<ul>
-<li><h5 id="toc_16">互斥锁：</h5>
-
-<p>给需要同步的代码加一个互斥锁保证每次只有一个线程访问此代码块</p>
-
-<pre><code>    //OBJECTIVE-C
-    @synchronized(self) {
-        //需要执行的代码块
-    }
-    //SWIFT
-    objc_sync_enter(self)
-    //需要执行的代码块
-    objc_sync_exit(self)
-</code></pre></li>
-<li><h5 id="toc_17">同步执行：</h5>
-
-<p>我们可以使用多线程的知识，把多个线程都要执行此段代码添加到同一个串行队列，这样就实现了线程同步的概念。当然这里可以使用 <code>GCD</code> 和 <code>NSOperation</code> 两种方案，我都写出来。</p>
-
-<pre><code>//OBJECTIVE-C
-      //GCD
-      //需要一个全局变量queue，要让所有线程的这个操作都加到一个queue中
-      dispatch_sync(queue, ^{
-          NSInteger ticket = lastTicket;
-          [NSThread sleepForTimeInterval:0.1];
-          NSLog(@&quot;%ld - %@&quot;,ticket, [NSThread currentThread]);
-          ticket -= 1;
-          lastTicket = ticket;
-      });
-
-      //NSOperation &amp; NSOperationQueue
-      //重点：1. 全局的 NSOperationQueue, 所有的操作添加到同一个queue中
-      //       2. 设置 queue 的 maxConcurrentOperationCount 为 1
-      //       3. 如果后续操作需要Block中的结果，就需要调用每个操作的waitUntilFinished，阻塞当前线程，一直等到当前操作完成，才允许执行后面的。waitUntilFinished 要在添加到队列之后！
-
-      NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
-          NSInteger ticket = lastTicket;
-          [NSThread sleepForTimeInterval:1];
-          NSLog(@&quot;%ld - %@&quot;,ticket, [NSThread currentThread]);
-          ticket -= 1;
-          lastTicket = ticket;
-      }];
-
-      [queue addOperation:operation];
-
-      [operation waitUntilFinished];
-
-      //后续要做的事
-</code></pre></li>
-<li><h5 id="toc_18">延迟执行：</h5>
-
-<pre><code>//OBJECTIVE-C（这个方法在swift中去掉了）
-    // 3秒后自动调用self的run:方法，并且传递参数：@&quot;abc&quot;
-    [self performSelector:@selector(run:) withObject:@&quot;abc&quot; afterDelay:3];
-    //GCD
-    // 创建队列
-    dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-    // 设置延时，单位秒
-    double delay = 3; 
-
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), queue, ^{
-        // 3秒后需要执行的任务
+<p>在这个例子中，我们有一个下载天气压缩数据的方法，并且把下载下来的dictionary代理到一个block的回调中。在测试中，我们通过预定义的天气数据来测试回调处理。这也是明智的测试失败场景。你永远不会知道网络上会返回你什么东西！</p>
+
+<pre><code class="language-Object">OCMStub([groupModelMock downloadWeatherDataForZip:@&quot;80304&quot; callback:[OCMArg any]]]).andDo(^(NSInvocation *invocation){
+        //2. declare a block with same signature
+        void (^weatherStubResponse)(NSDictionary *dict);
+        //3. link argument 3 with with our block callback
+        [invoke getArgument:&amp;weatherStubResponse atIndex:3];
+        //4. invoke block with pre-defined input
+        NSDictionary *testResponse = @{@&quot;high&quot;: 43 , @&quot;low&quot;: 12};
+        weatherStubResponse(groupMemberMock);
     });
-</code></pre></li>
-<li><h5 id="toc_19">单例模式：</h5>
+    /**
+        1.这个mock对象使用带NSInvocation参数的“andDo”方法。一个NSInvocation对象代表一
+        个‘objectivetified’（实在不知道这个什么鬼）表现的方法调用。通过这个NSinvocation对
+        象，使得拦截传递给我们的方法的block参数变得可能。
+        2.用与我们测试的方法中相同的方法签名声明一个block参数。
+        3.NSInvocation实例方法&quot;getArgument:atIndex:&quot;将赋值后的块函数传递都原始函数中定义
+        的块函数中。注意：在Objective-C中，传递给任意方法的前两个参数都是“self”和“_cmd”.这是
+        一个运行时的小功能以及用下标来获取NSInvocation参数时我们需要考虑的东西。
+        4.最后，传递这个回调的预定义字典。
+    */
+</code></pre>
 
-<pre><code>OBJECTIVE-C
-    @interface Tool : NSObject &lt;NSCopying&gt;
+<h4 id="toc_3">2.OCMock简单示例</h4>
 
-    + (instancetype)sharedTool;
+<p><img src="media/14873831706932/14873839517952.png" alt=""/></p>
 
-    @end
+<p>示例2：</p>
 
-    @implementation Tool
+<pre><code class="language-Object-c">- (void)testStrictMock3{
 
-    static id _instance;
+    id classMock = OCMClassMock([TweetView class]);
 
-    + (instancetype)sharedTool {
-        static dispatch_once_t onceToken;
-        dispatch_once(&amp;onceToken, ^{
-            _instance = [[Tool alloc] init];
-        });
+    //设置期望或预设，这个classMock需要执行addTweet方法且参数不为nil。  不然的话会抛出异常
+    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
+    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
 
-        return _instance;
-    }
+    /* 如果不执行以下代码的话会抛出异常 */
+    Tweet *testTweet = [[Tweet alloc] init];
+    testTweet.userName = @&quot;齐滇大圣&quot;;
+    [classMock addTweet:testTweet];
 
-    @end
-    swift
-        class Tool: NSObject {
-        static let sharedTool = Tool()
-
-        // 私有化构造方法，阻止其他对象使用这个类的默认的&#39;()&#39;构造方法
-        private override init() {}
-        }
-</code></pre></li>
-</ul>
-
-<h3 id="toc_20">从其他线程回到主线程的方法</h3>
-
-<ul>
-<li><h5 id="toc_21">NSThread</h5>
-
-<pre><code>//Objective-C
-[self performSelectorOnMainThread:@selector(run) withObject:nil waitUntilDone:NO];
-
-//Swift
-//swift 取消了 performSelector 方法。
-</code></pre></li>
-<li><h5 id="toc_22">GCD</h5>
-
-<pre><code>//Objective-C
-dispatch_async(dispatch_get_main_queue(), ^{
-
-});
-
-//Swift
-dispatch_async(dispatch_get_main_queue(), { () -&gt; Void in
-
-})
-</code></pre></li>
-<li><h5 id="toc_23">NSOperationQueue</h5>
-
-<pre><code>//Objective-C
-[[NSOperationQueue mainQueue] addOperationWithBlock:^{
-
-}];
-
-//Swift
-NSOperationQueue.mainQueue().addOperationWithBlock { () -&gt; Void in
-
+    OCMVerifyAll(classMock);
 }
-</code></pre></li>
-</ul>
+</code></pre>
 
-<h2 id="toc_24">评论补充</h2>
+<p>这表示一种友好的mock，不会在没有OCMExpect或OCMStub设置类的所有方法时抛出异常。以上代码把OCMExpect和OCMStub注释掉时不会报错。</p>
 
-<pre><code>同步派发(sync)会尽可能地在当前线程派发任务.但如果在其他队列往主队列同步派发,任务会在主线程执行.
-异步派发(async)也不绝对会另开线程.例如在主线程异步派发到主线程,派发依旧是异步的,任务也会在主线程执行.
-我感觉同步异步的重要区别在于派发方法是否需要等待 block 完成后才能返回.
+<p>还有一种表示严格的mock：OCMStrictClassMock，如果把OCMExpect和OCMStub注释掉时会报错，它要求你执行类中的所有方法，所以比较适合用来测试必须实现的方法，代码如下：</p>
 
-无论串行还是并发队列,任务启动顺序都是按照 FIFO 的,只是并发队列允许同一时间有多个任务执行都在执行.
+<pre><code class="language-Object-c">- (void)testStrictMock3{
+    id classMock = OCMStrictClassMock([TweetView class]);
+    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
+    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
 
-创建队列
+    Tweet *testTweet = [[Tweet alloc] init];
+    testTweet.userName = @&quot;齐滇大圣&quot;;
+    [classMock addTweet:testTweet]; 
 
-也可以自己创建并发队列.
-dispatch_queue_create(&quot;我是私有串行队列&quot;, DISPATCH_QUEUE_SERIAL);
-dispatch_queue_create(&quot;我是私有并发队列&quot;, DISPATCH_QUEUE_CONCURRENT);
-
-dispatch_async(dispatch_get_main_queue()) {
-// Swift 中用尾闭包写法感觉更美观.
+    OCMVerifyAll(classMock);
 }
-
-关于同步,还有这么个东西:
-dispatch_barrier_async(privateConcurrentQueue, ^{
-// 写入操作会确保队列前面的操作执行完毕才开始,并会阻塞队列中后来的操作.
-});
-
-dispatch_sync(privateConcurrentQueue, ^{
-// 只要没有写入操作,多个读取操作是相对并行的.
-});
 </code></pre>
 
                         
@@ -514,10 +262,10 @@ dispatch_sync(privateConcurrentQueue, ^{
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/17</span>
+                    <span class="date">2017/2/18</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
+          					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -603,31 +351,31 @@ dispatch_sync(privateConcurrentQueue, ^{
 	      
 		      
 			      <li class="post">
-			        <a href="14955051645893.html">UIDatePicker</a>
+			        <a href="14966582354331.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954386080339.html">GCD</a>
+			        <a href="14964011409915.html">iOS 开发中的九种锁</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954384117214.html">#pragma</a>
+			        <a href="14958652887586.html">时间 时区</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14951065647732.html">图层性能</a>
+			        <a href="14958642376440.html">定时器</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14945853244045.html">CGRect</a>
+			        <a href="14957029093514.html">UITextView</a>
 			      </li>
 		     
 		  

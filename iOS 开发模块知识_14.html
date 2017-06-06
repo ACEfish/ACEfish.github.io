@@ -103,18 +103,247 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14892022094971.html">
+                <a class="clearlink" href="14894054496048.html">
                 
-                  <h1>Core Animation</h1>
+                  <h1>变换</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>Core Animation是一个复合引擎，它的职责就是尽可能快地组合屏幕上不同的可<br/>
-视内容，这个内容是被分解成独立的图层，存储在一个叫做图层树的体系之中。于<br/>
-是这个树形成了UIKit以及在iOS应用程序当中你所能在屏幕上看见的一切的基础。</p>
+                        	<h3 id="toc_0">仿射变换</h3>
 
-<p><img src="media/14892022094971/14903531605425.jpg" alt=""/></p>
+<p><code>UIView</code>的<code>transform</code>属性是一个<code>CGAffineTransform</code>类型，用于二维空间的旋转，缩放和平移.  </p>
+
+<p><code>CGAffineTransform</code>是一个可以和二维空间向量（例如 CGPoint ）做乘法的3X2的矩阵；</p>
+
+<p><img src="media/14894054496048/14894062959368.jpg" alt=""/></p>
+
+<p>上图中的灰色数值只是为了保证<code>左边列数与右边行数相同</code>可以做矩阵运算，其计算结果不保留也没有任何意义  </p>
+
+<h4 id="toc_1">CGAffineTransform</h4>
+
+<pre><code class="language-objc">CGAffineTransformMakeRotation(CGFloat angle)
+CGAffineTransformMakeScale(CGFloat sx, CGFloat sy)
+CGAffineTransformMakeTranslation(CGFloat tx, CGFloat ty)
+/**
+旋转和缩放变换都可以很好解释--分别旋转或者缩放一个向量的值。平移变换是指
+每个点都移动了向量指定的x或者y值--所以如果向量代表了一个点，那它就平移了
+这个点的距离。
+*/
+</code></pre>
+
+<p><strong>注意</strong><br/><br/>
+<code>UIView</code>可以通过设置<code>tranform</code>属性变换,它只是封装了内部的图层变换  </p>
+
+<p><code>CALayer</code>也有<code>transfrom</code>属性，它的类型是<code>CATransfrom3D</code>并不是<code>CGAffiTransfrom</code>  </p>
+
+<p><code>CALayer</code>对应UIView的<code>transform</code>属性的是<code>affineTransform</code>  </p>
+
+<p><code>CGAffiTransfrom</code>一看名字就是基于<code>Core Graphics</code>的</p>
+
+<pre><code class="language-objc">#define RADIANS_TO_DEGREES(x) ((x)/M_PI*180.0)
+//一个pi代表180°
+CGAffineTransform transform = CGAffineTransformMakeRotation(M_PI_4);
+self.layerView.layer.affineTransform = transform;
+</code></pre>
+
+<h4 id="toc_2">混合变换</h4>
+
+<p><code>Core Graphics</code>提供了可在一个一个变换基础上做其他变化的函数  </p>
+
+<pre><code class="language-objc">CGAffineTransformRotate(CGAffineTransform t, CGFloat angle)
+CGAffineTransformScale(CGAffineTransform t, CGFloat sx, CGFloat sy)
+CGAffineTransformTranslate(CGAffineTransform t, CGFloat tx, CGFloat ty)
+</code></pre>
+
+<p>还有一个例外的：<br/><br/>
+<code>CGAffineTransformIdentity</code>这是一个什么都不做的变换, <code>CGAffineTransform</code> 类型的空值,即单位矩阵。</p>
+
+<pre><code class="language-objc">//要混合两个已经存在的变换矩阵，做一个新的变换
+CGAffineTransformConcat(CGAffineTransform t1, CGAffineTransform t2);
+</code></pre>
+
+<p><strong>注意</strong><br/><br/>
+当我们按顺序进行一些列变换的时候，变换的顺序是会影响结果的，比如旋转之后的平移和平移之后的旋<br/>
+转结果可能不同。</p>
+
+<h3 id="toc_3">3D变换</h3>
+
+<p><code>CGAffineTransform</code> 类型属于<code>Core Graphics</code>框架.因为<code>Core Graphics</code>是一套2D绘图的API，因此仅仅对2D变换有效.  </p>
+
+<p>CALayer的<code>transform</code>属性(<code>CATransform3D</code>类型),可以让图层进行3D移动或者旋转  </p>
+
+<p>和CGAffiTranform类似,<code>CATransform3D</code>也是一个矩阵（在3维空间做变换的4*4矩阵）  </p>
+
+<p><img src="media/14894054496048/14894686780778.jpg" alt=""/></p>
+
+<p><code>Core  Animation</code>框架也有为我们提供一系列方法来创建和组合<code>CATransform3D</code>类型的矩阵，与CGAffiTransform不同的是其平移和缩放多了参数<code>z</code> 旋转 多了<code>x.y.z</code></p>
+
+<pre><code class="language-objc">CATransform3DMakeRotation(CGFloat angle, CGFloat x, CGFloat y, CGFloat z)
+CATransform3DMakeScale(CGFloat sx, CGFloat sy, CGFloat sz)
+CATransform3DMakeTranslation(Gloat tx, CGFloat ty, CGFloat tz)
+</code></pre>
+
+<p>举个栗子:  </p>
+
+<pre><code class="language-objc">//绕Y轴旋转45度
+CATransform3D transform = CATransform3DMakeRotation(M_PI_4, 0, 1, 0);
+self.layerView.layer.transform = transform;
+</code></pre>
+
+<p><img src="media/14894054496048/14894705472205.jpg" alt=""/></p>
+
+<p><strong>这样的效果看起来并没有旋转而只是水平方向的压缩,这是因为我们用斜的视角看它，并不是透视</strong></p>
+
+<h4 id="toc_4">透视投影</h4>
+
+<p>我们在上面做的变换是等距投影：远处的物体和近处的物体保持同样的缩放比例  </p>
+
+<p>正常情况是物体远离我们由于视角原因会变小才对  我们需要引入<code>投影变换（z变换）</code>来对矩阵做一些修改，<code>Core Animation</code>并没有提供<code>透视变换</code>函数，我们需要手动改动矩阵(easy):  </p>
+
+<p><img src="media/14894054496048/14894710925730.jpg" alt=""/></p>
+
+<p>**m34 默认为0，我们可以设置其为<code>-1/d</code>来应用透视效果(d为视角和屏幕距离,估算测试一下就ok了,大概500-1000,值越小透视效果越明显但是太小会失真，太大又几乎失去透视效果) **</p>
+
+<p>举个栗子:</p>
+
+<pre><code class="language-objc">CATransform3D transform = CATransform3DIdentity;
+//apply perspective  我曹 真的直接m34就行了
+transform.m34 = - 1.0 / 500.0;
+//rotate by 45 degrees along the Y axis
+transform = CATransform3DRotate(transform, M_PI_4, 0, 1, 0);
+//apply to layer
+self.layerView.layer.transform = transform;
+</code></pre>
+
+<h4 id="toc_5">灭点</h4>
+
+<p>在透视绘图时我们说当远离视角的物体会变小,当远到一个极限的时候就会变陈一个点,最终所有物体都会汇聚消失在这同一个点.  即<strong>灭点</strong></p>
+
+<p>在现实中，这个点通常是视图的中心,或者至少是包含所有3D对象的视图中心 </p>
+
+<p><code>Core Animation</code>定义了这个点位于变换图层的<code>anchorPoint</code>（通常位于图层中心，但也有例外）<br/><br/>
+这就是说，当图层发生变换时，这个点永远位于图层变换之前<code>anchorPoint</code>的位置。</p>
+
+<p><img src="media/14894054496048/14894744252171.jpg" alt=""/></p>
+
+<p><strong>注意</strong><br/><br/>
+当改变一个图层的<code>position</code>，你也改变了它的灭点，做3D变换的时候要时刻记住这一点，当你视图通过调整 <code>m34</code> 来让它更加有3D效果，应该首先把它放置于屏幕中央，然后通过平移来把它移动到指定位置（做平移变换是不会改变position的）（而不是直接改变它的<code>position</code>）灭点会处于变化之前的位置,这样的话就能保证所有的3D图层都共享一个灭点。</p>
+
+<h4 id="toc_6">sublayerTransform</h4>
+
+<p>根据上面知识,如果我们多个视图做3D变换,我们需要分别改变其M34并且确保在变换前同一个<code>position</code>,而且我们不能直接在xib中摆放视图,这样就很麻烦了   </p>
+
+<p>CALayer有个属性<code>sublayerTransform</code>.也是<code>CATransform3D</code>类型的,但是它会影响到所有子图层,即我们可以通过设置图层的这个属性来使所有子视图做同样的变换，而且确保了所有子图层灭点在容器图层的中点处.</p>
+
+<p><strong>容器图层做变换时其上图层也都会做变换的,只不过我们如果不设置容器图层的<code>sublayerTransform</code>属性的话，子图层要在做3D变换的话还要再设置m34而且要保证灭点，也就是这个属性作用就只是保证其上的子图层的m34和灭点与父图层一致</strong><br/>
+<strong>这个属性对于容器视图来说与transform属性没有什么区别，都是做一个变换</strong></p>
+
+<p><strong>注意</strong><br/><br/>
+我们通常设置最大视图的<code>sublayerTransform</code>为<code>CATransform3DIdentity;</code> 这样在其上的子视图可以随意进行3D变换都可保证其灭点位置在同一个位置.  </p>
+
+<h4 id="toc_7">背面</h4>
+
+<p>因为我们做的变换是透视的，我们可以从背面观察这张图像，发现其背面为正面图片的镜像图片,可以知道图层是<code>双面绘制的</code><br/>
+有时候我们是永远都看不到图层的背面,所以我们没必要浪费<code>CPU</code>来绘制  </p>
+
+<p><code>CALayer</code>有一个叫做 <code>doubleSided</code> 的属性来控制图层的背面是否要被绘制。<code>BOOL</code>类型,当设置为NO时，如果图层正面从视角中消失，这个图层将不会被绘制.</p>
+
+<p><img src="media/14894054496048/14895754324911.jpg" alt=""/></p>
+
+<h4 id="toc_8">扁平化图层</h4>
+
+<p>我们在做二维变换（用CATranform3D绕z轴旋转也是二维变换）知道当我们做个相反变换的时候是可以将图层或视图恢复原状的。</p>
+
+<p><img src="media/14894054496048/14895772744163.jpg" alt=""/><br/>
+如上图,外部图层旋转45度后内部图层反向旋转45度是可以恢复正常状态的  </p>
+
+<p>那么对于3D变换：</p>
+
+<p>我们将外面图层绕Y旋转,然后将内图层绕Y反向旋转<br/><br/>
+结果:<br/>
+<img src="media/14894054496048/14895796219311.jpg" alt=""/></p>
+
+<p>我们可以看到,内部的图层仍然向左侧旋转，并且发生了扭曲。</p>
+
+<p>这是因为<code>Core Animation</code>内的图层并不都存在同一个3D空间.<strong>每个图层的3D场景其实是扁平化的</strong>，你所看到的3D场景只是绘制在图层表面。</p>
+
+<p>也是因为如此:用<code>Core Animation</code>创建非常复杂的3D场景变得十分困难。你不能够使用图层树去创建一个3D结构的层级关系--在相同场景下的任何3D表面必须和同样的图层保持一致，这是因为每个的父视图都把它的子视图扁平化了。在之后我们会用<code>CATransformLayer</code>的子类来解决这个问题</p>
+
+<h3 id="toc_9">固体对象</h3>
+
+<p>一个固态的3D对象  </p>
+
+<p>我们来创建一个固体对象:</p>
+
+<pre><code class="language-objc">//创建固体对象
+
+- (void)three_dimensionaObject {
+    CATransform3D perspective = CATransform3DIdentity;
+    perspective.m34 = -1.0 / 500.0;
+    perspective = CATransform3DRotate(perspective, -M_PI_4, 1, 0, 0);
+    perspective = CATransform3DRotate(perspective, -M_PI_4, 0, 1, 0);
+    self.containView.layer.sublayerTransform = perspective;
+    //add cube face 1
+    CATransform3D transform = CATransform3DMakeTranslation(0, 0, 100);
+    [self addFaceWith:0 transform:transform];
+    
+    transform = CATransform3DMakeTranslation(100, 0, 0);
+    transform = CATransform3DRotate(transform, M_PI_2, 0, 1, 0);
+    [self addFaceWith:1 transform:transform];
+    
+    transform = CATransform3DMakeTranslation(-100, 0, 0);
+    transform = CATransform3DRotate(transform, -M_PI_2, 0, 1, 0);
+    [self addFaceWith:2 transform:transform];
+    
+    transform = CATransform3DMakeTranslation(0, 100, 0);
+    transform = CATransform3DRotate(transform, -M_PI_2, 1, 0, 0);
+    [self addFaceWith:3 transform:transform];
+    
+    transform = CATransform3DMakeTranslation(0, -100, 0);
+    transform = CATransform3DRotate(transform, M_PI_2, 1, 0, 0);
+    [self addFaceWith:4 transform:transform];
+    
+    transform = CATransform3DMakeTranslation(0, 0, -100);
+    [self addFaceWith:5 transform:transform];
+}
+
+- (void)addFaceWith:(NSInteger)index transform:(CATransform3D)transform {
+    UIView *layV = [self.layViewCollection objectAtIndex:index];
+    [self.containView addSubview:layV];
+    CGSize containerSize = self.containView.bounds.size;
+    layV.center = CGPointMake(containerSize.width / 2.0, containerSize.height/2);
+    layV.bounds = CGRectMake(0, 0, 200, 200);
+    layV.layer.transform = transform;
+}
+</code></pre>
+
+<h4 id="toc_10">光亮和阴影</h4>
+
+<p>由于我们只是简单几个图层的拼接,所以这个立体对光线并没有概念(没有棱角).我们需要自己做这个立体的阴影效果.  </p>
+
+<ul>
+<li>我们可以直接以通过改变每个面的背景颜色或者直接用带光亮效果的图片来调整。<br/></li>
+<li>如果需要动态地创建光线效果，可以根据每个视图的方向应用不同的alpha值做出半透明的阴影图层.但为了计算阴影图层的不透明度，你需要得到每个面的正太向量（垂直于表面的向量），然后根据一个想象的光源计算出两个向量叉乘结果。叉乘代表了光源和图层之间的角度，从而决定了它有多大程度上的光亮。</li>
+</ul>
+
+<p>为了达到第二种效果:<br/><br/>
+我们这里用<code>GLKit框架</code>来做向量的计算.(需要引入<code>GLKit</code>库来运行代码)每个面的<code>CATransform3D</code>都被转换成<code>GLKMatrix4</code>，然后通过<code>GLKMatrix4GetMatrix3</code>函数得出一个3×3的旋转矩阵。这个旋转矩阵指定了图层的方向，然后可以用它来得到正太向量的值</p>
+
+<h4 id="toc_11">点击事件</h4>
+
+<p><img src="media/14894054496048/14896328584294.jpg" alt=""/></p>
+
+<p>我们对于上面的固体对象,并不能点击3触发事件,这是因为我们添加视图时4.5.6是在3之前添加的,点击事件的处理由视图在父视图中的顺序决定，而不是3D空间的z轴顺序.因此即使我们此时看不到4.5.6,但是荏苒会拦截点击事件.  </p>
+
+<p><code>doubleSided</code>属性可以控制是否绘制视图后面的内容,但是设置这个属性为NO不起作用，因为即使背对相机而隐藏的视图仍然会响应点击事件(这和通过设置 hidden 属性或者设置 alpha 为0而隐藏的视图不同，那两种方式将不会响应事件).</p>
+
+<p>我们正确方式是:<br/>
+* 把除了表面3的其他视图 userInteractionEnabled 属性都设置成 NO 来禁止事件传递<br/>
+* 简单通过代码把视图3覆盖在视图6上<br/>
+* 等等</p>
+
+<p><strong>视图中图层添加的层级顺序会比屏幕上显示的顺序更有意义</strong></p>
 
                         
                       </div>
@@ -123,10 +352,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/11</span>
+                    <span class="date">2017/3/13</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS-CoreAnimation.html'>iOS-CoreAnimation</a></span>
+          					    <span class="posted-in"><a href='%E5%9B%BE%E5%B1%82.html'>图层</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -212,31 +441,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="14955051645893.html">UIDatePicker</a>
+			        <a href="14966582354331.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954386080339.html">GCD</a>
+			        <a href="14964011409915.html">iOS 开发中的九种锁</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954384117214.html">#pragma</a>
+			        <a href="14958652887586.html">时间 时区</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14951065647732.html">图层性能</a>
+			        <a href="14958642376440.html">定时器</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14945853244045.html">CGRect</a>
+			        <a href="14957029093514.html">UITextView</a>
 			      </li>
 		     
 		  

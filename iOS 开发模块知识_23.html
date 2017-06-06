@@ -103,454 +103,365 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14877303400153.html">
+                <a class="clearlink" href="14878317569666.html">
                 
-                  <h1>类与对象</h1>
+                  <h1>方法与消息</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">Class</h2>
+                        	<p>运行时中的<strong>消息处理机制</strong>消息的发送及消息的转发</p>
 
-<p>Objective-C类是由Class类型来表示的，它实际上是一个指向<code>objc_class</code>结构体的指针。</p>
+<p>补充:类的方法链表中存储的是Method链表 而一个Method也是一个结构体指针,这个指针包含<br/>
+一个方法 Method，其包含一个方法选标 SEL – 表示该方法的名称，一个types – 表示该方法参数的类型，一个 IMP  - 指向该方法的具体实现的函数指针。</p>
 
-<pre><code class="language-objc">//定义为:
-typedef struct objc_class *Class;
+<h2 id="toc_0">基础数据类型</h2>
+
+<h3 id="toc_1">SEL</h3>
+
+<p>SEL又叫选择器，是表示一个方法的<code>selector</code>的指针,为一个指针</p>
+
+<p><code>typedef struct objc_selector *SEL;</code></p>
+
+<p><code>objc_selector</code>结构体的详细定义没有在<objc/runtime.h>头文件中找到。方法的selector用于表示运行时方法的名字。Objective-C在编译时，会依据每一个方法的名字、参数序列，生成一个唯一的整型标识(Int类型的地址)，这个标识就是SEL。如下代码所示：</p>
+
+<pre><code class="language-objc">SEL sel1 = @selector(method1);
+NSLog(@&quot;sel : %p&quot;, sel1);
+//输出
+2014-10-30 18:40:07.518 RuntimeTest[52734:466626] sel : 0x100002d72
 </code></pre>
 
-<p>在<code>objc/runtime.h</code>中objc_class结构体定义如下:<br/>
-Class 是指向类结构体的指针,NSObject 的class 方法就返回这样一个指向其类结构的指针。</p>
+<p>两个类之间不管有没有关系,只要方法名相同，那么方法的SEL就是一样的.每一个方法都对应着一个<code>SEL</code>。</p>
 
-<pre><code class="language-objc">truct objc_class {
-    Class isa  OBJC_ISA_AVAILABILITY;
-#if !__OBJC2__
-    Class super_class                       OBJC2_UNAVAILABLE;  // 父类
-    const char *name                        OBJC2_UNAVAILABLE;  // 类名
-    long version                            OBJC2_UNAVAILABLE;  // 类的版本信息，默认为0
-    long info                               OBJC2_UNAVAILABLE;  // 类信息，供运行期使用的一些位标识
-    long instance_size                      OBJC2_UNAVAILABLE;  // 该类的实例变量大小
-    struct objc_ivar_list *ivars            OBJC2_UNAVAILABLE;  // 该类的成员变量链表
-    struct objc_method_list **methodLists   OBJC2_UNAVAILABLE;  // 方法定义的链表
-    struct objc_cache *cache                OBJC2_UNAVAILABLE;  // 方法缓存
-    struct objc_protocol_list *protocols    OBJC2_UNAVAILABLE;  // 协议链表
-#endif
-} OBJC2_UNAVAILABLE;
+<p>所以在Objective-C同一个类(及类的继承体系)中，不能存在2个同名的方法，即使参数类型不同也不行。相同的方法只能对应一个SEL。这也就导致Objective-C在处理相同方法名且参数个数相同但类型不同的方法方面的能力很差。<br/>
+例如:</p>
+
+<pre><code class="language-objc">    - (void)setWidth:(int)width;
+    - (void)setWidth:(double)width;
+    //上面的写法 这样的定义被认为是一种编译错误 饿哦们需要这样申明
+    -(void)setWidthIntValue:(int)width;
+    -(void)setWidthDoubleValue:(double)width;
+</code></pre>
+
+<p>当然不同的类就算是select相同也没关系 .不同类的实例对象执行相同的selector时，会在各自的方法列表中去根据selector去寻找自己对应的IMP。</p>
+
+<p>工程中的所有的SEL组成一个Set集合，Set的特点就是唯一，因此SEL是唯一的。因此，如果我们想到这个方法集合中查找某个方法时，只需要去找到这个方法对应的SEL就行了，SEL实际上就是根据方法名hash化了的一个字符串，而对于字符串的比较仅仅需要比较他们的地址就可以了，可以说速度上无语伦比！<br/>
+但是，有一个问题，就是数量增多会增大hash冲突而导致的性能下降（或是没有冲突，因为也可能用的是<code>perfect hash</code>）。但是不管使用什么样的方法加速，如果能够将总量减少（多个方法可能对应同一个SEL），那将是最犀利的方法。那么，我们就不难理解，为什么SEL仅仅是函数名了。</p>
+
+<p><em>本质上，<code>SEL</code>只是一个指向方法的指针（准确的说，只是一个根据方法名hash化了的KEY值，能唯一代表一个方法），它的存在只是为了加快方法的查询速度。</em></p>
+
+<pre><code class="language-objc">/**
+我们可以在运行时添加新的selector，也可以在运行时获取已存在的selector，我们可以通过下面三种方法来获取SEL:
+*/
+sel_registerName函数
+Objective-C编译器提供的@selector()
+NSSelectorFromString()方法
+</code></pre>
+
+<h3 id="toc_2">IMP</h3>
+
+<p><code>IMP</code>实际上是一个函数指针，指向方法实现的首地址。是函数指针而不是指针函数<br/>
+IMP 是消息最终调用的执行代码，是方法真正的实现代码</p>
+
+<p><code>id (*IMP)(id, SEL, ...)</code><br/>
+第一个参数是指向self的指针(如果是实例方法，则是类实例的内存地址；如果是类方法，则是指向元类的指针)，第二个参数是方法选择器(selector)，接下来是方法的实际参数列表。</p>
+
+<p>前面介绍过的<code>SEL</code>就是为了查找方法的最终实现<code>IMP</code>的。由于每个方法对应唯一的<code>SEL</code>，因此我们可以通过SEL方便快速准确地获得它所对应的IMP.取得IMP后，我们就获得了执行这个方法代码的入口点，此时，我们就可以像调用普通的C语言函数一样来使用这个函数指针了。</p>
+
+<p>通过取得<code>IMP</code>，我们可以跳过<code>Runtime</code>的消息传递机制，直接执行IMP指向的函数实现，这样省去了Runtime消息传递过程中所做的一系列查找操作，会比直接向对象发送消息高效一些。</p>
+
+<h3 id="toc_3">Method</h3>
+
+<p>介绍完<code>SEL</code>和<code>IMP</code>，我们就可以来讲讲<code>Method</code>了。Method用于表示类定义中的方法，则定义如下：</p>
+
+<pre><code class="language-objc">typedef struct objc_method *Method;
+struct objc_method {
+    SEL method_name                 OBJC2_UNAVAILABLE;  // 方法名
+    char *method_types                  OBJC2_UNAVAILABLE;
+    IMP method_imp                      OBJC2_UNAVAILABLE;  // 方法实现
+}
 /**
-    1.isa：需要注意的是在Objective-C中，所有的类自身也是一个对象，这个对象的Class里面也有一个
-    isa指针，它指向metaClass(元类)
-    2.super_class：指向该类的父类，如果该类已经是最顶层的根类(如NSObject或NSProxy)，则
-    super_class为NULL。
-    3.cache：用于缓存最近使用的方法。一个接收者对象接收到一个消息时，它会根据isa指针去查找能够
-    响应这个消息的对象。在实际使用中，这个对象只有一部分方法是常用的，很多方法其实很少用或者根本
-    用不上。这种情况下，如果每次消息来时，我们都是methodLists中遍历一遍，性能势必很差。这时，
-    cache就派上用场了。在我们每次调用过一个方法后，这个方法就会被缓存到cache列表中，下次调用的
-    时候runtime就会优先去cache中查找，如果cache没有，才去methodLists中查找方法。这样，对于那
-    些经常用到的方法的调用，但提高了调用的效率。
-    4.version：我们可以使用这个字段来提供类的版本信息。这对于对象的序列化非常有用，它以让我们
-    识别出不同类定义版本中实例变量布局的改变。
-    5.方法链表里面存储的是Method 类型的,Method中含有SEL和IMP.一个方法 Method，其包含一个方
-    法选标 SEL – 表示该方法的名称，一个types – 表示该方法参数的类型，一个 IMP  - 指向该方法
-    的具体实现的函数指针。
+一个方法 Method，其包含一个方法选标 SEL – 表示该方法的名称，一个types – 表示该方法参数的类
+型，一个 IMP  - 指向该方法的具体实现的函数指针。
 */
 </code></pre>
 
-<pre><code class="language-objc">    NSArray *array = [[NSArray alloc] init];
-    其流程是：
-    1. `[NSArray alloc]`先被执行。因为NSArray没有`+alloc`方法，于是去父类NSObject去查找。
-    2. 检测NSObject是否响应`+alloc`方法，发现响应，于是检测NSArray类，并根据其所需的内存空间大小开始分配内存空间，然后把`isa`指针指向NSArray类。同时，`+alloc`也被加进cache列表里面。
-    3. 接着，执行`-init`方法，如果NSArray响应该方法，则直接将其加入`cache`；如果不响应，则去父类查找。
-    4. 在后期的操作中，如果再以`[[NSArray alloc] init]`这种方式来创建数组，则会直接从cache中取出相应的方法，直接调用。
-    //objc_object与id
-    `objc_object`是表示一个类的实例的结构体，它的定义如下(`objc/objc.h`)：
-    //objc
-    struct objc_object {
-        Class isa  OBJC_ISA_AVAILABILITY;
-    };
-    typedef struct objc_object *id;
-    /**
-    可以看到，这个结构体只有一个字体，即指向其类的isa指针。这样，当我们向一个Objective-C对象发
-    送消息时，运行时库会根据实例对象的isa指针找到这个实例对象所属的类。Runtime库会在类的方法列
-    表及父类的方法列表中去寻找与消息对应的selector指向的方法。找到后即运行这个方法。
-    当创建一个特定类的实例对象时，分配的内存包含一个objc_object数据结构，然后是类的实例变量的数
-    据。NSObject类的alloc和allocWithZone:方法使用函数`class_createInstance`来创建objc_object数据结构。
-    */
+<p>我们可以看到该结构体中包含一个SEL和IMP，实际上相当于在SEL和IMP之间作了一个映射。有了SEL，我们便可以找到对应的IMP，从而调用方法的实现代码。</p>
+
+<p>查找IMP 时<br/>
+1，首先去该类的方法 cache 中查找，如果找到了就返回它；<br/>
+2，如果没有找到，就去该类的方法列表中查找。如果在该类的方法列表中找到了，则将 IMP 返回，并将它加入cache中缓存起来。根据最近使用原则，这个方法再次调用的可能性很大，缓存起来可以节省下次调用再次查找的开销。<br/>
+3，如果在该类的方法列表中没找到对应的 IMP，在通过该类结构中的 super_class指针在其父类结构的方法列表中去查找，直到在某个父类的方法列表中找到对应的IMP，返回它，并加入cache中。</p>
+
+<p>4，如果在自身以及所有父类的方法列表中都没有找到对应的 IMP，则进入下文中要讲的消息转发流程。<br/>
+是没有找到实现进入消息转发流程</p>
+
+<h4 id="toc_4">objc_method_description</h4>
+
+<p><code>objc_method_description</code>定义了一个Objective-C方法</p>
+
+<pre><code class="language-objc">struct objc_method_description { SEL name; char *types; };
 </code></pre>
 
-<h4 id="toc_1">objc_cache</h4>
+<h2 id="toc_5">方法相关操作函数</h2>
 
-<p>此处为上面所说的cache的<a href="http://southpeak.github.io/2014/10/25/objective-c-runtime-1/">demo</a>:为一个objc_cache结构体的指针</p>
+<p>Runtime提供了一系列的方法来处理与方法相关的操作。包括方法本身及SEL。</p>
 
-<pre><code class="language-objc">struct objc_cache {
-    unsigned int mask /* total = mask + 1 */                 OBJC2_UNAVAILABLE;
-    /*
-    mask：一个整数，指定分配的缓存bucket的总数。在方法查找过程中，Objective-C runtime使用这
-    个字段来确定开始线性查找数组的索引位置。指向方法selector的指针与该字段做一个AND位操作
-    (index = (mask &amp; selector))。这可以作为一个简单的hash散列算法。
-    */
-    unsigned int occupied                                    OBJC2_UNAVAILABLE;
-    //occupied：一个整数，指定实际占用的缓存bucket的总数
-    Method buckets[1]                                        OBJC2_UNAVAILABLE;
-    /**
-        buckets：指向Method数据结构指针的数组。这个数组可能包含不超过mask+1个元素。需要注意的
-        是，指针可能是NULL，表示这个缓存bucket没有被占用，另外被占用的bucket可能是不连续的。
-        这个数组可能会随着时间而增长。
-    */
-};
+<h3 id="toc_6">方法</h3>
+
+<pre><code class="language-objc">// 调用指定方法的实现
+id method_invoke ( id receiver, Method m, ... );
+// 调用返回一个数据结构的方法的实现
+void method_invoke_stret ( id receiver, Method m, ... );
+// 获取方法名
+SEL method_getName ( Method m );
+// 返回方法的实现
+IMP method_getImplementation ( Method m );
+// 获取描述方法参数和返回值类型的字符串
+const char * method_getTypeEncoding ( Method m );
+// 获取方法的返回值类型的字符串
+char * method_copyReturnType ( Method m );
+// 获取方法的指定位置参数的类型字符串
+char * method_copyArgumentType ( Method m, unsigned int index );
+// 通过引用返回方法的返回值类型字符串
+void method_getReturnType ( Method m, char *dst, size_t dst_len );
+// 返回方法的参数的个数
+unsigned int method_getNumberOfArguments ( Method m );
+// 通过引用返回方法指定位置参数的类型字符串
+void method_getArgumentType ( Method m, unsigned int index, char *dst, size_t dst_len );
+// 返回指定方法的方法描述结构体
+struct objc_method_description * method_getDescription ( Method m );
+// 设置方法的实现
+IMP method_setImplementation ( Method m, IMP imp );
+
+// 交换两个方法的实现
+void method_exchangeImplementations ( Method m1, Method m2 );
+
+//注意:这里的dst只是一个引用  用来获取我们需要的值 类似返回类变量列表时的个数
 </code></pre>
 
-<h4 id="toc_2">元类(Meta Class)</h4>
+<ul>
+<li><code>method_invoke</code>函数，返回的是实际实现的返回值。参数<code>receiver</code>不能为空。这个方法的效率会比<code>method_getImplementation</code>和<code>method_getName</code>更快。</li>
+<li><code>method_getName</code>函数，返回的是一个SEL。如果想获取方法名的C字符串，可以使用<code>sel_getName(method_getName(method))</code>。</li>
+<li><code>method_getReturnType</code>函数，类型字符串会被拷贝到<code>dst</code>中</li>
+<li><code>method_setImplementation</code>函数，注意该函数返回值是方法之前的实现。</li>
+</ul>
 
-<p>所有的类自身也是一个对象，我们可以向这个对象发送消息(即调用类方法)<br/>
-<code>NSArray *array = [NSArray array];</code><br/>
-+array消息发送给了NSArray类，而这个NSArray也是一个对象。既然是对象，那么它也是一个objc_object指针，它包含一个指向其类的一个isa指针。那么这些就有一个问题了，这个isa指针指向什么呢？为了调用+array方法，这个类的isa指针必须指向一个包含这些类方法的一个objc_class结构体。这就引出了meta-class的概念<br/>
-<strong>meta-class是一个类对象的类</strong></p>
+<h3 id="toc_7">方法选择器</h3>
 
-<p>meta-class之所以重要，是因为它存储着一个类的所有类方法。每个类都会有一个单独的meta-class，因为每个类的类方法基本不可能完全相同。</p>
-
-<p>因此:<code>objc_class</code> 的isa指向的是元类，<code>objc_object</code>的isa指向的是实例对象所属的类.当我们向一个对象发送消息时，runtime会在这个对象所属的这个类的方法列表中查找方法；而向一个类发送消息时，会在这个类的<code>meta-class</code>的方法列表中查找。<br/>
-补充:<br/>
-<code>meta-class</code>也是一个类，也可以向它发送一个消息，那么它的isa又是指向什么呢？为了不让这种结构无限延伸下去，Objective-C的设计者让所有的<code>meta-class</code>的isa指向<code>基类的meta-class</code>，以此作为它们的所属类。即，任何NSObject继承体系下的<code>meta-class</code>都使用NSObject的<code>meta-class</code>作为自己的所属类，而基类的<code>meta-class</code>的isa指针是指向它自己。这样就形成了一个完美的闭环。因此:<br/>
-<em>对NSObject继承体系来说，其实例方法对体系中的所有实例、类和meta-class都是有效的；而类方法对于体系内的所有类和meta-class都是有效的</em></p>
-
-<p>Demo:</p>
-
-<pre><code class="language-objc">void TestMetaClass(id self, SEL _cmd) {
-    NSLog(@&quot;This objcet is %p&quot;, self);
-    NSLog(@&quot;Class is %@, super class is %@&quot;, [self class], [self superclass]);
-    Class currentClass = [self class];
-    for (int i = 0; i &lt; 4; i++) {
-        NSLog(@&quot;Following the isa pointer %d times gives %p&quot;, i, currentClass);
-        currentClass = objc_getClass((__bridge void *)currentClass);
-    }
-    NSLog(@&quot;NSObject&#39;s class is %p&quot;, [NSObject class]);
-    NSLog(@&quot;NSObject&#39;s meta class is %p&quot;, objc_getClass((__bridge void *)[NSObject class]));
-}
-#pragma mark -
-@implementation Test
-- (void)ex_registerClassPair {
-    Class newClass = objc_allocateClassPair([NSError class], &quot;TestClass&quot;, 0);
-    class_addMethod(newClass, @selector(testMetaClass), (IMP)TestMetaClass, &quot;v@:&quot;);
-    objc_registerClassPair(newClass);
-    id instance = [[newClass alloc] initWithDomain:@&quot;some domain&quot; code:0 userInfo:nil];
-    [instance performSelector:@selector(testMetaClass)];
-}
-@end
-
-//运行结果
-2014-10-20 22:57:07.352 mountain[1303:41490] This objcet is 0x7a6e22b0
-2014-10-20 22:57:07.353 mountain[1303:41490] Class is TestStringClass, super class is NSError
-2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 0 times gives 0x7a6e21b0
-2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 1 times gives 0x0
-2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 2 times gives 0x0
-2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 3 times gives 0x0
-2014-10-20 22:57:07.353 mountain[1303:41490] NSObject&#39;s class is 0xe10000
-2014-10-20 22:57:07.354 mountain[1303:41490] NSObject&#39;s meta class is 0x0
-//注意:我们在一个类对象调用class方法是无法获取meta-class，它只是返回类而已。
+<pre><code class="language-objc">// 返回给定选择器指定的方法的名称
+const char * sel_getName ( SEL sel );
+// 在Objective-C Runtime系统中注册一个方法，将方法名映射到一个选择器，并返回这个选择器
+SEL sel_registerName ( const char *str );
+// 在Objective-C Runtime系统中注册一个方法
+SEL sel_getUid ( const char *str );
+// 比较两个选择器
+BOOL sel_isEqual ( SEL lhs, SEL rhs );
 </code></pre>
 
-<hr/>
+<p><code>sel_registerName</code>函数：在我们将一个方法添加到类定义时，我们必须在Objective-C Runtime系统中注册一个方法名以获取方法的选择器。</p>
 
-<h2 id="toc_3">类与对象操作函数</h2>
+<h2 id="toc_8">方法调用流程</h2>
 
-<p>runtime提供的操作类的方法主要就是针对<code>objc_class</code>结构体中的各个字段的</p>
+<p>在Objective-C中，<strong>消息</strong>直到运行时才绑定到<strong>方法实现</strong>上。编译器会将消息表达式<code>[receiver message]</code>转化为一个消息函数的调用，即<code>objc_msgSend</code>。这个函数将消息接收者和方法名作为其基础参数:</p>
 
-<h4 id="toc_4">类名</h4>
-
-<pre><code class="language-objc">// 获取类的类名
-const char * class_getName ( Class cls );
-//如果传入的cls为Nil，则返回一个字字符串。
+<pre><code class="language-objc">objc_msgSend(receiver, selector)
+//如果方法中还有其他参数
+objc_msgSend(receiver, selector, arg1, arg2, ...)
 </code></pre>
 
-<h4 id="toc_5">父类(super_class)和元类(meta-class)</h4>
+<p><code>这个函数</code>完成了动态绑定的所有事情:</p>
 
-<pre><code class="language-objc">// 获取类的父类
-Class class_getSuperclass ( Class cls );
-// 判断给定的Class是否是一个元类
-BOOL class_isMetaClass ( Class cls );
+<pre><code>1. **首先它找到selector对应的方法实现。因为同一个方法可能在不同的类中有不同的实现，所以我们需要依赖于接收者的类来找到的确切的实现。**
+    注意:是找到方法对应的 。。。实现。。。
+2. 它调用方法实现，并将接收者对象及方法的所有参数传给它。
+3. 最后，它将实现返回的值作为它自己的返回值。
 </code></pre>
 
-<p><code>class_getSuperclass</code>函数，当cls为Nil或者cls为根类时，返回Nil。不过通常我们可以使用NSObject类的superclass方法来达到同样的目的。<br/>
-<code>class_isMetaClass</code>函数，如果是cls是元类，则返回YES；如果否或者传入的cls为Nil，则返回NO。</p>
-
-<h4 id="toc_6">实例变量大小(instance_size)</h4>
-
-<pre><code class="language-objc">// 获取实例大小
-size_t class_getInstanceSize ( Class cls );
-
-</code></pre>
-
-<h4 id="toc_7">成员变量(ivars)及属性</h4>
-
-<p>在<code>objc_class</code>中，所有的成员变量、属性的信息是放在链表<code>ivars</code>中的。<code>ivars</code>是一个数组，数组中每个元素是指向Ivar(变量信息)的指针。runtime提供了丰富的函数来操作这一字段。大体上可以分为以下几类：</p>
+<p>消息的关键在于我们前面章节讨论过的结构体objc_class，这个结构体有两个字段是我们在分发消息的关注的：</p>
 
 <ol>
-<li>成员变量操作函数，主要包含以下函数：</li>
+<li>指向父类的指针</li>
+<li>一个类的方法分发表，即<code>methodLists</code></li>
 </ol>
 
-<pre><code class="language-objc">// 获取类中指定名称实例成员变量的信息
-Ivar class_getInstanceVariable ( Class cls, const char *name );
-// 获取类成员变量的信息:
-Ivar class_getClassVariable ( Class cls, const char *name );
-// 添加成员变量
-BOOL class_addIvar ( Class cls, const char *name, size_t size, uint8_t alignment, const char *types );
-// 获取整个成员变量列表(所有成员变量包括 属性创建的_成员变量 和直接_成员变量 创建；包括.h和.m中创建的)
-Ivar * class_copyIvarList ( Class cls, unsigned int *outCount );
-</code></pre>
+<p>当我们创建一个新对象时，先为其分配内存，并初始化其成员变量。其中isa指针也会被初始化，让对象可以访问类及类的继承体系。<br/>
+<img src="media/14878317569666/14879130604804.jpg" alt=""/></p>
 
-<p><code>class_getInstanceVariable</code>函数，它返回一个指向包含name指定的成员变量信息的objc_ivar结构体的指针(Ivar)。<br/>
-<code>class_getInstanceVariable</code>函数，它返回一个指向包含name指定的成员变量信息的objc_ivar结构体的指针(Ivar)。<br/>
-Objective-C不支持往已存在的类中添加实例变量，因此不管是系统库提供的提供的类，还是我们自定义的类，都无法动态添加成员变量。但如果我们<em>通过运行时来创建一个类</em>的话，又应该如何给它添加成员变量呢？这时我们就可以使用<code>class_addIvar</code>函数了。不过需要注意的是，这个方法只能在<code>objc_allocateClassPai</code>函数与<code>objc_registerClassPair</code>之间调用。另外，这个类也不能是元类。成员变量的按字节最小对齐量是<code>1&lt;&lt;alignment</code>。这取决于ivar的类型和机器的架构。如果变量的类型是指针类型，则传递<code>log2(sizeof(pointer_type))</code>。<br/>
-<code>class_copyIvarList</code>函数，它返回一个指向成员变量信息的数组，数组中每个元素是指向该成员变量信息的<code>objc_ivar</code>结构体的指针。这个数组不包含在父类中声明的变量。<code>outCount</code>指针返回数组的大小。需要注意的是，我们<code>必须使用free()</code>来释放这个数组。</p>
+<p>我们通过找类的方法链表找到Method，上图中selector 就是指 Method的 SEL,  address就是指Method的 IMP,因此对于一个实例对象的实例方法我们可以通过这样找到唯一的对应实现</p>
 
-<ol>
-<li>属性操作函数</li>
-</ol>
+<p><strong>当消息发送给一个对象时，objc_msgSend通过对象的isa指针获取到类的结构体，然后在方法分发表里面查找方法的selector。如果没有找到selector，则通过objc_msgSend结构体中的指向父类的指针找到其父类，并在父类的分发表里面查找方法的selector。依此，会一直沿着类的继承体系到达NSObject类。一旦定位到selector，函数会就获取到了实现的入口点，并传入相应的参数来执行方法的具体实现。如果最后没有定位到selector，则会走消息转发流程，</strong></p>
 
-<pre><code class="language-objc">// 获取指定的属性
-objc_property_t class_getProperty ( Class cls, const char *name );
-// 获取属性列表(获取所有属性包括.h和.m中的)
-objc_property_t * class_copyPropertyList ( Class cls, unsigned int *outCount );
-// 为类添加属性
-BOOL class_addProperty ( Class cls, const char *name, const objc_property_attribute_t *attributes, unsigned int attributeCount );
-// 替换类的属性
-void class_replaceProperty ( Class cls, const char *name, const objc_property_attribute_t *attributes, unsigned int attributeCount );
+<p>为了加速消息的处理，运行时系统缓存使用过的selector及对应的方法的地址。</p>
 
-</code></pre>
+<h3 id="toc_9">隐藏参数</h3>
 
-<h4 id="toc_8">方法</h4>
+<p><code>objc_msgSend</code>有两个隐藏参数：<br/>
+    1.消息的接收对象<br/>
+    2.方法的selector</p>
 
-<pre><code class="language-objc">// 添加方法
-BOOL class_addMethod ( Class cls, SEL name, IMP imp, const char *types );
-// 获取实例方法
-Method class_getInstanceMethod ( Class cls, SEL name );
-// 获取类方法
-Method class_getClassMethod ( Class cls, SEL name );
-// 获取所有方法的数组(传入类获取所有实例方法包括.h和.m注意还有属性创建的方法以及.cxx_destruct(与dealloc有关)) 
-//（传入元类获取类方法）
-Method * class_copyMethodList ( Class cls, unsigned int *outCount );
-// 替代方法的实现
-IMP class_replaceMethod ( Class cls, SEL name, IMP imp, const char *types );
-// 返回方法的具体实现
-IMP class_getMethodImplementation ( Class cls, SEL name );
-IMP class_getMethodImplementation_stret ( Class cls, SEL name );
-// 类实例是否响应指定的selector
-BOOL class_respondsToSelector ( Class cls, SEL sel );
+<p>这两个参数为方法的实现提供了调用者的信息。之所以说是隐藏的，是因为它们在定义方法的源代码中没有声明。<em>它们是在编译期被插入实现代码的。</em></p>
 
-IMP imp；
-imp();//即可执行这个方法
+<p>虽然这些参数没有显示声明，但在代码中仍然可以引用它们。我们可以使用self来引用接收者对象，使用_cmd来引用选择器。</p>
 
-</code></pre>
-
-<p>我们也可以将IMP转换为函数<br/>
-<code>void (* myMethodIMP)(id self, SEL _cmd) = (void *)imp;</code><br/>
-然后就可以通过执行函数来执行imp</p>
-
-<p><code>class_addMethod</code>的实现会覆盖父类的方法实现，但不会取代本类中已存在的实现，如果本类中包含一个同名的实现，则函数会返回NO。如果要修改已存在实现，可以使用<code>method_setImplementation</code>。一个Objective-C方法是一个简单的C函数，它至少包含两个参数–self和_cmd。所以，我们的实现函数(IMP参数指向的函数)至少需要两个参数，如下所示：</p>
-
-<pre><code class="language-objc">void myMethodIMP(id self, SEL _cmd)
+<pre><code class="language-objc">- strange
 {
-    // implementation ....
+    id  target = getTheReceiver();//此方法已不可用
+    SEL method = getTheMethod();
+    if ( target == self || method == _cmd )
+        return nil;
+    return [target performSelector:method];
 }
 </code></pre>
 
-<p><strong>与成员变量不同的是，我们可以为类动态添加方法，不管这个类是否已存在。</strong><br/>
-参数types是一个描述传递给方法的参数类型的字符数组</p>
+<p>当然，这两个参数我们用得比较多的是self，_cmd在实际中用得比较少。</p>
 
-<p><code>class_getInstanceMethod</code>、<code>class_getClassMethod函数</code>，与<code>class_copyMethodList</code>不同的是，这两个函数都会去搜索父类的实现</p>
+<h3 id="toc_10">获取方法地址</h3>
 
-<p><code>class_copyMethodList</code>函数，返回包含所有实例方法的数组，如果需要获取类方法，则可以使用<code>class_copyMethodList(object_getClass(cls), &amp;count)</code>(一个类的实例方法是定义在元类里面)。该列表不包含父类实现的方法。outCount参数返回方法的个数。在获取到列表后，我们需要使用free()方法来释放它。</p>
+<p>Runtime中方法的动态绑定让我们写代码时更具灵活性，如我们可以把消息转发给我们想要的对象，或者随意交换一个方法的实现等。不过灵活性的提升也带来了性能上的一些损耗。毕竟我们需要去查找方法的实现，而不像函数调用来得那么直接。当然，方法的缓存一定程度上解决了这一问题。<br/>
+如果想要避开这种动态绑定方式，我们可以获取方法实现的地址，然后像调用函数一样来直接调用它。特别是当我们需要在一个循环内频繁地调用一个特定的方法时，通过这种方式可以提高程序的性能。</p>
 
-<p><code>class_replaceMethod</code>函数，该函数的行为可以分为两种：如果类中不存在name指定的方法，则类似于<code>class_addMethod</code>函数一样会添加方法；如果类中已存在name指定的方法，则类似于<code>method_setImplementation</code>一样替代原方法的实现。</p>
+<p>NSObject类提供了<code>methodForSelector:</code>方法，让我们可以获取到方法的指针，然后通过这个指针来调用实现代码。我们需要将<code>methodForSelector:</code>返回的指针转换为合适的函数类型，函数参数和返回值都需要匹配上。<br/>
+通过下面代码看看<code>methodForSelector</code>的使用:</p>
 
-<p><code>class_getMethodImplementation</code>函数，该函数在向类实例发送消息时会被调用，并返回一个指向方法实现函数的指针。这个函数会比<code>method_getImplementation(class_getInstanceMethod(cls, name))</code>更快。返回的函数指针可能是一个指向runtime内部的函数，而不一定是方法的实际实现。例如，如果类实例无法响应selector，则返回的函数指针将是运行时消息转发机制的一部分</p>
-
-<p><code>class_respondsToSelector</code>函数，我们通常使用NSObject类的<code>respondsToSelector:</code>或<code>instancesRespondToSelector:</code>方法来达到相同目的。</p>
-
-<h4 id="toc_9">协议(objc_protocol_list)</h4>
-
-<pre><code class="language-objc">// 添加协议
-BOOL class_addProtocol ( Class cls, Protocol *protocol );
-// 返回类是否实现指定的协议
-BOOL class_conformsToProtocol ( Class cls, Protocol *protocol );
-// 返回类实现的协议列表
-Protocol * class_copyProtocolList ( Class cls, unsigned int *outCount );
-</code></pre>
-
-<p><code>class_conformsToProtocol</code>函数可以使用NSObject类的<code>conformsToProtocol:</code>方法来替代。</p>
-
-<p><code>class_copyProtocolList</code>函数返回的是一个数组，在使用后我们需要使用<code>free()</code>手动释放。</p>
-
-<h4 id="toc_10">版本(version)</h4>
-
-<pre><code class="language-objc">// 获取版本号
-int class_getVersion ( Class cls );
-// 设置版本号
-void class_setVersion ( Class cls, int version );
+<pre><code class="language-objc">void (*setter)(id, SEL, BOOL);
+int i;
+setter = (void (*)(id, SEL, BOOL))[target methodForSelector:@selector(setFilled:)];
+for (i = 0 ; i &lt; 1000 ; i++)
+    setter(targetList[i], @selector(setFilled:), YES);
+//注意：这里需要注意的就是函数指针的前两个参数必须是id和SEL。
 
 </code></pre>
 
-<h4 id="toc_11">其它</h4>
+<p>当然这种方式只适合于在类似于for循环这种情况下频繁调用同一方法，以提高性能的情况。另外，<code>methodForSelector:</code>是由<code>Cocoa</code>运行时提供的；它不是<code>Objective-C</code>语言的特性。</p>
 
-<pre><code class="language-objc">Class objc_getFutureClass ( const char *name );
-void objc_setFutureClass ( Class cls, const char *name );
-//通常我们不直接使用这两个函数
+<h2 id="toc_11">消息转发</h2>
+
+<p>当一个对象能接收一个消息时，就会走正常的方法调用流程。但如果一个对象无法接收指定消息时，又会发生什么事呢？默认情况下，如果是以<code>[object message]</code>的方式调用方法，如果object无法响应<code>message</code>消息时，编译器会报错。但如果是以<code>perform...</code>的形式来调用，则需要等到运行时才能确定object是否能接收message消息。如果不能，则程序崩溃。</p>
+
+<p>通常，当我们不能确定一个对象是否能接收某个消息时，会先调用<code>respondsToSelector:</code>来判断一下。</p>
+
+<pre><code class="language-objc">if ([self respondsToSelector:@selector(method)]) {
+    [self performSelector:@selector(method)];
+}
 </code></pre>
 
-<p><strong>注意:</strong><br/>
-SEL :Defines an opaque type that represents a method selector 消息<br/>
-Method:An opaque type that represents a method in a class definition 方法<br/>
-IMP:A pointer to the start of a method implementation. 实现</p>
+<p>不过，我们这边想讨论下不使用respondsToSelector:判断的情况。这才是我们这一节的重点。</p>
 
-<p>实例对象执行方法</p>
+<p>当一个对象无法接收某一消息时，就会启动所谓”<strong>消息转发(message forwarding)</strong>“机制，<br/>
+默认情况下，对象接收到未知的消息，会导致程序崩溃，通过控制台，我们可以看到以下异常信息：</p>
 
-<h2 id="toc_12">动态创建类和对象</h2>
-
-<h4 id="toc_13">动态创建类</h4>
-
-<pre><code class="language-objc">// 创建一个新类和元类 我们在创建类时候已经创建了元类
-Class objc_allocateClassPair ( Class superclass, const char *name, size_t extraBytes );
-// 销毁一个类及其相关联的类
-void objc_disposeClassPair ( Class cls );
-// 在应用中注册由objc_allocateClassPair创建的类
-void objc_registerClassPair ( Class cls );
+<pre><code class="language-objc">-[SUTRuntimeMethod method]: unrecognized selector sent to instance 0x100111940
+*** Terminating app due to uncaught exception &#39;NSInvalidArgumentException&#39;, reason: &#39;-[SUTRuntimeMethod method]: unrecognized selector sent to instance 0x100111940&#39;
 </code></pre>
 
-<p><code>objc_allocateClassPair</code>函数：如果我们要创建一个根类，则superclass指定为Nil。extraBytes通常指定为0，该参数是分配给类和元类对象尾部的索引ivars的字节数。<br/>
-使用步骤:<br/>
-为了创建一个新类，我们需要调用<code>objc_allocateClassPair</code>。然后使用诸如<code>class_addMethod</code>，<code>class_addIvar</code>等函数来为新创建的类添加方法、实例变量和属性等。完成这些后，我们需要调用<code>objc_registerClassPair</code>函数来注册类，之后这个新类就可以在程序中使用了</p>
+<p>这段异常信息实际上是由NSObject的”<code>doesNotRecognizeSelector</code>“方法抛出的。不过，我们可以采取一些措施，让我们的程序执行特定的逻辑，而避免程序的崩溃。</p>
 
-<p>实例方法和实例变量应该添加到类自身上，而类方法应该添加到类的元类上。</p>
-
-<p><code>objc_disposeClassPair</code>函数用于销毁一个类，不过需要注意的是，如果程序运行中还存在类或其子类的实例，则不能调用针对类调用该方法</p>
-
-<h4 id="toc_14">动态创建对象</h4>
-
-<pre><code class="language-objc">// 创建类实例```objc
-id class_createInstance ( Class cls, size_t extraBytes );
-// 在指定位置创建类实例
-id objc_constructInstance ( Class cls, void *bytes );
-// 销毁类实例
-void * objc_destructInstance ( id obj );
-</code></pre>
-
-<p><code>class_createInstance</code>函数：创建实例时，会在默认的内存区域为类分配内存。extraBytes参数表示分配的额外字节数。这些额外的字节可用于存储在类定义中所定义的实例变量之外的实例变量。<code>该函数在ARC环境下无法使用</code>。</p>
-
-<p>调用class_createInstance的效果与+alloc方法类似。不过在使用class_createInstance时，我们需要确切的知道我们要用它来做什么。</p>
-
-<pre><code class="language-objc">id theObject = class_createInstance(NSString.class, sizeof(unsigned));
- 
-id str1 = [theObject init];
-NSLog(@&quot;%@&quot;, [str1 class]);
-id str2 = [[NSString alloc] initWithString:@&quot;test&quot;];
-NSLog(@&quot;%@&quot;, [str2 class]);
-
-//输出结果:
-2014-10-23 12:46:50.781 RuntimeTest[4039:89088] NSString
-2014-10-23 12:46:50.781 RuntimeTest[4039:89088] __NSCFConstantString
-/**
-使用class_createInstance函数获取的是NSString实例，而不是类簇中的默认占位符类__NSCFConstantString。
-*/
-</code></pre>
-
-<p><code>objc_constructInstance</code>函数：在指定的位置(bytes)创建类实例。</p>
-
-<p><code>objc_destructInstance</code>函数：销毁一个类的实例，但不会释放并移除任何与其相关的引用。</p>
-
-<h4 id="toc_15">实例操作函数</h4>
-
-<p>实例操作函数主要是针对我们创建的实例对象的一系列操作函数，我们可以使用这组函数来从实例对象中获取我们想要的一些信息，如实例对象中变量的值。</p>
+<p><strong>消息转发机制分为3部分:</strong></p>
 
 <ol>
-<li>针对整个对象进行操作的函数</li>
+<li><strong>动态方法解析</strong></li>
+<li><strong>备用接收者</strong></li>
+<li><strong>完整转发</strong></li>
 </ol>
 
-<pre><code class="language-objc">// 返回指定对象的一份拷贝
-id object_copy ( id obj, size_t size );
-// 释放指定对象占用的内存
-id object_dispose ( id obj );
-</code></pre>
+<h3 id="toc_12">动态方法解析</h3>
 
-<p>举个栗子:</p>
+<p>对象在接收到未知的消息时，首先会调用所属类的类方法<code>+resolveInstanceMethod:</code>(实例方法)或者<code>+resolveClassMethod:</code>(类方法)。<br/>
+在这个方法中，我们有机会为该未知消息新增一个”处理方法””。不过使用该方法的前提是我们已经实现了该”处理方法”，只需要在运行时通过class_addMethod函数动态添加到类里面就可以了。<br/>
+举个栗子:</p>
 
-<pre><code class="language-objc">//把对象a转换为其子类的对象b
-NSObject *a = [[NSObject alloc] init];
-id newB = object_copy(a, class_getInstanceSize(MyClass.class));
-//设置对象所属类
-object_setClass(newB, MyClass.class);
-object_dispose(a);
-</code></pre>
-
-<ol>
-<li>针对对象实例变量进行操作的函数</li>
-</ol>
-
-<pre><code class="language-objc">// 修改类实例的实例变量的值
-Ivar object_setInstanceVariable ( id obj, const char *name, void *value );
-// 获取对象实例变量的值
-Ivar object_getInstanceVariable ( id obj, const char *name, void **outValue );
-// 返回指向给定对象分配的任何额外字节的指针
-void * object_getIndexedIvars ( id obj );
-// 返回对象中实例变量的值
-id object_getIvar ( id obj, Ivar ivar );
-// 设置对象中实例变量的值
-void object_setIvar ( id obj, Ivar ivar, id value );
-</code></pre>
-
-<p>如果实例变量的Ivar已经知道，那么调用<code>object_getIvar</code>会比<code>object_getInstanceVariable</code>函数快，相同情况下，<code>object_setIvar</code>也比<code>object_setInstanceVariable</code>快</p>
-
-<ol>
-<li>针对对象的类进行操作的函数</li>
-</ol>
-
-<pre><code class="language-objc">// 返回给定对象的类名
-const char * object_getClassName ( id obj );
-// 返回对象的类
-Class object_getClass ( id obj );
-// 设置对象的类
-Class object_setClass ( id obj, Class cls );
-
-</code></pre>
-
-<h2 id="toc_16">获取类定义</h2>
-
-<p>Objective-C动态运行库会自动注册我们代码中定义的所有的类。我们也可以在运行时创建类定义并使用<code>objc_addClass</code>函数来注册它们。runtime提供了一系列函数来获取类定义相关的信息，这些函数主要包括：</p>
-
-<pre><code class="language-objc">// 获取已注册的类定义的列表
-int objc_getClassList ( Class *buffer, int bufferCount );
-// 创建并返回一个指向所有已注册类的指针列表
-Class * objc_copyClassList ( unsigned int *outCount );
-// 返回指定类的类定义
-Class objc_lookUpClass ( const char *name );
-Class objc_getClass ( const char *name );
-Class objc_getRequiredClass ( const char *name );
-// 返回指定类的元类
-Class objc_getMetaClass ( const char *name );
-</code></pre>
-
-<p><code>objc_getClassList</code>函数：获取已注册的类定义的列表。我们不能假设从该函数中获取的类对象是继承自NSObject体系的，所以在这些类上调用方法时，都应该先检测一下这个方法是否在这个类中实现。</p>
-
-<p>举个栗子：</p>
-
-<pre><code class="language-objc">int numClasses;
-Class * classes = NULL;
-numClasses = objc_getClassList(NULL, 0);
-if (numClasses &gt; 0) {
-    classes = malloc(sizeof(Class) * numClasses);
-    numClasses = objc_getClassList(classes, numClasses);
-    NSLog(@&quot;number of classes: %d&quot;, numClasses);
-    for (int i = 0; i &lt; numClasses; i++) {
-        Class cls = classes[i];
-        NSLog(@&quot;class name: %s&quot;, class_getName(cls));
+<pre><code class="language-objc">void functionForMethod1(id self, SEL _cmd) {
+   NSLog(@&quot;%@, %p&quot;, self, _cmd);
+}
+    
++ (BOOL)resolveInstanceMethod:(SEL)sel {
+    NSString *selectorString = NSStringFromSelector(sel);
+    if ([selectorString isEqualToString:@&quot;method1&quot;]) {
+        class_addMethod(self.class, @selector(method1), (IMP)functionForMethod1, &quot;@:&quot;);
     }
-    free(classes);
+    return [super resolveInstanceMethod:sel];
 }
-//输出结果:
-
 </code></pre>
 
-<p>获取类定义的方法有三个：<code>objc_lookUpClass</code>, <code>objc_getClass</code>和<code>objc_getRequiredClass</code>。如果类在运行时未注册，则<code>objc_lookUpClass</code>会返回nil，而<code>objc_getClass</code>会调用类处理回调，并再次确认类是否注册，如果确认未注册，再返回nil。而<code>objc_getRequiredClass</code>函数的操作与<code>objc_getClass</code>相同，只不过如果没有找到类，则会杀死进程。</p>
+<p><strong>不过这种方案更多的是为了实现@dynamic属性。</strong></p>
 
-<p><code>objc_getMetaClass</code>函数：如果指定的类没有注册，则该函数会调用类处理回调，并再次确认类是否注册，如果确认未注册，再返回nil。不过，每个类定义都必须有一个有效的元类定义，所以这个函数总是会返回一个元类定义，不管它是否有效。</p>
+<h3 id="toc_13">备用接受者</h3>
+
+<p>如果在上一步无法处理消息，则Runtime会继续调以下方法：</p>
+
+<pre><code class="language-objc">- (id)forwardingTargetForSelector:(SEL)aSelector
+</code></pre>
+
+<p>如果一个对象实现了这个方法，并返回一个非nil的结果，则这个对象会作为消息的新接收者，且消息会被分发到这个对象。当然这个对象不能是self自身，否则就是出现无限循环。当然，如果我们没有指定相应的对象来处理aSelector，则应该调用父类的实现来返回结果。</p>
+
+<p>使用这个方法通常是在对象内部，可能还有一系列其它对象能处理该消息，我们便可借这些对象来处理消息并返回，这样在对象外部看来，还是由该对象亲自处理了这一消息。举个栗子：详见运行时实例</p>
+
+<h3 id="toc_14">完整消息转发</h3>
+
+<p>如果在上一步还不能处理未知消息，则唯一能做的就是启用完整的消息转发机制了。</p>
+
+<pre><code class="language-objc">- (void)forwardInvocation:(NSInvocation *)anInvocation
+</code></pre>
+
+<p>运行时系统会在这一步给消息接收者最后一次机会将消息转发给其它对象。对象会创建一个表示消息的<code>NSInvocation</code>对象，把与尚未处理的消息有关的全部细节都封装在<code>anInvocation</code>中，包括<code>selector</code>，目标(<code>target</code>)和参数。我们可以在<code>forwardInvocation</code>方法中选择将消息转发给其它对象。</p>
+
+<p><code>forwardInvocation:</code>方法的实现有两个任务：</p>
+
+<ol>
+<li>定位可以响应封装在<code>anInvocation</code>中的消息的对象。这个对象不需要能处理所有未知消息。</li>
+<li>使用<code>anInvocation</code>作为参数，将消息发送到选中的对象。<code>anInvocation</code>将会保留调用结果，运行时系统会提取这一结果并将其发送到消息的原始发送者。</li>
+</ol>
+
+<p>不过，在这个方法中我们可以实现一些更复杂的功能，我们可以对消息的内容进行修改，比如追回一个参数等，然后再去触发消息。另外，若发现某个消息不应由本类处理，则应调用父类的同名方法，以便继承体系中的每个类都有机会处理此调用请求。</p>
+
+<p>还有一个很重要的问题，我们必须重写以下方法：</p>
+
+<pre><code class="language-objc">- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+</code></pre>
+
+<p>消息转发机制使用从这个方法中获取的信息来创建NSInvocation对象。因此我们必须重写这个方法，为给定的selector提供一个合适的方法签名。</p>
+
+<p>完整的示例如下所示：</p>
+
+<pre><code class="language-objc">- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+    NSMethodSignature *signature = [super methodSignatureForSelector:aSelector];
+    if (!signature) {
+        if ([SUTRuntimeMethodHelper instancesRespondToSelector:aSelector]) {
+            signature = [SUTRuntimeMethodHelper instanceMethodSignatureForSelector:aSelector];
+        }
+    }
+    return signature;
+}
+- (void)forwardInvocation:(NSInvocation *)anInvocation {
+    if ([SUTRuntimeMethodHelper instancesRespondToSelector:anInvocation.selector]) {
+        [anInvocation invokeWithTarget:_helper];
+    }
+}
+</code></pre>
+
+<p>NSObject的<code>forwardInvocation:</code>方法实现只是简单调用了<code>doesNotRecognizeSelector:</code>方法，它不会转发任何消息。这样，如果不在以上所述的三个步骤中处理未知消息，则会引发一个异常。</p>
+
+<p>从某种意义上来讲，forwardInvocation:就像一个未知消息的分发中心，将这些未知的消息转发给其它对象。或者也可以像一个运输站一样将所有未知消息都发送给同一个接收对象。这取决于具体的实现。</p>
+
+<h3 id="toc_15">消息转发和多重继承</h3>
+
+<p>回过头来看第二和第三步，通过这两个方法我们可以允许一个对象与其它对象建立关系，以处理某些未知消息，而表面上看仍然是该对象在处理消息。通过这种关系，我们可以模拟“多重继承”的某些特性，让对象可以“继承”其它对象的特性来处理一些事情。不过，这两者间有一个重要的区别：多重继承将不同的功能集成到一个对象中，它会让对象变得过大，涉及的东西过多；而消息转发将功能分解到独立的小的对象中，并通过某种方式将这些对象连接起来，并做相应的消息转发。</p>
+
+<p>不过消息转发虽然类似于继承，但NSObject的一些方法还是能区分两者。如respondsToSelector:和isKindOfClass:只能用于继承体系，而不能用于转发链。便如果我们想让这种消息转发看起来像是继承，则可以重写这些方法，如以下代码所示：</p>
+
+<pre><code class="language-Objc">- (BOOL)respondsToSelector:(SEL)aSelector
+{
+    if ( [super respondsToSelector:aSelector])
+        return YES;
+    else {
+        /* Here, test whether the aSelector message can     *
+         * be forwarded to another object and whether that  *
+         * object can respond to it. Return YES if it can.  */
+    }
+    return NO;  
+}
+</code></pre>
 
                         
                       </div>
@@ -559,7 +470,7 @@ if (numClasses &gt; 0) {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/22</span>
+                    <span class="date">2017/2/23</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E8%BF%90%E8%A1%8C%E6%97%B6.html'>运行时</a></span>
@@ -648,31 +559,31 @@ if (numClasses &gt; 0) {
 	      
 		      
 			      <li class="post">
-			        <a href="14955051645893.html">UIDatePicker</a>
+			        <a href="14966582354331.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954386080339.html">GCD</a>
+			        <a href="14964011409915.html">iOS 开发中的九种锁</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954384117214.html">#pragma</a>
+			        <a href="14958652887586.html">时间 时区</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14951065647732.html">图层性能</a>
+			        <a href="14958642376440.html">定时器</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14945853244045.html">CGRect</a>
+			        <a href="14957029093514.html">UITextView</a>
 			      </li>
 		     
 		  

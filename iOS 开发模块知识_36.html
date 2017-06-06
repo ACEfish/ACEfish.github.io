@@ -103,24 +103,162 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14862735041818.html">
+                <a class="clearlink" href="14871449062159.html">
                 
-                  <h1>iOS 控制器转场</h1>
+                  <h1>XCTest单元测试</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>参考知识网站:<a href="https://github.com/seedante/iOS-Note/wiki/ViewController-Transition">iOS 视图控制器转场详解</a><br/><br/>
-我们平常所说的转场动画 = 转场+动画，两者互不相关。不管是简单的转场动画还是炫酷的转场动画，你想要的效果那是动画的事情，完全是另外一个话题。</p>
+                        	<h3 id="toc_0">1.基础知识</h3>
 
-<h4 id="toc_0">文章前言</h4>
+<p>什么是单元测试:<br/>
+<strong>单元测试是开发者编写的一小段代码，用于检验被测代码中的一个很明确的功能是否正确。通常而言，一个单元测试是用于判断某个特定条件（或者场景）下某个特定函数的行为。</strong><br/>
+单元测试在程序里面可以理解一个模块一个方法，在每个可能存在的模块都进行测试，确保每个模块都没有问题，从而提高整体程序的质量。</p>
 
-<p>视图控制器转换<code>View Controller Transition</code> : 在 NavigationController 里 push 或 pop 一个 View Controller，在 TabBarController 中切换到其他 View Controller，以 Modal 方式显示另外一个 View Controller，这些都是 View Controller Transition;<br/><br/>
-在iOS7之前我们只能使用系统提供的转场动画，仅仅够用而已，7之后开放了相关API允许我们进行转场动画的定制。<br/>
-如果对VC的结构不够了解推荐看:<a href="https://developer.apple.com/library/content/featuredarticles/ViewControllerPGforiPhoneOS/index.html#//apple_ref/doc/uid/TP40007457-CH2-SW1">View Controller Programming Guide for iOS</a><br/>
-<strong>接下来进入正题</strong>.</p>
+<h3 id="toc_1">XCTest使用方法</h3>
 
-<h4 id="toc_1">Transition</h4>
+<ol>
+<li><p><strong>测试用例被分到继承 <code>XCTestCase</code> 的不同子类中去</strong>。<br/>
+每个以 test 为开头的方法都是一个测试用例。<br/>
+自定义类</p></li>
+<li><p>命名<br/><br/>
+我们可以用比如<code>testThatIt</code>将重点转移到期望的结果上的测试用例<br/>
+<code>test + 要测试的方法和类名</code>，比如像 testHTTPRequest来测试一些特定类型的<br/>
+我们还可以采用category 来将它们按主题分类</p></li>
+<li><p>Given / When / Then<br/>
+根据 <code>Given-When-Then</code> 模式来组织我们的测试用例<br/>
+这三部分分别指:Given:通过创建模型对象或将被测试的系统设置到指定的状态，来设定测试环境<br/>
+When:包含了我们要测试的代码<br/>
+Then:检查我们行为的结果，这里通常为一些断言</p></li>
+<li><p>可重用代码<br/>
+整理所有有用的代码片段，并将它们加入到一个<code>公共类</code>中，为所有的测试用例服务,这个公共类非常实用。这个测试基础类能够运行自己的 -setUp 和 -tearDown 方法来配置环境。我们大部分情况用它来初始化测试用的 Core Data 栈，来重新设置我们的具有确定性的 NSUUID (这是那些可以让调试简单得多的一些东西中的一个)，并且设置一些后台的魔法来简化异步测试。</p></li>
+<li><p>Mock<br/>
+我们使用的Mock框架是OCMock，mock 是一个在方法调用时返回标准答案的对象</p></li>
+<li></li>
+</ol>
+
+<h4 id="toc_2">XCTest使用范畴</h4>
+
+<p>Apple在Xcode 6中新增了UnitTest<br/>
+XCTest测试范畴：<br/>
+基本逻辑测试处理测试<br/>
+异步加载数据测试<br/>
+数据mock测试</p>
+
+<p>XCTest常用基本测试工具<br/>
+XCTest常用的一些判断工具都是以XCT开头的</p>
+
+<p><strong>补充:</strong><code>代码覆盖率：</code>代码覆盖率 ＝ 实际执行的代码行数 / 整个工程总代码行数，直白来讲就是这样一个数值；  Xcode7以后Apple推出了更为人性化的<a href="http://www.cocoachina.com/ios/20150915/13163.html">工具</a>来统计代码覆盖率，<a href="http://www.jianshu.com/p/c9f8100a96e6">使用简介传送门</a></p>
+
+<h3 id="toc_3">用XCTest完成的最简单的测试Demo</h3>
+
+<ol>
+<li><p>创建项目时勾选</p>
+
+<p><img src="media/14871449062159/unitTest.png" alt="新建项目时勾选"/></p></li>
+<li><p>进入项目</p>
+
+<p><img src="media/14871449062159/unitTest2.png" alt="注意路径"/></p>
+
+<p>进入到这个类，<code>setUp</code>是每个测试方法调用前执行，<code>tearDown</code>是每个测试方法调用后执行。<code>testExample</code>是测试方法，和我们新建的没有差别。不过测试方法必须<code>testXXX</code>的格式，且不能有参数，不然不会识别为测试方法。测试方法的执行顺序是字典序排序。<br/>
+<img src="media/14871449062159/uinitTest5.png" alt="uinitTest5"/></p></li>
+<li><p>测试用例<br/><br/>
+点击上图箭头的开始图标即可测试这个文件中测试方法<br/>
+在测试方法前也有开始图标,点击即可测试这个方法<br/>
+<img src="media/14871449062159/uinitTest4.png" alt="开始测试" style="width:303px;"/></p>
+
+<p><strong>按快捷键Command + U进行单元测试，这个快捷键是全部测试</strong></p>
+
+<p><img src="media/14871449062159/uinitTest3.png" alt="测试方法出错"/><br/>
+这里我们<code>断言a=0</code>是错误的所以没有通过</p></li>
+<li><p>XCTest常见的断言</p>
+
+<pre><code class="language-Object-c">XCTFail(format…) 生成一个失败的测试；
+
+XCTAssertNil(a1, format...)为空判断，a1为空时通过，反之不通过；
+
+XCTAssertNotNil(a1, format…)不为空判断，a1不为空时通过，反之不通过；
+
+XCTAssert(expression, format...)当expression求值为TRUE时通过；
+
+XCTAssertTrue(expression, format...)当expression求值为TRUE时通过；
+
+XCTAssertFalse(expression, format...)当expression求值为False时通过；
+
+XCTAssertEqualObjects(a1, a2, format...)判断相等，[a1 isEqual:a2]值为TRUE时通过，其中一个不为空时，不通过；
+
+XCTAssertNotEqualObjects(a1, a2, format...)判断不等，[a1 isEqual:a2]值为False时通过；
+
+XCTAssertEqual(a1, a2, format...)判断相等（当a1和a2是 C语言标量、结构体或联合体时使用,实际测试发现NSString也可以）；
+
+XCTAssertNotEqual(a1, a2, format...)判断不等（当a1和a2是 C语言标量、结构体或联合体时使用）；
+
+XCTAssertEqualWithAccuracy(a1, a2, accuracy, format...)判断相等，（double或float类型）提供一个误差范围，当在误差范围（+/-accuracy）以内相等时通过测试；
+
+XCTAssertNotEqualWithAccuracy(a1, a2, accuracy, format...) 判断不等，（double或float类型）提供一个误差范围，当在误差范围以内不等时通过测试；
+
+XCTAssertThrows(expression, format...)异常测试，当expression发生异常时通过；反之不通过；（很变态） XCTAssertThrowsSpecific(expression, specificException, format...) 异常测试，当expression发生specificException异常时通过；反之发生其他异常或不发生异常均不通过；
+
+XCTAssertThrowsSpecificNamed(expression, specificException, exception_name, format...)异常测试，当expression发生具体异常、具体异常名称的异常时通过测试，反之不通过；
+
+XCTAssertNoThrow(expression, format…)异常测试，当expression没有发生异常时通过测试；
+
+XCTAssertNoThrowSpecific(expression, specificException, format...)异常测试，当expression没有发生具体异常、具体异常名称的异常时通过测试，反之不通过；
+
+XCTAssertNoThrowSpecificNamed(expression, specificException, exception_name, format...)异常测试，当expression没有发生具体异常、具体异常名称的异常时通过测试，反之不通过
+</code></pre>
+
+<p><strong>注意:</strong> 特别注意下XCTAssertEqualObjects和XCTAssertEqual。<br/>
+XCTAssertEqualObjects(a1, a2, format...)的判断条件是[a1 isEqual:a2]是否返回一个YES。XCTAssertEqual(a1, a2, format...)的判断条件是a1 == a2是否返回一个YES。对于后者，如果a1和a2都是基本数据类型变量，那么只有a1 == a2才会返回YES<br/>
+XCAssertEqual(a1, a2, format...)当a1和a2是 C语言标量、结构体或联合体时使用,实际测试发现NSString也可以</p></li>
+<li><p>性能测试用例的实现<br/>
+<img src="media/14871449062159/14872135691276.jpg" alt=""/></p></li>
+<li></li>
+</ol>
+
+<h4 id="toc_4">1. XCTest异步测试</h4>
+
+<p>XCTestExpression类带入了<strong>异步测试</strong>,我们可以可以等待指定长度的时间，一直到某些条件符合的时候在开始测试。而不用再写很多的GCD代码控制<br/>
+我们可以定义这样的宏</p>
+
+<pre><code class="language-Object-c">#define WAIT do {\
+[self expectationForNotification:@&quot;RSBaseTest&quot; object:nil handler:nil];\
+[self waitForExpectationsWithTimeout:30 handler:nil];\
+} while (0);
+
+#define NOTIFY \
+[[NSNotificationCenter defaultCenter]postNotificationName:@&quot;RSBaseTest&quot; object:nil];
+</code></pre>
+
+<p>异步网络测试用例</p>
+
+<pre><code class="language-Object-c">-(void)testRequest{
+    // 1.获得请求管理者
+    AFHTTPRequestOperationManager *mgr = [AFHTTPRequestOperationManager manager];
+    mgr.responseSerializer.acceptableContentTypes = [NSSet setWithObjects:@&quot;text/html&quot;,nil];
+    // 2.发送GET请求
+    [mgr GET:@&quot;http://www.weather.com.cn/adat/sk/101110101.html&quot; parameters:nil success:^(AFHTTPRequestOperation *operation, id responseObject) {
+        NSLog(@&quot;responseObject:%@&quot;,responseObject);
+        XCTAssertNotNil(responseObject, @&quot;返回出错&quot;);
+        self.stAlertView = [[STAlertView alloc]initWithTitle:@&quot;验证码&quot; message:nil textFieldHint:@&quot;请输入手机验证码&quot; textFieldValue:nil cancelButtonTitle:@&quot;取消&quot; otherButtonTitle:@&quot;确定&quot; cancelButtonBlock:^{
+            //点击取消返回后执行
+            [self testAlertViewCancel];
+            NOTIFY //继续执行
+        } otherButtonBlock:^(NSString *b) {
+            //点击确定后执行
+            [self alertViewComfirm:b];
+            NOTIFY //继续执行
+        }];
+        [self.stAlertView show];
+    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+        NSLog(@&quot;error:%@&quot;,error);
+        XCTAssertNil(error, @&quot;请求出错&quot;);
+        NOTIFY //继续执行
+    }];
+    WAIT  //暂停
+}
+</code></pre>
 
                         
                       </div>
@@ -129,10 +267,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/5</span>
+                    <span class="date">2017/2/15</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
+          					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -218,31 +356,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="14955051645893.html">UIDatePicker</a>
+			        <a href="14966582354331.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954386080339.html">GCD</a>
+			        <a href="14964011409915.html">iOS 开发中的九种锁</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954384117214.html">#pragma</a>
+			        <a href="14958652887586.html">时间 时区</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14951065647732.html">图层性能</a>
+			        <a href="14958642376440.html">定时器</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14945853244045.html">CGRect</a>
+			        <a href="14957029093514.html">UITextView</a>
 			      </li>
 		     
 		  

@@ -103,32 +103,83 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14873195104181.html">
+                <a class="clearlink" href="14964011409915.html">
                 
-                  <h1>NSRunLoop</h1>
+                  <h1>iOS 开发中的九种锁</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>实际上，Run loop并不像 GCD 或者操作队列那样是一种并发机制，因为它并不能并行执行任务。不过在<code>主 dispatch/operation</code>队列中， <code>run loop</code> 将直接配合任务的执行，它提供了一种异步执行代码的机制。</p>
+                        	<p>我们在使用多线程的时候多个线程可能会访问同一块资源，这样就很容易引发数据错乱和数据安全等问题，这时候就需要我们保证每次只有一个线程访问这一块资源，锁 应运而生。</p>
 
-<p><strong>一个 run loop 总是绑定到某个特定的线程中。main run loop 是与主线程相关的</strong><br/>
-在每一个 Cocoa 和 CocoaTouch 程序中，这个 main run loop 都扮演了一个核心角色，它负责处理 UI 事件、计时器，以及其它内核相关事件。无论你什么时候设置<code>计时器</code>、使用<code>NSURLConnection</code>或者调用 <code>performSelector:withObject:afterDelay:</code>，其实背后都是 run loop 在处理这些异步任务。</p>
+<h2 id="toc_0">一、OSSpinLock 自旋锁</h2>
 
-<p>run loop 可以运行在不同的模式中，每种模式都定义了一组事件，供 run loop 做出响应。这在对应 main run loop 中暂时性的将某个任务优先执行的一种聪明的做法。<br/>
-* NSDefalutRunLoopMode : 默认Mode, 通常主线程在这个模式下运行<br/>
-* UITrackingRunLoopMode : 滑动ScrollView是会切换到这个模式<br/>
-* NSRunLoopCommonModes: 包括上面两个模式</p>
+<p>OSSpinLock 自旋锁，性能最高的锁。在任何时刻只会有一个线程能获得锁,而其他线程忙着等待直到获得锁。缺点是<code>spinlock</code>使用不当(如临界区执行时间过长)会导致<code>cpu busy</code>飙高。不适合较长时间任务</p>
 
-<p>例1:滑动ScrollView后系统把RunLoop切换为UITrackingRunLoopMode,因此加载默认模式中的定时器并不会执行,只有滚动停止回到默认模式才会继续执行。我们可以把定时器设为 <code>NSRunLoopCommonModes</code>的模式，并添加到 run loop 中；<br/>
-<code>[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];</code></p>
+<pre><code class="language-objc">__block OSSpinLock theLock = OS_SPINLOCK_INIT;
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    OSSpinLockLock(&amp;theLock);
+    NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+    sleep(3);
+    NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+    OSSpinLockUnlock(&amp;theLock);
 
-<p>例2:当tableview的cell从网络异步加载图片, 加载完成后在主线程刷新显示图片, 这时滑动tableview会造成卡顿. 通常的思路是tableview滑动的时候延迟加载图片, 等停止滑动时再显示图片. 这里我们可以通过RunLoop来实现.<br/>
-<code>[self.cellImageView performSelector:@sector(setImage:) withObject:downloadedImage afterDelay:0 inModes:@[NSDefaultRunLoopMode]];</code></p>
+});
 
-<p>主线程一般来说都已经配置好了 main run loop。然而其他线程默认情况下都没有设置 run loop。你也可以自行为其他线程设置 run loop ，但是一般来说我们很少需要这么做。大多数时间使用 main run loop 会容易得多。如果你需要处理一些很重的工作，但是又不想在主线程里做，你仍然可以在你的代码在 main run loop 中被调用后将工作分配给其他队列。Chris 在他关于<a href="https://objccn.io/issue-2-2/">常见的后台实践</a>的文章里阐述了一些关于这种模式的很好的例子。</p>
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    OSSpinLockLock(&amp;theLock);
+    sleep(1);
+    NSLog(@&quot;需要线程同步的操作2&quot;);
+    OSSpinLockUnlock(&amp;theLock);
 
-<p>如果你真需要在别的线程中添加一个 run loop ，那么不要忘记在 run loop 中至少添加一个 input source 。如果 run loop 中没有设置好的 input source，那么每次运行这个 run loop ，它都会立即退出。</p>
+});
+</code></pre>
+
+<pre><code class="language-objc">//
+OS_SPINLOCK_INIT： 默认值为 0,在 locked 状态时就会大于 0，unlocked状态下为 0
+OSSpinLockLock(&amp;oslock)：上锁，参数为 OSSpinLock 地址
+OSSpinLockUnlock(&amp;oslock)：解锁，参数为 OSSpinLock 地址
+OSSpinLockTry(&amp;oslock)：尝试加锁，可以加锁则立即加锁并返回 YES,反之返回 NO
+/**
+当前线程锁失败，也可以继续其它任务，用 trylock 合适
+当前线程只有锁成功后，才会做一些有意义的工作，那就 lock，没必要轮询 trylock
+*/
+</code></pre>
+
+<p>注意:<br/>
+<a href="http://blog.ibireme.com/2016/01/16/spinlock_is_unsafe_in_ios/">不再安全的 OSSpinLock</a></p>
+
+<h2 id="toc_1">二、dispatch_semaphore 信号量</h2>
+
+<p>是GCD的用来同步的一种方式</p>
+
+<pre><code class="language-objc">  dispatch_semaphore_t signal = dispatch_semaphore_create(1);
+    dispatch_time_t overTime = dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC);
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        dispatch_semaphore_wait(signal, overTime);
+            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+            sleep(2);
+            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+        dispatch_semaphore_signal(signal);
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        sleep(1);
+        dispatch_semaphore_wait(signal, overTime);
+            NSLog(@&quot;需要线程同步的操作2&quot;);
+        dispatch_semaphore_signal(signal);
+    });
+</code></pre>
+
+<pre><code class="language-objc">dispatch_semaphore_create(1)： 传入值必须 &gt;=0, 若传入为 0 则阻塞线程并等待timeout,
+时间到后会执行其后的语句
+dispatch_semaphore_wait(signal, overTime)：可以理解为 lock,会使得 signal 值 -1
+//
+
+
+dispatch_semaphore_signal(signal)：可以理解为 unlock,会使得 signal 值 +1
+</code></pre>
 
                         
                       </div>
@@ -137,7 +188,7 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/17</span>
+                    <span class="date">2017/6/2</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
@@ -226,31 +277,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="14955051645893.html">UIDatePicker</a>
+			        <a href="14966582354331.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954386080339.html">GCD</a>
+			        <a href="14964011409915.html">iOS 开发中的九种锁</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954384117214.html">#pragma</a>
+			        <a href="14958652887586.html">时间 时区</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14951065647732.html">图层性能</a>
+			        <a href="14958642376440.html">定时器</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14945853244045.html">CGRect</a>
+			        <a href="14957029093514.html">UITextView</a>
 			      </li>
 		     
 		  

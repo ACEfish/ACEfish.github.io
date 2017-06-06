@@ -103,481 +103,302 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14896343426276.html">
+                <a class="clearlink" href="14906168166224.html">
                 
-                  <h1>专用图层</h1>
+                  <h1>缓冲</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>是Core Animation图层不仅仅能作用于图片和颜色而已。</p>
+                        	<p><code>Core Animation</code>使用缓冲来使动画移动更平滑更自然。我们来试着研究如何对你的动画控制和自定义缓冲曲线。</p>
 
-<p>补充点:<br/>
-想UIView的图层上添加另外一个UIView的图层是会有两个UIVIew的（UIView的层级关系）<br/>
-像一个纯Layer上添加另外一个UIView的图层,就仅仅只是添加了这个视图的图层,这个视图不会在视图的层级关系中体现.</p>
+<h3 id="toc_0">动画速度</h3>
 
-<h3 id="toc_0">CAShapeLayer</h3>
+<p><code>velocity = change / time</code>（假设速度不变也就是“线性步调”）</p>
 
-<p><code>CAShapeLayer</code> 是一个通过矢量图形而不是<code>bitmap</code>来绘制的图层子类.<br/><br/>
-即<code>CAShapeLayer</code>与<code>CGPath</code>搭配来绘制图形.与用<code>Core Graphics</code>直接向原始的<code>CALyer</code>的内容中绘制一个路径相比：  </p>
+<p>其实速度在动画整个移动过程中并不一定是恒定不变的,是有加速度的,为了实现这种加速度,一种方法是使用物理引擎来对运动物体的摩擦和动量来建模，然而这会使得计算过于复杂。我们称这种类型的方程为缓冲函数，幸运的是，<code>Core Animation</code>内嵌了一系列标准函数提供给我们使用。</p>
 
-<ul>
-<li>渲染快速（ CAShapeLayer 使用了硬件加速）</li>
-<li>高效使用内存（CAShapeLayer 不需要像普通 CALayer 一样创建一个寄宿图形）</li>
-<li>不会被图层边界剪裁掉（CAShapeLayer 可以在边界之外绘制）</li>
-<li>不会出现像素化（当你给 CAShapeLayer 做3D变换时，它不像一个有寄宿图的普通图层一样变得像素化）</li>
-</ul>
+<h4 id="toc_1">CAMediaTimingFunction</h4>
 
-<h4 id="toc_1">CGPath</h4>
+<p>显式动画<code>CAAnimation</code>的<code>timingFunction</code>属性就是<code>CAMediaTimingFunction</code>类对象<br/>
+隐式动画用<code>CATransaction</code>的<code>+setAnimationTimingFunction:</code>方法，来调整动画时间函数</p>
 
-<p><code>CGPath</code>来创建形状,一定要闭合,可以设置一些属性lineWith、lineCap 、lineJoin等,但是一个图层只有一次机会设置,如果想要想用不同颜色或风格来绘制多个形状，就不得不为每个形状准备一个图层了。  </p>
+<p><code>CAMediaTimingFunction</code>用<code>+timingFunctionWithName:</code>方法构造对象：</p>
 
-<pre><code class="language-objc">//create shape layer
+<pre><code class="language-objc">//几种常量
+kCAMediaTimingFunctionLinear//。默认。线性计时函数
+kCAMediaTimingFunctionEaseIn//慢慢加速然后突然停止
+kCAMediaTimingFunctionEaseOut//全速开始 慢慢减速停止
+kCAMediaTimingFunctionEaseInEaseOut//慢慢加速然后再慢慢减速
+kCAMediaTimingFunctionDefault//类似淡入淡出但是加速和减速过程更慢
+/**
+    UIView 的动画方法默认kCAMediaTimingFunctionEaseInEaseOut
+    CAAinamtion 默认kCAMediaTimingFunctionLinear
+*/
+</code></pre>
+
+<pre><code class="language-objc">[CATransaction begin];
+[CATransaction setAnimationDuration:1.0];
+[CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut]];
+//set the position
+self.colorLayer.position = [[touches anyObject] locationInView:self.view];
+//commit transaction
+[CATransaction commit];
+</code></pre>
+
+<h4 id="toc_2">UIView 的动画缓冲</h4>
+
+<p>UIView 动画的缓冲选项，<code>options</code>参数</p>
+
+<pre><code class="language-objc">UIViewAnimationOptionCurveEaseInOut//默认
+UIViewAnimationOptionCurveEaseIn
+UIViewAnimationOptionCurveEaseOut
+UIViewAnimationOptionCurveLinear
+</code></pre>
+
+<pre><code class="language-objc">- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    //perform the animation
+    [UIView animateWithDuration:1.0 delay:0.0 options:UIViewAnimationOptionCurveEaseOut
+    animations:^{
+        //set the position
+        self.colorView.center = [[touches anyObject] locationInView:self.view];
+    }
+    completion:NULL];
+}
+</code></pre>
+
+<h4 id="toc_3">缓冲和关键帧动画</h4>
+
+<p>对于关键帧动画：我们不想给整个动画过程应用这个效果，我们希望对每个动画的过程重复这样的缓冲.<br/>
+<code>CAKeyframeAnimation</code> 有一个 <code>NSArray</code> 类型的<code>timingFunctions</code>属性，我们<br/>
+可以用它来对每次动画的步骤指定不同的计时函数。这个数组个数需要与<strong>关键帧(keyframes)个数减一</strong>,它是每两个关键帧之间的效果.</p>
+
+<pre><code class="language-objc">    //create a keyframe animation
+    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
+    animation.keyPath = @&quot;backgroundColor&quot;;
+    animation.duration = 2.0;
+    animation.values = @[
+    (__bridge id)[UIColor blueColor].CGColor,
+    (__bridge id)[UIColor redColor].CGColor,
+    (__bridge id)[UIColor greenColor].CGColor,
+    (__bridge id)[UIColor blueColor].CGColor ];
+    //add timing function
+    CAMediaTimingFunction *fn = [CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn];
+    animation.timingFunctions = @[fn, fn, fn];
+    //apply animation to layer
+    [self.colorLayer addAnimation:animation forKey:nil];
+</code></pre>
+
+<h3 id="toc_4">自定义缓冲函数</h3>
+
+<p>除了<code>+functionWithName:</code>之外,<code>CAMediaTimingFunction</code>还有另一个构造函数<code>+functionWithControlPoints::::</code>（四个浮点参数）可以创建一个自定义的缓冲函数.</p>
+
+<h4 id="toc_5">三次贝塞尔曲线</h4>
+
+<p>曲线的斜率代表了速度，斜率的改变代表了加速度,</p>
+
+<p><code>CAMediaTimingFunction</code>使用了一个叫做三次贝塞尔曲线的函数，它只可以产出指定缓冲函数的子集,用四个点来定义，第一个和最后一个点代表了曲线的起点和终点,剩下中间两个点控制了曲线的形状（曲线并不一定要穿过这两个点）.</p>
+
+<p><img src="media/14906168166224/14907840742377.jpg" alt=""/></p>
+
+<p><code>CAMediaTimingFunction</code>有<code>- getControlPointAtIndex:values:</code>的方法(Index为0.1.2.3 分别代表着四个点)，可以用来检索曲线的点.使用它我们可以找到标准缓冲函数的点，然后用<code>UIBezierPath</code>和<code>CAShapeLayer</code> 来把它画出来。</p>
+
+<p><strong>曲线的起始和终点始终是{0, 0}和{1, 1}</strong></p>
+
+<pre><code class="language-objc">//可以通过改变常量来看各个函数
+CAMediaTimingFunction *function = [CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut];
+//get control points
+CGPoint controlPoint1, controlPoint2;
+[function getControlPointAtIndex:1 values:(float *)&amp;controlPoint1];
+[function getControlPointAtIndex:2 values:(float *)&amp;controlPoint2];
+//create curve
+UIBezierPath *path = [[UIBezierPath alloc] init];
+[path moveToPoint:CGPointZero];
+[path addCurveToPoint:CGPointMake(1, 1)
+controlPoint1:controlPoint1 controlPoint2:controlPoint2];
+//scale the path up to a reasonable size for display
+[path applyTransform:CGAffineTransformMakeScale(200, 200)];
+//create shape layer
 CAShapeLayer *shapeLayer = [CAShapeLayer layer];
 shapeLayer.strokeColor = [UIColor redColor].CGColor;
 shapeLayer.fillColor = [UIColor clearColor].CGColor;
-shapeLayer.lineWidth = 5;
-shapeLayer.lineJoin = kCALineJoinRound;
-shapeLayer.lineCap = kCALineCapRound;
+shapeLayer.lineWidth = 4.0f;
 shapeLayer.path = path.CGPath;
+[self.layerView.layer addSublayer:shapeLayer];
+//flip geometry so that 0,0 is in the bottom-left
+self.layerView.layer.geometryFlipped = YES;
 </code></pre>
 
-<h4 id="toc_2">圆角</h4>
-
-<p>我们虽然可以用<code>CALayer</code>的<code>cornerRadius</code>可以设置圆角，但是我使用<code>CAShapeLayer</code>来单独指定每个角的形状.</p>
-
-<pre><code class="language-objc">CGRect rect = CGRectMake(50, 50, 100, 100);
-CGSize radii = CGSizeMake(20, 20);
-UIRectCorner corners = UIRectCornerTopRight | UIRectCornerBottomRight | UIRectCornerBottomLeft;
-//create path
-UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:rect byRoundingCorners:corners cornerRadii:radii];
+<pre><code class="language-objc">//要初始微弱，然后迅速上升，最后缓冲到终点
+[CAMediaTimingFunction functionWithControlPoints:1 :0 :0.75 :1];
 </code></pre>
 
-<p>然后我们可以通过这个图层路径绘制一个既有直角又有圆角的视图,如果我们想依照此图形来剪裁视图内容，我们可以把<strong><code>CAShapeLayer</code>作为视图的宿主图层</strong>，而不是添加一个子视图</p>
+<p><img src="media/14906168166224/14907853432579.jpg" alt=""/></p>
 
-<h3 id="toc_3">CATextLayer</h3>
+<h4 id="toc_6">更加复杂的动画曲线</h4>
 
-<p>如果我们想要在一个图层中显示文字,我们可以通过借助图层的代理,直接将字符串用<code>Core<br/>
-Graphics</code>写入图层的内容--&gt;这就是UILabel实现  </p>
+<p><img src="media/14906168166224/14907860935800.jpg" alt=""/></p>
 
-<p>如果不用上面的方式,我们还有比较简单的方式:<br/>
-<code>Core Animation</code>提供了一个<code>CALayer</code>的子类<code>CATextLayer</code>，它以图层的形式包含了<code>UILabel</code>几乎所有的绘制特性，并且额外提供了一些新的特性。而且<code>CATextLayer</code>也要比 <code>UILabel</code> 渲染得快得多</p>
-
-<pre><code class="language-objc">CATextLayer *textLayer = [[CATextLayer alloc] init];
-    textLayer.frame = self.textLayerView.bounds;
-    [self.textLayerView.layer addSublayer:textLayer];
-    //用retina屏进行渲染,否则文字会像素化
-    textLayer.contentsScale = [UIScreen mainScreen].scale;
-    //颜色 默认黑色
-    textLayer.foregroundColor = [UIColor yellowColor].CGColor;
-    
-    textLayer.alignmentMode = kCAAlignmentJustified;
-    
-    //这个属性为yes后为根据内容进行多行显示,Yes就是一行
-    textLayer.wrapped = NO;
-    
-    UIFont *font = [UIFont systemFontOfSize:15];
-    CFStringRef fontName = (__bridge CFStringRef)(font.fontName);
-    CGFontRef fontRef = CGFontCreateWithFontName(fontName);
-    textLayer.font = fontRef;
-    //字体大小是单独设置的
-    textLayer.fontSize = 10;
-    //设置显示字体
-    textLayer.string = @&quot;zhe shi yi ge textLayer&quot;;
-</code></pre>
-
-<p><code>CATextLayer</code> 的 <code>font</code> 属性不是一个 <code>UIFont</code> 类型，而是一个 <code>CFTypeRef</code> 类型。这样可以根据你的具体需要来决定字体属性应该是用 <code>CGFontRef</code> 类型还是 <code>CTFontRef</code> 类型（<code>Core Text</code>字体）。</p>
-
-<p>因为 <code>CTFontRef</code> 和 <code>CGFontRef</code> 并不像UIFont一样包含点大小，因此我们需要<strong>单独设置字体大小</strong>;</p>
-
-<p>CATextLayer 的<code>string</code>属性是<code>id</code>类型的，因此我们可以用<code>NSString</code>和<code>NSAttributedString</code>来指定文本。  <strong>注意</strong>， <code>NSAttributedString</code> 并不是 <code>NSString</code> 的子类。属性化字符串是iOS用来渲染字体风格的机制，它以特定的方式来决定指定范围内的字符串的原始信息，比如字体，颜色，字重，斜体等。</p>
-
-<h4 id="toc_4">富文本</h4>
-
-<p>iOS6之后，苹果给UILabel和UIKit添加直接的属性字符串支持.从iOS3.2开始 CATextLayer 就已<br/>
-经支持属性化字符串了(可以这样支持低版本 不过他吗太低了吧)。<br/><br/>
-我们可以看下CATextLayer的富文本:</p>
-
-<pre><code class="language-objc">//convert UIFont to a CTFont
-CFStringRef fontName = (__bridge CFStringRef)font.fontName;
-CGFloat fontSize = font.pointSize;
-CTFontRef fontRef = CTFontCreateWithName(fontName, fontSize, NULL);
-
-//set text attributes
-NSDictionary *attribs = @{(__bridge id)kCTForegroundColorAttributeName:(__bridge id)[UIColor blackColor].CGColor, 
-(__bridge id)kCTFontAttributeName: (__bridge id)fontRef};
-[string setAttributes:attribs range:NSMakeRange(0, [text length])];
-
-attribs = @{(__bridge id)kCTForegroundColorAttributeName: (__bridge id)[UIColor redColor].CGColor,
-(__bridge id)kCTUnderlineStyleAttributeName:@(kCTUnderlineStyleSingle),(__bridge id)kCTFontAttributeName: (__bridge id)fontRef};
-[string setAttributes:attribs range:NSMakeRange(6, 5)];
-//release the CTFont we created earlier
-CFRelease(fontRef);
-//set layer text
-textLayer.string = string;
-
-</code></pre>
-
-<h4 id="toc_5">行距和字距</h4>
-
-<p>由于绘制的实现机制不同（<code>Core Text</code>和<code>WebKit</code>），用 <code>CATextLayer</code> 渲染和用 <code>UILabel</code> 渲染出的文本行距和字距也不是不尽相同的。(影响不大)</p>
-
-<h4 id="toc_6">UILabel替代品</h4>
-
-<p>CATextLayer 比 UILabel 有着更好的性能表现,虽然UILabel很好用,但是如果我们非要找个UILabel替代品的话,有以下方法:</p>
-
-<ol>
-<li><p>继承 UILabel后添加一个子图层 CATextLayer 并重写显示文本的方法。<br/>
-但是仍然会有由<code>UILabel</code>的<code>-drawRect:</code>方法创建的空寄宿图。而且由于CALayer不能自动布局,我们不能根据内容自动方法图层.</p></li>
-<li><p>用 CATextLayer 作为宿主图层的 UILabel 子类<br/>
-每一个 <code>UIView</code> 都是寄宿在一个 <code>CALayer</code> 的示例上。这个图层是由视图自动创建和管理的，这个图层一旦被创建就无法替代,但是我们可以继承了<code>UIView</code>，重写其<code>+layerClass</code>UIView 会在初始化的时候调用 +layerClass 方法，然后用它的返回类型来创建宿主图层。</p></li>
-</ol>
-
-<p>把 CATextLayer 作为宿主图层的另一好处就是视图自动设置了 contentsScale 属性。</p>
-
-<p><strong>用 <code>+layerClass</code> 来创建基于不同图层的视图是一个简单可复用的方法</strong></p>
-
-<h3 id="toc_7">CATransformLayer</h3>
-
-<p>我们之前说过所有图层都把他的子图层平面化到一个场景中,因此没法做出3D的层级体系变换.<code>CALayer</code>中存在<code>CATransfromLayer</code>，它不同于一般图层，它不显示自己内容，只有当存在了一个能作用于子图层的变换它才真正存在。</p>
-
-<p>我们在前面创建过一个立方体的固体对象,但是因为这次我们是向CATransformLayer上添加图层，而不是之前的<code>contaninView</code>,我们<strong>不能向一个没有寄宿图的图层上添加有寄宿图图层</strong>(就是不能向一个不是UIVIew的Layer中添加另外一个UIView的layer，否则在视图体系中显示的添加的这个不是视图而是图层),因此我们选择向<code>CATransfromLayer</code>添加立方体图层.</p>
-
-<pre><code class="language-objc">//举一段代码栗子
-//create cube layer
-CATransformLayer *cube = [CATransformLayer layer];
-//add cube face 1（添加立方体的一个面）
-CATransform3D ct = CATransform3DMakeTranslation(0, 0, 50);
-//[self faceWithTransform:ct] 这个方法根据Transform3D返回了一个这种变换的图层
-[cube addSublayer:[self faceWithTransform:ct]];
-//添加6个面后
-...
-//center the cube layer within the container
-CGSize containerSize = self.containerView.bounds.size;
-cube.position = CGPointMake(containerSize.width / 2.0, containerSize.height / 2.0);
-/**
-设置这个立方体的旋转（我们可以不用设置containerView的subTransform属性来进行立方体变换,而且可
-以有几个立方体就能变换几种）
-*/
-cube.transform = transform;
-
-//设置contaninView的sublayerTransform保证透视和灭点
-CATransform3D pt = CATransform3DIdentity;
-pt.m34 = -1.0 / 500.0;
-self.containerView.layer.sublayerTransform = pt;
-//将不同形状的cube添加
-[self.containerView.layer addSublayer:cube1];
-</code></pre>
-
-<h3 id="toc_8">CAGradientLayer</h3>
-
-<p><code>CAGradientLayer</code>是用来生成两种或更多颜色平滑渐变的（绘制使用了硬件加速）.<br/>
-<code>CAGradientLayer</code>只适合做这种渐变没法定制,例如做环形渐变等,那样的话只能用<code>Core Graphic</code>了</p>
-
-<h4 id="toc_9">基础渐变</h4>
-
-<p>这是最简单的渐变,这些渐变色彩放在一个数组中，并赋给<code>colors</code>(<code>CGColorRef</code>类型)属性。</p>
-
-<p>CAGradientLayer 也有<code>startPoint</code>和<code>endPoint</code>属性，他们决定了渐变的方向。这两个参数是以单位坐标系进行的定义，所以左上角坐标是{0, 0}，右下角坐标是{1, 1}。</p>
-
-<pre><code class="language-objc">CAGradientLayer *gradientLayer = [CAGradientLayer layer];
-gradientLayer.frame = self.containerView.bounds;
-[self.containerView.layer addSublayer:gradientLayer];
-//set gradient colors
-gradientLayer.colors = @[(__bridge id)[UIColor redColor].CGColor, (__bridge id)[UIColor blueColor].CGColor];
-//set gradient start and end points
-gradientLayer.startPoint = CGPointMake(0, 0);
-gradientLayer.endPoint = CGPointMake(1, 1);
-</code></pre>
-
-<p><img src="media/14896343426276/14897191786083.jpg" alt=""/></p>
-
-<h4 id="toc_10">多重渐变</h4>
-
-<p><code>colors</code>属性是个数组,因此可以设置很多颜色的多重渐变.默认这些颜色在我们指定的空间是均匀渲染的,但是我们可以设置<code>location</code>属性来调整空间。<br/>
-<code>location</code>属性浮点型数组(以<code>NSNumber</code>包装),是以单位坐标(针对做渐变区域的单位坐标)系进行标定。0.0代表着渐变的开始，1.0代表着结束。<br/>
-<code>loaction</code>属性不一定非要设置,但是如果设置了,数组大小一定要与<code>colors</code>数组大小相同,否则会得到白色渐变.  </p>
-
-<pre><code class="language-objc">gradientLayer.colors = @[(__bridge id)[UIColor redColor].CGColor,(__bridge id)[UIColor blueColor].CGColor,(__bridge id)[UIColor greenColor].CGColor];
-/**
-    这个数组的意义是0.0-0.25为红色到黄色的渐变区域,0.25-0.5为黄色到绿色的渐变区域,
-    0.5之后为绿色的完全区域
-*/
-    gradientLayer.locations = @[@(0.1),@(0.5),@(0.9)];
-    gradientLayer.startPoint = CGPointMake(0.25, 0.25);
-    gradientLayer.endPoint = CGPointMake(0.5, 0.5);
-</code></pre>
-
-<p><img src="media/14896343426276/14897305344880.jpg" alt=""/></p>
-
-<h3 id="toc_11">CAReplicatorLayer</h3>
-
-<p><code>CAReplicatorLayer</code>的目的是为了高效生成许多相似的图层。它会绘制一个或多个图层的子图层，并在每个复制体上应用不同的变换。</p>
-
-<h4 id="toc_12">重复图层</h4>
-
-<p><code>instanceCount</code>属性指定了图层需要重复多少次<br/>
-<code>instanceTransform</code> 指定了一个 <code>CATransform3D</code> 3D变换，复制图层在被创建时产生的和上一个制图层的位移(位移的锚点是<code>CAReplicatorlayer</code>的中心点)<br/>
-<code>instanceDelay</code>在短时间内的复制延时,一般用在动画上(支持动画的延时)<br/>
- <code>preservesDepth</code>如果设置为YES,图层将保持于CATransformLayer类似的性质和相同的限制<br/>
- <code>instanceColor</code>设置这些复制图层的颜色,默认位白色(注意有可能会和要复制的图层的颜色冲突)<br/>
- 变换是逐步增加的，每个实例都是相对于前一实例布局。因此这些复制体最终不会出现在同一位置上</p>
-
-<pre><code class="language-objc">CAReplicatorLayer *replicator = [CAReplicatorLayer layer];
-replicator.frame = self.containerView.bounds;
-[self.containerView.layer addSublayer:replicator];
-//重复多少次
-replicator.instanceCount = 10;
-
-CATransform3D transform = CATransform3DIdentity;
-transform = CATransform3DTranslate(transform, 0, 200, 0);
-transform = CATransform3DRotate(transform, M_PI / 5.0, 0, 0, 1);
-transform = CATransform3DTranslate(transform, 0, -200, 0);
-replicator.instanceTransform = transform;
-
-replicator.instanceBlueOffset = -0.1;
-replicator.instanceGreenOffset = -0.1;
-
-CALayer *layer = [CALayer layer];
-layer.frame = CGRectMake(100.0f, 100.0f, 100.0f, 100.0f);
-layer.backgroundColor = [UIColor whiteColor].CGColor;
-[replicator addSublayer:layer];
-
-</code></pre>
-
-<p>由于我们设置了<code>instanceBlueOffset</code>和 <code>instanceGreenOffset</code>属性.的颜色也在变化.除了这两个还有<code>instanceBlueOffset</code> <code>instanceAlphaOffset</code>这都是改变某个颜色通道的值</p>
-
-<p><code>CAReplicatorLayer</code> 真正应用到实际程序上的场景比如：一个游戏中导弹的轨迹云，或者粒子爆炸（尽管iOS 5已经引入了 <code>CAEmitterLayer</code> ，它更适合创建任意的粒子效果）。除此之外，还有一个实际应用是：<code>反射</code>。</p>
-
-<h4 id="toc_13">反射</h4>
-
-<p>创建一个指定视图的镜像照片,我们只需要使用<code>CAReplicatorLayer</code>并用一个负比例变换创建一个复制图层即可.</p>
-
-<pre><code class="language-objc">+ (Class)layerClass
-{
-return [CAReplicatorLayer class];
-}
-- (void)setUp
-{
-//configure replicator
-CAReplicatorLayer *layer = (CAReplicatorLayer *)self.layer;
-layer.instanceCount = 2;
-//move reflection instance below original and flip vertically
-//核心代码是这个动画
-CATransform3D transform = CATransform3DIdentity;
-CGFloat verticalOffset = self.bounds.size.height + 2;
-transform = CATransform3DTranslate(transform, 0, verticalOffset, 0);
-transform = CATransform3DScale(transform, 1, -1, 0);
-layer.instanceTransform = transform;
-//reduce alpha of reflection layer
-layer.instanceAlphaOffset = -0.6;
-}
-- (id)initWithFrame:(CGRect)frame
-{
-//this is called when view is created in code
-if ((self = [super initWithFrame:frame])) {
-[self setUp];
-}
-return self;
-}
-- (void)awakeFromNib
-{
-//this is called when view is created from a nib
-[self setUp];
-}
-</code></pre>
-
-<p>这个镜像的是整个ReflectView视图内容(是视图层次)<br/>
-因为现在这个VIew的layer已经变为<code>CAReplicatorLayer</code>所以我们对这个layer本身改变什么是不会镜像的,当然如果add的Layer内容也会被镜像</p>
-
-<p>大神写的自适应渐变淡出效果的<a href="https://github.com/nicklockwood/ReflectionView">ReflectView</a></p>
-
-<h3 id="toc_14">CAScrollLayer</h3>
-
-<p>之前我们显示大图层中的一小部分是使用图层的<code>contentRect</code>属性,但是如果我们想要滑动可视区域的话这样就不是很好的办法.</p>
-
-<p><code>CALayey</code>提供了一个子类<code>CAScrollLayer</code>.<br/>
- <code>CAScrollLayer</code> 有一个 <code>-scrollToPoint:</code>方法，它自动适应 <code>bounds</code> 的原点以便图层内容现在滑动的地方。</p>
-
-<p>因为<code>Core Animation</code>是不处理用户输入的,所以<code>CAScrollLayer</code>并不负责将触摸事件转换为滑动事件，既不渲染滚动条，也不实现任何iOS指定行为例如滑动反弹.</p>
-
-<pre><code class="language-objc">//来用 CAScrollLayer 来常见一个基本的 UIScrollView 替代品
-+ (Class)layerClass
-{
-    return [CAScrollLayer class];
-}
-//添加平移手势
-//在平移手势中滚动视图
-CGPoint offset = self.bounds.origin;
-offset.x -= [recognizer translationInView:self].x;
-offset.y -= [recognizer translationInView:self].y;
-//scroll the layer
-[(CAScrollLayer *)self.layer scrollToPoint:offset];
-//reset the pan gesture translation
-[recognizer setTranslation:CGPointZero inView:self];
-//当然我们可以自己做边界检查
-</code></pre>
-
-<p>其实<strong><code>UIScrollView</code> 并没有用 <code>CAScrollLayer</code></strong>，事实上，就是简单的通过直接操作图层边界来实现滑动。</p>
-
-<p>那么这个<code>CAScrollLayer</code>的作用是什么呢?<br/>
-在<code>CAScrollerLayer</code>的头文件中有一个<code>CALayer (CALayerScrolling)</code>的扩展分类,实现了一些：</p>
-
-<pre><code class="language-objc">- (void)scrollPoint:(CGPoint)p;
-- (void)scrollRectToVisible:(CGRect)r;
-@property(readonly) CGRect visibleRect;
-</code></pre>
-
-<p>其实这些方法或者属性并不是给<code>CALayer</code>添加了滑动功能,事实上他们只是放置在<code>CAScrollLayer</code>中的图层的实用方法,<code>scrollPoint:</code>方法从图层树中查找并找到第一个可用的<code>CAScrollLayer</code>，然后滑动它使得指定点成为可视的。<code>scrollRectToVisible:</code>方法实现了同样的事情只不过是作用在一个矩形上的。<code>visibleRect</code> 属性决定图层（如果存在的话）的哪部分是当前的可视区域。当涉及到实现图层滑动的时候就可以用上了</p>
-
-<h3 id="toc_15">CATiledLayer</h3>
-
-<p>我们有可能会需要加载一张高像素图片,这时候我们不适合读取整张图片到内存中,因为载入大图会非常的慢,将会阻塞线程造成卡顿.<br/>
-能高效绘制在iOS上的图片也有一个大小限制。所有显示在屏幕上的图片最终都会被转化为<code>OpenGL</code>纹理，同时<code>OpenGL</code>有一个最大的纹理尺寸（通常是2048*2048，或4096*4096，这个取决于设备型号）。如果你想在单个纹理中显示一个比这大的图，即便图片已经存在于内存中了，你仍然会遇到很大的性能问题，因为<code>Core Animation</code>强制用CPU处理图片而不是更快的GPU</p>
-
-<p>这时候我们可以用<code>CATiledLayer</code>,它可以将大图分解成小片然后将他们单独按需载入<br/>
-<strong>CATiledLayer 很好地和 UIScrollView 集成在一起。</strong></p>
-
-<pre><code class="language-objc">- (void)viewDidLoad
-{
-    [super viewDidLoad];
-    //add the tiled layer
-    
-    /**
-    CATiledLayer 很好地和 UIScrollView 集成在一起。除了设置图层和滑动视图边界
-    以适配整个图片大小，我们真正要做的就是实现 -drawLayer:inContext: 方法，当
-    需要载入新的小图时， CATiledLayer 就会调用到这个方法。
-    */
-    
-    CATiledLayer *tileLayer = [CATiledLayer layer];
-    tileLayer.frame = CGRectMake(0, 0, 2048, 2048);
-    tileLayer.delegate = self; [self.scrollView.layer addSublayer:tileLayer];
-    //configure the scroll view
-    self.scrollView.contentSize = tileLayer.frame.size;
-    //draw layer
-    [tileLayer setNeedsDisplay];
-}
-- (void)drawLayer:(CATiledLayer *)layer inContext:(CGContextRef)ctx
-{
-    //determine tile coordinate
-    CGRect bounds = CGContextGetClipBoundingBox(ctx);
-    NSInteger x = floor(bounds.origin.x / layer.tileSize.width);
-    NSInteger y = floor(bounds.origin.y / layer.tileSize.height);
-    //load tile image
-    NSString *imageName = [NSString stringWithFormat: @&quot;Snowman_%02i_%02i&quot;, x, y];
-    NSString *imagePath = [[NSBundle mainBundle] pathForResource:imageName ofType:@&quot;jpg&quot;];
-    
-    UIImage *tileImage = [UIImage imageWithContentsOfFile:imagePath];
-    //draw tile
-    UIGraphicsPushContext(ctx);
-    [tileImage drawInRect:bounds];
-    UIGraphicsPopContext();
-}
-</code></pre>
-
-<p><code>CATiledLayer</code> 的默认以淡入的方式载入小图,可以用 <code>fadeDuration</code> 属性改变淡入时长或直接禁用<br/>
-掉。</p>
-
-<p><code>CATiledLayer</code> （不同于大部分的<code>UIKit</code> 和<code>Core Animation</code>方法）支持多线程绘制，<code>-drawLayer:inContext:</code>方法可以在多个线程中同时地并发调用，所以请小心谨慎地确保你在这个方法中实现的绘制代码是线程安全的。</p>
-
-<p><strong>补充</strong><br/>
-我们在使用<code>CATiledLayer *tileLayer = [CATiledLayer layer];</code>时载入图片并不是以以Retina的分辨率显示,我们可以<code>tileLayer.contentsScale = [UIScreen mainScreen].scale;</code>我们只需要设<br/>
-置了<code>CATiledLayer</code>的<code>contentsScale</code>即可(因为size是以像素为单位的,所以改变了contentsScale 就自动有了默认的小图尺寸),而不需要手工更新小图的尺寸或是在<code>Retina</code>分辨率下指定一个不同的小图。</p>
-
-<p>我们需要做的是适应小图渲染代码以对应安排 <code>scale</code>的变化</p>
-
-<pre><code class="language-objc">CGRect bounds = CGContextGetClipBoundingBox(ctx);
-CGFloat scale = [UIScreen mainScreen].scale;
-NSInteger x = floor(bounds.origin.x / layer.tileSize.width * scale);
-NSInteger y = floor(bounds.origin.y / layer.tileSize.height * scale);
-</code></pre>
-
-<h3 id="toc_16">CAEmitterLayer</h3>
-
-<p>iOS后引入了一个新的 <code>CALayer</code> 子类叫做 <code>CAEmitterLayer</code><br/>
-<code>CAEmitterLayer</code> 是一个高性能的粒子引擎，被用来创建实时例子动画如：烟雾，火，雨等等这些效果</p>
-
-<p><code>CAEmitterLayer</code>是很多<code>CAEmitterCell</code>的容器.这些<code>CAEmitierCell</code>定义了一个粒子效果.我们就是为不同的粒子效果定义一个或多个<code>CAEmitterCell</code>作为模版，同时<code>CAEmitterLayer</code>负责基于这些模版实例化一个粒子流。</p>
-
-<p><code>CAEmitterCell</code>它有一个<code>contents</code>属性可以定义为一个<code>CGImage</code>，还有一些可设置属性控制着表现和行为。<br/>
-举个栗子:</p>
-
-<pre><code class="language-objc">- (void)viewDidLoad
-{
-    [super viewDidLoad];
-    //create particle emitter layer
-    CAEmitterLayer *emitter = [CAEmitterLayer layer];
-    emitter.frame = self.containerView.bounds;
-    [self.containerView.layer addSublayer:emitter];
-    //configure emitter
-    emitter.renderMode = kCAEmitterLayerAdditive;
-    emitter.emitterPosition = CGPointMake(emitter.frame.size.width / 2.0, emitter.frame.size.height / 2.0);
-    //create a particle template
-    CAEmitterCell *cell = [[CAEmitterCell alloc] init];
-    cell.contents = (__bridge id)[UIImage imageNamed:@&quot;Spark.png&quot;].CGImage;
-    cell.birthRate = 150;
-    cell.lifetime = 5.0;
-    cell.color = [UIColor colorWithRed:1 green:0.5 blue:0.1 alpha:1.0].CGColor;
-    cell.alphaSpeed = -0.4;
-    cell.velocity = 50;
-    cell.velocityRange = 50;
-    cell.emissionRange = M_PI * 2.0;
-    //add particle template to emitter
-    emitter.emitterCells = @[cell];
-}
-@end
-</code></pre>
-
-<p><code>CAEMitterCell</code>的属性基本上可以分为三种：</p>
+<p>实现这个效果方法:</p>
 
 <ul>
-<li>这种粒子某一属性的初始值。比如，<code>color</code>属性指定了一个可以混合图片内容颜色的混合色。在示例中，我们将它设置为桔色。</li>
-<li>粒子某一属性的变化范围。比如<code>emissionRange</code>属性的值是2π，这意味着粒子可以从360度任意位置反射出来。如果指定一个小一些的值，就可以创造出一个圆锥形</li>
-<li>指定值在时间线上的变化。比如，在示例中，我们将<code>alphaSpeed</code>设置为-0.4，就是说例子的透明度每过一秒就是减少0.4，这样就有发射出去之后逐渐消失的效果。</li>
+<li>用 CAKeyframeAnimation 创建一个动画，然后分割成几个步骤，每个小步骤使用自己的计时函数。</li>
+<li>使用定时器逐帧更新实现动画</li>
 </ul>
 
-<p><code>CAEmitterLayer</code>的属性它自己控制着整个例子系统的位置和形状。一些属性比如 <code>birthRate</code>， <code>lifetime</code>和<code>celocity</code>，这些属性在<code>CAEmitterCell</code>中也有。这些属性会以相乘的方式作用在一起，这样你就可以用一个值来加速或者扩大整个例子系统。</p>
+<h4 id="toc_7">基于关键帧的缓冲</h4>
 
-<ul>
-<li><code>preservesDepth</code>，是否将3D例子系统平面化到一个图层（默认值）或者可以在3D空间中混合其他的图层</li>
-<li><code>renderMode</code>，控制着在视觉上粒子图片是如何混合的。示例中我们把它设置为<code>kCAEmitterLayerAdditive</code> ，它实现了这样一个效果：合并例子重叠部分的亮度使得看上去更亮。如果我们把它设置为默认的<code>kCAEmitterLayerUnordered</code>，效果就没那么好看了</li>
-</ul>
+<p>我们用关键帧缓冲来实现上面的小球掉落动画<br/>
+很显然我们的每个关键帧就是就是每次反弹的峰值,</p>
 
-<p><strong>注意</strong><br/>
-之前我们学习了<code>CAReplicatorLayer</code> 它的真正应用到实际程序上的场景比如：一个游戏中导弹的轨迹云,或者反射等</p>
+<pre><code class="language-objc">CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
+animation.keyPath = @&quot;position&quot;;
+animation.duration = 1.0;
+animation.delegate = self;
+animation.values = @[
+[NSValue valueWithCGPoint:CGPointMake(150, 32)],
+[NSValue valueWithCGPoint:CGPointMake(150, 268)],
+[NSValue valueWithCGPoint:CGPointMake(150, 140)],
+[NSValue valueWithCGPoint:CGPointMake(150, 268)],
+[NSValue valueWithCGPoint:CGPointMake(150, 220)],
+[NSValue valueWithCGPoint:CGPointMake(150, 268)],
+[NSValue valueWithCGPoint:CGPointMake(150, 250)],
+[NSValue valueWithCGPoint:CGPointMake(150, 268)]
+];
+animation.timingFunctions = @[
+[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn],
+[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut],
+[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn],
+[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut],
+[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn],
+[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut],
+[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn]
+];
+animation.keyTimes = @[@0.0, @0.3, @0.5, @0.7, @0.8, @0.9, @0.95, @1.0];
+//apply animation
+self.ballView.layer.position = CGPointMake(150, 268);
+[self.ballView.layer addAnimation:animation forKey:nil];
+</code></pre>
 
-<h3 id="toc_17">CAEAGLLayer</h3>
+<p>//这样计算每个关键帧也太麻烦了,一旦有修改又要计算关键帧的位置</p>
 
-<p>再议</p>
+<h4 id="toc_8">流程自动化</h4>
 
-<h3 id="toc_18">AVPlayerLayer</h3>
+<p>如果我们将动画分割为足够小的部分,那么就可以用直线来拼接为这些曲线</p>
 
-<p>它不是<code>Core Animation</code>框架的一部分，是在<code>AVFoundation</code>框架中的,但是它，提供了一个<code>CALayer</code> 子类来显示自定义的内容类型.</p>
+<p><code>Core Animation</code>的插值机制:传入起点和终点，然后在这两个点之间指定时间点产出一个新点的机制</p>
 
-<p><code>AVPlayerLayer</code> 是用来在iOS上播放视频的。他是高级接口例如<code>MPMoivePlayer</code>的底层实现，提供了显示视频的底层控制。</p>
+<pre><code class="language-objc">/**
+简单的浮点起始值
+*/
+value = (endValue – startValue) × time + startValue;
+</code></pre>
 
-<p><code>AVPlayerLayer</code>的使用相当简单：你可以用<code>+playerLayerWithPlayer:</code>方法创建一个已经绑定了视频播放器的图层，或者你可以先创建一个图层，然后用<code>player</code>属性绑定一个<code>AVPlayer</code>实例。</p>
+<p>这是对简单的浮点值进行插值,如果是比较复杂的类似CGPoint、CGColorRef或者CATransform3D等我们可以可以对其中的每个元素（CGPoint 中的x和y值、CGColorRef 中的红，蓝，绿，透明值，或者是 CATransform3D 中独立矩阵的坐标）用这种方法,我们可以在逻辑插值前将对象拆解,插值后再重新封装成对象.</p>
 
-<pre><code class="language-objc">- (void)viewDidLoad
+<p>我们获得属性动画起始值的任意插值,就可以将动画分为许多独立关键帧,产出一个线性的关键帧动画.</p>
+
+<p>因为<code>Core Animation</code>是每秒60帧去渲染屏幕更新,因此我们每秒生成60个关键帧可以保证动画平滑</p>
+
+<pre><code class="language-objc">float interpolate(float from, float to, float time)
 {
-    [super viewDidLoad];
-    //get video URL
-    NSURL *URL = [[NSBundle mainBundle] URLForResource:@&quot;Ship&quot; withExtension:@&quot;mp4&quot;];
-    //create player and player layer
-    AVPlayer *player = [AVPlayer playerWithURL:URL];
-    AVPlayerLayer *playerLayer = [AVPlayerLayer playerLayerWithPlayer:player];
-    //set player layer frame and attach it to our view
-    playerLayer.frame = self.containerView.bounds;
-    [self.containerView.layer addSublayer:playerLayer];
-    //play the video
-    [player play];
+    return (to - from) * time + from;
+}
+- (id)interpolateFromValue:(id)fromValue toValue:(id)toValue time:(float)time
+{
+    if ([fromValue isKindOfClass:[NSValue class]]) {
+    //get type
+    const char *type = [fromValue objCType];
+    if (strcmp(type, @encode(CGPoint)) == 0) {
+    CGPoint from = [fromValue CGPointValue];
+    CGPoint to = [toValue CGPointValue];
+    CGPoint result = CGPointMake(interpolate(from.x, to.x, time), interpolate(from.y, to.y, time));
+    return [NSValue valueWithCGPoint:result];
+        }
+    }
+//provide safe default implementation
+    return (time &lt; 0.5)? fromValue: toValue;
+}
+
+- (void)animate
+{
+    //reset ball to top of screen
+    self.ballView.center = CGPointMake(150, 32);
+    //set up animation parameters
+    NSValue *fromValue = [NSValue valueWithCGPoint:CGPointMake(150, 32)];
+    NSValue *toValue = [NSValue valueWithCGPoint:CGPointMake(150, 268)];
+    CFTimeInterval duration = 1.0;
+    //generate keyframes
+    NSInteger numFrames = duration * 60;
+    NSMutableArray *frames = [NSMutableArray array];
+    for (int i = 0; i &lt; numFrames; i++) {
+        float time = 1 / (float)numFrames * i;
+        [frames addObject:[self interpolateFromValue:fromValue toValue:toValue time:time]];
+    }
+    //create keyframe animation
+    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
+    animation.keyPath = @&quot;position&quot;;
+    animation.duration = 1.0;
+    animation.delegate = self;
+    animation.values = frames;
+    //apply animation
+    [self.ballView.layer addAnimation:animation forKey:nil];
 }
 </code></pre>
 
-<p><strong>注意</strong><br/>
-因为Core Animation并不支持自动大小和自动布局,因此我们要考虑<code>AVPlayerLayer</code>添加到自己创建的视图View而不是直接加到控制器的View</p>
+<p>但是上面的方式非常复杂,因为缓冲数学并不简单，我们可以直接使用现成的<a href="http://www.robertpenner.com/easing">缓冲函数</a>,例如:</p>
 
-<p>因为<code>AVPlayerLayer</code>是<code>CALayer</code>的子类，它继承了父类的所有特性。我们并不会受限于要在一个矩形中播放视频(我们可以对Layer进行3D，圆角，有色边框，蒙板，阴影等)。</p>
+<pre><code class="language-objc">//缓冲进入缓冲退出函数
+float quadraticEaseInOut(float t)
+{
+`return (t &lt; 0.5)? (2 * t * t): (-2 * t * t) + (4 * t) - 1;
+}
+</code></pre>
+
+<pre><code class="language-objc">//弹性小球 bounceEaseOut函数
+float bounceEaseOut(float t)
+{
+    if (t &lt; 4/11.0) {
+        return (121 * t * t)/16.0;
+    } else if (t &lt; 8/11.0) {
+        return (363/40.0 * t * t) - (99/10.0 * t) + 17/5.0;
+    } else if (t &lt; 9/10.0) {
+        return (4356/361.0 * t * t) - (35442/1805.0 * t) + 16061/1805.0
+    }
+        return (54/5.0 * t * t) - (513/25.0 * t) + 268/25.0;
+}
+</code></pre>
+
+<pre><code class="language-objc">//我们使用上面的弹性小球函数来实现
+- (void)animate
+{
+    //reset ball to top of screen
+    self.ballView.center = CGPointMake(150, 32);
+    //set up animation parameters
+    NSValue *fromValue = [NSValue valueWithCGPoint:CGPointMake(150, 32)];
+    NSValue *toValue = [NSValue valueWithCGPoint:CGPointMake(150, 268)];
+    CFTimeInterval duration = 1.0;
+    //generate keyframes
+    NSInteger numFrames = duration * 60;
+    NSMutableArray *frames = [NSMutableArray array];
+    for (int i = 0; i &lt; numFrames; i++) {
+        float time = 1/(float)numFrames * i;
+        //apply easing
+        time = bounceEaseOut(time);
+        //add keyframe
+        [frames addObject:[self interpolateFromValue:fromValue toValue:toValue time:time]];
+    }
+    //create keyframe animation
+    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
+    animation.keyPath = @&quot;position&quot;;
+    animation.duration = 1.0;
+    animation.delegate = self;
+    animation.values = frames;
+    //apply animation
+    [self.ballView.layer addAnimation:animation forKey:nil];
+}
+</code></pre>
 
                         
                       </div>
@@ -586,10 +407,10 @@ NSInteger y = floor(bounds.origin.y / layer.tileSize.height * scale);
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/16</span>
+                    <span class="date">2017/3/27</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%9B%BE%E5%B1%82.html'>图层</a></span>
+          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -675,31 +496,31 @@ NSInteger y = floor(bounds.origin.y / layer.tileSize.height * scale);
 	      
 		      
 			      <li class="post">
-			        <a href="14955051645893.html">UIDatePicker</a>
+			        <a href="14966582354331.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954386080339.html">GCD</a>
+			        <a href="14964011409915.html">iOS 开发中的九种锁</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954384117214.html">#pragma</a>
+			        <a href="14958652887586.html">时间 时区</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14951065647732.html">图层性能</a>
+			        <a href="14958642376440.html">定时器</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14945853244045.html">CGRect</a>
+			        <a href="14957029093514.html">UITextView</a>
 			      </li>
 		     
 		  

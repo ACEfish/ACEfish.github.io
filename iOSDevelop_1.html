@@ -103,14 +103,83 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14954386080339.html">
+                <a class="clearlink" href="14964011409915.html">
                 
-                  <h1>GCD</h1>
+                  <h1>iOS 开发中的九种锁</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>DISPATCH_TIME_FOREVER会一直等待block结束</p>
+                        	<p>我们在使用多线程的时候多个线程可能会访问同一块资源，这样就很容易引发数据错乱和数据安全等问题，这时候就需要我们保证每次只有一个线程访问这一块资源，锁 应运而生。</p>
+
+<h2 id="toc_0">一、OSSpinLock 自旋锁</h2>
+
+<p>OSSpinLock 自旋锁，性能最高的锁。在任何时刻只会有一个线程能获得锁,而其他线程忙着等待直到获得锁。缺点是<code>spinlock</code>使用不当(如临界区执行时间过长)会导致<code>cpu busy</code>飙高。不适合较长时间任务</p>
+
+<pre><code class="language-objc">__block OSSpinLock theLock = OS_SPINLOCK_INIT;
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    OSSpinLockLock(&amp;theLock);
+    NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+    sleep(3);
+    NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+    OSSpinLockUnlock(&amp;theLock);
+
+});
+
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    OSSpinLockLock(&amp;theLock);
+    sleep(1);
+    NSLog(@&quot;需要线程同步的操作2&quot;);
+    OSSpinLockUnlock(&amp;theLock);
+
+});
+</code></pre>
+
+<pre><code class="language-objc">//
+OS_SPINLOCK_INIT： 默认值为 0,在 locked 状态时就会大于 0，unlocked状态下为 0
+OSSpinLockLock(&amp;oslock)：上锁，参数为 OSSpinLock 地址
+OSSpinLockUnlock(&amp;oslock)：解锁，参数为 OSSpinLock 地址
+OSSpinLockTry(&amp;oslock)：尝试加锁，可以加锁则立即加锁并返回 YES,反之返回 NO
+/**
+当前线程锁失败，也可以继续其它任务，用 trylock 合适
+当前线程只有锁成功后，才会做一些有意义的工作，那就 lock，没必要轮询 trylock
+*/
+</code></pre>
+
+<p>注意:<br/>
+<a href="http://blog.ibireme.com/2016/01/16/spinlock_is_unsafe_in_ios/">不再安全的 OSSpinLock</a></p>
+
+<h2 id="toc_1">二、dispatch_semaphore 信号量</h2>
+
+<p>是GCD的用来同步的一种方式</p>
+
+<pre><code class="language-objc">  dispatch_semaphore_t signal = dispatch_semaphore_create(1);
+    dispatch_time_t overTime = dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC);
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        dispatch_semaphore_wait(signal, overTime);
+            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+            sleep(2);
+            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+        dispatch_semaphore_signal(signal);
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        sleep(1);
+        dispatch_semaphore_wait(signal, overTime);
+            NSLog(@&quot;需要线程同步的操作2&quot;);
+        dispatch_semaphore_signal(signal);
+    });
+</code></pre>
+
+<pre><code class="language-objc">dispatch_semaphore_create(1)： 传入值必须 &gt;=0, 若传入为 0 则阻塞线程并等待timeout,
+时间到后会执行其后的语句
+dispatch_semaphore_wait(signal, overTime)：可以理解为 lock,会使得 signal 值 -1
+//
+
+
+dispatch_semaphore_signal(signal)：可以理解为 unlock,会使得 signal 值 +1
+</code></pre>
 
                         
                       </div>
@@ -119,10 +188,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/5/22</span>
+                    <span class="date">2017/6/2</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
+          					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -208,31 +277,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="14955051645893.html">UIDatePicker</a>
+			        <a href="14966582354331.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954386080339.html">GCD</a>
+			        <a href="14964011409915.html">iOS 开发中的九种锁</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14954384117214.html">#pragma</a>
+			        <a href="14958652887586.html">时间 时区</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14951065647732.html">图层性能</a>
+			        <a href="14958642376440.html">定时器</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14945853244045.html">CGRect</a>
+			        <a href="14957029093514.html">UITextView</a>
 			      </li>
 		     
 		  
