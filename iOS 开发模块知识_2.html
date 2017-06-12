@@ -76,6 +76,10 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BC%96%E7%A8%8B.html">计算机编程</a></li>
+        
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
         
             <li><a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html">2017年。。。</a></li>
@@ -103,184 +107,384 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14951065647732.html">
+                <a class="clearlink" href="14964011409915.html">
                 
-                  <h1>图层性能</h1>
+                  <h1>iOS 开发中的九种锁</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>图层树</p>
+                        	<p>我们在使用多线程的时候多个线程可能会访问同一块资源，这样就很容易引发数据错乱和数据安全等问题，这时候就需要我们保证每次只有一个线程访问这一块资源，锁 应运而生。</p>
 
-<p>选择性地选取光栅化或者绘制图层内容在合适的时候重新分配给CPU和GPU</p>
+<p>补充:<a href="http://www.cnblogs.com/huangjianwu/p/4575763.html">实现锁的多种方式和锁的高级用法</a><br/>
+<a href="http://www.jianshu.com/p/938d68ed832c">iOS中保证线程安全的几种方式与性能对比</a></p>
 
-<h3 id="toc_0">隐式绘制</h3>
+<h2 id="toc_0">一、OSSpinLock 自旋锁</h2>
 
-<p>我们前几章讨论了几个场景下的优化:1.通过Core Graphics直接绘制 2.直接载入一个图片文件并赋值<br/>
-给<code>contents</code>属性 3.事先绘制一个屏幕之外的<code>CGContext</code>上下文</p>
+<p>OSSpinLock 自旋锁，性能最高的锁。在任何时刻只会有一个线程能获得锁,而其他线程忙着等待直到获得锁。缺点是<code>spinlock</code>使用不当(如临界区执行时间过长)会导致<code>cpu busy</code>飙高。不适合较长时间任务</p>
 
-<p>我们可以通过以下方式创建隐式的寄宿图:<br/>
-1. 使用特定的图层属性<br/>
-2. 特定的视图<br/>
-3. 特定的图层子类</p>
+<pre><code class="language-objc">__block OSSpinLock theLock = OS_SPINLOCK_INIT;
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    OSSpinLockLock(&amp;theLock);
+    NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+    sleep(3);
+    NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+    OSSpinLockUnlock(&amp;theLock);
 
-<h4 id="toc_1">文本</h4>
+});
 
-<p><code>CATextLayer</code>和<code>UILabel</code>都是直接将文本绘制在图层的寄宿图中。</p>
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    OSSpinLockLock(&amp;theLock);
+    sleep(1);
+    NSLog(@&quot;需要线程同步的操作2&quot;);
+    OSSpinLockUnlock(&amp;theLock);
 
-<p>尽可能地避免改变那些包含文本的视图的<code>frame</code>，因为这样做的话文本就需要重绘。例如，如果你想在图层的角落里显示一段静态的文本，但是这个图层经常改动，你就应该把文本放在一个子图层中。</p>
-
-<h4 id="toc_2">光栅化</h4>
-
-<p>启用<code>CALayer</code>的<code>shouldRaterize</code>属性会将图层绘制到一个屏幕之外的图像。然后这个图像会被缓存起来并绘制到实际图层的<code>contents</code>和子图层。如果有很多的子图层或者有复杂的效果应用，这样做就会比重绘所有事务的所有帧划得来得多。但是光栅化原始图像需要时间，而且还会消耗额外的内存。</p>
-
-<p>光栅化使用的当可以提供很大性能优势,但是避免使用在不断变动的图层上。否则缓存没用了。</p>
-
-<p>可以使用<code>Instrument</code>查看一下<code>Color Hits Green</code>和<code>Misses Red</code>项目，是否已光栅化图像被频繁地刷新,可以知道我们是否正确使用了光栅化</p>
-
-<h3 id="toc_3">离屏渲染</h3>
-
-<p>当图层属性的混合体被指定为在未预合成之前不能直接在屏幕中绘制时，屏幕外渲染被唤起。屏幕外渲染并不意味着软件绘制，但是它意味着图层必须在被显示之前在一个屏幕外上下文中被渲染（不论CPU还是GPU）。图层的以下属性将会触发屏幕外绘制：</p>
-
-<ul>
-<li>圆角（当和 maskToBounds 一起使用时）</li>
-<li>图层蒙板</li>
-<li>阴影</li>
-</ul>
-
-<p>屏幕外渲染和我们启用光栅化时相似，除了它并没有像光栅化图层那么消耗大，子图层并没有被影响到，而且结果也没有被缓存，所以不会有长期的内存占用。但是如果太多图层在屏幕外渲染依然会影响性能</p>
-
-<p>如果那些离屏绘制的图层并不会被频繁重绘的话,为这些图层开启光栅化也是一种优化方式</p>
-
-<p>对于那些需要动画而且要在屏幕外渲染的图层来说，你可以用<code>CAShapeLayer</code>，<code>contentsCenter</code>或者<code>shadowPath</code>来获得同样的表现而且较少地影响到性能。</p>
-
-<h4 id="toc_4">CAShaprLayer(圆角)</h4>
-
-<p><code>cornerRadius</code>和<code>maskToBounds</code>独立作用的时候都不会有太大的性能问题，但是当他俩结合在一起，就触发了屏幕外渲染。</p>
-
-<p>为了不引起性能问题,我们可以用现成的<code>UIBezierPath</code>的构造器<code>+ bezierPathWithRoundedRect:cornerRadius:</code>虽然不比直接用<code>cornerRadius</code>更快,但是避免性能问题</p>
-
-<pre><code class="language-objc">    - (void)viewDidLoad
-    {
-        [super viewDidLoad];
-        //create shape layer
-        CAShapeLayer *blueLayer = [CAShapeLayer layer];
-        blueLayer.frame = CGRectMake(50, 50, 100, 100);
-        blueLayer.fillColor = [UIColor blueColor].CGColor;
-        blueLayer.path = [UIBezierPath bezierPathWithRoundedRect:
-        CGRectMake(0, 0, 100, 100) cornerRadius:20].CGPath;
-        //add it to our view
-        [self.layerView.layer addSublayer:blueLayer];
-    }
+});
 </code></pre>
 
-<h4 id="toc_5">可伸缩图片(圆角)</h4>
-
-<p>另外一个创建圆角矩形的方法使用一个圆形内容图片,并设置其<code>contentsCenter</code>去创建一个可伸缩图片.<br/>
-理论上来说，这个应该比用<code>CAShapeLayer</code>要快，因为一个可拉伸图片只需要18个三角形（一个图片是由一个3*3网格渲染而成），然而，许多都需要渲染成一个顺滑的曲线。在实际应用上，二者并没有太大的区别。</p>
-
-<pre><code class="language-objc">- (void)viewDidLoad
-{
-    [super viewDidLoad];
-    //create layer
-    CALayer *blueLayer = [CALayer layer];
-    blueLayer.frame = CGRectMake(50, 50, 100, 100);
-    blueLayer.contentsCenter = CGRectMake(0.5, 0.5, 0.0, 0.0);
-    blueLayer.contentsScale = [UIScreen mainScreen].scale;
-    blueLayer.contents = (__bridge id)[UIImage imageNamed:@&quot;Circle.png&quot;].CGImage;
-    //add it to our view
-    [self.layerView.layer addSublayer:blueLayer];
-}
+<pre><code class="language-objc">//
+OS_SPINLOCK_INIT： 默认值为 0,在 locked 状态时就会大于 0，unlocked状态下为 0
+OSSpinLockLock(&amp;oslock)：上锁，参数为 OSSpinLock 地址
+OSSpinLockUnlock(&amp;oslock)：解锁，参数为 OSSpinLock 地址
+OSSpinLockTry(&amp;oslock)：尝试加锁，可以加锁则立即加锁并返回 YES,反之返回 NO
 /**
-    使用可伸缩图片的优势在于它可以绘制成任意边框效果而不需要额外的性能消耗。举个例子，可伸缩图片
-    甚至还可以显示出矩形阴影的效果。
+当前线程锁失败，也可以继续其它任务，用 trylock 合适
+当前线程只有锁成功后，才会做一些有意义的工作，那就 lock，没必要轮询 trylock
 */
 </code></pre>
 
-<h4 id="toc_6">shadowPath</h4>
+<p>注意:<br/>
+<a href="http://blog.ibireme.com/2016/01/16/spinlock_is_unsafe_in_ios/">不再安全的 OSSpinLock</a></p>
 
-<p>对于<code>shadowPath</code>属性，对于简单的几何图形(假设不包含任何透明部分或者子视图),创建阴影路径较容易，<code>Core Animation</code>绘制这个阴影也相当简单,避免了屏幕外图层部分预排版，对性能有好处。</p>
+<h2 id="toc_1">二、dispatch_semaphore 信号量</h2>
 
-<p>如果是个复杂的图形,那么生成阴影路径就比较困难，可以考虑用绘图软件生成一个阴影背景图</p>
+<p>是GCD的用来同步的一种方式<br/>
+在没有等待情况出现时，它的性能比<code>pthread_mutex</code>还要高，但一旦有等待情况出现时，性能就会下降许多。相对于<code>OSSpinLock</code>来说，它的优势在于等待时不会消耗<code>CPU</code>资源。</p>
 
-<h3 id="toc_7">混合和过度绘制</h3>
+<pre><code class="language-objc">  dispatch_semaphore_t signal = dispatch_semaphore_create(1);
+    dispatch_time_t overTime = dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC);
 
-<p>我们知道,<code>GPU</code>每一帧可以绘制的像素有一个最大限制（就是所谓的<code>fill rate</code>），这个情况下可以轻易地绘制整个屏幕的所有像素。但是如果由于重叠图层的关系需要不停地重绘同一区域的话，掉帧就可能发生了。</p>
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        dispatch_semaphore_wait(signal, overTime);
+            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+            sleep(2);
+            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+        dispatch_semaphore_signal(signal);
+    });
 
-<p>GPU会放弃绘制那些完全被其他图层遮挡的像素，但是要计算出一个图层是否被遮挡也是相当复杂并且会消耗处理器资源。同样，合并不同图层的透明重叠像素（即混合）消耗的资源也是相当客观的。所以为了加速处理进程，不到必须时刻不要使用透明图层。<br/>
-任何情况下，你应该这样做：</p>
-
-<ul>
-<li>给视图的<code>backgroundColor</code>属性设置一个固定的，不透明的颜色</li>
-<li>设置<code>opaque</code>属性为YES</li>
-</ul>
-
-<p>这样减少了混合行为（因为编译器知道图层后的东西不对最终像素残生影响）计算得到加速，因为<code>Core Animation</code>完全可以舍弃所有被完全遮盖的图层，避免了过度绘制。</p>
-
-<p>如果用到了图像，尽量避免透明除非非常必要。如果图像要显示在一个固定的背景颜色或是固定的背景图之前，你没必要相对前景移动，你只需要预填充背景图片就可以避免运行时混色了。</p>
-
-<p>如果是文本的话，一个不透明颜色背景的<code>UILabel</code>会比透明背景要更高效。</p>
-
-<p>最后，明智地使用<code>shouldRasterize</code>属性，可以将一个固定的图层体系折叠成单张图片，这样就不需要每一帧重新合成了，也就不会有因为子图层之间的混合和过度绘制的性能问题了。</p>
-
-<h3 id="toc_8">减少图层数量</h3>
-
-<p>我们的图层呈现过程:<br/>
-初始化图层，处理图层，打包通过<code>IPC</code>发给渲染引擎，转化成<code>OpenGL</code>几何图形，这些是一个图层的大致资源开销。</p>
-
-<p>事实上，一次性在屏幕上显示的最大图层数量也是有限的。这取决于于iOS设备，图层类型，图层内容和属性等。</p>
-
-<h4 id="toc_9">裁切</h4>
-
-<p>不可见图层：</p>
-
-<ul>
-<li>图层在屏幕边界之外，或是在父图层边界之外。</li>
-<li>完全在一个不透明图层之后。</li>
-<li>完全透明</li>
-</ul>
-
-<p><code>Core Animation</code>非常擅长处理对视觉效果无意义的图层。但是经常性地，你自己的代码会比<code>Core Animation</code>更早地想知道一个图层是否是有用的。理想状况下，在图层对象在创建之前就想知道，以避免创建和配置不必要图层的额外工作。</p>
-
-<p>示例:<br/>
-当我们创建了很多图层,但是这些图层也许在屏幕外也许被遮盖,显示的数量一定，那么我们增加创建图层数量就会导致帧数下降,出现性能问题。</p>
-
-<p>但是如果计算每个图层根据是否最终显示在屏幕上这是一个很难的过程。所以我们可以用另外一种方式优化:<br/>
-随着视图的滚动动态地实例化图层而不是事先都分配好,这样，我们可以在创造它之前计算出是否需要它，接着，我们增加一些代码去计算可视区域这样就可以排除区域之外的图层了。</p>
-
-<p>类似<code>UITableView</code>或者<code>UICollectionView</code>的机制</p>
-
-<h4 id="toc_10">对象回收</h4>
-
-<p>处理巨大数量的相似视图或图层时还有一个技巧就是回收他们。对象回收在<code>iOS</code>颇为常见；<code>UITableView</code>和 <code>UICollectionView</code> 都有用到，<code>MKMapView</code>中的动画<code>pin</code>码也有用到，还有其他很多例子。</p>
-
-<p>做对象回收首先需要一个有一个对象池。进行对象的存取,避免了不断创建和释放对象(相当消耗资源因为涉及到内存的分配和销毁)而且也不必给相似实例重复赋值。</p>
-
-<pre><code class="language-objc">@property (nonatomic, strong) NSMutableSet *recyclePool;
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        sleep(1);
+        dispatch_semaphore_wait(signal, overTime);
+            NSLog(@&quot;需要线程同步的操作2&quot;);
+        dispatch_semaphore_signal(signal);
+    });
 </code></pre>
 
-<p>注意：<br/>
-在本实例中做对象回收需要禁用隐式动画,因为之前图层对象都是在呈现之前改变属性,但是现在是回收的，需要禁用隐式动画,否咋改变属性就触发隐式动画</p>
+<pre><code class="language-objc">dispatch_semaphore_create(1)： 传入值必须 &gt;=0, 若传入为 0 则阻塞线程并等待timeout,
+时间到后会执行其后的语句
+dispatch_semaphore_wait(signal, overTime)：可以理解为 lock,会使得 signal 值 -1，若信号量的值大于0，就可以继续往下执行,否则等待,如果在等待时间期间信号量一直为0，则会在`timeOut`后自动执行其后的语句。
+//
+dispatch_semaphore_signal(signal)：可以理解为 unlock,会使得 signal 值 +1
+</code></pre>
 
-<h4 id="toc_11">Core Graphics绘制</h4>
+<p>补充:<a href="http://www.cnblogs.com/snailHL/p/3906112.html">关于dispatch_semaphore的使用</a></p>
 
-<p>在上面我们派出了那些没有显示在屏幕上的图层,对于那些显示的对屏幕有贡献的图层和视图，我们还有减少图层数量的方法</p>
+<h2 id="toc_2">三、@synchronized</h2>
 
-<p>比如多个<code>UILabel</code>或者<code>UIImageView</code>我们可以把他们全部替换为单独视图然后用<code>-drawRect</code>方法绘制出这些复杂的视图层级</p>
+<pre><code class="language-objc"> NSObject *obj = [[NSObject alloc] init];
 
-<p>这个提议看上去并不合理因为大家都知道软件绘制行为要比<code>GPU</code>合成要慢而且还需要更多的内存空间，但是在因为图层数量而使得性能受限的情况下，软件绘制很可能提高性能呢，因为它避免了图层分配和操作问题。</p>
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        @synchronized(obj) {
+            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+            sleep(3);
+            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+        }
+    });
 
-<p>你可以自己实验一下这个情况，它包含了性能和栅格化的权衡，但是意味着你可以从图层树上去掉子图层（用<code>shouldRasterize</code>，与完全遮挡图层相反）。</p>
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        sleep(1);
+        @synchronized(obj) {
+            NSLog(@&quot;需要线程同步的操作2&quot;);
+        }
+    });
+</code></pre>
 
-<h4 id="toc_12">- renderInContext: 方法</h4>
+<p><code>@synchronized(obj)</code>指令使用的<code>obj</code>为该锁的唯一标识，只有当标识相同时，才为满足互斥.<br/>
+<code>@synchronized</code>指令实现锁的优点就是我们不需要在代码中显式的创建锁对象，便可以实现锁的机制，但作为一种预防措施，<code>@synchronized</code>块会隐式的添加一个异常处理例程来保护代码，该处理例程会在异常抛出的时候自动的释放互斥锁。所以如果不想让隐式的异常处理例程带来额外的开销，你可以考虑使用锁对象。</p>
 
-<p>用<code>Core Graphics</code>去绘制一个静态布局有时候会比用层级的<code>UIView</code>实例来得快，但是使用<code>UIView</code>实例要简单得多而且比用手写代码写出相同效果要可靠得多，更边说<code>Interface Builder</code>来得直接明了。</p>
+<p>补充：<a href="http://ios.jobbole.com/82826/">关于 @synchronized，这儿比你想知道的还要多</a></p>
 
-<p>如果大量的视图或者图层真的关联到了屏幕上将会是一个大问题。没有与图层树相关联的图层不会被送到渲染引擎，也没有性能问题（在他们被创建和配置之后）。</p>
+<h2 id="toc_3">四、NSLock</h2>
 
-<p>我们可以使用<code>CALayer</code>的<code>- renderInContext:</code>方法，你可以将图层及其子图层快照进一个<code>Core Graphics</code>上下文然后得到一个图片，可以直接显示在<code>UIImageView</code>中或者作为另外一个图层的<code>contents</code>。不同于<code>shouldRasterize</code>(要求图层与图层树相关联)，这个方法没有持续的性能消耗。</p>
+<pre><code class="language-objc">    NSLock *lock = [[NSLock alloc] init];
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        //[lock lock];
+        [lock lockBeforeDate:[NSDate date]];
+            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+            sleep(2);
+            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+        [lock unlock];
 
-<p>当图层内容改变，不同于<code>shouldRasterize</code>的自动地处理缓存和缓存验证，这张图片的刷新时机取决于我们自己，但是一旦图片被生成,相比让<code>Core Animation</code>处理一个复杂的图层树，你节省了相当客观的性能。</p>
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        sleep(1);
+        if ([lock tryLock]) {//尝试获取锁，如果获取不到返回NO，不会阻塞该线程
+            NSLog(@&quot;锁可用的操作&quot;);
+            [lock unlock];
+        }else{
+            NSLog(@&quot;锁不可用的操作&quot;);
+        }
+
+        NSDate *date = [[NSDate alloc] initWithTimeIntervalSinceNow:3];
+        if ([lock lockBeforeDate:date]) {//尝试在未来的3s内获取锁，并阻塞该线程，如果3s内获取不到恢复线程, 返回NO,不会阻塞该线程
+            NSLog(@&quot;没有超时，获得锁&quot;);
+            [lock unlock];
+        }else{
+            NSLog(@&quot;超时，没有获得锁&quot;);
+        }
+
+    });
+    //运行结果
+    2016-06-29 20:45:08.864 SafeMultiThread[35911:575795] 需要线程同步的操作1 开始
+    2016-06-29 20:45:09.869 SafeMultiThread[35911:575781] 锁不可用的操作
+    2016-06-29 20:45:10.869 SafeMultiThread[35911:575795] 需要线程同步的操作1 结束
+    2016-06-29 20:45:10.870 SafeMultiThread[35911:575781] 没有超时，获得锁
+
+</code></pre>
+
+<p><code>lock</code>一般用于多线程同时访问、修改同一个数据源，保证在同一时间内数据源只被访问、修改一次，其他线程的命令需要在<code>lock</code>外等待，只到<code>unlock</code>，才可访问</p>
+
+<p><code>NSLock</code>是<code>Cocoa</code>提供给我们最基本的锁对象，这也是我们经常所使用的，除了常使用的<code>lock</code>和<code>unlock</code>方法外,还提供了:<br/>
+<code>trylock</code>：能加锁返回<code>YES</code>并执行加锁操作，相当于<code>lock</code>，反之返回<code>NO</code><br/>
+<code>lockBeforeDate</code>：这个方法表示会在传入的时间内尝试加锁，若能加锁则执行加锁操作并返回<code>YES</code>，反之返回<code>NO</code></p>
+
+<h2 id="toc_4">五、NSRecursiveLock递归锁</h2>
+
+<pre><code class="language-objc">    NSRecursiveLock *lock = [[NSRecursiveLock alloc] init];
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+
+        static void (^RecursiveMethod)(int);
+
+        RecursiveMethod = ^(int value) {
+
+            [lock lock];
+            if (value &gt; 0) {
+
+                NSLog(@&quot;value = %d&quot;, value);
+                sleep(1);
+                RecursiveMethod(value - 1);
+            }
+            [lock unlock];
+        };
+
+        RecursiveMethod(5);
+    });
+    //执行结果
+    2016-06-30 19:09:41.414 SafeMultiThread[30949:450684] value = 5
+    2016-06-30 19:09:42.418 SafeMultiThread[30949:450684] value = 4
+    2016-06-30 19:09:43.419 SafeMultiThread[30949:450684] value = 3
+    2016-06-30 19:09:44.424 SafeMultiThread[30949:450684] value = 2
+    2016-06-30 19:09:45.426 SafeMultiThread[30949:450684] value = 1
+    
+    
+    //在上面如果用NSLock的话就会造成死锁的情况
+    NSLock *lock = [[NSLock alloc] init];
+    /**
+        在我们的线程中，RecursiveMethod是递归调用的。所以每次进入这个block时，都会去加一次
+        锁，而从第二次开始，由于锁已经被使用了且没有解锁，所以它需要等待锁被解除，这样就导致了死
+        锁，线程被阻塞住了。
+    */
+</code></pre>
+
+<p><code>NSRecursiveLock</code>递归锁，可以被同一线程多次请求，而不会引起死锁。这主要是用在循环或递归操作中。<br/>
+递归锁会跟踪它被lock的次数。每次成功的lock都必须平衡调用unlock操作。只有所有达到这种平衡，锁最后才能被释放，以供其它线程使用。</p>
+
+<p>补充:<a href="http://www.cocoachina.com/ios/20150513/11808.html">NSRecursiveLock递归锁的使用</a></p>
+
+<h2 id="toc_5">六、NSConditionLock条件锁</h2>
+
+<p>只是<code>lock</code>和<code>unlock</code>通常并不能满足我们的使用，我们通常在满足某条件的情况下才会打开这把锁，这时候我们可以使用<code>NSConditionLock条件锁</code></p>
+
+<pre><code class="language-objc">    NSConditionLock *cLock = [[NSConditionLock alloc] initWithCondition:0];
+
+//线程1
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    if([cLock tryLockWhenCondition:0]){
+        NSLog(@&quot;线程1&quot;);
+       [cLock unlockWithCondition:1];
+    }else{
+         NSLog(@&quot;失败&quot;);
+    }
+});
+
+//线程2
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    [cLock lockWhenCondition:3];
+    NSLog(@&quot;线程2&quot;);
+    [cLock unlockWithCondition:2];
+});
+
+//线程3
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    [cLock lockWhenCondition:1];
+    NSLog(@&quot;线程3&quot;);
+    [cLock unlockWithCondition:3];
+});
+/**
+    我们在初始化 NSConditionLock 对象时，给了他的标示为 0
+    执行 tryLockWhenCondition:时，我们传入的条件标示也是 0,所 以线程1 加锁成功
+    执行 unlockWithCondition:时，这时候会把condition由 0 修改为 1
+    因为condition 修改为了  1， 会先走到 线程3，然后 线程3 又将 condition 修改为 3
+    最后 走了 线程2 的流程
+*/
+    
+</code></pre>
+
+<p><img src="media/14964011409915/14967500416387.png" alt=""/></p>
+
+<p>相比于 NSLock 多了个<code>condition</code>参数，我们可以理解为一个条件标示.<br/>
+我们还用它实现了任务支架你的依赖</p>
+
+<pre><code class="language-objc">//可用功能如下:
+- (instancetype)initWithCondition:(NSInteger)condition NS_DESIGNATED_INITIALIZER;
+
+@property (readonly) NSInteger condition;
+- (void)lockWhenCondition:(NSInteger)condition;
+- (BOOL)tryLock;
+- (BOOL)tryLockWhenCondition:(NSInteger)condition;
+- (void)unlockWithCondition:(NSInteger)condition;
+- (BOOL)lockBeforeDate:(NSDate *)limit;
+- (BOOL)lockWhenCondition:(NSInteger)condition beforeDate:(NSDate *)limit;
+
+@property (nullable, copy) NSString *name NS_AVAILABLE(10_5, 2_0);
+</code></pre>
+
+<h2 id="toc_6">七、NSCondition</h2>
+
+<p>一种最基本的条件锁。手动控制线程<code>wait</code>和<code>signal</code>。</p>
+
+<pre><code class="language-objc">NSCondition *condition = [[NSCondition alloc] init];
+
+    NSMutableArray *products = [NSMutableArray array];
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        while (1) {
+            [condition lock];
+            if ([products count] == 0) {
+                NSLog(@&quot;wait for product&quot;);
+                [condition wait];
+            }
+            [products removeObjectAtIndex:0];
+            NSLog(@&quot;custome a product&quot;);
+            [condition unlock];
+        }
+
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        while (1) {
+            [condition lock];
+            [products addObject:[[NSObject alloc] init]];
+            NSLog(@&quot;produce a product,总量:%zi&quot;,products.count);
+            [condition signal];
+            [condition unlock];
+            sleep(1);
+        }
+
+    });
+    
+2016-06-30 20:21:25.295 SafeMultiThread[31256:513991] wait for product
+2016-06-30 20:21:25.296 SafeMultiThread[31256:513994] produce a product,总量:1
+2016-06-30 20:21:25.296 SafeMultiThread[31256:513991] custome a product
+</code></pre>
+
+<p><code>[condition lock]</code>一般用于多线程同时访问、修改同一个数据源，保证在同一时间内数据源只被访问、修改一次，其他线程的命令需要在lock 外等待，只到unlock ，才可访问<br/>
+<code>[condition unlock]</code>与lock 同时使用<br/>
+<code>[condition wait]</code>让当前线程处于等待状态<br/>
+<code>[condition signal]</code>CPU发信号告诉线程不用在等待，可以继续执行</p>
+
+<pre><code class="language-objc">- (void)wait;//进入等待状态(当一个线程调用wait时其他线程就可以获得这个锁)
+- (BOOL)waitUntilDate:(NSDate *)limit;//让一个线程等待一定的时间
+- (void)signal;//唤醒一个等待的线程
+- (void)broadcast;//唤醒所有等待的线程
+</code></pre>
+
+<p>补充:<br/>
+这里需要注意wait和signal的问题：<br/>
+    1: 其实，wait函数内部悄悄的调用了unlock函数（猜测，有兴趣可自行分析），也就是说在调用wati函数后，这个NSCondition对象就处于了无锁的状态，这样其他线程就可以对此对象加锁并触发该NSCondition对象。当NSCondition被其他线程触发时，在wait函数内部得到此事件被触发的通知，然后对此事件重新调用lock函数（猜测），而在外部看起来好像接收事件的线程（调用wait的线程）从来没有放开NSCondition对象的所有权，wati线程直接由阻塞状态进入了触发状态一样。这里容易造成误解。<br/>
+    2: wait函数并不是完全可信的。也就是说wait返回后，并不代表对应的事件一定被触发了，因此，为了保证线程之间的同步关系，使用NSCondtion时往往需要加入一个额外的变量来对非正常的wait返回进行规避。<br/>
+   3: 关于多个wait时的调用顺序，测试发现与wait执行顺序有关。</p>
+
+<h2 id="toc_7">八、pthread_mutex互斥锁</h2>
+
+<pre><code class="language-objc">  __block pthread_mutex_t theLock;
+    pthread_mutex_init(&amp;theLock, NULL);
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            pthread_mutex_lock(&amp;theLock);
+            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+            sleep(3);
+            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+            pthread_mutex_unlock(&amp;theLock);
+
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            sleep(1);
+            pthread_mutex_lock(&amp;theLock);
+            NSLog(@&quot;需要线程同步的操作2&quot;);
+            pthread_mutex_unlock(&amp;theLock);
+
+    });
+2016-06-30 21:13:32.440 SafeMultiThread[31429:548869] 需要线程同步的操作1 开始
+2016-06-30 21:13:35.445 SafeMultiThread[31429:548869] 需要线程同步的操作1 结束
+2016-06-30 21:13:35.446 SafeMultiThread[31429:548866] 需要线程同步的操作2
+    /**
+        与OSSpinLock类似,pthread_mutex 中也有个pthread_mutex_trylock(&amp;pLock)，和上面提
+        到的 OSSpinLockTry(&amp;oslock)区别在于，前者可以加锁时返回的是 0，否则返回一个错误提示
+        码；后者返回的 YES和NO
+    */
+</code></pre>
+
+<pre><code class="language-objc">1：pthread_mutex_init(pthread_mutex_t mutex,const pthread_mutexattr_t attr);
+初始化锁变量mutex。attr为锁属性，NULL值为默认属性。
+2：pthread_mutex_lock(pthread_mutex_t mutex);加锁
+3：pthread_mutex_tylock(*pthread_mutex_t *mutex);加锁，但是与2不一样的是当锁已经在使用的时候，返回为EBUSY，而不是挂起等待。
+4：pthread_mutex_unlock(pthread_mutex_t *mutex);释放锁
+5：pthread_mutex_destroy(pthread_mutex_t* mutex);使用完后释放
+</code></pre>
+
+<p><code>YYKit</code>源码<br/>
+<img src="media/14964011409915/14967514267813.png" alt=""/></p>
+
+<h2 id="toc_8">九、pthread_mutex(recursive)递归锁</h2>
+
+<p>之前的lock是和unlock成对出现，同一线程多次 lock 是不允许的，而递归锁允许同一个线程在未释放其拥有的锁时反复对该锁进行加锁操作。</p>
+
+<pre><code class="language-objc">static pthread_mutex_t pLock;
+pthread_mutexattr_t attr;
+pthread_mutexattr_init(&amp;attr); //初始化attr并且给它赋予默认
+pthread_mutexattr_settype(&amp;attr, PTHREAD_MUTEX_RECURSIVE); //设置锁类型，这边是设置为递归锁
+pthread_mutex_init(&amp;pLock, &amp;attr);
+pthread_mutexattr_destroy(&amp;attr); //销毁一个属性对象，在重新进行初始化之前该结构不能重新使用
+
+//1.线程1
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    static void (^RecursiveBlock)(int);
+    RecursiveBlock = ^(int value) {
+        pthread_mutex_lock(&amp;pLock);
+        if (value &gt; 0) {
+            NSLog(@&quot;value: %d&quot;, value);
+            RecursiveBlock(value - 1);
+        }
+        pthread_mutex_unlock(&amp;pLock);
+    };
+    RecursiveBlock(5);
+});
+//如果我们用 pthread_mutex_init(&amp;pLock, NULL) 初始化会出现死锁的情况，递归锁能很好的避免这种情况的死锁；
+</code></pre>
 
                         
                       </div>
@@ -289,10 +493,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/5/18</span>
+                    <span class="date">2017/6/2</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E6%80%A7%E8%83%BD.html'>性能</a></span>
+          					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -357,6 +561,10 @@
 
       	<p class="cat-list">
         
+            <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BC%96%E7%A8%8B.html"><strong>计算机编程</strong></a>
+        
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
         
             <a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html"><strong>2017年。。。</strong></a>
@@ -378,31 +586,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="14966582354331.html"></a>
+			        <a href="14972592855571.html">Block实现原理</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14964011409915.html">iOS 开发中的九种锁</a>
+			        <a href="14972581397752.html">第三方登录分享</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14958652887586.html">时间 时区</a>
+			        <a href="14968918049808.html">NSURL</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14958642376440.html">定时器</a>
+			        <a href="14968373667230.html">Swift 基础部分</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14957029093514.html">UITextView</a>
+			        <a href="14966582354331.html">swift简介</a>
 			      </li>
 		     
 		  

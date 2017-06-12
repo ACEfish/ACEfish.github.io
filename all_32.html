@@ -76,6 +76,10 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BC%96%E7%A8%8B.html">计算机编程</a></li>
+        
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
         
             <li><a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html">2017年。。。</a></li>
@@ -103,174 +107,247 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14883679213714.html">
+                <a class="clearlink" href="14894054496048.html">
                 
-                  <h1>图层树和寄宿图</h1>
+                  <h1>变换</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>注意点:<br/>
-1. <code>contentsScale</code> 并不关心屏幕的拉伸因素而总是默认为1.0。如果我们想以Retina的质量来渲染图层，我们就得手动设置图层的 contentsScale 属性。</p>
+                        	<h3 id="toc_0">仿射变换</h3>
 
-<p><code>textLayer.contentsScale = [UIScreen mainScreen].scale;</code><br/>
-2. </p>
+<p><code>UIView</code>的<code>transform</code>属性是一个<code>CGAffineTransform</code>类型，用于二维空间的旋转，缩放和平移.  </p>
 
-<h2 id="toc_0">图层、视图</h2>
+<p><code>CGAffineTransform</code>是一个可以和二维空间向量（例如 CGPoint ）做乘法的3X2的矩阵；</p>
 
-<p>iOS中所有的视图都从UIView中派生而来。<code>UIView</code> 可以处理触摸事件，可以支持基于<code>Core Graphics</code>绘图，可以做仿射变换（例如旋转或者缩放），或者简单的类似于滑动或者渐变的动画。</p>
+<p><img src="media/14894054496048/14894062959368.jpg" alt=""/></p>
 
-<p><em><code>CALay</code>与UIView最大的不同是不处理用户的交互</em>，并不清楚具体的响应链（iOS通过视图层级关系用来传送触摸事件的机制），于是它并不能够响应事件，即使它提供了一些方法来判断是否一个触点在图层的范围之内</p>
+<p>上图中的灰色数值只是为了保证<code>左边列数与右边行数相同</code>可以做矩阵运算，其计算结果不保留也没有任何意义  </p>
 
-<p>每一个 UIView 都有一个 CALayer 实例的图层属性，视图的职责就是创建并管理这个图层，以确保当子视图在层级关系中添加或者被移除的时候，他们关联的图层也同样对应在层级关系树当中有相同的操作<br/>
-实际上视图的这些背后关联的图层才是真正用来在屏幕上显示和做动画， UIView 仅仅是对它的一个封装，提供了一些iOS类似于处理触摸的具体功能，以及<code>CoreAnimation</code>底层方法的高级接口。</p>
+<h4 id="toc_1">CGAffineTransform</h4>
 
-<p>实际上，这里并不是两个层级关系，而是四个，每一个都扮演不同的角色，<strong>除了<br/>
-视图层级和图层树之外，还存在呈现树和渲染树</strong>。</p>
-
-<p>我们用CALayer处理UIView没有暴露出来的功能(UIView没有响应的高级接口，我们只能介入底层):</p>
-
-<ul>
-<li>阴影，圆角，带颜色的边框</li>
-<li>3D变换</li>
-<li>非矩形范围</li>
-<li>透明遮罩</li>
-<li>多级非线性动画</li>
-</ul>
-
-<p>标准的<code>Xcode</code>项目模板并没有包含<code>Core Animation</code>相关头文件。所以如果我们不给项目添加合适的库，是不能够使用任何图层相关的方法或者访问它的属性。所以首先需要添加<code>QuartzCore</code>框架</p>
-
-<p><strong>视图中的子视图就是图层中的子图层</strong></p>
-
-<h2 id="toc_1">寄宿图</h2>
-
-<p>CALayer的寄宿图（即<strong>图层中包含的图</strong>）</p>
-
-<h3 id="toc_2">contents属性</h3>
-
-<p>CALayer 有一个属性叫做<code>contents</code>，这个属性的类型被定义为<code>id</code>，意味着它可以是任何类型的对象。但是,在实践中，如果你给<code>contents</code>赋的不是<code>CGImage</code>，那么你得到的图层将是空白的。<br/>
-实际上真正应该赋值的类型是<code>CGImageRef</code>,它是指向<code>CGImage</code>的指针。<br/>
-UIImage有一个<code>CGImage</code>属性，它返回一个&quot;<code>CGImageRef</code>&quot;,如果你想把这个值直接赋值给<code>CALayer</code>的 <code>contents</code> ，那你将会得到一个编译错误。因为<code>CGImageRef</code>并不是一个真正的<code>Cocoa</code>对象，而是一个<code>Core Foundation</code>类型。</p>
-
-<pre><code class="language-objc">/**
-尽管Core Foundation类型跟Cocoa对象在运行时貌似很像（被称作toll-freebridging），
-他们并不是类型兼容的，不过你可以通过bridged关键字转换。
-*/
-layer.contents = (__bridge id)image.CGImage;
+<pre><code class="language-objc">CGAffineTransformMakeRotation(CGFloat angle)
+CGAffineTransformMakeScale(CGFloat sx, CGFloat sy)
+CGAffineTransformMakeTranslation(CGFloat tx, CGFloat ty)
 /**
-    利用CALayer在一个普通的UIView中显示了一张图片。这不是一个UIImageView，它不是我们通常用来展示图片的方法。
+旋转和缩放变换都可以很好解释--分别旋转或者缩放一个向量的值。平移变换是指
+每个点都移动了向量指定的x或者y值--所以如果向量代表了一个点，那它就平移了
+这个点的距离。
 */
 </code></pre>
 
-<h4 id="toc_3">contentGravity</h4>
+<p><strong>注意</strong><br/><br/>
+<code>UIView</code>可以通过设置<code>tranform</code>属性变换,它只是封装了内部的图层变换  </p>
 
-<p>我们这样设置的图片也会适应视图拉伸，CALay也有个属性<code>contentsGravity</code>,它是个NSString类型，<br/>
-类似于UIView的<code>contentMode</code>，<code>contentsGravity</code> 的目的是为了决定内容在图层的边界<br/>
-中怎么对齐，我们将使用<code>kCAGravityResizeAspect</code>，它的效果等同于<br/>
-<code>UIViewContentModeScaleAspectFit</code>.</p>
+<p><code>CALayer</code>也有<code>transfrom</code>属性，它的类型是<code>CATransfrom3D</code>并不是<code>CGAffiTransfrom</code>  </p>
 
-<pre><code class="language-objc">self.layerView.layer.contentsGravity = kCAGravityResizeAspect;
+<p><code>CALayer</code>对应UIView的<code>transform</code>属性的是<code>affineTransform</code>  </p>
+
+<p><code>CGAffiTransfrom</code>一看名字就是基于<code>Core Graphics</code>的</p>
+
+<pre><code class="language-objc">#define RADIANS_TO_DEGREES(x) ((x)/M_PI*180.0)
+//一个pi代表180°
+CGAffineTransform transform = CGAffineTransformMakeRotation(M_PI_4);
+self.layerView.layer.affineTransform = transform;
 </code></pre>
 
-<h4 id="toc_4">contentScale</h4>
+<h4 id="toc_2">混合变换</h4>
 
-<p><code>contentsScale</code>属性其实属于支持高分辨率（又称Hi-DPI或Retina）屏幕机制的一部分。它用来判断在绘制图层的时候应该为寄宿图创建的空间大小，和需要显示的图片的拉伸度（假设并没有设置<code>contentsGravity</code>属性）。UIView有一个类似功能但是非常少用到的<code>contentScaleFactor</code>属性。<br/>
-如果<code>contentsScale</code>设置为1.0，将会以每个点1个像素绘制图片，如果设置为2.0，则会以每个点2个像素绘制图片，这就是我们熟知的<code>Retina</code>屏幕。这并不会对我们在使用<code>kCAGravityResizeAspect</code>时产生任何影响，因为它就是拉伸图片以适应图层而已，根本不会考虑到分辨率问题。但是如果我们把<code>contentsGravity</code>设置为<code>kCAGravityCenter</code>（这个值并不会拉伸图片），那将会有很明显的变化</p>
+<p><code>Core Graphics</code>提供了可在一个一个变换基础上做其他变化的函数  </p>
 
-<pre><code class="language-objc">self.layerView.layer.contentsGravity = kCAGravityCenter;
-self.layerView.layer.contentsScale = image.scale;
-
-/**
-当用代码的方式来处理寄宿图的时候，一定要记住要手动的设置图层的 contentsScale 属性
-，否则，你的图片在Retina设备上就显示得不正确啦
-*/
-layer.contentsScale = [UIScreen mainScreen].scale;
+<pre><code class="language-objc">CGAffineTransformRotate(CGAffineTransform t, CGFloat angle)
+CGAffineTransformScale(CGAffineTransform t, CGFloat sx, CGFloat sy)
+CGAffineTransformTranslate(CGAffineTransform t, CGFloat tx, CGFloat ty)
 </code></pre>
 
-<h4 id="toc_5">maskToBounds</h4>
+<p>还有一个例外的：<br/><br/>
+<code>CGAffineTransformIdentity</code>这是一个什么都不做的变换, <code>CGAffineTransform</code> 类型的空值,即单位矩阵。</p>
 
-<p>UIView有一个叫做<code>clipsToBounds</code>的属性可以用来决定是否显示超出边界的内容，CALayer对应的属性叫做<code>masksToBounds</code></p>
-
-<h4 id="toc_6">contentRect</h4>
-
-<p>CALayer的 <code>contentsRect</code> 属性允许我们在图层边框里显示寄宿图的一个子域。<br/>
-它使用单位坐标,指定0到1之间是一个相对值（像素和点就是绝对值）,相对于寄宿图的尺寸</p>
-
-<p>默认<code>contentRect</code>是{0，0，1，1},着整个寄宿图默认都是可见的，如果我们指定一个小一点的矩形，图片就会被裁剪<br/>
-事实上给 contentsRect 设置一个负数的原点或是大于{1, 1}的尺寸也是可以的。这种情况下，最外面的像素会被拉伸以填充剩下的区域。</p>
-
-<p><strong>iOS中的坐标系统:</strong></p>
-
-<ul>
-<li>点 —— 在iOS和Mac OS中最常见的坐标体系。点就像是虚拟的像素，也被称作逻辑像素。在标准设备上，一个点就是一个像素，但是在Retina设备上，一个点等于2*2个像素。iOS用点作为屏幕的坐标测算体系就是为了在Retina设备和普通设备上能有一致的视觉效果。</li>
-<li>像素 —— 物理像素坐标并不会用来屏幕布局，但是仍然与图片有相对关系。UIImage是一个屏幕分辨率解决方案，所以指定点来度量大小。但是一些底层的图片表示如CGImage就会使用像素，所以你要清楚在Retina设备和普通设备上，他们表现出来了不同的大小。</li>
-<li>单位 —— 对于与图片大小或是图层边界相关的显示，单位坐标是一个方便的度量方式， 当大小改变的时候，也不需要再次调整。单位坐标在OpenGL这种纹理坐标系统中用得很多，Core Animation中也用到了单位坐标。</li>
-</ul>
-
-<h4 id="toc_7">contentsCenter</h4>
-
-<p><code>contentsCenter</code>是一个CGRect,定义了一个固定的边框和一个在图层上可拉伸的区域.</p>
-
-<p>默认是{0，0，1，1},即当视图大小改变时会均匀大小的拉伸,但是当我们改变这个rect后,横向或者纵向拉伸图片时就只会拉伸我们选定的区域（是rect的区域被拉伸而不是rect之外区域被拉伸）</p>
-
-<p>工作起来的效果和<code>UIImage</code>里的<code>-resizableImageWithCapInsets:</code>方法效果非常类似，只是它可以运用到任何寄宿图，甚至包括在Core Graphics运行时绘制的图形</p>
-
-<p><strong>注意</strong><br/>
-这个属性我们是可以在xib中直接设置的:<br/>
-<img src="media/14883679213714/14891971745538.jpg" alt=""/></p>
-
-<h4 id="toc_8">Custom Drawing</h4>
-
-<p>当然我们设置寄宿图的方法不仅仅只有给<code>content</code>赋值CGImage，我们也可以用Core Grapic直接绘制。我们可以通过继承UIView并且重写<code>-drawRect:</code>方法进行自定义绘制  </p>
-
-<p><code>drawRect</code>方法并没有默认实现，因为对于UIView来说,寄宿图并不是必须的，但是当UIView检测到<code>-drawRect:</code>被调用就会为视图分配一个寄宿图，寄宿图的像素尺寸等于视图大小乘以 <code>contentsScale</code>的值。如果不需要寄宿图就没必要创建这个方法会造成cpu、内存浪费，空的方法也不行.  </p>
-
-<p>当视图在屏幕上出现的时候 <code>-drawRect:</code>方法就会被自动调用。<code>-drawRect:</code> 方法里面的代码利用<code>Core Graphics</code>去绘制一个寄宿图，然后内容就会被缓存起来直到它需要被更新(通常是因为开发者调用了<code>-setNeedsDisplay</code>方法,尽管影响到表现效果属性值被更改时，视图类型会自动重绘，如bounds属性)。  </p>
-
-<p>虽然<code>-drawRect:</code>方法是一个UIView方法，事实上都是底层的<code>CALayer</code>安排了重绘工作和保存了因此产生的图片。</p>
-
-<h4 id="toc_9">CALayeDelegate</h4>
-
-<p><strong>CALaye的代理</strong></p>
-
-<p><strong>这个并不常用</strong></p>
-
-<p>实现了 <code>CALayerDelegate</code> 协议，当<code>CALayer</code>需要一个内容特定的信息时，就会从协议中请求.<br/>
-当需要被重绘的时候，CALayer会请求他的代理给他一个寄宿图来显示.</p>
-
-<pre><code class="language-objc">//如果想直接设置contents属性时,可以这样
--(void)displayLayer:(CALayerCALayer *)layer;
-//如果代理不实现 -displayLayer: 方法 就会调用
-- (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx;
-/**
-    在调用这个方法之前CALayer创建一个合适尺寸的空寄宿图（尺寸由bounds
-    和contentScale决定）和一个coreGraphic绘制的上下文环境ctx
-*/ 
+<pre><code class="language-objc">//要混合两个已经存在的变换矩阵，做一个新的变换
+CGAffineTransformConcat(CGAffineTransform t1, CGAffineTransform t2);
 </code></pre>
+
+<p><strong>注意</strong><br/><br/>
+当我们按顺序进行一些列变换的时候，变换的顺序是会影响结果的，比如旋转之后的平移和平移之后的旋<br/>
+转结果可能不同。</p>
+
+<h3 id="toc_3">3D变换</h3>
+
+<p><code>CGAffineTransform</code> 类型属于<code>Core Graphics</code>框架.因为<code>Core Graphics</code>是一套2D绘图的API，因此仅仅对2D变换有效.  </p>
+
+<p>CALayer的<code>transform</code>属性(<code>CATransform3D</code>类型),可以让图层进行3D移动或者旋转  </p>
+
+<p>和CGAffiTranform类似,<code>CATransform3D</code>也是一个矩阵（在3维空间做变换的4*4矩阵）  </p>
+
+<p><img src="media/14894054496048/14894686780778.jpg" alt=""/></p>
+
+<p><code>Core  Animation</code>框架也有为我们提供一系列方法来创建和组合<code>CATransform3D</code>类型的矩阵，与CGAffiTransform不同的是其平移和缩放多了参数<code>z</code> 旋转 多了<code>x.y.z</code></p>
+
+<pre><code class="language-objc">CATransform3DMakeRotation(CGFloat angle, CGFloat x, CGFloat y, CGFloat z)
+CATransform3DMakeScale(CGFloat sx, CGFloat sy, CGFloat sz)
+CATransform3DMakeTranslation(Gloat tx, CGFloat ty, CGFloat tz)
+</code></pre>
+
+<p>举个栗子:  </p>
+
+<pre><code class="language-objc">//绕Y轴旋转45度
+CATransform3D transform = CATransform3DMakeRotation(M_PI_4, 0, 1, 0);
+self.layerView.layer.transform = transform;
+</code></pre>
+
+<p><img src="media/14894054496048/14894705472205.jpg" alt=""/></p>
+
+<p><strong>这样的效果看起来并没有旋转而只是水平方向的压缩,这是因为我们用斜的视角看它，并不是透视</strong></p>
+
+<h4 id="toc_4">透视投影</h4>
+
+<p>我们在上面做的变换是等距投影：远处的物体和近处的物体保持同样的缩放比例  </p>
+
+<p>正常情况是物体远离我们由于视角原因会变小才对  我们需要引入<code>投影变换（z变换）</code>来对矩阵做一些修改，<code>Core Animation</code>并没有提供<code>透视变换</code>函数，我们需要手动改动矩阵(easy):  </p>
+
+<p><img src="media/14894054496048/14894710925730.jpg" alt=""/></p>
+
+<p>**m34 默认为0，我们可以设置其为<code>-1/d</code>来应用透视效果(d为视角和屏幕距离,估算测试一下就ok了,大概500-1000,值越小透视效果越明显但是太小会失真，太大又几乎失去透视效果) **</p>
 
 <p>举个栗子:</p>
 
-<pre><code class="language-objc">CALayer *blueLayer = [CALayer layer];
-[self.layerView.layer addSublayer:blueLayer];
-[blueLayer display];//强制layer重绘
-
-//代理
-- (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx
-{
-    //draw a thick red circle
-    CGContextSetLineWidth(ctx, 10.0f);
-    CGContextSetStrokeColorWithColor(ctx, [UIColor redColor].CGColor);
-    CGContextStrokeEllipseInRect(ctx, layer.bounds);
-}
-
+<pre><code class="language-objc">CATransform3D transform = CATransform3DIdentity;
+//apply perspective  我曹 真的直接m34就行了
+transform.m34 = - 1.0 / 500.0;
+//rotate by 45 degrees along the Y axis
+transform = CATransform3DRotate(transform, M_PI_4, 0, 1, 0);
+//apply to layer
+self.layerView.layer.transform = transform;
 </code></pre>
 
-<p><strong>注意</strong><br/>
-我们在blueLayer上显式地调用了<code>-display</code>。不同于UIView，当图层显示在屏幕上时，CALayer不会自动重绘它的内容。它把重绘的决定权交给了开发者。</p>
+<h4 id="toc_5">灭点</h4>
 
-<p>除非你创建了一个单独的图层，你几乎没有机会用到CALayerDelegate协议,因为当UIView创建了它的宿主图层时，它就会自动地把图层的<code>delegate</code>设置为它自己，并提供了一个<code>-displayLayer:</code>的实现</p>
+<p>在透视绘图时我们说当远离视角的物体会变小,当远到一个极限的时候就会变陈一个点,最终所有物体都会汇聚消失在这同一个点.  即<strong>灭点</strong></p>
 
-<p>当使用寄宿了视图的图层的时候，你也不必实现<code>-displayLayer:</code>和<code>-drawLayer:inContext:</code>方法来绘制你的寄宿图。通常做法是实现UIView的<code>-drawRect:</code>方法，UIView就会帮你做完剩下的工作，包括在需要重绘的时候调用<code>-display</code>方法。</p>
+<p>在现实中，这个点通常是视图的中心,或者至少是包含所有3D对象的视图中心 </p>
+
+<p><code>Core Animation</code>定义了这个点位于变换图层的<code>anchorPoint</code>（通常位于图层中心，但也有例外）<br/><br/>
+这就是说，当图层发生变换时，这个点永远位于图层变换之前<code>anchorPoint</code>的位置。</p>
+
+<p><img src="media/14894054496048/14894744252171.jpg" alt=""/></p>
+
+<p><strong>注意</strong><br/><br/>
+当改变一个图层的<code>position</code>，你也改变了它的灭点，做3D变换的时候要时刻记住这一点，当你视图通过调整 <code>m34</code> 来让它更加有3D效果，应该首先把它放置于屏幕中央，然后通过平移来把它移动到指定位置（做平移变换是不会改变position的）（而不是直接改变它的<code>position</code>）灭点会处于变化之前的位置,这样的话就能保证所有的3D图层都共享一个灭点。</p>
+
+<h4 id="toc_6">sublayerTransform</h4>
+
+<p>根据上面知识,如果我们多个视图做3D变换,我们需要分别改变其M34并且确保在变换前同一个<code>position</code>,而且我们不能直接在xib中摆放视图,这样就很麻烦了   </p>
+
+<p>CALayer有个属性<code>sublayerTransform</code>.也是<code>CATransform3D</code>类型的,但是它会影响到所有子图层,即我们可以通过设置图层的这个属性来使所有子视图做同样的变换，而且确保了所有子图层灭点在容器图层的中点处.</p>
+
+<p><strong>容器图层做变换时其上图层也都会做变换的,只不过我们如果不设置容器图层的<code>sublayerTransform</code>属性的话，子图层要在做3D变换的话还要再设置m34而且要保证灭点，也就是这个属性作用就只是保证其上的子图层的m34和灭点与父图层一致</strong><br/>
+<strong>这个属性对于容器视图来说与transform属性没有什么区别，都是做一个变换</strong></p>
+
+<p><strong>注意</strong><br/><br/>
+我们通常设置最大视图的<code>sublayerTransform</code>为<code>CATransform3DIdentity;</code> 这样在其上的子视图可以随意进行3D变换都可保证其灭点位置在同一个位置.  </p>
+
+<h4 id="toc_7">背面</h4>
+
+<p>因为我们做的变换是透视的，我们可以从背面观察这张图像，发现其背面为正面图片的镜像图片,可以知道图层是<code>双面绘制的</code><br/>
+有时候我们是永远都看不到图层的背面,所以我们没必要浪费<code>CPU</code>来绘制  </p>
+
+<p><code>CALayer</code>有一个叫做 <code>doubleSided</code> 的属性来控制图层的背面是否要被绘制。<code>BOOL</code>类型,当设置为NO时，如果图层正面从视角中消失，这个图层将不会被绘制.</p>
+
+<p><img src="media/14894054496048/14895754324911.jpg" alt=""/></p>
+
+<h4 id="toc_8">扁平化图层</h4>
+
+<p>我们在做二维变换（用CATranform3D绕z轴旋转也是二维变换）知道当我们做个相反变换的时候是可以将图层或视图恢复原状的。</p>
+
+<p><img src="media/14894054496048/14895772744163.jpg" alt=""/><br/>
+如上图,外部图层旋转45度后内部图层反向旋转45度是可以恢复正常状态的  </p>
+
+<p>那么对于3D变换：</p>
+
+<p>我们将外面图层绕Y旋转,然后将内图层绕Y反向旋转<br/><br/>
+结果:<br/>
+<img src="media/14894054496048/14895796219311.jpg" alt=""/></p>
+
+<p>我们可以看到,内部的图层仍然向左侧旋转，并且发生了扭曲。</p>
+
+<p>这是因为<code>Core Animation</code>内的图层并不都存在同一个3D空间.<strong>每个图层的3D场景其实是扁平化的</strong>，你所看到的3D场景只是绘制在图层表面。</p>
+
+<p>也是因为如此:用<code>Core Animation</code>创建非常复杂的3D场景变得十分困难。你不能够使用图层树去创建一个3D结构的层级关系--在相同场景下的任何3D表面必须和同样的图层保持一致，这是因为每个的父视图都把它的子视图扁平化了。在之后我们会用<code>CATransformLayer</code>的子类来解决这个问题</p>
+
+<h3 id="toc_9">固体对象</h3>
+
+<p>一个固态的3D对象  </p>
+
+<p>我们来创建一个固体对象:</p>
+
+<pre><code class="language-objc">//创建固体对象
+
+- (void)three_dimensionaObject {
+    CATransform3D perspective = CATransform3DIdentity;
+    perspective.m34 = -1.0 / 500.0;
+    perspective = CATransform3DRotate(perspective, -M_PI_4, 1, 0, 0);
+    perspective = CATransform3DRotate(perspective, -M_PI_4, 0, 1, 0);
+    self.containView.layer.sublayerTransform = perspective;
+    //add cube face 1
+    CATransform3D transform = CATransform3DMakeTranslation(0, 0, 100);
+    [self addFaceWith:0 transform:transform];
+    
+    transform = CATransform3DMakeTranslation(100, 0, 0);
+    transform = CATransform3DRotate(transform, M_PI_2, 0, 1, 0);
+    [self addFaceWith:1 transform:transform];
+    
+    transform = CATransform3DMakeTranslation(-100, 0, 0);
+    transform = CATransform3DRotate(transform, -M_PI_2, 0, 1, 0);
+    [self addFaceWith:2 transform:transform];
+    
+    transform = CATransform3DMakeTranslation(0, 100, 0);
+    transform = CATransform3DRotate(transform, -M_PI_2, 1, 0, 0);
+    [self addFaceWith:3 transform:transform];
+    
+    transform = CATransform3DMakeTranslation(0, -100, 0);
+    transform = CATransform3DRotate(transform, M_PI_2, 1, 0, 0);
+    [self addFaceWith:4 transform:transform];
+    
+    transform = CATransform3DMakeTranslation(0, 0, -100);
+    [self addFaceWith:5 transform:transform];
+}
+
+- (void)addFaceWith:(NSInteger)index transform:(CATransform3D)transform {
+    UIView *layV = [self.layViewCollection objectAtIndex:index];
+    [self.containView addSubview:layV];
+    CGSize containerSize = self.containView.bounds.size;
+    layV.center = CGPointMake(containerSize.width / 2.0, containerSize.height/2);
+    layV.bounds = CGRectMake(0, 0, 200, 200);
+    layV.layer.transform = transform;
+}
+</code></pre>
+
+<h4 id="toc_10">光亮和阴影</h4>
+
+<p>由于我们只是简单几个图层的拼接,所以这个立体对光线并没有概念(没有棱角).我们需要自己做这个立体的阴影效果.  </p>
+
+<ul>
+<li>我们可以直接以通过改变每个面的背景颜色或者直接用带光亮效果的图片来调整。<br/></li>
+<li>如果需要动态地创建光线效果，可以根据每个视图的方向应用不同的alpha值做出半透明的阴影图层.但为了计算阴影图层的不透明度，你需要得到每个面的正太向量（垂直于表面的向量），然后根据一个想象的光源计算出两个向量叉乘结果。叉乘代表了光源和图层之间的角度，从而决定了它有多大程度上的光亮。</li>
+</ul>
+
+<p>为了达到第二种效果:<br/><br/>
+我们这里用<code>GLKit框架</code>来做向量的计算.(需要引入<code>GLKit</code>库来运行代码)每个面的<code>CATransform3D</code>都被转换成<code>GLKMatrix4</code>，然后通过<code>GLKMatrix4GetMatrix3</code>函数得出一个3×3的旋转矩阵。这个旋转矩阵指定了图层的方向，然后可以用它来得到正太向量的值</p>
+
+<h4 id="toc_11">点击事件</h4>
+
+<p><img src="media/14894054496048/14896328584294.jpg" alt=""/></p>
+
+<p>我们对于上面的固体对象,并不能点击3触发事件,这是因为我们添加视图时4.5.6是在3之前添加的,点击事件的处理由视图在父视图中的顺序决定，而不是3D空间的z轴顺序.因此即使我们此时看不到4.5.6,但是荏苒会拦截点击事件.  </p>
+
+<p><code>doubleSided</code>属性可以控制是否绘制视图后面的内容,但是设置这个属性为NO不起作用，因为即使背对相机而隐藏的视图仍然会响应点击事件(这和通过设置 hidden 属性或者设置 alpha 为0而隐藏的视图不同，那两种方式将不会响应事件).</p>
+
+<p>我们正确方式是:<br/>
+* 把除了表面3的其他视图 userInteractionEnabled 属性都设置成 NO 来禁止事件传递<br/>
+* 简单通过代码把视图3覆盖在视图6上<br/>
+* 等等</p>
+
+<p><strong>视图中图层添加的层级顺序会比屏幕上显示的顺序更有意义</strong></p>
 
                         
                       </div>
@@ -279,7 +356,7 @@ layer.contentsScale = [UIScreen mainScreen].scale;
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/1</span>
+                    <span class="date">2017/3/13</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E5%9B%BE%E5%B1%82.html'>图层</a></span>
@@ -347,6 +424,10 @@ layer.contentsScale = [UIScreen mainScreen].scale;
 
       	<p class="cat-list">
         
+            <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BC%96%E7%A8%8B.html"><strong>计算机编程</strong></a>
+        
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
         
             <a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html"><strong>2017年。。。</strong></a>
@@ -368,31 +449,31 @@ layer.contentsScale = [UIScreen mainScreen].scale;
 	      
 		      
 			      <li class="post">
-			        <a href="14966582354331.html"></a>
+			        <a href="14972592855571.html">Block实现原理</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14964011409915.html">iOS 开发中的九种锁</a>
+			        <a href="14972581397752.html">第三方登录分享</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14958652887586.html">时间 时区</a>
+			        <a href="14968918049808.html">NSURL</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14958642376440.html">定时器</a>
+			        <a href="14968373667230.html">Swift 基础部分</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14957029093514.html">UITextView</a>
+			        <a href="14966582354331.html">swift简介</a>
 			      </li>
 		     
 		  

@@ -76,6 +76,10 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BC%96%E7%A8%8B.html">计算机编程</a></li>
+        
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
         
             <li><a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html">2017年。。。</a></li>
@@ -103,302 +107,174 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14906168166224.html">
+                <a class="clearlink" href="14865484031774.html">
                 
-                  <h1>缓冲</h1>
+                  <h1>IOS开发小知识</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><code>Core Animation</code>使用缓冲来使动画移动更平滑更自然。我们来试着研究如何对你的动画控制和自定义缓冲曲线。</p>
+                        	<h3 id="toc_0">1. MJRefresh使用小知识</h3>
 
-<h3 id="toc_0">动画速度</h3>
+<pre><code>1. 隐藏下拉刷新的时间Label  
 
-<p><code>velocity = change / time</code>（假设速度不变也就是“线性步调”）</p>
+ ```Object-c
+MJRefreshHeader *refreshHead = [MJRefreshHeader headerWithRefreshingTarget:target refreshingAction:action];  
+refreshHead.lastUpdatedTimeLabel.hidden = YES;
+```
+2. 上拉加载了所有数据  
+    可以选择在尾视图显示加载完成:  
 
-<p>其实速度在动画整个移动过程中并不一定是恒定不变的,是有加速度的,为了实现这种加速度,一种方法是使用物理引擎来对运动物体的摩擦和动量来建模，然而这会使得计算过于复杂。我们称这种类型的方程为缓冲函数，幸运的是，<code>Core Animation</code>内嵌了一系列标准函数提供给我们使用。</p>
+    ```Object-c
+    [refreshTableView.mj_footer endRefreshingWithNoMoreData];
+    ```
+    也可以在加载完成后隐藏上拉加载的视图:
 
-<h4 id="toc_1">CAMediaTimingFunction</h4>
-
-<p>显式动画<code>CAAnimation</code>的<code>timingFunction</code>属性就是<code>CAMediaTimingFunction</code>类对象<br/>
-隐式动画用<code>CATransaction</code>的<code>+setAnimationTimingFunction:</code>方法，来调整动画时间函数</p>
-
-<p><code>CAMediaTimingFunction</code>用<code>+timingFunctionWithName:</code>方法构造对象：</p>
-
-<pre><code class="language-objc">//几种常量
-kCAMediaTimingFunctionLinear//。默认。线性计时函数
-kCAMediaTimingFunctionEaseIn//慢慢加速然后突然停止
-kCAMediaTimingFunctionEaseOut//全速开始 慢慢减速停止
-kCAMediaTimingFunctionEaseInEaseOut//慢慢加速然后再慢慢减速
-kCAMediaTimingFunctionDefault//类似淡入淡出但是加速和减速过程更慢
-/**
-    UIView 的动画方法默认kCAMediaTimingFunctionEaseInEaseOut
-    CAAinamtion 默认kCAMediaTimingFunctionLinear
-*/
+    ```Object-c
+    refreshTableView.mj_footer.hidden = YES;
+    ``` 
 </code></pre>
 
-<pre><code class="language-objc">[CATransaction begin];
-[CATransaction setAnimationDuration:1.0];
-[CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut]];
-//set the position
-self.colorLayer.position = [[touches anyObject] locationInView:self.view];
-//commit transaction
-[CATransaction commit];
+<h3 id="toc_1">2.cell 初始化</h3>
+
+<p>对于tableView或者CollectionView的cell或者item 如果是以注册的方式初始化的话一定是会有的，因此就不需要if(!<code>cell</code>)的方式判空，因为一定是存在的<br/>
+    对于collection的头尾市图方式是一样的 因为其头尾视图也是用注册方式的</p>
+
+<h3 id="toc_2">3. 属性自动合成存取方法</h3>
+
+<p>在我们使用属性时，编译器会自动编写访问这些属性所需要的方法，即“自动合成”.这个过程是编译器在编译期间执行的因此我们看不到这些合成方法。除了添加方法外,编译器还自动向类中添加适当类的实例变量。<br/>
+    我们可以自己更改编译器的变量名字<br/>
+    我们可以自己实现存取方法，如果你实现了一个 那么另外一个还是会由编译器合成。我们也可以用<code>@dynamic</code>关键字来阻止编译器自动合成存取方法.</p>
+
+<h3 id="toc_3">4. 控制器在被pop后未销毁原因</h3>
+
+<p>控制器在被pop后移出栈后会被释放，但有些时候会发现控制器出栈的时候不会调用dealloc方法，归根结底，是因为当前控制器被某个对象强引用了，控制器的引用计数不为0，系统无法帮你释放这部分内存<br/>
+    以下几种原因:<br/>
+    1. 控制器中NSTimer没有被销毁<br/>
+    2. 控制器中的代理不是weak属性<br/>
+    3. 控制器中block的循环引用</p>
+
+<pre><code>但是:比如添加的CAAnimation动画是就算不移除也不会影响的释放的
 </code></pre>
 
-<h4 id="toc_2">UIView 的动画缓冲</h4>
+<h3 id="toc_4">5.对象设置属性的KVC</h3>
 
-<p>UIView 动画的缓冲选项，<code>options</code>参数</p>
+<p>[self setValue:obj forKey:propertyKey];</p>
 
-<pre><code class="language-objc">UIViewAnimationOptionCurveEaseInOut//默认
-UIViewAnimationOptionCurveEaseIn
-UIViewAnimationOptionCurveEaseOut
-UIViewAnimationOptionCurveLinear
-</code></pre>
+<h3 id="toc_5">6. frame、bounds、center、anchor、transform 关系：</h3>
 
-<pre><code class="language-objc">- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+<pre><code class="language-objc">-(CGRect) frame  
+{  
+     float x = center.x - layer.anchorPoint.x * bounds.width;   
+     float y = center.y - layer.anchorPoint.y * bounds.height;  
+     float width = bounds.width;
+     float height = bounds.height;  
+     return CGRectMake(x, y, width, height);
+}
+
+-(void) setFrame:(CGRect) rect
 {
-    //perform the animation
-    [UIView animateWithDuration:1.0 delay:0.0 options:UIViewAnimationOptionCurveEaseOut
-    animations:^{
-        //set the position
-        self.colorView.center = [[touches anyObject] locationInView:self.view];
+    center.x = rect.x + layer.anchorPoint.x * rect.width;
+    center.y = rect.y + layer.anchorPoint.y * rect.height;
+    bounds.width = rect.width;
+    bounds.height = rect.height;
+}
+</code></pre>
+
+<p>layer的position和 UIVIew的center是等效的 任何时候都是相等的</p>
+
+<p>所以当我们设置anchor为（0.0）因为bounds没变 center没变 因此frame会变化 而且center出现在左上角 </p>
+
+<p><strong>注意</strong><br/>
+当一个view的transform被更改了，即不为CGAffineTransformIdentity。<br/>
+frame属性可能会更改，view的bounds，center不会变，layer的position不会变。这个很重要，这样保持了在transform后，view的frame虽然改变了，但是内部参考系是不变的，可以继续进行其他变换，只要不更改frame或center或layer的position。</p>
+
+<h3 id="toc_6">7.隐藏Tabbar</h3>
+
+<h3 id="toc_7">8. 改变cell点击效果</h3>
+
+<p>1.这只是改变点击的颜色 点击效果还在(比如cell上的view颜色消失,image动画暂停)</p>
+
+<pre><code class="language-objc">cell.selectedBackgroundView = [[UIView alloc] initWithFrame:self.frame] ;
+cell.selectedBackgroundView.backgroundColor = [UIColor grayColor];
+</code></pre>
+
+<p>2.这个方法直接关闭了系统的点击效果 自己设计了cell的点击背景颜色变化</p>
+
+<pre><code class="language-objc">cell.selectionStyle = UITableViewCellSelectionStyleNone;
+
+//重写cell的点击高亮
+//bgView是我们铺满在cell.contentView上的最后的view
+- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
+    [super setHighlighted:highlighted animated:animated];
+    if (highlighted) {
+        [UIView animateWithDuration:0.25 animations:^{
+            self.contentBgView.backgroundColor = ICColorOfBorder_Gray;
+        }];
+    } else {
+        [UIView animateWithDuration:0.25 animations:^{
+            self.contentBgView.backgroundColor = [UIColor whiteColor];
+        }];
+        
     }
-    completion:NULL];
 }
 </code></pre>
 
-<h4 id="toc_3">缓冲和关键帧动画</h4>
+<h3 id="toc_8">9.强制cell不复用</h3>
 
-<p>对于关键帧动画：我们不想给整个动画过程应用这个效果，我们希望对每个动画的过程重复这样的缓冲.<br/>
-<code>CAKeyframeAnimation</code> 有一个 <code>NSArray</code> 类型的<code>timingFunctions</code>属性，我们<br/>
-可以用它来对每次动画的步骤指定不同的计时函数。这个数组个数需要与<strong>关键帧(keyframes)个数减一</strong>,它是每两个关键帧之间的效果.</p>
+<p>有时候我们列表中有一个或很少几个cell 是特殊样式 我们并不想它参与cell的复用  </p>
 
-<pre><code class="language-objc">    //create a keyframe animation
-    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
-    animation.keyPath = @&quot;backgroundColor&quot;;
-    animation.duration = 2.0;
-    animation.values = @[
-    (__bridge id)[UIColor blueColor].CGColor,
-    (__bridge id)[UIColor redColor].CGColor,
-    (__bridge id)[UIColor greenColor].CGColor,
-    (__bridge id)[UIColor blueColor].CGColor ];
-    //add timing function
-    CAMediaTimingFunction *fn = [CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn];
-    animation.timingFunctions = @[fn, fn, fn];
-    //apply animation to layer
-    [self.colorLayer addAnimation:animation forKey:nil];
-</code></pre>
-
-<h3 id="toc_4">自定义缓冲函数</h3>
-
-<p>除了<code>+functionWithName:</code>之外,<code>CAMediaTimingFunction</code>还有另一个构造函数<code>+functionWithControlPoints::::</code>（四个浮点参数）可以创建一个自定义的缓冲函数.</p>
-
-<h4 id="toc_5">三次贝塞尔曲线</h4>
-
-<p>曲线的斜率代表了速度，斜率的改变代表了加速度,</p>
-
-<p><code>CAMediaTimingFunction</code>使用了一个叫做三次贝塞尔曲线的函数，它只可以产出指定缓冲函数的子集,用四个点来定义，第一个和最后一个点代表了曲线的起点和终点,剩下中间两个点控制了曲线的形状（曲线并不一定要穿过这两个点）.</p>
-
-<p><img src="media/14906168166224/14907840742377.jpg" alt=""/></p>
-
-<p><code>CAMediaTimingFunction</code>有<code>- getControlPointAtIndex:values:</code>的方法(Index为0.1.2.3 分别代表着四个点)，可以用来检索曲线的点.使用它我们可以找到标准缓冲函数的点，然后用<code>UIBezierPath</code>和<code>CAShapeLayer</code> 来把它画出来。</p>
-
-<p><strong>曲线的起始和终点始终是{0, 0}和{1, 1}</strong></p>
-
-<pre><code class="language-objc">//可以通过改变常量来看各个函数
-CAMediaTimingFunction *function = [CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut];
-//get control points
-CGPoint controlPoint1, controlPoint2;
-[function getControlPointAtIndex:1 values:(float *)&amp;controlPoint1];
-[function getControlPointAtIndex:2 values:(float *)&amp;controlPoint2];
-//create curve
-UIBezierPath *path = [[UIBezierPath alloc] init];
-[path moveToPoint:CGPointZero];
-[path addCurveToPoint:CGPointMake(1, 1)
-controlPoint1:controlPoint1 controlPoint2:controlPoint2];
-//scale the path up to a reasonable size for display
-[path applyTransform:CGAffineTransformMakeScale(200, 200)];
-//create shape layer
-CAShapeLayer *shapeLayer = [CAShapeLayer layer];
-shapeLayer.strokeColor = [UIColor redColor].CGColor;
-shapeLayer.fillColor = [UIColor clearColor].CGColor;
-shapeLayer.lineWidth = 4.0f;
-shapeLayer.path = path.CGPath;
-[self.layerView.layer addSublayer:shapeLayer];
-//flip geometry so that 0,0 is in the bottom-left
-self.layerView.layer.geometryFlipped = YES;
-</code></pre>
-
-<pre><code class="language-objc">//要初始微弱，然后迅速上升，最后缓冲到终点
-[CAMediaTimingFunction functionWithControlPoints:1 :0 :0.75 :1];
-</code></pre>
-
-<p><img src="media/14906168166224/14907853432579.jpg" alt=""/></p>
-
-<h4 id="toc_6">更加复杂的动画曲线</h4>
-
-<p><img src="media/14906168166224/14907860935800.jpg" alt=""/></p>
-
-<p>实现这个效果方法:</p>
-
-<ul>
-<li>用 CAKeyframeAnimation 创建一个动画，然后分割成几个步骤，每个小步骤使用自己的计时函数。</li>
-<li>使用定时器逐帧更新实现动画</li>
-</ul>
-
-<h4 id="toc_7">基于关键帧的缓冲</h4>
-
-<p>我们用关键帧缓冲来实现上面的小球掉落动画<br/>
-很显然我们的每个关键帧就是就是每次反弹的峰值,</p>
-
-<pre><code class="language-objc">CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
-animation.keyPath = @&quot;position&quot;;
-animation.duration = 1.0;
-animation.delegate = self;
-animation.values = @[
-[NSValue valueWithCGPoint:CGPointMake(150, 32)],
-[NSValue valueWithCGPoint:CGPointMake(150, 268)],
-[NSValue valueWithCGPoint:CGPointMake(150, 140)],
-[NSValue valueWithCGPoint:CGPointMake(150, 268)],
-[NSValue valueWithCGPoint:CGPointMake(150, 220)],
-[NSValue valueWithCGPoint:CGPointMake(150, 268)],
-[NSValue valueWithCGPoint:CGPointMake(150, 250)],
-[NSValue valueWithCGPoint:CGPointMake(150, 268)]
-];
-animation.timingFunctions = @[
-[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn],
-[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut],
-[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn],
-[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut],
-[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn],
-[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseOut],
-[CAMediaTimingFunction functionWithName: kCAMediaTimingFunctionEaseIn]
-];
-animation.keyTimes = @[@0.0, @0.3, @0.5, @0.7, @0.8, @0.9, @0.95, @1.0];
-//apply animation
-self.ballView.layer.position = CGPointMake(150, 268);
-[self.ballView.layer addAnimation:animation forKey:nil];
-</code></pre>
-
-<p>//这样计算每个关键帧也太麻烦了,一旦有修改又要计算关键帧的位置</p>
-
-<h4 id="toc_8">流程自动化</h4>
-
-<p>如果我们将动画分割为足够小的部分,那么就可以用直线来拼接为这些曲线</p>
-
-<p><code>Core Animation</code>的插值机制:传入起点和终点，然后在这两个点之间指定时间点产出一个新点的机制</p>
-
-<pre><code class="language-objc">/**
-简单的浮点起始值
-*/
-value = (endValue – startValue) × time + startValue;
-</code></pre>
-
-<p>这是对简单的浮点值进行插值,如果是比较复杂的类似CGPoint、CGColorRef或者CATransform3D等我们可以可以对其中的每个元素（CGPoint 中的x和y值、CGColorRef 中的红，蓝，绿，透明值，或者是 CATransform3D 中独立矩阵的坐标）用这种方法,我们可以在逻辑插值前将对象拆解,插值后再重新封装成对象.</p>
-
-<p>我们获得属性动画起始值的任意插值,就可以将动画分为许多独立关键帧,产出一个线性的关键帧动画.</p>
-
-<p>因为<code>Core Animation</code>是每秒60帧去渲染屏幕更新,因此我们每秒生成60个关键帧可以保证动画平滑</p>
-
-<pre><code class="language-objc">float interpolate(float from, float to, float time)
-{
-    return (to - from) * time + from;
-}
-- (id)interpolateFromValue:(id)fromValue toValue:(id)toValue time:(float)time
-{
-    if ([fromValue isKindOfClass:[NSValue class]]) {
-    //get type
-    const char *type = [fromValue objCType];
-    if (strcmp(type, @encode(CGPoint)) == 0) {
-    CGPoint from = [fromValue CGPointValue];
-    CGPoint to = [toValue CGPointValue];
-    CGPoint result = CGPointMake(interpolate(from.x, to.x, time), interpolate(from.y, to.y, time));
-    return [NSValue valueWithCGPoint:result];
-        }
-    }
-//provide safe default implementation
-    return (time &lt; 0.5)? fromValue: toValue;
+<pre><code class="language-objc">UITableViewCell *cell;
+//不复用的cell
+//这样强制性初始化一个cell 不参与复用
+cell = [[UITableViewCell alloc] init];
+//参与复用的
+cell = [tableView dequeueReusableCellWithIdentifier:identifier];
+if (!cell) {
+    cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:identifier];
 }
 
-- (void)animate
-{
-    //reset ball to top of screen
-    self.ballView.center = CGPointMake(150, 32);
-    //set up animation parameters
-    NSValue *fromValue = [NSValue valueWithCGPoint:CGPointMake(150, 32)];
-    NSValue *toValue = [NSValue valueWithCGPoint:CGPointMake(150, 268)];
-    CFTimeInterval duration = 1.0;
-    //generate keyframes
-    NSInteger numFrames = duration * 60;
-    NSMutableArray *frames = [NSMutableArray array];
-    for (int i = 0; i &lt; numFrames; i++) {
-        float time = 1 / (float)numFrames * i;
-        [frames addObject:[self interpolateFromValue:fromValue toValue:toValue time:time]];
-    }
-    //create keyframe animation
-    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
-    animation.keyPath = @&quot;position&quot;;
-    animation.duration = 1.0;
-    animation.delegate = self;
-    animation.values = frames;
-    //apply animation
-    [self.ballView.layer addAnimation:animation forKey:nil];
-}
 </code></pre>
 
-<p>但是上面的方式非常复杂,因为缓冲数学并不简单，我们可以直接使用现成的<a href="http://www.robertpenner.com/easing">缓冲函数</a>,例如:</p>
+<h3 id="toc_9">10.isKindOfClass &amp;&amp; isMemberOfClass</h3>
 
-<pre><code class="language-objc">//缓冲进入缓冲退出函数
-float quadraticEaseInOut(float t)
-{
-`return (t &lt; 0.5)? (2 * t * t): (-2 * t * t) + (4 * t) - 1;
-}
+<p>对于我们自定义的继承自UInavigaiton的自定义Navigaition类初始化的对象 并不能用ismemberof判断是不是UINavigation的子类 可以用 iskindof</p>
+
+<h3 id="toc_10">11.present视图控制器  &amp;&amp; 透明控制器</h3>
+
+<h3 id="toc_11">12.tableView reload 引起的复用 不会再次初始化</h3>
+
+<p>当tableView的cell有复用并且已经初始化后,再次reloadData这个tableView并不会引起cell重新初始化</p>
+
+<h3 id="toc_12">13.Timer未移除引起的问题</h3>
+
+<p>如果是是视图控制器的timer未移除 这个视图控制器不会被销毁 <br/>
+如果是视图的timer 这个控制器被销毁这个试图都不会被销毁</p>
+
+<h3 id="toc_13">14.设置按钮disable状态下和平常状态图片相同</h3>
+
+<p>[self.confimButton setAdjustsImageWhenDisabled:YES]</p>
+
+<h3 id="toc_14">15.awakeFromNib</h3>
+
+<p><code>awakeFromNib</code>是nib文件加载完成执行 就是loadFromNib执行完成后执行,而不是在nib文件即将呈现时执行</p>
+
+<h3 id="toc_15">16.tableView</h3>
+
+<pre><code class="language-objc">//动画改变tableView
+[self.tableView beginUpdates];  
+[self.tableView setTableHeaderView:headerView];  
+[self.tableView endUpdates];  
 </code></pre>
 
-<pre><code class="language-objc">//弹性小球 bounceEaseOut函数
-float bounceEaseOut(float t)
-{
-    if (t &lt; 4/11.0) {
-        return (121 * t * t)/16.0;
-    } else if (t &lt; 8/11.0) {
-        return (363/40.0 * t * t) - (99/10.0 * t) + 17/5.0;
-    } else if (t &lt; 9/10.0) {
-        return (4356/361.0 * t * t) - (35442/1805.0 * t) + 16061/1805.0
-    }
-        return (54/5.0 * t * t) - (513/25.0 * t) + 268/25.0;
-}
-</code></pre>
+<h3 id="toc_16">17.textView</h3>
 
-<pre><code class="language-objc">//我们使用上面的弹性小球函数来实现
-- (void)animate
-{
-    //reset ball to top of screen
-    self.ballView.center = CGPointMake(150, 32);
-    //set up animation parameters
-    NSValue *fromValue = [NSValue valueWithCGPoint:CGPointMake(150, 32)];
-    NSValue *toValue = [NSValue valueWithCGPoint:CGPointMake(150, 268)];
-    CFTimeInterval duration = 1.0;
-    //generate keyframes
-    NSInteger numFrames = duration * 60;
-    NSMutableArray *frames = [NSMutableArray array];
-    for (int i = 0; i &lt; numFrames; i++) {
-        float time = 1/(float)numFrames * i;
-        //apply easing
-        time = bounceEaseOut(time);
-        //add keyframe
-        [frames addObject:[self interpolateFromValue:fromValue toValue:toValue time:time]];
-    }
-    //create keyframe animation
-    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
-    animation.keyPath = @&quot;position&quot;;
-    animation.duration = 1.0;
-    animation.delegate = self;
-    animation.values = frames;
-    //apply animation
-    [self.ballView.layer addAnimation:animation forKey:nil];
-}
-</code></pre>
+<p>textView.contentInset = UIEdgeInsetsMake(-64, 0, 0, 0);</p>
+
+<h3 id="toc_17">18.判断字典是否包含某个键</h3>
+
+<p>直接对这个字典取这个值 objectForKey 或者 dic[key] 对取出来的值判空即可 <br/>
+但是要保证这确实是一个字典</p>
 
                         
                       </div>
@@ -407,10 +283,10 @@ float bounceEaseOut(float t)
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/27</span>
+                    <span class="date">2017/2/8</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
+          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -475,6 +351,10 @@ float bounceEaseOut(float t)
 
       	<p class="cat-list">
         
+            <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BC%96%E7%A8%8B.html"><strong>计算机编程</strong></a>
+        
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
         
             <a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html"><strong>2017年。。。</strong></a>
@@ -496,31 +376,31 @@ float bounceEaseOut(float t)
 	      
 		      
 			      <li class="post">
-			        <a href="14966582354331.html"></a>
+			        <a href="14972592855571.html">Block实现原理</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14964011409915.html">iOS 开发中的九种锁</a>
+			        <a href="14972581397752.html">第三方登录分享</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14958652887586.html">时间 时区</a>
+			        <a href="14968918049808.html">NSURL</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14958642376440.html">定时器</a>
+			        <a href="14968373667230.html">Swift 基础部分</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="14957029093514.html">UITextView</a>
+			        <a href="14966582354331.html">swift简介</a>
 			      </li>
 		     
 		  
