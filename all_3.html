@@ -82,9 +82,7 @@
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
         
-            <li><a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html">2017年。。。</a></li>
-        
-            <li><a href="English.html">English</a></li>
+            <li><a href="supplement.html">补充</a></li>
          
 
       </ul>
@@ -107,150 +105,146 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14968373667230.html">
+                <a class="clearlink" href="14968918049808.html">
                 
-                  <h1>Swift 基础部分</h1>
+                  <h1>NSURL</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>Swift 包含了C和Objective-C上所有基础数据类型，<code>Int</code>表示整型值；<code>Double</code>和<code>Float</code>表示浮点型值；<code>Bool</code>是布尔型值；<code>String</code>是文本型数据。 Swift 还提供了三个基本的集合类型<code>Array</code> ，<code>Set</code> 和<code>Dictionary</code><br/>
-除了我们熟悉的类型，<code>Swift</code>还增加了<code>Objective-C</code>中没有的高阶数据类型比如元组（<code>Tuple</code>）。<br/>
-<code>Swift</code>还增加了可选（Optional）类型，用于处理值缺失的情况。</p>
+                        	<p>URL(统一资源定位符) 是一种 URI，URN(统一资源名称) 也是一种 URI，所以 URI (统一资源标志符)可被视为定位符，名称或两者兼备</p>
 
-<p><code>Swift</code>是一门类型安全的语言，这意味着<code>Swift</code>可以让你清楚地知道值的类型。</p>
+<h2 id="toc_0">URL Encode</h2>
 
-<h2 id="toc_0">常量和变量</h2>
+<p><a href="http://www.jianshu.com/p/38f5f53dfbad">[iOS-Foundation] NSURL</a><br/>
+<code>URL</code>采用<code>ASCII</code>编码格式，所以不支持如中文等非<code>ASCII</code>码字符，另外<code>URL</code>中保留的分隔符号(?、&amp;、=等)也无法作为内容，否则会引起歧义。<br/>
+这就需要通过编码，用安全的字符来表示这些不符合要求的字符，格式是%加两位安全字符，所以 URL 编码也称为百分号编码。</p>
 
-<p>常量的值一旦设定就不能改变，而变量的值可以随意更改。</p>
-
-<h3 id="toc_1">声明常量和变量</h3>
-
-<p>用<code>let</code>来声明常量，用<code>var</code>来声明变量</p>
-
-<pre><code class="language-Swift">//一行中声明多个
-var x = 0.0, y = 0.0, z = 0.0
+<pre><code class="language-objc">//Encode编码
+NSString *urlString = @&quot;?&quot;;
+NSString *encodedString = [urlString stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLHostAllowedCharacterSet]];
+//encodedString值为 %3F
+//替换不符合要求UTF-8编码为百分号编码字符
+@interface NSCharacterSet (NSURLUtilities)
++ (NSCharacterSet *)URLUserAllowedCharacterSet;
++ (NSCharacterSet *)URLPasswordAllowedCharacterSet;
++ (NSCharacterSet *)URLHostAllowedCharacterSet;
++ (NSCharacterSet *)URLPathAllowedCharacterSet;
++ (NSCharacterSet *)URLQueryAllowedCharacterSet;
++ (NSCharacterSet *)URLFragmentAllowedCharacterSet;
+@end
 </code></pre>
 
-<p>注意:<strong>如果你的代码中有不需要改变的值，请使用 let 关键字将它声明为常量。只将需要改变的值声明为变量。</strong></p>
-
-<h3 id="toc_2">类型标注</h3>
-
-<p>声明常量或者变量的时候可以加上类型标注，在常量或者变量名后面加上一个冒号和空格，然后加上类型名称。(声明时如果有初始值，Swift可以推断出这个常量或者变量的类型)</p>
-
-<pre><code class="language-Swift">//可以在一行中定义多个同样类型的变量，用逗号分割，并在最后一个变量名之后添加类型标注：
-var red, green, blue: Double
+<pre><code class="language-objc">//Unencode解码
++ (NSString *)decodeURLString:(NSString *)URLString {
+    // 有时从服务端获取的 URL 中，空格被编码为+, 
+    // 而方法- stringByRemovingPercentEncoding只替换百分号编码，
+    // 所以要在执行该方法前，先将`+`替换掉(真正的加号字符是被百分号编码的)
+    NSString *result = [URLString stringByReplacingOccurrencesOfString:@&quot;+&quot; withString:@&quot; &quot;];
+    //替换所有百分号编码为UTF-8编码字符
+    result = [result stringByRemovingPercentEncoding];
+    return result;
+}
 </code></pre>
 
-<h3 id="toc_3">常量和变量的命名</h3>
+<h2 id="toc_1">NSURL</h2>
 
-<p>常量与变量名不能包含数学符号，箭头，保留的（或者非法的）Unicode 码位，连线与制表符。也不能以数字开头，但是可以在常量与变量名的其他地方包含数字。</p>
+<p><a href="https://developer.apple.com/documentation/foundation/nsurl?preferredLanguage=occ">NSURL苹果官方文档</a></p>
 
-<p>如果你需要使用与Swift保留关键字相同的名称作为常量或者变量名，你可以使用反引号（`）将关键字包围的方式将其作为名字使用。（不推荐）</p>
+<p>我们通过<code>NSURL</code>对象来构建一个资源定位符。对于本地文件的资源定位符,我们可以直接操作这些问价你的属性（比如修改文件的的最后修改日期）,对于远程资源我们可以将<code>NSURL</code>对象传递给其他API来获取内容,<a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/URLLoadingSystem/URLLoadingSystem.html#//apple_ref/doc/uid/10000165i">Next About the URL Loading System</a></p>
 
-<h3 id="toc_4">输出常量和变量</h3>
+<p><code>URL</code>对象是指向本地文件的首选方案,大多数进行文件数据读写对象都接受一个<code>NSURL</code>对象而不是一个文件路径.例如：可以用文件<code>NSURL</code>获取<code>NSString</code>  <code>initWithContentsOfURL:encoding:error:</code>,获取<code>data</code>  <code>initWithContentsOfURL:options:error:</code></p>
 
-<p>用 <code>print(someValue, separator:, terminator:)</code> 函数来输出当前常量或变量的值:<br/>
-<code>separator</code>用来设置各个值间的拼接字符串<br/>
-<code>terminator</code>用来设置输出结果结束后的结束字符，默认为“\n”换行</p>
+<p>你也可以用url资源定位符进行需要的操作,例如在<code>macOS</code>的<code>NSWorkspace</code>类和<code>iOS</code>的<code>UIApplication</code>类提供的<code>OpenURL:</code>方法来打开一个指定的URL位置</p>
 
-<pre><code class="language-swift">print(&quot;111&quot;, &quot;222&quot;, separator:&quot;--&quot;, terminator:&quot;结束符 &quot;)
-print(&quot;111&quot;, &quot;222&quot;, separator:&quot;--&quot;, terminator:&quot;结束符 &quot;)
-//输出结果(并没有换行)
-//111--222结束符 111--222结束符
-</code></pre>
+<p>此外,我们可以通过使用粘贴板来对<code>NSURL</code>对象进行引用（AppKit框架的一部分）</p>
 
-<p><code>Swift</code>用<strong>字符串插值</strong>（string interpolation）的方式把常量名或者变量名当做占位符加入到长字符串中，<code>Swift</code>会用当前常量或变量的值替换这些占位符。将常量或变量名放入圆括号中，并在开括号前使用反斜杠将其转义：</p>
+<p><code>NSURL</code>对应<code>Core Foundation</code>中的<a href="https://developer.apple.com/documentation/corefoundation/cfurlref?language=objc">CFURLRef</a>,我们可以查看<a href="https://developer.apple.com/library/content/documentation/General/Conceptual/CocoaEncyclopedia/Toll-FreeBridgin/Toll-FreeBridgin.html#//apple_ref/doc/uid/TP40010810-CH2">Toll-Free Bridging</a>来获取更多类似的与<code>Core Foundation</code>相对应的信息</p>
 
-<pre><code class="language-Swift">/*
-    若只是要print一个变量或者常量可以直接print，但是如果要将这个拼接到字符串中需要这
-    样做
+<p>补充：<br/>
+Swift提供了<a href="https://developer.apple.com/documentation/foundation/url?language=objc">URL</a>结构，负责连接<code>NSURL</code>类，可以在<a href="https://developer.apple.com/library/content/documentation/Swift/Conceptual/Swift_Programming_Language/ClassesAndStructures.html#//apple_ref/doc/uid/TP40014097-CH13"> Classes and Structures</a>中查看更多信息</p>
+
+<h3 id="toc_2">URL结构</h3>
+
+<p>一个<code>NSURL</code>对象由两部分组成:一部分是可能为<code>nil</code>的<code>base URL</code>和一部分与<code>base URL</code>有相对关系的字符串<code>relativeString</code>。如果一个<code>NSURL</code>对象没有<code>base</code>部分只有<code>string</code>部分那么它被认为是绝对地址,否则为相对的.</p>
+
+<pre><code class="language-objc">//file:///path/to/user/ as the base URL and folder/file.html
+/**
+    我们指定 file:///path/to/user/ 为baseURL folder/file 为字符串部分
 */
-print(&quot;The current value of friendlyWelcome is \(friendlyWelcome)&quot;)
-// 输出 &quot;The current value of friendlyWelcome is Bonjour!
+NSURL *baseURL = [NSURL fileURLWithPath:@&quot;file:///path/to/user/&quot;];
+NSURL *URL = [NSURL URLWithString:@&quot;folder/file.html&quot; relativeToURL:baseURL];
+NSLog(@&quot;absoluteURL = %@&quot;, [URL absoluteURL]);//file:///path/to/user/ as the base URL and folder/file.html
+/**
+    这个URL的
+    absoluteString:  file:///file:/path/to/folder/file.html
+    baseURL:  file:///file:/path/to/user
+    relativeString： folder/file.html
+*/
 </code></pre>
 
-<h2 id="toc_5">注释</h2>
+<p>对于一个<code>URL</code>我们可以将其分为很多部分,例如一个url如下：<br/>
+<code>https://johnny:p4ssw0rd@www.example.com:443/script.ext;param=value?query=value#ref</code></p>
 
-<p>单行注释用双正斜杠<code>（ // ）</code>作为起始标记:<br/>
-多行注释用：</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Value</th>
+</tr>
+</thead>
 
-<pre><code class="language-swift">/* 这是第一个多行注释的开头
-/* 这是第二个被嵌套的多行注释 */
-这是第一个多行注释的结尾 */
-</code></pre>
+<tbody>
+<tr>
+<td>scheme</td>
+<td>https</td>
+</tr>
+<tr>
+<td>user</td>
+<td>johnny</td>
+</tr>
+<tr>
+<td>password</td>
+<td>p4ssw0rd</td>
+</tr>
+<tr>
+<td>host</td>
+<td><a href="http://www.example.com">www.example.com</a></td>
+</tr>
+<tr>
+<td>port</td>
+<td>443</td>
+</tr>
+<tr>
+<td>path</td>
+<td>/script.ext</td>
+</tr>
+<tr>
+<td>pathExtension</td>
+<td>ext</td>
+</tr>
+<tr>
+<td>pathComponents</td>
+<td>[&quot;/&quot;, &quot;script.ext&quot;]</td>
+</tr>
+<tr>
+<td>parameterString</td>
+<td>param=value</td>
+</tr>
+<tr>
+<td>query</td>
+<td>query=value</td>
+</tr>
+<tr>
+<td>fragment</td>
+<td>ref</td>
+</tr>
+</tbody>
+</table>
 
-<p>多行注释可以去嵌套注释，我们可以方便的注释掉大段代码 即使代码中已经包含注释(oc中是没有多行注释的)</p>
+<p><code>NSURL</code>也提供了很多属性让我们来获取每部分</p>
 
-<h2 id="toc_6">分号</h2>
-
-<p><code>Swift</code>并不需要在末尾添加分号,但是如果单行内写多条语句时,必须用分号分开;</p>
-
-<h2 id="toc_7">整数</h2>
-
-<p><code>Swift</code> 提供了8，16，32和64位的有符号和无符号整数类型(即分别为1、2、4、8字节)。<br/>
-命名:比如8位无符号整数类型是 UInt8 ，32位有符号整数类型是 Int32 。</p>
-
-<h3 id="toc_8">范围</h3>
-
-<p>我们可以用不同整数类型的<code>min</code>和<code>max</code>属性获取对应类型的最小值和最大值：</p>
-
-<pre><code class="language-swift">//返回的类型正是其对应类型
-let minValue = UInt8.min // minValue 为 0，是 UInt8 类型
-let maxValue = UInt8.max // maxValue 为 255，是 UInt8 类型
-</code></pre>
-
-<p>Swift提供了整数类型<code>Int</code>和<code>UInt</code>其长度和当前平台<code>原生字长</code>相同</p>
-
-<p>补充:<br/>
-尽量不要使用<code>UInt</code> ，除非你真的需要存储一个和当前平台原生字长相同的无符号整数。除了这种情况，最好使用<code>Int</code>，即使你要存储的值已知是非负的。统一使用<code>Int</code>可以提高代码的可复用性，避免不同类型数字之间的转换，并且匹配数字的类型推断</p>
-
-<h2 id="toc_9">浮点数</h2>
-
-<p><code>Swift</code>提供了两种有符号浮点数类型：</p>
-
-<ul>
-<li>Double 表示64位浮点数。当你需要存储很大或者很高精度的浮点数时请使用此类型。</li>
-<li>Float 表示32位浮点数。精度要求不高的话可以使用此类型。</li>
-</ul>
-
-<p><code>Double</code>精确度很高，至少有15位数字，而<code>Float</code>只有6位数字。选择哪个类型取决于你的代码需要处理的值的范围，在两种类型都匹配的情况下，将优先选择<code>Double</code>。</p>
-
-<h2 id="toc_10">类型安全和类型推断</h2>
-
-<p><code>Swift</code>是一个类型安全（type safe）的语言。因此它会在编译时进行类型检查,将不匹配的类型标记为错误。但是也不奥每个都显示的指定类型,编译器可以在编译代码的时候自动推断出表达式的类型。</p>
-
-<pre><code class="language-swift">//当推断浮点数的类型时，Swift 总是会选择 Double 而不是 Float 
-let pi = 3.14159
-// pi 会被推测为 Double 类型
-</code></pre>
-
-<h2 id="toc_11">数值型字面量</h2>
-
-<ul>
-<li>一个十进制数，没有前缀</li>
-<li>一个二进制数，前缀是 <code>0b</code></li>
-<li>一个八进制数，前缀是 <code>0o</code></li>
-<li>一个十六进制数，前缀是 <code>0x</code></li>
-</ul>
-
-<p>对于浮点数用10进制或者16进制表示，可以用指数来表示，10进制的指数为<code>e</code>(可为大写或小写)，16进制使用大写或者小写的<code>p</code></p>
-
-<pre><code class="language-swift">1.25e2 表示 1.25 × 10^2，等于 125.0 
-1.25e-2 表示 1.25 × 10^-2，等于 0.0125
-0xFp2 表示 15 × 2^2，等于 60.0
-0xFp-2 表示 15 × 2^-2，等于 3.75
-</code></pre>
-
-<p>补充:<br/>
-为了可读性：整数和浮点数都可以添加额外的零并且包含下划线，并不会影响字面量：</p>
-
-<pre><code class="language-swift">let paddedDouble = 000123.456
-let oneMillion = 1_000_000
-let justOverOneMillion = 1_000_000.000_000_1
-</code></pre>
-
-<h2 id="toc_12">数值型类型转换</h2>
+<h3 id="toc_3">书签以及安全范围</h3>
 
                         
                       </div>
@@ -259,10 +253,10 @@ let justOverOneMillion = 1_000_000.000_000_1
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/6/7</span>
+                    <span class="date">2017/6/8</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift-Learning.html'>The Swift Programming Language</a></span>
+          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -333,9 +327,7 @@ let justOverOneMillion = 1_000_000.000_000_1
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
         
-            <a href="2017%E5%B9%B4%E3%80%82%E3%80%82%E3%80%82.html"><strong>2017年。。。</strong></a>
-        
-            <a href="English.html"><strong>English</strong></a>
+            <a href="supplement.html"><strong>补充</strong></a>
          
         </p>
 
@@ -350,6 +342,12 @@ let justOverOneMillion = 1_000_000.000_000_1
                 <div class="side-content">
                 <ul class="posts-list">
 	      
+		      
+			      <li class="post">
+			        <a href="14974079542932.html">常见名词</a>
+			      </li>
+		     
+		  
 		      
 			      <li class="post">
 			        <a href="14972592855571.html">Block实现原理</a>
@@ -371,12 +369,6 @@ let justOverOneMillion = 1_000_000.000_000_1
 		      
 			      <li class="post">
 			        <a href="14968373667230.html">Swift 基础部分</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14966582354331.html">swift简介</a>
 			      </li>
 		     
 		  
