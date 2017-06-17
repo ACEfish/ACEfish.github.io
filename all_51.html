@@ -105,259 +105,32 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14872969075485.html">
+                <a class="clearlink" href="14873195104181.html">
                 
-                  <h1>并发编程实践</h1>
+                  <h1>NSRunLoop</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h4 id="toc_0">1.<a href="https://developer.apple.com/reference/dispatch">GCD</a> OR <a href="https://developer.apple.com/reference/foundation/operationqueue">操作队列</a></h4>
+                        	<p>实际上，Run loop并不像 GCD 或者操作队列那样是一种并发机制，因为它并不能并行执行任务。不过在<code>主 dispatch/operation</code>队列中， <code>run loop</code> 将直接配合任务的执行，它提供了一种异步执行代码的机制。</p>
 
-<p>这两个是目前我们在iOS中用的最多的两套API</p>
+<p><strong>一个 run loop 总是绑定到某个特定的线程中。main run loop 是与主线程相关的</strong><br/>
+在每一个 Cocoa 和 CocoaTouch 程序中，这个 main run loop 都扮演了一个核心角色，它负责处理 UI 事件、计时器，以及其它内核相关事件。无论你什么时候设置<code>计时器</code>、使用<code>NSURLConnection</code>或者调用 <code>performSelector:withObject:afterDelay:</code>，其实背后都是 run loop 在处理这些异步任务。</p>
 
-<ul>
-<li>操作队列提供了在 GCD 中不那么容易复制的有用特性。其中最重要的一个就是可以取消在任务处理队列中的任务</li>
-<li>操作队列在管理操作间的依赖关系方面也容易一些</li>
-<li>CD 给予你更多的控制权力以及操作队列中所不能使用的底层函数
-扩展阅读:
-<a href="http://stackoverflow.com/questions/10373331/nsoperation-vs-grand-central-dispatch">StackOverflow: NSOperation vs. Grand Central Dispatch</a>
-<a href="http://eschatologist.net/blog/?p=232">Blog: When to use NSOperation vs. GCD</a></li>
-</ul>
+<p>run loop 可以运行在不同的模式中，每种模式都定义了一组事件，供 run loop 做出响应。这在对应 main run loop 中暂时性的将某个任务优先执行的一种聪明的做法。<br/>
+* NSDefalutRunLoopMode : 默认Mode, 通常主线程在这个模式下运行<br/>
+* UITrackingRunLoopMode : 滑动ScrollView是会切换到这个模式<br/>
+* NSRunLoopCommonModes: 包括上面两个模式</p>
 
-<h4 id="toc_1">2.后台的Core Data</h4>
+<p>例1:滑动ScrollView后系统把RunLoop切换为UITrackingRunLoopMode,因此加载默认模式中的定时器并不会执行,只有滚动停止回到默认模式才会继续执行。我们可以把定时器设为 <code>NSRunLoopCommonModes</code>的模式，并添加到 run loop 中；<br/>
+<code>[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];</code></p>
 
-<p>在着手 Core Data 的并行处理之前，最好先打一些基础。我们强烈建议通读苹果的官方文档 <a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/CoreData/Articles/cdConcurrency.html">Concurrency with Core Data</a> </p>
+<p>例2:当tableview的cell从网络异步加载图片, 加载完成后在主线程刷新显示图片, 这时滑动tableview会造成卡顿. 通常的思路是tableview滑动的时候延迟加载图片, 等停止滑动时再显示图片. 这里我们可以通过RunLoop来实现.<br/>
+<code>[self.cellImageView performSelector:@sector(setImage:) withObject:downloadedImage afterDelay:0 inModes:@[NSDefaultRunLoopMode]];</code></p>
 
-<blockquote>
-<p>Xcode 所提供的 Core Data 标准模版中，所设立的是运行在主线程中的一个存储调度 (persistent store coordinator)和一个托管对象上下文 (managed object context) 的方式。在很多情况下，这种模式可以运行良好。创建新的对象和修改已存在的对象开销都非常小，也都能在主线程中没有困难地完成。然后，如果你想要做大量的处理，那么把它放到一个后台上下文来做会比较好。一个典型的应用场景是将大量数据导入到 Core Data 中。</p>
-</blockquote>
+<p>主线程一般来说都已经配置好了 main run loop。然而其他线程默认情况下都没有设置 run loop。你也可以自行为其他线程设置 run loop ，但是一般来说我们很少需要这么做。大多数时间使用 main run loop 会容易得多。如果你需要处理一些很重的工作，但是又不想在主线程里做，你仍然可以在你的代码在 main run loop 中被调用后将工作分配给其他队列。Chris 在他关于<a href="https://objccn.io/issue-2-2/">常见的后台实践</a>的文章里阐述了一些关于这种模式的很好的例子。</p>
 
-<p>示例:<br/>
-我们要导入一大组柏林的交通数据。在导入的过程中，我们展示一个进度条，如果耗时太长，我们希望可以取消当前的导入操作。同时，我们显示一个随着数据加入可以自动更新的 table view 来展示目前可用的数据。</p>
-
-<p>解决方案:<br/>
-我们创建一个<code>NSOperation</code> 的子类，将其叫做<code>ImportOperation</code>，我们通过重写 <code>main</code>方法，用来处理所有的导入工作。这里我们使用<code>NSPrivateQueueConcurrencyType</code>来创建一个独立并拥有自己的私有<code>dispatch queue</code>的 managed object context，这个 <code>context</code> 需要管理自己的队列。在队列中的所有操作必须使用<code>performBlock</code>或者<code>performBlockAndWait</code>来进行触发。</p>
-
-<pre><code class="language-Object-c">NSManagedObjectContext* context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
-context.persistentStoreCoordinator = self.persistentStoreCoordinator;
-context.undoManager = nil;
-//performBlockAndWait:Synchronously performs a given block on the receiver’s queue.
-[self.context performBlockAndWait:^
-{
-    [self import];
-}];
-</code></pre>
-
-<p>在这里我们重用了已经存在的<code>persistent store coordinator</code>。一般来说，初始化 managed object contexts 要么使用<code>NSPrivateQueueConcurrencyType</code>，要么使用 <code>NSMainQueueConcurrencyType</code>。</p>
-
-<p>导入文件内容</p>
-
-<pre><code class="language-Object-c">/**
-    在导入前，我们枚举文件中的各行，并对可以解析的每一行创建 managed object ：
-*/
-[lines enumerateObjectsUsingBlock:
-  ^(NSString* line, NSUInteger idx, BOOL* shouldStop)
-  {
-      NSArray* components = [line csvComponents];
-      if(components.count &lt; 5) {
-          NSLog(@&quot;couldn&#39;t parse: %@&quot;, components);
-          return;
-      }
-      [Stop importCSVComponents:components intoContext:context];
-  }];
-</code></pre>
-
-<pre><code class="language-Object-c">/**
-    在 view controller 中通过以下代码来开始操作：
-*/
-ImportOperation* operation = [[ImportOperation alloc]
-     initWithStore:self.store fileName:fileName];
-[self.operationQueue addOperation:operation];
-</code></pre>
-
-<pre><code class="language-Object-c">/**
-    至此为止，后台导入部分已经完成。接下来，我们要加入取消功能，这其实非常简单，只需要枚举的 block 中加一个判断就行了：
-*/
-if(self.isCancelled) {
-    *shouldStop = YES;
-    return;
-}
-</code></pre>
-
-<pre><code class="language-Object-c">/**
-    最后为了支持进度条，我们在 operation 中创建一个叫做 progressCallback 的属性。需要注意的是，更新进度条必须在主线程中完成，否则会导致 UIKit 崩溃。
-*/
-operation.progressCallback = ^(float progress)
-{
-    [[NSOperationQueue mainQueue] addOperationWithBlock:^
-    {
-        self.progressIndicator.progress = progress;
-    }];
-};
-//我们在枚举中来调用这个进度条更新的 block 的操作：
-
-self.progressCallback(idx / (float) count);
-
-</code></pre>
-
-<pre><code class="language-Object-c">  //  然而，如果你执行示例代码的话，你会发现它运行逐渐变得很慢，取消操作也有迟滞。这是因为主操作队列中塞满了要更新进度条的 block 操作。一个简单的解决方法是降低更新的频度，比如只在每导入一百行时更新一次：
-
-NSInteger progressGranularity = 100;
-
-if (idx % progressGranularity == 0) {
-    self.progressCallback(idx / (float) count);
-}
-
-</code></pre>
-
-<h5 id="toc_2">更新 Main Context</h5>
-
-<p>在让一切运转起来之前之前，还有一件事情要做。现在在后台 context 中导入的数据还不能传送到主 context 中，除非我们显式地让它这么去做。我们在<code>Store</code>类的设置<code>Core Data stack</code>的<code>init</code>方法中加入下面的代码：</p>
-
-<pre><code class="language-Object-c">[NSNotificationCenter defaultCenter]
-    addObserverForName:NSManagedObjectContextDidSaveNotification
-                object:nil
-                 queue:nil
-            usingBlock:^(NSNotification* note)
-{
-    NSManagedObjectContext *moc = self.mainManagedObjectContext;
-    if (note.object != moc)
-        [moc performBlock:^(){
-            [moc mergeChangesFromContextDidSaveNotification:note];
-        }];
-    }];
-}];
-/**
-    如果 block 在主队列中被作为参数传递的话，那么这个 block 也会在主队列中被执行。如果现在你运行程序的话，你会注意到 table view 会在完成导入数据后刷新数据，但是这个行为会阻塞用户大概几秒钟。
-    要修正这个问题，我们需要做一些无论如何都应该做的事情：批量保存。在导入较大的数据时，我们需要定期保存，逐渐导入，否则内存很可能就会被耗光，性能一般也会更坏。而且，定期保存也可以分散主线程在更新 table view 时的工作压力。
-    合理的保存的次数可以通过试错得到。保存太频繁的话，可能会在 I/O 操作上花太多时间；保存次数太少的话，应用会变得无响应。在经过一些尝试后，我们设定每 250 次导入就保存一次。改进后，导入过程变得很平滑，它可以适时更新 table view，也没有阻塞主 context 太久。
-*/
-</code></pre>
-
-<h5 id="toc_3">其他考虑</h5>
-
-<p>在导入操作时，我们将整个文件都读入到一个字符串中，然后将其分割成行。这种处理方式对于相对小的文件来说没有问题，但是对于大文件，最好采用惰性读取 (lazily read) 的方式逐行读入。本文最后的示例将使用输入流的方式来实现这个特性，在 StackOverflow 上 Dave DeLong 也提供了一段非常好的示例代码来说明这个问题。</p>
-
-<p>在 app 第一次运行时，除开将大量数据导入 Core Data 这一选择以外，你也可以在你的 app bundle 中直接放一个 sqlite 文件，或者从一个可以动态生成数据的服务器下载。如果使用这些方式的话，可以节省不少在设备上的处理时间。</p>
-
-<p>最后，最近对于 child contexts 有很多争议。我们的建议是不要在后台操作中使用它。如果你以主 context 的 child 的方式创建了一个后台 context 的话，保存这个后台 context 将阻塞主线程。而要是将主 context 作为后台 context 的 child 的话，实际上和与创建两个传统的独立 contexts 来说是没有区别的。因为你仍然需要手动将后台的改变合并回主 context 中去。</p>
-
-<p>设置一个 persistent store coordinator 和两个独立的 contexts 被证明了是在后台处理 Core Data 的好方法。除非你有足够好的理由，否则在处理时你应该坚持使用这种方式。</p>
-
-<p><a href="http://wiki.jikexueyuan.com/project/objc/concurrent-programming/2-2.html">扩展阅读</a></p>
-
-<h4 id="toc_4">3.后台 UI 代码</h4>
-
-<p>首先要强调：UIKit 只能在主线程上运行。而那部分不与 UIKit 直接相关，却会消耗大量时间的 UI 代码可以被移动到后台去处理，以避免其将主线程阻塞太久。但是在你将你的 UI 代码移到后台队列之前，你应该好好地测量哪一部分才是你代码中的瓶颈。这非常重要，否则你所做的优化根本是南辕北辙。</p>
-
-<p>如果你找到了你能够隔离出的昂贵操作的话，可以将其放到操作队列中去：</p>
-
-<pre><code class="language-Object-c">__weak id weakSelf = self;
-[self.operationQueue addOperationWithBlock:^{
-    NSNumber* result = findLargestMersennePrime();
-    [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-        MyClass* strongSelf = weakSelf;
-        strongSelf.textLabel.text = [result stringValue];
-    }];
-}];
-</code></pre>
-
-<blockquote>
-<p>如你所见，这些代码其实一点也不直接明了。我们首先声明了一个 weak 引用来参照 self，否则会形成循环引用（ block 持有了 self，私有的 operationQueue retain 了 block，而 self 又 retain 了 operationQueue ）。为了避免在运行 block 时访问到已被释放的对象，在 block 中我们又需要将其转回 strong 引用。</p>
-</blockquote>
-
-<h4 id="toc_5">4.后台绘制</h4>
-
-<p>如果你确定<code>drawRect:</code>是你的应用的性能瓶颈，那么你可以将这些绘制代码放到后台去做。但是在你这样做之前，检查下看看是不是有其他方法来解决，比如、考虑使用<code>core animation layers</code>或者预先渲染图片而不去做<code>Core Graphics</code>绘制。<br/>
-解决方案:<br/>
-其实解决起来也很简单，把<code>drawRect:</code>中的代码放到一个后台操作中去做就可以了。然后将原本打算绘制的视图用一个 image view 来替换，等到操作执行完后再去更新。在绘制的方法中，使用 <code>UIGraphicsBeginImageContextWithOptions</code>来取代<code>UIGraphicsGetCurrentContext ：</code></p>
-
-<pre><code class="language-Object-c">UIGraphicsBeginImageContextWithOptions(size, NO, 0);
-// drawing code here
-UIImage *i = UIGraphicsGetImageFromCurrentImageContext();
-UIGraphicsEndImageContext();
-return i;
-/**
-    通过在第三个参数中传入 0 ，设备的主屏幕的 scale 将被自动传入，这将使图片在普通设备和
-     retina 屏幕上都有良好的表现。
-*/
-</code></pre>
-
-<p>注意:<br/>
-如果你在 table view 或者是 collection view 的 cell 上做了自定义绘制的话，最好将它们放入 <code>operation</code> 的子类中去。你可以将它们添加到后台操作队列，也可以在用户将 cell 滚动出边界时的 <code>didEndDisplayingCell</code> 委托方法中进行取消。这些技巧都在 2012 年的<a href="https://developer.apple.com/videos/wwdc2012/">WWDC Session 211 -- Building Concurrent User Interfaces on iOS</a>中有详细阐述。</p>
-
-<p>除了在后台自己调度绘制代码，以也可以试试看使用 CALayer 的 drawsAsynchronously 属性。然而你需要精心衡量这样做的效果，因为有时候它能使绘制加速，有时候却适得其反。</p>
-
-<h4 id="toc_6">4.异步网络请求处理</h4>
-
-<p><strong>所有的网络请求都应该通过异步的方式进行</strong></p>
-
-<pre><code class="language-Object-c">// 警告：不要使用这些代码。
-dispatch_async(backgroundQueue, ^{
-   NSData* contents = [NSData dataWithContentsOfURL:url]
-   dispatch_async(dispatch_get_main_queue(), ^{
-      // 处理取到的日期
-   });
-});
-//这段代码问题：没有办法去取消这个同步的网络请求。它将阻塞住线程直到它完成。如果请求一直没结果，那就只能干等到超时
-</code></pre>
-
-<p>要解决上面的困境，我们可以使用<code>NSURLConnection</code>的异步方法，并且把所有操作转化为 operation 来执行. NSURLConnection 是通过<code>run loop</code>来发送事件的。因为事件发送不会花多少时间，因此最简单的是就只使用 main run loop 来做这个。然后，我们就可以用后台线程来处理输入的数据了。<br/>
-要处理URL 连接，我们重写自定义的 operation 子类中的 start 方法：</p>
-
-<pre><code class="language-Object-c">- (void)start
-{
-    NSURLRequest* request = [NSURLRequest requestWithURL:self.url];
-    self.isExecuting = YES;
-    self.isFinished = NO;
-    [[NSOperationQueue mainQueue] addOperationWithBlock:^
-    {
-        self.connection = [NSURLConnectionconnectionWithRequest:request
-                                                       delegate:self];
-    }];
-}
-</code></pre>
-
-<p>由于重写的是 start 方法，所以我们需要自己要管理操作的 isExecuting 和 isFinished 状态。要取消一个操作，我们需要取消 connection ，并且设定合适的标记，这样操作队列才知道操作已经完成。</p>
-
-<pre><code class="language-Object-c">- (void)connectionDidFinishLoading:(NSURLConnection *)connection
-{
-    self.data = self.buffer;
-    self.buffer = nil;
-    self.isExecuting = NO;
-    self.isFinished = YES;
-}
-</code></pre>
-
-<p><a href="https://github.com/objcio/issue-2-background-networking">Demo下载</a><br/>
-因此:我们总结如下:建议<strong>要么你花时间来把事情做对做好，要么就直接使用像<code>AFNetworking</code>这样的框架</strong><br/>
-其实 AFNetworking 还提供了不少好用的小工具，比如有个 UIImageView 的 category，来负责异步地从一个 URL 加载图片。在你的 table view 里使用的话，还能自动帮你处理取消加载操作，非常方便。</p>
-
-<h4 id="toc_7">5.进阶：后台文件 I/O</h4>
-
-<p>一次性将文件读入内存中对于较小的文件可能没什么问题,但是对于大文件来说就并不友好。<br/>
-我们将构建一个类，它负责<code>一行一行</code>读取文件而不是一次将整个文件读入内存，另外要在<code>后台队列处理文件</code>，以保持应用相应用户的操作。<br/>
-为了达到这个目的，我们使用能让我们异步处理文件的<code>NSInputStream</code></p>
-
-<blockquote>
-<p>如果你总是需要从头到尾来读/写文件的话，streams 提供了一个简单的接口来异步完成这个操作</p>
-</blockquote>
-
-<p>不管你是否使用 streams，大体上逐行读取一个文件的模式是这样的：</p>
-
-<ol>
-<li>建立一个中间缓冲层以提供，当没有找到换行符号的时候可以向其中添加数据</li>
-<li>从 stream 中读取一块数据</li>
-<li>对于这块数据中发现的每一个换行符，取中间缓冲层，向其中添加数据，直到（并包括）这个换行符，并将其输出</li>
-<li>将剩余的字节添加到中间缓冲层去</li>
-</ol>
-
-<p><strong>绝大部分时候，使用逐块读入的方式来处理大文件，是非常有用的技术。</strong></p>
-
-<h3 id="toc_8">总结</h3>
-
-<p><strong>在主队列中接收事件或者数据，然后用后台操作队列来执行实际操作，然后回到主队列去传递结果，遵循这样的原则来编写尽量简单的并行代码，将是保证高效正确的不二法则。</strong></p>
+<p>如果你真需要在别的线程中添加一个 run loop ，那么不要忘记在 run loop 中至少添加一个 input source 。如果 run loop 中没有设置好的 input source，那么每次运行这个 run loop ，它都会立即退出。</p>
 
                         
                       </div>
@@ -457,6 +230,24 @@ dispatch_async(backgroundQueue, ^{
 	      
 		      
 			      <li class="post">
+			        <a href="14976139025239.html">编码</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14976096897839.html">字符串和字符</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14974389141976.html">Swift 基本运算符</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="14974079542932.html">常见名词</a>
 			      </li>
 		     
@@ -464,24 +255,6 @@ dispatch_async(backgroundQueue, ^{
 		      
 			      <li class="post">
 			        <a href="14972592855571.html">Block实现原理</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14972581397752.html">第三方登录分享</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14968918049808.html">NSURL</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14968373667230.html">Swift 基础部分</a>
 			      </li>
 		     
 		  
