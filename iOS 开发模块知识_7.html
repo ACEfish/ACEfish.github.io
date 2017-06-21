@@ -117,13 +117,22 @@
 <p>补充知识:<br/>
 <a href="http://www.cocoachina.com/ios/20170227/18784.html">图片加载解压</a>原理知识学习<br/>
 <strong>图片解压缩的过程其实就是将图片的二进制数据转换成像素数据的过程</strong><br/>
-事实上不管是<code>JPEG</code>还是<code>PNG</code>图片，都是一种压缩的位图图形格式。只不过<code>PNG</code>图片是无损压缩，并且支持<code>alpha</code>通道，而<code>JPEG</code>图片则是有损压缩，可以指定<code>0-100%</code>的压缩比。值得一提的是，在苹果的<code>SDK</code> 中专门提供了两个函数用来生成 PNG 和 JPEG 图片：</p>
+我们平常看大的图片大小其实只是图片的二进制数据大小即原始文件大小<br/>
+解压后的图片大小与原始文件大小之间没有任何关系，而只与图片的像素有关:</p>
+
+<blockquote>
+<p>解压缩后的图片大小 = 图片的像素宽 30 * 图片的像素高 30 * 每个像素所占的字节数 4</p>
+</blockquote>
+
+<p>事实上不管是<code>JPEG</code>还是<code>PNG</code>图片，都是一种压缩的位图图形格式。只不过<code>PNG</code>图片是无损压缩，并且支持<code>alpha</code>通道，而<code>JPEG</code>图片则是有损压缩，可以指定<code>0-100%</code>的压缩比。值得一提的是，在苹果的<code>SDK</code> 中专门提供了两个函数用来生成 PNG 和 JPEG 图片：</p>
 
 <pre><code class="language-objc">UIKIT_EXTERN NSData * __nullable UIImagePNGRepresentation(UIImage * __nonnull image);
  
 // return image as JPEG. May return nil if image has no CGImageRef or invalid bitmap format. compression is 0(most)..1(least)            
 UIKIT_EXTERN NSData * __nullable UIImageJPEGRepresentation(UIImage * __nonnull image, CGFloat compressionQuality);
 </code></pre>
+
+<p>在将磁盘中的图片渲染到屏幕之前，必须先要得到图片的原始像素数据，才能执行后续的绘制操作</p>
 
 <h3 id="toc_0">加载和潜伏</h3>
 
@@ -195,8 +204,12 @@ forIndexPath:indexPath];
 
 <p>用于加载的CPU时间与图片格式有关,<code>PNG</code>文件较大所以加载时间比<code>JPEG</code>更长,但是解码速度较快,而且<code>Xcode</code>会把<code>PNG</code>进行解码优化后引入工程.而<code>JPEG</code>图片较小,所以加载更快但是解压要消耗更长时间,因为<code>JPEG</code>解压算法比基于<code>zip</code>的<code>PNG</code>算法更加复杂</p>
 
-<p>在加载图片时,<strong>iOS通常会在图片加载到内存之后,绘制之前解压,这通常是消耗时间问题所在</strong><br/>
+<p>在加载图片时,<strong>iOS通常会在图片加载到内存之后,绘制之前解压,这通常是消耗时间问题所在</strong></p>
+
+<blockquote>
+<p>此处的解码和解压意义相同<br/>
 避免延时加载方法:</p>
+</blockquote>
 
 <ol>
 <li>我们可以用<code>UIImage</code>的 <code>+imageNamed: 方法</code>，它不同于<code>+imageWithContentsOfFile: （和其他别的 UIImage 加载方法）</code>它可以避免延时加载，会在加载图片后立刻解压.但是这个方法只对资源束中图片有效.</li>
