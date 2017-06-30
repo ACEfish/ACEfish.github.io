@@ -370,6 +370,143 @@ default:
 
 <p>控制转移语句改变代码执行顺序,实现代码的跳转</p>
 
+<h3 id="toc_14">Continue</h3>
+
+<p>立即停止本次循环开始下次循环</p>
+
+<pre><code class="language-swift">let puzzleInput = &quot;great minds think alike&quot;
+var puzzleOutput = &quot;&quot;
+for character in puzzleInput.characters {
+    switch character {
+        case &quot;a&quot;, &quot;e&quot;, &quot;i&quot;, &quot;o&quot;, &quot;u&quot;, &quot; &quot;:
+        continue
+    default:
+        puzzleOutput.append(character)
+    }
+}
+print(puzzleOutput) // 输出 &quot;grtmndsthnklk&quot;
+//这里把continue换位break输出结果是一样的,因为continue会匹配为循环体，而break会匹配为switch语句结束执行,循环体还会继续执行下去
+</code></pre>
+
+<h3 id="toc_15">Break</h3>
+
+<p>立刻结束控制流的执行，可以更早结束一个<code>switch</code>代码块或者一个循环体</p>
+
+<h4 id="toc_16">循环中的break</h4>
+
+<p>当在一个循环体中使用<code>break</code>时，会立刻中断该循环体的执行，后跳转到表示循环体结束的大括号<code>( } )</code>后的第一行代码，不会再有循环的代码被执行</p>
+
+<h4 id="toc_17">Switch中的break</h4>
+
+<p>在<code>Switch</code>中使用<code>break</code>时会立刻中断<code>switch</code>代码块的执行,跳转到表示 switch 代码块<br/>
+结束的大括号<code>( } )</code>后的第一行代码</p>
+
+<p>我们可以用其去忽略一个或多个分支,因为switch不允许有空分支,我们可以在分支语句中写为break,来立即结束市场代码块的执行</p>
+
+<h3 id="toc_18">贯穿   fallthrough</h3>
+
+<p><code>Swift</code>与C不同,<code>switch</code>不会从上一个<code>case</code>分支落入到下一个<code>case</code>分支中。<br/>
+但是如果我们想要与C类似的贯穿的风格就需要加上关键字<code>fallthrough</code></p>
+
+<pre><code class="language-swift">let integerToDescribe = 5
+var description = &quot;The number \(integerToDescribe) is&quot;
+switch integerToDescribe {
+case 2, 3, 5, 7, 11, 13, 17, 19:
+    description += &quot; a prime number&quot;
+    fallthrough
+case 10:
+    description += &quot; , and also&quot;
+    fallthrough
+default:
+    description += &quot; an integer.&quot;
+}
+print(description)
+// 输出 &quot;The number 5 is a prime number, and also an integer.&quot;
+</code></pre>
+
+<p>在分支语句加上<code>fallthrough</code>关键字后,在执行完分支语句后会继续执行下面的分支，即贯穿到<code>default</code>分支</p>
+
+<p>注意:<br/>
+在加上<code>fallthrough</code>后是不会判断下面的<code>case</code>语句的匹配条件而直接执行其分支中的代码</p>
+
+<blockquote>
+<p>在C语言的switch语句中也是如果不加break时,那么执行完一条case语句后会直接执行下一条case分支代码,而不会判断分支条件,直到遇到break或者switch语句结束,这与swift中是一致的</p>
+</blockquote>
+
+<h3 id="toc_19">带标签的语句</h3>
+
+<p>当有循环体和条件语句嵌套时,我们想要显式指明用break终止哪个循环体<br/>
+当有多个循环体嵌套时,显示指明用continue开始哪个循环体的下次循环</p>
+
+<p>这时候就需要 <strong>标签</strong></p>
+
+<p>声明一个带标签的语句是通过在该语句的关键词的同一行前面放置一个标签,作为这个语句的前导关键字,该标签后面加上一个冒号。<br/>
+<code>label name : while condition { statements } //对while循环体的标签</code></p>
+
+<pre><code class="language-swift">gameLoop: while square != finalSquare {
+    diceRoll += 1
+    if diceRoll == 7 { diceRoll = 1 }
+    switch square + diceRoll {
+    case finalSquare:
+        // 骰子数刚好使玩家移动到最终的方格里，游戏结束。
+        break gameLoop
+    case let newSquare where newSquare &gt; finalSquare:
+        // 骰子数将会使玩家的移动超出最后的方格，那么这种移动是不合法的，玩家需要重新掷骰子
+        continue gameLoop
+    default:
+        // 合法移动，做正常的处理
+        square += diceRoll
+        square += board[square]
+    }
+}
+print(&quot;Game over!&quot;)
+</code></pre>
+
+<p>我们用<code>标签+冒号+while循环</code>来声明循环为<code>gameLoop</code>，然后用<code>break 标签</code>或者<code>continue 标签</code>来避免break switch语句 而直接作用于循环体</p>
+
+<h2 id="toc_20">提前退出  guard</h2>
+
+<p>与<code>if</code>语句类似<code>guard</code>语句的执行取决于其后的一个bool条件,如果为真时直接执行<code>guard</code>语句后的代码,如果为假时执行<code>else</code>中的语句</p>
+
+<p><strong>注意:</strong><br/>
+条件不满足会执行<code>else</code>分支上的代码,这个分支这个分支必须转移控制以退出<code>guard</code>语句出现的代码段。可以使用控制转移语句如<code>return</code>, <code>break</code>, <code>continue</code>或者<code>throw</code>做这件事，或者调用一个不返回的方法或函数，例如<code>fatalError()</code>。</p>
+
+<pre><code class="language-swift">func greet(person: [String: String]) {
+    guard let name = person[&quot;name&quot;] else {
+        return
+    }
+    print(&quot;Hello \(name)&quot;)
+    guard let location = person[&quot;location&quot;] else {
+        print(&quot;I hope the weather is nice near you.&quot;)
+        return
+    }
+    print(&quot;I hope the weather is nice in \(location).&quot;)
+}
+greet(person: [&quot;name&quot;: &quot;John&quot;])
+// 输出 &quot;Hello John!&quot;
+// 输出 &quot;I hope the weather is nice near you.&quot;
+greet(person: [&quot;name&quot;: &quot;Jane&quot;, &quot;location&quot;: &quot;Cupertino&quot;])
+// 输出 &quot;Hello Jane!&quot;
+// 输出 &quot;I hope the weather is nice in Cupertino.&quot;
+</code></pre>
+
+<h2 id="toc_21">检测API的可用性</h2>
+
+<p><code>Swift</code>内置支持检查<code>API</code>可用性，可以确保我们不会在当前机器上使用不可用API，否则会在编译期间报错</p>
+
+<p>为了判断代码在指定部署机器上是否可用,我们在<code>if</code>或<code>guard</code>中使用<code>可用性条件</code>去执行一段代码,在运行时有条件的执行一段代码，来在运行时判断调用的<code>API</code>是否可用</p>
+
+<pre><code class="language-swift">if #available(iOS 10, macOS 10.12, *) {
+    // 在 iOS 使用 iOS 10 的 API, 在 macOS 使用 macOS 10.12 的 API
+} else {
+    // 使用先前版本的 iOS 和 macOS 的 API
+}
+</code></pre>
+
+<p>最后的 <code>*</code> 是必须的用于指定在所有其它平台中，如果版本号高于你的设备指定的最低版本，if语句的代码块将会运行。</p>
+
+<p><code>#available()</code>一般使用<strong>平台名字</strong>(iOS,macOS,watchOS,tvOS)以及<strong>版本号</strong>（iOS 10 等）</p>
+
 
     
 
@@ -465,6 +602,24 @@ default:
 	      
 		      
 			      <li class="post">
+			        <a href="14988080333726.html">NSNotification</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14986209520102.html"></a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14986177362678.html">函数 Functions</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="14982190720101.html">网络通信</a>
 			      </li>
 		     
@@ -472,24 +627,6 @@ default:
 		      
 			      <li class="post">
 			        <a href="14980952471508.html">控制流</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14978615246204.html">集合类型</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14976139025239.html">编码</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14976096897839.html">字符串和字符</a>
 			      </li>
 		     
 		  

@@ -105,50 +105,69 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14976139025239.html">
+                <a class="clearlink" href="14988080333726.html">
                 
-                  <h1>编码</h1>
+                  <h1>NSNotification</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">unicode码</h2>
+                        	<h2 id="toc_0">notification的使用</h2>
 
-<p>unicode码表示 <code>U+F8FF</code> 可以用 <code>\uF8FF</code>即为unicode编码 F8FF即为这个字符的16进制表示</p>
+<h3 id="toc_1">注册观察者</h3>
 
-<p>多个字符的unicode码可以组合为一个新的字符 例如<code>\ud83c\udf49</code>可以组合为<code>🍉</code>,一个可扩展的字形群是一个或多个可生成人类可读的字符 Unicode 标量的有序排列。</p>
+<p><code>- (void)addObserver:(id)notificationObserver selector:(SEL)notificationSelector name:(NSString *)notificationName object:(id)notificationSender<br/>
+</code><br/>
+注意:</p>
 
-<p>补充:<br/>
-注意:<br/>
- <code>Swift</code>与<code>OC</code>不同，swift中将每个字符都看作可扩展的字形群,因此对于é(&quot;\u{65}\u{301}&quot;)看作一个字符,而对于OC这是两个字符,而对两者说字符串长度就是字符的数量</p>
+<ol>
+<li><code>notificationObserver</code>不能为nil</li>
+<li><code>notification Selector</code>回调方法有且只有一个参数(<code>NSNotification</code>对象)</li>
+<li>如果<code>notificationName</code>为<code>nil</code>，则会接收所有的通知(如果<code>notificationSender</code>不为空，则接收所有来自于<code>notificationSender</code>的所有通知)</li>
+<li>如果<code>notificationSender</code>为<code>nil</code>，则会接收所有<code>notificationName</code>定义的通知；否则，接收由<code>notificationSender</code>发送的通知</li>
+<li>监听同一条通知的多个观察者，在通知到达时，它们执行回调的顺序是不确定的</li>
+</ol>
 
-<blockquote>
-<p>可扩展的字符群集可以组成一个或者多个 Unicode 标量。这意味着不同的字符以及相同字符的不同表示方式<br/>
-可能需要不同数量的内存空间来存储。所以 Swift 中的字符在一个字符串中并不一定占用相同的内存空间数<br/>
-量。因此在没有获取字符串的可扩展的字符群的范围时候，就不能计算出字符串的字符数量。如果您正在处理一<br/>
-个长字符串，需要注意<code>characters</code>属性必须遍历全部的<code>Unicode</code>标量，来确定字符串的字符数量。<br/>
-另外需要注意的是<strong>通过<code>characters</code>属性返回的字符数量并不总是与包含相同字符的<code>NSString</code>的 <code>length</code>属性相同</strong>。 <strong>NSString的length属性是利用UTF-16表示的十六位代码单元数字，而不是 Unicode 可扩展的字符群集</strong>。作为佐证，当一个 NSString的length属性被一个Swift的String值访问时，实际上是调用了<code>utf16Count</code></p>
-</blockquote>
+<h3 id="toc_2">post通知</h3>
 
-<h2 id="toc_1">获取字符串中字符的unicode码</h2>
+<pre><code class="language-objc">[[NSNotificationCenter defaultCenter] postNotificationName:@&quot;First&quot; object:@&quot;博客园-Fly_Elephant&quot;];
+-(void)notificationFirst:(NSNotification *)notification{
+    NSString  *name=[notification name];
+    NSString  *object=[notification object];
+    NSLog(@&quot;名称:%@----对象:%@&quot;,name,object);
+}
+//名称:First----对象:博客园-Fly_Elephant
 
-<pre><code class="language-objc">//其16进制就是字符‘的’的unicode码
-unichar character = [@“的” characterAtIndex:0];
+[[NSNotificationCenter defaultCenter] postNotificationName:@&quot;Second&quot; object:@&quot;http://www.cnblogs.com/xiaofeixiang&quot; userInfo:dict];
+-(void)notificationSecond:(NSNotification *)notification{
+    NSString  *name=[notification name];
+    NSString  *object=[notification object];
+    NSDictionary  *dict=[notification userInfo];
+    NSLog(@&quot;名称:%@----对象:%@&quot;,name,object);
+    NSLog(@&quot;获取的值:%@&quot;,[dict objectForKey:@&quot;key&quot;]);
+}
+//名称:Second----对象:http://www.cnblogs.com/xiaofeixiang
+//获取的值:keso
 </code></pre>
 
-<p>对于上面说的🍉这种多个unicode码组合字符 其index0位置为d83c index1位置为df49 由两个字符组成</p>
+<h2 id="toc_3">通知原理</h2>
 
-<blockquote>
-<p>iOS开发中用<code>unichar</code>是两字节长的<code>char</code>，代表<code>unicode</code>的一个字符</p>
-</blockquote>
+<p>单例的方式创建一个<code>NSNotificationCenter</code>对象<br/>
+对象注册观察者时 将注册的<code>name</code> <code>selector</code> <code>object</code> 作为一个模型 添加到一个数组中</p>
 
-<pre><code class="language-objc">//将unicode码转为字符
-NSLog(@&quot;%@&quot;,[NSString stringWithCharacters:&amp;character length:1]);
-</code></pre>
+<p>post时根据名字和object 找到数组中注册的对象 执行通知的方法</p>
 
-<p>补充:<br/>
-与<code>char</code>的初始化相同 unichar a = &#39;2&#39;可以用单引号初始化unichar<br/>
-不论char还是iOS开发中用的unichar 只能用上面的初始化方法初始化字符为ascii码</p>
+<h2 id="toc_4">多线程</h2>
+
+<p>在多线程应用中，<code>Notification</code>在哪个线程中<code>post</code>，就在哪个线程中被转发，而不一定是在注册观察者的那个线程中。<br/>
+也就是说，<code>Notification</code>的发送与接收处理都是在同一个线程中.</p>
+
+<h2 id="toc_5">通告队列 NSNotificationQueue</h2>
+
+<p><code>NSNotificationQueue</code> 作用是充当通告中心(<code>NSNotificationCenter</code>)的缓冲区,以FIFO的顺序进行维护。当一个通告上升到队列最前时，就将他发送给通告中心，通告中心随后将它派发给所有注册为观察者的对象</p>
+
+<p>参考<a href="http://www.jianshu.com/p/b4835026e8e9">NSNotification&amp;NSNotificationCenter(实现原理,多线程,内存管理角度)</a><br/>
+参考<a href="http://www.cnblogs.com/heyonggang/p/3681689.html">iOS NSNotification的使用</a></p>
 
                         
                       </div>
@@ -157,7 +176,7 @@ NSLog(@&quot;%@&quot;,[NSString stringWithCharacters:&amp;character length:1]);
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/6/16</span>
+                    <span class="date">2017/6/30</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html'>iOS开发知识</a></span>
@@ -248,6 +267,24 @@ NSLog(@&quot;%@&quot;,[NSString stringWithCharacters:&amp;character length:1]);
 	      
 		      
 			      <li class="post">
+			        <a href="14988080333726.html">NSNotification</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14986209520102.html"></a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14986177362678.html">函数 Functions</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="14982190720101.html">网络通信</a>
 			      </li>
 		     
@@ -255,24 +292,6 @@ NSLog(@&quot;%@&quot;,[NSString stringWithCharacters:&amp;character length:1]);
 		      
 			      <li class="post">
 			        <a href="14980952471508.html">控制流</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14978615246204.html">集合类型</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14976139025239.html">编码</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14976096897839.html">字符串和字符</a>
 			      </li>
 		     
 		  
