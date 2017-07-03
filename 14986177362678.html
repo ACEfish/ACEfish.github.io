@@ -176,7 +176,7 @@ print(greet(person: &quot;Tim&quot;, alreadyGreeted: true))
 
 <blockquote>
 <p>重载:指两个函数的函数名相同,函数的参数列表不同(包括参数个数和参数类型)，至于返回类型可同可不同<br/>
-OC不完全知识重载,即OC支持参数个数不同的函数重载,Swift是完全支持重载的</p>
+OC不完全支持重载,即OC支持参数个数不同的函数重载,Swift是完全支持重载的</p>
 </blockquote>
 
 <h3 id="toc_4">无返回值函数</h3>
@@ -326,7 +326,143 @@ arithmeticMean(3, 8.25, 18.75)
 
 <h3 id="toc_12">输入输出参数</h3>
 
-<p>函数参数默认为常量,因此在函数体中修改会导致编译错误</p>
+<p>参考<a href="http://www.csdn.net/article/2015-01-20/2823635-swift-pointer">Swift中的指针操作及使用</a></p>
+
+<p>函数参数默认为常量,因此在函数体中修改会导致编译错误。如果想要在函数中修改某个参数值,并且这些修改在函数调用后仍然有效，那么需要把这个参数定义为输入输出参数</p>
+
+<p>在参数定义前加上<code>inout</code>关键字来定以输入输出参数，这个值被函数修改然后被传出函数替换原来的值.</p>
+
+<p>只能传递变量给输入输出参数,不能传入常量或字面量，调用时当传入的参数作为输入输出参数时,需要在参数名前加<code>&amp;</code>表示这个值可被修改</p>
+
+<blockquote>
+<p>输入输出参数不能有默认值，而且可变参数不能用<code>inout</code>标记</p>
+</blockquote>
+
+<pre><code class="language-swift">func swapTwoInts(_ a: inout Int, _ b: inout Int) {
+    let temporaryA = a
+    a = b
+    b = temporaryA
+}
+var someInt = 3
+var anotherInt = 107
+swapTwoInts(&amp;someInt, &amp;anotherInt)
+print(&quot;someInt is now \(someInt), and anotherInt is now \(anotherInt)&quot;)
+// 打印 &quot;someInt is now 107, and anotherInt is now 3&quot;
+</code></pre>
+
+<p><strong>可以参考C语言中函数的 指针参数</strong></p>
+
+<h2 id="toc_13">函数类型</h2>
+
+<p>每个函数都有 由<code>函数的参数类型</code>和<code>返回类型</code> 组成<code>函数类型</code></p>
+
+<pre><code class="language-swift">func addTwoInts(_ a: Int, _ b: Int) -&gt; Int {
+    return a + b
+}
+</code></pre>
+
+<p>函数类型为<code>(Int, Int) -&gt; Int</code></p>
+
+<pre><code class="language-swift">func printHelloWorld() {
+    print(&quot;hello, world&quot;)
+}
+</code></pre>
+
+<p>函数类型为<code>() -&gt; Void</code></p>
+
+<h3 id="toc_14">函数类型的使用</h3>
+
+<p>在<code>Swift</code>中使用函数类型和使用其他类型一样。</p>
+
+<pre><code class="language-swift">var mathFunction: (Int, Int) -&gt; Int = addTwoInts
+</code></pre>
+
+<p>定义一个类型是‘一个有两个Int型的参数并返回一个Int型的值的<code>mathFunction</code>变量，指向<code>addTwoInts</code>函数</p>
+
+<p>函数类型与其他类型一样可以通过赋值让<code>Swift</code>推断其函数类型</p>
+
+<h3 id="toc_15">函数类型作为参数类型</h3>
+
+<pre><code class="language-swift">func printMathResult(_ mathFunction: (Int, Int) -&gt; Int, _ a: Int, _ b: Int) {
+    print(&quot;Result: \(mathFunction(a, b))&quot;)
+}
+
+//调用
+printMathResult({ (a, b) -&gt; Int in
+    return a*b
+}, 10, 20)
+</code></pre>
+
+<p><code>printMathResult(_:_:_:)</code>函数的作用就是输出另一个适当类型的数学函数的调用结果。它不关心传入函数是如何实现的，只关心传入的函数是不是一个正确的类型。这使得<code>printMathResult(_:_:_:)</code>能以一种类型安全（type-safe）的方式将一部分功能转给调用者实现。</p>
+
+<h3 id="toc_16">函数类型作为返回类型</h3>
+
+<p>我们可以将函数类型作为另一个函数的返回类型</p>
+
+<pre><code class="language-swift">func stepForward(_ input: Int) -&gt; Int {
+    return input + 1
+}
+func stepBackward(_ input: Int) -&gt; Int {
+    return input - 1
+}
+
+func chooseStepFunction(backward: Bool) -&gt; (Int) -&gt; Int {
+    return backward ? stepBackward : stepForward
+}
+
+//执行
+var currentValue = 3
+let moveNearerToZero = chooseStepFunction(backward: currentValue &gt; 0)
+// moveNearerToZero 现在指向 stepBackward() 函数。
+</code></pre>
+
+<p>上面例子获取一个整形接近0应该用的函数</p>
+
+<pre><code class="language-swift">print(&quot;Counting to zero:&quot;)
+// Counting to zero:
+while currentValue != 0 {
+    print(&quot;\(currentValue)... &quot;)
+    currentValue = moveNearerToZero(currentValue)
+}
+print(&quot;zero!&quot;)
+// 3...
+// 2...
+// 1...
+// zero!
+</code></pre>
+
+<h2 id="toc_17">嵌套函数</h2>
+
+<p>前面定义的所有函数都为全局函数<br/>
+我们可以把函数定义在其他函数中,这就是<code>嵌套函数</code><br/>
+默认情况下，嵌套函数是对外界不可见的，但是可以被它们的外围函数（enclosing function）调用。一个外围函数也可以返回它的某一个嵌套函数，使得这个函数可以在其他域中被使用。</p>
+
+<blockquote>
+<p>OC中是不支持在一个函数中定义另外一个函数</p>
+</blockquote>
+
+<p>我们用返回嵌套方式重写<code>chooseStepFunction(backward:)</code>函数</p>
+
+<pre><code class="language-swift">func chooseStepFunction(backward: Bool) -&gt; (Int) -&gt; Int {
+    //我们在函数中定义另外函数
+    func stepForward(input: Int) -&gt; Int { return input + 1 }
+    func stepBackward(input: Int) -&gt; Int { return input - 1 }
+    //返回嵌套函数
+    return backward ? stepBackward : stepForward
+}
+var currentValue = -4
+let moveNearerToZero = chooseStepFunction(backward: currentValue &gt; 0)
+while currentValue != 0 {
+print(&quot;\(currentValue)... &quot;)
+currentValue = moveNearerToZero(currentValue)
+}
+print(&quot;zero!&quot;)
+// -4...
+// -3...
+// -2...
+// -1...
+// zero!
+</code></pre>
 
 
     
@@ -337,8 +473,8 @@ arithmeticMean(3, 8.25, 18.75)
         <div class="large-6 columns">
         <p class="text-left" style="padding:15px 0px;">
       
-          <a href="14986209520102.html" 
-          title="Previous Post: ">&laquo; </a>
+          <a href="14988080333726.html" 
+          title="Previous Post: NSNotification">&laquo; NSNotification</a>
       
         </p>
         </div>
@@ -429,12 +565,6 @@ arithmeticMean(3, 8.25, 18.75)
 		  
 		      
 			      <li class="post">
-			        <a href="14986209520102.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="14986177362678.html">函数 Functions</a>
 			      </li>
 		     
@@ -448,6 +578,12 @@ arithmeticMean(3, 8.25, 18.75)
 		      
 			      <li class="post">
 			        <a href="14980952471508.html">控制流</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14978615246204.html">集合类型</a>
 			      </li>
 		     
 		  

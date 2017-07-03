@@ -4,7 +4,7 @@
   <title><![CDATA[栗豫塬的博客]]></title>
   <link href="https://acefish.github.io/atom.xml" rel="self"/>
   <link href="https://acefish.github.io/"/>
-  <updated>2017-06-28T10:42:20+08:00</updated>
+  <updated>2017-06-30T16:48:19+08:00</updated>
   <id>https://acefish.github.io/</id>
   <author>
     <name><![CDATA[]]></name>
@@ -79,16 +79,6 @@
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[]]></title>
-    <link href="https://acefish.github.io/14986209520102.html"/>
-    <updated>2017-06-28T11:35:52+08:00</updated>
-    <id>https://acefish.github.io/14986209520102.html</id>
-    <content type="html"><![CDATA[
-
-]]></content>
-  </entry>
-  
-  <entry>
     <title type="html"><![CDATA[函数 Functions]]></title>
     <link href="https://acefish.github.io/14986177362678.html"/>
     <updated>2017-06-28T10:42:16+08:00</updated>
@@ -145,7 +135,7 @@ print(greet(person: &quot;Tim&quot;, alreadyGreeted: true))
 
 <blockquote>
 <p>重载:指两个函数的函数名相同,函数的参数列表不同(包括参数个数和参数类型)，至于返回类型可同可不同<br/>
-OC不完全知识重载,即OC支持参数个数不同的函数重载,Swift是完全支持重载的</p>
+OC不完全支持重载,即OC支持参数个数不同的函数重载,Swift是完全支持重载的</p>
 </blockquote>
 
 <h3 id="toc_4">无返回值函数</h3>
@@ -295,7 +285,143 @@ arithmeticMean(3, 8.25, 18.75)
 
 <h3 id="toc_12">输入输出参数</h3>
 
-<p>函数参数默认为常量,因此在函数体中修改会导致编译错误</p>
+<p>参考<a href="http://www.csdn.net/article/2015-01-20/2823635-swift-pointer">Swift中的指针操作及使用</a></p>
+
+<p>函数参数默认为常量,因此在函数体中修改会导致编译错误。如果想要在函数中修改某个参数值,并且这些修改在函数调用后仍然有效，那么需要把这个参数定义为输入输出参数</p>
+
+<p>在参数定义前加上<code>inout</code>关键字来定以输入输出参数，这个值被函数修改然后被传出函数替换原来的值.</p>
+
+<p>只能传递变量给输入输出参数,不能传入常量或字面量，调用时当传入的参数作为输入输出参数时,需要在参数名前加<code>&amp;</code>表示这个值可被修改</p>
+
+<blockquote>
+<p>输入输出参数不能有默认值，而且可变参数不能用<code>inout</code>标记</p>
+</blockquote>
+
+<pre><code class="language-swift">func swapTwoInts(_ a: inout Int, _ b: inout Int) {
+    let temporaryA = a
+    a = b
+    b = temporaryA
+}
+var someInt = 3
+var anotherInt = 107
+swapTwoInts(&amp;someInt, &amp;anotherInt)
+print(&quot;someInt is now \(someInt), and anotherInt is now \(anotherInt)&quot;)
+// 打印 &quot;someInt is now 107, and anotherInt is now 3&quot;
+</code></pre>
+
+<p><strong>可以参考C语言中函数的 指针参数</strong></p>
+
+<h2 id="toc_13">函数类型</h2>
+
+<p>每个函数都有 由<code>函数的参数类型</code>和<code>返回类型</code> 组成<code>函数类型</code></p>
+
+<pre><code class="language-swift">func addTwoInts(_ a: Int, _ b: Int) -&gt; Int {
+    return a + b
+}
+</code></pre>
+
+<p>函数类型为<code>(Int, Int) -&gt; Int</code></p>
+
+<pre><code class="language-swift">func printHelloWorld() {
+    print(&quot;hello, world&quot;)
+}
+</code></pre>
+
+<p>函数类型为<code>() -&gt; Void</code></p>
+
+<h3 id="toc_14">函数类型的使用</h3>
+
+<p>在<code>Swift</code>中使用函数类型和使用其他类型一样。</p>
+
+<pre><code class="language-swift">var mathFunction: (Int, Int) -&gt; Int = addTwoInts
+</code></pre>
+
+<p>定义一个类型是‘一个有两个Int型的参数并返回一个Int型的值的<code>mathFunction</code>变量，指向<code>addTwoInts</code>函数</p>
+
+<p>函数类型与其他类型一样可以通过赋值让<code>Swift</code>推断其函数类型</p>
+
+<h3 id="toc_15">函数类型作为参数类型</h3>
+
+<pre><code class="language-swift">func printMathResult(_ mathFunction: (Int, Int) -&gt; Int, _ a: Int, _ b: Int) {
+    print(&quot;Result: \(mathFunction(a, b))&quot;)
+}
+
+//调用
+printMathResult({ (a, b) -&gt; Int in
+    return a*b
+}, 10, 20)
+</code></pre>
+
+<p><code>printMathResult(_:_:_:)</code>函数的作用就是输出另一个适当类型的数学函数的调用结果。它不关心传入函数是如何实现的，只关心传入的函数是不是一个正确的类型。这使得<code>printMathResult(_:_:_:)</code>能以一种类型安全（type-safe）的方式将一部分功能转给调用者实现。</p>
+
+<h3 id="toc_16">函数类型作为返回类型</h3>
+
+<p>我们可以将函数类型作为另一个函数的返回类型</p>
+
+<pre><code class="language-swift">func stepForward(_ input: Int) -&gt; Int {
+    return input + 1
+}
+func stepBackward(_ input: Int) -&gt; Int {
+    return input - 1
+}
+
+func chooseStepFunction(backward: Bool) -&gt; (Int) -&gt; Int {
+    return backward ? stepBackward : stepForward
+}
+
+//执行
+var currentValue = 3
+let moveNearerToZero = chooseStepFunction(backward: currentValue &gt; 0)
+// moveNearerToZero 现在指向 stepBackward() 函数。
+</code></pre>
+
+<p>上面例子获取一个整形接近0应该用的函数</p>
+
+<pre><code class="language-swift">print(&quot;Counting to zero:&quot;)
+// Counting to zero:
+while currentValue != 0 {
+    print(&quot;\(currentValue)... &quot;)
+    currentValue = moveNearerToZero(currentValue)
+}
+print(&quot;zero!&quot;)
+// 3...
+// 2...
+// 1...
+// zero!
+</code></pre>
+
+<h2 id="toc_17">嵌套函数</h2>
+
+<p>前面定义的所有函数都为全局函数<br/>
+我们可以把函数定义在其他函数中,这就是<code>嵌套函数</code><br/>
+默认情况下，嵌套函数是对外界不可见的，但是可以被它们的外围函数（enclosing function）调用。一个外围函数也可以返回它的某一个嵌套函数，使得这个函数可以在其他域中被使用。</p>
+
+<blockquote>
+<p>OC中是不支持在一个函数中定义另外一个函数</p>
+</blockquote>
+
+<p>我们用返回嵌套方式重写<code>chooseStepFunction(backward:)</code>函数</p>
+
+<pre><code class="language-swift">func chooseStepFunction(backward: Bool) -&gt; (Int) -&gt; Int {
+    //我们在函数中定义另外函数
+    func stepForward(input: Int) -&gt; Int { return input + 1 }
+    func stepBackward(input: Int) -&gt; Int { return input - 1 }
+    //返回嵌套函数
+    return backward ? stepBackward : stepForward
+}
+var currentValue = -4
+let moveNearerToZero = chooseStepFunction(backward: currentValue &gt; 0)
+while currentValue != 0 {
+print(&quot;\(currentValue)... &quot;)
+currentValue = moveNearerToZero(currentValue)
+}
+print(&quot;zero!&quot;)
+// -4...
+// -3...
+// -2...
+// -1...
+// zero!
+</code></pre>
 
 ]]></content>
   </entry>
@@ -410,7 +536,7 @@ HTTP的长连接和短连接本质就是TCP的长连接和短连接,http通过tc
 <p>长轮询：解决了短轮询的问题,长轮询的操作是:前段发送请求给后端，后台收到请求后并不及时返回,加入后台数据没有更新,就将请求挂起来直到有消息返回才返回响应信息并关闭连接,这样就不会频繁请求堵塞服务器<br/>
 优点：在无消息的情况下不会频繁的请求，耗费资源小。 <br/>
 缺点：服务器hold连接会消耗资源，返回数据顺序无保证，难于管理维护。 <br/>
-实例：WebQQ、Hi网页版<br/>
+实例：WebQQ、Hi网页版 <br/>
 <img src="media/14982190720101/14985257353004.png" alt=""/></p>
 
 <h3 id="toc_11">2.WebSocket</h3>
@@ -450,7 +576,50 @@ OS层:基于C的 BSD socket</p>
 <p><code>Bonjour</code>是一种能够自动查询接入网络中的设备或应用程序的协议，抽象ip和port为<code>service</code>，一个应用程序<code>publish</code>一个网络服务<code>service</code>然后网络中的其他程序就能自动发现这个<code>service</code>，从而可以向这个<code>service</code>查询其<code>ip</code>和<code>port</code>，然后通过获得的<code>ip</code>和<code>port</code>建立 <code>socket</code>链接进行通信。通常我们是通过<code>NSNetService</code>和<code>NSNetServiceBrowser</code>来使用 <code>Bonjour</code>的，前者用于建立与发布<code>service</code>，后者用于监听查询网络上的<code>service</code>。<br/>
 不多做介绍,深入学习可以参考<a href="http://www.cnblogs.com/kesalin/archive/2011/09/15/cocoa_bonjour.html">深入浅出Cocoa之Bonjour网络编程</a></p>
 
-<h3 id="toc_14">iOS中socket连接</h3>
+<h3 id="toc_14">iOS中应用限制</h3>
+
+<p>Apple为了让设备尽量省电，减少不必要的开销，保持系统流畅除了特殊的官方程序外是不会让程序在后台无限执行的,开发者开发的程序收到以下限制:</p>
+
+<p>按下<code>home</code>将应用转为后台运行后,app后台运行时间有限（可以通过<code>backgroundTimeRemaining</code>属性来获取这个可用时间）(<code>拥有180s运行时间可以处理后台操作</code>), 时间结束后我们的程序在程序会进入挂起状态，这种状态下应用不会执行任何代码、关闭定时器、系统会收回给程序分配的<code>socket</code>资源</p>
+
+<p>我们只能通过苹果提供的几种特殊后台方式来进行程序的“后台”工作</p>
+
+<ol>
+<li><p>进入后台后前若应用还有未完成任务,可以申请有限时间(最多不超过10分钟)来完成重要任务<br/>
+当10分钟到了后会，无论怎么向系统申请继续后台，系统会强制挂起App，挂起所有后台操作、线程，直到用户再次点击App之后才会继续运行。</p>
+
+<pre><code class="language-objc">- (UIBackgroundTaskIdentifier)beginBackgroundTaskWithExpirationHandler:(void (^)(void))handler
+//返回一个新的后台任务的唯一的标示符，你必须将这个值传给endBackgroundTask:方法来标记任务的结束。如果无法在后台运行这个方法将返回UIBackgroundTaskInvalid。
+//handle回调是在时间快到了执行,防申请到的时间片段内，还是没能完成任务的话，做最后的清理和标注工作,如果不传的话，那么结果就是iOS直接kill掉你的APP
+</code></pre>
+
+<p>必须在任务执行结束时，调用<code>endBackgroundTask</code>并传递这个标示符，来结束后台任务。</p></li>
+<li><p>iOS为特殊任务设计的后台模式</p></li>
+</ol>
+
+<p>后台下载任务：<br/>
+<code>Background Downloading</code> <strong>后台下载</strong>,必须使用 iOS 指定的机制才可以，那就是 <code>NSURLSession</code></p>
+
+<p>后台运行的特定服务类型<br/>
+    <img src="media/14982190720101/14990618979269.jpg" alt=""/></p>
+
+<pre><code>1. 应用在后台播放或者录制音频
+2. APP更新GPS信息，通知给用户
+3. `voip` 网络电话功能
+4. 杂志应用,在后台下载杂志并处理(用通知触发后台下载任务)
+5. 一些控制外设的app，需要不停与外设沟通.系统就不会主动关闭 APP 与 外设之间的连接，而是替
+    APP 监视这个连接，但有数据过来时，会唤醒 APP 进行处理，每次唤醒 APP 只有 10S 时间
+    进行数据处理(不够的话还使用上面的方法申请更多时间)
+6. iPhone作为蓝牙中心设备，需要不停更新蓝牙设备
+7. iphone作为蓝牙外围设备，需要不停访问其他蓝牙设备数据
+8. 需要在后台频繁有规律获取数据,统在你的 APP 进入后台后，会间隔性的给机会将你的 APP 唤醒，
+   并回调你的 委托方法`application:performFetchWithCompletionHandler:`
+9. App后台关注推送,推送到达时，后台启动app：服务端推送加上键值对content-available = 1的
+   话, 手机收到这个通知后，会自动启动 APP 到后台，或 唤醒（依旧保持后台执行），并回调 委托
+   方法 application:didReceiveRemoteNotification:fetchCompletionHandler:
+</code></pre>
+
+<p>详细设计可参考<a href="http://dxjia.cn/2016/05/26/ios-background-executions/?utm_source=tuicool&amp;utm_medium=referral">iOS 后台任务设计指导</a></p>
 
 <h2 id="toc_15">补充：</h2>
 
@@ -496,7 +665,8 @@ WebService客户端要调用一个WebService服务，首先要有知道这个服
 <a href="http://www.cnblogs.com/hoojo/p/longPolling_comet_jquery_iframe_ajax.html">Web 通信 之 长连接、长轮询</a><br/>
 <a href="http://blog.csdn.net/prl18353364833/article/details/51593643">网络七层协议 五层模型</a><br/>
 <a href="http://www.jianshu.com/p/49d7997ad3b7">Web Service到底是什么</a><br/>
-<a href="https://www.zhihu.com/question/20215561">WebSocket 是什么原理</a></p>
+<a href="https://www.zhihu.com/question/20215561">WebSocket 是什么原理</a><br/>
+<a href="http://www.jianshu.com/p/121fc5b7f2d3">iOS Background Modes</a></p>
 
 ]]></content>
   </entry>
@@ -1791,6 +1961,17 @@ let (x, y) = (1, 2)
 
 <p>QoS（Quality of Service，服务质量）指一个网络能够利用各种基础技术，为指定的网络通信提供更好的服务能力, 是网络的一种安全机制， 是用来解决网络延迟和阻塞等问题的一种技术</p>
 
+<h3 id="toc_2">嵌套函数</h3>
+
+<p>嵌套函数，就是指在某些情况下，您可能需要将某函数作为另一函数的参数使用。</p>
+
+<p>C语言中函数的定义都是相互平行、相互独立的，也就是说在函数定义时，函数体内不能包含另一个函数的定义，即函数不能嵌套定义，但可以嵌套调用。</p>
+
+<h3 id="toc_3">重载</h3>
+
+<p>重载:指两个函数的函数名相同,函数的参数列表不同(包括参数个数和参数类型)，至于返回类型可同可不同<br/>
+OC不完全支持重载,即OC支持参数个数不同的函数重载,Swift是完全支持重载的</p>
+
 ]]></content>
   </entry>
   
@@ -2983,6 +3164,31 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
     <id>https://acefish.github.io/14956786717356.html</id>
     <content type="html"><![CDATA[
 <h2 id="toc_0">preservesSuperviewLayoutMargins</h2>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[xib使用]]></title>
+    <link href="https://acefish.github.io/14956304598531.html"/>
+    <updated>2017-05-24T20:54:19+08:00</updated>
+    <id>https://acefish.github.io/14956304598531.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">SizeClasses</h2>
+
+<p><code>SizeClass</code>并不是对控件进行布局而是用于区分不同的屏幕尺寸<br/>
+SizeClass之所以能适配所有型号，就是因为三个属性Compact(紧凑),Any(所有),regular(常规)。</p>
+
+<h2 id="toc_1">适配不同设备的xib</h2>
+
+<h3 id="toc_2">创建适配不同设备的xib</h3>
+
+<p><img src="media/14956304598531/870B58F4-145B-4697-906B-682877E8518A.png" alt="870B58F4-145B-4697-906B-682877E8518A"/><br/>
+<code>Install</code>选项勾选即可选择这个控件是否在此类设备中显示而左边的得弹框则可以选择此类设备是指:通过选择Width 和 Height  可以选定 是ipad 还是 iphone</p>
+
+<h3 id="toc_3">创建针对不同设备的约束</h3>
+
+<p><img src="media/14956304598531/DED74B15-FD5B-49EF-903D-D53E1CF680B6.png" alt="DED74B15-FD5B-49EF-903D-D53E1CF680B6"/></p>
 
 ]]></content>
   </entry>
