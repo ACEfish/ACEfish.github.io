@@ -105,273 +105,34 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14903384285214.html">
+                <a class="clearlink" href="14903444013647.html">
                 
-                  <h1>显式动画</h1>
+                  <h1>CAAnimation</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>隐式动画是在iOS平台创建动态用户界面的一种直接方式，也是UIKit动画机制的基础<br/>
-显式动画，它能够对一些属性做指定的自定义动画，或者创建非线性动画</p>
+                        	<h3 id="toc_0">keyPath</h3>
 
-<h3 id="toc_0">属性动画</h3>
-
-<p><code>core animation</code>里面有个很重要的类<code>CAPropertyAnimation</code>(属性动画)，它有两个子类，<code>CABasicAnimation</code>和<code>CAKeyFrameAnimation</code>。</p>
-
-<h4 id="toc_1">属性动画</h4>
-
-<p><code>CAAnimation</code>在动画结束时会属性会回到原值所以<br/>
-我们在做了显式动画后可以用<code>CAAnimationDelegate</code>中<code>- animationDidStop:finished:</code>方法来更新图层属性（一般设置其为终值）,更新属性的时候我们需要一个新的事务并且禁用图层行为.否则会有两次动画.</p>
-
-<pre><code class="language-objc">- (void)animationDidStop:(CABasicAnimation *)anim finished:(BOOL)flag
-{
-    //set the backgroundColor property to match animation toValue
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.colorLayer.backgroundColor = (__bridge CGColorRef)anim.toValue;
-    [CATransaction commit];
-}
-</code></pre>
-
-<p>但是如果我们有多个动画这个代理回调是无法区分是哪个图层的调用.<br/>
-1.因为这个代理传进来的动画的深拷贝,所以没有办法通过设置动画属性来分辨.<br/>
-2.使用<code>-addAnimation:forKey:</code>给动画设置不同key,<code>-animationForKey:</code>找到对应的key来对比，可实现但是比较复杂<br/>
-3.最简单的方法,<code>CAAnimation</code>实现了KVC,但是更像一个 NSDictionary ，可以让你<strong>随意设置键值对</strong>，即使和你使用的动画类所声明的属性并不匹配。</p>
-
-<pre><code class="language-objc">//初始化动画时用KVC设置键值对
-CABasicAnimation *animation = [CABasicAnimation animation];
-[self updateHandsAnimated:NO];
-animation.keyPath = @&quot;transform&quot;;
-animation.toValue = [NSValue valueWithCATransform3D:transform];
-animation.duration = 0.5;
-animation.delegate = self;
-[animation setValue:handView forKey:@&quot;handView&quot;];
-[handView.layer addAnimation:animation forKey:nil];
-- (void)animationDidStop:(CABasicAnimation *)anim finished:(BOOL)flag
-{
-    //通过kvc获取存储的值
-    UIView *handView = [anim valueForKey:@&quot;handView&quot;];
-    handView.layer.transform = [anim.toValue CATransform3DValue];
-}
-</code></pre>
-
-<p><code>CABasicAnimation</code>只能作用于一个属性,只能有初始值和结束值</p>
-
-<h4 id="toc_2">关键帧动画</h4>
-
-<p><code>CABasicAnimation</code>揭示了大多数隐式动画背后依赖的机制,但是显式地给图层添加<code>CABasicAnimation</code>相较于<code>隐式动画</code>而言，只能说费力不讨好。</p>
-
-<p><code>CAKeyframeAnimation</code>和<code>CABasicAnimation</code> 类似同样是<code>CAPropertyAnimation</code> 的一个子类它依然作用于单一的一个属性,但是它不限制于设置一个起始和结束的值，而是可以根据一连串随意的值来做动画。</p>
-
-<p><code>CAKeyframeAnimation</code>关键帧动画:只我们只需要绘制关键帧的动画，然后<code>Core Animation</code>在每帧之间进行插入。</p>
-
-<pre><code class="language-objc">- (IBAction)changeColor
-{
-    //create a keyframe animation
-    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
-    animation.keyPath = @&quot;backgroundColor&quot;;
-    animation.duration = 2.0;
-    animation.values = @[
-    (__bridge id)[UIColor blueColor].CGColor,
-    (__bridge id)[UIColor redColor].CGColor,
-    (__bridge id)[UIColor greenColor].CGColor,
-    (__bridge id)[UIColor blueColor].CGColor ];
-    //apply animation to layer
-    [self.colorLayer addAnimation:animation forKey:nil];
-}
-</code></pre>
-
-<p>是因为<code>CAKeyframeAnimation</code>并不能自动把当前值作为第一帧（就像<code>CABasicAnimation</code> 那样把 <code>fromValue</code> 设为 <code>nil</code> ），所以动画会在开始的时候突然由原来色变为蓝色,结束时又突然由结束色变为原来色.</p>
-
-<p>上面是使用<code>animation.values</code>来设置关键帧，我还可以用<code>path 属性</code>指定运动序列.<br/>
-我们要绘制一个<code>CGPath</code>的三次贝塞尔曲线，可以通过使用一个基于C的<code>Core Graphics</code>绘图指令来创建，不过用<code>UIKit</code>提供的<code>UIBezierPath</code>类会更简单.</p>
-
-<pre><code class="language-objc">UIBezierPath *bezierPath = [[UIBezierPath alloc] init];
-[bezierPath moveToPoint:CGPointMake(0, 150)];
-[bezierPath addCurveToPoint:CGPointMake(300, 150) controlPoint1:CGPointMake(75, 0) controlPoint2:CGPointMake(225, 300)];
-CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
-animation.keyPath = @&quot;position&quot;;
-animation.duration = 4.0;
-animation.path = bezierPath.CGPath;
-[shipLayer addAnimation:animation forKey:nil];
-</code></pre>
-
-<p>苹果很人性化的给我们提供了<code>rotationMode</code>属性,设置它为常量 <code>kCAAnimationRotateAuto</code>图层将会根据曲线的切线自动旋转。<br/>
-<code>animation.rotationMode = kCAAnimationRotateAuto;</code></p>
-
-<h4 id="toc_3">虚拟属性</h4>
-
-<p>属性动画实际上是针对于关键路径而不是一个键,这就意味着可以对<code>子属性</code>甚至是<code>虚拟属性</code>做动画.</p>
-
-<p>例如:想要对物体做旋转动画,需要作用于<code>transform</code> 属性，因为<code>CALayer</code>没有显式提供角度或者方向之类的属性</p>
-
-<pre><code class="language-objc">CABasicAnimation *animation = [CABasicAnimation animation];
-animation.keyPath = @&quot;transform&quot;;
-animation.duration = 2.0;
-animation.toValue = [NSValue valueWithCATransform3D: CATransform3DMakeRotation(M_PI, 0, 0, 1)];
-[shipLayer addAnimation:animation forKey:nil];
-/**
-这样确实会旋转180°但是如果我们把M_PI改为2*M_PI就不会旋转了
-即使我们设置了byValue也无效,因为变换矩阵并不会像角度值一样叠加
-*/
-</code></pre>
-
-<p>对于<code>CATransform3D</code>因为0度旋转和360度旋转的矩阵完全相同,所以<code>fromValue</code> = <code>toValue</code>因此不会旋转的</p>
-
-<p>我们当然可以用关键帧动画,修改<code>transform</code>属性，实时地重新计算每个时间点的每个变换效果。这是非常复杂的，不推荐</p>
-
-<p>推荐:<br/>
-我们可以<br/>
-对<code>transform.rotation</code>关键路径应用动画，而不是<code>transform</code>本身<br/>
-<code>objc<br/>
-CABasicAnimation *animation = [CABasicAnimation animation];<br/>
-animation.keyPath = @&quot;transform.rotation&quot;;<br/>
-animation.duration = 2.0;<br/>
-animation.byValue = @(M_PI * 2);<br/>
-[shipLayer addAnimation:animation forKey:nil];<br/>
-</code><br/>
-这样我们就可以简单使用角度而不用复杂的矩阵,就可以使用<code>byValue</code>了. 还可以额外使用<code>transform.position</code> 或者<code>transform.scale</code></p>
-
-<p><code>transform.rotation</code>属性其实并不存在,这是因为<code>CATransform3D</code>不是对象而是结构体，它就是一个 <code>CALayer</code> 用于处理动画变换的虚拟属性。当我们<code>transform.rotation</code>等虚拟属性做动画时，<code>Core Animation</code>自动地根据通过 <code>CAValueFunction</code> 来计算的值来更新<code>transform</code> 属性。<br/>
-<code>CAValueFunction</code>用于把我们赋给虚拟的 <code>transform.rotation</code>简单浮点值转换成真正的用于摆放图层的<code>CATransform3D</code> 矩阵值。可以通过设置 <code>CAPropertyAnimation</code> 的<code>valueFunction</code>属性来改变，于是你设置的函数将会覆盖默认的函数。</p>
-
-<h3 id="toc_4">动画组</h3>
-
-<h4 id="toc_5">动画组</h4>
-
-<p><code>属性动画</code>仅仅作用于单独的属性,<code>CAAnimationGroup</code>是另一个继承于 <code>CAAnimation</code> 的子类，它添加了一个 <code>animations</code> 数组的属性，用来组合别的动画。</p>
+<ol>
+<li><p>@&quot;backgroundColor&quot;  背景颜色<br/>
+<code>(__bridge id)[UIColor blueColor].CGColor</code></p></li>
+<li><p>@&quot;transform&quot;  动画<code>CATransform3D</code><br/>
+<code>animation.toValue = [NSValue valueWithCATransform3D:transform];</code></p></li>
+<li><p>@&quot;position&quot; 中心位置<br/>
+可以直接设置值<br/>
+也可以<strong>常用于CAKeyAnimation动画路径设置</strong></p></li>
+</ol>
 
 <pre><code class="language-objc">CAKeyframeAnimation *animation1 = [CAKeyframeAnimation animation];
 animation1.keyPath = @&quot;position&quot;;
 animation1.path = bezierPath.CGPath;
 animation1.rotationMode = kCAAnimationRotateAuto;
-//create the color animation
-CABasicAnimation *animation2 = [CABasicAnimation animation];
-animation2.keyPath = @&quot;backgroundColor&quot;;
-animation2.toValue = (__bridge id)[UIColor redColor].CGColor;
-//create group animation
-CAAnimationGroup *groupAnimation = [CAAnimationGroup animation];
-groupAnimation.animations = @[animation1, animation2];
-groupAnimation.duration = 4.0;
-//add the animation to the color layer
-[colorLayer addAnimation:groupAnimation forKey:nil];
 </code></pre>
 
-<h3 id="toc_6">过渡</h3>
-
-<p><strong>属性动画只对图层的可动画属性起作用</strong>，所以如果要改变一个不能动画的属性（比如图片），或者从层级关系中添加或者移除图层，属性动画将不起作用。</p>
-
-<p>因为隐式动画或者属性动画都只能对图层的可动画属性做动画,如果这个属性不可动画，这时候我们就需要<code>过渡</code>了。过渡动画会影响到整个图层的变化,它首先展示的之前的图层外观,然后通过一个交换过渡到新的外观.</p>
-
-<p>我们用<code>CATransition</code>来创建过渡动画,它也是<code>CAAnimation</code>子类,有一个<code>type</code>和<code>subtype</code>来标识变换效果。</p>
-
-<pre><code class="language-objc">//type:
-kCATransitionFade//默认,淡入淡出
-kCATransitionMoveIn //新图层从顶部滑入
-kCATransitionPush //推出老图层
-kCATransitionReveal //滑动出原图层，显示新外观,而不是滑动入新图层
-//这是系统提供的,我们也可以自定义过渡动画效果
-</code></pre>
-
-<p><code>type</code>过渡类型都有一个默认的动画方向（从左侧滑入）,可以通过<code>subtype</code>控制方向</p>
-
-<pre><code>//subtype
-kCATransitionFromRight
-kCATransitionFromLeft//
-kCATransitionFromTop
-kCATransitionFromBottom
-</code></pre>
-
-<p><strong>注意</strong><br/>
-与属性动画类似我们通过<code>-addAnimation:forKey:</code>方法，但是它对指定图层一次只能用一次<code>CATransition</code>，因此，过渡动画都会对它的键设置成“transition”，也就是常量 kCATransition 。</p>
-
-<h4 id="toc_7">隐式过渡</h4>
-
-<p>过渡动画和属性动画类似也是有隐式,如果设置了<code>CALayer</code>的<code>contents</code>属性,但是对于与视图关联的图层隐式过渡动画是被禁用的,但是如果是自己创建的图层<code>contents</code>图片做的改动都会自动附上淡入淡出的动画。</p>
-
-<p><strong>注意</strong><br/>
-虽然我们用<code>过渡动画</code>来对图层的某些不可动画属性做动画,但是也不是说过渡动画不能对可动画属性做动画.</p>
-
-<pre><code class="language-objc">    CATransition *transition = [CATransition animation];
-    transition.type = kCATransitionPush;
-    transition.subtype = kCATransitionFromRight;
-    [self.containerView.layer addAnimation:transition forKey:nil];
-    self.containerView.backgroundColor = [UIColor redColor];
-</code></pre>
-
-<h4 id="toc_8">图层树动画</h4>
-
-<p>添加过渡动画<code>不需要指定属性</code>,它涉及到整个图层树的改变,因此我们可以在即使不能准确得知图层改变什么的情况下对图层做动画.</p>
-
-<p>确保<code>CATransition</code>添加到的图层在过渡动画发生时不会在树状结构中被移除，否则<code>CATransition</code>将会和图层一起被移除。一般来说，你只需要将动画添加到被影响图层的<code>superlayer</code>。</p>
-
-<h4 id="toc_9">自定义动画</h4>
-
-<p><code>UIView</code>也有提供过渡动画函数:<br/>
- <code>UIView +transitionFromView:toView:duration:options:completion:</code>和 <code>+transiti<br/>
-onWithView:duration:options:animations:</code></p>
-
-<p>这些过渡方法中<code>options</code>参数可以由如下常量指定：</p>
-
-<pre><code class="language-objc">UIViewAnimationOptionTransitionFlipFromLeft//以Y轴从左向右旋转
-UIViewAnimationOptionTransitionFlipFromRight
-UIViewAnimationOptionTransitionCurlUp//从上向下翻页效果
-UIViewAnimationOptionTransitionCurlDown
-UIViewAnimationOptionTransitionCrossDissolve//溶解渐变效果
-UIViewAnimationOptionTransitionFlipFromTop//以X轴从下向上旋转
-UIViewAnimationOptionTransitionFlipFromBottom
-</code></pre>
-
-<p>因此只需要根据要实现效果<code>CATransition</code>还是<code>UIView</code>的过渡方法就行了.</p>
-
-<p>如果真的要实现自定义的过渡效果:<br/>
-因为过渡动画的原则就是对原始的图层外观截图，然后添加一段动画，平滑过渡到图层改变之后那个截图的效果。如果我们会对图层截图,就可以用属性动画来代替过渡动画了.</p>
-
-<p>对图层截图的方法:<code>CALayer</code>有一个 <code>- renderInContext:</code>方法，可以通过把它绘制到<code>Core Graphics</code>的上下文中捕获当前内容的图片，然后在另外的视图中显示出来。如果我们把这个截屏视图置于原始视图之上，就可以遮住真实视图的所有变化，于是重新创建了一个简单的过渡效果。</p>
-
-<pre><code class="language-objc">- (IBAction)performTransition
-{
-    //preserve the current view snapshot
-    UIGraphicsBeginImageContextWithOptions(self.view.bounds.size, YES, 0.0);
-    [self.view.layer renderInContext:UIGraphicsGetCurrentContext()];
-    UIImage *coverImage = UIGraphicsGetImageFromCurrentImageContext();
-    //insert snapshot view in front of this one
-    UIView *coverView = [[UIImageView alloc] initWithImage:coverImage];
-    coverView.frame = self.view.bounds;
-    [self.view addSubview:coverView];
-    //update the view (we&#39;ll simply randomize the layer background color)
-    CGFloat red = arc4random() / (CGFloat)INT_MAX;
-    CGFloat green = arc4random() / (CGFloat)INT_MAX;
-    CGFloat blue = arc4random() / (CGFloat)INT_MAX;
-    self.view.backgroundColor = [UIColor colorWithRed:red green:green blue:blue alpha:1.0];
-    //perform animation (anything you like)
-    [UIView animateWithDuration:1.0 animations:^{
-        //scale, rotate and fade the view
-        CGAffineTransform transform = CGAffineTransformMakeScale(0.01, 0.01);
-        transform = CGAffineTransformRotate(transform, M_PI_2);
-        coverView.transform = transform;
-        coverView.alpha = 0.0;
-    } completion:^(BOOL finished) {
-        //remove the cover view now we&#39;re finished with it
-        [coverView removeFromSuperview];
-    }];
-}
-</code></pre>
-
-<p><strong>注意</strong><br/>
-<code>- renderInContext:</code>捕获了图层的图片和子图层，但是不能对子图层正确地处理变换效果，而且对视频和OpenGL内容也不起作用。但是用<code>CATransition</code>，或者用私有的截屏方式就没有这个限制了。</p>
-
-<h3 id="toc_10">动画过程中取消动画</h3>
-
-<p>添加动画:<code>-addAnimation:forKey:</code><br/>
-检索动画:<code>- (CAAnimation *)animationForKey:(NSString *)key</code><br/>
-<em>不支持动画过程中修改动画</em><br/>
-移除指定动画:<code>- (void)removeAnimationForKey:(NSString *)key;</code><br/>
-移除所有动画:<code>- (void)removeAllAnimations;</code></p>
-
-<p><strong>注意</strong><br/>
-一般说来，动画在结束之后被自动移除，除非设置<code>removedOnCompletion</code>为<code>NO</code>，如果你设置动画在结束之后不被自动移除，那么当它不需要的时候你要手动移除它；否则它会一直存在于内存中，直到图层被销毁。</p>
+<ol>
+<li></li>
+</ol>
 
                         
                       </div>
@@ -383,7 +144,7 @@ UIViewAnimationOptionTransitionFlipFromBottom
                     <span class="date">2017/3/24</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
+          					    <span class="posted-in"><a href='iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html'>iOS开发知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -471,6 +232,12 @@ UIViewAnimationOptionTransitionFlipFromBottom
 	      
 		      
 			      <li class="post">
+			        <a href="14993105877642.html">闭包</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="14988080333726.html">NSNotification</a>
 			      </li>
 		     
@@ -490,12 +257,6 @@ UIViewAnimationOptionTransitionFlipFromBottom
 		      
 			      <li class="post">
 			        <a href="14980952471508.html">控制流</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14978615246204.html">集合类型</a>
 			      </li>
 		     
 		  
