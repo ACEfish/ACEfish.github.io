@@ -4,7 +4,7 @@
   <title><![CDATA[栗豫塬的博客]]></title>
   <link href="https://acefish.github.io/atom.xml" rel="self"/>
   <link href="https://acefish.github.io/"/>
-  <updated>2017-07-03T18:17:51+08:00</updated>
+  <updated>2017-07-17T15:45:41+08:00</updated>
   <id>https://acefish.github.io/</id>
   <author>
     <name><![CDATA[]]></name>
@@ -71,9 +71,187 @@ var reversedNames = names.sorted(by: backward)
 }
 </code></pre>
 
-<p>闭包表达式参数 可以是<code>in-out</code>参数，但不能设定默认值。</p>
+<p>闭包表达式参数 可以是<code>in-out</code>参数，但不能设定默认值。可以使用可变参数但是要放到参数最后</p>
 
-<p>闭包的函数体部分由关键字<code>in</code>引入。该关键字表示闭包的参数和返回值类型定义已经完成，闭包函数体即将开始。</p>
+<p>闭包的函数体部分由关键字<code>in</code>引入。该关键字表示闭包的参数和返回值类型定义已经完成，闭包函数体即将开始。（<code>in</code>前为闭包定义,后为闭包函数体）</p>
+
+<pre><code class="language-swift">reversedNames = names.sorted(by: { (s1: String, s2: String) -&gt; Bool in
+    return s1 &gt; s2
+})
+</code></pre>
+
+<h3 id="toc_3">根据上下文推断类型</h3>
+
+<p>因为这个闭包函数的作为方法参数传入,因此其类型已经确定为<code>(String, String) -&gt; Bool</code>,因此我们可以省略这些类型声明,因为可以被正确推断出来</p>
+
+<pre><code class="language-swift">reversedNames = names.sorted(by: { s1, s2 in return s1 &gt; s2 } )
+//我们将闭包作为函数或方法的参数时,其类型总是可以推断出来的
+//推荐完整格式闭包,增加代码可读性
+</code></pre>
+
+<h3 id="toc_4">单表达式闭包隐式返回</h3>
+
+<p>如果闭包内只有一行单一表达式,并且明确了需要的返回类型,可以省略<code>return</code>关键字</p>
+
+<pre><code class="language-swift">//
+reversedNames = names.sorted(by: { s1, s2 in s1 &gt; s2 } )
+</code></pre>
+
+<h3 id="toc_5">参数名称缩写</h3>
+
+<p><code>Swift</code>自动为内联闭包提供了参数名称缩写功能，你可以直接通过<code>$0</code>，<code>$1</code>，<code>$2</code>来顺序调用闭包的参数</p>
+
+<p>如果使用参数名称缩写,那么在闭包定义中也可以省略参数列表,对应的参数名称缩写的类型也可以推断出来,这样的话<code>in</code>关键字也可以省略</p>
+
+<pre><code class="language-swift">//此时闭包表达式只剩下闭包函数体
+reversedNames = names.sorted(by: { $0 &gt; $1 } )
+</code></pre>
+
+<h3 id="toc_6">运算符方法</h3>
+
+<p><code>Swift</code>的<code>String</code>类型定义了关于大于号<code>（ &gt; ）</code>的字符串实现，其作为一个函数接受两个<code>String</code>类型的参数并返回<code>Bool</code>类型的值。而这正好与<code>sorted(by:)</code>方法的参数需要的函数类型相符合。因此，你可以简单地传递一个大于号，Swift 可以自动推断出你想使用大于号的字符串函数实现：</p>
+
+<pre><code class="language-swift">reversedNames = names.sorted(by: &gt;)
+</code></pre>
+
+<h2 id="toc_7">尾随闭包</h2>
+
+<p>如果要将一个很长的闭包作为函数最后一个参数,为了增强代码的可读性,我们可以使用<code>尾随闭包</code>的方式来调用函数</p>
+
+<pre><code class="language-swift">func someFunctionThatTakesAClosure(closure: () -&gt; Void) {
+    // 函数体部分
+}
+// 以下是不使用尾随闭包进行函数调用
+someFunctionThatTakesAClosure(closure: {
+    // 闭包主体部分
+})
+// 以下是使用尾随闭包进行函数调用
+someFunctionThatTakesAClosure() {
+    // 闭包主体部分
+}
+
+reversedNames = names.sorted() { $0 &gt; $1 }
+//如果闭包函数是函数的唯一参数我们还可以省略（）
+reversedNames = names.sorted { $0 &gt; $1 }
+</code></pre>
+
+<pre><code class="language-swift">//举栗子
+let strings = numbers.map {
+    (number) -&gt; String in
+    var number = number
+    var output = &quot;&quot;
+    repeat {
+        output = digitNames[number % 10]! + output
+        number /= 10
+    } while number &gt; 0
+    return output
+}
+// strings 常量被推断为字符串类型数组，即 [String]
+// 其值为 [&quot;OneSix&quot;, &quot;FiveEight&quot;, &quot;FiveOneZero&quot;]
+</code></pre>
+
+<h2 id="toc_8">值捕获</h2>
+
+<p>闭包可以在被定义的上下文捕获常量或变量</p>
+
+<p>最简单的捕获值的闭包形式是嵌套函数</p>
+
+<pre><code class="language-swift">func makeIncrementer(forIncrement amount: Int) -&gt; () -&gt; Int {
+    var runningTotal = 0
+    func incrementer() -&gt; Int {
+        runningTotal += amount
+    return runningTotal
+    }
+    return incrementer
+}
+</code></pre>
+
+<p><code>makeIncrementer</code>的返回类型是<code>() -&gt; Int</code>说明要返回一个函数<br/>
+对于嵌套函数<code>incrementer()</code>并没有参数，而是捕获了<code>runningTotal</code>和<code>amount</code>变量的引用.捕获引用保证了<code>runningTotal</code>和<code>amount</code>变量在调用完<code>makeIncrementer</code>后不会消失，并且保证了在下一次执行<code>incrementer</code>函数时，<code>runningTotal</code>依旧存在。</p>
+
+<blockquote>
+<p>如果一个值不会被闭包改变，或者在闭包创建后不会改变，Swift 可能会改为捕获并保存一份对值的拷贝。 Swift 也会负责被捕获变量的所有内存管理工作，包括释放不再需要的变量。</p>
+</blockquote>
+
+<pre><code class="language-swift">let incrementByTen = makeIncrementor(forIncrement: 10)
+incrementByTen()// 返回的值为10
+incrementByTen()// 返回的值为20
+incrementByTen()// 返回的值为30
+</code></pre>
+
+<p>这个常量函数每次调用都会将<code>runningTotal</code>变量增加<code>10</code></p>
+
+<h2 id="toc_9">闭包是引用类型</h2>
+
+<p><code>函数</code>和<code>闭包</code>都是引用类型，因此我们设置的常量或者变量是设置的对应函数或闭包的引用，而不是闭包内容本身</p>
+
+<blockquote>
+</blockquote>
+
+<h2 id="toc_10">逃逸闭包</h2>
+
+<p>将闭包作为参数传递到另一个函数中,但是这个闭包在函数返回后才执行,则这个闭包从函数中<code>逃逸</code>，我们可以通过在函数名之前标注<code>@escaping</code>表示这个闭包允许<code>逃逸</code></p>
+
+<p>一种能使闭包“逃逸”出函数的方法是，将这个闭包保存在一个函数外部定义的变量中,此时必须闭包是可逃逸的否则函数的作用域结束，这个外部变量保存的闭包。。。会导致编译错误</p>
+
+<p>逃逸闭包我们常用于在一个函数需要异步执行操作,通常会让函数返回,在异步操作完成后再调用执行这个闭包,因为闭包需要在函数返回之后被调用,所以需要逃逸闭包</p>
+
+<pre><code class="language-swift">var completionHandlers: [() -&gt; Void] = []
+func someFunctionWithEscapingClosure(completionHandler: @escaping () -&gt; Void) {
+    completionHandlers.append(completionHandler)
+}
+
+func someFunctionWithNonescapingClosure(closure: () -&gt; Void) {
+    closure()
+}
+class SomeClass {
+    var x = 10
+    func doSomething() {
+        someFunctionWithEscapingClosure { self.x = 100 }
+        someFunctionWithNonescapingClosure { x = 200 }
+    }
+}
+let instance = SomeClass()
+instance.doSomething()
+print(instance.x)
+// 打印出 &quot;200&quot;
+completionHandlers.first?()
+print(instance.x)
+</code></pre>
+
+<h2 id="toc_11">自动闭包</h2>
+
+<p>一种自动创建的闭包，用于包装传递给函数作为参数的表达式。不接受任何参数，当它被调用的时候，会返回被包装在其中的表达式的值。这样帮我们省略掉花括号,用一个普通表达式代替显式的闭包</p>
+
+<p>我们经常会调用采用自动闭包的函数，但是很少去实现这样的函数。举个例子来说，<code>assert(condition:message:file:line:)</code>函数接受自动闭包作为它的<code>condition</code>参数和 <code>message</code>参数；它的<code>condition</code>参数仅会在<code>debug</code>模式下被求值，它的<code>message</code>参数仅当 <code>condition</code>参数为<code>false</code>时被计算求值。</p>
+
+<p><strong>自动闭包让你能够延迟求值，因为直到你调用这个闭包，代码段才会被执行。</strong></p>
+
+<pre><code class="language-swift">// customersInLine is [&quot;Alex&quot;, &quot;Ewa&quot;, &quot;Barry&quot;, &quot;Daniella&quot;]
+//未使用自动闭包
+func serve(customer customerProvider: () -&gt; String) {
+    print(&quot;Now serving \(customerProvider())!&quot;)
+}
+serve(customer: { customersInLine.remove(at: 0) } )
+// 打印出 &quot;Now serving Alex!&quot;
+
+//使用自动闭包
+func serve(customer customerProvider: @autoclosure () -&gt; String) {
+print(&quot;Now serving \(customerProvider())!&quot;)
+}
+serve(customer: customersInLine.remove(at: 0))
+</code></pre>
+
+<blockquote>
+<p>过度使用 autoclosures 会让你的代码变得难以理解。上下文和函数名应该能够清晰地表明求值是被延迟<br/>
+执行的</p>
+</blockquote>
+
+<pre><code class="language-swift">//可以通过同时加上@autoclosure @escaping 自动闭包可以“逃逸”
+func collectCustomerProviders(_ customerProvider: @autoclosure @escaping () -&gt; String) {
+    customerProviders.append(customerProvider)
+}
+</code></pre>
 
 ]]></content>
   </entry>
