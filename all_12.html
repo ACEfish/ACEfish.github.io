@@ -105,146 +105,206 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14968918049808.html">
+                <a class="clearlink" href="14972592855571.html">
                 
-                  <h1>NSURL</h1>
+                  <h1>Block实现原理</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>URL(统一资源定位符) 是一种 URI，URN(统一资源名称) 也是一种 URI，所以 URI (统一资源标志符)可被视为定位符，名称或两者兼备</p>
+                        	<p>原文地址<a href="http://blog.ibireme.com/2013/11/27/objc-block/">objc 中的 block</a></p>
 
-<h2 id="toc_0">URL Encode</h2>
+<h2 id="toc_0">block中的数据结构</h2>
 
-<p><a href="http://www.jianshu.com/p/38f5f53dfbad">[iOS-Foundation] NSURL</a><br/>
-<code>URL</code>采用<code>ASCII</code>编码格式，所以不支持如中文等非<code>ASCII</code>码字符，另外<code>URL</code>中保留的分隔符号(?、&amp;、=等)也无法作为内容，否则会引起歧义。<br/>
-这就需要通过编码，用安全的字符来表示这些不符合要求的字符，格式是%加两位安全字符，所以 URL 编码也称为百分号编码。</p>
+<p><code>block</code>的定义:</p>
 
-<pre><code class="language-objc">//Encode编码
-NSString *urlString = @&quot;?&quot;;
-NSString *encodedString = [urlString stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLHostAllowedCharacterSet]];
-//encodedString值为 %3F
-//替换不符合要求UTF-8编码为百分号编码字符
-@interface NSCharacterSet (NSURLUtilities)
-+ (NSCharacterSet *)URLUserAllowedCharacterSet;
-+ (NSCharacterSet *)URLPasswordAllowedCharacterSet;
-+ (NSCharacterSet *)URLHostAllowedCharacterSet;
-+ (NSCharacterSet *)URLPathAllowedCharacterSet;
-+ (NSCharacterSet *)URLQueryAllowedCharacterSet;
-+ (NSCharacterSet *)URLFragmentAllowedCharacterSet;
-@end
+<pre><code class="language-objc">struct Block_descriptor_1 {
+    uintptr_t reserved;
+    uintptr_t size;
+};
+ 
+struct Block_layout {
+    void *isa;
+    volatile int32_t flags; // contains ref count
+    int32_t reserved; 
+    void (*invoke)(void *, ...);
+    struct Block_descriptor_1 *descriptor;
+    // imported variables
+};
 </code></pre>
 
-<pre><code class="language-objc">//Unencode解码
-+ (NSString *)decodeURLString:(NSString *)URLString {
-    // 有时从服务端获取的 URL 中，空格被编码为+, 
-    // 而方法- stringByRemovingPercentEncoding只替换百分号编码，
-    // 所以要在执行该方法前，先将`+`替换掉(真正的加号字符是被百分号编码的)
-    NSString *result = [URLString stringByReplacingOccurrencesOfString:@&quot;+&quot; withString:@&quot; &quot;];
-    //替换所有百分号编码为UTF-8编码字符
-    result = [result stringByRemovingPercentEncoding];
-    return result;
+<p>在oc中，凡是首地址是<code>*isa</code>的结构体指针，都可以认为是对象.这样在<code>objc</code>中，<code>block</code>实际上就算是对象。</p>
+
+<pre><code class="language-objc">void foo_(){
+    int i = 2;
+    NSNumber *num = @3;
+ 
+    long (^myBlock)(void) = ^long() {
+        return i * num.intValue;
+    };
+ 
+    long r = myBlock();
 }
+//我们对上面的block的简单使用转换为c形式
+//通用的block数据结构
+struct __block_impl {
+    void *isa;
+    int Flags;
+    int Reserved;
+    void *FuncPtr;
+};
+//通用的block数据结构描述
+struct __foo_block_desc_0 {
+    size_t reserved;
+    size_t Block_size;
+    void (*copy)(struct __foo_block_impl_0*, struct __foo_block_impl_0*);
+    void (*dispose)(struct __foo_block_impl_0*);
+};
+ 
+//myBlock的数据结构定义
+struct __foo_block_impl_0 {
+    struct __block_impl impl;//包含通用数据结构定义
+    struct __foo_block_desc_0* Desc;//对本block的结构描述指针
+    int i;  //捕获的变量
+    NSNumber *num;  //捕获的变量
+};
+ 
+//block数据的描述
+static struct __foo_block_desc_0 __foo_block_desc_0_DATA = {
+    0,
+    sizeof(struct __foo_block_impl_0), //本block的占的自己空间大小（便分配空间）
+    __foo_block_copy_0,
+    __foo_block_dispose_0 //通用数据结构描述
+};
+ 
+//block中的方法
+static long __foo_block_func_0(struct __foo_block_impl_0 *__cself) {//这个函数引用这个block的数据结构
+    int i = __cself-&gt;i; // bound by copy
+    NSNumber *num = __cself-&gt;num; // bound by copy
+ 
+    return i * num.intValue;
+}
+ 
+void foo(){
+    int i = 2;
+    NSNumber *num = @3;
+ 
+    struct __foo_block_impl_0 myBlockT;
+    struct __foo_block_impl_0 *myBlock = &amp;myBlockT;
+    myBlock-&gt;impl.isa = &amp;_NSConcreteStackBlock;
+    myBlock-&gt;impl.Flags = 570425344;
+    myBlock-&gt;impl.FuncPtr = __foo_block_func_0;
+    myBlock-&gt;Desc = &amp;__foo_block_desc_0_DATA;
+    myBlock-&gt;i = i;
+    myBlock-&gt;num = num;
+ 
+    long r = myBlock-&gt;impl.FuncPtr(myBlock);
+}
+
 </code></pre>
 
-<h2 id="toc_1">NSURL</h2>
+<p>创建<code>block</code>就是创建了一个结构体,用<code>block捕获的变量</code>来初始化结构体体中数据,block内部的代码提取为block结构体中的c函数,这个c函数参数为一个指向本block的指针,执行时将这个struct指针传过去,通过这个指针获取block捕获的变量进行c函数的计算</p>
 
-<p><a href="https://developer.apple.com/documentation/foundation/nsurl?preferredLanguage=occ">NSURL苹果官方文档</a></p>
+<p><code>block</code>中包含了被引用的自由变量(由struct持有)，也包含了控制成分的代码块(由函数指针持有)符合闭包(<code>closure</code>)的概念。</p>
 
-<p>我们通过<code>NSURL</code>对象来构建一个资源定位符。对于本地文件的资源定位符,我们可以直接操作这些问价你的属性（比如修改文件的的最后修改日期）,对于远程资源我们可以将<code>NSURL</code>对象传递给其他API来获取内容,<a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/URLLoadingSystem/URLLoadingSystem.html#//apple_ref/doc/uid/10000165i">Next About the URL Loading System</a></p>
+<h2 id="toc_1">block的copy</h2>
 
-<p><code>URL</code>对象是指向本地文件的首选方案,大多数进行文件数据读写对象都接受一个<code>NSURL</code>对象而不是一个文件路径.例如：可以用文件<code>NSURL</code>获取<code>NSString</code>  <code>initWithContentsOfURL:encoding:error:</code>,获取<code>data</code>  <code>initWithContentsOfURL:options:error:</code></p>
+<p><code>block</code>中的<code>isa</code>指向的是该<code>block</code>的<code>Class</code>.这些Class都有:</p>
 
-<p>你也可以用url资源定位符进行需要的操作,例如在<code>macOS</code>的<code>NSWorkspace</code>类和<code>iOS</code>的<code>UIApplication</code>类提供的<code>OpenURL:</code>方法来打开一个指定的URL位置</p>
+<ul>
+<li>_NSConcreteStackBlock ---- 栈上创建的block</li>
+<li>_NSConcreteMallocBlock ---- 堆上创建的block</li>
+<li>_NSConcreteGlobalBlock ---- 作为全局变量的block</li>
+<li>_NSConcreteWeakBlockVariable ---- 用于GC不再讨论</li>
+<li>_NSConcreteAutoBlock ---- 用于GC不再讨论</li>
+<li>_NSConcreteFinalizingBlock ---- 用于GC不再讨论</li>
+</ul>
 
-<p>此外,我们可以通过使用粘贴板来对<code>NSURL</code>对象进行引用（AppKit框架的一部分）</p>
+<p>1.全局block<br/>
+全局block是当一个block内部没有捕获任何外部变量时，就会是一个全局block类型。此时，这个block与一个函数无异。所以，那么它就应该有和函数一样的静态特性。而且，我们在调用block的时候，其实和普通C函数的调用很相似，都是名称加括号：block()。 全局block的地址是在全局变量常量区的</p>
 
-<p><code>NSURL</code>对应<code>Core Foundation</code>中的<a href="https://developer.apple.com/documentation/corefoundation/cfurlref?language=objc">CFURLRef</a>,我们可以查看<a href="https://developer.apple.com/library/content/documentation/General/Conceptual/CocoaEncyclopedia/Toll-FreeBridgin/Toll-FreeBridgin.html#//apple_ref/doc/uid/TP40010810-CH2">Toll-Free Bridging</a>来获取更多类似的与<code>Core Foundation</code>相对应的信息</p>
+<p><strong>当struct第一次被创建时，它是存在于该函数的栈帧上的，其Class是固定的_NSConcreteStackBlock。其捕获的变量是会赋值到结构体的成员上，所以当block初始化完成后，捕获到的变量不能更改。</strong></p>
 
-<p>补充：<br/>
-Swift提供了<a href="https://developer.apple.com/documentation/foundation/url?language=objc">URL</a>结构，负责连接<code>NSURL</code>类，可以在<a href="https://developer.apple.com/library/content/documentation/Swift/Conceptual/Swift_Programming_Language/ClassesAndStructures.html#//apple_ref/doc/uid/TP40014097-CH13"> Classes and Structures</a>中查看更多信息</p>
+<p>函数返回时，函数的栈帧被销毁，这个<code>block</code>的内存也会被清除。所以在函数结束后仍然需要这个block时，就必须用<code>Block_copy()</code>方法将它拷贝到堆上。这个方法的核心动作很简单：申请内存，将栈数据复制过去，将Class改一下，最后向捕获到的对象发送<code>retain</code>，增加<code>block</code>的引用计数。</p>
 
-<h3 id="toc_2">URL结构</h3>
+<h2 id="toc_2">__block类型变量</h2>
 
-<p>一个<code>NSURL</code>对象由两部分组成:一部分是可能为<code>nil</code>的<code>base URL</code>和一部分与<code>base URL</code>有相对关系的字符串<code>relativeString</code>。如果一个<code>NSURL</code>对象没有<code>base</code>部分只有<code>string</code>部分那么它被认为是绝对地址,否则为相对的.</p>
+<p>默认捕获到的对象直接赋值给<code>block</code>结构体，不能修改,那么当我们给其加上<code>__block</code>修饰时,原本的捕获的int值位置变为一个<code>struct</code>，这个struct首地址也为<code>*isa</code>.</p>
 
-<pre><code class="language-objc">//file:///path/to/user/ as the base URL and folder/file.html
-/**
-    我们指定 file:///path/to/user/ 为baseURL folder/file 为字符串部分
-*/
-NSURL *baseURL = [NSURL fileURLWithPath:@&quot;file:///path/to/user/&quot;];
-NSURL *URL = [NSURL URLWithString:@&quot;folder/file.html&quot; relativeToURL:baseURL];
-NSLog(@&quot;absoluteURL = %@&quot;, [URL absoluteURL]);//file:///path/to/user/ as the base URL and folder/file.html
-/**
-    这个URL的
-    absoluteString:  file:///file:/path/to/folder/file.html
-    baseURL:  file:///file:/path/to/user
-    relativeString： folder/file.html
-*/
+<p>因此，这个值才能被<code>block</code>共享、并且不受栈帧生命周期的限制、在<code>block</code>被<code>copy</code>后，能够随着<code>block</code>复制到堆上。</p>
+
+<h2 id="toc_3">注意事项:</h2>
+
+<p>1.静态存储区的变量：例如全局变量、方法中的static变量<br/>
+<strong>引用，可修改</strong>。</p>
+
+<p>2.block接受的参数<br/>
+传值，可修改，和一般函数的参数相同。</p>
+
+<p>3.栈变量 (被捕获的上下文变量)<br/>
+const，不可修改。 当block被copy后，block会对 id类型的变量产生强引用。<br/>
+每次执行block时,捕获到的变量都是最初的值。</p>
+
+<p>4.栈变量 (有__block前缀)<br/>
+引用，可以修改。如果时id类型则不会被<code>block retain</code>,必须手动处理其内存管理。<br/>
+如果该类型是C类型变量，<code>block</code>被<code>copy</code>到<code>heap</code>后,该值也会被挪动到<code>heap</code></p>
+
+<h2 id="toc_4">使用注意点:</h2>
+
+<ol>
+<li><p>内存方面</p>
+
+<p><code>Block_copy()</code>和<code>Block_release()</code>必须一一匹配，否则会内存泄漏或crash。</p>
+
+<p><code>__block</code>这个修饰词会将原本的简单类型转化为较大的<code>struct</code>，这会给内存、调用带来额外的开销，使用时需要注意。</p></li>
+<li><p>ARC模式下的block使用<br/>
+在ARC模式下我们 不用手动<code>copy/release</code>，<br/>
+但是</p>
+
+<pre><code class="language-objc">void (^aBlock)(void);//定义一个aBlock对象（__strong）
+aBlock = ^{ printf(&quot;ok&quot;); };
+//只要一个block被赋值给一个strong变量，会自动copy
+//strong变量就是一个强引用指针  copy到堆后将对地址赋值给这个指针 对象引用着这个block
 </code></pre>
 
-<p>对于一个<code>URL</code>我们可以将其分为很多部分,例如一个url如下：<br/>
-<code>https://johnny:p4ssw0rd@www.example.com:443/script.ext;param=value?query=value#ref</code></p>
+<p>block是对象，所以这个aBlock默认是有__strong修饰符的，即<code>aBlock</code>对该block有<code>strong <br/>
+references</code>。即aBlock在被赋值的那一刻，这个block会被copy。所以，ARC开启后，所能接触到的<br/>
+block基本都是在堆上的。</p>
 
-<table>
-<thead>
-<tr>
-<th>Component</th>
-<th>Value</th>
-</tr>
-</thead>
+<pre><code class="language-objc">//对于这个例子
+void (^aBlock)(void) = nil; 
+if (!aBlock) {
+    aBlock = ^{ printf(&quot;hehe&quot;); };
+}
+//block此时block已经被释放,该处留下了一个`dangling pointer`
+aBlock();
+</code></pre>
 
-<tbody>
-<tr>
-<td>scheme</td>
-<td>https</td>
-</tr>
-<tr>
-<td>user</td>
-<td>johnny</td>
-</tr>
-<tr>
-<td>password</td>
-<td>p4ssw0rd</td>
-</tr>
-<tr>
-<td>host</td>
-<td><a href="http://www.example.com">www.example.com</a></td>
-</tr>
-<tr>
-<td>port</td>
-<td>443</td>
-</tr>
-<tr>
-<td>path</td>
-<td>/script.ext</td>
-</tr>
-<tr>
-<td>pathExtension</td>
-<td>ext</td>
-</tr>
-<tr>
-<td>pathComponents</td>
-<td>[&quot;/&quot;, &quot;script.ext&quot;]</td>
-</tr>
-<tr>
-<td>parameterString</td>
-<td>param=value</td>
-</tr>
-<tr>
-<td>query</td>
-<td>query=value</td>
-</tr>
-<tr>
-<td>fragment</td>
-<td>ref</td>
-</tr>
-</tbody>
-</table>
+<p>这种情况 苹果建议尽量避免这种情况。</p></li>
+<li><p>block易引起的循环引用问题</p>
 
-<p><code>NSURL</code>也提供了很多属性让我们来获取每部分</p>
+<p>当block被copy之后(如开启了ARC、或把block放入dispatch queue)，该block对它捕获的对象产生<br/>
+strong references (非ARC下是retain),所以有时需要避免block copy后产生的循环引用。</p>
 
-<h3 id="toc_3">书签以及安全范围</h3>
+<p>如果用self引用了block，block又捕获了self，这样就会有循环引用。因此，需要用weak来声明self</p>
+
+<pre><code class="language-objc">    - (void)configureBlock {
+    XYZBlockKeeper * __weak weakSelf = self;
+    self.block = ^{
+    [weakSelf doSomething]; //捕获到的是弱引用
+    }
+    }
+    //当前前对象的成员变量对象，同样也会造成对self的引用
+    - (void)configureBlock {
+    id tmpIvar = _ivar; //临时变量,避免了self引用
+    self.block = ^{
+    [tmpIvar msg];
+    }
+    }
+</code></pre>
+
+<p>为了避免循环引用，可以这样理解<code>block</code>：<code>block</code>就是一个对象，它捕获到的值就是这个对象的<code>@property(strong)</code></p></li>
+</ol>
 
                         
                       </div>
@@ -253,10 +313,10 @@ NSLog(@&quot;absoluteURL = %@&quot;, [URL absoluteURL]);//file:///path/to/user/ 
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/6/8</span>
+                    <span class="date">2017/6/12</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
+          					    <span class="posted-in"><a href='iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html'>iOS开发知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -344,6 +404,18 @@ NSLog(@&quot;absoluteURL = %@&quot;, [URL absoluteURL]);//file:///path/to/user/ 
 	      
 		      
 			      <li class="post">
+			        <a href="15005513837564.html">类和结构体</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15003778819226.html">枚举</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="14993105877642.html">闭包</a>
 			      </li>
 		     
@@ -357,18 +429,6 @@ NSLog(@&quot;absoluteURL = %@&quot;, [URL absoluteURL]);//file:///path/to/user/ 
 		      
 			      <li class="post">
 			        <a href="14986177362678.html">函数 Functions</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14982190720101.html">网络通信</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14980952471508.html">控制流</a>
 			      </li>
 		     
 		  
