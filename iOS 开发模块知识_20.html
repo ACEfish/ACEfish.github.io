@@ -105,123 +105,272 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14905958336865.html">
+                <a class="clearlink" href="14913623029277.html">
                 
-                  <h1>图层时间</h1>
+                  <h1>基于定时器的动画</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>我们可以用<code>CAAnimation</code>和它的子类实现的多种图层动画。但是动画是需要持续时间的,因此我们来学习一下计时的<code>CAMediaTiming</code>，跟踪时间。</p>
+                        	<p>缓冲主要学习<code>CAMediaTimingFunction</code>通过来做加速减速等增强现实感.</p>
 
-<h3 id="toc_0">CAMediaTiming 协议</h3>
+<p>本章学习精确地控制一帧一帧展示的基于定时器的动画,来更加真实模拟物理交互或者根据用户输入来改变动画</p>
 
-<p><code>CAMediaTiming</code> 协议定义了<strong>在一段动画内用来控制逝去时间的属性的集合</strong>。<code>CALayer</code> 和<code>CAAnimation</code>都实现了这个协议，所以时间可以被任意基于一个图层或者一段动画的类控制。</p>
+<h3 id="toc_0">定时帧</h3>
 
-<h4 id="toc_1">持续和重复</h4>
+<p>iOS按照每秒60次刷新屏幕,<code>CAAnimation</code>计算出需要展示的新的帧。</p>
 
-<p><code>duration</code>(<code>CAMediaTiming</code>的属性之一)是<code>CFTimeInterval</code>类型(双精度浮点型),对将要进行的动画的一次迭代指定了时间。<br/>
-<code>repeatCount</code>(<code>CAMediaTiming</code>的属性之一)，代表动画重复的迭代次数。<br/>
-通过上面两个属性我们可以创建重复动画</p>
+<h4 id="toc_1">NSTimer</h4>
 
-<p>创建重复动画的另外方式:<br/>
-<code>repeatDuration</code>属性。它让动画重复一个指定的时间，而不是指定次数。如果我们将 <code>repeatDuration</code>设置为<code>INFINITY</code>(无限大)动画无限循环播放，设置<code>repeatCount</code>为<code>INFINITY</code>也有同样的效果。(但是<strong>这两个属性我们只能设置一个</strong>)<br/>
-<code>autoreverses</code>属性,设置是否在每次间隔交替循环过程中自动回放（常用于播放非循环动画）。</p>
+<p>我们可以用NStimer来一秒钟更新60次，来做动画.</p>
 
-<h4 id="toc_2">相对时间</h4>
+<p>用<code>NSTimer</code>做动画的话需要几个属性来存储动画的<code>fromValue</code> ，<code>toValue</code>，<code>duration</code>和当前的 <code>timeOffset</code>。</p>
 
-<p><code>beginTime</code>指定了动画开始之前的的延迟时间（默认是0即立刻执行）。<br/>
-设置beginTime属性为：要延迟的时间（单位为秒）+ CACurrentMediaTime(); </p>
+<p><code>示例代码省略</code></p>
 
-<p><code>speed</code>是一个时间的倍数，默认<code>1.0</code>，减少它会减慢图层/动画的时间，增加它会加快速度。如果2.0的速度，那么对于一个 duration 为1的动画，实际上在0.5秒的时候就已经完成了。</p>
+<p>但是用<code>NSTimer</code>并不是一个很好的方案</p>
 
-<p><code>timeOffset</code>和<code>beginTime</code>类似，但是和增加<code>beginTime</code>导致的延迟动画不同，增加<code>timeOffset</code>只是让动画快进到某一点，例如，对于一个持续1秒的动画来说，设置<code>timeOffset</code>为0.5意味着动画将从一半的地方开始。<br/>
-和<code>beginTime</code>不同的是，<code>timeOffset</code>并不受 <code>speed</code> 的影响。所以如果你把<code>speed</code> 设为2.0，把 <code>timeOffset</code> 设置为0.5，那么你的动画将从动画最后结束的地方开始，因为1秒的动画实际上被缩短到了0.5秒。然而即使使用了 <code>timeOffset</code>让动画从结束的地方开始，它仍然播放了一个完整的时长，这个动画仅仅是循环了一圈，然后从头开始播放。</p>
+<p>iOS中每个线程都管理了一个<code>NSRunloop</code>，通过循环来完成一些任务列表</p>
 
-<h4 id="toc_3">fillMode</h4>
+<p>但是主线程的任务有:</p>
 
-<p><code>fillMode</code> 属性是一个<code>NSString</code>类型，接受以下常量:</p>
+<ul>
+<li>处理触摸事件</li>
+<li>发送和接受网络数据包</li>
+<li>执行使用gcd的代码</li>
+<li>处理定时器行为</li>
+<li>屏幕重绘</li>
+</ul>
 
-<pre><code class="language-objc">kCAFillModeForwards
-kCAFillModeBackwards
-kCAFillModeBoth
-kCAFillModeRemoved//默认
-</code></pre>
+<p>当我们设置了一个NSTimer,会被插入到当前任务列表中,指定时间过去后才被执行.但是何时启动定时器并没有一个时间上限，而且它只会在列表中上一个任务完成之后开始执行。这通常会导致有几毫秒的延迟，但是如果上一个任务过了很久才完成就会导致延迟很长一段时间。</p>
 
-<p>默认是 <code>kCAFillModeRemoved</code>，当动画不再播放的时候就显示图层模型指定的值</p>
+<p>屏幕重绘的频率是一秒钟六十次，但是和定时器行为一样，如果列表中上一个执行了很长时间，它也会延迟。这些延迟都是一个随机值，于是就不能保证定时器精准地一秒钟执行六十次。有时候发生在屏幕重绘之后，这就会使得更新屏幕会有个延迟，看起来就是动画卡壳了。有时候定时器会在屏幕更新的时候执行两次，于是动画看起来就跳动了。</p>
 
-<p>向前，向后或者即向前又向后去填充动画状态，使得动画在开始前或者结束后仍然保持开始和结束那一刻的值。<br/>
-这就对避免在动画结束的时候急速返回提供另一种方案。但是，需要把 removeOnCompletion 设置为 NO ，另外需要给动画添加一个非空的键，于是可以在不需要动画的时候把它从图层上移除.</p>
+<p>优化方法:</p>
 
-<h3 id="toc_4">层级关系时间</h3>
+<ul>
+<li>我们可以用 CADisplayLink 让更新频率严格控制在每次屏幕刷新之后。</li>
+<li>基于真实帧的持续时间而不是假设的更新频率来做动画。</li>
+<li>调整动画计时器的 <code>run loop</code> 模式，这样就不会被别的事件干扰。</li>
+</ul>
 
-<p>动画时间也是有层级关系的,每个动画和图层在时间上都有它自己的层级概念,相对于父图层.对图层调整时间将会影响到它本身和子图层的动画，但不会影响到父图层（图层的时间属性）。类似的使用<code>CAAnimationGroup</code>时将动画都被按照层级组合.(CAAnimationGroup将动画层级组合)（动画属性）</p>
+<h4 id="toc_2">CADisplayLink</h4>
 
-<p>对<code>CALayer</code>或者 <code>CAGroupAnimation</code> 调整 <code>duration</code> 和 <code>repeatCount / repeatDuration</code> 属性并不会影响到子动画。但是 <code>beginTime</code>， <code>timeOffset</code> 和 <code>speed</code> 属性将会影响到子动画。<code>beginTime</code>指定了父图层开始动画（或者组合关系中的父动画）和对象将要开始自己动画之间的偏移。调整<code>CALayer</code> 和<code>CAGroupAnimation</code>的 <code>speed</code> 属性将会对动画以及子动画速度应用一个缩放的因子。</p>
+<p><code>CADisplayLink</code>是<code>CoreAnimation</code>提供的另一个类似<code>NSTimer</code>类,总是在屏幕完成一次更新之前启动,它和<code>NSTimer</code>的内部实现相同,只不过它不是以时间间隔秒为单位,<code>CADisplayLink</code> 有一个整型的<code>frameInterval</code> 属性，指定了间隔多少帧之后才执行。默认值是1，意味着每次屏幕更新之前都会执行一次。(我们可以根据动画的执行时间来确定多少帧执行一次)</p>
 
-<h4 id="toc_5">全局时间和本地时间</h4>
+<p>虽然<code>CADisplayLink</code>也不能保证每帧都按计划执行,出现丢帧情况,但是和<code>NSTimer</code>不同的是<code>NSTimer</code>一有机会就会开启,而<code>CADisplayLink</code>如果丢帧的话会直接忽略它们,在下一次更新时接着运行;</p>
 
-<p>全局时间:<br/>
-CoreAnimation有一个全局时间的概念，也就是所谓的马赫时间（“马赫”实际上是iOS和Mac OS系统内核的命名）（返回了设备自从上次启动后的秒数）。马赫时间在设备上所有进程都是全局的--但是在不同设备上并不是全局的.</p>
+<pre><code class="language-objc">self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
 
-<pre><code class="language-objc">//CACurrentMediaTime 函数来访问马赫时间
-CFTimeInterval time = CACurrentMediaTime();
-</code></pre>
-
-<p>这个值我们并不关心,但是它对我们的对时间实测提供了一个基准,可以提供相对值.</p>
-
-<p><strong>注意</strong><br/>
-当设备休眠的时候马赫时间会暂停，也就是所有的<code>CAAnimations</code>（基于马赫时间）同样也会暂停。因此马赫时间对长时间测量并不有用。比如用 CACurrentMediaTime 去更新一个实时闹钟并不明智。</p>
-
-<p>本地时间:<br/>
-每个 CALayer 和 CAAnimation 实例都有自己本地时间的概念，是根据父图层/动画层级关系中的 beginTime ， timeOffset 和 speed 属性计算出来的.</p>
-
-<p>类似坐标系转换：</p>
-
-<pre><code class="language-objc">- (CFTimeInterval)convertTime:(CFTimeInterval)t fromLayer:(CALayer *)layer;
-- (CFTimeInterval)convertTime:(CFTimeInterval)t toLayer:(CALayer *)layer;
-</code></pre>
-
-<h4 id="toc_6">暂停，倒回和快进</h4>
-
-<p>设置动画的<code>speed</code>属性为0可以暂停动画，但在动画被添加到图层之后不太可能再修改它了，所以不能对正在进行的动画使用这个属性(注意这是动画的speed属性)。</p>
-
-<p>如果移除图层正在进行的动画，图层将会急速返回动画之前的状态。但如果在动画移除之前拷贝呈现图层到模型图层，动画将会看起来暂停在那里。但是不好的地方在于不能再恢复动画了。<br/>
-给图层添加一个<code>CAAnimation</code>实际上是给动画对象做了一个不可改变的拷贝，所以对原始动画对象属性的改变对真实的动画并没有作用。相反，直接用 <code>- animationForKey:</code> 来检索图层正在进行的动画可以返回正确的动画对象，但是修改它的属性将会抛出异常。</p>
-
-<p>暂停的方法：<br/>
-可以利用<code>CAMediaTiming</code>来暂停图层本身。如果把图层的 <code>speed</code> 设置成0，它会暂停任何添加到图层上的动画。类似的，设置<code>speed</code> 大于1.0将会快进，设置成一个负值将会倒回动画。</p>
-
-<p>通过增加主窗口图层的speed，可以暂停整个应用程序的动画.我们可以利用改变speed来加速所有视图动画来进行自动化测试.</p>
-
-<pre><code class="language-objc">self.window.layer.speed = 100;
-</code></pre>
-
-<h3 id="toc_7">手动动画</h3>
-
-<p>我们可以通过设置动画<code>speed</code>属性为0,禁用动画的自动播放,然后通过设置<code>timeOffset</code>来显示动画序列.这样就可以运用手势来控制动画.</p>
-
-<p>例如:</p>
-
-<pre><code class="language-objc">//设置平移手势
-- (void)pan:(UIPanGestureRecognizer *)pan
+- (void)step:(CADisplayLink *)timer
 {
-    //get horizontal component of pan gesture
-    CGFloat x = [pan translationInView:self.view].x;
-    //convert from points to animation duration //using a reasonable scale factor
-    x /= 200.0f;
-    //update timeOffset and clamp result
-    CFTimeInterval timeOffset = self.doorLayer.timeOffset;
-    timeOffset = MIN(0.999, MAX(0.0, timeOffset - x));
-    self.doorLayer.timeOffset = timeOffset;
-    //reset pan gesture
-    [pan setTranslation:CGPointZero inView:self.view];
+    //calculate time delta
+    CFTimeInterval thisStep = CACurrentMediaTime();
+    CFTimeInterval stepDuration = thisStep - self.lastStep;
+    self.lastStep = thisStep;
+    
+    self.timeOffset = MIN(self.timeOffset + stepDuration, self.duration);
+    //get normalized time offset (in range 0 - 1)
+    float time = self.timeOffset / self.duration;
+    //apply easing
+    time = bounceEaseOut(time);
+    //interpolate position
+    id position = [self interpolateFromValue:self.fromValue toValue:self.toValue
+    time:time];
+    //move ball view to new position
+    self.ballView.center = [position CGPointValue];
+    //stop the timer if we&#39;ve reached the end of the animation
+    if (self.timeOffset &gt;= self.duration) {
+        [self.timer invalidate];
+        self.timer = nil;
+    }
 }
 </code></pre>
 
-<p>其实如果是这样的话,对于比较复杂的动画我们可以这样的方法,但是对于比较简单图层我们完全可以直接用移动手势来设置图层<code>transform</code>,</p>
+<h4 id="toc_3">Run Loop 模式</h4>
 
-<p>w</p>
+<p>创建Run Loop时需要指定mode,iOS会根据指定的优先级,，而且当UI很活跃的时候的确会暂停一些别的任务.</p>
+
+<ul>
+<li>NSDefaultRunLoopMode - 标准优先级</li>
+<li>NSRunLoopCommonModes - 高优先级</li>
+<li>UITrackingRunLoopMode - 用于 UIScrollView 和别的控件的动画</li>
+</ul>
+
+<pre><code class="language-objc">/*我们可以同时加入 NSDefaultRunLoopMode 和 UITrackingRunLoopMode 
+    来保证它不会被滑动打断，也不会被其他UIKit控件动画影响性能
+**/
+self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:UITrackingRunLoop];
+</code></pre>
+
+<h3 id="toc_4">物理模拟</h3>
+
+<p>我们在上面的方法中，关键帧的实现中我们提前加计算了所有帧,这次我们按需要进行计算,这样我们可以根据用户输入实时修改动画的逻辑，或者和别的实时动画系统例如物理引擎进行整合。</p>
+
+<h4 id="toc_5">Chipmunk</h4>
+
+<p>基于物理学创建一个真实的重力模拟效果来取代当前基于缓冲的弹性动画,因为模拟物理效果太复杂了，我们直接使用开源的物理引擎,我这里使用<code>Chipmunk</code>，有很多版本包括和<code>Objective-C</code>绑定的<code>“indie”</code>版本<a href="http://chipmunk-physics.net/">下载地址</a></p>
+
+<p>我们只简单使用这个引擎中的几个类:</p>
+
+<ul>
+<li>cpSpace - 所有的物理结构体的容器。它有一个大小和一个可选的重力矢量</li>
+<li>cpBody - 一个固态无弹力的刚体。它有一个坐标，以及其他物理属性，例如质量，运动和摩擦系数等等。</li>
+<li>cpShape - 一个抽象的几何形状，用来检测碰撞。可以给结构体添加一个多边形，而且<code>cpShape</code>有各种子类来代表不同形状的类型。</li>
+</ul>
+
+<p>因为C语言是不支持引用计数的所以为了准确的创建和释放我们将<code>cpShape</code>和<code>cpBody</code>和<code>Crate</code>（木箱）类进行绑定，在木箱的<code>- init</code>方法中创建,<code>-dealloc</code>中释放。用视图控制器来管理<code>cpSpace</code></p>
+
+<p><code>Chipmunk</code>使用了一个和<code>UIKit</code>颠倒的坐标系（Y轴向上为正方向）。我们可以使用<code>geometryFlipped</code>属性翻转容器视图的集合坐标,这样模型和视图就共享一个坐标系了<br/>
+<strong>geometryFlipped</strong>设置layer的这个属性可以调整坐标系Y轴方向</p>
+
+<p>代码示例:</p>
+
+<pre><code class="language-objc">//创建木箱的image对象
+@interface Crate : UIImageView
+@property (nonatomic, assign) cpBody *body;
+@property (nonatomic, assign) cpShape *shape;
+@end
+
+@implementation Crate
+#define MASS 100
+- (id)initWithFrame:(CGRect)frame
+{
+    if ((self = [super initWithFrame:frame])) {
+        //set image
+        self.image = [UIImage imageNamed:@&quot;Crate.png&quot;];
+        self.contentMode = UIViewContentModeScaleAspectFill;
+        //create the body
+        self.body = cpBodyNew(MASS, cpMomentForBox(MASS, frame.size.width, frame.size.height));
+        //create the shape
+        cpVect corners[] = {
+            cpv(0, 0),
+            cpv(0, frame.size.height),
+            cpv(frame.size.width, frame.size.height),
+            cpv(frame.size.width, 0),
+        };
+    self.shape = cpPolyShapeNew(self.body, 4, corners, cpv(-frame.size.width/2, -frame.size.height/2));
+    //set shape friction &amp; elasticity
+    cpShapeSetFriction(self.shape, 0.5);
+    cpShapeSetElasticity(self.shape, 0.8);
+    //link the crate to the shape
+    //so we can refer to crate from callback later on
+    self.shape-&gt;data = (__bridge void *)self;
+    //set the body position to match view
+    cpBodySetPos(self.body, cpv(frame.origin.x + frame.size.width/2, 300 - frame.origin.y - frame.size.height/2));
+    }
+    return self;
+}
+- (void)dealloc
+{
+    //release shape and body
+    cpShapeFree(_shape);
+    cpBodyFree(_body);
+}
+@end
+
+//创建重力空间
+@interface ViewController ()
+@property (nonatomic, weak) IBOutlet UIView *containerView;
+@property (nonatomic, assign) cpSpace *space;
+@property (nonatomic, strong) CADisplayLink *timer;
+@property (nonatomic, assign) CFTimeInterval lastStep;
+@end
+
+@implementation ViewController
+#define GRAVITY 1000
+- (void)viewDidLoad
+{
+    //invert view coordinate system to match physics
+    self.containerView.layer.geometryFlipped = YES;
+    //set up physics space
+    self.space = cpSpaceNew();
+    cpSpaceSetGravity(self.space, cpv(0, -GRAVITY));
+    //add a crate
+    Crate *crate = [[Crate alloc] initWithFrame:CGRectMake(100, 0, 100, 100)];
+    [self.containerView addSubview:crate];
+    cpSpaceAddBody(self.space, crate.body);
+    cpSpaceAddShape(self.space, crate.shape);
+    //start the timer
+    self.lastStep = CACurrentMediaTime();
+    self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+    [self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+}
+
+void updateShape(cpShape *shape, void *unused)
+{
+    //get the crate object associated with the shape
+    Crate *crate = (__bridge Crate *)shape-&gt;data;
+    //update crate view position and angle to match physics shape
+    cpBody *body = shape-&gt;body;
+    crate.center = cpBodyGetPos(body);
+    crate.transform = CGAffineTransformMakeRotation(cpBodyGetAngle(body));
+}
+
+- (void)step:(CADisplayLink *)timer
+{
+    //calculate step duration
+    CFTimeInterval thisStep = CACurrentMediaTime();
+    CFTimeInterval stepDuration = thisStep - self.lastStep;
+    self.lastStep = thisStep;
+    //update physics
+    cpSpaceStep(self.space, stepDuration);
+    //update all the shapes
+    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
+}
+@end
+</code></pre>
+
+<h4 id="toc_6">添加用户交互</h4>
+
+<p>为了使木箱不掉落到屏幕外 我们在屏幕周围添加四条线来限制范围;</p>
+
+<p>通过给<code>cpSpace</code>添加四个<code>cpSegmentShape</code>对象（<code>cpSegmentShape</code>代表一条直线，所以四个拼起来就是一个矩形）。然后赋值给空间的<code>staticBody</code>属性(这是不受重力的结构体)，而不是像木箱那样会受重力的<code>cpBody</code>实例，因为我们不想这线画出屏幕或者被木箱击中消失。</p>
+
+<p>通过添加一个加速器,可以通过倾斜手机来调整重力矢量,在横屏模式下，要交换加速计矢量的x和y值，竖屏模式下再换回来.</p>
+
+<pre><code>代码省略
+</code></pre>
+
+<h4 id="toc_7">模拟时间以及固定的时间步长</h4>
+
+<p>在上面我们做动画的缓冲效果来说,都是计算每帧的持续时间，这样的话两个时间步长就是可变的,对于模拟物理效果并不理想:</p>
+
+<p>因此我们通过<strong>固定的时间步长</strong>来计算物理效果，还要保证在屏幕发生重绘时能够同步更新视图</p>
+
+<p>因为刚好我们的模型（在这个例子中就是Chipmunk的 cpSpace 中的 cpBody ）被视图（就是屏幕上代表木箱的 UIView 对象）分离，于是就很简单了。我们只需要根据屏幕刷新的时间跟踪时间步长，然后根据每帧去计算一个或者多个模拟出来的效果。</p>
+
+<pre><code class="language-objc">
+/**
+    通过每次 CADisplayLink 的启动来通知屏幕将要刷新，然后记录下当前的
+    CACurrentMediaTime() 。
+    在一个小增量中提前重复物理模拟（这里用120分之一秒）直到赶上显示的时间。然后更新我们的视图，
+    在屏幕刷新的时候匹配当前物理结构体的显示位置。
+*/
+
+#define SIMULATION_STEP (1/120.0)
+- (void)step:(CADisplayLink *)timer
+{
+    //calculate frame step duration
+    CFTimeInterval frameTime = CACurrentMediaTime();
+    //update simulation
+    while (self.lastStep &lt; frameTime) {
+        cpSpaceStep(self.space, SIMULATION_STEP);
+        self.lastStep += SIMULATION_STEP;
+    }
+    //update all the shapes
+    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
+}
+</code></pre>
+
+<h4 id="toc_8">避免死亡螺旋</h4>
+
+<p>在上面例子中我们随意选择了1/120秒来模拟物理效果,但是我们在场景很复杂，<code>cpSpaceStp()</code>计算也会超出1/120秒,这样就会造成延迟帧率,帧延迟的话，我们需要更多时间来同步真实时间,这样就越来越慢，直到应用程序卡死,这就是所谓的<code>死亡螺旋</code></p>
+
+<p>为了避免这种情况 我们需要留下足够的时间容错，如果物理计算超过了模拟时间的50%，就需要考虑增加模拟时间步长（或者简化场景）。如果模拟时间步长增加到超过1/60秒（一个完整的屏幕更新时间），你就需要减少动画帧率到一秒30帧或者增加<code>CADisplayLink</code>的<code>frameInterval</code>来保证不会随机丢帧，不然你的动画将会看起来不平滑。</p>
 
                         
                       </div>
@@ -230,7 +379,7 @@ CFTimeInterval time = CACurrentMediaTime();
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/27</span>
+                    <span class="date">2017/4/5</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
@@ -321,6 +470,18 @@ CFTimeInterval time = CACurrentMediaTime();
 	      
 		      
 			      <li class="post">
+			        <a href="15017615739867.html"></a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15017296324997.html">方法</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15015839505859.html">属性</a>
 			      </li>
 		     
@@ -334,18 +495,6 @@ CFTimeInterval time = CACurrentMediaTime();
 		      
 			      <li class="post">
 			        <a href="15003778819226.html">枚举</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14993105877642.html">闭包</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14988080333726.html">NSNotification</a>
 			      </li>
 		     
 		  

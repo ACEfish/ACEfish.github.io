@@ -105,32 +105,42 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14873195104181.html">
+                <a class="clearlink" href="14876675609253.html">
                 
-                  <h1>NSRunLoop</h1>
+                  <h1>C语言</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>实际上，Run loop并不像 GCD 或者操作队列那样是一种并发机制，因为它并不能并行执行任务。不过在<code>主 dispatch/operation</code>队列中， <code>run loop</code> 将直接配合任务的执行，它提供了一种异步执行代码的机制。</p>
+                        	<h2 id="toc_0">1. 指针的用法</h2>
 
-<p><strong>一个 run loop 总是绑定到某个特定的线程中。main run loop 是与主线程相关的</strong><br/>
-在每一个 Cocoa 和 CocoaTouch 程序中，这个 main run loop 都扮演了一个核心角色，它负责处理 UI 事件、计时器，以及其它内核相关事件。无论你什么时候设置<code>计时器</code>、使用<code>NSURLConnection</code>或者调用 <code>performSelector:withObject:afterDelay:</code>，其实背后都是 run loop 在处理这些异步任务。</p>
+<pre><code>`int *pa;`//指针类型：int* 定义一个指针,指针只能指向一个地址（即指针所占的内存值为一个地址）
+</code></pre>
 
-<p>run loop 可以运行在不同的模式中，每种模式都定义了一组事件，供 run loop 做出响应。这在对应 main run loop 中暂时性的将某个任务优先执行的一种聪明的做法。<br/>
-* NSDefalutRunLoopMode : 默认Mode, 通常主线程在这个模式下运行<br/>
-* UITrackingRunLoopMode : 滑动ScrollView是会切换到这个模式<br/>
-* NSRunLoopCommonModes: 包括上面两个模式</p>
+<p><strong>指针是一种保存变量地址的变量</strong><br/>
+    <code>pa = &amp;a;</code>//指针变量pa的值为&amp;a（即为一个地址值,此时开辟的这个内存存的值为a的地址）<br/>
+    <code>*pa =200；</code>//用*号来给地址赋值，即地址指向的内存即a的值为200</p>
 
-<p>例1:滑动ScrollView后系统把RunLoop切换为UITrackingRunLoopMode,因此加载默认模式中的定时器并不会执行,只有滚动停止回到默认模式才会继续执行。我们可以把定时器设为 <code>NSRunLoopCommonModes</code>的模式，并添加到 run loop 中；<br/>
-<code>[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];</code></p>
+<pre><code>`*` 为间接寻址或间接引用运算符，用于指针式将访问指针所指向的对象
+指向void类型的指针可以存放指向任何类型的指针，但不能间接引用自身
 
-<p>例2:当tableview的cell从网络异步加载图片, 加载完成后在主线程刷新显示图片, 这时滑动tableview会造成卡顿. 通常的思路是tableview滑动的时候延迟加载图片, 等停止滑动时再显示图片. 这里我们可以通过RunLoop来实现.<br/>
-<code>[self.cellImageView performSelector:@sector(setImage:) withObject:downloadedImage afterDelay:0 inModes:@[NSDefaultRunLoopMode]];</code></p>
+`pa= &amp;a[0] x= *pa 则 *(pa+i)= a[i] `因为数组名代表的就是数组最开始元素地址故`pa = &amp;a[0] `也可写为` pa = a; *(a+i) 则 &amp;a【i】 与a+i 含义相同 则pa【i】与*（pa+i）`是等价的 但是pa是指针也是个变量 `pa=a pa++`是合法的 但a不是变量` a=pa a++ `是不合法的
+pa++ 一次加的为其类型所占的字节长度 而非一次加一个字节
 
-<p>主线程一般来说都已经配置好了 main run loop。然而其他线程默认情况下都没有设置 run loop。你也可以自行为其他线程设置 run loop ，但是一般来说我们很少需要这么做。大多数时间使用 main run loop 会容易得多。如果你需要处理一些很重的工作，但是又不想在主线程里做，你仍然可以在你的代码在 main run loop 中被调用后将工作分配给其他队列。Chris 在他关于<a href="https://objccn.io/issue-2-2/">常见的后台实践</a>的文章里阐述了一些关于这种模式的很好的例子。</p>
+![](media/14876675609253/14876685425266.jpg)
+</code></pre>
 
-<p>如果你真需要在别的线程中添加一个 run loop ，那么不要忘记在 run loop 中至少添加一个 input source 。如果 run loop 中没有设置好的 input source，那么每次运行这个 run loop ，它都会立即退出。</p>
+<h2 id="toc_1">2. 函数重载、重写、隐藏</h2>
+
+<p>重载:指两个函数的函数名相同,函数的参数列表不同(包括参数个数和参数类型)，至于返回类型可同可不同</p>
+
+<p>重写（override）：发生于父类和子类之间，指的是子类不想继承使用父类的方法，通过重写同一个函数的实现实现对父类中同一个函数的覆盖，因此又叫函数覆盖。</p>
+
+<p>隐藏：重载和重写区分开后，隐藏又有可能会跟前两者混在一起。当然OC中也没有隐藏，典型的C++中有，通过虚函数和父子类之间的函数重载进行区分，其中重载和重写是针对函数的，而隐藏除了函数还会针对成员变量。隐藏发生在父类和子类之间，隐藏指的是父类的同名函数或变量在子类中隐藏，其中只要函数同名就隐藏，不管参数相同与否。在子类中父类的同名函数或变量不可见，但在父类中依然存在。</p>
+
+<ol>
+<li></li>
+</ol>
 
                         
                       </div>
@@ -139,10 +149,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/17</span>
+                    <span class="date">2017/2/21</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Concurrent-Programming.html'>多线程</a></span>
+          					    <span class="posted-in"><a href='Computer-programming.html'>计算机编程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -230,6 +240,18 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15017615739867.html"></a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15017296324997.html">方法</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15015839505859.html">属性</a>
 			      </li>
 		     
@@ -243,18 +265,6 @@
 		      
 			      <li class="post">
 			        <a href="15003778819226.html">枚举</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14993105877642.html">闭包</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14988080333726.html">NSNotification</a>
 			      </li>
 		     
 		  

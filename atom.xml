@@ -4,13 +4,219 @@
   <title><![CDATA[栗豫塬的博客]]></title>
   <link href="https://acefish.github.io/atom.xml" rel="self"/>
   <link href="https://acefish.github.io/"/>
-  <updated>2017-08-02T16:10:46+08:00</updated>
+  <updated>2017-08-02T16:11:02+08:00</updated>
   <id>https://acefish.github.io/</id>
   <author>
     <name><![CDATA[]]></name>
     
   </author>
   <generator uri="http://www.mweb.im/">MWeb</generator>
+  
+  <entry>
+    <title type="html"><![CDATA[]]></title>
+    <link href="https://acefish.github.io/15017615739867.html"/>
+    <updated>2017-08-03T19:59:33+08:00</updated>
+    <id>https://acefish.github.io/15017615739867.html</id>
+    <content type="html"><![CDATA[
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[方法]]></title>
+    <link href="https://acefish.github.io/15017296324997.html"/>
+    <updated>2017-08-03T11:07:12+08:00</updated>
+    <id>https://acefish.github.io/15017296324997.html</id>
+    <content type="html"><![CDATA[
+<p><code>类、结构体、枚举</code>都可以定义实例方法，实例方法为给定类型实例封装了具体的任务和功能</p>
+
+<p><code>类、结构体、枚举</code>也可定义类型方法,类型方法与类型本身关联（与OC中类似）</p>
+
+<h2 id="toc_0">实例方法</h2>
+
+<p>实例方法提供访问和修改实例属性的方法或提供与实例目的相关的功能，并以此来支撑实例的功能。<br/>
+<strong>实例方法的语法与函数完全一致</strong></p>
+
+<p>实例方法能够隐式访问它所属类型的所有的其他实例方法和属性</p>
+
+<pre><code class="language-swift">class Counter {
+    var count = 0
+    func increment() {
+        count += 1
+    }
+    func increment(by amount: Int) {
+        count += amount
+    }
+    func reset() {
+        count = 0
+    }
+}
+
+let counter = Counter()
+// 初始计数值是0
+counter.increment()
+// 计数值现在是1
+counter.increment(by: 5)
+// 计数值现在是6
+counter.reset()
+// 计数值现在是0
+</code></pre>
+
+<h3 id="toc_1">self属性</h3>
+
+<p>与OC类似,<code>self</code>等同于该类型的实例本身</p>
+
+<pre><code class="language-swift">//所以我们可以这么写
+func increment() {
+    self.count += 1
+}
+</code></pre>
+
+<p>其实没必要写<code>self</code>，使用已知的属性名或者方法名 <code>swift</code>会假定你使用的是当前实例属性或者方法</p>
+
+<p>我们使用的主要场景:<br/>
+实例方法的某个<code>参数名称</code>与实例的某个<code>属性名称</code>相同的时候,此时优先使用参数名,因此我们通过<code>self</code>属性来进行区分使用属性</p>
+
+<pre><code class="language-swift">struct Point {
+    var x = 0.0, y = 0.0
+    func isToTheRightOfX(_ x: Double) -&gt; Bool {
+        return self.x &gt; x//用self来区分属性
+    }
+}
+
+let somePoint = Point(x: 4.0, y: 5.0)
+
+if somePoint.isToTheRightOfX(1.0) {
+    print(&quot;This point is to the right of the line where x == 1.0&quot;)
+}
+// 打印 &quot;This point is to the right of the line where x == 1.0&quot;
+</code></pre>
+
+<h3 id="toc_2">实例方法中修改值类型</h3>
+
+<p>结构体和枚举是值类型。默认情况下，值类型的属性不能在它的实例方法中被修改</p>
+
+<p>我们可以通过给这个实例方法选择<code>可变(mutating)</code>行为，就可以在方法内部修改改变它的属性;这个方法做的任何改变都会在方法执行结束时写回到原始结构中。方法还可以给它隐含的<code>self</code>属性赋予一个全新的实例，这个新实例在方法结束时会替换现存实例</p>
+
+<pre><code class="language-swift">struct Point {
+    var x = 0.0, y = 0.0
+    mutating func moveByX(deltaX: Double, y deltaY: Double) {
+        x += deltaX
+        y += deltaY
+    }
+}
+var somePoint = Point(x: 1.0, y: 1.0)
+somePoint.moveByX(2.0, y: 3.0)
+print(&quot;The point is now at (\(somePoint.x), \(somePoint.y))&quot;)
+// 打印 &quot;The point is now at (3.0, 4.0)&quot;
+</code></pre>
+
+<p>注意:<br/>
+不能在结构体类型的常量上调用可变方法，因为其属性不能被改变，即使属性是变量属性</p>
+
+<h3 id="toc_3">在可变方法中给self赋值</h3>
+
+<p>可以在可变方法中给隐含属性<code>self</code>赋予一个新的实例</p>
+
+<pre><code class="language-swift">struct Point1 {
+    var x = 0.0, y = 0.0
+    mutating func moveBy(x deltaX: Double, y deltaY: Double) {
+        self = Point1(x: x + deltaX, y: y + deltaY)
+    }
+}
+</code></pre>
+
+<p>创建一个新的结构体实例赋值给self，替换现在的实例</p>
+
+<p>枚举的可变方法，定义了一个三态开关状态枚举,通过调用<code>next()</code>进行切换状态</p>
+
+<pre><code class="language-swift">enum TriStateSwitch {
+    case Off, Low, High
+    mutating func next() {
+        switch self {
+        case .Off:
+            self = .Low
+        case .Low:
+            self = .High
+        case .High:
+            self = .Off
+        }
+    }
+}
+var ovenLight = TriStateSwitch.Low
+ovenLight.next()
+// ovenLight 现在等于 .High
+ovenLight.next()
+// ovenLight 现在等于 .Off
+</code></pre>
+
+<h2 id="toc_4">类型方法</h2>
+
+<p>定义在类型本身上的方法,即为类型方法<br/>
+通过在方法<code>func</code>前加关键字<code>static</code>，来指定类型方法,通过加关键字<code>class</code>来实现子类重写父类的方法实现</p>
+
+<blockquote>
+<p>在<code>oc</code>中只能为类定义类型方法,但是在<code>swift</code>中可以为类,结构体,枚举定义类方法</p>
+</blockquote>
+
+<p>类型方法在类型上通过点语法调用<br/>
+在类型方法中,<code>self</code>指向类型本身,同样的可以用其来区分同样的类型属性和类型方法参数</p>
+
+<p>在类型方法体中可以调用本类中类型属性或的其他类型方法,调用是可以直接通过类型方法名称或者类型属性名称进行调用,而不用在前面添加类型名称</p>
+
+<pre><code class="language-swift">//检测玩家等级的结构体
+struct LevelTracker {
+    static var highestUnlockedLevel = 1
+    var currentLevel = 1
+    static func unlock(_ level: Int) {
+        if level &gt; highestUnlockedLevel { highestUnlockedLevel = level }
+    }
+    static func isUnlocked(_ level: Int) -&gt; Bool {
+        return level &lt;= highestUnlockedLevel
+    }
+    @discardableResult //
+    mutating func advance(to level: Int) -&gt; Bool {
+        if LevelTracker.isUnlocked(level) {
+            currentLevel = level
+            return true
+        } else {
+            return false
+        }
+    }
+}
+</code></pre>
+
+<pre><code class="language-swift">//玩家类
+class Player {
+    var tracker = LevelTracker()
+    let playerName: String
+    func complete(level: Int) {
+        LevelTracker.unlock(level + 1)
+        tracker.advance(to: level + 1)
+    }
+    init(name: String) {
+        playerName = name
+    }
+}
+</code></pre>
+
+<pre><code class="language-swift">var player = Player(name: &quot;Argyrios&quot;)
+player.complete(level: 1)
+print(&quot;highest unlocked level is now \(LevelTracker.highestUnlockedLevel)&quot;)
+// 打印 &quot;highest unlocked level is now 2&quot;
+
+player = Player(name: &quot;Beto&quot;)
+if player.tracker.advance(to: 6) {
+print(&quot;player is now on level 6&quot;)
+} else {
+print(&quot;level 6 has not yet been unlocked&quot;)
+}
+// 打印 &quot;level 6 has not yet been unlocked&quot;
+
+</code></pre>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[属性]]></title>
@@ -39,6 +245,265 @@ rangeOfThreeItems.firstValue = 6
 </code></pre>
 
 <p>定义一个结构体,包含<code>firstValue</code>变量存储属性,和<code>length</code>常量存储属性。<code>length</code>在创建实例的时候被初始化，因为它是一个常量存储属性，所以之后无法修改它的值</p>
+
+<h3 id="toc_1">常量结构体的存储属性</h3>
+
+<p>若结构体声明为常量,则无法修改实例的任何属性,即使为变量属性:</p>
+
+<pre><code class="language-swift">let rangeOfFourItems = FixedLengthRange(firstValue: 0, length: 4)
+// 该区间表示整数0，1，2，3
+rangeOfFourItems.firstValue = 6//报错不可修改
+// 尽管 firstValue 是个变量属性，这里还是会报错
+</code></pre>
+
+<p>这是由于结构体为值类型,值类型为常量则所有属性也变为常量</p>
+
+<p>对于引用类型的类来说,将引用类型赋值给一个常量，仍然可以修改实例的变量属性</p>
+
+<h3 id="toc_2">延迟存储属性</h3>
+
+<p><strong>延迟属性</strong>第一次调用时才会结算其初始化值的属性<br/>
+在属性声明前加<code>lazy</code>来标示一个延迟存储属性</p>
+
+<blockquote>
+<p>必须将延迟存储属性声明成<code>变量</code>（使用 var 关键字），因为属性的初始值可能在实例构造完成之后才会得到。而<strong>常量属性在构造过程完成之前必须要有初始值</strong>，因此无法声明成延迟属性。</p>
+</blockquote>
+
+<pre><code class="language-swift">class DataImporter {
+    /*
+    DataImporter 是一个负责将外部文件中的数据导入的类。
+    这个类的初始化会消耗不少时间。
+    */
+    var fileName = &quot;data.txt&quot;
+    // 这里会提供数据导入功能
+}
+class DataManager {
+    lazy var importer = DataImporter()
+    var data = [String]()
+    // 这里会提供数据管理功能
+}
+</code></pre>
+
+<pre><code class="language-swift">let manager = DataManager()
+manager.data.append(&quot;Some data&quot;)
+//此时实例的import属性还没创建
+</code></pre>
+
+<pre><code class="language-swift">print(manager.importer.fileName)
+// DataImporter 实例的 importer 属性现在被创建了
+// 输出 &quot;data.txt”
+</code></pre>
+
+<p><strong>如果一个被标记为<code>lazy</code>的属性在没有初始化时就同时被多个线程访问，则无法保证该属性只会被初始化一次</strong></p>
+
+<h3 id="toc_3">存储属性和实例变量</h3>
+
+<p>与OC不同<code>Swift</code>没有属性对应的实例变量，因此没有办法直接访问属性的后端存储，方便统一访问方式<br/>
+使属性的全部信息包括<code>命名、类型和内存管理特征</code>都在一个地方定义</p>
+
+<h2 id="toc_4">计算属性</h2>
+
+<p>计算属性不存储值而是提供一个<code>getter</code>和一个可选的<code>setter</code>,来间接获取和设置其他属性或变量的值</p>
+
+<blockquote>
+<p>必须使用 var 关键字定义计算属性，包括只读计算属性，因为它们的值不是固定的</p>
+</blockquote>
+
+<pre><code class="language-swift">struct Point {
+    var x = 0.0, y = 0.0
+}
+struct Size {
+    var width = 0.0, height = 0.0
+}
+struct Rect {
+    var origin = Point()
+    var size = Size()
+    var center: Point {
+        get {
+            let centerX = origin.x + (size.width / 2)
+            let centerY = origin.y + (size.height / 2)
+            return Point(x: centerX, y: centerY)
+        }
+        set(newCenter) {
+            origin.x = newCenter.x - (size.width / 2)
+            origin.y = newCenter.y - (size.height / 2)
+        }
+    }
+}
+var square = Rect(origin: Point(x: 0.0, y: 0.0),
+                  size: Size(width: 10.0, height: 10.0))
+let initialSquareCenter = square.center
+square.center = Point(x: 15.0, y: 15.0)
+print(&quot;square.origin is now at (\(square.origin.x), \(square.origin.y))&quot;)
+</code></pre>
+
+<p>可以通过<code>square.center</code>访问计算属性<code>center</code> 会调用<code>getter</code>计算新的值返回<br/>
+<code>center</code>可以设置一个新值,会调用<code>setter</code>来修改<code>origin</code>来移动正方形</p>
+
+<h3 id="toc_5">简化setter声明</h3>
+
+<p>如果计算属性的<code>setter</code>没有定义表示新值,就可以使用默认名称<code>newValue</code></p>
+
+<pre><code class="language-swift">struct AlternativeRect {
+    var origin = Point()
+    var size = Size()
+    var center: Point {
+        get {
+            let centerX = origin.x + (size.width / 2)
+            let centerY = origin.y + (size.height / 2)
+            return Point(x: centerX, y: centerY)
+        }
+        set {
+            origin.x = newValue.x - (size.width / 2)
+            origin.y = newValue.y - (size.height / 2)
+        }
+    }
+}
+</code></pre>
+
+<h3 id="toc_6">只读的计算属性</h3>
+
+<p>只有<code>getter</code>没有<code>setter</code>的计算属性就是只读计算属性，可以访问值,不能设置新值</p>
+
+<pre><code class="language-swift">struct Cuboid {
+    var width = 0.0, height = 0.0, depth = 0.0
+    var volume: Double {
+        return width * height * depth
+    }
+}
+</code></pre>
+
+<p>只读属性可以省略掉 <code>get</code>关键字和花括号</p>
+
+<h2 id="toc_7">属性观察器</h2>
+
+<p><strong>属性观察器</strong>监控和响应属性值变化，每次属性被设置时会调用属性观察器</p>
+
+<p>为<code>除了延迟属性</code>外其他存储属性添加属性观察器，对于继承的存储属性和计算属性,通过重写的方式来添加属性观察器<br/>
+对于非继承的计算属性没必要添加属性观察器，我们可以通过<code>setter</code>方法直接监控</p>
+
+<p>属性观察期器:<br/>
+* <code>willSet</code>在新值被设置前调用<br/>
+* <code>didSet</code>在新值被设置之后调用</p>
+
+<p><code>willSet</code>观察器会将新的属性值作为常量参数传入，在<code>willSet</code>的实现代码中可以为这个参数指定一个名<br/>
+称，如果不指定则参数仍然可用，这时使用默认名称<code>newValue</code>表示。</p>
+
+<p><code>didSet</code>观察器会将旧的属性值作为参数传入，可以为该参数命名或者使用默认参数名<code>oldValue</code>。如果<br/>
+在<code>didSet</code>方法中再次对该属性赋值，那么新值会覆盖旧的值</p>
+
+<blockquote>
+<p>父类的属性在子类的构造器中被赋值时，它在父类中的 willSet 和 didSet 观察器会被调用，随后才会调用子类的观察器。在父类初始化方法调用之前，子类给属性赋值时，观察器不会被调用。</p>
+</blockquote>
+
+<pre><code class="language-swift">class StepCounter {
+    var totalSteps: Int = 0 {
+        willSet(newTotalSteps) {
+            print(&quot;About to set totalSteps to \(newTotalSteps)&quot;)
+        }
+        didSet {
+            if totalSteps &gt; oldValue {
+                print(&quot;Added \(totalSteps - oldValue) steps&quot;)
+            }
+        }
+    }
+}
+let stepCounter = StepCounter()
+stepCounter.totalSteps = 200
+// About to set totalSteps to 200
+// Added 200 steps
+</code></pre>
+
+<p>注意:<br/>
+在willSet或者didSet方法中设置属性值是不会触发的属性观察器方法  </p>
+
+<blockquote>
+<p>如果将属性通过<code>in-out</code>方式传入函数，<code>willSet</code>和<code>didSet</code>也会调用。这是因为<code>in-out</code>参数采用了拷入拷出模式：即在函数内部使用的是参数的<code>copy</code>，函数结束后，又对参数重新赋值。</p>
+</blockquote>
+
+<h2 id="toc_8">全局变量和局部变量</h2>
+
+<p>全局变量是在函数、方法、闭包或任何类型之外定义的变量。局部变量是在函数、方法或闭包内部定义的变量。</p>
+
+<p><strong>计算属性和属性观察器所描述的功能也可以用于全局变量和局部变量</strong></p>
+
+<p>我们之前用的变量都是存储型变量,跟存储属性类似，它为特定类型的值提供存储空间，并允许读取和写入</p>
+
+<p>我们可以在全局或局部范围为存储型变量定义观察器</p>
+
+<p>在全局或局部范围都可以定义计算型变量。计算型变量跟计算属性一样，返回一个计算结果而不是存储值，声明格式也完全一样</p>
+
+<p><strong>注意:</strong><br/>
+1. 全局的常量或变量都是延迟计算，类似<code>延迟属性</code>但是不需要<code>lazy</code>声明<br/>
+2. 局部的常量或变量从不延迟计算</p>
+
+<h2 id="toc_9">类型属性</h2>
+
+<p>可以为类型本身定义属性</p>
+
+<p>类型属性用于定义某个类型所有实例共享的数据</p>
+
+<p>类型属性也可以有 存储型的常量或变量 计算型的只能为变量</p>
+
+<p>注意:</p>
+
+<blockquote>
+<p>存储型类型属性必须指定默认值，因为类型本身没有构造器，也就无法在初始化过程中使用构造器给类型属性赋值</p>
+
+<p>存储型类型属性是延迟初始化的，它们只有在第一次被访问的时候才会被初始化。即使它们被多个线程同时访问，系统也保证只会对其进行一次初始化，并且不需要对其使用<code>lazy</code>修饰符。</p>
+</blockquote>
+
+<h3 id="toc_10">类型属性语法</h3>
+
+<p>在<code>OC</code>中,在类中关联的静态变量和常量是作为全局静态变量定义</p>
+
+<p>在<code>Swift</code>中，类型属性是作为类型定义的一部分写在类型最外层的花括号内，作用范围就在类型支持的范围内</p>
+
+<p>使用<code>static</code>来定义类型属性。<br/>
+在为类定义计算型类型属性时，可以改用关键字<code>class</code>来支持子类对父类的实现进行重写</p>
+
+<pre><code class="language-swift">//结构体
+struct SomeStructure {
+    static var storedTypeProperty = &quot;Some value.&quot;
+    static var computedTypeProperty: Int {
+        return 1
+    }
+}
+//枚举
+enum SomeEnumeration {
+    static var storedTypeProperty = &quot;Some value.&quot;
+    static var computedTypeProperty: Int {
+        return 6
+    }
+}
+//类
+class SomeClass {
+    static var storedTypeProperty = &quot;Some value.&quot;
+    static var computedTypeProperty: Int {
+        return 27
+    }
+    //子类对父类的实现进行重写
+    class var overrideableComputedTypeProperty: Int {
+        return 107
+    }
+}
+
+</code></pre>
+
+<h3 id="toc_11">获取和设置类型属性值</h3>
+
+<p>类型属性通过点运算符通过类型本身来访问</p>
+
+<pre><code class="language-swift">print(SomeStructure.storedTypeProperty)
+    // 打印 &quot;Some value.&quot;
+SomeStructure.storedTypeProperty = &quot;Another value.&quot;
+print(SomeStructure.storedTypeProperty)
+    // 打印 &quot;Another value.”
+print(SomeEnumeration.computedTypeProperty)
+    // 打印 &quot;6&quot;
+print(SomeClass.computedTypeProperty)
+    // 打印 &quot;27&quot;
+</code></pre>
 
 ]]></content>
   </entry>
@@ -3363,402 +3828,6 @@ var occupations = [
 ]
 occupations[&quot;Jayne&quot;] = &quot;Public Relations&quot;
 </code></pre>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOS 开发中的九种锁]]></title>
-    <link href="https://acefish.github.io/14964011409915.html"/>
-    <updated>2017-06-02T18:59:00+08:00</updated>
-    <id>https://acefish.github.io/14964011409915.html</id>
-    <content type="html"><![CDATA[
-<p>我们在使用多线程的时候多个线程可能会访问同一块资源，这样就很容易引发数据错乱和数据安全等问题，这时候就需要我们保证每次只有一个线程访问这一块资源，锁 应运而生。</p>
-
-<p>补充:<a href="http://www.cnblogs.com/huangjianwu/p/4575763.html">实现锁的多种方式和锁的高级用法</a><br/>
-<a href="http://www.jianshu.com/p/938d68ed832c">iOS中保证线程安全的几种方式与性能对比</a></p>
-
-<h2 id="toc_0">一、OSSpinLock 自旋锁</h2>
-
-<p>OSSpinLock 自旋锁，性能最高的锁。在任何时刻只会有一个线程能获得锁,而其他线程忙着等待直到获得锁。缺点是<code>spinlock</code>使用不当(如临界区执行时间过长)会导致<code>cpu busy</code>飙高。不适合较长时间任务</p>
-
-<pre><code class="language-objc">__block OSSpinLock theLock = OS_SPINLOCK_INIT;
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    OSSpinLockLock(&amp;theLock);
-    NSLog(@&quot;需要线程同步的操作1 开始&quot;);
-    sleep(3);
-    NSLog(@&quot;需要线程同步的操作1 结束&quot;);
-    OSSpinLockUnlock(&amp;theLock);
-
-});
-
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    OSSpinLockLock(&amp;theLock);
-    sleep(1);
-    NSLog(@&quot;需要线程同步的操作2&quot;);
-    OSSpinLockUnlock(&amp;theLock);
-
-});
-</code></pre>
-
-<pre><code class="language-objc">//
-OS_SPINLOCK_INIT： 默认值为 0,在 locked 状态时就会大于 0，unlocked状态下为 0
-OSSpinLockLock(&amp;oslock)：上锁，参数为 OSSpinLock 地址
-OSSpinLockUnlock(&amp;oslock)：解锁，参数为 OSSpinLock 地址
-OSSpinLockTry(&amp;oslock)：尝试加锁，可以加锁则立即加锁并返回 YES,反之返回 NO
-/**
-当前线程锁失败，也可以继续其它任务，用 trylock 合适
-当前线程只有锁成功后，才会做一些有意义的工作，那就 lock，没必要轮询 trylock
-*/
-</code></pre>
-
-<p>注意:<br/>
-<a href="http://blog.ibireme.com/2016/01/16/spinlock_is_unsafe_in_ios/">不再安全的 OSSpinLock</a></p>
-
-<h2 id="toc_1">二、dispatch_semaphore 信号量</h2>
-
-<p>是GCD的用来同步的一种方式<br/>
-在没有等待情况出现时，它的性能比<code>pthread_mutex</code>还要高，但一旦有等待情况出现时，性能就会下降许多。相对于<code>OSSpinLock</code>来说，它的优势在于等待时不会消耗<code>CPU</code>资源。</p>
-
-<pre><code class="language-objc">  dispatch_semaphore_t signal = dispatch_semaphore_create(1);
-    dispatch_time_t overTime = dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC);
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        dispatch_semaphore_wait(signal, overTime);
-            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
-            sleep(2);
-            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
-        dispatch_semaphore_signal(signal);
-    });
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        sleep(1);
-        dispatch_semaphore_wait(signal, overTime);
-            NSLog(@&quot;需要线程同步的操作2&quot;);
-        dispatch_semaphore_signal(signal);
-    });
-</code></pre>
-
-<pre><code class="language-objc">dispatch_semaphore_create(1)： 传入值必须 &gt;=0, 若传入为 0 则阻塞线程并等待timeout,
-时间到后会执行其后的语句
-dispatch_semaphore_wait(signal, overTime)：可以理解为 lock,会使得 signal 值 -1，若信号量的值大于0，就可以继续往下执行,否则等待,如果在等待时间期间信号量一直为0，则会在`timeOut`后自动执行其后的语句。
-//
-dispatch_semaphore_signal(signal)：可以理解为 unlock,会使得 signal 值 +1
-</code></pre>
-
-<p>补充:<a href="http://www.cnblogs.com/snailHL/p/3906112.html">关于dispatch_semaphore的使用</a></p>
-
-<h2 id="toc_2">三、@synchronized</h2>
-
-<pre><code class="language-objc"> NSObject *obj = [[NSObject alloc] init];
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        @synchronized(obj) {
-            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
-            sleep(3);
-            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
-        }
-    });
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        sleep(1);
-        @synchronized(obj) {
-            NSLog(@&quot;需要线程同步的操作2&quot;);
-        }
-    });
-</code></pre>
-
-<p><code>@synchronized(obj)</code>指令使用的<code>obj</code>为该锁的唯一标识，只有当标识相同时，才为满足互斥.<br/>
-<code>@synchronized</code>指令实现锁的优点就是我们不需要在代码中显式的创建锁对象，便可以实现锁的机制，但作为一种预防措施，<code>@synchronized</code>块会隐式的添加一个异常处理例程来保护代码，该处理例程会在异常抛出的时候自动的释放互斥锁。所以如果不想让隐式的异常处理例程带来额外的开销，你可以考虑使用锁对象。</p>
-
-<p>补充：<a href="http://ios.jobbole.com/82826/">关于 @synchronized，这儿比你想知道的还要多</a></p>
-
-<h2 id="toc_3">四、NSLock</h2>
-
-<pre><code class="language-objc">    NSLock *lock = [[NSLock alloc] init];
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        //[lock lock];
-        [lock lockBeforeDate:[NSDate date]];
-            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
-            sleep(2);
-            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
-        [lock unlock];
-
-    });
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        sleep(1);
-        if ([lock tryLock]) {//尝试获取锁，如果获取不到返回NO，不会阻塞该线程
-            NSLog(@&quot;锁可用的操作&quot;);
-            [lock unlock];
-        }else{
-            NSLog(@&quot;锁不可用的操作&quot;);
-        }
-
-        NSDate *date = [[NSDate alloc] initWithTimeIntervalSinceNow:3];
-        if ([lock lockBeforeDate:date]) {//尝试在未来的3s内获取锁，并阻塞该线程，如果3s内获取不到恢复线程, 返回NO,不会阻塞该线程
-            NSLog(@&quot;没有超时，获得锁&quot;);
-            [lock unlock];
-        }else{
-            NSLog(@&quot;超时，没有获得锁&quot;);
-        }
-
-    });
-    //运行结果
-    2016-06-29 20:45:08.864 SafeMultiThread[35911:575795] 需要线程同步的操作1 开始
-    2016-06-29 20:45:09.869 SafeMultiThread[35911:575781] 锁不可用的操作
-    2016-06-29 20:45:10.869 SafeMultiThread[35911:575795] 需要线程同步的操作1 结束
-    2016-06-29 20:45:10.870 SafeMultiThread[35911:575781] 没有超时，获得锁
-
-</code></pre>
-
-<p><code>lock</code>一般用于多线程同时访问、修改同一个数据源，保证在同一时间内数据源只被访问、修改一次，其他线程的命令需要在<code>lock</code>外等待，只到<code>unlock</code>，才可访问</p>
-
-<p><code>NSLock</code>是<code>Cocoa</code>提供给我们最基本的锁对象，这也是我们经常所使用的，除了常使用的<code>lock</code>和<code>unlock</code>方法外,还提供了:<br/>
-<code>trylock</code>：能加锁返回<code>YES</code>并执行加锁操作，相当于<code>lock</code>，反之返回<code>NO</code><br/>
-<code>lockBeforeDate</code>：这个方法表示会在传入的时间内尝试加锁，若能加锁则执行加锁操作并返回<code>YES</code>，反之返回<code>NO</code></p>
-
-<h2 id="toc_4">五、NSRecursiveLock递归锁</h2>
-
-<pre><code class="language-objc">    NSRecursiveLock *lock = [[NSRecursiveLock alloc] init];
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-
-        static void (^RecursiveMethod)(int);
-
-        RecursiveMethod = ^(int value) {
-
-            [lock lock];
-            if (value &gt; 0) {
-
-                NSLog(@&quot;value = %d&quot;, value);
-                sleep(1);
-                RecursiveMethod(value - 1);
-            }
-            [lock unlock];
-        };
-
-        RecursiveMethod(5);
-    });
-    //执行结果
-    2016-06-30 19:09:41.414 SafeMultiThread[30949:450684] value = 5
-    2016-06-30 19:09:42.418 SafeMultiThread[30949:450684] value = 4
-    2016-06-30 19:09:43.419 SafeMultiThread[30949:450684] value = 3
-    2016-06-30 19:09:44.424 SafeMultiThread[30949:450684] value = 2
-    2016-06-30 19:09:45.426 SafeMultiThread[30949:450684] value = 1
-    
-    
-    //在上面如果用NSLock的话就会造成死锁的情况
-    NSLock *lock = [[NSLock alloc] init];
-    /**
-        在我们的线程中，RecursiveMethod是递归调用的。所以每次进入这个block时，都会去加一次
-        锁，而从第二次开始，由于锁已经被使用了且没有解锁，所以它需要等待锁被解除，这样就导致了死
-        锁，线程被阻塞住了。
-    */
-</code></pre>
-
-<p><code>NSRecursiveLock</code>递归锁，可以被同一线程多次请求，而不会引起死锁。这主要是用在循环或递归操作中。<br/>
-递归锁会跟踪它被lock的次数。每次成功的lock都必须平衡调用unlock操作。只有所有达到这种平衡，锁最后才能被释放，以供其它线程使用。</p>
-
-<p>补充:<a href="http://www.cocoachina.com/ios/20150513/11808.html">NSRecursiveLock递归锁的使用</a></p>
-
-<h2 id="toc_5">六、NSConditionLock条件锁</h2>
-
-<p>只是<code>lock</code>和<code>unlock</code>通常并不能满足我们的使用，我们通常在满足某条件的情况下才会打开这把锁，这时候我们可以使用<code>NSConditionLock条件锁</code></p>
-
-<pre><code class="language-objc">    NSConditionLock *cLock = [[NSConditionLock alloc] initWithCondition:0];
-
-//线程1
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    if([cLock tryLockWhenCondition:0]){
-        NSLog(@&quot;线程1&quot;);
-       [cLock unlockWithCondition:1];
-    }else{
-         NSLog(@&quot;失败&quot;);
-    }
-});
-
-//线程2
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    [cLock lockWhenCondition:3];
-    NSLog(@&quot;线程2&quot;);
-    [cLock unlockWithCondition:2];
-});
-
-//线程3
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    [cLock lockWhenCondition:1];
-    NSLog(@&quot;线程3&quot;);
-    [cLock unlockWithCondition:3];
-});
-/**
-    我们在初始化 NSConditionLock 对象时，给了他的标示为 0
-    执行 tryLockWhenCondition:时，我们传入的条件标示也是 0,所 以线程1 加锁成功
-    执行 unlockWithCondition:时，这时候会把condition由 0 修改为 1
-    因为condition 修改为了  1， 会先走到 线程3，然后 线程3 又将 condition 修改为 3
-    最后 走了 线程2 的流程
-*/
-    
-</code></pre>
-
-<p><img src="media/14964011409915/14967500416387.png" alt=""/></p>
-
-<p>相比于 NSLock 多了个<code>condition</code>参数，我们可以理解为一个条件标示.<br/>
-我们还用它实现了任务支架你的依赖</p>
-
-<pre><code class="language-objc">//可用功能如下:
-- (instancetype)initWithCondition:(NSInteger)condition NS_DESIGNATED_INITIALIZER;
-
-@property (readonly) NSInteger condition;
-- (void)lockWhenCondition:(NSInteger)condition;
-- (BOOL)tryLock;
-- (BOOL)tryLockWhenCondition:(NSInteger)condition;
-- (void)unlockWithCondition:(NSInteger)condition;
-- (BOOL)lockBeforeDate:(NSDate *)limit;
-- (BOOL)lockWhenCondition:(NSInteger)condition beforeDate:(NSDate *)limit;
-
-@property (nullable, copy) NSString *name NS_AVAILABLE(10_5, 2_0);
-</code></pre>
-
-<h2 id="toc_6">七、NSCondition</h2>
-
-<p>一种最基本的条件锁。手动控制线程<code>wait</code>和<code>signal</code>。</p>
-
-<pre><code class="language-objc">NSCondition *condition = [[NSCondition alloc] init];
-
-    NSMutableArray *products = [NSMutableArray array];
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        while (1) {
-            [condition lock];
-            if ([products count] == 0) {
-                NSLog(@&quot;wait for product&quot;);
-                [condition wait];
-            }
-            [products removeObjectAtIndex:0];
-            NSLog(@&quot;custome a product&quot;);
-            [condition unlock];
-        }
-
-    });
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        while (1) {
-            [condition lock];
-            [products addObject:[[NSObject alloc] init]];
-            NSLog(@&quot;produce a product,总量:%zi&quot;,products.count);
-            [condition signal];
-            [condition unlock];
-            sleep(1);
-        }
-
-    });
-    
-2016-06-30 20:21:25.295 SafeMultiThread[31256:513991] wait for product
-2016-06-30 20:21:25.296 SafeMultiThread[31256:513994] produce a product,总量:1
-2016-06-30 20:21:25.296 SafeMultiThread[31256:513991] custome a product
-</code></pre>
-
-<p><code>[condition lock]</code>一般用于多线程同时访问、修改同一个数据源，保证在同一时间内数据源只被访问、修改一次，其他线程的命令需要在lock 外等待，只到unlock ，才可访问<br/>
-<code>[condition unlock]</code>与lock 同时使用<br/>
-<code>[condition wait]</code>让当前线程处于等待状态<br/>
-<code>[condition signal]</code>CPU发信号告诉线程不用在等待，可以继续执行</p>
-
-<pre><code class="language-objc">- (void)wait;//进入等待状态(当一个线程调用wait时其他线程就可以获得这个锁)
-- (BOOL)waitUntilDate:(NSDate *)limit;//让一个线程等待一定的时间
-- (void)signal;//唤醒一个等待的线程
-- (void)broadcast;//唤醒所有等待的线程
-</code></pre>
-
-<p>补充:<br/>
-这里需要注意wait和signal的问题：<br/>
-    1: 其实，wait函数内部悄悄的调用了unlock函数（猜测，有兴趣可自行分析），也就是说在调用wati函数后，这个NSCondition对象就处于了无锁的状态，这样其他线程就可以对此对象加锁并触发该NSCondition对象。当NSCondition被其他线程触发时，在wait函数内部得到此事件被触发的通知，然后对此事件重新调用lock函数（猜测），而在外部看起来好像接收事件的线程（调用wait的线程）从来没有放开NSCondition对象的所有权，wati线程直接由阻塞状态进入了触发状态一样。这里容易造成误解。<br/>
-    2: wait函数并不是完全可信的。也就是说wait返回后，并不代表对应的事件一定被触发了，因此，为了保证线程之间的同步关系，使用NSCondtion时往往需要加入一个额外的变量来对非正常的wait返回进行规避。<br/>
-   3: 关于多个wait时的调用顺序，测试发现与wait执行顺序有关。</p>
-
-<h2 id="toc_7">八、pthread_mutex互斥锁</h2>
-
-<pre><code class="language-objc">  __block pthread_mutex_t theLock;
-    pthread_mutex_init(&amp;theLock, NULL);
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            pthread_mutex_lock(&amp;theLock);
-            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
-            sleep(3);
-            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
-            pthread_mutex_unlock(&amp;theLock);
-
-    });
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            sleep(1);
-            pthread_mutex_lock(&amp;theLock);
-            NSLog(@&quot;需要线程同步的操作2&quot;);
-            pthread_mutex_unlock(&amp;theLock);
-
-    });
-2016-06-30 21:13:32.440 SafeMultiThread[31429:548869] 需要线程同步的操作1 开始
-2016-06-30 21:13:35.445 SafeMultiThread[31429:548869] 需要线程同步的操作1 结束
-2016-06-30 21:13:35.446 SafeMultiThread[31429:548866] 需要线程同步的操作2
-    /**
-        与OSSpinLock类似,pthread_mutex 中也有个pthread_mutex_trylock(&amp;pLock)，和上面提
-        到的 OSSpinLockTry(&amp;oslock)区别在于，前者可以加锁时返回的是 0，否则返回一个错误提示
-        码；后者返回的 YES和NO
-    */
-</code></pre>
-
-<pre><code class="language-objc">1：pthread_mutex_init(pthread_mutex_t mutex,const pthread_mutexattr_t attr);
-初始化锁变量mutex。attr为锁属性，NULL值为默认属性。
-2：pthread_mutex_lock(pthread_mutex_t mutex);加锁
-3：pthread_mutex_tylock(*pthread_mutex_t *mutex);加锁，但是与2不一样的是当锁已经在使用的时候，返回为EBUSY，而不是挂起等待。
-4：pthread_mutex_unlock(pthread_mutex_t *mutex);释放锁
-5：pthread_mutex_destroy(pthread_mutex_t* mutex);使用完后释放
-</code></pre>
-
-<p><code>YYKit</code>源码<br/>
-<img src="media/14964011409915/14967514267813.png" alt=""/></p>
-
-<h2 id="toc_8">九、pthread_mutex(recursive)递归锁</h2>
-
-<p>之前的lock是和unlock成对出现，同一线程多次 lock 是不允许的，而递归锁允许同一个线程在未释放其拥有的锁时反复对该锁进行加锁操作。</p>
-
-<pre><code class="language-objc">static pthread_mutex_t pLock;
-pthread_mutexattr_t attr;
-pthread_mutexattr_init(&amp;attr); //初始化attr并且给它赋予默认
-pthread_mutexattr_settype(&amp;attr, PTHREAD_MUTEX_RECURSIVE); //设置锁类型，这边是设置为递归锁
-pthread_mutex_init(&amp;pLock, &amp;attr);
-pthread_mutexattr_destroy(&amp;attr); //销毁一个属性对象，在重新进行初始化之前该结构不能重新使用
-
-//1.线程1
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    static void (^RecursiveBlock)(int);
-    RecursiveBlock = ^(int value) {
-        pthread_mutex_lock(&amp;pLock);
-        if (value &gt; 0) {
-            NSLog(@&quot;value: %d&quot;, value);
-            RecursiveBlock(value - 1);
-        }
-        pthread_mutex_unlock(&amp;pLock);
-    };
-    RecursiveBlock(5);
-});
-//如果我们用 pthread_mutex_init(&amp;pLock, NULL) 初始化会出现死锁的情况，递归锁能很好的避免这种情况的死锁；
-</code></pre>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[时间 时区]]></title>
-    <link href="https://acefish.github.io/14958652887586.html"/>
-    <updated>2017-05-27T14:08:08+08:00</updated>
-    <id>https://acefish.github.io/14958652887586.html</id>
-    <content type="html"><![CDATA[
-<p>1.时区 时间</p>
-
-<p>对于机器时间 <br/>
-我们平常的<br/>
-周六 = 7 周日 = 1 周一 = 2</p>
 
 ]]></content>
   </entry>

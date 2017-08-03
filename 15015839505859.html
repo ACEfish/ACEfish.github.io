@@ -147,6 +147,265 @@ rangeOfThreeItems.firstValue = 6
 
 <p>定义一个结构体,包含<code>firstValue</code>变量存储属性,和<code>length</code>常量存储属性。<code>length</code>在创建实例的时候被初始化，因为它是一个常量存储属性，所以之后无法修改它的值</p>
 
+<h3 id="toc_1">常量结构体的存储属性</h3>
+
+<p>若结构体声明为常量,则无法修改实例的任何属性,即使为变量属性:</p>
+
+<pre><code class="language-swift">let rangeOfFourItems = FixedLengthRange(firstValue: 0, length: 4)
+// 该区间表示整数0，1，2，3
+rangeOfFourItems.firstValue = 6//报错不可修改
+// 尽管 firstValue 是个变量属性，这里还是会报错
+</code></pre>
+
+<p>这是由于结构体为值类型,值类型为常量则所有属性也变为常量</p>
+
+<p>对于引用类型的类来说,将引用类型赋值给一个常量，仍然可以修改实例的变量属性</p>
+
+<h3 id="toc_2">延迟存储属性</h3>
+
+<p><strong>延迟属性</strong>第一次调用时才会结算其初始化值的属性<br/>
+在属性声明前加<code>lazy</code>来标示一个延迟存储属性</p>
+
+<blockquote>
+<p>必须将延迟存储属性声明成<code>变量</code>（使用 var 关键字），因为属性的初始值可能在实例构造完成之后才会得到。而<strong>常量属性在构造过程完成之前必须要有初始值</strong>，因此无法声明成延迟属性。</p>
+</blockquote>
+
+<pre><code class="language-swift">class DataImporter {
+    /*
+    DataImporter 是一个负责将外部文件中的数据导入的类。
+    这个类的初始化会消耗不少时间。
+    */
+    var fileName = &quot;data.txt&quot;
+    // 这里会提供数据导入功能
+}
+class DataManager {
+    lazy var importer = DataImporter()
+    var data = [String]()
+    // 这里会提供数据管理功能
+}
+</code></pre>
+
+<pre><code class="language-swift">let manager = DataManager()
+manager.data.append(&quot;Some data&quot;)
+//此时实例的import属性还没创建
+</code></pre>
+
+<pre><code class="language-swift">print(manager.importer.fileName)
+// DataImporter 实例的 importer 属性现在被创建了
+// 输出 &quot;data.txt”
+</code></pre>
+
+<p><strong>如果一个被标记为<code>lazy</code>的属性在没有初始化时就同时被多个线程访问，则无法保证该属性只会被初始化一次</strong></p>
+
+<h3 id="toc_3">存储属性和实例变量</h3>
+
+<p>与OC不同<code>Swift</code>没有属性对应的实例变量，因此没有办法直接访问属性的后端存储，方便统一访问方式<br/>
+使属性的全部信息包括<code>命名、类型和内存管理特征</code>都在一个地方定义</p>
+
+<h2 id="toc_4">计算属性</h2>
+
+<p>计算属性不存储值而是提供一个<code>getter</code>和一个可选的<code>setter</code>,来间接获取和设置其他属性或变量的值</p>
+
+<blockquote>
+<p>必须使用 var 关键字定义计算属性，包括只读计算属性，因为它们的值不是固定的</p>
+</blockquote>
+
+<pre><code class="language-swift">struct Point {
+    var x = 0.0, y = 0.0
+}
+struct Size {
+    var width = 0.0, height = 0.0
+}
+struct Rect {
+    var origin = Point()
+    var size = Size()
+    var center: Point {
+        get {
+            let centerX = origin.x + (size.width / 2)
+            let centerY = origin.y + (size.height / 2)
+            return Point(x: centerX, y: centerY)
+        }
+        set(newCenter) {
+            origin.x = newCenter.x - (size.width / 2)
+            origin.y = newCenter.y - (size.height / 2)
+        }
+    }
+}
+var square = Rect(origin: Point(x: 0.0, y: 0.0),
+                  size: Size(width: 10.0, height: 10.0))
+let initialSquareCenter = square.center
+square.center = Point(x: 15.0, y: 15.0)
+print(&quot;square.origin is now at (\(square.origin.x), \(square.origin.y))&quot;)
+</code></pre>
+
+<p>可以通过<code>square.center</code>访问计算属性<code>center</code> 会调用<code>getter</code>计算新的值返回<br/>
+<code>center</code>可以设置一个新值,会调用<code>setter</code>来修改<code>origin</code>来移动正方形</p>
+
+<h3 id="toc_5">简化setter声明</h3>
+
+<p>如果计算属性的<code>setter</code>没有定义表示新值,就可以使用默认名称<code>newValue</code></p>
+
+<pre><code class="language-swift">struct AlternativeRect {
+    var origin = Point()
+    var size = Size()
+    var center: Point {
+        get {
+            let centerX = origin.x + (size.width / 2)
+            let centerY = origin.y + (size.height / 2)
+            return Point(x: centerX, y: centerY)
+        }
+        set {
+            origin.x = newValue.x - (size.width / 2)
+            origin.y = newValue.y - (size.height / 2)
+        }
+    }
+}
+</code></pre>
+
+<h3 id="toc_6">只读的计算属性</h3>
+
+<p>只有<code>getter</code>没有<code>setter</code>的计算属性就是只读计算属性，可以访问值,不能设置新值</p>
+
+<pre><code class="language-swift">struct Cuboid {
+    var width = 0.0, height = 0.0, depth = 0.0
+    var volume: Double {
+        return width * height * depth
+    }
+}
+</code></pre>
+
+<p>只读属性可以省略掉 <code>get</code>关键字和花括号</p>
+
+<h2 id="toc_7">属性观察器</h2>
+
+<p><strong>属性观察器</strong>监控和响应属性值变化，每次属性被设置时会调用属性观察器</p>
+
+<p>为<code>除了延迟属性</code>外其他存储属性添加属性观察器，对于继承的存储属性和计算属性,通过重写的方式来添加属性观察器<br/>
+对于非继承的计算属性没必要添加属性观察器，我们可以通过<code>setter</code>方法直接监控</p>
+
+<p>属性观察期器:<br/>
+* <code>willSet</code>在新值被设置前调用<br/>
+* <code>didSet</code>在新值被设置之后调用</p>
+
+<p><code>willSet</code>观察器会将新的属性值作为常量参数传入，在<code>willSet</code>的实现代码中可以为这个参数指定一个名<br/>
+称，如果不指定则参数仍然可用，这时使用默认名称<code>newValue</code>表示。</p>
+
+<p><code>didSet</code>观察器会将旧的属性值作为参数传入，可以为该参数命名或者使用默认参数名<code>oldValue</code>。如果<br/>
+在<code>didSet</code>方法中再次对该属性赋值，那么新值会覆盖旧的值</p>
+
+<blockquote>
+<p>父类的属性在子类的构造器中被赋值时，它在父类中的 willSet 和 didSet 观察器会被调用，随后才会调用子类的观察器。在父类初始化方法调用之前，子类给属性赋值时，观察器不会被调用。</p>
+</blockquote>
+
+<pre><code class="language-swift">class StepCounter {
+    var totalSteps: Int = 0 {
+        willSet(newTotalSteps) {
+            print(&quot;About to set totalSteps to \(newTotalSteps)&quot;)
+        }
+        didSet {
+            if totalSteps &gt; oldValue {
+                print(&quot;Added \(totalSteps - oldValue) steps&quot;)
+            }
+        }
+    }
+}
+let stepCounter = StepCounter()
+stepCounter.totalSteps = 200
+// About to set totalSteps to 200
+// Added 200 steps
+</code></pre>
+
+<p>注意:<br/>
+在willSet或者didSet方法中设置属性值是不会触发的属性观察器方法  </p>
+
+<blockquote>
+<p>如果将属性通过<code>in-out</code>方式传入函数，<code>willSet</code>和<code>didSet</code>也会调用。这是因为<code>in-out</code>参数采用了拷入拷出模式：即在函数内部使用的是参数的<code>copy</code>，函数结束后，又对参数重新赋值。</p>
+</blockquote>
+
+<h2 id="toc_8">全局变量和局部变量</h2>
+
+<p>全局变量是在函数、方法、闭包或任何类型之外定义的变量。局部变量是在函数、方法或闭包内部定义的变量。</p>
+
+<p><strong>计算属性和属性观察器所描述的功能也可以用于全局变量和局部变量</strong></p>
+
+<p>我们之前用的变量都是存储型变量,跟存储属性类似，它为特定类型的值提供存储空间，并允许读取和写入</p>
+
+<p>我们可以在全局或局部范围为存储型变量定义观察器</p>
+
+<p>在全局或局部范围都可以定义计算型变量。计算型变量跟计算属性一样，返回一个计算结果而不是存储值，声明格式也完全一样</p>
+
+<p><strong>注意:</strong><br/>
+1. 全局的常量或变量都是延迟计算，类似<code>延迟属性</code>但是不需要<code>lazy</code>声明<br/>
+2. 局部的常量或变量从不延迟计算</p>
+
+<h2 id="toc_9">类型属性</h2>
+
+<p>可以为类型本身定义属性</p>
+
+<p>类型属性用于定义某个类型所有实例共享的数据</p>
+
+<p>类型属性也可以有 存储型的常量或变量 计算型的只能为变量</p>
+
+<p>注意:</p>
+
+<blockquote>
+<p>存储型类型属性必须指定默认值，因为类型本身没有构造器，也就无法在初始化过程中使用构造器给类型属性赋值</p>
+
+<p>存储型类型属性是延迟初始化的，它们只有在第一次被访问的时候才会被初始化。即使它们被多个线程同时访问，系统也保证只会对其进行一次初始化，并且不需要对其使用<code>lazy</code>修饰符。</p>
+</blockquote>
+
+<h3 id="toc_10">类型属性语法</h3>
+
+<p>在<code>OC</code>中,在类中关联的静态变量和常量是作为全局静态变量定义</p>
+
+<p>在<code>Swift</code>中，类型属性是作为类型定义的一部分写在类型最外层的花括号内，作用范围就在类型支持的范围内</p>
+
+<p>使用<code>static</code>来定义类型属性。<br/>
+在为类定义计算型类型属性时，可以改用关键字<code>class</code>来支持子类对父类的实现进行重写</p>
+
+<pre><code class="language-swift">//结构体
+struct SomeStructure {
+    static var storedTypeProperty = &quot;Some value.&quot;
+    static var computedTypeProperty: Int {
+        return 1
+    }
+}
+//枚举
+enum SomeEnumeration {
+    static var storedTypeProperty = &quot;Some value.&quot;
+    static var computedTypeProperty: Int {
+        return 6
+    }
+}
+//类
+class SomeClass {
+    static var storedTypeProperty = &quot;Some value.&quot;
+    static var computedTypeProperty: Int {
+        return 27
+    }
+    //子类对父类的实现进行重写
+    class var overrideableComputedTypeProperty: Int {
+        return 107
+    }
+}
+
+</code></pre>
+
+<h3 id="toc_11">获取和设置类型属性值</h3>
+
+<p>类型属性通过点运算符通过类型本身来访问</p>
+
+<pre><code class="language-swift">print(SomeStructure.storedTypeProperty)
+    // 打印 &quot;Some value.&quot;
+SomeStructure.storedTypeProperty = &quot;Another value.&quot;
+print(SomeStructure.storedTypeProperty)
+    // 打印 &quot;Another value.”
+print(SomeEnumeration.computedTypeProperty)
+    // 打印 &quot;6&quot;
+print(SomeClass.computedTypeProperty)
+    // 打印 &quot;27&quot;
+</code></pre>
+
 
     
 
@@ -155,6 +414,9 @@ rangeOfThreeItems.firstValue = 6
       <div class="row">
         <div class="large-6 columns">
         <p class="text-left" style="padding:15px 0px;">
+      
+          <a href="15017296324997.html" 
+          title="Previous Post: 方法">&laquo; 方法</a>
       
         </p>
         </div>
@@ -239,6 +501,18 @@ rangeOfThreeItems.firstValue = 6
 	      
 		      
 			      <li class="post">
+			        <a href="15017615739867.html"></a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15017296324997.html">方法</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15015839505859.html">属性</a>
 			      </li>
 		     
@@ -252,18 +526,6 @@ rangeOfThreeItems.firstValue = 6
 		      
 			      <li class="post">
 			        <a href="15003778819226.html">枚举</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14993105877642.html">闭包</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14988080333726.html">NSNotification</a>
 			      </li>
 		     
 		  
