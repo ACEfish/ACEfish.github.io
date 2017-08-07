@@ -105,247 +105,147 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14993105877642.html">
+                <a class="clearlink" href="15005513837564.html">
                 
-                  <h1>闭包</h1>
+                  <h1>类和结构体</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>闭包是自包含的函数代码块,可以在代码中被传递和使用</p>
+                        	<p>可以使用完全相同的语法规则来为<code>类</code>和<code>结构体</code>定义属性(<code>常量</code>、<code>变量</code>)和添加方法，从而扩展类和结构体的功能</p>
 
-<p><strong>闭包可以捕获和存储其所在上下文中任意常量和变量的引用。被称为包裹常量和变量。 Swift 会为你管理在捕获过程中涉及到的所有内存操作。</strong></p>
+<p>与其他编程语言不同,<code>swift</code>不要求为自定义类和结构创建独立的接口和实现文件.所要做的是在一个单一文件中定义一个类或者结构体，系统将会自动生成面向其它代码的外部接口</p>
 
-<blockquote>
-<p><code>Swift</code>中的闭包与<code>C</code>和<code>Objective-C</code>中的代码块（<code>blocks</code>）以及其他一些编程语言中的匿名函数比较相似<br/>
-在函数章节中介绍的全局和嵌套函数实际上也是特殊的闭包</p>
-</blockquote>
-
-<p>闭包的形式：</p>
-
-<ul>
-<li>全局函数是一个有名字但不会捕获任何值的闭包</li>
-<li>嵌套函数是一个有名字并可以捕获其封闭函数域内值的闭包</li>
-<li>闭包表达式是一个利用轻量级语法所写的可以捕获其上下文中变量或常量值的匿名闭包</li>
-</ul>
-
-<p>闭包可以进行一定语法优化，常见优化:</p>
-
-<ul>
-<li>利用上下文推断参数和返回值类型</li>
-<li>隐式返回<code>单表达式</code>闭包，即单表达式闭包可以省略<code>return</code>关键字</li>
-<li>参数名称缩写</li>
-<li>尾随闭包语法</li>
-</ul>
-
-<h2 id="toc_0">闭包表达式</h2>
-
-<p>闭包表达式是一种利用简洁语法构建内联闭包的方式。</p>
-
-<h3 id="toc_1">sorted方法</h3>
-
-<p><code>Swift</code>的<code>sorted(by:)</code>方法根据提供的排序的闭包函数.将数组排序后返回一个同样大小排序后的数组,原数组不变</p>
-
-<p><code>let names = [&quot;Chris&quot;, &quot;Alex&quot;, &quot;Ewa&quot;, &quot;Barry&quot;, &quot;Daniella&quot;]</code><br/>
-对于数组这个用于排序的闭包函数类型为<code>(String, String) -&gt; Bool</code>通过返回bool值决定第一个参数在前还是在后</p>
-
-<pre><code class="language-swift">func backward(_ s1: String, _ s2: String) -&gt; Bool {
-    return s1 &gt; s2
-}
-var reversedNames = names.sorted(by: backward)
-// reversedNames 为 [&quot;Ewa&quot;, &quot;Daniella&quot;, &quot;Chris&quot;, &quot;Barry&quot;, &quot;Alex&quot;]
-</code></pre>
-
-<p>为了写<code>return s1 &gt; s2</code>这么简单的表达式却需要写函数太过繁琐,我们可以使用闭包表达式语法</p>
-
-<h3 id="toc_2">闭包表达式语法</h3>
-
-<pre><code class="language-swift">{ (parameters) -&gt; returnType in
-    statements
-}
-</code></pre>
-
-<p>闭包表达式参数 可以是<code>in-out</code>参数，但不能设定默认值。可以使用可变参数但是要放到参数最后</p>
-
-<p>闭包的函数体部分由关键字<code>in</code>引入。该关键字表示闭包的参数和返回值类型定义已经完成，闭包函数体即将开始。（<code>in</code>前为闭包定义,后为闭包函数体）</p>
-
-<pre><code class="language-swift">reversedNames = names.sorted(by: { (s1: String, s2: String) -&gt; Bool in
-    return s1 &gt; s2
-})
-</code></pre>
-
-<h3 id="toc_3">根据上下文推断类型</h3>
-
-<p>因为这个闭包函数的作为方法参数传入,因此其类型已经确定为<code>(String, String) -&gt; Bool</code>,因此我们可以省略这些类型声明,因为可以被正确推断出来</p>
-
-<pre><code class="language-swift">reversedNames = names.sorted(by: { s1, s2 in return s1 &gt; s2 } )
-//我们将闭包作为函数或方法的参数时,其类型总是可以推断出来的
-//推荐完整格式闭包,增加代码可读性
-</code></pre>
-
-<h3 id="toc_4">单表达式闭包隐式返回</h3>
-
-<p>如果闭包内只有一行单一表达式,并且明确了需要的返回类型,可以省略<code>return</code>关键字</p>
-
-<pre><code class="language-swift">//
-reversedNames = names.sorted(by: { s1, s2 in s1 &gt; s2 } )
-</code></pre>
-
-<h3 id="toc_5">参数名称缩写</h3>
-
-<p><code>Swift</code>自动为内联闭包提供了参数名称缩写功能，你可以直接通过<code>$0</code>，<code>$1</code>，<code>$2</code>来顺序调用闭包的参数</p>
-
-<p>如果使用参数名称缩写,那么在闭包定义中也可以省略参数列表,对应的参数名称缩写的类型也可以推断出来,这样的话<code>in</code>关键字也可以省略</p>
-
-<pre><code class="language-swift">//此时闭包表达式只剩下闭包函数体
-reversedNames = names.sorted(by: { $0 &gt; $1 } )
-</code></pre>
-
-<h3 id="toc_6">运算符方法</h3>
-
-<p><code>Swift</code>的<code>String</code>类型定义了关于大于号<code>（ &gt; ）</code>的字符串实现，其作为一个函数接受两个<code>String</code>类型的参数并返回<code>Bool</code>类型的值。而这正好与<code>sorted(by:)</code>方法的参数需要的函数类型相符合。因此，你可以简单地传递一个大于号，Swift 可以自动推断出你想使用大于号的字符串函数实现：</p>
-
-<pre><code class="language-swift">reversedNames = names.sorted(by: &gt;)
-</code></pre>
-
-<h2 id="toc_7">尾随闭包</h2>
-
-<p>如果要将一个很长的闭包作为函数最后一个参数,为了增强代码的可读性,我们可以使用<code>尾随闭包</code>的方式来调用函数</p>
-
-<pre><code class="language-swift">func someFunctionThatTakesAClosure(closure: () -&gt; Void) {
-    // 函数体部分
-}
-// 以下是不使用尾随闭包进行函数调用
-someFunctionThatTakesAClosure(closure: {
-    // 闭包主体部分
-})
-// 以下是使用尾随闭包进行函数调用
-someFunctionThatTakesAClosure() {
-    // 闭包主体部分
-}
-
-reversedNames = names.sorted() { $0 &gt; $1 }
-//如果闭包函数是函数的唯一参数我们还可以省略（）
-reversedNames = names.sorted { $0 &gt; $1 }
-</code></pre>
-
-<pre><code class="language-swift">//举栗子
-let strings = numbers.map {
-    (number) -&gt; String in
-    var number = number
-    var output = &quot;&quot;
-    repeat {
-        output = digitNames[number % 10]! + output
-        number /= 10
-    } while number &gt; 0
-    return output
-}
-// strings 常量被推断为字符串类型数组，即 [String]
-// 其值为 [&quot;OneSix&quot;, &quot;FiveEight&quot;, &quot;FiveOneZero&quot;]
-</code></pre>
-
-<h2 id="toc_8">值捕获</h2>
-
-<p>闭包可以在被定义的上下文捕获常量或变量</p>
-
-<p>最简单的捕获值的闭包形式是嵌套函数</p>
-
-<pre><code class="language-swift">func makeIncrementer(forIncrement amount: Int) -&gt; () -&gt; Int {
-    var runningTotal = 0
-    func incrementer() -&gt; Int {
-        runningTotal += amount
-    return runningTotal
-    }
-    return incrementer
-}
-</code></pre>
-
-<p><code>makeIncrementer</code>的返回类型是<code>() -&gt; Int</code>说明要返回一个函数<br/>
-对于嵌套函数<code>incrementer()</code>并没有参数，而是捕获了<code>runningTotal</code>和<code>amount</code>变量的引用.捕获引用保证了<code>runningTotal</code>和<code>amount</code>变量在调用完<code>makeIncrementer</code>后不会消失，并且保证了在下一次执行<code>incrementer</code>函数时，<code>runningTotal</code>依旧存在。</p>
+<h2 id="toc_0">类和结构体对比</h2>
 
 <blockquote>
-<p>如果一个值不会被闭包改变，或者在闭包创建后不会改变，Swift 可能会改为捕获并保存一份对值的拷贝。 Swift 也会负责被捕获变量的所有内存管理工作，包括释放不再需要的变量。</p>
+<p>类通过引用计数进行多次引用,结构体通过复制的方式在代码中传递,不使用引用计数</p>
 </blockquote>
 
-<pre><code class="language-swift">let incrementByTen = makeIncrementor(forIncrement: 10)
-incrementByTen()// 返回的值为10
-incrementByTen()// 返回的值为20
-incrementByTen()// 返回的值为30
-</code></pre>
+<h3 id="toc_1">定义语法</h3>
 
-<p>这个常量函数每次调用都会将<code>runningTotal</code>变量增加<code>10</code></p>
-
-<h2 id="toc_9">闭包是引用类型</h2>
-
-<p><code>函数</code>和<code>闭包</code>都是引用类型，因此我们设置的常量或者变量是设置的对应函数或闭包的引用，而不是闭包内容本身</p>
+<p>通过关键之<code>class</code>和<code>struct</code>来分别标识类和结构体</p>
 
 <blockquote>
+<p>类和结构体名使用首字母大写的方式进行命名</p>
 </blockquote>
 
-<h2 id="toc_10">逃逸闭包</h2>
-
-<p>将闭包作为参数传递到另一个函数中,但是这个闭包在函数返回后才执行,则这个闭包从函数中<code>逃逸</code>，我们可以通过在函数名之前标注<code>@escaping</code>表示这个闭包允许<code>逃逸</code></p>
-
-<p>一种能使闭包“逃逸”出函数的方法是，将这个闭包保存在一个函数外部定义的变量中,此时必须闭包是可逃逸的否则函数的作用域结束，这个外部变量保存的闭包。。。会导致编译错误</p>
-
-<p>逃逸闭包我们常用于在一个函数需要异步执行操作,通常会让函数返回,在异步操作完成后再调用执行这个闭包,因为闭包需要在函数返回之后被调用,所以需要逃逸闭包</p>
-
-<pre><code class="language-swift">var completionHandlers: [() -&gt; Void] = []
-func someFunctionWithEscapingClosure(completionHandler: @escaping () -&gt; Void) {
-    completionHandlers.append(completionHandler)
+<pre><code class="language-swift">//定义一个结构体 描述显示器屏幕分辨率
+struct Resolution {
+    var width = 0
+    var height = 0
+    //当这两个属性被初始化为整数 0 的时候，它们会被推断为 Int 类型。
 }
 
-func someFunctionWithNonescapingClosure(closure: () -&gt; Void) {
-    closure()
+//定义一个类 描述视频显示器的特定模式
+//四个变量存储属性
+class VideoMode {
+    var resolution = Resolution()//分辨率 结构体
+    var interlaced = false
+    var frameRate = 0.0
+    var name: String?
 }
-class SomeClass {
-    var x = 10
-    func doSomething() {
-        someFunctionWithEscapingClosure { self.x = 100 }
-        someFunctionWithNonescapingClosure { x = 200 }
-    }
-}
-let instance = SomeClass()
-instance.doSomething()
-print(instance.x)
-// 打印出 &quot;200&quot;
-completionHandlers.first?()
-print(instance.x)
 </code></pre>
 
-<h2 id="toc_11">自动闭包</h2>
+<p><code>存储属性</code>是被<code>捆绑</code>和<code>存储</code>在类或结构体中的常量或变量。</p>
 
-<p>一种自动创建的闭包，用于包装传递给函数作为参数的表达式。不接受任何参数，当它被调用的时候，会返回被包装在其中的表达式的值。这样帮我们省略掉花括号,用一个普通表达式代替显式的闭包</p>
+<h3 id="toc_2">类和结构体实例</h3>
 
-<p>我们经常会调用采用自动闭包的函数，但是很少去实现这样的函数。举个例子来说，<code>assert(condition:message:file:line:)</code>函数接受自动闭包作为它的<code>condition</code>参数和 <code>message</code>参数；它的<code>condition</code>参数仅会在<code>debug</code>模式下被求值，它的<code>message</code>参数仅当 <code>condition</code>参数为<code>false</code>时被计算求值。</p>
+<p>初始化结构体或类的实例</p>
 
-<p><strong>自动闭包让你能够延迟求值，因为直到你调用这个闭包，代码段才会被执行。</strong></p>
+<pre><code class="language-swift">let someResolution = Resolution()
+let someVideoMode = VideoMode()
+</code></pre>
 
-<pre><code class="language-swift">// customersInLine is [&quot;Alex&quot;, &quot;Ewa&quot;, &quot;Barry&quot;, &quot;Daniella&quot;]
-//未使用自动闭包
-func serve(customer customerProvider: () -&gt; String) {
-    print(&quot;Now serving \(customerProvider())!&quot;)
-}
-serve(customer: { customersInLine.remove(at: 0) } )
-// 打印出 &quot;Now serving Alex!&quot;
+<p>通过这种方式创建类或者结构体实例,属性都会被初始化为默认值.</p>
 
-//使用自动闭包
-func serve(customer customerProvider: @autoclosure () -&gt; String) {
-print(&quot;Now serving \(customerProvider())!&quot;)
-}
-serve(customer: customersInLine.remove(at: 0))
+<h3 id="toc_3">属性访问</h3>
+
+<p>通过点语法访问实例属性。</p>
+
+<pre><code class="language-swift">//访问结构体属性
+print(&quot;The width of someResolution is \(someResolution.width)&quot;)
+// 打印 &quot;The width of someResolution is 0&quot;
+
+//访问变量属性
+someVideoMode.resolution.width = 1280
+print(&quot;The width of someVideoMode is now \(someVideoMode.resolution.width)&quot;)
+// 打印 &quot;The width of someVideoMode is now 1280&quot;
 </code></pre>
 
 <blockquote>
-<p>过度使用 autoclosures 会让你的代码变得难以理解。上下文和函数名应该能够清晰地表明求值是被延迟<br/>
-执行的</p>
+<p>在OC中是不能直接设置结构体子属性值，swift中可以直接设置比如<code>resolution.width</code>属性值,在oc中我们需要给整个结构体<code>resolution</code>设置新值</p>
 </blockquote>
 
-<pre><code class="language-swift">//可以通过同时加上@autoclosure @escaping 自动闭包可以“逃逸”
-func collectCustomerProviders(_ customerProvider: @autoclosure @escaping () -&gt; String) {
-    customerProviders.append(customerProvider)
-}
+<h3 id="toc_4">结构体类型成员逐一构造器</h3>
+
+<p>对于<strong>结构体</strong><br/>
+所有结构体都有一个自动生成的<strong>成员逐一构造器</strong>，用来初始化新结构体成员的属性</p>
+
+<pre><code class="language-swift">//通过属性名称
+let vga = Resolution(width:640, height: 480)
 </code></pre>
+
+<p>类是没有这个成员构造器的</p>
+
+<h2 id="toc_5">结构体和枚举时值类型</h2>
+
+<p><strong>值类型被赋予给一个变量、常量或者被传递给一个函数的时候，其值会被拷贝</strong></p>
+
+<p>实际上,在<code>Swift</code>中，所有的基本类型：整数（Integer）、浮点数（floating-point）、布尔值（Boolean）、字符串（string)、数组（array）和字典（dictionary），都是值类型，并且在底层都是<strong>以结构体的形式所实现</strong></p>
+
+<p>在<code>swift</code>中,所有结构体和枚举类型都是值类型。因此,它们的实例以及实例中包含的值类型属性,在传递时都会被复制</p>
+
+<pre><code class="language-swift">let hd = Resolution(width: 1920, height: 1080)
+var cinema = hd
+cinema.width = 2048
+print(&quot;cinema is now \(cinema.width) pixels wide&quot;)// &quot;cinema is now 2048 pixels wide&quot;
+print(&quot;hd is still \(hd.width) pixels wide&quot;)//&quot;hd is still 1920 pixels wide&quot;
+</code></pre>
+
+<p>在对结构体进行赋值的时候,进行了拷贝,cinema和hd是完全不同的两个实例,因此改变了cinema的宽对hd没有影响</p>
+
+<p>枚举也是值类型,遵循相同的行为准则</p>
+
+<h2 id="toc_6">类是引用类型</h2>
+
+<p>与值类型不同,引用类型在传递时,值不会被拷贝.因此，<strong>引用的是已存在的实例本身而不是其拷贝</strong>。</p>
+
+<pre><code class="language-swift">let tenEighty = VideoMode()
+tenEighty.frameRate = 25.0
+
+let alsoTenEighty = tenEighty
+alsoTenEighty.frameRate = 30.0
+print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&quot;)//30.0
+</code></pre>
+
+<p>类是引用类型，所以<code>tenEight</code>和<code>alsoTenEight</code>实际上引用的是相同的<code>VideoMode</code>实例<br/>
+注意:<br/>
+虽然<code>alsoTenEighty</code>为常量但是仍然可以改变<code>alsoTenEighty.frameRate</code>因为这两个常量的值并未改变,这个常量的值存储的并不是<code>ViewMode</code>的实例,而是对其的引用.</p>
+
+<h3 id="toc_7">恒等运算符</h3>
+
+<p>等价于 <code>===</code>  不等价于 <code>!==</code> 用来检测两个变量或常量是否引用同一个实例</p>
+
+<p><code>===</code>与<code>==</code>的不同:<br/>
+“等价于”表示两个类类型（class type）的常量或者变量引用同一个类实例。<br/>
+“等于”表示两个实例的值“相等”或“相同”，判定时要遵照设计者定义的评判标准</p>
+
+<h3 id="toc_8">指针</h3>
+
+<p>一个引用实例的<code>swift</code>常量或者变量,与C指针类似,但是并不直接指向某个内存地址,也不需要用<code>*</code>表明在创建引用.</p>
+
+<h2 id="toc_9">类和结构体的选择</h2>
+
+<h2 id="toc_10">字符串、数组、字典类型的赋值和复制行为</h2>
+
+<p>因为<code>swift</code>中很多基本类型,<code>String</code>，<code>Array</code>和<code>Dictionary</code>类型均以结构体的形式实现，赋值给新的常量变量或者传入函数方法中的时候会被拷贝</p>
+
+<blockquote>
+<p>在OC中<code>NSString</code>，<code>NSArray</code>和<code>NSDictionary</code>是以类的形式实现,不会发生值拷贝而是传递引用</p>
+
+<p>Swift会在绝对必要时才执行实际拷贝,确保性能最优,因此我们没有必要回避赋值来增加性能</p>
+</blockquote>
 
                         
                       </div>
@@ -354,7 +254,7 @@ func collectCustomerProviders(_ customerProvider: @autoclosure @escaping () -&gt
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/7/6</span>
+                    <span class="date">2017/7/20</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -445,7 +345,19 @@ func collectCustomerProviders(_ customerProvider: @autoclosure @escaping () -&gt
 	      
 		      
 			      <li class="post">
-			        <a href="15017615739867.html"></a>
+			        <a href="15020961612430.html">构造过程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15018175799489.html">继承</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15017615739867.html">下标</a>
 			      </li>
 		     
 		  
@@ -458,18 +370,6 @@ func collectCustomerProviders(_ customerProvider: @autoclosure @escaping () -&gt
 		      
 			      <li class="post">
 			        <a href="15015839505859.html">属性</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15005513837564.html">类和结构体</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15003778819226.html">枚举</a>
 			      </li>
 		     
 		  
