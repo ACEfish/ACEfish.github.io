@@ -105,394 +105,255 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14980952471508.html">
+                <a class="clearlink" href="14982190720101.html">
                 
-                  <h1>控制流</h1>
+                  <h1>网络通信</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">For-In循环</h2>
+                        	<h2 id="toc_0">TCP/IP五层模型</h2>
 
-<p>可以用来遍历区间</p>
-
-<pre><code class="language-swift">//遍历一个闭区间
-for index in 1...5 {
-    print(&quot;(index) times 5 is (index * 5)&quot;)
-}
-</code></pre>
-
-<p><code>index</code>在每次遍历开始时是会自动赋值的<code>常量</code>,会隐式声明,不用使用关键字<code>let</code>进行声明</p>
-
-<p>有时我们进行遍历,并不关心遍历出的值,只需要遍历的次数,这时候我们可以使用下划线<code>_</code>代替变量名忽略这个值</p>
-
-<pre><code class="language-swift">//求 3的10次方 这时候我们不关心便利出来的值 只关系执行次数
-let base = 3
-let power = 10
-var answer = 1
-for _ in 1...power {
-    answer *= base
-}
-</code></pre>
-
-<p>我们还可以使用<code>for-in</code>遍历 </p>
+<p><img src="media/14982190720101/14982758829850.jpg" alt=""/><br/>
+<code>TCP/IP协议五层模型</code>中的应用层对应<code>网络七层模型</code>中的第五层、第六层和第七层的功能</p>
 
 <ul>
-<li>数组所有元素 </li>
-<li>遍历一个字典访问键值对,键值对以元组形式返回,可以使用显示的常量名称解读<code>(key, value)</code></li>
-<li>字符串中的字符(<code>greeting.characters.indices</code>，返回包含所有字符的range)</li>
+<li>应用层:对应应用程序的通信服务  如HTTP,FTP,NFS,SMTP</li>
+<li>传输层:是否选择差错恢复协议还是无差错恢复协议，在同一主机上对不同应用的数据流的输入进行复用，还包括对收到的顺序不对的数据包的重新排序功能。 如TCP UDP</li>
+<li>网络层:主要为数据包寻找路由(路由寻址),为了适应最大传输单元长度(MTU)小于包长度的传输介质，网络层还定义了如何分包 ,路由器</li>
+<li>数据链路层:传输有地址的帧 ，以太网交换机等 数据成帧后通过差错控制提供数据帧在信道上无差错的传输</li>
+<li>物理层:数据传输的物理媒介</li>
 </ul>
 
-<h2 id="toc_1">While</h2>
+<p>应用层用于识别数据内容,通过遵循应用层协议(HTTP、FTP或者我们自己定义的协议等)可以识别数据,使数据有意义</p>
 
-<h3 id="toc_2">While</h3>
+<p>TCP/IP协议还提供一项名为UDP（用户数据报协议)<br/>
+TCP：面向连接、传输可靠、用于传输大量数据(流模式)、速度慢，建立连接需要开销较多(时间，系统资源)。<br/>
+UDP：面向非连接(是指在正式通信前不必与对方先建立连接，不管对方状态就直接发送)、传输不可靠、用于传输少量数据(数据包模式)、速度快。</p>
 
-<p>循环开始时判断条件是否符合,<code>ture</code>执行循环的语句,<code>false</code>结束循环</p>
+<p>//UDP传输层传输的示意图<br/>
+<img src="media/14982190720101/14982727461179.png" alt=""/></p>
 
-<pre><code class="language-swift">while square &lt; finalSquare {
-    
-}
-</code></pre>
+<p>UDP端口对于基于UDP的通信作为单一消息队列和网络端点来操作，而所有TCP通信的终点都是唯一的连接。每个TCP连接由两个端点唯一识别。由于所有TCP连接由两对 IP 地址和TCP端口唯一识别（每个所连主机都有一个地址/端口对），因此每个TCP服务器端口都能提供对多个连接的共享访问</p>
 
-<h3 id="toc_3">Repeat-While</h3>
+<h2 id="toc_1">TCP的长连接和短连接</h2>
 
-<p>与<code>while</code>的区别就是执行判断条件之前会首先执行一次循环的代码块(类似do-while)</p>
+<p>在利用TCP协议开始通讯前,需要客户端和服务端进行<code>三次握手</code>来建立连接,而在结束通信后需要由<code>四次握手</code>来释放连接</p>
 
-<pre><code class="language-swift">repeat {
-    statements
-} while condition
-</code></pre>
+<h3 id="toc_2">TCP短连接&amp;&amp;长连接</h3>
 
-<h2 id="toc_4">条件语句</h2>
+<p>短连接即建立连接后,<code>client</code>向<code>server</code>发送消息,<code>server</code>收到消息回应<code>client</code> 然后完成了一次读写通信后,这时候双方都可以进行<code>close</code>操作,一般由客户端进行断开连接的操作,因此短连接只进行一次传递读写的操作</p>
 
-<h3 id="toc_5">IF语句</h3>
+<p>长连接是在建立连接,进行读写之后并不会主动关闭连接,后续仍然使用这个连接来进行读写</p>
 
-<pre><code class="language-swift">let temperatureInFahrenheit = 90
-if temperatureInFahrenheit &lt;= 32 {
-    print(&quot;It&#39;s very cold. Consider wearing a scarf.&quot;)
-} else if temperatureInFahrenheit &gt;= 86 {
-    print(&quot;It&#39;s really warm. Don&#39;t forget to wear sunscreen.&quot;)
-} else {
-    print(&quot;It&#39;s not that cold. Wear a t-shirt.&quot;)
-}
-//也可以不要最后的else语句 这样有可能既不冷也不热,不会触发if和else if 也就不会打印任何消息
-</code></pre>
+<h3 id="toc_3">维护长连接</h3>
 
-<h3 id="toc_6">switch</h3>
+<p>我们在应用中创建一个长连接，这个长连接并没有确切时间限制,而是说这条连接需要时间较长<br/>
+通常我们在应用中对网络通信的实时性要求较高,需要及时知道已经断开的连接进行及时处理,因此我们需要手工来进行不断探测</p>
 
-<p>将某个值与一个或多个同类型的值作比较</p>
+<h4 id="toc_4">1.应用层使用心跳包</h4>
 
-<pre><code class="language-swift">switch some value to consider {
-case value 1:
-    respond to value 1
-case value 2,
-    value 3:
-    respond to value 2 or 3
-default:
-    otherwise, do something else
-}
-</code></pre>
+<p>一般在一个心跳间隔,客户端发送一个特定<code>ping</code>消息到服务器,服务器返回消息完成一次心跳交互,等待下一轮.如果客户端没有收到心跳反馈就会关闭掉<code>TCP</code>连接,心跳周期一般设置为几分钟,比如微信为300S</p>
 
-<p>完备性:<br/>
-对于<code>switch</code>语句每个可能的值,需要至少一个<code>case</code>分支与之对应,对于某些没办法用<code>case</code>覆盖所有分支的情况,可以通过在最后加上<code>default</code>分支来涵盖其他没有对应的值</p>
+<p>心跳机制可以由客户端和服务器两端都可以发送心跳包，两端也都可以监测, 一般为客户端发送心跳包服务器监测,如果在一个心跳周期没有收到心跳反馈可以断开连接(或者没有收到反馈后再发送几次ping包确定没有收到反馈后即断开连接)  而服务器一般在心跳间隔的1.5周期没有收到客户端的心跳包可以选择断开连接，当然具体情况视应用具体需求而定</p>
 
-<h4 id="toc_7">隐式break</h4>
+<h4 id="toc_5">2.TCP/IP协议层面的心跳机制</h4>
 
-<p>与OC中的<code>switch</code>语句不同,即使在<code>case</code>语句后没有break 也在执行<code>case</code>分钟的代码执行完毕后终止<code>switch</code>语句的执行，不会继续执行下一个<code>case</code>分支</p>
+<p><strong>TCP保活功能:</strong><br/>
+保活功能<code>主要为服务器</code>应用提供，用来检测客户端主机是否已经崩溃,如果客户端主机已经消失,那么服务器上这个连接就成为了半开放连接,而保活功能就是用来检测这种半开放连接的:<br/>
+如果一个给定的连接在两小时内没有任何的动作，则服务器就向客户发一个探测报文段，客户主机处于以下4个状态之一：</p>
 
-<p>注意:<br/>
-<code>case</code>分支中都至少包含一条语句</p>
+<ol>
+<li>客户主机依然正常运行，并从服务器可达。客户的TCP响应正常，而服务器也知道对方是正常的，服务器在两小时后将保活定时器复位。</li>
+<li>客户主机已经崩溃，并且关闭或者正在重新启动。在任何一种情况下，客户的TCP都没有响应。服务端将不能收到对探测的响应，并在75秒后超时。服务器总共发送10个这样的探测 ，每个间隔75秒。如果服务器没有收到一个响应，它就认为客户主机已经关闭并终止连接。</li>
+<li>客户主机崩溃并已经重新启动。服务器将收到一个对其保活探测的响应，这个响应是一个复位，使得服务器终止这个连接。</li>
+<li>客户机正常运行，但是服务器不可达，这种情况与2类似，TCP能发现的就是没有收到探查的响应。</li>
+</ol>
 
-<pre><code class="language-switch">//case分支后至少需要一条语句 下面这种写法是错误的
-let anotherCharacter: Character = &quot;a&quot;
-switch anotherCharacter {
-case &quot;a&quot;: // 无效，这个分支下面没有语句
-case &quot;A&quot;:
-    print(&quot;The letter A&quot;)
-default:
-    print(&quot;Not the letter A&quot;)
-}
-//此时如果想case&quot;a&quot;分支什么都不执行 可以直接执行一条break语句
-</code></pre>
+<p>TCP的心跳机制即为利用上面说的保活功能使两小时后发现TCP连接是否存在,如果想要使时间减少就需要修改内核方面参数,这种方式是很不合适的</p>
 
-<p>此时如果我们想<code>&quot;a&quot;和&quot;A&quot;</code>都执行<code>print(&quot;The letter A&quot;)</code>可以将两个值组合为一个复合匹配</p>
+<h2 id="toc_6">socket编程</h2>
 
-<pre><code class="language-swift">let anotherCharacter: Character = &quot;a&quot;
-switch anotherCharacter {
-case &quot;a&quot;, &quot;A&quot;:
-    print(&quot;The letter A&quot;)
-default:
-    print(&quot;Not the letter A&quot;)
-}
-//为了可读性 可以写为多行形式
-case &quot;a&quot;,
-     &quot;A&quot;
-</code></pre>
-
-<h4 id="toc_8">区间匹配</h4>
-
-<p>case分支的匹配模式也可以是一个值的区间</p>
-
-<pre><code class="language-swift">let approximateCount = 62
-let countedThings = &quot;moons orbiting Saturn&quot;
-var naturalCount: String
-switch approximateCount {
-case 0:
-    naturalCount = &quot;no&quot;
-case 1..&lt;5:
-    naturalCount = &quot;a few&quot;
-case 5..&lt;12:
-    naturalCount = &quot;several&quot;
-case 12..&lt;100:
-    naturalCount = &quot;dozens of&quot;
-case 100..&lt;1000:
-    naturalCount = &quot;hundreds of&quot;
-default:
-    naturalCount = &quot;many&quot;
-}
-print(&quot;There are \(naturalCount) \(countedThings).&quot;)
-</code></pre>
-
-<h4 id="toc_9">元组</h4>
-
-<p>可以使用元组在同一个<code>switch</code>语句中测试多个值，元组中的元素可以是值,也可以是区间,也可以使用<code>_</code>(下划线)来匹配所有可能的值</p>
-
-<pre><code class="language-swift">let somePoint = (1, 1)
-switch somePoint {
-case (0, 0):
-    print(&quot;(0, 0) is at the origin&quot;)
-case (_, 0)://下划线匹配所有值
-    print(&quot;(\(somePoint.0), 0) is on the x-axis&quot;)
-case (0, _):
-    print(&quot;(0, \(somePoint.1)) is on the y-axis&quot;)
-case (-2...2, -2...2)://区间匹配
-    print(&quot;(\(somePoint.0), \(somePoint.1)) is inside the box&quot;)
-default:
-    print(&quot;(\(somePoint.0), \(somePoint.1)) is outside of the box&quot;)
-}
-// 输出 &quot;(1, 1) is inside the box&quot;
-//（0,0）虽然符合所有分支模式 但是只有第一个case分支会执行
-</code></pre>
-
-<p>注意：</p>
+<p><code>socket</code>也称为<strong>套接字</strong>,用于描述IP地址和端口,实现不同主机间通信,IP地址和端口确定一个socket</p>
 
 <blockquote>
-<p>与OC中的switch不同,swift中的case分支中的值是允许交叉的,即允许多个case匹配同一个值,但是只会执行第一个被匹配的case分支</p>
+<p>端口:用于区分不同应用服务,比如<code>HTTP</code>或者<code>FTP</code>等,然后可以根据应用协议来解析数据</p>
 </blockquote>
 
-<h4 id="toc_10">值绑定</h4>
-
-<p>将匹配的值绑定到一个临时变量或常量,在<strong>case内部使用</strong></p>
-
-<pre><code class="language-swift">let anotherPoint = (2, 0)
-switch anotherPoint {
-case (let x, 0):
-    print(&quot;on the x-axis with an x value of \(x)&quot;)
-case (0, let y):
-    print(&quot;on the y-axis with a y value of \(y)&quot;)
-case let (x, y)://可以匹配所有分支
-    print(&quot;somewhere else at (\(x), \(y))&quot;)
-}
-// 输出 &quot;on the x-axis with an x value of 2&quot;
-</code></pre>
-
-<pre><code class="language-swift">let somesPoint = (1, 1)
-switch somesPoint {
-case (let x, 0):
-    print(&quot;X中上\(x)&quot;)
-case (0, var y):
-    print(&quot;Y中上\(y)&quot;)
-case let defaultPint:
-    print(defaultPint, defaultPint.0, defaultPint.1)
-}
-</code></pre>
-
-<h4 id="toc_11">Where</h4>
-
-<p><code>case</code>分支的模式可以使用<code>where</code>语句来判断额外的条件</p>
-
-<pre><code class="language-swift">let yetAnotherPoint = (1, -1)
-switch yetAnotherPoint {
-    case let (x, y) where x == y:
-print(&quot;(\(x), \(y)) is on the line x == y&quot;)
-    case let (x, y) where x == -y:
-print(&quot;(\(x), \(y)) is on the line x == -y&quot;)
-    case let (x, y):
-print(&quot;(\(x), \(y)) is just some arbitrary point&quot;)
-}
-// 输出 &quot;(1, -1) is on the line x == -y&quot;
-</code></pre>
-
-<h4 id="toc_12">复合匹配</h4>
-
-<p>当多个条件可以使用同一种方法来处理时，可以将这几种可能放在同一个<code>case</code>后面，并且用逗号隔开。此时当<code>case</code>后任意模式匹配时,这个分支就会被匹配</p>
-
-<pre><code class="language-swift">let someCharacter: Character = &quot;e&quot;
-switch someCharacter {
-case &quot;a&quot;, &quot;e&quot;, &quot;i&quot;, &quot;o&quot;, &quot;u&quot;:
-    print(&quot;\(someCharacter) is a vowel&quot;)
-    //匹配列表过长 可以分行写
-case &quot;b&quot;, &quot;c&quot;, &quot;d&quot;, &quot;f&quot;, &quot;g&quot;, &quot;h&quot;, &quot;j&quot;, &quot;k&quot;, &quot;l&quot;, &quot;m&quot;,
-&quot;n&quot;, &quot;p&quot;, &quot;q&quot;, &quot;r&quot;, &quot;s&quot;, &quot;t&quot;, &quot;v&quot;, &quot;w&quot;, &quot;x&quot;, &quot;y&quot;, &quot;z&quot;:
-    print(&quot;\(someCharacter) is a consonant&quot;)
-default:
-    print(&quot;\(someCharacter) is not a vowel or a consonant&quot;)
-}
-// 输出 &quot;e is a vowel&quot;
-</code></pre>
-
-<pre><code class="language-swift">let stillAnotherPoint = (9, 0)
-switch stillAnotherPoint {
-case (let distance, 0), (0, let distance):
-    print(&quot;On an axis, \(distance) from the origin&quot;)
-default:
-    print(&quot;Not on an axis&quot;)
-}
-/**
-    第一个case分之中,两个模式都值绑定了distance
-*/
-</code></pre>
-
-<h2 id="toc_13">控制转移</h2>
-
-<p>控制转移语句改变代码执行顺序,实现代码的跳转</p>
-
-<h3 id="toc_14">Continue</h3>
-
-<p>立即停止本次循环开始下次循环</p>
-
-<pre><code class="language-swift">let puzzleInput = &quot;great minds think alike&quot;
-var puzzleOutput = &quot;&quot;
-for character in puzzleInput.characters {
-    switch character {
-        case &quot;a&quot;, &quot;e&quot;, &quot;i&quot;, &quot;o&quot;, &quot;u&quot;, &quot; &quot;:
-        continue
-    default:
-        puzzleOutput.append(character)
-    }
-}
-print(puzzleOutput) // 输出 &quot;grtmndsthnklk&quot;
-//这里把continue换位break输出结果是一样的,因为continue会匹配为循环体，而break会匹配为switch语句结束执行,循环体还会继续执行下去
-</code></pre>
-
-<h3 id="toc_15">Break</h3>
-
-<p>立刻结束控制流的执行，可以更早结束一个<code>switch</code>代码块或者一个循环体</p>
-
-<h4 id="toc_16">循环中的break</h4>
-
-<p>当在一个循环体中使用<code>break</code>时，会立刻中断该循环体的执行，后跳转到表示循环体结束的大括号<code>( } )</code>后的第一行代码，不会再有循环的代码被执行</p>
-
-<h4 id="toc_17">Switch中的break</h4>
-
-<p>在<code>Switch</code>中使用<code>break</code>时会立刻中断<code>switch</code>代码块的执行,跳转到表示 switch 代码块<br/>
-结束的大括号<code>( } )</code>后的第一行代码</p>
-
-<p>我们可以用其去忽略一个或多个分支,因为switch不允许有空分支,我们可以在分支语句中写为break,来立即结束市场代码块的执行</p>
-
-<h3 id="toc_18">贯穿   fallthrough</h3>
-
-<p><code>Swift</code>与C不同,<code>switch</code>不会从上一个<code>case</code>分支落入到下一个<code>case</code>分支中。<br/>
-但是如果我们想要与C类似的贯穿的风格就需要加上关键字<code>fallthrough</code></p>
-
-<pre><code class="language-swift">let integerToDescribe = 5
-var description = &quot;The number \(integerToDescribe) is&quot;
-switch integerToDescribe {
-case 2, 3, 5, 7, 11, 13, 17, 19:
-    description += &quot; a prime number&quot;
-    fallthrough
-case 10:
-    description += &quot; , and also&quot;
-    fallthrough
-default:
-    description += &quot; an integer.&quot;
-}
-print(description)
-// 输出 &quot;The number 5 is a prime number, and also an integer.&quot;
-</code></pre>
-
-<p>在分支语句加上<code>fallthrough</code>关键字后,在执行完分支语句后会继续执行下面的分支，即贯穿到<code>default</code>分支</p>
-
-<p>注意:<br/>
-在加上<code>fallthrough</code>后是不会判断下面的<code>case</code>语句的匹配条件而直接执行其分支中的代码</p>
+<p><code>Socket</code>是应用层与TCP/IP协议族通信的中间软件抽象层，对<code>TCP/IP</code>进行了封装，这就是<code>Socket编程接口</code>,程序员通过其进行网络开发.</p>
 
 <blockquote>
-<p>在C语言的switch语句中也是如果不加break时,那么执行完一条case语句后会直接执行下一条case分支代码,而不会判断分支条件,直到遇到break或者switch语句结束,这与swift中是一致的</p>
+<p>HTTP是轿车，提供了封装或者显示数据的具体形式;Socket是发动机，提供了网络通信的能力</p>
 </blockquote>
 
-<h3 id="toc_19">带标签的语句</h3>
+<p><img src="media/14982190720101/14984586168116.jpg" alt=""/></p>
 
-<p>当有循环体和条件语句嵌套时,我们想要显式指明用break终止哪个循环体<br/>
-当有多个循环体嵌套时,显示指明用continue开始哪个循环体的下次循环</p>
+<p>在<code>Internet</code>上的主机一般运行了多个服务软件，同时提供几种服务。每种服务都打开一个<code>Socket</code>，并绑定到一个端口上，不同的端口对应于不同的服务。</p>
 
-<p>这时候就需要 <strong>标签</strong></p>
+<p><img src="media/14982190720101/14982205873836.jpg" alt=""/></p>
 
-<p>声明一个带标签的语句是通过在该语句的关键词的同一行前面放置一个标签,作为这个语句的前导关键字,该标签后面加上一个冒号。<br/>
-<code>label name : while condition { statements } //对while循环体的标签</code></p>
+<h2 id="toc_7">常用应用层协议</h2>
 
-<pre><code class="language-swift">gameLoop: while square != finalSquare {
-    diceRoll += 1
-    if diceRoll == 7 { diceRoll = 1 }
-    switch square + diceRoll {
-    case finalSquare:
-        // 骰子数刚好使玩家移动到最终的方格里，游戏结束。
-        break gameLoop
-    case let newSquare where newSquare &gt; finalSquare:
-        // 骰子数将会使玩家的移动超出最后的方格，那么这种移动是不合法的，玩家需要重新掷骰子
-        continue gameLoop
-    default:
-        // 合法移动，做正常的处理
-        square += diceRoll
-        square += board[square]
-    }
-}
-print(&quot;Game over!&quot;)
+<p><strong>应用层协议 :规定了客户端和服务器之间的数据传输格式</strong></p>
+
+<h3 id="toc_8">1.HTTP</h3>
+
+<h4 id="toc_9">长连接&amp;&amp;短连接</h4>
+
+<p>HTTP为应用层协议,在传输层使用TCP协议，在网络使用IP协议<br/>
+HTTP连接最显著的特点是客户端发送的每次请求都需要服务器回送响应，在请求结束后，会主动释放连接。<br/>
+HTTP的长连接和短连接本质就是TCP的长连接和短连接,http通过tcp三次握手建立连接<br/>
+在HTTP/1.0中默认使用短连接，每进行一次HTTP操作就建立一次连接,结束就中断<br/>
+从HTTP/1.1开始，默认使用长连接来保持连接特性,使用长连接的HTTP协议，会在响应头有加入这行代码：<code>Connection:keep-alive</code>,可以在一次连接中处理多个请求，可以重叠进行<br/>
+<code>Keep-Alive</code>并不会永久保持连接，它有一个保持时间，可以在不同的服务器软件（如<code>Apache</code>）中设定这个时间。实现长连接要客户端和服务端都支持长连接。</p>
+
+<blockquote>
+<p>注意:这个alive 和 tcp的alive是不同的</p>
+</blockquote>
+
+<h4 id="toc_10">轮询</h4>
+
+<p>分为短轮询和长轮询</p>
+
+<p>短轮询:向服务器发送数据，服务器返回结果,不断的操作就是轮询,缺点是浪费了大量资源<br/>
+优点：后端程序编写比较容易。 <br/>
+缺点：请求中有大半是无用，浪费带宽和服务器资源。 <br/>
+实例：适于小型应用。</p>
+
+<p>长轮询：解决了短轮询的问题,长轮询的操作是:前段发送请求给后端，后台收到请求后并不及时返回,加入后台数据没有更新,就将请求挂起来直到有消息返回才返回响应信息并关闭连接,这样就不会频繁请求堵塞服务器<br/>
+优点：在无消息的情况下不会频繁的请求，耗费资源小。 <br/>
+缺点：服务器hold连接会消耗资源，返回数据顺序无保证，难于管理维护。 <br/>
+实例：WebQQ、Hi网页版 <br/>
+<img src="media/14982190720101/14985257353004.png" alt=""/></p>
+
+<h3 id="toc_11">2.WebSocket</h3>
+
+<p>在上面介绍的HTTP的轮询方式是非常浪费资源的,因为HTTP的header非常长,我们频繁发送一个很小的数据却占用了大量带宽,因此我们可以用<code>webSocket</code>代替</p>
+
+<p><code>WebSocket</code>是应用层协议，是<code>html5</code>一种新的协议。它<strong>实现了浏览器与服务器全双工通信</strong></p>
+
+<p>WebSocket建立连接过程:<br/>
+1. 浏览器、服务器建立TCP连接，三次握手。这是通信的基础，传输控制层，若失败后续都不执行<br/>
+2. TCP连接成功后，浏览器通过<code>HTTP协议</code>向服务器传送WebSocket支持的版本号等信息。（开始前的HTTP握手）<br/>
+3. 服务器收到客户端的握手请求后，同样采用<code>HTTP协议</code>回馈数据。<br/>
+4. 当收到了连接成功的消息后，通过TCP通道进行传输通信</p>
+
+<blockquote>
+<p>WebSocket在建立握手时，数据是通过HTTP传输的。但是建立之后，在真正传输时候是不需要HTTP协议的<br/>
+<code>WebSocket</code>是一种双向通信协议，在建立连接后，<code>WebSocket</code>服务器和<code>Browser/Client Agent</code>都能主动的向对方发送或接收数据，就像<code>Socket</code>一样;</p>
+</blockquote>
+
+<p>存在问题:<br/>
+<code>webSockets</code>虽然是实现了长连接，但是如果客户端与服务端长时间没有发送数据，那么网络链路就会认为这个连接已经失效，会自作主张的将其断开，因此需要发送心跳包</p>
+
+<p>iOS端使用webSocket：<br/>
+<a href="http://www.cocoachina.com/ios/20161031/17886.html">接入WebSocket记录</a></p>
+
+<h2 id="toc_12">iOS中网络编程</h2>
+
+<h3 id="toc_13">iOS网络层次</h3>
+
+<p>iOS网络编程层次结构分为三层:<br/>
+Cocoa层：NSURL，Bonjour，Game Kit，WebKit<br/>
+Core Foundation层：基于C的CFNetwork 和 CFNetServices<br/>
+OS层:基于C的 BSD socket</p>
+
+<p><code>Bonjour</code>封装了<code>CFNetwork</code>,Bonjour中的<code>NSNetService</code>也有对应底层实现<code>CFNetService</code>，<code>NSInputStream</code>有对应的底层实现<code>CFInputStream</code></p>
+
+<p><code>Bonjour</code>是一种能够自动查询接入网络中的设备或应用程序的协议，抽象ip和port为<code>service</code>，一个应用程序<code>publish</code>一个网络服务<code>service</code>然后网络中的其他程序就能自动发现这个<code>service</code>，从而可以向这个<code>service</code>查询其<code>ip</code>和<code>port</code>，然后通过获得的<code>ip</code>和<code>port</code>建立 <code>socket</code>链接进行通信。通常我们是通过<code>NSNetService</code>和<code>NSNetServiceBrowser</code>来使用 <code>Bonjour</code>的，前者用于建立与发布<code>service</code>，后者用于监听查询网络上的<code>service</code>。<br/>
+不多做介绍,深入学习可以参考<a href="http://www.cnblogs.com/kesalin/archive/2011/09/15/cocoa_bonjour.html">深入浅出Cocoa之Bonjour网络编程</a></p>
+
+<h3 id="toc_14">iOS中应用限制</h3>
+
+<p>Apple为了让设备尽量省电，减少不必要的开销，保持系统流畅除了特殊的官方程序外是不会让程序在后台无限执行的,开发者开发的程序收到以下限制:</p>
+
+<p>按下<code>home</code>将应用转为后台运行后,app后台运行时间有限（可以通过<code>backgroundTimeRemaining</code>属性来获取这个可用时间）(<code>拥有180s运行时间可以处理后台操作</code>), 时间结束后我们的程序在程序会进入挂起状态，这种状态下应用不会执行任何代码、关闭定时器、系统会收回给程序分配的<code>socket</code>资源</p>
+
+<p>我们只能通过苹果提供的几种特殊后台方式来进行程序的“后台”工作</p>
+
+<ol>
+<li><p>进入后台后前若应用还有未完成任务,可以申请有限时间(最多不超过10分钟)来完成重要任务<br/>
+当10分钟到了后会，无论怎么向系统申请继续后台，系统会强制挂起App，挂起所有后台操作、线程，直到用户再次点击App之后才会继续运行。</p>
+
+<pre><code class="language-objc">- (UIBackgroundTaskIdentifier)beginBackgroundTaskWithExpirationHandler:(void (^)(void))handler
+//返回一个新的后台任务的唯一的标示符，你必须将这个值传给endBackgroundTask:方法来标记任务的结束。如果无法在后台运行这个方法将返回UIBackgroundTaskInvalid。
+//handle回调是在时间快到了执行,防申请到的时间片段内，还是没能完成任务的话，做最后的清理和标注工作,如果不传的话，那么结果就是iOS直接kill掉你的APP
 </code></pre>
 
-<p>我们用<code>标签+冒号+while循环</code>来声明循环为<code>gameLoop</code>，然后用<code>break 标签</code>或者<code>continue 标签</code>来避免break switch语句 而直接作用于循环体</p>
+<p>必须在任务执行结束时，调用<code>endBackgroundTask</code>并传递这个标示符，来结束后台任务。</p></li>
+<li><p>iOS为特殊任务设计的后台模式</p></li>
+</ol>
 
-<h2 id="toc_20">提前退出  guard</h2>
+<p>后台下载任务：<br/>
+<code>Background Downloading</code> <strong>后台下载</strong>,必须使用 iOS 指定的机制才可以，那就是 <code>NSURLSession</code></p>
 
-<p>与<code>if</code>语句类似<code>guard</code>语句的执行取决于其后的一个bool条件,如果为真时直接执行<code>guard</code>语句后的代码,如果为假时执行<code>else</code>中的语句</p>
+<p>后台运行的特定服务类型<br/>
+    <img src="media/14982190720101/14990618979269.jpg" alt=""/></p>
 
-<p><strong>注意:</strong><br/>
-条件不满足会执行<code>else</code>分支上的代码,这个分支这个分支必须转移控制以退出<code>guard</code>语句出现的代码段。可以使用控制转移语句如<code>return</code>, <code>break</code>, <code>continue</code>或者<code>throw</code>做这件事，或者调用一个不返回的方法或函数，例如<code>fatalError()</code>。</p>
-
-<pre><code class="language-swift">func greet(person: [String: String]) {
-    guard let name = person[&quot;name&quot;] else {
-        return
-    }
-    print(&quot;Hello \(name)&quot;)
-    guard let location = person[&quot;location&quot;] else {
-        print(&quot;I hope the weather is nice near you.&quot;)
-        return
-    }
-    print(&quot;I hope the weather is nice in \(location).&quot;)
-}
-greet(person: [&quot;name&quot;: &quot;John&quot;])
-// 输出 &quot;Hello John!&quot;
-// 输出 &quot;I hope the weather is nice near you.&quot;
-greet(person: [&quot;name&quot;: &quot;Jane&quot;, &quot;location&quot;: &quot;Cupertino&quot;])
-// 输出 &quot;Hello Jane!&quot;
-// 输出 &quot;I hope the weather is nice in Cupertino.&quot;
+<pre><code>1. 应用在后台播放或者录制音频
+2. APP更新GPS信息，通知给用户
+3. `voip` 网络电话功能
+4. 杂志应用,在后台下载杂志并处理(用通知触发后台下载任务)
+5. 一些控制外设的app，需要不停与外设沟通.系统就不会主动关闭 APP 与 外设之间的连接，而是替
+    APP 监视这个连接，但有数据过来时，会唤醒 APP 进行处理，每次唤醒 APP 只有 10S 时间
+    进行数据处理(不够的话还使用上面的方法申请更多时间)
+6. iPhone作为蓝牙中心设备，需要不停更新蓝牙设备
+7. iphone作为蓝牙外围设备，需要不停访问其他蓝牙设备数据
+8. 需要在后台频繁有规律获取数据,统在你的 APP 进入后台后，会间隔性的给机会将你的 APP 唤醒，
+   并回调你的 委托方法`application:performFetchWithCompletionHandler:`
+9. App后台关注推送,推送到达时，后台启动app：服务端推送加上键值对content-available = 1的
+   话, 手机收到这个通知后，会自动启动 APP 到后台，或 唤醒（依旧保持后台执行），并回调 委托
+   方法 application:didReceiveRemoteNotification:fetchCompletionHandler:
 </code></pre>
 
-<h2 id="toc_21">检测API的可用性</h2>
+<p>详细设计可参考<a href="http://dxjia.cn/2016/05/26/ios-background-executions/?utm_source=tuicool&amp;utm_medium=referral">iOS 后台任务设计指导</a></p>
 
-<p><code>Swift</code>内置支持检查<code>API</code>可用性，可以确保我们不会在当前机器上使用不可用API，否则会在编译期间报错</p>
+<h2 id="toc_15">补充：</h2>
 
-<p>为了判断代码在指定部署机器上是否可用,我们在<code>if</code>或<code>guard</code>中使用<code>可用性条件</code>去执行一段代码,在运行时有条件的执行一段代码，来在运行时判断调用的<code>API</code>是否可用</p>
+<h3 id="toc_16">WebService</h3>
 
-<pre><code class="language-swift">if #available(iOS 10, macOS 10.12, *) {
-    // 在 iOS 使用 iOS 10 的 API, 在 macOS 使用 macOS 10.12 的 API
-} else {
-    // 使用先前版本的 iOS 和 macOS 的 API
-}
-</code></pre>
+<p><code>Web Service</code>是一种可以接收从<code>Internet</code>或者<code>Intranet</code>上的其它系统中传递过来的请求，轻量级的独立的通讯技术。<br/>
+WebService是一种跨编程语言和跨操作系统平台的远程调用技术</p>
 
-<p>最后的 <code>*</code> 是必须的用于指定在所有其它平台中，如果版本号高于你的设备指定的最低版本，if语句的代码块将会运行。</p>
+<p>远程调用就是:一台计算机a上的一个程序可以调用到另外一台计算机b上的一个对象的方法。 例如百度等把自己的系统服务以<code>webservice</code>服务的形式暴露出来，让第三方网站和程序可以调用这些服务功能</p>
 
-<p><code>#available()</code>一般使用<strong>平台名字</strong>(iOS,macOS,watchOS,tvOS)以及<strong>版本号</strong>（iOS 10 等）</p>
+<p>可以从多个角度来理解<code>WebService</code>，从表面上看，<code>WebService</code>就是一个应用程序向外界暴露出一个能通过<code>Web</code>进行调用的<code>API</code>,能用编程的方法通过Web来调用这个应用程序,那么提供这个<code>WebService</code>的应用程序就是服务端。从深层次看，<code>WebService</code>是建立可互操作的分布式应用程序的新平台，是一个平台，是一套标准。它定义了应用程序如何在<code>Web</code>上实现互操作性，你可以用任何你喜欢的语言，在任何你喜欢的平台上写<code>WebService</code>，只要我们可以通过<code>WebService</code>标准对这些服务进行查询和访问。</p>
+
+<p>为了分布式应用程序的创建,必须要有一套标准的类型系统,需要标准的描述语言来描述webService让开发者可以获取信息，最后还需要有一个方法对这个<code>WebService</code>进行远程调用即远程调用协议(RPC)，为了达到跨语言跨平台目的这个RPC还需要和平台语言无关</p>
+
+<ol>
+<li>XML+XSD
+WebService采用HTTP协议传输数据，采用XML格式封装数据，
+<code>XSD</code>即 <code>XML Schema</code> 是定义了XML的标准数据类型.WebService平台就是用XSD来作为其数据类型系统的。</li>
+<li>SOAP（简单对象访问协议）
+WebService采用HTTP协议传输数据，采用XML格式封装数据，并且增加了一些特定的HTTP消息头来说明消息的内容格式，这些特定的HTTP消息头和XML内容格式就是<code>SOAP协议</code>。SOAP提供了标准的RPC方法来调用Web Service。
+<code>SOAP协议 = HTTP协议 + XML数据格式</code>
+SOAP协议定义了SOAP消息的格式，SOAP协议是基于HTTP协议的，SOAP也是基于XML和XSD的，XML是SOAP的数据编码方式。</li>
+<li>WSDL（Web服务描述语言）
+WebService客户端要调用一个WebService服务，首先要有知道这个服务的地址在哪，以及这个服务里有什么方法可以调用，所以，WebService务器端首先要通过一个WSDL文件来说明自己家里有啥服务可以对外调用，服务是什么。<code>WSDL</code>文件是一个<code>XML</code>文档，用于描述Web Service及其函数、参数和返回值。
+<a href="http://im.intreplus.com/wse/wsesmart.asmx">smartTouch WSDL</a></li>
+</ol>
+
+<p><code>WebService</code>服务提供商可以通过两种方式来暴露它的<code>WSDL</code>文件地址：1.注册到<code>UDDI</code>服务器，以便被人查找；2.直接告诉给客户端调用者。</p>
+
+<p><code>WebService</code>的调用有3种方式：<br/>
+1)httpget <br/>
+2)httppost<br/>
+3)httpsoap<br/>
+<code>soap</code>的优点是 可以传递结构化的数据，而前两种不行</p>
+
+<p>将数据直接用XML格式封装 因此不用担心编码，大小写等问题,传递数据可以是数组，对象等</p>
+
+<p>但是由于要进行XML解析 因此会导致效率有所降低</p>
+
+<h2 id="toc_17">参考连接:</h2>
+
+<p><a href="http://blog.csdn.net/wwd0501/article/details/54582912">WebSocket介绍，与Socket的区别</a><br/>
+<a href="http://www.cnblogs.com/hoojo/p/longPolling_comet_jquery_iframe_ajax.html">Web 通信 之 长连接、长轮询</a><br/>
+<a href="http://blog.csdn.net/prl18353364833/article/details/51593643">网络七层协议 五层模型</a><br/>
+<a href="http://www.jianshu.com/p/49d7997ad3b7">Web Service到底是什么</a><br/>
+<a href="https://www.zhihu.com/question/20215561">WebSocket 是什么原理</a><br/>
+<a href="http://www.jianshu.com/p/121fc5b7f2d3">iOS Background Modes</a></p>
 
                         
                       </div>
@@ -501,10 +362,10 @@ greet(person: [&quot;name&quot;: &quot;Jane&quot;, &quot;location&quot;: &quot;C
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/6/22</span>
+                    <span class="date">2017/6/23</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
+          					    <span class="posted-in"><a href='Computer-programming.html'>计算机编程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -592,6 +453,12 @@ greet(person: [&quot;name&quot;: &quot;Jane&quot;, &quot;location&quot;: &quot;C
 	      
 		      
 			      <li class="post">
+			        <a href="15025006795297.html">析构过程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15020961612430.html">构造过程</a>
 			      </li>
 		     
@@ -611,12 +478,6 @@ greet(person: [&quot;name&quot;: &quot;Jane&quot;, &quot;location&quot;: &quot;C
 		      
 			      <li class="post">
 			        <a href="15017296324997.html">方法</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15015839505859.html">属性</a>
 			      </li>
 		     
 		  

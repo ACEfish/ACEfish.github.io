@@ -105,214 +105,291 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15003778819226.html">
+                <a class="clearlink" href="15015839505859.html">
                 
-                  <h1>枚举</h1>
+                  <h1>属性</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<ol>
-<li><p>与C语言不同，<code>Swift</code>中的枚举更加灵活，不必给每一个枚举成员提供一个值。如果给枚举成员提供一个值（称为“原始”值），则该值的类型可以是字符串，字符，或是一个整型值或浮点数。</p></li>
-<li><p>枚举成员可以指定任意类型的关联值存储到枚举成员中</p></li>
-<li><p>在 Swift 中，<strong>枚举类型</strong>是一等（first-class）类型。采用了很多在传统上只被类（class）所支持的特性，例如计算属性（computed properties），用于提供枚举值的附加信息，实例方法（instance methods），用于提供和枚举值相关联的功能。枚举也可以定义构造函数（initializers）来提供一个初始值；可以在原始实现的基础上扩展它们的功能；还可以遵循协议（protocols）来提供标准的功能。</p></li>
-</ol>
+                        	<p>属性将值跟特定的类、结构或枚举关联。存储属性存储常量或变量作为实例的一部分，而计算属性计算（不是存储）一个值。计算属性可以用于类、结构体和枚举，存储属性只能用于类和结构体。</p>
 
-<h2 id="toc_0">枚举语法</h2>
+<p>属性也可以直接作用于类型本身，这种属性称为类型属性。</p>
 
-<p>用<code>enum</code>关键字来创建枚举</p>
+<p>可以定义属性观察器来监控属性值的变化，以此来触发一个自定义的操作.可以添加到自己定义的存储属性上，也可以添加到从父类继承的属性上。</p>
 
-<pre><code class="language-swift">enum CompassPoint {
-    case north
-    case south
-    case east
-    case west
+<h2 id="toc_0">存储属性</h2>
+
+<p>存储属性就是存储在特定类或结构体实例里的一个常量或变量,可以为变量或者常量<br/>
+可以在定义存储属性时指定默认值，也可在构造过程中设置或修改存储属性值,甚至修改常量存储属性值</p>
+
+<pre><code class="language-swift">struct FixedLengthRange {
+    var firstValue: Int
+    let length: Int
 }
-
-//多个成员可以在同一行 用 , 隔开
-enum Planet {
-    case mercury, venus, earth, mars, jupiter, saturn, uranus, neptune
-}
+var rangeOfThreeItems = FixedLengthRange(firstValue: 0, length: 3)
+rangeOfThreeItems.firstValue = 6
 </code></pre>
 
-<p>我们使用<code>case</code>来定义一个新的枚举成员值</p>
+<p>定义一个结构体,包含<code>firstValue</code>变量存储属性,和<code>length</code>常量存储属性。<code>length</code>在创建实例的时候被初始化，因为它是一个常量存储属性，所以之后无法修改它的值</p>
+
+<h3 id="toc_1">常量结构体的存储属性</h3>
+
+<p>若结构体声明为常量,则无法修改实例的任何属性,即使为变量属性:</p>
+
+<pre><code class="language-swift">let rangeOfFourItems = FixedLengthRange(firstValue: 0, length: 4)
+// 该区间表示整数0，1，2，3
+rangeOfFourItems.firstValue = 6//报错不可修改
+// 尽管 firstValue 是个变量属性，这里还是会报错
+</code></pre>
+
+<p>这是由于结构体为值类型,值类型为常量则所有属性也变为常量</p>
+
+<p>对于引用类型的类来说,将引用类型赋值给一个常量，仍然可以修改实例的变量属性</p>
+
+<h3 id="toc_2">延迟存储属性</h3>
+
+<p><strong>延迟属性</strong>第一次调用时才会结算其初始化值的属性<br/>
+在属性声明前加<code>lazy</code>来标示一个延迟存储属性</p>
 
 <blockquote>
-<p>与OC不同,Swift枚举成员不会再创建时被赋予一个默认的整型值。这些枚举成员本身就是完备的值，这些值的类型是已经明确定义好的<code>CompassPoint</code>类型</p>
+<p>必须将延迟存储属性声明成<code>变量</code>（使用 var 关键字），因为属性的初始值可能在实例构造完成之后才会得到。而<strong>常量属性在构造过程完成之前必须要有初始值</strong>，因此无法声明成延迟属性。</p>
 </blockquote>
 
-<p>在<code>Swift</code>中每个枚举定义了一个全新的类型，与Swift中的其他类型一样,名字以大写字母开头</p>
-
-<pre><code class="language-swift">var directionToHead = CompassPoint.west
-//此时directionToHead类型可以被推断出来,我们可以直接使用 . 语法将其设置为另一个枚举值
-directionToHead = .east
-</code></pre>
-
-<p>当 directionToHead 的类型已知时，再次为其赋值可以省略枚举类型名。</p>
-
-<h2 id="toc_1">用switch语句匹配枚举值</h2>
-
-<p>在判断一个枚举类型值时,<code>switch</code>必须穷举所有情况，如果不需要匹配每个成员可以使用<code>default</code>分支</p>
-
-<pre><code class="language-swift">let somePlanet = Planet.earth
-switch somePlanet {
-case .earth:
-    print(&quot;Mostly harmless&quot;)
-default:
-    print(&quot;Not a safe place for humans&quot;)
+<pre><code class="language-swift">class DataImporter {
+    /*
+    DataImporter 是一个负责将外部文件中的数据导入的类。
+    这个类的初始化会消耗不少时间。
+    */
+    var fileName = &quot;data.txt&quot;
+    // 这里会提供数据导入功能
 }
-// 打印 &quot;Mostly harmless”
-</code></pre>
-
-<h2 id="toc_2">关联值</h2>
-
-<p>可以使用<code>Swift</code>的枚举来<strong>存储任意类型的关联值</strong>,枚举成员的关联值类型可以不同(关联值)</p>
-
-<pre><code class="language-swift">enum Barcode {
-    case upc(Int, Int, Int, Int)
-    case qrCode(String)
+class DataManager {
+    lazy var importer = DataImporter()
+    var data = [String]()
+    // 这里会提供数据管理功能
 }
 </code></pre>
 
-<p>定义一个枚举类型,一个成员值是具有 <code>(Int，Int，Int，Int)</code>类型关联值的 upc，另一个是<code>String</code>类型关联值的qrcode</p>
-
-<pre><code class="language-swift">//给其赋值关联的元组值
-var productBarcode = Barcode.upc(8, 85909, 51226, 3)
-//赋值新的枚举关联字符串
-productBarcode = .qrCode(&quot;ABCDEFGHIJKLMNOP&quot;)
-//productBarcode同一时间只能存储这两个值中的一个
+<pre><code class="language-swift">let manager = DataManager()
+manager.data.append(&quot;Some data&quot;)
+//此时实例的import属性还没创建
 </code></pre>
 
-<pre><code class="language-swift">switch productBarcode {
-case .upc(let numberSystem, let manufacturer, let product, let check):
-    print(&quot;UPC: \(numberSystem), \(manufacturer), \(product), \(check).&quot;)
-case .qrCode(let productCode):
-    print(&quot;QR code: \(productCode).&quot;)
-}
-// 打印 &quot;QR code: ABCDEFGHIJKLMNOP.&quot;
+<pre><code class="language-swift">print(manager.importer.fileName)
+// DataImporter 实例的 importer 属性现在被创建了
+// 输出 &quot;data.txt”
 </code></pre>
 
-<p>我们可以提取出来关联值作为常量或变量</p>
+<p><strong>如果一个被标记为<code>lazy</code>的属性在没有初始化时就同时被多个线程访问，则无法保证该属性只会被初始化一次</strong></p>
 
-<p>如果一个枚举成员的所有关联值都被提取为常量，或者都被提取为变量，为了简洁，你可以只在成员名称前标注一个<code>let</code>或者<code>var</code>：</p>
+<h3 id="toc_3">存储属性和实例变量</h3>
 
-<pre><code class="language-swift">switch productBarcode {
-case let .upc(numberSystem, manufacturer, product, check):
-    print(&quot;UPC: \(numberSystem), \(manufacturer), \(product), \(check).&quot;)
-case let .qrCode(productCode):
-    print(&quot;QR code: \(productCode).&quot;)
-}
-// 输出 &quot;QR code: ABCDEFGHIJKLMNOP.&quot;
-</code></pre>
+<p>与OC不同<code>Swift</code>没有属性对应的实例变量，因此没有办法直接访问属性的后端存储，方便统一访问方式<br/>
+使属性的全部信息包括<code>命名、类型和内存管理特征</code>都在一个地方定义</p>
 
-<h2 id="toc_3">原始值</h2>
+<h2 id="toc_4">计算属性</h2>
 
-<p>枚举成员可以被<strong>默认值（称为原始值）预填充</strong>，这些原始值的类型必须相同。</p>
-
-<pre><code class="language-swift">enum ASCIIControlCharacter: Character {
-    case tab = &quot;\t&quot;
-    case lineFeed = &quot;\n&quot;
-    case carriageReturn = &quot;\r&quot;
-}
-</code></pre>
-
-<p>枚举类型<code>ASCIIControlCharacter</code>的原始值类型被定义为<code>Character</code><br/>
-每个原始值在枚举声明中必须是唯一的。</p>
+<p>计算属性不存储值而是提供一个<code>getter</code>和一个可选的<code>setter</code>,来间接获取和设置其他属性或变量的值</p>
 
 <blockquote>
-<p>注意原始值与关联值的不同，原始值是在定义枚举是预先填充的值，对于特定的枚举成员其原始值不变<br/>
-关联值是创建一个基于枚举成员的常量或变量时才设置的值,枚举成员的关联值可以变化</p>
+<p>必须使用 var 关键字定义计算属性，包括只读计算属性，因为它们的值不是固定的</p>
 </blockquote>
 
-<h3 id="toc_4">原始值的隐式赋值</h3>
-
-<p>当原始值为整数或者字符串类型的枚举时,Swift会自动为每个枚举成员设置原始值;</p>
-
-<ol>
-<li><p>原始值为整形枚举</p>
-
-<pre><code class="language-swift">enum Planet: Int {
-    case mercury = 1, venus, earth, mars, jupiter, saturn, uranus, neptune
+<pre><code class="language-swift">struct Point {
+    var x = 0.0, y = 0.0
 }
-</code></pre>
-
-<p>当使用整数作为原始值时，隐式赋值的值依次递增1。如果第一个枚举成员没有设置原始值，其原始值将为0</p></li>
-<li><p>原始值为字符串类型</p>
-
-<pre><code class="language-swift">enum CompassPoint: String {
-    case north, south, east, west
+struct Size {
+    var width = 0.0, height = 0.0
 }
-//CompassPoint.south 拥有隐式原始值 south
-</code></pre>
-
-<p>使用字符串作为枚举类型的原始值时，每个枚举成员的隐式原始值为该枚举成员的名称</p></li>
-</ol>
-
-<p>使用枚举成员的<code>rawValue</code>属性可以访问枚举成员初始值</p>
-
-<pre><code class="language-swift">let earthsOrder = Planet.earth.rawValue
-    // earthsOrder 值为 3
-let sunsetDirection = CompassPoint.west.rawValue
-    // sunsetDirection 值为 &quot;west&quot;
-</code></pre>
-
-<h3 id="toc_5">原始值初始化枚举实例</h3>
-
-<p>定义枚举时使用原始值,会获得一个初始化方法,有一个<code>rawValue</code>类型为原始值类型的参数，返回一个枚举类型或为<code>nil</code></p>
-
-<pre><code class="language-swift">let possiblePlanet = Planet(rawValue: 7)
-// possiblePlanet 类型为 Planet? 值为 Planet.uranus
-//因为不一定都能找到匹配的行星  返回的是可选类型
-let positionToFind = 11
-if let somePlanet = Planet(rawValue: positionToFind) {
-    switch somePlanet {
-    case .earth:
-        print(&quot;Mostly harmless&quot;)
-    default:
-        print(&quot;Not a safe place for humans&quot;)
-    }
-} else {
-    print(&quot;There isn&#39;t a planet at position \(positionToFind)&quot;)
-}
-//找不到11代表的行星
-</code></pre>
-
-<h2 id="toc_6">递归枚举</h2>
-
-<p>是一种枚举类型  有一个或多个成员使用该枚举类型实例作为关联值</p>
-
-<p>可以在枚举成员前加<code>indirect</code>表示该成员可递归, 或者在枚举类型开头加上<code>indirect</code>关键字来表明它的所有成员都是可递归</p>
-
-<pre><code class="language-swift">enum ArithmeticExpression {
-    case number(Int)
-    indirect case addition(ArithmeticExpression, ArithmeticExpression)
-    indirect case multiplication(ArithmeticExpression, ArithmeticExpression)
-}
-
-indirect enum ArithmeticExpression {
-    case number(Int)
-    case addition(ArithmeticExpression, ArithmeticExpression)
-    case multiplication(ArithmeticExpression, ArithmeticExpression)
-}
-
-//递归枚举使用
-let five = ArithmeticExpression.number(5)
-let four = ArithmeticExpression.number(4)
-let sum = ArithmeticExpression.addition(five, four)
-let product = ArithmeticExpression.multiplication(sum, ArithmeticExpression.number(2))
-
-//递归函数中使用递归枚举
-func evaluate(_ expression: ArithmeticExpression) -&gt; Int {
-    switch expression {
-    case let .number(value):
-        return value
-    case let .addition(left, right):
-        return evaluate(left) + evaluate(right)
-    case let .multiplication(left, right):
-        return evaluate(left) * evaluate(right)
+struct Rect {
+    var origin = Point()
+    var size = Size()
+    var center: Point {
+        get {
+            let centerX = origin.x + (size.width / 2)
+            let centerY = origin.y + (size.height / 2)
+            return Point(x: centerX, y: centerY)
+        }
+        set(newCenter) {
+            origin.x = newCenter.x - (size.width / 2)
+            origin.y = newCenter.y - (size.height / 2)
+        }
     }
 }
-print(evaluate(product))//18
+var square = Rect(origin: Point(x: 0.0, y: 0.0),
+                  size: Size(width: 10.0, height: 10.0))
+let initialSquareCenter = square.center
+square.center = Point(x: 15.0, y: 15.0)
+print(&quot;square.origin is now at (\(square.origin.x), \(square.origin.y))&quot;)
+</code></pre>
+
+<p>可以通过<code>square.center</code>访问计算属性<code>center</code> 会调用<code>getter</code>计算新的值返回<br/>
+<code>center</code>可以设置一个新值,会调用<code>setter</code>来修改<code>origin</code>来移动正方形</p>
+
+<h3 id="toc_5">简化setter声明</h3>
+
+<p>如果计算属性的<code>setter</code>没有定义表示新值,就可以使用默认名称<code>newValue</code></p>
+
+<pre><code class="language-swift">struct AlternativeRect {
+    var origin = Point()
+    var size = Size()
+    var center: Point {
+        get {
+            let centerX = origin.x + (size.width / 2)
+            let centerY = origin.y + (size.height / 2)
+            return Point(x: centerX, y: centerY)
+        }
+        set {
+            origin.x = newValue.x - (size.width / 2)
+            origin.y = newValue.y - (size.height / 2)
+        }
+    }
+}
+</code></pre>
+
+<h3 id="toc_6">只读的计算属性</h3>
+
+<p>只有<code>getter</code>没有<code>setter</code>的计算属性就是只读计算属性，可以访问值,不能设置新值</p>
+
+<pre><code class="language-swift">struct Cuboid {
+    var width = 0.0, height = 0.0, depth = 0.0
+    var volume: Double {
+        return width * height * depth
+    }
+}
+</code></pre>
+
+<p>只读属性可以省略掉 <code>get</code>关键字和花括号</p>
+
+<h2 id="toc_7">属性观察器</h2>
+
+<p><strong>属性观察器</strong>监控和响应属性值变化，每次属性被设置时会调用属性观察器</p>
+
+<p>为<code>除了延迟属性</code>外其他存储属性添加属性观察器，对于继承的存储属性和计算属性,通过重写的方式来添加属性观察器<br/>
+对于非继承的计算属性没必要添加属性观察器，我们可以通过<code>setter</code>方法直接监控</p>
+
+<p>属性观察期器:<br/>
+* <code>willSet</code>在新值被设置前调用<br/>
+* <code>didSet</code>在新值被设置之后调用</p>
+
+<p><code>willSet</code>观察器会将新的属性值作为常量参数传入，在<code>willSet</code>的实现代码中可以为这个参数指定一个名<br/>
+称，如果不指定则参数仍然可用，这时使用默认名称<code>newValue</code>表示。</p>
+
+<p><code>didSet</code>观察器会将旧的属性值作为参数传入，可以为该参数命名或者使用默认参数名<code>oldValue</code>。如果<br/>
+在<code>didSet</code>方法中再次对该属性赋值，那么新值会覆盖旧的值</p>
+
+<blockquote>
+<p>父类的属性在子类的构造器中被赋值时，它在父类中的 willSet 和 didSet 观察器会被调用，随后才会调用子类的观察器。在父类初始化方法调用之前，子类给属性赋值时，观察器不会被调用。</p>
+</blockquote>
+
+<pre><code class="language-swift">class StepCounter {
+    var totalSteps: Int = 0 {
+        willSet(newTotalSteps) {
+            print(&quot;About to set totalSteps to \(newTotalSteps)&quot;)
+        }
+        didSet {
+            if totalSteps &gt; oldValue {
+                print(&quot;Added \(totalSteps - oldValue) steps&quot;)
+            }
+        }
+    }
+}
+let stepCounter = StepCounter()
+stepCounter.totalSteps = 200
+// About to set totalSteps to 200
+// Added 200 steps
+</code></pre>
+
+<p>注意:<br/>
+在willSet或者didSet方法中设置属性值是不会触发的属性观察器方法  </p>
+
+<blockquote>
+<p>如果将属性通过<code>in-out</code>方式传入函数，<code>willSet</code>和<code>didSet</code>也会调用。这是因为<code>in-out</code>参数采用了拷入拷出模式：即在函数内部使用的是参数的<code>copy</code>，函数结束后，又对参数重新赋值。</p>
+</blockquote>
+
+<h2 id="toc_8">全局变量和局部变量</h2>
+
+<p>全局变量是在函数、方法、闭包或任何类型之外定义的变量。局部变量是在函数、方法或闭包内部定义的变量。</p>
+
+<p><strong>计算属性和属性观察器所描述的功能也可以用于全局变量和局部变量</strong></p>
+
+<p>我们之前用的变量都是存储型变量,跟存储属性类似，它为特定类型的值提供存储空间，并允许读取和写入</p>
+
+<p>我们可以在全局或局部范围为存储型变量定义观察器</p>
+
+<p>在全局或局部范围都可以定义计算型变量。计算型变量跟计算属性一样，返回一个计算结果而不是存储值，声明格式也完全一样</p>
+
+<p><strong>注意:</strong><br/>
+1. 全局的常量或变量都是延迟计算，类似<code>延迟属性</code>但是不需要<code>lazy</code>声明<br/>
+2. 局部的常量或变量从不延迟计算</p>
+
+<h2 id="toc_9">类型属性</h2>
+
+<p>可以为类型本身定义属性</p>
+
+<p>类型属性用于定义某个类型所有实例共享的数据</p>
+
+<p>类型属性也可以有 存储型的常量或变量 计算型的只能为变量</p>
+
+<p>注意:</p>
+
+<blockquote>
+<p>存储型类型属性必须指定默认值，因为类型本身没有构造器，也就无法在初始化过程中使用构造器给类型属性赋值</p>
+
+<p>存储型类型属性是延迟初始化的，它们只有在第一次被访问的时候才会被初始化。即使它们被多个线程同时访问，系统也保证只会对其进行一次初始化，并且不需要对其使用<code>lazy</code>修饰符。</p>
+</blockquote>
+
+<h3 id="toc_10">类型属性语法</h3>
+
+<p>在<code>OC</code>中,在类中关联的静态变量和常量是作为全局静态变量定义</p>
+
+<p>在<code>Swift</code>中，类型属性是作为类型定义的一部分写在类型最外层的花括号内，作用范围就在类型支持的范围内</p>
+
+<p>使用<code>static</code>来定义类型属性。<br/>
+在为类定义计算型类型属性时，可以改用关键字<code>class</code>来支持子类对父类的实现进行重写</p>
+
+<pre><code class="language-swift">//结构体
+struct SomeStructure {
+    static var storedTypeProperty = &quot;Some value.&quot;
+    static var computedTypeProperty: Int {
+        return 1
+    }
+}
+//枚举
+enum SomeEnumeration {
+    static var storedTypeProperty = &quot;Some value.&quot;
+    static var computedTypeProperty: Int {
+        return 6
+    }
+}
+//类
+class SomeClass {
+    static var storedTypeProperty = &quot;Some value.&quot;
+    static var computedTypeProperty: Int {
+        return 27
+    }
+    //子类对父类的实现进行重写
+    class var overrideableComputedTypeProperty: Int {
+        return 107
+    }
+}
+
+</code></pre>
+
+<h3 id="toc_11">获取和设置类型属性值</h3>
+
+<p>类型属性通过点运算符通过类型本身来访问</p>
+
+<pre><code class="language-swift">print(SomeStructure.storedTypeProperty)
+    // 打印 &quot;Some value.&quot;
+SomeStructure.storedTypeProperty = &quot;Another value.&quot;
+print(SomeStructure.storedTypeProperty)
+    // 打印 &quot;Another value.”
+print(SomeEnumeration.computedTypeProperty)
+    // 打印 &quot;6&quot;
+print(SomeClass.computedTypeProperty)
+    // 打印 &quot;27&quot;
 </code></pre>
 
                         
@@ -322,7 +399,7 @@ print(evaluate(product))//18
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/7/18</span>
+                    <span class="date">2017/8/1</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -413,6 +490,12 @@ print(evaluate(product))//18
 	      
 		      
 			      <li class="post">
+			        <a href="15025006795297.html">析构过程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15020961612430.html">构造过程</a>
 			      </li>
 		     
@@ -432,12 +515,6 @@ print(evaluate(product))//18
 		      
 			      <li class="post">
 			        <a href="15017296324997.html">方法</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15015839505859.html">属性</a>
 			      </li>
 		     
 		  

@@ -105,214 +105,64 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14865484031774.html">
+                <a class="clearlink" href="14866309753746.html">
                 
-                  <h1>IOS开发小知识</h1>
+                  <h1>iOS中UISearchController</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h3 id="toc_0">1. MJRefresh使用小知识</h3>
+                        	<h4 id="toc_0">1. 使用方法</h4>
 
-<pre><code>1. 隐藏下拉刷新的时间Label  
-
- ```Object-c
-MJRefreshHeader *refreshHead = [MJRefreshHeader headerWithRefreshingTarget:target refreshingAction:action];  
-refreshHead.lastUpdatedTimeLabel.hidden = YES;
-```
-2. 上拉加载了所有数据  
-    可以选择在尾视图显示加载完成:  
-
-    ```Object-c
-    [refreshTableView.mj_footer endRefreshingWithNoMoreData];
-    ```
-    也可以在加载完成后隐藏上拉加载的视图:
-
-    ```Object-c
-    refreshTableView.mj_footer.hidden = YES;
-    ``` 
+<pre><code class="language-Object-c">SearchResultController *vc = [[SearchResultController alloc] init];
+    self.searchController = [[SearchControllerOfContacts alloc] initWithSearchResultsController:vc];
+    [self.tableView setTableHeaderView:self.searchController.searchBar];
+    [self.searchController setSearchResultsUpdater:vc];
+    [self.searchController.searchBar setPlaceholder:NSLocalizedString(@&quot;昵称、手机号&quot;, nil)];
+    self.resultController = vc;
 </code></pre>
 
-<h3 id="toc_1">2.cell 初始化</h3>
+<p>此处是设置searchBar为tableView的头视图<br/>
+<strong>注意</strong><br/>
+此处的searchConroller 和 searchResultcontroller都必须为该控制器的属性(即强引用住）</p>
 
-<p>对于tableView或者CollectionView的cell或者item 如果是以注册的方式初始化的话一定是会有的，因此就不需要if(!<code>cell</code>)的方式判空，因为一定是存在的<br/>
-    对于collection的头尾市图方式是一样的 因为其头尾视图也是用注册方式的</p>
+<h4 id="toc_1">2. 自定义的UISearchController</h4>
 
-<h3 id="toc_2">3. 属性自动合成存取方法</h3>
+<p>我们可以继承自UISearchController，重写其<code>initWithSearchResultsController</code>方法即可:</p>
 
-<p>在我们使用属性时，编译器会自动编写访问这些属性所需要的方法，即“自动合成”.这个过程是编译器在编译期间执行的因此我们看不到这些合成方法。除了添加方法外,编译器还自动向类中添加适当类的实例变量。<br/>
-    我们可以自己更改编译器的变量名字<br/>
-    我们可以自己实现存取方法，如果你实现了一个 那么另外一个还是会由编译器合成。我们也可以用<code>@dynamic</code>关键字来阻止编译器自动合成存取方法.</p>
-
-<h3 id="toc_3">4. 控制器在被pop后未销毁原因</h3>
-
-<p>控制器在被pop后移出栈后会被释放，但有些时候会发现控制器出栈的时候不会调用dealloc方法，归根结底，是因为当前控制器被某个对象强引用了，控制器的引用计数不为0，系统无法帮你释放这部分内存<br/>
-    以下几种原因:<br/>
-    1. 控制器中NSTimer没有被销毁<br/>
-    2. 控制器中的代理不是weak属性<br/>
-    3. 控制器中block的循环引用</p>
-
-<pre><code>但是:比如添加的CAAnimation动画是就算不移除也不会影响的释放的
-</code></pre>
-
-<h3 id="toc_4">5.对象设置属性的KVC</h3>
-
-<p>[self setValue:obj forKey:propertyKey];</p>
-
-<h3 id="toc_5">6. frame、bounds、center、anchor、transform 关系：</h3>
-
-<pre><code class="language-objc">-(CGRect) frame  
-{  
-     float x = center.x - layer.anchorPoint.x * bounds.width;   
-     float y = center.y - layer.anchorPoint.y * bounds.height;  
-     float width = bounds.width;
-     float height = bounds.height;  
-     return CGRectMake(x, y, width, height);
-}
-
--(void) setFrame:(CGRect) rect
+<pre><code class="language-Object-c">- (id)initWithSearchResultsController:(UIViewController *)searchResultsController
 {
-    center.x = rect.x + layer.anchorPoint.x * rect.width;
-    center.y = rect.y + layer.anchorPoint.y * rect.height;
-    bounds.width = rect.width;
-    bounds.height = rect.height;
-}
-</code></pre>
-
-<p>layer的position和 UIVIew的center是等效的 任何时候都是相等的</p>
-
-<p>所以当我们设置anchor为（0.0）因为bounds没变 center没变 因此frame会变化 而且center出现在左上角 </p>
-
-<p><strong>注意</strong><br/>
-当一个view的transform被更改了，即不为CGAffineTransformIdentity。<br/>
-frame属性可能会更改，view的bounds，center不会变，layer的position不会变。这个很重要，这样保持了在transform后，view的frame虽然改变了，但是内部参考系是不变的，可以继续进行其他变换，只要不更改frame或center或layer的position。</p>
-
-<h3 id="toc_6">7.隐藏Tabbar</h3>
-
-<h3 id="toc_7">8. 改变cell点击效果</h3>
-
-<p>1.这只是改变点击的颜色 点击效果还在(比如cell上的view颜色消失,image动画暂停)</p>
-
-<pre><code class="language-objc">cell.selectedBackgroundView = [[UIView alloc] initWithFrame:self.frame] ;
-cell.selectedBackgroundView.backgroundColor = [UIColor grayColor];
-</code></pre>
-
-<p>2.这个方法直接关闭了系统的点击效果 自己设计了cell的点击背景颜色变化</p>
-
-<pre><code class="language-objc">cell.selectionStyle = UITableViewCellSelectionStyleNone;
-
-//重写cell的点击高亮
-//bgView是我们铺满在cell.contentView上的最后的view
-- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
-    [super setHighlighted:highlighted animated:animated];
-    if (highlighted) {
-        [UIView animateWithDuration:0.25 animations:^{
-            self.contentBgView.backgroundColor = ICColorOfBorder_Gray;
-        }];
-    } else {
-        [UIView animateWithDuration:0.25 animations:^{
-            self.contentBgView.backgroundColor = [UIColor whiteColor];
-        }];
+    if (self = [super initWithSearchResultsController:searchResultsController]) {
+        self.searchBar.layer.borderWidth = 1;
+        self.searchBar.layer.borderColor = [ITRGBColor(239.0, 239.0, 244.0, 1.0)CGColor];
+        [self.searchBar setBarTintColor:ITRGBColor(239.0, 239.0, 244.0, 1.0)];
+        [self.searchBar setValue:@&quot;取消&quot; forKey:@&quot;_cancelButtonText&quot;];
+        UITextField *tf = [[[self.searchBar.subviews firstObject] subviews] lastObject];
+        [tf.layer setMasksToBounds:YES];
+        [tf.layer setBorderWidth:0.5f];
+        [tf.layer setBorderColor:[UIColor colorWithWhite:0.5 alpha:0.3].CGColor];
+        [tf.layer setCornerRadius:5.0f];
         
     }
+    return self;
 }
 </code></pre>
 
-<h3 id="toc_8">9.强制cell不复用</h3>
+<h4 id="toc_2">3.深度解析UISearchController 以及其SearchResultControll原理</h4>
 
-<p>有时候我们列表中有一个或很少几个cell 是特殊样式 我们并不想它参与cell的复用  </p>
+<p>当UISearchController出现时，UISearchController也是一个控制器就相当于模态出来一个控制器<br/>
+<img src="media/14866309753746/UISearchController.png" alt="UISearchControlle的层级表示"/><br/>
+<img src="media/14866309753746/searchController_big.png" alt="searchController_big"/></p>
 
-<pre><code class="language-objc">UITableViewCell *cell;
-//不复用的cell
-//这样强制性初始化一个cell 不参与复用
-cell = [[UITableViewCell alloc] init];
-//参与复用的
-cell = [tableView dequeueReusableCellWithIdentifier:identifier];
-if (!cell) {
-    cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:identifier];
-}
+<p>我们可以看出来 我们首先从原来控制器模态出来我们自己的UISearchController 而UISearchControllView就是这个控制器的View即蓝色部分  而搜索结果的显示即在其上加了一个View这个view即为我们的搜索结果控制器的view<br/>
+因此我们改变这个SearchControllView颜色并不会影响显示 但是如果把其上加上别的视图 就会影响结果的显示的<br/>
+<img src="media/14866309753746/searchController2.png" alt="searchControlle"/><br/>
+可以看到显示结果的View被我们后加的tableView挡住了,这时候我们可以<strong><code>sendSubviewToBack</code></strong>来直接将tableView放置到显示结果的view后面即可了</p>
 
-</code></pre>
+<h4 id="toc_3">3.UISearchController 上的searchBar原理</h4>
 
-<h3 id="toc_9">10.isKindOfClass &amp;&amp; isMemberOfClass</h3>
-
-<p>对于我们自定义的继承自UInavigaiton的自定义Navigaition类初始化的对象 并不能用ismemberof判断是不是UINavigation的子类 可以用 iskindof</p>
-
-<h3 id="toc_10">11.present视图控制器  &amp;&amp; 透明控制器</h3>
-
-<h3 id="toc_11">12.tableView reload 引起的复用 不会再次初始化</h3>
-
-<p>当tableView的cell有复用并且已经初始化后,再次reloadData这个tableView并不会引起cell重新初始化</p>
-
-<h3 id="toc_12">13.Timer未移除引起的问题</h3>
-
-<p>如果是是视图控制器的timer未移除 这个视图控制器不会被销毁 <br/>
-如果是视图的timer 这个控制器被销毁这个试图都不会被销毁</p>
-
-<h3 id="toc_13">14.设置按钮disable状态下和平常状态图片相同</h3>
-
-<p>[self.confimButton setAdjustsImageWhenDisabled:YES]</p>
-
-<h3 id="toc_14">15.awakeFromNib</h3>
-
-<p><code>awakeFromNib</code>是nib文件加载完成执行 就是loadFromNib执行完成后执行,而不是在nib文件即将呈现时执行</p>
-
-<h3 id="toc_15">16.tableView</h3>
-
-<pre><code class="language-objc">//动画改变tableView
-[self.tableView beginUpdates];  
-[self.tableView setTableHeaderView:headerView];  
-[self.tableView endUpdates];  
-</code></pre>
-
-<h3 id="toc_16">17.textView</h3>
-
-<p>textView.contentInset = UIEdgeInsetsMake(-64, 0, 0, 0);</p>
-
-<h3 id="toc_17">18.判断字典是否包含某个键</h3>
-
-<p>直接对这个字典取这个值 objectForKey 或者 dic[key] 对取出来的值判空即可 <br/>
-但是要保证这确实是一个字典</p>
-
-<h3 id="toc_18">19.oc中字符串与整型装换</h3>
-
-<p>在OC中想将字符串转为整形不能<code>(int)string</code>这样强制类型装换 这样会得到一个很大的无意义值,应该用<code>string.intValue</code>这样的形式 这样的话对于@“123”这样的字符串可以获得整型123,而对于“qed”等不能转转为整形的得到为0</p>
-
-<p>同理，想将整形转为字符串也不能用<code>(NSString *)int</code>(这种形式也是不允许的将整形转为指针？) 这样强转的形式,或得到我们意想不到结果,我们可以用<code>@（int）.stringValue</code>形式</p>
-
-<h3 id="toc_19">20.控制器present问题</h3>
-
-<p>对于present出来的控制器<br/>
-例如 A present B ， 然后 B present C ，这时候我们直接对B执行dismiss时没有问题的 不会导致崩溃 只会致使B和C均消失</p>
-
-<h3 id="toc_20">21.UIButton 扩展</h3>
-
-<p>button添加事件可以传递event参数,我们可以通过这个参数传递很多信息（比如点击位置）<br/>
-[speakBtn addTarget:self action:@selector(speakBtnDragged:withEvent:) forControlEvents:UIControlEventTouchDragOutside];</p>
-
-<h3 id="toc_21">22.权限服务</h3>
-
-<p>当改变应用的 通讯录 照片 相机权限 时会导致应用从新launch</p>
-
-<p>而改变应用或者手机定位权限时不会使应用状态改变</p>
-
-<h3 id="toc_22">23.label高亮颜色</h3>
-
-<pre><code class="language-objc">// the &#39;highlight&#39; property is used by subclasses for such things as pressed states. it&#39;s useful to make it part of the base class as a user property
-
-@property(nullable, nonatomic,strong) UIColor *highlightedTextColor; // default is nil
-</code></pre>
-
-<h3 id="toc_23">24.imageView内容是会超出iamgeView的</h3>
-
-<p>设置<code>imageView</code>的<code>contentMode</code><br/>
-除了<code>UIViewContentModeScaleToFill</code>和<code>UIViewContentModeScaleAspectFit</code><br/>
-其他mode会超出边<br/>
-需要<code>self.iamgeView.layer.masksToBounds = YES;</code>进行裁剪</p>
-
-<h3 id="toc_24">25.对象是存放在堆中 变量名存放在栈中</h3>
-
-<p>初始化一个对象 对象是放在堆中的</p>
+<p>显示的searchBar是因为searcontroller上有一块searBarContainView 在其上放置了searchBar,还有背景图片 取消按钮等<br/>
+<img src="media/14866309753746/UISearchBar.png" alt="UISearchBa"/></p>
 
                         
                       </div>
@@ -321,10 +171,10 @@ if (!cell) {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/8</span>
+                    <span class="date">2017/2/9</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
+          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -412,6 +262,12 @@ if (!cell) {
 	      
 		      
 			      <li class="post">
+			        <a href="15025006795297.html">析构过程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15020961612430.html">构造过程</a>
 			      </li>
 		     
@@ -431,12 +287,6 @@ if (!cell) {
 		      
 			      <li class="post">
 			        <a href="15017296324997.html">方法</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15015839505859.html">属性</a>
 			      </li>
 		     
 		  

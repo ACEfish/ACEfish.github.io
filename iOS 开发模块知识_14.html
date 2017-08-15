@@ -105,184 +105,343 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14951065647732.html">
+                <a class="clearlink" href="14968373667230.html">
                 
-                  <h1>图层性能</h1>
+                  <h1>Swift 基础部分</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>图层树</p>
+                        	<p>Swift 包含了C和Objective-C上所有基础数据类型，<code>Int</code>表示整型值；<code>Double</code>和<code>Float</code>表示浮点型值；<code>Bool</code>是布尔型值；<code>String</code>是文本型数据。 Swift 还提供了三个基本的集合类型<code>Array</code> ，<code>Set</code> 和<code>Dictionary</code><br/>
+除了我们熟悉的类型，<code>Swift</code>还增加了<code>Objective-C</code>中没有的高阶数据类型比如元组（<code>Tuple</code>）。<br/>
+<code>Swift</code>还增加了可选（Optional）类型，用于处理值缺失的情况。</p>
 
-<p>选择性地选取光栅化或者绘制图层内容在合适的时候重新分配给CPU和GPU</p>
+<p><code>Swift</code>是一门类型安全的语言，这意味着<code>Swift</code>可以让你清楚地知道值的类型。</p>
 
-<h3 id="toc_0">隐式绘制</h3>
+<h2 id="toc_0">常量和变量</h2>
 
-<p>我们前几章讨论了几个场景下的优化:1.通过Core Graphics直接绘制 2.直接载入一个图片文件并赋值<br/>
-给<code>contents</code>属性 3.事先绘制一个屏幕之外的<code>CGContext</code>上下文</p>
+<p>常量的值一旦设定就不能改变，而变量的值可以随意更改。</p>
 
-<p>我们可以通过以下方式创建隐式的寄宿图:<br/>
-1. 使用特定的图层属性<br/>
-2. 特定的视图<br/>
-3. 特定的图层子类</p>
+<h3 id="toc_1">声明常量和变量</h3>
 
-<h4 id="toc_1">文本</h4>
+<p>用<code>let</code>来声明常量，用<code>var</code>来声明变量</p>
 
-<p><code>CATextLayer</code>和<code>UILabel</code>都是直接将文本绘制在图层的寄宿图中。</p>
-
-<p>尽可能地避免改变那些包含文本的视图的<code>frame</code>，因为这样做的话文本就需要重绘。例如，如果你想在图层的角落里显示一段静态的文本，但是这个图层经常改动，你就应该把文本放在一个子图层中。</p>
-
-<h4 id="toc_2">光栅化</h4>
-
-<p>启用<code>CALayer</code>的<code>shouldRaterize</code>属性会将图层绘制到一个屏幕之外的图像。然后这个图像会被缓存起来并绘制到实际图层的<code>contents</code>和子图层。如果有很多的子图层或者有复杂的效果应用，这样做就会比重绘所有事务的所有帧划得来得多。但是光栅化原始图像需要时间，而且还会消耗额外的内存。</p>
-
-<p>光栅化使用的当可以提供很大性能优势,但是避免使用在不断变动的图层上。否则缓存没用了。</p>
-
-<p>可以使用<code>Instrument</code>查看一下<code>Color Hits Green</code>和<code>Misses Red</code>项目，是否已光栅化图像被频繁地刷新,可以知道我们是否正确使用了光栅化</p>
-
-<h3 id="toc_3">离屏渲染</h3>
-
-<p>当图层属性的混合体被指定为在未预合成之前不能直接在屏幕中绘制时，屏幕外渲染被唤起。屏幕外渲染并不意味着软件绘制，但是它意味着图层必须在被显示之前在一个屏幕外上下文中被渲染（不论CPU还是GPU）。图层的以下属性将会触发屏幕外绘制：</p>
-
-<ul>
-<li>圆角（当和 maskToBounds 一起使用时）</li>
-<li>图层蒙板</li>
-<li>阴影</li>
-</ul>
-
-<p>屏幕外渲染和我们启用光栅化时相似，除了它并没有像光栅化图层那么消耗大，子图层并没有被影响到，而且结果也没有被缓存，所以不会有长期的内存占用。但是如果太多图层在屏幕外渲染依然会影响性能</p>
-
-<p>如果那些离屏绘制的图层并不会被频繁重绘的话,为这些图层开启光栅化也是一种优化方式</p>
-
-<p>对于那些需要动画而且要在屏幕外渲染的图层来说，你可以用<code>CAShapeLayer</code>，<code>contentsCenter</code>或者<code>shadowPath</code>来获得同样的表现而且较少地影响到性能。</p>
-
-<h4 id="toc_4">CAShaprLayer(圆角)</h4>
-
-<p><code>cornerRadius</code>和<code>maskToBounds</code>独立作用的时候都不会有太大的性能问题，但是当他俩结合在一起，就触发了屏幕外渲染。</p>
-
-<p>为了不引起性能问题,我们可以用现成的<code>UIBezierPath</code>的构造器<code>+ bezierPathWithRoundedRect:cornerRadius:</code>虽然不比直接用<code>cornerRadius</code>更快,但是避免性能问题</p>
-
-<pre><code class="language-objc">    - (void)viewDidLoad
-    {
-        [super viewDidLoad];
-        //create shape layer
-        CAShapeLayer *blueLayer = [CAShapeLayer layer];
-        blueLayer.frame = CGRectMake(50, 50, 100, 100);
-        blueLayer.fillColor = [UIColor blueColor].CGColor;
-        blueLayer.path = [UIBezierPath bezierPathWithRoundedRect:
-        CGRectMake(0, 0, 100, 100) cornerRadius:20].CGPath;
-        //add it to our view
-        [self.layerView.layer addSublayer:blueLayer];
-    }
+<pre><code class="language-Swift">//一行中声明多个
+var x = 0.0, y = 0.0, z = 0.0
 </code></pre>
 
-<h4 id="toc_5">可伸缩图片(圆角)</h4>
+<p>注意:<strong>如果你的代码中有不需要改变的值，请使用 let 关键字将它声明为常量。只将需要改变的值声明为变量。</strong></p>
 
-<p>另外一个创建圆角矩形的方法使用一个圆形内容图片,并设置其<code>contentsCenter</code>去创建一个可伸缩图片.<br/>
-理论上来说，这个应该比用<code>CAShapeLayer</code>要快，因为一个可拉伸图片只需要18个三角形（一个图片是由一个3*3网格渲染而成），然而，许多都需要渲染成一个顺滑的曲线。在实际应用上，二者并没有太大的区别。</p>
+<h3 id="toc_2">类型标注</h3>
 
-<pre><code class="language-objc">- (void)viewDidLoad
-{
-    [super viewDidLoad];
-    //create layer
-    CALayer *blueLayer = [CALayer layer];
-    blueLayer.frame = CGRectMake(50, 50, 100, 100);
-    blueLayer.contentsCenter = CGRectMake(0.5, 0.5, 0.0, 0.0);
-    blueLayer.contentsScale = [UIScreen mainScreen].scale;
-    blueLayer.contents = (__bridge id)[UIImage imageNamed:@&quot;Circle.png&quot;].CGImage;
-    //add it to our view
-    [self.layerView.layer addSublayer:blueLayer];
-}
-/**
-    使用可伸缩图片的优势在于它可以绘制成任意边框效果而不需要额外的性能消耗。举个例子，可伸缩图片
-    甚至还可以显示出矩形阴影的效果。
+<p>声明常量或者变量的时候可以加上类型标注，在常量或者变量名后面加上一个冒号和空格，然后加上类型名称。(声明时如果有初始值，Swift可以推断出这个常量或者变量的类型)</p>
+
+<pre><code class="language-Swift">//可以在一行中定义多个同样类型的变量，用逗号分割，并在最后一个变量名之后添加类型标注：
+var red, green, blue: Double
+</code></pre>
+
+<h3 id="toc_3">常量和变量的命名</h3>
+
+<p>常量与变量名不能包含数学符号，箭头，保留的（或者非法的）Unicode 码位，连线与制表符。也不能以数字开头，但是可以在常量与变量名的其他地方包含数字。</p>
+
+<p>如果你需要使用与Swift保留关键字相同的名称作为常量或者变量名，你可以使用反引号（`）将关键字包围的方式将其作为名字使用。（不推荐）</p>
+
+<h3 id="toc_4">输出常量和变量</h3>
+
+<p>用 <code>print(someValue, separator:, terminator:)</code> 函数来输出当前常量或变量的值:<br/>
+<code>separator</code>用来设置各个值间的拼接字符串<br/>
+<code>terminator</code>用来设置输出结果结束后的结束字符，默认为“\n”换行</p>
+
+<pre><code class="language-swift">print(&quot;111&quot;, &quot;222&quot;, separator:&quot;--&quot;, terminator:&quot;结束符 &quot;)
+print(&quot;111&quot;, &quot;222&quot;, separator:&quot;--&quot;, terminator:&quot;结束符 &quot;)
+//输出结果(并没有换行)
+//111--222结束符 111--222结束符
+</code></pre>
+
+<p><code>Swift</code>用<strong>字符串插值</strong>（string interpolation）的方式把常量名或者变量名当做占位符加入到长字符串中，<code>Swift</code>会用当前常量或变量的值替换这些占位符。将常量或变量名放入圆括号中，并在开括号前使用反斜杠将其转义：</p>
+
+<pre><code class="language-Swift">/*
+    若只是要print一个变量或者常量可以直接print，但是如果要将这个拼接到字符串中需要这
+    样做
 */
+print(&quot;The current value of friendlyWelcome is \(friendlyWelcome)&quot;)
+// 输出 &quot;The current value of friendlyWelcome is Bonjour!
 </code></pre>
 
-<h4 id="toc_6">shadowPath</h4>
+<blockquote>
+<p><code>print(_:separator:terminator:)</code>这个函数第一个参数为<code>_</code>即并没有设置标签,其他参数设置了标签并且有默认值因此是可选的</p>
+</blockquote>
 
-<p>对于<code>shadowPath</code>属性，对于简单的几何图形(假设不包含任何透明部分或者子视图),创建阴影路径较容易，<code>Core Animation</code>绘制这个阴影也相当简单,避免了屏幕外图层部分预排版，对性能有好处。</p>
+<h2 id="toc_5">注释</h2>
 
-<p>如果是个复杂的图形,那么生成阴影路径就比较困难，可以考虑用绘图软件生成一个阴影背景图</p>
+<p>单行注释用双正斜杠<code>（ // ）</code>作为起始标记:<br/>
+多行注释用：</p>
 
-<h3 id="toc_7">混合和过度绘制</h3>
-
-<p>我们知道,<code>GPU</code>每一帧可以绘制的像素有一个最大限制（就是所谓的<code>fill rate</code>），这个情况下可以轻易地绘制整个屏幕的所有像素。但是如果由于重叠图层的关系需要不停地重绘同一区域的话，掉帧就可能发生了。</p>
-
-<p>GPU会放弃绘制那些完全被其他图层遮挡的像素，但是要计算出一个图层是否被遮挡也是相当复杂并且会消耗处理器资源。同样，合并不同图层的透明重叠像素（即混合）消耗的资源也是相当客观的。所以为了加速处理进程，不到必须时刻不要使用透明图层。<br/>
-任何情况下，你应该这样做：</p>
-
-<ul>
-<li>给视图的<code>backgroundColor</code>属性设置一个固定的，不透明的颜色</li>
-<li>设置<code>opaque</code>属性为YES</li>
-</ul>
-
-<p>这样减少了混合行为（因为编译器知道图层后的东西不对最终像素残生影响）计算得到加速，因为<code>Core Animation</code>完全可以舍弃所有被完全遮盖的图层，避免了过度绘制。</p>
-
-<p>如果用到了图像，尽量避免透明除非非常必要。如果图像要显示在一个固定的背景颜色或是固定的背景图之前，你没必要相对前景移动，你只需要预填充背景图片就可以避免运行时混色了。</p>
-
-<p>如果是文本的话，一个不透明颜色背景的<code>UILabel</code>会比透明背景要更高效。</p>
-
-<p>最后，明智地使用<code>shouldRasterize</code>属性，可以将一个固定的图层体系折叠成单张图片，这样就不需要每一帧重新合成了，也就不会有因为子图层之间的混合和过度绘制的性能问题了。</p>
-
-<h3 id="toc_8">减少图层数量</h3>
-
-<p>我们的图层呈现过程:<br/>
-初始化图层，处理图层，打包通过<code>IPC</code>发给渲染引擎，转化成<code>OpenGL</code>几何图形，这些是一个图层的大致资源开销。</p>
-
-<p>事实上，一次性在屏幕上显示的最大图层数量也是有限的。这取决于于iOS设备，图层类型，图层内容和属性等。</p>
-
-<h4 id="toc_9">裁切</h4>
-
-<p>不可见图层：</p>
-
-<ul>
-<li>图层在屏幕边界之外，或是在父图层边界之外。</li>
-<li>完全在一个不透明图层之后。</li>
-<li>完全透明</li>
-</ul>
-
-<p><code>Core Animation</code>非常擅长处理对视觉效果无意义的图层。但是经常性地，你自己的代码会比<code>Core Animation</code>更早地想知道一个图层是否是有用的。理想状况下，在图层对象在创建之前就想知道，以避免创建和配置不必要图层的额外工作。</p>
-
-<p>示例:<br/>
-当我们创建了很多图层,但是这些图层也许在屏幕外也许被遮盖,显示的数量一定，那么我们增加创建图层数量就会导致帧数下降,出现性能问题。</p>
-
-<p>但是如果计算每个图层根据是否最终显示在屏幕上这是一个很难的过程。所以我们可以用另外一种方式优化:<br/>
-随着视图的滚动动态地实例化图层而不是事先都分配好,这样，我们可以在创造它之前计算出是否需要它，接着，我们增加一些代码去计算可视区域这样就可以排除区域之外的图层了。</p>
-
-<p>类似<code>UITableView</code>或者<code>UICollectionView</code>的机制</p>
-
-<h4 id="toc_10">对象回收</h4>
-
-<p>处理巨大数量的相似视图或图层时还有一个技巧就是回收他们。对象回收在<code>iOS</code>颇为常见；<code>UITableView</code>和 <code>UICollectionView</code> 都有用到，<code>MKMapView</code>中的动画<code>pin</code>码也有用到，还有其他很多例子。</p>
-
-<p>做对象回收首先需要一个有一个对象池。进行对象的存取,避免了不断创建和释放对象(相当消耗资源因为涉及到内存的分配和销毁)而且也不必给相似实例重复赋值。</p>
-
-<pre><code class="language-objc">@property (nonatomic, strong) NSMutableSet *recyclePool;
+<pre><code class="language-swift">/* 这是第一个多行注释的开头
+/* 这是第二个被嵌套的多行注释 */
+这是第一个多行注释的结尾 */
 </code></pre>
 
-<p>注意：<br/>
-在本实例中做对象回收需要禁用隐式动画,因为之前图层对象都是在呈现之前改变属性,但是现在是回收的，需要禁用隐式动画,否咋改变属性就触发隐式动画</p>
+<p>多行注释可以去嵌套注释，我们可以方便的注释掉大段代码 即使代码中已经包含注释(oc中是没有多行注释的)</p>
 
-<h4 id="toc_11">Core Graphics绘制</h4>
+<h2 id="toc_6">分号</h2>
 
-<p>在上面我们派出了那些没有显示在屏幕上的图层,对于那些显示的对屏幕有贡献的图层和视图，我们还有减少图层数量的方法</p>
+<p><code>Swift</code>并不需要在末尾添加分号,但是如果单行内写多条语句时,必须用分号分开;</p>
 
-<p>比如多个<code>UILabel</code>或者<code>UIImageView</code>我们可以把他们全部替换为单独视图然后用<code>-drawRect</code>方法绘制出这些复杂的视图层级</p>
+<h2 id="toc_7">整数</h2>
 
-<p>这个提议看上去并不合理因为大家都知道软件绘制行为要比<code>GPU</code>合成要慢而且还需要更多的内存空间，但是在因为图层数量而使得性能受限的情况下，软件绘制很可能提高性能呢，因为它避免了图层分配和操作问题。</p>
+<p><code>Swift</code> 提供了8，16，32和64位的有符号和无符号整数类型(即分别为1、2、4、8字节)。<br/>
+命名:比如8位无符号整数类型是 UInt8 ，32位有符号整数类型是 Int32 。</p>
 
-<p>你可以自己实验一下这个情况，它包含了性能和栅格化的权衡，但是意味着你可以从图层树上去掉子图层（用<code>shouldRasterize</code>，与完全遮挡图层相反）。</p>
+<h3 id="toc_8">范围</h3>
 
-<h4 id="toc_12">- renderInContext: 方法</h4>
+<p>我们可以用不同整数类型的<code>min</code>和<code>max</code>属性获取对应类型的最小值和最大值：</p>
 
-<p>用<code>Core Graphics</code>去绘制一个静态布局有时候会比用层级的<code>UIView</code>实例来得快，但是使用<code>UIView</code>实例要简单得多而且比用手写代码写出相同效果要可靠得多，更边说<code>Interface Builder</code>来得直接明了。</p>
+<pre><code class="language-swift">//返回的类型正是其对应类型
+let minValue = UInt8.min // minValue 为 0，是 UInt8 类型
+let maxValue = UInt8.max // maxValue 为 255，是 UInt8 类型
+</code></pre>
 
-<p>如果大量的视图或者图层真的关联到了屏幕上将会是一个大问题。没有与图层树相关联的图层不会被送到渲染引擎，也没有性能问题（在他们被创建和配置之后）。</p>
+<p>Swift提供了整数类型<code>Int</code>和<code>UInt</code>其长度和当前平台<code>原生字长</code>相同</p>
 
-<p>我们可以使用<code>CALayer</code>的<code>- renderInContext:</code>方法，你可以将图层及其子图层快照进一个<code>Core Graphics</code>上下文然后得到一个图片，可以直接显示在<code>UIImageView</code>中或者作为另外一个图层的<code>contents</code>。不同于<code>shouldRasterize</code>(要求图层与图层树相关联)，这个方法没有持续的性能消耗。</p>
+<p>补充:<br/>
+尽量不要使用<code>UInt</code> ，除非你真的需要存储一个和当前平台原生字长相同的无符号整数。除了这种情况，最好使用<code>Int</code>，即使你要存储的值已知是非负的。统一使用<code>Int</code>可以提高代码的可复用性，避免不同类型数字之间的转换，并且匹配数字的类型推断</p>
 
-<p>当图层内容改变，不同于<code>shouldRasterize</code>的自动地处理缓存和缓存验证，这张图片的刷新时机取决于我们自己，但是一旦图片被生成,相比让<code>Core Animation</code>处理一个复杂的图层树，你节省了相当客观的性能。</p>
+<h2 id="toc_9">浮点数</h2>
+
+<p><code>Swift</code>提供了两种有符号浮点数类型：</p>
+
+<ul>
+<li>Double 表示64位浮点数。当你需要存储很大或者很高精度的浮点数时请使用此类型。</li>
+<li>Float 表示32位浮点数。精度要求不高的话可以使用此类型。</li>
+</ul>
+
+<p><code>Double</code>精确度很高，至少有15位数字，而<code>Float</code>只有6位数字。选择哪个类型取决于你的代码需要处理的值的范围，在两种类型都匹配的情况下，将优先选择<code>Double</code>。</p>
+
+<h2 id="toc_10">类型安全和类型推断</h2>
+
+<p><code>Swift</code>是一个类型安全（type safe）的语言。因此它会在编译时进行类型检查,将不匹配的类型标记为错误。但是也不奥每个都显示的指定类型,编译器可以在编译代码的时候自动推断出表达式的类型。</p>
+
+<pre><code class="language-swift">//当推断浮点数的类型时，Swift 总是会选择 Double 而不是 Float 
+let pi = 3.14159
+// pi 会被推测为 Double 类型
+</code></pre>
+
+<h2 id="toc_11">数值型字面量</h2>
+
+<ul>
+<li>一个十进制数，没有前缀</li>
+<li>一个二进制数，前缀是 <code>0b</code></li>
+<li>一个八进制数，前缀是 <code>0o</code></li>
+<li>一个十六进制数，前缀是 <code>0x</code></li>
+</ul>
+
+<p>对于浮点数用10进制或者16进制表示，可以用指数来表示，10进制的指数为<code>e</code>(可为大写或小写)，16进制使用大写或者小写的<code>p</code></p>
+
+<pre><code class="language-swift">1.25e2 表示 1.25 × 10^2，等于 125.0 
+1.25e-2 表示 1.25 × 10^-2，等于 0.0125
+0xFp2 表示 15 × 2^2，等于 60.0
+0xFp-2 表示 15 × 2^-2，等于 3.75
+</code></pre>
+
+<p>补充:<br/>
+为了可读性：整数和浮点数都可以添加额外的零并且包含下划线，并不会影响字面量：</p>
+
+<pre><code class="language-swift">let paddedDouble = 000123.456
+let oneMillion = 1_000_000
+let justOverOneMillion = 1_000_000.000_000_1
+</code></pre>
+
+<h2 id="toc_12">数值型类型转换</h2>
+
+<p>前面说过,即使知道整数常量或者变量为非负也推荐使用<code>Int</code>类型，这样可以保证我们的的变量或常量可以直接被复用并且可以匹配整数类字面量的类型推断</p>
+
+<p>我们通常使用其他整数类型是为了处理外部明确长度的数据或者优化性能、内存。这样直接使用显式指定长度的类型可以及时发现值溢出并且可以暗示正在处理特殊数据。</p>
+
+<h3 id="toc_13">整数转换</h3>
+
+<p><code>Swift</code>任何时候都不会隐式进行类型转换，所以我们应该根据情况进行显式的进行类型装换，这样代码的转换意图也更清晰</p>
+
+<pre><code class="language-swift">let twoThousand: UInt16 = 2_000
+let one: UInt8 = 1
+let twoThousandAndOne = twoThousand + UInt16(one)
+</code></pre>
+
+<p><code>SomeType(ofInitialValue)</code> 是调用<code>Swift</code>构造器并传入一个初始值的默认方法(但是也不能接受任意类型的值,只能传入<code>SomeType</code>内部有对应构造器的值)</p>
+
+<h3 id="toc_14">整数和浮点数转换</h3>
+
+<p>整数和浮点数之间可以互相转换</p>
+
+<pre><code class="language-swift">let pi = Double(3);
+let integerPi = Int(3.1415)
+//这样转换的话会向下取整
+</code></pre>
+
+<h2 id="toc_15">类型别名</h2>
+
+<p>给现有类型定义另外一个名字,使用<code>typealias</code>关键字来定义类型别名<br/>
+<code>typealias AudioSample = UInt16</code><br/>
+<strong>定义了一个类型别名之后，你可以在任何使用原始名的地方使用别名</strong>：</p>
+
+<h2 id="toc_16">布尔值</h2>
+
+<p><code>Swift</code>提供基本布尔类型<code>Bool</code>，有两个布尔常量:<code>ture</code>和<code>false</code><br/>
+Swift中的Bool是非常严格的必须为ture或者false，而不是OC中的非0为真</p>
+
+<h2 id="toc_17">元组</h2>
+
+<p>元组将多个值组合为一个复合值，其中可以为任意类型</p>
+
+<p>元组只适用于我们临时组织数据,不适合创建复杂的数据结构，如果不是临时使用请使用类或者结构体</p>
+
+<pre><code class="language-Swift">//定义元组
+let http404Error = (404, &quot;Not Found&quot;)
+//元组解析 也可以将 (statusCode, statusMessage) 看为定义的元组名称
+let (statusCode, statusMessage) = (404, &quot;Not Found&quot;)
+//元组解析 利用 _ 忽略其他的部分
+let (justTheStatusCode, _) = http404Error
+print((statusCode, statusMessage).0, (statusMessage), http404Error.1)
+
+
+let (status200Code, status200Message) = (statusCode: 200, description: &quot;OK&quot;)
+status200Code
+(status200Code, status200Message).1
+//这种方式报错,因为用(status200Code, status200Message) 已经将元组内容部分解析,定义的名称已经被覆盖了
+//(status200Code, status200Message).status200Code 
+let status400 : (statusCode: Int, description: String) = (404, &quot;Not Found&quot;)
+status400.statusCode
+</code></pre>
+
+<h2 id="toc_18">可选类型</h2>
+
+<p>可选类型用来处理值可能缺失的情况</p>
+
+<p><code>OC</code>中并没有这个类型,在oc中为了表达这个意思我们通常让方法返回一个特殊值(比如 <code>NSNotFound</code>)，来让我们对特殊值进行判断，<code>Swift</code>提供了一个可选类型可以按时任意类型值得缺失很方便.</p>
+
+<p>可选类型的值: 要不有值为X 要不为没有值</p>
+
+<pre><code class="language-swift">//我们将String强转为Int 因为并不是所有字符串都能转为整数,因此返回可选类型
+let possibleNumber = &quot;123&quot;
+let convertedNumber = Int(possibleNumber)
+// convertedNumber 被推测为类型 &quot;Int?&quot;， 或者类型 &quot;optional Int&quot;
+</code></pre>
+
+<p>问号表示是可选类型Int，就是有可能包含<code>Int</code>也有可能不包含值</p>
+
+<h3 id="toc_19">nil</h3>
+
+<p>在<code>Swift</code>中的<code>nil</code>和OC中并不同,在OC中<code>nil</code>指向一个不存在的对象指针,而<code>Swift</code>中nil不是一个指针,是一个确定的值来表示值得缺失,任何可选状态都可被置为<code>nil</code>，不仅是对象类型。<code>nil</code>只能设置可选类型的值,如果想设置一个常量或者变量,需要先将其设置为可选类型</p>
+
+<pre><code class="language-swift">var serverResponseCode: Int? = 404
+serverResponseCode = nil
+//对于未赋值的可选类型 默认值为 nil
+var surveyAnswer: String?
+</code></pre>
+
+<h3 id="toc_20">if语句以及强行解析</h3>
+
+<p>对于一个可选类型值,可以通过 在其后加上<code>!</code>强制解析来获取其值,但是对于不存在的值加！会导致错误,因此在强制解析前需要判断非空</p>
+
+<pre><code class="language-swift">if convertedNumber != nil {
+print(&quot;convertedNumber has an integer value of \(convertedNumber!).&quot;)
+}
+</code></pre>
+
+<h3 id="toc_21">可选绑定</h3>
+
+<p>上面强行解析后这个值还是可选类型,为了避免这种情况我们可以使用<strong>可选绑定</strong>,用着<code>if</code>或<code>while</code>语句中,通过判断可选类型是否有值,有值得话将其赋值给一个确定类型的变量或者常量,这样就可以使用这个变量或者常量来避免使用可选类型的值避免使用强行解析</p>
+
+<blockquote>
+<p>缺点是这样创建的常量或者变量只能在这个if语句中使用</p>
+</blockquote>
+
+<pre><code class="language-swift">if let actualNumber = Int(possibleNumber) {
+print(&quot;\&#39;\(possibleNumber)\&#39; has an integer value of \(actualNumber)&quot;)
+} else {
+print(&quot;\&#39;\(possibleNumber)\&#39; could not be converted to an integer&quot;)
+}
+//如果 Int(possibleNumber)不是nil就可创建一个常量actualNumber指向这个值
+
+</code></pre>
+
+<h3 id="toc_22">隐式解析可选类型</h3>
+
+<p>有时在可选类型第一次被赋值后,就可以确定其总是有值,这时候我们可以声明其为隐式解析可选类型来避免每次都判断解析<br/>
+通过将可选类型后的 <code>?</code> 替换为<code>!</code>来声明隐式解析可选类型</p>
+
+<blockquote>
+<p>可以将隐式解析可选类型当做一个可以自动解析的可选类型<br/>
+使用隐式解析必须确保这个值不会为空 否则和对空值进行强行解析一样会出错</p>
+</blockquote>
+
+<pre><code class="language-swift">let possibleString: String? = &quot;An optional string.&quot;
+let forcedString: String = possibleString! // 需要感叹号来获取值
+
+let assumedString: String! = &quot;An implicitly unwrapped optional string.&quot;
+let implicitString: String = assumedString // 不需要感叹号
+</code></pre>
+
+<h3 id="toc_23">错误处理</h3>
+
+<p><code>Swift</code>允许我们在函数声明中通过添加 <code>throw</code>类型来判处错误消息<br/>
+当我们调用一个可能抛出错误消息的函数时,应该在表达式前置<code>try</code>关键字</p>
+
+<blockquote>
+<p>这里只是简单了解</p>
+</blockquote>
+
+<pre><code class="language-swift">func makeASandwich() throws {
+// ...
+}
+do {
+    try makeASandwich()
+    eatASandwich()//没有错误抛出会执行这个函数
+} catch SandwichError.outOfCleanDishes {
+    washDishes()
+} catch SandwichError.missingIngredients(let ingredients) {
+    buyGroceries(ingredients)//匹配的错误抛出 函数被调用并且会
+}
+</code></pre>
+
+<h2 id="toc_24">断言</h2>
+
+<p>有时我们需要在代码中判断某些条件是否满足条件来决定是否继续执行,这时候我们需要断言</p>
+
+<h3 id="toc_25">使用断言进行调试</h3>
+
+<p>断言会在运行时判断一个逻辑条件是否为<code>ture</code>。如果条件判断为<code>true</code>，代码运行会继续进<br/>
+行；如果条件判断为<code>false</code> ，代码执行结束，你的应用被终止。</p>
+
+<p>我们在调试环境中触发一个断言，可以检查断言被触发时你的应用的状态。此外，断言允许你附加一条调试信息。</p>
+
+<p>你可以使用全局<code>assert(_:_:file:line:)</code>函数来写一个断言.<br/>
+向这个函数传入一个结果为 <code>true</code>或者<code>false</code>的表达式以及一条信息，当表达式的结果为 false 的时候这条信息会被显示：</p>
+
+<pre><code class="language-swift">let age = -3
+assert(age &gt;= 0, &quot;A person&#39;s age cannot be less than zero&quot;)
+// 因为 age &lt; 0，所以断言会触发
+</code></pre>
+
+<blockquote>
+<p>当代码使用优化编译的时候，断言将会被禁用，例如在<code>Xcode</code>中，使用默认的<code>target Release</code>配置选项来<code>build</code>时，断言会被禁用。</p>
+</blockquote>
+
+<h3 id="toc_26">何时使用断言</h3>
+
+<p>当条件可能为假时使用断言，但是最终一定要保证条件为真，这样你的代码才能继续运行。</p>
+
+<blockquote>
+<p>断言可能导致你的应用终止运行，所以你应当仔细设计你的代码来让非法条件不会出现。然而，在你的应用发布之前，有时候非法条件可能出现，这时使用断言可以快速发现问题。</p>
+</blockquote>
+
+<p>断言的适用情景:</p>
+
+<ul>
+<li>整数类型的下标索引被传入一个自定义下标实现，但是下标索引值可能太小或者太大。</li>
+<li>需要给函数传入一个值，但是非法的值可能导致函数不能正常执行。</li>
+<li>一个可选值现在是 nil ，但是后面的代码运行需要一个非 nil 值。</li>
+</ul>
 
                         
                       </div>
@@ -291,10 +450,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/5/18</span>
+                    <span class="date">2017/6/7</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E6%80%A7%E8%83%BD.html'>性能</a></span>
+          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -382,6 +541,12 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15025006795297.html">析构过程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15020961612430.html">构造过程</a>
 			      </li>
 		     
@@ -401,12 +566,6 @@
 		      
 			      <li class="post">
 			        <a href="15017296324997.html">方法</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15015839505859.html">属性</a>
 			      </li>
 		     
 		  

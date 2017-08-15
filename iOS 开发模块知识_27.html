@@ -105,239 +105,153 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14892022301750.html">
+                <a class="clearlink" href="14901598468257.html">
                 
-                  <h1>图层几何学、视觉效果</h1>
+                  <h1>隐式动画</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>遗忘点:<br/>
-1. 用作mask的layer不一定非要静态的,只要有layer的都可以作为蒙版</p>
+                        	<p>我们在前面介绍了图层的相关知识,现在我们开始学本次的重点<strong>动画</strong><br/>
+<strong>注意</strong><br/>
+<code>CALayer</code>呈现图层&lt;--&gt;模型图层<br/>
+我们在创建<code>CALayer</code>对象存储了我们设置的属性值（只是存值所以是模型图层）,但是模型图层显示或者说是呈现时就会基于模型图层创建一个呈现图层,然后我们所能看到的都是基于这个呈现图层的.</p>
 
-<p>2.<code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；我们常用这个方法获取点击位置的视图（判断点击在了哪个视图）</p>
+<h3 id="toc_0">事务</h3>
 
-<pre><code>CALayer *layer = [self.layerView.layer hitTest:point];
+<p><code>Core Animation</code>基于一个假设，说屏幕上的任何东西都可以（或者可能）做动画。动画并不需要你在<code>Core Animation</code>中手动打开，相反需要明确地关闭，否则他会一直存在。</p>
+
+<p>当我们改变了<code>CALayer</code>的一个可做动画的属性时,但是他并不会立刻在屏幕上显示出来。它默认会从先前的值平滑过渡到新值,不需要做额外操作。这就是<code>隐式动画</code>,之所以叫<strong><code>隐式</code>是因为我们并没有指定任何动画的类型</strong>.我们改变属性之后是<code>Core Animation</code>来决定如何并且何时去做动画（这是隐式当然也可以显式动画）.</p>
+
+<p>隐式动画的动画执行的时间取决于当前<code>事务</code>的设置，动画类型取决于图层行为。</p>
+
+<p><code>事务</code>是<strong><code>Core Animation</code>用来包含一系列属性动画集合的机制</strong>，当用事务去改变可以做动画的图层属性都不会立刻变化,而是等到这个事务提交之后,才开始图层属性过渡到新值的动画.</p>
+
+<p>我们用<code>CATransaction</code>类来管理<code>事务</code>,这个类管理的事务并不能访问,也没有属性或者实例方法，并且也不能用<code>+alloc</code> 和<code>-init</code>方法创建它。但是可以用 <code>+begin</code> 和 <code>+commit</code> 分别来入栈或者出栈。</p>
+
+<p>任何可以做动画的图层属性的改变都会被添加到目前<code>栈顶</code>的<code>事务</code>中.我们可以用<code>+setAnimationDuration:</code>设置 或者<code>+animationDuration</code>获取当前的栈顶事务的动画时间(默认0.25秒)</p>
+
+<p><code>Core Animation</code>会在每个<code>run loop</code>周期中自动开始一次新的事务,，即使你不显式的用<code>[CATransaction begin]</code> 开始一次事务，任何在一次<code>run loop</code>循环中属性的改变都会被集中起来，然后做一次0.25秒的动画。  </p>
+
+<pre><code class="language-objc">/*我们在设置某个属性动画的事务属性（比如时间）时,我们通常会自己创建一个新的事务,
+否则会有可能影响到事务中其他属性动画*/
+[CATransaction begin];
+//set the animation duration to 1 second
+[CATransaction setAnimationDuration:1.0];
+
+self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
+//commit the transaction
+[CATransaction commit];
 </code></pre>
 
-<h2 id="toc_0">图层几何学</h2>
+<p><strong>补充</strong><br/>
+<code>UIView</code>有两个方法，<code>+beginAnimations:context:</code>和<code>+commitAnimations</code>，就是通过设置 <code>CATransaction</code>实现的,至于UIView的另外一个<code>+animateWithDuration:animations:</code>，只是将这些属性动画做成了一个block以避免开发者由于对<code>+begin</code> 和<code>+commit</code> 匹配的失误.</p>
 
-<h3 id="toc_1">布局</h3>
+<h3 id="toc_1">完成块</h3>
 
-<p>UIView布局属性:<code>frame</code> <code>bounds</code> <code>center</code><br/><br/>
-与之对应<br/>
-CALayer布局属性:<code>frame</code> <code>bounds</code> <code>position</code><br/>
-center和postion是一样的值，都代表了相对于父图层 <code>anchorPoint</code> 所在的位置</p>
+<p>我们在做基于<code>UIView</code>的<code>block</code>动画时可以在动画结束时提供一个完成动作. <br/>
+<code>CATranscation</code>接口提供的<code>+setCompletionBlock:</code>方法也有同样的功能。</p>
 
-<p>视图的布局属性仅仅是存取方法，对其进行改变其实是改变视图下方CALayer的frame  </p>
-
-<p>视图或者图层的frame是根据其bounds，position和transform计算而来的，其中任意一值发生改变都会导致其frame改变  </p>
-
-<p><img src="media/14892022301750/14892031426669.jpg" alt=""/></p>
-
-<h3 id="toc_2">锚点</h3>
-
-<p>视图的<code>center</code>属性和图层的<code>position</code>属性都指定了<code>anchorPoint</code>相对于父图层的位置。</p>
-
-<p><code>anchorPoint</code>是用来移动图层的把柄</p>
-
-<p>默认<code>anchorPoint</code>是在图层的中心,这个属性UIView并没有暴露出来,这也是视图的<code>position</code>属性被叫做“center”的原因。但是图层的锚点可以移动，锚点的移动会导致frame的改变即位置改变</p>
-
-<p><img src="media/14892022301750/14893741880682.jpg" alt=""/></p>
-
-<p>anchorPoint也是单位坐标，默认是{0.5，0.5}，可以通过指定大于或者小于1，使其在图层范围之外</p>
-
-<p>改变<code>anchorPoint</code>常用于做不随着中心点做动画的动画使用,比如 时钟的表针旋转</p>
-
-<p><strong>注意</strong><br/>
-中心和锚点（即position或者center和anchorPoint没有任何关系），锚点的改变不会影响中心点位置，只会影响frame</p>
-
-<pre><code class="language-objc">position.x = frame.origin.x + anchorPoint.x * bounds.size.width；  
-position.y = frame.origin.y + anchorPoint.y * bounds.size.height；
-
-frame.origin.x = position.x - anchorPoint.x * bounds.size.width；  
-frame.origin.y = position.y - anchorPoint.y * bounds.size.height；
+<pre><code class="language-objc">[CATransaction begin];
+[CATransaction setAnimationDuration:1.0];
+[CATransaction setCompletionBlock:^{
+//rotate the layer 90 degrees
+CGAffineTransform transform = self.colorLayer.affineTransform;
+transform = CGAffineTransformRotate(transform, M_PI_2);
+self.colorLayer.affineTransform = transform;
+}];
+self.colorLayer.backgroundColor = [UIColor redColor];
+[CATransaction commit];
+/**
+注意旋转动画要比颜色渐变快得多，这是因为完成块是在颜色渐变的事务提交并出
+栈之后才被执行，于是，用默认的事务做变换，默认的时间也就变成了0.25秒。
+*/
 </code></pre>
 
-<h3 id="toc_3">坐标系转换</h3>
+<h3 id="toc_2">图层行为</h3>
 
-<p>CALayer提供了转换坐标系的方法（视图也有）</p>
+<p><code>UIKit</code>默认禁用了隐式动画.即UIView把它关联的图层属性改编动画特性关闭了</p>
 
-<pre><code class="language-objc">- (CGPoint)convertPoint:(CGPoint)point fromLayer:(CALayer *)layer;
-- (CGPoint)convertPoint:(CGPoint)point toLayer:(CALayer *)layer;
-- (CGRect)convertRect:(CGRect)rect fromLayer:(CALayer *)layer;
-- (CGRect)convertRect:(CGRect)rect toLayer:(CALayer *)layer;
-</code></pre>
-
-<h3 id="toc_4">Z坐标</h3>
-
-<p>UIView是二维坐标 而CALayer则是三维的<br/><br/>
-因此CALayer还有两个属性:<code>zPosition</code> <code>anchorPointZ</code> 在Z轴上描述图层位置的浮点类型<br/>
-<code>zPosition</code>最实用的功能就是改变图层的显示顺序了，一般给图层增加<code>1.f</code>就可以控制显示顺序了</p>
-
-<h3 id="toc_5">HIT Testing</h3>
-
-<p><code>CALayer</code>并不关心任何响应链事件，所以不能直接处理触摸事件或者手势。但是它有一系列的方法帮你处理事件：<code>-containsPoint:</code>和<code>-hitTest:</code>。    </p>
-
-<p><code>-containsPoint:</code> 接受一个在本图层坐标系吓得一个CGPoint，如果这个点在图层frame内就返回YES。注意必须将这个点转为每个图层坐标系下的坐标</p>
-
-<p><code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；</p>
-
-<pre><code class="language-objc">//举个栗子
-- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
-{
-    //get touch position
-    CGPoint point = [[touches anyObject] locationInView:self.view];
-    //get touched layer
-    //获取这个点击的layer
-    CALayer *layer = [self.layerView.layer hitTest:point];
-    //get layer using hitTest
-    if (layer == self.blueLayer) {
-        [[[UIAlertView alloc] initWithTitle:@&quot;Inside Blue Layer&quot; message:nil delegate:nil cancelButtonTitle:@&quot;OK&quot; otherButtonTitles:nil] show];
-    } else if (layer == self.layerView.layer) {
-        [[[UIAlertView alloc] initWithTitle:@&quot;Inside White Layer&quot;
-        message:nil
-        delegate:nil
-        cancelButtonTitle:@&quot;OK&quot;
-        otherButtonTitles:nil] show];
-    }
-}
-
-</code></pre>
-
-<p><strong>注意</strong></p>
-
-<ol>
-<li>当调用图层的<code>-hitTest:</code>方法时，测算的顺序严格依赖于图层树当中的图层顺序（和<code>UIView</code>处理事件类似）。之前提到的<code>zPosition</code>属性可以明显改变屏幕上图层的顺序，但不能改变事件传递的顺序。<br/></li>
-<li>这两个方法是layer的实例方法 我们可以直接用layer调用而不需要作为系统判断方法</li>
-</ol>
-
-<h3 id="toc_6">自动布局</h3>
-
-<p>对于UIView如果想要自动布局我们可以使用<code>UIViewAutoresizingMask</code>  和<code>NSLayoutConstraint</code>API<br/><br/>
-CALayer没有自动布局办法<br/>
-如果想要随意控制CALayer的布局，我们可以用CALayerDelegate方法:  </p>
-
-<pre><code class="language-objc">- (void)layoutSublayersOfLayer:(CALayer *)layer;
-/**当图层的 bounds 发生改变，或者图层的 -setNeedsLayout 方法被调用的时候，这个函数将会被执
-行。（但是也没法做大自适应屏幕等自动布局,这也是为什么我们用UIView来布局）*/
-</code></pre>
-
-<h2 id="toc_7">视觉效果</h2>
-
-<h3 id="toc_8">圆角</h3>
-
-<p>CALayer有一个叫做<code>conrnerRadius</code>的属性控制着图层角的曲率。它是一个浮点数，默认为0（为0的时候就是直角）,默认这个值不影响背景图片或者子图层,但是如果设置<code>maskToBounds</code>为<code>YES</code>,图层中东西都会被截取.</p>
-
-<h3 id="toc_9">图层边框</h3>
-
-<p><code>borderWidth</code>和<code>borderColor</code>，这条线（stroke）沿着图层的bounds绘制,同时也包含图层的角.<br/>
-<code>borderWith</code>以点为单位的浮点数<br/><br/>
-<code>borderColor</code>边框的颜色默认黑色,<code>CGColorRef</code>类型，不是UIColor所以不是<code>Cocoa</code>内置对象  </p>
-
-<pre><code class="language-objc">// CGColorRef 属性即便是强引用也只能通过assign关键字来声明
-@property(nullable) CGColorRef borderColor;
-</code></pre>
-
-<p><strong>注意</strong></p>
-
-<ol>
-<li>边框是绘制在图层边界里面的，而且在所有子内容之前，也在子图层之前。（这个之前是显示最前而不是在最前绘制被遮盖）</li>
-<li>边框是跟随图层的边界变化的，而不是图层里面的内容</li>
-<li>
-<img src="media/14892022301750/14893838391060.jpg" alt=""/></li>
-</ol>
-
-<h3 id="toc_10">阴影</h3>
-
-<p><code>shadowOpacity</code>默认0。他是一个必须在<code>0.0</code>（不可见）和<code>1.0</code>（完全不透明）之间的浮点数。  </p>
-
-<p>阴影的另外三个属性:<br/><br/>
-<code>shadowColor</code>控制阴影的颜色，和 borderColor 和 backgroundColor 一样，它的类型也是 CGColorRef，默认黑色<br/><br/>
-<code>shadowOffset</code>阴影的方向和距离 CGSize类型，宽度为阴影横向位移，高度为纵向位移，默认{0,-3},即相对Y轴有3个点的向上位移<br/><br/>
-<code>shadowRadius</code>控制着阴影的模糊度，当它的值是0的时候，阴影就和视图一样有一个非常确定的边界线。我们推荐为大于0的值,值越大阴影越模糊,图层层次更明显.</p>
-
-<p><img src="media/14892022301750/14893848191222.jpg" alt=""/></p>
-
-<h4 id="toc_11">阴影裁剪</h4>
-
-<p>与边框不同,图层的阴影继承自内容的外形，CoreAnimation会将寄宿图（包括子视图）来结合图层形状创建一个阴影。<br/><br/>
-但是由于他们的不同,我们在包括子图层创建阴影后,如果按照边框进行裁剪就会导致部分阴影没有了，这时候我们只能额外创建一个裁剪后的图层形状的阴影图层（可以作为最外层的父图层）来实现效果。</p>
-
-<h3 id="toc_12">shadowPath属性</h3>
-
-<p>因为实时计算阴影是非常消耗资源的,我们可以通过事先指定<code>shadowPath</code>来提高性能.<code>shadowPath</code>是一个<code>CGPathRef</code>类型（一个指向<code>CGPath</code>的指针）。<code>CGPath</code> 是一个<code>Core Graphics</code>对象，用来指定任意的一个矢量图形。我们可以用这个属性在图层形状之外指定阴影形状.  </p>
-
-<p>举个栗子:</p>
-
-<pre><code class="language-objc">
-CGMutablePathRef squarePath = CGPathCreateMutable();
-CGPathAddRect(squarePath, NULL, self.layerView1.bounds);
-self.layerView1.layer.shadowPath = squarePath;
-//需要我们手动释放
-CGPathRelease(squarePath);
-//create a circular shadow
-CGMutablePathRef circlePath = CGPathCreateMutable();
-CGPathAddEllipseInRect(circlePath, NULL, self.layerView2.bounds);
-self.layerView2.layer.shadowPath = circlePath; 
-CGPathRelease(circlePath);
-</code></pre>
-
-<p><code>CGPath</code>适合搭建比较简单的形状,比如举行或者圆,但是如果是复杂的图形推荐<strong>使用<code>UIBezierPath</code></strong>，它是一个由UIKit提供的在<code>CGPath</code>基础上的<code>Objective-C</code>包装类</p>
-
-<h3 id="toc_13">图层蒙版</h3>
-
-<p>CALayer的<code>mask</code>属性是一个CALayer类型,它类似于一个自图层，mask图层定义了父图层的可见区域。  </p>
-
-<p>mask图层的color没用,轮廓才是重要的。对于mask图层中的部分会保留下来,其他部分会被抛弃（对于视图View其实你可以看做其他部分还在只不过颜色为透明色,但是这部分还会拦截点击事件）  </p>
-
-<p>这个<code>Mask</code><strong>不仅仅局限于静态图</strong>，任何有图层的构成都可以作为Mask，因此我们甚至可以用一个动画的layer作为蒙版.</p>
-
-<h3 id="toc_14">拉伸过滤</h3>
-
-<p>这里牵涉到<code>minificationFilter</code>和<code>magnificationFilter</code>属性。  </p>
-
-<p>当图片需要显示不同大小的时候,这种拉伸算法就起到作用。它作用于原图的像素上并根据需要生成新的像素显示在屏幕上。</p>
-
-<p><code>CALayer</code>提供给我们三种拉伸过滤方法:</p>
+<p>我们先来看一下<code>隐式动画</code>是怎么实现的:<br/>
+<strong>我们把改变属性时<code>CALayer</code>自动应用的动画称作<code>行为</code>.</strong><br/>
+当我们改变了<code>CALayer</code>的属性时，会调用<code>-actionForKey:</code>方法，传递属性的名称。然后</p>
 
 <ul>
-<li>kCAFilterLinear </li>
-<li>kCAFilterNearest</li>
-<li>kCAFilterTrilinear</li>
+<li>图层首先检测它是否有委托，并且是否实现 CALayerDelegate 协议指定的 <code>-actionForLayer:forKey</code> 方法。如果有，直接调用并返回结果。</li>
+<li>如果没有委托，或者委托没有实现<code>-actionForLayer:forKey</code>方法，图层接着检查包含属性名称对应行为映射的<code>actions</code>字典。</li>
+<li>如果<code>actions</code>字典 没有包含对应的属性，那么图层接着在它的<code>style</code>字典接着搜索属性名。</li>
+<li>最后，如果在 <code>style</code> 里面也找不到对应的行为，那么图层将会直接调用定义了每个属性的标准行为的<code>-defaultActionForKey:</code>方法。</li>
 </ul>
 
-<p><code>minification</code>（缩小图片）和<code>magnification</code>（放大图片）默认的过滤器都是<code>kCAFilterLinear</code></p>
+<p><code>-actionForKey:</code>是用来找这个属性对应的动画(action),要么返回空（这种情况下将不会有动画发生），要么是<code>CAAction</code>协议对应的对象，最后<code>CALayer</code>拿这个结果去对先前和当前的值做动画。</p>
 
-<p><code>kCAFilterLinear</code>双线性滤波，大多数情况下表现良好，但是当放大倍数较大时会比较模糊不清  </p>
-
-<p><code>kCAFilterTrilinear</code>和<code>kCAFilterLinear</code>很相似，是三线性滤波<br/>
-<img src="media/14892022301750/14893953542514.jpg" alt=""/></p>
-
-<p><code>kCAFilterNearest</code> 最近过滤 ，就是取样最近的单像素点而不管其他的颜色。总的来说，对于比较小的图或者是差异特别明显，极少斜线的大图，最近过滤算法会保留这种差异明显的特质以呈现更好的结果。但是对于大多数的图尤其是有很多斜线或是曲线轮廓的图片来说，最近过滤算法会导致更差的结果。换句话说，线性过滤保留了形状，最近过滤则保留了像素的差异。<br/>
-<img src="media/14892022301750/14893958244715.jpg" alt=""/></p>
-
-<h3 id="toc_15">组透明</h3>
-
-<p>UIView用<code>alpha</code>属性设置透明度<br/>
-CALayy用<code>opacity</code>设置图层透明度<br/>
-这两个属性都是影响子层级的，比如我们设置一个图层透明度为50%，图层的每个像素都会一半显示自己的颜色，另一半显示图层下面的颜色。。但是如果图层包含一个同样显示50%透明的子图层时，你所看到的视图，50%来自子视图，25%来了图层本身的颜色，另外的25%则来自背景色。因此经常导致我们我们视图颜色的不协调。</p>
-
-<p>这时候我们可以<br/><br/>
-方法一：<br/><br/>
-通过设置<code>Info.plist</code>文件中的 <code>UIViewGroupOpacity</code>为<code>YES</code>来达到这个效果，但是这个设置会影响到这个应用，整个app可能会受到不良影响。</p>
-
-<p>方法二：（推荐）<br/><br/>
-设置CALayer的一个叫做<code>shouldRasterize</code>属性来实现组透明的效果，如果它被设置为YES，在应用透明度之前，图层及其子图层都会被整合成一个整体的图片，这样就没有透明度混合的问题了</p>
-
-<p>为了启用<code>shouldRasterize</code>属性，我们设置了图层的<code>rasterizationScale</code>属性。默认情况下，所有图层拉伸都是1.0， 所以如果你使用了<code>shouldRasterize</code>属性，你就要确保你设置了 <code>rasterizationScale</code> 属性去匹配屏幕，以防止出现Retina屏幕像素化的问题。</p>
-
-<pre><code class="language-objc">button2.layer.shouldRasterize = YES;
-button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
-</code></pre>
+<p>UIKit禁用隐式动画的方法就是,：每个<code>UIView</code> 对它关联的图层都扮演了一个委托，并且提供了<code>-actionForLayer:forKey</code> 的实现方法。当不在一个动画块的实现中，<code>UIView</code> 对所有图层行为返回 <code>nil</code>，但是在动画<code>block</code>范围之内，它就返回了一个非空值。</p>
 
 <p><strong>注意</strong><br/>
-当<code>shouldRasterize</code>和<code>UIViewGroupOpacity</code>一起的时候，会出现性能问题（但是好像影响不大）</p>
+1. 这里所说的关联是指UIView关联的图层即宿主图层,而对于其他add的图层并不是关联的图层所以是没有禁用隐式动画的</p>
+
+<p>当然对于<code>CATransacition</code>我们可以用<code>+setDisableActions:</code>来选择关闭/打开隐式动画<br/>
+<code>[CATransaction setDisableActions:YES]; //关闭隐式动画</code></p>
+
+<ul>
+<li>UIView 关联的图层禁用了隐式动画，对这种图层做动画的办法就是使用 <code>UIView</code> 的动画函数（而不是依赖 <code>CATransaction</code> ），或者继承 <code>UIView</code> ，并覆盖<code>-actionForLayer:forKey:</code>方法，或者直接创建一个显式动画（具体细节见第八章）。</li>
+<li>对于单独存在的图层，我们可以通过实现图层的<code>-actionForLayer:forKey:</code>委托方法，或者提供一个<code>actions</code> 字典来控制隐式动画(actions 字典可以写更少的代码)。</li>
+</ul>
+
+<p><code>行为</code>通常是一个被Core Animation隐式调用的显式动画对象。<br/>
+我们来改变一个图层属性的行为:</p>
+
+<pre><code class="language-objc">/**
+我们使用的是一个实现了 CATransaction 的实例，叫做推进过渡
+改变了CALayer的背景颜色属性行为.改变背景颜色，新的色块都是从左侧滑入，
+而不是默认的渐变效果
+*/
+CATransition *transition = [CATransition animation];
+transition.type = kCATransitionPush;
+transition.subtype = kCATransitionFromLeft;
+self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
+//add it to our view
+[self.layerView.layer addSublayer:self.colorLayer];
+</code></pre>
+
+<h3 id="toc_3">呈现与模型</h3>
+
+<p>我们在改变一个<code>CALayer</code>的属性时，属性值确实会立即更新(这个属性值在设置时就会立刻生效)但是苹果并没有立即呈现出来。</p>
+
+<p>当设置<code>CALayer</code>的属性，实际上是在定义当前事务结束之后图层如何显示的<code>模型</code>。而<code>Core Animation</code>则负责根据图层<code>行为</code>和<code>事务设置</code>去更新视图的这些属性在屏幕上的状态.</p>
+
+<p>我们的手机屏幕是每60秒重绘一次,如果我们要做的动画时长大于1/60,就需要在新值之前对屏幕重绘,即知道当前属性值.<strong>每个图层属性的显示值都被存储在一个叫做呈现图层的独立图层当中</strong>,可以通过<code>-presentationLayer</code>方法来访问.</p>
+
+<p>图层树(模型图层树)&lt;---&gt;呈现树:呈现树通过图层树中所有图层的呈现图层所形成。只有在图层首次在屏幕上呈现时候才会被创建,在之前获取呈现图层时会返回nil的.</p>
+
+<p>在模型图层上调用<code>- presentationLayer</code>能获取呈现图层,同样的调用<code>–modelLayer</code>是会获取模型图层(通常是self).</p>
+
+<p><img src="media/14901598468257/14903368056823.jpg" alt=""/></p>
+
+<p>通常我们只需要和模型图层交互即可让<code>Core Animation</code>更新显示.<br/>
+但是以下两种情况下呈现图层会很有效：  </p>
+
+<ul>
+<li>实现一个基于定时器的动画,而不仅仅是基于事务的动画，这个时候准确地知道在某一时刻图层显示在什么位置就会对正确摆放图层很有用了。</li>
+<li>如果你想让你做动画的图层响应用户输入，你可以使用<code>-hitTest:</code>方法来判断指定图层是否被触摸，这时候对呈现图层而不是模型图层调用 <code>-hitTest:</code> 会显得更有意义</li>
+</ul>
+
+<pre><code class="language-objc">- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    //get the touch point
+    CGPoint point = [[touches anyObject] locationInView:self.view];
+    //check if we&#39;ve tapped the moving layer
+    if ([self.colorLayer.presentationLayer hitTest:point]) {
+        self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
+    } else {
+        //otherwise (slowly) move the layer to new position
+        [CATransaction begin];
+        [CATransaction setAnimationDuration:4.0];
+        self.colorLayer.position = point;
+        [CATransaction commit];
+    }
+}
+</code></pre>
 
                         
                       </div>
@@ -346,10 +260,10 @@ button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/11</span>
+                    <span class="date">2017/3/22</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%9B%BE%E5%B1%82.html'>图层</a></span>
+          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -437,6 +351,12 @@ button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
 	      
 		      
 			      <li class="post">
+			        <a href="15025006795297.html">析构过程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15020961612430.html">构造过程</a>
 			      </li>
 		     
@@ -456,12 +376,6 @@ button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
 		      
 			      <li class="post">
 			        <a href="15017296324997.html">方法</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15015839505859.html">属性</a>
 			      </li>
 		     
 		  
