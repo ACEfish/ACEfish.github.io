@@ -105,239 +105,481 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14892022301750.html">
+                <a class="clearlink" href="14896343426276.html">
                 
-                  <h1>图层几何学、视觉效果</h1>
+                  <h1>专用图层</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>遗忘点:<br/>
-1. 用作mask的layer不一定非要静态的,只要有layer的都可以作为蒙版</p>
+                        	<p>是Core Animation图层不仅仅能作用于图片和颜色而已。</p>
 
-<p>2.<code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；我们常用这个方法获取点击位置的视图（判断点击在了哪个视图）</p>
+<p>补充点:<br/>
+想UIView的图层上添加另外一个UIView的图层是会有两个UIVIew的（UIView的层级关系）<br/>
+像一个纯Layer上添加另外一个UIView的图层,就仅仅只是添加了这个视图的图层,这个视图不会在视图的层级关系中体现.</p>
 
-<pre><code>CALayer *layer = [self.layerView.layer hitTest:point];
-</code></pre>
+<h3 id="toc_0">CAShapeLayer</h3>
 
-<h2 id="toc_0">图层几何学</h2>
-
-<h3 id="toc_1">布局</h3>
-
-<p>UIView布局属性:<code>frame</code> <code>bounds</code> <code>center</code><br/><br/>
-与之对应<br/>
-CALayer布局属性:<code>frame</code> <code>bounds</code> <code>position</code><br/>
-center和postion是一样的值，都代表了相对于父图层 <code>anchorPoint</code> 所在的位置</p>
-
-<p>视图的布局属性仅仅是存取方法，对其进行改变其实是改变视图下方CALayer的frame  </p>
-
-<p>视图或者图层的frame是根据其bounds，position和transform计算而来的，其中任意一值发生改变都会导致其frame改变  </p>
-
-<p><img src="media/14892022301750/14892031426669.jpg" alt=""/></p>
-
-<h3 id="toc_2">锚点</h3>
-
-<p>视图的<code>center</code>属性和图层的<code>position</code>属性都指定了<code>anchorPoint</code>相对于父图层的位置。</p>
-
-<p><code>anchorPoint</code>是用来移动图层的把柄</p>
-
-<p>默认<code>anchorPoint</code>是在图层的中心,这个属性UIView并没有暴露出来,这也是视图的<code>position</code>属性被叫做“center”的原因。但是图层的锚点可以移动，锚点的移动会导致frame的改变即位置改变</p>
-
-<p><img src="media/14892022301750/14893741880682.jpg" alt=""/></p>
-
-<p>anchorPoint也是单位坐标，默认是{0.5，0.5}，可以通过指定大于或者小于1，使其在图层范围之外</p>
-
-<p>改变<code>anchorPoint</code>常用于做不随着中心点做动画的动画使用,比如 时钟的表针旋转</p>
-
-<p><strong>注意</strong><br/>
-中心和锚点（即position或者center和anchorPoint没有任何关系），锚点的改变不会影响中心点位置，只会影响frame</p>
-
-<pre><code class="language-objc">position.x = frame.origin.x + anchorPoint.x * bounds.size.width；  
-position.y = frame.origin.y + anchorPoint.y * bounds.size.height；
-
-frame.origin.x = position.x - anchorPoint.x * bounds.size.width；  
-frame.origin.y = position.y - anchorPoint.y * bounds.size.height；
-</code></pre>
-
-<h3 id="toc_3">坐标系转换</h3>
-
-<p>CALayer提供了转换坐标系的方法（视图也有）</p>
-
-<pre><code class="language-objc">- (CGPoint)convertPoint:(CGPoint)point fromLayer:(CALayer *)layer;
-- (CGPoint)convertPoint:(CGPoint)point toLayer:(CALayer *)layer;
-- (CGRect)convertRect:(CGRect)rect fromLayer:(CALayer *)layer;
-- (CGRect)convertRect:(CGRect)rect toLayer:(CALayer *)layer;
-</code></pre>
-
-<h3 id="toc_4">Z坐标</h3>
-
-<p>UIView是二维坐标 而CALayer则是三维的<br/><br/>
-因此CALayer还有两个属性:<code>zPosition</code> <code>anchorPointZ</code> 在Z轴上描述图层位置的浮点类型<br/>
-<code>zPosition</code>最实用的功能就是改变图层的显示顺序了，一般给图层增加<code>1.f</code>就可以控制显示顺序了</p>
-
-<h3 id="toc_5">HIT Testing</h3>
-
-<p><code>CALayer</code>并不关心任何响应链事件，所以不能直接处理触摸事件或者手势。但是它有一系列的方法帮你处理事件：<code>-containsPoint:</code>和<code>-hitTest:</code>。    </p>
-
-<p><code>-containsPoint:</code> 接受一个在本图层坐标系吓得一个CGPoint，如果这个点在图层frame内就返回YES。注意必须将这个点转为每个图层坐标系下的坐标</p>
-
-<p><code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；</p>
-
-<pre><code class="language-objc">//举个栗子
-- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
-{
-    //get touch position
-    CGPoint point = [[touches anyObject] locationInView:self.view];
-    //get touched layer
-    //获取这个点击的layer
-    CALayer *layer = [self.layerView.layer hitTest:point];
-    //get layer using hitTest
-    if (layer == self.blueLayer) {
-        [[[UIAlertView alloc] initWithTitle:@&quot;Inside Blue Layer&quot; message:nil delegate:nil cancelButtonTitle:@&quot;OK&quot; otherButtonTitles:nil] show];
-    } else if (layer == self.layerView.layer) {
-        [[[UIAlertView alloc] initWithTitle:@&quot;Inside White Layer&quot;
-        message:nil
-        delegate:nil
-        cancelButtonTitle:@&quot;OK&quot;
-        otherButtonTitles:nil] show];
-    }
-}
-
-</code></pre>
-
-<p><strong>注意</strong></p>
-
-<ol>
-<li>当调用图层的<code>-hitTest:</code>方法时，测算的顺序严格依赖于图层树当中的图层顺序（和<code>UIView</code>处理事件类似）。之前提到的<code>zPosition</code>属性可以明显改变屏幕上图层的顺序，但不能改变事件传递的顺序。<br/></li>
-<li>这两个方法是layer的实例方法 我们可以直接用layer调用而不需要作为系统判断方法</li>
-</ol>
-
-<h3 id="toc_6">自动布局</h3>
-
-<p>对于UIView如果想要自动布局我们可以使用<code>UIViewAutoresizingMask</code>  和<code>NSLayoutConstraint</code>API<br/><br/>
-CALayer没有自动布局办法<br/>
-如果想要随意控制CALayer的布局，我们可以用CALayerDelegate方法:  </p>
-
-<pre><code class="language-objc">- (void)layoutSublayersOfLayer:(CALayer *)layer;
-/**当图层的 bounds 发生改变，或者图层的 -setNeedsLayout 方法被调用的时候，这个函数将会被执
-行。（但是也没法做大自适应屏幕等自动布局,这也是为什么我们用UIView来布局）*/
-</code></pre>
-
-<h2 id="toc_7">视觉效果</h2>
-
-<h3 id="toc_8">圆角</h3>
-
-<p>CALayer有一个叫做<code>conrnerRadius</code>的属性控制着图层角的曲率。它是一个浮点数，默认为0（为0的时候就是直角）,默认这个值不影响背景图片或者子图层,但是如果设置<code>maskToBounds</code>为<code>YES</code>,图层中东西都会被截取.</p>
-
-<h3 id="toc_9">图层边框</h3>
-
-<p><code>borderWidth</code>和<code>borderColor</code>，这条线（stroke）沿着图层的bounds绘制,同时也包含图层的角.<br/>
-<code>borderWith</code>以点为单位的浮点数<br/><br/>
-<code>borderColor</code>边框的颜色默认黑色,<code>CGColorRef</code>类型，不是UIColor所以不是<code>Cocoa</code>内置对象  </p>
-
-<pre><code class="language-objc">// CGColorRef 属性即便是强引用也只能通过assign关键字来声明
-@property(nullable) CGColorRef borderColor;
-</code></pre>
-
-<p><strong>注意</strong></p>
-
-<ol>
-<li>边框是绘制在图层边界里面的，而且在所有子内容之前，也在子图层之前。（这个之前是显示最前而不是在最前绘制被遮盖）</li>
-<li>边框是跟随图层的边界变化的，而不是图层里面的内容</li>
-<li>
-<img src="media/14892022301750/14893838391060.jpg" alt=""/></li>
-</ol>
-
-<h3 id="toc_10">阴影</h3>
-
-<p><code>shadowOpacity</code>默认0。他是一个必须在<code>0.0</code>（不可见）和<code>1.0</code>（完全不透明）之间的浮点数。  </p>
-
-<p>阴影的另外三个属性:<br/><br/>
-<code>shadowColor</code>控制阴影的颜色，和 borderColor 和 backgroundColor 一样，它的类型也是 CGColorRef，默认黑色<br/><br/>
-<code>shadowOffset</code>阴影的方向和距离 CGSize类型，宽度为阴影横向位移，高度为纵向位移，默认{0,-3},即相对Y轴有3个点的向上位移<br/><br/>
-<code>shadowRadius</code>控制着阴影的模糊度，当它的值是0的时候，阴影就和视图一样有一个非常确定的边界线。我们推荐为大于0的值,值越大阴影越模糊,图层层次更明显.</p>
-
-<p><img src="media/14892022301750/14893848191222.jpg" alt=""/></p>
-
-<h4 id="toc_11">阴影裁剪</h4>
-
-<p>与边框不同,图层的阴影继承自内容的外形，CoreAnimation会将寄宿图（包括子视图）来结合图层形状创建一个阴影。<br/><br/>
-但是由于他们的不同,我们在包括子图层创建阴影后,如果按照边框进行裁剪就会导致部分阴影没有了，这时候我们只能额外创建一个裁剪后的图层形状的阴影图层（可以作为最外层的父图层）来实现效果。</p>
-
-<h3 id="toc_12">shadowPath属性</h3>
-
-<p>因为实时计算阴影是非常消耗资源的,我们可以通过事先指定<code>shadowPath</code>来提高性能.<code>shadowPath</code>是一个<code>CGPathRef</code>类型（一个指向<code>CGPath</code>的指针）。<code>CGPath</code> 是一个<code>Core Graphics</code>对象，用来指定任意的一个矢量图形。我们可以用这个属性在图层形状之外指定阴影形状.  </p>
-
-<p>举个栗子:</p>
-
-<pre><code class="language-objc">
-CGMutablePathRef squarePath = CGPathCreateMutable();
-CGPathAddRect(squarePath, NULL, self.layerView1.bounds);
-self.layerView1.layer.shadowPath = squarePath;
-//需要我们手动释放
-CGPathRelease(squarePath);
-//create a circular shadow
-CGMutablePathRef circlePath = CGPathCreateMutable();
-CGPathAddEllipseInRect(circlePath, NULL, self.layerView2.bounds);
-self.layerView2.layer.shadowPath = circlePath; 
-CGPathRelease(circlePath);
-</code></pre>
-
-<p><code>CGPath</code>适合搭建比较简单的形状,比如举行或者圆,但是如果是复杂的图形推荐<strong>使用<code>UIBezierPath</code></strong>，它是一个由UIKit提供的在<code>CGPath</code>基础上的<code>Objective-C</code>包装类</p>
-
-<h3 id="toc_13">图层蒙版</h3>
-
-<p>CALayer的<code>mask</code>属性是一个CALayer类型,它类似于一个自图层，mask图层定义了父图层的可见区域。  </p>
-
-<p>mask图层的color没用,轮廓才是重要的。对于mask图层中的部分会保留下来,其他部分会被抛弃（对于视图View其实你可以看做其他部分还在只不过颜色为透明色,但是这部分还会拦截点击事件）  </p>
-
-<p>这个<code>Mask</code><strong>不仅仅局限于静态图</strong>，任何有图层的构成都可以作为Mask，因此我们甚至可以用一个动画的layer作为蒙版.</p>
-
-<h3 id="toc_14">拉伸过滤</h3>
-
-<p>这里牵涉到<code>minificationFilter</code>和<code>magnificationFilter</code>属性。  </p>
-
-<p>当图片需要显示不同大小的时候,这种拉伸算法就起到作用。它作用于原图的像素上并根据需要生成新的像素显示在屏幕上。</p>
-
-<p><code>CALayer</code>提供给我们三种拉伸过滤方法:</p>
+<p><code>CAShapeLayer</code> 是一个通过矢量图形而不是<code>bitmap</code>来绘制的图层子类.<br/><br/>
+即<code>CAShapeLayer</code>与<code>CGPath</code>搭配来绘制图形.与用<code>Core Graphics</code>直接向原始的<code>CALyer</code>的内容中绘制一个路径相比：  </p>
 
 <ul>
-<li>kCAFilterLinear </li>
-<li>kCAFilterNearest</li>
-<li>kCAFilterTrilinear</li>
+<li>渲染快速（ CAShapeLayer 使用了硬件加速）</li>
+<li>高效使用内存（CAShapeLayer 不需要像普通 CALayer 一样创建一个寄宿图形）</li>
+<li>不会被图层边界剪裁掉（CAShapeLayer 可以在边界之外绘制）</li>
+<li>不会出现像素化（当你给 CAShapeLayer 做3D变换时，它不像一个有寄宿图的普通图层一样变得像素化）</li>
 </ul>
 
-<p><code>minification</code>（缩小图片）和<code>magnification</code>（放大图片）默认的过滤器都是<code>kCAFilterLinear</code></p>
+<h4 id="toc_1">CGPath</h4>
 
-<p><code>kCAFilterLinear</code>双线性滤波，大多数情况下表现良好，但是当放大倍数较大时会比较模糊不清  </p>
+<p><code>CGPath</code>来创建形状,一定要闭合,可以设置一些属性lineWith、lineCap 、lineJoin等,但是一个图层只有一次机会设置,如果想要想用不同颜色或风格来绘制多个形状，就不得不为每个形状准备一个图层了。  </p>
 
-<p><code>kCAFilterTrilinear</code>和<code>kCAFilterLinear</code>很相似，是三线性滤波<br/>
-<img src="media/14892022301750/14893953542514.jpg" alt=""/></p>
+<pre><code class="language-objc">//create shape layer
+CAShapeLayer *shapeLayer = [CAShapeLayer layer];
+shapeLayer.strokeColor = [UIColor redColor].CGColor;
+shapeLayer.fillColor = [UIColor clearColor].CGColor;
+shapeLayer.lineWidth = 5;
+shapeLayer.lineJoin = kCALineJoinRound;
+shapeLayer.lineCap = kCALineCapRound;
+shapeLayer.path = path.CGPath;
+</code></pre>
 
-<p><code>kCAFilterNearest</code> 最近过滤 ，就是取样最近的单像素点而不管其他的颜色。总的来说，对于比较小的图或者是差异特别明显，极少斜线的大图，最近过滤算法会保留这种差异明显的特质以呈现更好的结果。但是对于大多数的图尤其是有很多斜线或是曲线轮廓的图片来说，最近过滤算法会导致更差的结果。换句话说，线性过滤保留了形状，最近过滤则保留了像素的差异。<br/>
-<img src="media/14892022301750/14893958244715.jpg" alt=""/></p>
+<h4 id="toc_2">圆角</h4>
 
-<h3 id="toc_15">组透明</h3>
+<p>我们虽然可以用<code>CALayer</code>的<code>cornerRadius</code>可以设置圆角，但是我使用<code>CAShapeLayer</code>来单独指定每个角的形状.</p>
 
-<p>UIView用<code>alpha</code>属性设置透明度<br/>
-CALayy用<code>opacity</code>设置图层透明度<br/>
-这两个属性都是影响子层级的，比如我们设置一个图层透明度为50%，图层的每个像素都会一半显示自己的颜色，另一半显示图层下面的颜色。。但是如果图层包含一个同样显示50%透明的子图层时，你所看到的视图，50%来自子视图，25%来了图层本身的颜色，另外的25%则来自背景色。因此经常导致我们我们视图颜色的不协调。</p>
+<pre><code class="language-objc">CGRect rect = CGRectMake(50, 50, 100, 100);
+CGSize radii = CGSizeMake(20, 20);
+UIRectCorner corners = UIRectCornerTopRight | UIRectCornerBottomRight | UIRectCornerBottomLeft;
+//create path
+UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:rect byRoundingCorners:corners cornerRadii:radii];
+</code></pre>
 
-<p>这时候我们可以<br/><br/>
-方法一：<br/><br/>
-通过设置<code>Info.plist</code>文件中的 <code>UIViewGroupOpacity</code>为<code>YES</code>来达到这个效果，但是这个设置会影响到这个应用，整个app可能会受到不良影响。</p>
+<p>然后我们可以通过这个图层路径绘制一个既有直角又有圆角的视图,如果我们想依照此图形来剪裁视图内容，我们可以把<strong><code>CAShapeLayer</code>作为视图的宿主图层</strong>，而不是添加一个子视图</p>
 
-<p>方法二：（推荐）<br/><br/>
-设置CALayer的一个叫做<code>shouldRasterize</code>属性来实现组透明的效果，如果它被设置为YES，在应用透明度之前，图层及其子图层都会被整合成一个整体的图片，这样就没有透明度混合的问题了</p>
+<h3 id="toc_3">CATextLayer</h3>
 
-<p>为了启用<code>shouldRasterize</code>属性，我们设置了图层的<code>rasterizationScale</code>属性。默认情况下，所有图层拉伸都是1.0， 所以如果你使用了<code>shouldRasterize</code>属性，你就要确保你设置了 <code>rasterizationScale</code> 属性去匹配屏幕，以防止出现Retina屏幕像素化的问题。</p>
+<p>如果我们想要在一个图层中显示文字,我们可以通过借助图层的代理,直接将字符串用<code>Core<br/>
+Graphics</code>写入图层的内容--&gt;这就是UILabel实现  </p>
 
-<pre><code class="language-objc">button2.layer.shouldRasterize = YES;
-button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
+<p>如果不用上面的方式,我们还有比较简单的方式:<br/>
+<code>Core Animation</code>提供了一个<code>CALayer</code>的子类<code>CATextLayer</code>，它以图层的形式包含了<code>UILabel</code>几乎所有的绘制特性，并且额外提供了一些新的特性。而且<code>CATextLayer</code>也要比 <code>UILabel</code> 渲染得快得多</p>
+
+<pre><code class="language-objc">CATextLayer *textLayer = [[CATextLayer alloc] init];
+    textLayer.frame = self.textLayerView.bounds;
+    [self.textLayerView.layer addSublayer:textLayer];
+    //用retina屏进行渲染,否则文字会像素化
+    textLayer.contentsScale = [UIScreen mainScreen].scale;
+    //颜色 默认黑色
+    textLayer.foregroundColor = [UIColor yellowColor].CGColor;
+    
+    textLayer.alignmentMode = kCAAlignmentJustified;
+    
+    //这个属性为yes后为根据内容进行多行显示,Yes就是一行
+    textLayer.wrapped = NO;
+    
+    UIFont *font = [UIFont systemFontOfSize:15];
+    CFStringRef fontName = (__bridge CFStringRef)(font.fontName);
+    CGFontRef fontRef = CGFontCreateWithFontName(fontName);
+    textLayer.font = fontRef;
+    //字体大小是单独设置的
+    textLayer.fontSize = 10;
+    //设置显示字体
+    textLayer.string = @&quot;zhe shi yi ge textLayer&quot;;
+</code></pre>
+
+<p><code>CATextLayer</code> 的 <code>font</code> 属性不是一个 <code>UIFont</code> 类型，而是一个 <code>CFTypeRef</code> 类型。这样可以根据你的具体需要来决定字体属性应该是用 <code>CGFontRef</code> 类型还是 <code>CTFontRef</code> 类型（<code>Core Text</code>字体）。</p>
+
+<p>因为 <code>CTFontRef</code> 和 <code>CGFontRef</code> 并不像UIFont一样包含点大小，因此我们需要<strong>单独设置字体大小</strong>;</p>
+
+<p>CATextLayer 的<code>string</code>属性是<code>id</code>类型的，因此我们可以用<code>NSString</code>和<code>NSAttributedString</code>来指定文本。  <strong>注意</strong>， <code>NSAttributedString</code> 并不是 <code>NSString</code> 的子类。属性化字符串是iOS用来渲染字体风格的机制，它以特定的方式来决定指定范围内的字符串的原始信息，比如字体，颜色，字重，斜体等。</p>
+
+<h4 id="toc_4">富文本</h4>
+
+<p>iOS6之后，苹果给UILabel和UIKit添加直接的属性字符串支持.从iOS3.2开始 CATextLayer 就已<br/>
+经支持属性化字符串了(可以这样支持低版本 不过他吗太低了吧)。<br/><br/>
+我们可以看下CATextLayer的富文本:</p>
+
+<pre><code class="language-objc">//convert UIFont to a CTFont
+CFStringRef fontName = (__bridge CFStringRef)font.fontName;
+CGFloat fontSize = font.pointSize;
+CTFontRef fontRef = CTFontCreateWithName(fontName, fontSize, NULL);
+
+//set text attributes
+NSDictionary *attribs = @{(__bridge id)kCTForegroundColorAttributeName:(__bridge id)[UIColor blackColor].CGColor, 
+(__bridge id)kCTFontAttributeName: (__bridge id)fontRef};
+[string setAttributes:attribs range:NSMakeRange(0, [text length])];
+
+attribs = @{(__bridge id)kCTForegroundColorAttributeName: (__bridge id)[UIColor redColor].CGColor,
+(__bridge id)kCTUnderlineStyleAttributeName:@(kCTUnderlineStyleSingle),(__bridge id)kCTFontAttributeName: (__bridge id)fontRef};
+[string setAttributes:attribs range:NSMakeRange(6, 5)];
+//release the CTFont we created earlier
+CFRelease(fontRef);
+//set layer text
+textLayer.string = string;
+
+</code></pre>
+
+<h4 id="toc_5">行距和字距</h4>
+
+<p>由于绘制的实现机制不同（<code>Core Text</code>和<code>WebKit</code>），用 <code>CATextLayer</code> 渲染和用 <code>UILabel</code> 渲染出的文本行距和字距也不是不尽相同的。(影响不大)</p>
+
+<h4 id="toc_6">UILabel替代品</h4>
+
+<p>CATextLayer 比 UILabel 有着更好的性能表现,虽然UILabel很好用,但是如果我们非要找个UILabel替代品的话,有以下方法:</p>
+
+<ol>
+<li><p>继承 UILabel后添加一个子图层 CATextLayer 并重写显示文本的方法。<br/>
+但是仍然会有由<code>UILabel</code>的<code>-drawRect:</code>方法创建的空寄宿图。而且由于CALayer不能自动布局,我们不能根据内容自动方法图层.</p></li>
+<li><p>用 CATextLayer 作为宿主图层的 UILabel 子类<br/>
+每一个 <code>UIView</code> 都是寄宿在一个 <code>CALayer</code> 的示例上。这个图层是由视图自动创建和管理的，这个图层一旦被创建就无法替代,但是我们可以继承了<code>UIView</code>，重写其<code>+layerClass</code>UIView 会在初始化的时候调用 +layerClass 方法，然后用它的返回类型来创建宿主图层。</p></li>
+</ol>
+
+<p>把 CATextLayer 作为宿主图层的另一好处就是视图自动设置了 contentsScale 属性。</p>
+
+<p><strong>用 <code>+layerClass</code> 来创建基于不同图层的视图是一个简单可复用的方法</strong></p>
+
+<h3 id="toc_7">CATransformLayer</h3>
+
+<p>我们之前说过所有图层都把他的子图层平面化到一个场景中,因此没法做出3D的层级体系变换.<code>CALayer</code>中存在<code>CATransfromLayer</code>，它不同于一般图层，它不显示自己内容，只有当存在了一个能作用于子图层的变换它才真正存在。</p>
+
+<p>我们在前面创建过一个立方体的固体对象,但是因为这次我们是向CATransformLayer上添加图层，而不是之前的<code>contaninView</code>,我们<strong>不能向一个没有寄宿图的图层上添加有寄宿图图层</strong>(就是不能向一个不是UIVIew的Layer中添加另外一个UIView的layer，否则在视图体系中显示的添加的这个不是视图而是图层),因此我们选择向<code>CATransfromLayer</code>添加立方体图层.</p>
+
+<pre><code class="language-objc">//举一段代码栗子
+//create cube layer
+CATransformLayer *cube = [CATransformLayer layer];
+//add cube face 1（添加立方体的一个面）
+CATransform3D ct = CATransform3DMakeTranslation(0, 0, 50);
+//[self faceWithTransform:ct] 这个方法根据Transform3D返回了一个这种变换的图层
+[cube addSublayer:[self faceWithTransform:ct]];
+//添加6个面后
+...
+//center the cube layer within the container
+CGSize containerSize = self.containerView.bounds.size;
+cube.position = CGPointMake(containerSize.width / 2.0, containerSize.height / 2.0);
+/**
+设置这个立方体的旋转（我们可以不用设置containerView的subTransform属性来进行立方体变换,而且可
+以有几个立方体就能变换几种）
+*/
+cube.transform = transform;
+
+//设置contaninView的sublayerTransform保证透视和灭点
+CATransform3D pt = CATransform3DIdentity;
+pt.m34 = -1.0 / 500.0;
+self.containerView.layer.sublayerTransform = pt;
+//将不同形状的cube添加
+[self.containerView.layer addSublayer:cube1];
+</code></pre>
+
+<h3 id="toc_8">CAGradientLayer</h3>
+
+<p><code>CAGradientLayer</code>是用来生成两种或更多颜色平滑渐变的（绘制使用了硬件加速）.<br/>
+<code>CAGradientLayer</code>只适合做这种渐变没法定制,例如做环形渐变等,那样的话只能用<code>Core Graphic</code>了</p>
+
+<h4 id="toc_9">基础渐变</h4>
+
+<p>这是最简单的渐变,这些渐变色彩放在一个数组中，并赋给<code>colors</code>(<code>CGColorRef</code>类型)属性。</p>
+
+<p>CAGradientLayer 也有<code>startPoint</code>和<code>endPoint</code>属性，他们决定了渐变的方向。这两个参数是以单位坐标系进行的定义，所以左上角坐标是{0, 0}，右下角坐标是{1, 1}。</p>
+
+<pre><code class="language-objc">CAGradientLayer *gradientLayer = [CAGradientLayer layer];
+gradientLayer.frame = self.containerView.bounds;
+[self.containerView.layer addSublayer:gradientLayer];
+//set gradient colors
+gradientLayer.colors = @[(__bridge id)[UIColor redColor].CGColor, (__bridge id)[UIColor blueColor].CGColor];
+//set gradient start and end points
+gradientLayer.startPoint = CGPointMake(0, 0);
+gradientLayer.endPoint = CGPointMake(1, 1);
+</code></pre>
+
+<p><img src="media/14896343426276/14897191786083.jpg" alt=""/></p>
+
+<h4 id="toc_10">多重渐变</h4>
+
+<p><code>colors</code>属性是个数组,因此可以设置很多颜色的多重渐变.默认这些颜色在我们指定的空间是均匀渲染的,但是我们可以设置<code>location</code>属性来调整空间。<br/>
+<code>location</code>属性浮点型数组(以<code>NSNumber</code>包装),是以单位坐标(针对做渐变区域的单位坐标)系进行标定。0.0代表着渐变的开始，1.0代表着结束。<br/>
+<code>loaction</code>属性不一定非要设置,但是如果设置了,数组大小一定要与<code>colors</code>数组大小相同,否则会得到白色渐变.  </p>
+
+<pre><code class="language-objc">gradientLayer.colors = @[(__bridge id)[UIColor redColor].CGColor,(__bridge id)[UIColor blueColor].CGColor,(__bridge id)[UIColor greenColor].CGColor];
+/**
+    这个数组的意义是0.0-0.25为红色到黄色的渐变区域,0.25-0.5为黄色到绿色的渐变区域,
+    0.5之后为绿色的完全区域
+*/
+    gradientLayer.locations = @[@(0.1),@(0.5),@(0.9)];
+    gradientLayer.startPoint = CGPointMake(0.25, 0.25);
+    gradientLayer.endPoint = CGPointMake(0.5, 0.5);
+</code></pre>
+
+<p><img src="media/14896343426276/14897305344880.jpg" alt=""/></p>
+
+<h3 id="toc_11">CAReplicatorLayer</h3>
+
+<p><code>CAReplicatorLayer</code>的目的是为了高效生成许多相似的图层。它会绘制一个或多个图层的子图层，并在每个复制体上应用不同的变换。</p>
+
+<h4 id="toc_12">重复图层</h4>
+
+<p><code>instanceCount</code>属性指定了图层需要重复多少次<br/>
+<code>instanceTransform</code> 指定了一个 <code>CATransform3D</code> 3D变换，复制图层在被创建时产生的和上一个制图层的位移(位移的锚点是<code>CAReplicatorlayer</code>的中心点)<br/>
+<code>instanceDelay</code>在短时间内的复制延时,一般用在动画上(支持动画的延时)<br/>
+ <code>preservesDepth</code>如果设置为YES,图层将保持于CATransformLayer类似的性质和相同的限制<br/>
+ <code>instanceColor</code>设置这些复制图层的颜色,默认位白色(注意有可能会和要复制的图层的颜色冲突)<br/>
+ 变换是逐步增加的，每个实例都是相对于前一实例布局。因此这些复制体最终不会出现在同一位置上</p>
+
+<pre><code class="language-objc">CAReplicatorLayer *replicator = [CAReplicatorLayer layer];
+replicator.frame = self.containerView.bounds;
+[self.containerView.layer addSublayer:replicator];
+//重复多少次
+replicator.instanceCount = 10;
+
+CATransform3D transform = CATransform3DIdentity;
+transform = CATransform3DTranslate(transform, 0, 200, 0);
+transform = CATransform3DRotate(transform, M_PI / 5.0, 0, 0, 1);
+transform = CATransform3DTranslate(transform, 0, -200, 0);
+replicator.instanceTransform = transform;
+
+replicator.instanceBlueOffset = -0.1;
+replicator.instanceGreenOffset = -0.1;
+
+CALayer *layer = [CALayer layer];
+layer.frame = CGRectMake(100.0f, 100.0f, 100.0f, 100.0f);
+layer.backgroundColor = [UIColor whiteColor].CGColor;
+[replicator addSublayer:layer];
+
+</code></pre>
+
+<p>由于我们设置了<code>instanceBlueOffset</code>和 <code>instanceGreenOffset</code>属性.的颜色也在变化.除了这两个还有<code>instanceBlueOffset</code> <code>instanceAlphaOffset</code>这都是改变某个颜色通道的值</p>
+
+<p><code>CAReplicatorLayer</code> 真正应用到实际程序上的场景比如：一个游戏中导弹的轨迹云，或者粒子爆炸（尽管iOS 5已经引入了 <code>CAEmitterLayer</code> ，它更适合创建任意的粒子效果）。除此之外，还有一个实际应用是：<code>反射</code>。</p>
+
+<h4 id="toc_13">反射</h4>
+
+<p>创建一个指定视图的镜像照片,我们只需要使用<code>CAReplicatorLayer</code>并用一个负比例变换创建一个复制图层即可.</p>
+
+<pre><code class="language-objc">+ (Class)layerClass
+{
+return [CAReplicatorLayer class];
+}
+- (void)setUp
+{
+//configure replicator
+CAReplicatorLayer *layer = (CAReplicatorLayer *)self.layer;
+layer.instanceCount = 2;
+//move reflection instance below original and flip vertically
+//核心代码是这个动画
+CATransform3D transform = CATransform3DIdentity;
+CGFloat verticalOffset = self.bounds.size.height + 2;
+transform = CATransform3DTranslate(transform, 0, verticalOffset, 0);
+transform = CATransform3DScale(transform, 1, -1, 0);
+layer.instanceTransform = transform;
+//reduce alpha of reflection layer
+layer.instanceAlphaOffset = -0.6;
+}
+- (id)initWithFrame:(CGRect)frame
+{
+//this is called when view is created in code
+if ((self = [super initWithFrame:frame])) {
+[self setUp];
+}
+return self;
+}
+- (void)awakeFromNib
+{
+//this is called when view is created from a nib
+[self setUp];
+}
+</code></pre>
+
+<p>这个镜像的是整个ReflectView视图内容(是视图层次)<br/>
+因为现在这个VIew的layer已经变为<code>CAReplicatorLayer</code>所以我们对这个layer本身改变什么是不会镜像的,当然如果add的Layer内容也会被镜像</p>
+
+<p>大神写的自适应渐变淡出效果的<a href="https://github.com/nicklockwood/ReflectionView">ReflectView</a></p>
+
+<h3 id="toc_14">CAScrollLayer</h3>
+
+<p>之前我们显示大图层中的一小部分是使用图层的<code>contentRect</code>属性,但是如果我们想要滑动可视区域的话这样就不是很好的办法.</p>
+
+<p><code>CALayey</code>提供了一个子类<code>CAScrollLayer</code>.<br/>
+ <code>CAScrollLayer</code> 有一个 <code>-scrollToPoint:</code>方法，它自动适应 <code>bounds</code> 的原点以便图层内容现在滑动的地方。</p>
+
+<p>因为<code>Core Animation</code>是不处理用户输入的,所以<code>CAScrollLayer</code>并不负责将触摸事件转换为滑动事件，既不渲染滚动条，也不实现任何iOS指定行为例如滑动反弹.</p>
+
+<pre><code class="language-objc">//来用 CAScrollLayer 来常见一个基本的 UIScrollView 替代品
++ (Class)layerClass
+{
+    return [CAScrollLayer class];
+}
+//添加平移手势
+//在平移手势中滚动视图
+CGPoint offset = self.bounds.origin;
+offset.x -= [recognizer translationInView:self].x;
+offset.y -= [recognizer translationInView:self].y;
+//scroll the layer
+[(CAScrollLayer *)self.layer scrollToPoint:offset];
+//reset the pan gesture translation
+[recognizer setTranslation:CGPointZero inView:self];
+//当然我们可以自己做边界检查
+</code></pre>
+
+<p>其实<strong><code>UIScrollView</code> 并没有用 <code>CAScrollLayer</code></strong>，事实上，就是简单的通过直接操作图层边界来实现滑动。</p>
+
+<p>那么这个<code>CAScrollLayer</code>的作用是什么呢?<br/>
+在<code>CAScrollerLayer</code>的头文件中有一个<code>CALayer (CALayerScrolling)</code>的扩展分类,实现了一些：</p>
+
+<pre><code class="language-objc">- (void)scrollPoint:(CGPoint)p;
+- (void)scrollRectToVisible:(CGRect)r;
+@property(readonly) CGRect visibleRect;
+</code></pre>
+
+<p>其实这些方法或者属性并不是给<code>CALayer</code>添加了滑动功能,事实上他们只是放置在<code>CAScrollLayer</code>中的图层的实用方法,<code>scrollPoint:</code>方法从图层树中查找并找到第一个可用的<code>CAScrollLayer</code>，然后滑动它使得指定点成为可视的。<code>scrollRectToVisible:</code>方法实现了同样的事情只不过是作用在一个矩形上的。<code>visibleRect</code> 属性决定图层（如果存在的话）的哪部分是当前的可视区域。当涉及到实现图层滑动的时候就可以用上了</p>
+
+<h3 id="toc_15">CATiledLayer</h3>
+
+<p>我们有可能会需要加载一张高像素图片,这时候我们不适合读取整张图片到内存中,因为载入大图会非常的慢,将会阻塞线程造成卡顿.<br/>
+能高效绘制在iOS上的图片也有一个大小限制。所有显示在屏幕上的图片最终都会被转化为<code>OpenGL</code>纹理，同时<code>OpenGL</code>有一个最大的纹理尺寸（通常是2048*2048，或4096*4096，这个取决于设备型号）。如果你想在单个纹理中显示一个比这大的图，即便图片已经存在于内存中了，你仍然会遇到很大的性能问题，因为<code>Core Animation</code>强制用CPU处理图片而不是更快的GPU</p>
+
+<p>这时候我们可以用<code>CATiledLayer</code>,它可以将大图分解成小片然后将他们单独按需载入<br/>
+<strong>CATiledLayer 很好地和 UIScrollView 集成在一起。</strong></p>
+
+<pre><code class="language-objc">- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    //add the tiled layer
+    
+    /**
+    CATiledLayer 很好地和 UIScrollView 集成在一起。除了设置图层和滑动视图边界
+    以适配整个图片大小，我们真正要做的就是实现 -drawLayer:inContext: 方法，当
+    需要载入新的小图时， CATiledLayer 就会调用到这个方法。
+    */
+    
+    CATiledLayer *tileLayer = [CATiledLayer layer];
+    tileLayer.frame = CGRectMake(0, 0, 2048, 2048);
+    tileLayer.delegate = self; [self.scrollView.layer addSublayer:tileLayer];
+    //configure the scroll view
+    self.scrollView.contentSize = tileLayer.frame.size;
+    //draw layer
+    [tileLayer setNeedsDisplay];
+}
+- (void)drawLayer:(CATiledLayer *)layer inContext:(CGContextRef)ctx
+{
+    //determine tile coordinate
+    CGRect bounds = CGContextGetClipBoundingBox(ctx);
+    NSInteger x = floor(bounds.origin.x / layer.tileSize.width);
+    NSInteger y = floor(bounds.origin.y / layer.tileSize.height);
+    //load tile image
+    NSString *imageName = [NSString stringWithFormat: @&quot;Snowman_%02i_%02i&quot;, x, y];
+    NSString *imagePath = [[NSBundle mainBundle] pathForResource:imageName ofType:@&quot;jpg&quot;];
+    
+    UIImage *tileImage = [UIImage imageWithContentsOfFile:imagePath];
+    //draw tile
+    UIGraphicsPushContext(ctx);
+    [tileImage drawInRect:bounds];
+    UIGraphicsPopContext();
+}
+</code></pre>
+
+<p><code>CATiledLayer</code> 的默认以淡入的方式载入小图,可以用 <code>fadeDuration</code> 属性改变淡入时长或直接禁用<br/>
+掉。</p>
+
+<p><code>CATiledLayer</code> （不同于大部分的<code>UIKit</code> 和<code>Core Animation</code>方法）支持多线程绘制，<code>-drawLayer:inContext:</code>方法可以在多个线程中同时地并发调用，所以请小心谨慎地确保你在这个方法中实现的绘制代码是线程安全的。</p>
+
+<p><strong>补充</strong><br/>
+我们在使用<code>CATiledLayer *tileLayer = [CATiledLayer layer];</code>时载入图片并不是以以Retina的分辨率显示,我们可以<code>tileLayer.contentsScale = [UIScreen mainScreen].scale;</code>我们只需要设<br/>
+置了<code>CATiledLayer</code>的<code>contentsScale</code>即可(因为size是以像素为单位的,所以改变了contentsScale 就自动有了默认的小图尺寸),而不需要手工更新小图的尺寸或是在<code>Retina</code>分辨率下指定一个不同的小图。</p>
+
+<p>我们需要做的是适应小图渲染代码以对应安排 <code>scale</code>的变化</p>
+
+<pre><code class="language-objc">CGRect bounds = CGContextGetClipBoundingBox(ctx);
+CGFloat scale = [UIScreen mainScreen].scale;
+NSInteger x = floor(bounds.origin.x / layer.tileSize.width * scale);
+NSInteger y = floor(bounds.origin.y / layer.tileSize.height * scale);
+</code></pre>
+
+<h3 id="toc_16">CAEmitterLayer</h3>
+
+<p>iOS后引入了一个新的 <code>CALayer</code> 子类叫做 <code>CAEmitterLayer</code><br/>
+<code>CAEmitterLayer</code> 是一个高性能的粒子引擎，被用来创建实时例子动画如：烟雾，火，雨等等这些效果</p>
+
+<p><code>CAEmitterLayer</code>是很多<code>CAEmitterCell</code>的容器.这些<code>CAEmitierCell</code>定义了一个粒子效果.我们就是为不同的粒子效果定义一个或多个<code>CAEmitterCell</code>作为模版，同时<code>CAEmitterLayer</code>负责基于这些模版实例化一个粒子流。</p>
+
+<p><code>CAEmitterCell</code>它有一个<code>contents</code>属性可以定义为一个<code>CGImage</code>，还有一些可设置属性控制着表现和行为。<br/>
+举个栗子:</p>
+
+<pre><code class="language-objc">- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    //create particle emitter layer
+    CAEmitterLayer *emitter = [CAEmitterLayer layer];
+    emitter.frame = self.containerView.bounds;
+    [self.containerView.layer addSublayer:emitter];
+    //configure emitter
+    emitter.renderMode = kCAEmitterLayerAdditive;
+    emitter.emitterPosition = CGPointMake(emitter.frame.size.width / 2.0, emitter.frame.size.height / 2.0);
+    //create a particle template
+    CAEmitterCell *cell = [[CAEmitterCell alloc] init];
+    cell.contents = (__bridge id)[UIImage imageNamed:@&quot;Spark.png&quot;].CGImage;
+    cell.birthRate = 150;
+    cell.lifetime = 5.0;
+    cell.color = [UIColor colorWithRed:1 green:0.5 blue:0.1 alpha:1.0].CGColor;
+    cell.alphaSpeed = -0.4;
+    cell.velocity = 50;
+    cell.velocityRange = 50;
+    cell.emissionRange = M_PI * 2.0;
+    //add particle template to emitter
+    emitter.emitterCells = @[cell];
+}
+@end
+</code></pre>
+
+<p><code>CAEMitterCell</code>的属性基本上可以分为三种：</p>
+
+<ul>
+<li>这种粒子某一属性的初始值。比如，<code>color</code>属性指定了一个可以混合图片内容颜色的混合色。在示例中，我们将它设置为桔色。</li>
+<li>粒子某一属性的变化范围。比如<code>emissionRange</code>属性的值是2π，这意味着粒子可以从360度任意位置反射出来。如果指定一个小一些的值，就可以创造出一个圆锥形</li>
+<li>指定值在时间线上的变化。比如，在示例中，我们将<code>alphaSpeed</code>设置为-0.4，就是说例子的透明度每过一秒就是减少0.4，这样就有发射出去之后逐渐消失的效果。</li>
+</ul>
+
+<p><code>CAEmitterLayer</code>的属性它自己控制着整个例子系统的位置和形状。一些属性比如 <code>birthRate</code>， <code>lifetime</code>和<code>celocity</code>，这些属性在<code>CAEmitterCell</code>中也有。这些属性会以相乘的方式作用在一起，这样你就可以用一个值来加速或者扩大整个例子系统。</p>
+
+<ul>
+<li><code>preservesDepth</code>，是否将3D例子系统平面化到一个图层（默认值）或者可以在3D空间中混合其他的图层</li>
+<li><code>renderMode</code>，控制着在视觉上粒子图片是如何混合的。示例中我们把它设置为<code>kCAEmitterLayerAdditive</code> ，它实现了这样一个效果：合并例子重叠部分的亮度使得看上去更亮。如果我们把它设置为默认的<code>kCAEmitterLayerUnordered</code>，效果就没那么好看了</li>
+</ul>
+
+<p><strong>注意</strong><br/>
+之前我们学习了<code>CAReplicatorLayer</code> 它的真正应用到实际程序上的场景比如：一个游戏中导弹的轨迹云,或者反射等</p>
+
+<h3 id="toc_17">CAEAGLLayer</h3>
+
+<p>再议</p>
+
+<h3 id="toc_18">AVPlayerLayer</h3>
+
+<p>它不是<code>Core Animation</code>框架的一部分，是在<code>AVFoundation</code>框架中的,但是它，提供了一个<code>CALayer</code> 子类来显示自定义的内容类型.</p>
+
+<p><code>AVPlayerLayer</code> 是用来在iOS上播放视频的。他是高级接口例如<code>MPMoivePlayer</code>的底层实现，提供了显示视频的底层控制。</p>
+
+<p><code>AVPlayerLayer</code>的使用相当简单：你可以用<code>+playerLayerWithPlayer:</code>方法创建一个已经绑定了视频播放器的图层，或者你可以先创建一个图层，然后用<code>player</code>属性绑定一个<code>AVPlayer</code>实例。</p>
+
+<pre><code class="language-objc">- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    //get video URL
+    NSURL *URL = [[NSBundle mainBundle] URLForResource:@&quot;Ship&quot; withExtension:@&quot;mp4&quot;];
+    //create player and player layer
+    AVPlayer *player = [AVPlayer playerWithURL:URL];
+    AVPlayerLayer *playerLayer = [AVPlayerLayer playerLayerWithPlayer:player];
+    //set player layer frame and attach it to our view
+    playerLayer.frame = self.containerView.bounds;
+    [self.containerView.layer addSublayer:playerLayer];
+    //play the video
+    [player play];
+}
 </code></pre>
 
 <p><strong>注意</strong><br/>
-当<code>shouldRasterize</code>和<code>UIViewGroupOpacity</code>一起的时候，会出现性能问题（但是好像影响不大）</p>
+因为Core Animation并不支持自动大小和自动布局,因此我们要考虑<code>AVPlayerLayer</code>添加到自己创建的视图View而不是直接加到控制器的View</p>
+
+<p>因为<code>AVPlayerLayer</code>是<code>CALayer</code>的子类，它继承了父类的所有特性。我们并不会受限于要在一个矩形中播放视频(我们可以对Layer进行3D，圆角，有色边框，蒙板，阴影等)。</p>
 
                         
                       </div>
@@ -346,7 +588,7 @@ button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/11</span>
+                    <span class="date">2017/3/16</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E5%9B%BE%E5%B1%82.html'>图层</a></span>
@@ -437,6 +679,18 @@ button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
 	      
 		      
 			      <li class="post">
+			        <a href="15031302948355.html">可选链式调用</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15028525854956.html">自动引用计数</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15025006795297.html">析构过程</a>
 			      </li>
 		     
@@ -450,18 +704,6 @@ button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
 		      
 			      <li class="post">
 			        <a href="15018175799489.html">继承</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15017615739867.html">下标</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15017296324997.html">方法</a>
 			      </li>
 		     
 		  
