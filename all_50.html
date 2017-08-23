@@ -105,79 +105,29 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14899954232802.html">
+                <a class="clearlink" href="14900564888280.html">
                 
-                  <h1>1.weak是怎么实现的</h1>
+                  <h1>蓝牙连接</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>在Objective-C中，用__weak修饰的指针，会在所指向的那个Objective-C对象被释放后，自动指向nil。</p>
+                        	<h4 id="toc_0">1. 获取蓝牙信号强度</h4>
 
-<p>参考<a href="http://www.jianshu.com/p/fe9865814668">weak是怎么实现的</a></p>
+<p><img src="media/14900564888280/14900565184282.jpg" alt=""/></p>
 
-<p>通俗的解释就是，在Objective-C的运行时环境中，维护了一种<strong>weak表</strong>，这张<strong>哈希表</strong>用对象的首地址作为键，将由若干个__weak修饰的指针自身的地址组成的数组作为值。当一个Objective-C对象被释放后，通过这个对象的起始地址来找到所有指向它的__weak指针，并将它们指向nil。</p>
+<h4 id="toc_1">2. 后台读取蓝牙信号强度</h4>
 
-<p>ARC下，编译器会生成一个全局的散列表数组，每个散列表的大小上限为128Byte，取这个数值也是为了和cache line size（64Byte）对齐，对于iOS系统，这个数组的大小为8*128（Byte），可以存放8张散列表<code>SideTable</code>结构体。<br/>
-一个对象的首地址经过哈希之后可以确定这个对象映射到那个<code>SideTable</code>。<br/>
-一个<code>SideTable</code>结构体中包含了一个<code>weak_table</code>:</p>
+<p>如果程序在后台还需要获取蓝牙蓝牙信号强度，那么肯定是需要支持后台的，要设置后台模式，设置<code>use bluetooth LE accessories</code>这样我们在后台就可以继续读取<code>RSSI</code>和回调了<br/>
+<img src="media/14900564888280/14900567067529.jpg" alt=""/></p>
 
-<pre><code class="language-objc">struct SideTable {
-    //.......
-    weak_table_t weak_table;
-    //.......
-};
+<p>在实际使用的过程当中，发现设置了后台模式后，读取<code>RSSI</code>的值持续时间不够长，读取一会就不继续读取了，后来各种测试发现，自己使用一个定时器持续读取蓝牙设备的<code>battery</code>，之所以读取<code>battery</code>，是因为设备的<code>service</code>中存在读取<code>battery</code>的<code>serviceID</code>。试验中，发现如果不定时读取该值，在后台运行的时候读取<code>RSSI</code>值就会中断</p>
 
-struct weak_table_t {
-    weak_entry_t *weak_entries;
-    size_t    num_entries;
-    uintptr_t mask;
-    uintptr_t max_hash_displacement;
-};
-</code></pre>
+<h4 id="toc_2">3.RSSI和距离关系</h4>
 
-<p>根据对象首地址查找weak_entry的方法为weak_entry_for_referent()，可以看到其中对对象首地址做了一次哈希，得到了对应的index。如果发生碰撞，则index依次+1，遍历整个数组，检查是否能获得正确的weak_entry_t对象。</p>
-
-<pre><code class="language-objc">#define WEAK_INLINE_COUNT 4
-struct weak_entry_t {
-    DisguisedPtr&lt;objc_object&gt; referent;
-    union {
-        struct {
-            weak_referrer_t *referrers;//就是这个weak指针指向的对象地址
-            uintptr_t        out_of_line : 1;
-            uintptr_t        num_refs : PTR_MINUS_1;
-            uintptr_t        mask;
-            uintptr_t        max_hash_displacement;
-        };
-        struct {
-            // out_of_line=0 is LSB of one of these (don&#39;t care which)
-            weak_referrer_t  inline_referrers[WEAK_INLINE_COUNT];
-        };
-    };
-};
-</code></pre>
-
-<p>其中的<code>weak_referrer_t</code>实际就是指向Objective-C对象的指针的地址的类型：</p>
-
-<pre><code class="language-objc">typedef objc_object ** weak_referrer_t;
-</code></pre>
-
-<p>弱引用销毁过程:</p>
-
-<p>在<code>runtime</code>的代码中，可以找到一个叫做<code>weak_clear_no_lock</code>的方法，它的注释表明，这个方法会被<code>dealloc</code>方法调用，然后将被销毁对象所对应的所有弱引用指针都置为<code>nil</code>。</p>
-
-<p>过程:<br/>
-1. 利用即将被销毁的对象的首地址，找到对应的weak_entry_t。<br/>
-2. 从weak_entry_t对象中获取指向weak_referrer_t数组的指针。<br/>
-3. 遍历这个数组，对于数组中的每个元素，检查是否真的指向即将被销毁的对象的首地址，如果是，则将它指向nil，如果不是则报错。<br/>
-4. 释放这个weak_entry_t对象，并更新weak_table_t中的entry数目。如果有必要，对weak_table_t进行缩容。</p>
-
-<p>补充:<br/>
-当使用一个__weak指针时，<code>objc_loadWeakRetained()</code>和<code>objc_release()</code>函数都被调用了。</p>
-
-<p>其中<code>objc_loadWeakRetained()</code>会调用<code>retainWeakReference</code>方法，如果某个类重写了<code>retainWeakReference</code>方法并返回<code>NO</code>，则这个<code>__weak</code>指针获取的就永远是<code>nil</code>了。</p>
-
-<p>为什么需要在使用一个<code>__weak</code>指针时调用<code>objc_loadWeakRetained()</code>函数呢:是为了确保在使用这个<code>__weak</code>指针的过程中，指向的对象不被释放。</p>
+<p>根据RSSI值，得到设备与手机之间的距离公式大概如下:<br/>
+<code>powe(10, (abs(rssi) - 59) / (10 * 2.0))</code>; <br/>
+大概有这么一个关系，不是很准确。</p>
 
                         
                       </div>
@@ -186,7 +136,7 @@ struct weak_entry_t {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/20</span>
+                    <span class="date">2017/3/21</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html'>iOS开发知识</a></span>
@@ -277,6 +227,12 @@ struct weak_entry_t {
 	      
 		      
 			      <li class="post">
+			        <a href="15034731740974.html">错误处理</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15031302948355.html">可选链式调用</a>
 			      </li>
 		     
@@ -296,12 +252,6 @@ struct weak_entry_t {
 		      
 			      <li class="post">
 			        <a href="15020961612430.html">构造过程</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15018175799489.html">继承</a>
 			      </li>
 		     
 		  
