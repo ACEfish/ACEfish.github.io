@@ -105,137 +105,545 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15018175799489.html">
+                <a class="clearlink" href="15020961612430.html">
                 
-                  <h1>继承</h1>
+                  <h1>构造过程</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>类可以继承父类的方法、属性和其他特征</p>
+                        	<p>在类、结构体、枚举实例可用前必须执行<strong>构造过程</strong>，用来设置存储属性的初始值和其他的设置或初始化任务</p>
 
-<p>类可以调用和访问超类的方法，属性和下标，并且可以重写这些方法，属性和下标来优化或修改它们的行为。</p>
-
-<p>可以为类中继承的属性添加属性观察器</p>
-
-<h2 id="toc_0">定义一个基类</h2>
-
-<p>不继承于其它类的类,称之为基类</p>
-
-<p>注意:</p>
+<p>通过定义<strong>构造器</strong>来实现构造过程，构造器是用来创建特定类型新实例的特殊方法。</p>
 
 <blockquote>
-<p><code>Swift</code>中类并不是从一个通用类继承而来.如果没有为定义的类制定一个超类的话,这个类自动成为一个基类</p>
+<p>与OC不同,swift的构造器无序返回值,只需保证实例在第一次使用前完成正确的初始化</p>
 </blockquote>
 
-<p>创建一个<code>Vehicle</code>的基类，来描述通用车辆</p>
+<p><strong>类的实例</strong>也可以通过定义<strong>析构器</strong>在实例释放之前执行特定的清除工作</p>
 
-<pre><code class="language-swift">class Vehicle {
-    var currentSpeed = 0.0
-    var description: String {
-        return &quot;traveling at \(currentSpeed) miles per hour&quot;
+<h2 id="toc_0">存储属性的初始化赋值</h2>
+
+<p>类和结构体在创建实例时,存储属性必须有合适的值<br/>
+可以在构造器中为存储型属性赋值,也可以在定义属性值时设置默认值,这两种方法设置存储属性值时,值是被直接设置的,不会触发任何属性观察者</p>
+
+<h3 id="toc_1">构造器</h3>
+
+<pre><code class="language-swift">//最简单形式
+init() {
+    // 在此处执行构造过程
+}
+</code></pre>
+
+<h3 id="toc_2">默认属性值</h3>
+
+<pre><code class="language-swift">struct Fahrenheit {
+    var temperature = 32.0
+}
+</code></pre>
+
+<h2 id="toc_3">自定义构造过程</h2>
+
+<h3 id="toc_4">构造参数</h3>
+
+<p>自定义构造过程，在定义中提供<strong>构造参数</strong></p>
+
+<pre><code class="language-swift">struct Celsius {
+    var temperatureInCelsius: Double
+    init(fromFahrenheit fahrenheit: Double) {
+        temperatureInCelsius = (fahrenheit - 32.0) / 1.8
     }
-    func makeNoise() {
-        // 什么也不做-因为车辆不一定会有噪音
+    init(fromKelvin kelvin: Double) {
+        temperatureInCelsius = kelvin - 273.15
+    }
+}
+let boilingPointOfWater = Celsius(fromFahrenheit: 212.0)
+// boilingPointOfWater.temperatureInCelsius 是 100.0
+let freezingPointOfWater = Celsius(fromKelvin: 273.15)
+// freezingPointOfWater.temperatureInCelsius 是 0.0
+</code></pre>
+
+<h3 id="toc_5">参数的内部名称和外部名称</h3>
+
+<p>构造器并没有可区分的名字,都为<code>init</code>，因此需要构造器中的参数名和类型来确定应该被调用的构造器,因此外部名称很重要</p>
+
+<pre><code class="language-swift">struct Color {
+    let red, green, blue: Double
+    init(red: Double, green: Double, blue: Double) {
+        self.red = red
+        self.green = green
+        self.blue = blue
+    }
+    init(white: Double) {
+        red = white
+        green = white
+        blue = white
+    }
+}
+
+let magenta = Color(red: 1.0, green: 0.0, blue: 1.0)
+let halfGray = Color(white: 0.5)
+
+//只要构造器定义了外部名称就必须使用,否则报错
+let veryGreen = Color(0.0, 1.0, 0.0)//报编译时错误，需要外部名称
+</code></pre>
+
+<h3 id="toc_6">不带外部名的构造器参数</h3>
+
+<p>使用下划线来<code>_</code>来不为构造器某个参数提供外部名称</p>
+
+<pre><code class="language-swift">struct Celsius {
+    var temperatureInCelsius: Double
+    init(_ celsius: Double){
+        temperatureInCelsius = celsius
+    }
+}
+
+let bodyTemperature = Celsius(37.0)
+// bodyTemperature.temperatureInCelsius 为 37.0
+</code></pre>
+
+<p>此时构造器意图明确 可以不需要外部参数名称</p>
+
+<h3 id="toc_7">可选属性类型</h3>
+
+<p>在类型中包含一个逻辑上允许为空的存储型属性,要将其定义为<code>可选类型</code>,可选类型属性在初始化时自动初始化为<code>nil</code></p>
+
+<pre><code class="language-swift">class SurveyQuestion {
+    var text: String
+    var response: String?
+    init(text: String) {
+        self.text = text
+    }
+    func ask() {
+        print(text)
+    }
+}
+let cheeseQuestion = SurveyQuestion(text: &quot;Do you like cheese?&quot;)
+cheeseQuestion.ask()
+// 打印 &quot;Do you like cheese?&quot;
+cheeseQuestion.response = &quot;Yes, I do like cheese.&quot;
+</code></pre>
+
+<p>定义一个可选类型<code>response</code>因为答案在问题之前是无法确定,所以设为<code>String?</code>类型，在实例初始化是,自动赋值为<code>nil</code></p>
+
+<h3 id="toc_8">构造过程中常量属性的修改</h3>
+
+<p>在构造过程中任意时间点都可以给常量属性指定值,直到构造过程结束为一个确定的值,一旦常量属性赋值就永不能更改</p>
+
+<blockquote>
+<p>对于类的实例来说，它的常量属性只能在定义它的类的构造过程中修改；不能在子类中修改。</p>
+</blockquote>
+
+<pre><code class="language-swift">class SurveyQuestion {
+    let text: String
+    var response: String?
+    init(text: String) {
+        self.text = text
+    }
+    func ask() {
+        print(text)
     }
 }
 </code></pre>
 
-<h2 id="toc_1">子类生成</h2>
+<h2 id="toc_9">默认构造器</h2>
 
-<pre><code class="language-swift">//定义一个自行车Bicycle继承自Vehicle
-class Bicycle: Vehicle {
-    var hasBasket = false
+<p>如果结构体或者类的所有属性都有默认值,那么<code>Swift</code>会提供一个默认构造器,将所有值设置为默认值</p>
+
+<pre><code class="language-swift">class ShoppingListItem {
+    var name: String?
+    var quantity = 1
+    var purchased = false
+}
+var item = ShoppingListItem()
+</code></pre>
+
+<h3 id="toc_10">结构体的逐一成员构造器</h3>
+
+<p>在结构体中,如果没有提供自定义构造器，会自动获得逐一成员构造器</p>
+
+<pre><code class="language-swift">struct Size {
+    var width = 0.0, height = 0.0
+}
+let twoByTwo = Size(width: 2.0, height: 2.0)
+</code></pre>
+
+<h2 id="toc_11"><strong>值类型</strong>的构造器代理</h2>
+
+<p>构造器可以通过调用其他构造器来完成实例的部分构造过程,即<strong>构造器代理</strong></p>
+
+<p>对于值类型不支持继承,所以构造代理只能代理自己的其他构造器,对于类类型可以继承,需要保证其所有继承的存储型属性在构造时也能正确的初始化</p>
+
+<p>值类型,可以使用也只能用<code>self.init</code>在自定义构造器中引用同类型的其他构造器</p>
+
+<p>值类型定义一个自定义构造器,将无法访问默认构造器(结构体也无法访问逐一构造器),防止在给值类型增加一个复杂的自定义构造器后仍然有人使用自动生成的构造器</p>
+
+<blockquote>
+<p>可以通过将自定义的构造器写在扩展中,而不是将值类型写在原始定义中,来使可以通过默认构造器，逐一成员构造器,以及自定义构造器来创建实例</p>
+</blockquote>
+
+<h2 id="toc_12">类的继承和构造过程</h2>
+
+<p>类里面的所有存储属性,包括所有继承自父类的属性，都必须在构造过程中设置初始值</p>
+
+<p>类类型的两种构造器:  <strong>指定构造器</strong> <strong>便利构造器</strong></p>
+
+<h3 id="toc_13">指定构造器和便利构造器</h3>
+
+<p>指定构造器初始化类中提供的所有属性,并根据父类链向上条用父类构造器实现父类的初始化<br/>
+每个类都必须至少有一个指定构造器,可以通过继承父类的指定构造器来满足条件;</p>
+
+<p>便利构造器是次要、辅助的构造器，定义便利构造器来调用同一个类中的指定构造器，并为其参数提供默认值。你也可以定义便利构造器来创建一个特殊用途或特定输入值的实例。</p>
+
+<h3 id="toc_14">指定构造器、便利构造器语法</h3>
+
+<p>类的指定构造器语法与值类型简单构造器相同:</p>
+
+<pre><code class="language-swift">init(parameters) {
+    statements
 }
 </code></pre>
 
-<p>除了继承自父类的方法、属性外，还定义了一个默认值为<code>false</code>的存储属性<code>hasBasket</code></p>
+<p>便利构造器在<code>init</code>关键字前加<code>convenience</code>关键字</p>
 
-<pre><code class="language-swift">let bicycle = Bicycle()
-bicycle.hasBasket = true
-//修改继承的属性
-bicycle.currentSpeed = 15.0
-print(&quot;Bicycle: \(bicycle.description)&quot;)
-// 打印 &quot;Bicycle: traveling at 15.0 miles per hour&quot;
+<pre><code class="language-swift">convenience init(parameters) {
+    statements
+}
 </code></pre>
 
-<h2 id="toc_2">重写</h2>
+<h3 id="toc_15">类的构造器代理规则</h3>
 
-<p>为继承来的实例方法、类方法、实例属性、下标提供自己的实现,即为<strong>重写</strong></p>
+<p>构造器之间代理调用限制:</p>
 
-<p>需要在重写的定义前加上 <code>override</code>关键字表明重写,否则即为错误的提供了相同的定义</p>
+<ol>
+<li>指定构造器必须调用父类的指定构造器</li>
+<li>便利构造器必须调用同类中定义的其它构造器</li>
+<li>便利构造器必须最终导致一个指定构造器被调用</li>
+</ol>
 
-<h3 id="toc_3">访问父类的方法、属性和下标</h3>
+<h3 id="toc_16">两段式构造过程</h3>
 
-<p>通过<code>super</code>前缀来访问父类版本中的方法、属性或下标</p>
+<p>构造过程的两个阶段:<br/>
+第一阶段: 存储属性指定一个初始值<br/>
+第二阶段: 进一步定制它们的存储型属性</p>
+
+<p>可以防止属性值在初始化前被访问和被另外的构造器意外赋其他值</p>
+
+<p>两段式构造过程的构造流程:</p>
+
+<p>阶段1:</p>
 
 <ul>
-<li>在方法 someMethod() 的重写实现中，可以通过 super.someMethod() 来调用超类版本的 someMethod() 方法</li>
-<li>在属性 someProperty 的 getter 或 setter 的重写实现中，可以通过 super.someProperty 来访问超类版本的someProperty 属性</li>
-<li>在下标的重写实现中，可以通过 super[someIndex] 来访问超类版本中的相同下标</li>
+<li>某个指定构造器或便利构造器被调用。</li>
+<li>完成新实例内存的分配，但此时内存还没有被初始化。</li>
+<li>指定构造器确保其所在类引入的所有存储型属性都已赋初值。存储型属性所属的内存完成初始化。</li>
+<li>指定构造器将调用父类的构造器，完成父类属性的初始化。</li>
+<li>这个调用父类构造器的过程沿着构造器链一直往上执行，直到到达构造器链的最顶部</li>
+<li>当到达了构造器链最顶部，且已确保所有实例包含的存储型属性都已经赋值，这个实例的内存被认为已经完全初始化，阶段1结束</li>
 </ul>
 
-<h3 id="toc_4">重写方法</h3>
+<p>阶段2：</p>
 
-<pre><code class="language-swift">class Train: Vehicle {
-    override func makeNoise() {
-        print(&quot;Choo Choo&quot;)
-    }
-}
-</code></pre>
+<ul>
+<li>从顶部构造器链一直往下，每个构造器链中类的指定构造器都有机会进一步定制实例。构造器此时可以访问<code>self</code>、修改它的属性并调用实例方法等等</li>
+<li>最终，任意构造器链中的便利构造器可以有机会定制实例和使用 self</li>
+</ul>
 
-<h3 id="toc_5">重写属性</h3>
+<h3 id="toc_17">构造器的继承和重写</h3>
 
-<p>重写继承来的实例或者类型属性来提供自己定制的<code>getter</code>或者<code>setter</code>或添加属性观察器来观察属性值的改变</p>
+<p>与<code>OC</code>不同,<code>swift</code>的子类默认情况下不继承父类构造器，以防止父类的简单构造器被一个更精细的子类继承，并被错误地用来创建子类的实例</p>
 
-<h4 id="toc_6">重写属性的setter和getter</h4>
-
-<p>子类并不知道继承来的属性是存储型还是计算型,重写时要提供属性名称和类型来让编译器去查找父类同名同类型的属性</p>
-
-<p>可以把继承的只读属性重写为可读写,但是没有办法把可读写的重写为只读属性</p>
+<p>要在子类中提供和父类相同指定构造器时,需要重写父类的这个指定构造器,因此必须在子类构造器前加上<code>override</code>修饰符，即使重写的是系统提供的默认构造器,也需要带上<code>override</code></p>
 
 <blockquote>
-<p>如果你在重写属性中提供了<code>setter</code>，那么你也一定要提供<code>getter</code>。如果你不想在重写版本中的<br/>
-<code>getter</code>里修改继承来的属性值，你可以直接通过<code>super.someProperty</code>来返回继承来的值</p>
+<p>重写一个父类的指定构造器时，你总是需要写<code>override</code>修饰符，即使你的子类将父类的指定构造器重写为了便利构造器</p>
 </blockquote>
 
-<pre><code class="language-swift">class Car: Vehicle {
-    var gear = 1
-    //重写description属性
-    override var description: String {
-        return super.description + &quot; in gear \(gear)&quot;
+<p>而在子类中写一个和父类相同的便利构造器,因为子类不能直接调用父类的便利构造器,因此并未对其进行重写，也不需要加上<code>override</code>前缀</p>
+
+<pre><code class="language-swift">class Vehicle {
+    var numberOfWheels = 0
+    var description: String {
+        return &quot;\(numberOfWheels) wheel(s)&quot;
+    }
+}
+</code></pre>
+
+<p>因为存储属性有默认值,因此会自动获得一个默认构造器</p>
+
+<pre><code class="language-swift">class Bicycle: Vehicle {
+    override init() {
+        super.init()//可以确保继承的属性 numberOfWheels 能被 Vehicle 类初始化
+        numberOfWheels = 2
+    }
+}
+//子类可以在初始化时修改继承来的变量属性，但是不能修改继承来的常量属性。
+</code></pre>
+
+<h3 id="toc_18">构造器的自动继承</h3>
+
+<p>默认子类不继承父类构造器,但是如果满足特定条件是可以被自动继承的</p>
+
+<p>如果为<strong>子类引用的新属性都提供了默认值</strong>:</p>
+
+<ol>
+<li>如果子类没有定义任何指定构造器,将自动继承<strong>所有父类</strong>的指定构造器</li>
+<li>如果子类提供了所有父类指定构造器的实现——无论是通过规则1继承过来的，还是提供了自定义实现——它将自动继承所有父类的便利构造器</li>
+</ol>
+
+<h3 id="toc_19">指定构造器和便利构造器实践</h3>
+
+<pre><code class="language-swift">class Food {
+    var name: String
+    init(name: String) {
+        self.name = name
+    }
+    convenience init() {
+        self.init(name: &quot;[Unnamed]&quot;)
     }
 }
 
-let car = Car()
-car.currentSpeed = 25.0
-car.gear = 3
-print(&quot;Car: \(car.description)&quot;)//返回自定义描述
-// 打印 &quot;Car: traveling at 25.0 miles per hour in gear 3&quot;
+let namedMeat = Food(name: &quot;Bacon&quot;)
+// namedMeat 的名字是 &quot;Bacon”
+let mysteryMeat = Food()
+// mysteryMeat 的名字是 [Unnamed]
 </code></pre>
 
-<h4 id="toc_7">重写属性观察器</h4>
+<pre><code class="language-swift">class RecipeIngredient: Food {
+    var quantity: Int
+    init(name: String, quantity: Int) {
+        self.quantity = quantity
+        super.init(name: name)
+    }
+    //便利构造器重写了父类的指定构造器
+    override convenience init(name: String) {
+        self.init(name: name, quantity: 1)
+    }
+}
+let oneMysteryItem = RecipeIngredient() //会继承父类的便利构造器
+let oneBacon = RecipeIngredient(name: &quot;Bacon&quot;)
+let sixEggs = RecipeIngredient(name: &quot;Eggs&quot;, quantity: 6)
+</code></pre>
+
+<pre><code class="language-swift">class ShoppingListItem: RecipeIngredient {
+    var purchased = false
+    var description: String {
+        var output = &quot;\(quantity) x \(name)&quot;
+        output += purchased ? &quot; ?&quot; : &quot; ?&quot;
+        return output
+    }
+}
+/**
+    子类引用的属性都提供了默认值,并且没有自定义构造器,将自动继承所有父类中指定和便利
+    构造器
+*/
+</code></pre>
+
+<h2 id="toc_20">可失败构造器</h2>
+
+<p>如果类、结构体、枚举类型对象在构造时可能会失败,则为其定义一个<strong>可失败构造器</strong></p>
+
+<p>可失败构造器通过在<code>init</code>关键字后添加<code>?</code></p>
 
 <p>注意:<br/>
-1. 不能为继承来的常量存储型属性或继承来的只读计算型属性添加属性观察器,因为它们不能被设置<br/>
-2. 不能同时提供重写的<code>setter</code>和重写的属性观察器。因为此时我们可以直接在setter中观察值的变化</p>
+可失败构造器的参数名和参数类型不能与其他非可失败构造器参数名及参数类型相同</p>
 
-<pre><code class="language-swift">class AutomaticCar: Car {
-    override var currentSpeed: Double {
-        didSet {
-            gear = Int(currentSpeed / 10.0) + 1(后向下取得最接近的整数值在加1)
+<p>可失败构造器创建自身类型的可选类型对象，构造器并不支持返回值,我们在构造器方法中通过<code>return nil</code>来表示构造失败，</p>
+
+<pre><code class="language-swift">struct Animal {
+    let species: String
+    init?(species: String) {
+        if species.isEmpty { return nil }
+        self.species = species
+    }
+}
+
+let anonymousCreature = Animal(species: &quot;&quot;)
+// anonymousCreature 的类型是 Animal?, 而不是 Animal
+if anonymousCreature == nil {
+    print(&quot;The anonymous creature could not be initialized&quot;)
+}
+// 打印 &quot;The anonymous creature could not be initialized&quot;
+</code></pre>
+
+<h3 id="toc_21">枚举类型的可失败构造器</h3>
+
+<p>通过提供的参数来获取特定的枚举成员,如果参数无法匹配任何枚举成员,则构造失败</p>
+
+<pre><code class="language-swift">enum TemperatureUnit {
+    case Kelvin, Celsius, Fahrenheit
+    init?(symbol: Character) {
+        switch symbol {
+        case &quot;K&quot;:
+            self = .Kelvin
+        case &quot;C&quot;:
+            self = .Celsius
+        case &quot;F&quot;:
+            self = .Fahrenheit
+        default:
+            return nil
         }
     }
 }
 </code></pre>
 
-<p>为属性<code>currentSpeed</code>添加观察器，设置速度时就会自动选择合适的档位</p>
+<h3 id="toc_22">带原始值的枚举类型可失败构造器</h3>
 
-<h2 id="toc_8">防止重写</h2>
+<p>带原始值的枚举类型会自带可失败构造器 <code>init?(rawValue:)</code>，参数<code>rawvalue</code>的和枚举类型原始值类型相同,如果能和枚举成员原始值匹配则构造响应枚举成员,否则构造失败</p>
 
-<p>通过把方法、属性或下标 前加关键字<code>final</code>来防止被重写,例如:<code>final var</code> ， <code>final func</code> ， <code>final class func</code> ，以及 <code>final subscript</code></p>
+<pre><code class="language-swift">enum TemperatureUnit: Character {
+    case Kelvin = &quot;K&quot;, Celsius = &quot;C&quot;, Fahrenheit = &quot;F&quot;
+}
+</code></pre>
 
-<p>通过在<code>class</code>前添加关键字<code>final</code>表示这个类是不可被继承的</p>
+<h3 id="toc_23">构造失败的传递</h3>
+
+<p>类，结构体，枚举的可失败构造器可以横向代理到类型中的其他可失败构造器，也能向上代理到父类可失败构造器,如果在代理的其他可失败构造器触发构造失败，构造过程终止,接下来构造代码不执行</p>
+
+<pre><code class="language-swift">class Product {
+    let name: String
+    init?(name: String) {
+        if name.isEmpty { return nil }
+        self.name = name
+    }
+}
+class CartItem: Product {
+    let quantity: Int
+    init?(name: String, quantity: Int) {
+        if quantity &lt; 1 { return nil }
+        self.quantity = quantity
+        super.init(name: name)
+    }
+}
+//尝试用空name初始化CarItem导致父类构造过程失败
+if let oneUnnamed = CartItem(name: &quot;&quot;, quantity: 1) {
+    print(&quot;Item: \(oneUnnamed.name), quantity: \(oneUnnamed.quantity)&quot;)
+} else {
+    print(&quot;Unable to initialize one unnamed product&quot;)
+}
+// 打印 &quot;Unable to initialize one unnamed product”
+
+</code></pre>
+
+<h3 id="toc_24">可失败构造器重写</h3>
+
+<p>可以在子类中重写父类的可失败构造器。或者你也可以用子类的非可失败构造器重写一个父类的可失败构造器,但是不能用可失败构造器重写非可失败构造器</p>
+
+<pre><code class="language-swift">class Document {
+    var name: String?
+    // 该构造器创建了一个 name 属性的值为 nil 的 document 实例
+    init() {}
+    // 该构造器创建了一个 name 属性的值为非空字符串的 document 实例
+    init?(name: String) {
+        self.name = name
+        if name.isEmpty { return nil }
+    }
+}
+
+class AutomaticallyNamedDocument: Document {
+    override init() {
+        super.init()
+        self.name = &quot;[Untitled]&quot;
+    }
+    //用非可失败构造器 init(name:) 重写了父类的可失败构造器 init?(name:)
+    override init(name: String) {
+        super.init()
+        if name.isEmpty {
+            self.name = &quot;[Untitled]&quot;
+        } else {
+            self.name = name
+        }
+    }
+}
+
+//或者可以写为
+
+class UntitledDocument: Document {
+    override init() {
+    //通过强制解包调用父类的可失败构造器
+        super.init(name: &quot;[Untitled]&quot;)!
+    }
+}
+</code></pre>
+
+<h3 id="toc_25">可失败构造器 init!</h3>
+
+<p>可以通过在<code>init</code>后加上<code>!</code>定义一个可失败构造器，会构造一个对应类型的隐式解包可选类型对象</p>
+
+<p>可以在<code>init?</code>中代理到<code>init!</code>，反之亦然。你也可以用<code>init?</code>重写<code>init!</code>，反之亦然。你还可以用 <code>init</code>代理到<code>init!</code>，不过，一旦<code>init!</code>构造失败，则会触发一个断言</p>
+
+<h2 id="toc_26">必要构造器</h2>
+
+<p>类的构造器前添加<code>required</code>修饰符表明所有该类的<code>子类</code>都必须实现该构造器</p>
+
+<pre><code class="language-swift">class SomeClass {
+    required init() {
+        // 构造器的实现代码
+    }
+}
+</code></pre>
+
+<p>在子类重写父类的必要构造器时，必须在子类的构造器前也添加<code>required</code>修饰符,不需要添加<code>override</code>修饰符</p>
+
+<pre><code class="language-swift">class SomeSubclass: SomeClass {
+    required init() {
+        // 构造器的实现代码
+    }
+}
+</code></pre>
+
+<p>注意：<br/>
+<strong>如果在子类继承的构造器能满足必要构造器的要求,则无须在子类中显式提供必要构造器的实现</strong></p>
+
+<h2 id="toc_27">用闭包或函数设置属性默认值</h2>
+
+<p>使用闭包或全局函数为村塾属性提供默认值,当该类型实例被创建，对应闭包或函数会被调用,他们的返回值会作为这个属性的默认值</p>
+
+<pre><code class="language-swift">class SomeClass {
+    let someProperty: SomeType = {
+        // 在这个闭包中给 someProperty 创建一个默认值
+        // someValue 必须和 SomeType 类型相同
+        return someValue
+    }()
+}
+</code></pre>
+
+<p>闭包结尾的必须需要一对空的<code>小括号</code>.表明<code>swift</code>立即执行闭包，将闭包的返回值赋值给属性，如果没有括号就相当于将闭包作为值赋值给属性</p>
+
+<blockquote>
+<p>在使用闭包来初始化属性时,在闭包被执行时，实例其他部分还没有被初始化,因此不能再闭包中访问其他属性，即使有默认值。也不能隐式使用<code>self</code>或者调用任何实例方法</p>
+</blockquote>
+
+<p>闭包初始化存储属性<br/>
+```swift<br/>
+struct Checkerboard {<br/>
+//设置100个bool颜色的数组<br/>
+    let boardColors: [Bool] = {<br/>
+        var temporaryBoard = <a href="">Bool</a><br/>
+        var isBlack = false<br/>
+        for i in 1...8 {<br/>
+            for j in 1...8 {<br/>
+                temporaryBoard.append(isBlack)<br/>
+                isBlack = !isBlack<br/>
+            }<br/>
+            isBlack = !isBlack<br/>
+        }<br/>
+        return temporaryBoard<br/>
+    }()</p>
+
+<pre><code>//返回某一行或列的颜色
+func squareIsBlackAtRow(row: Int, column: Int) -&gt; Bool {
+    return boardColors[(row * 8) + column]
+}
+</code></pre>
+
+<p>}</p>
+
+<p>let board = Checkerboard()<br/>
+print(board.squareIsBlackAtRow(0, column: 1))<br/>
+// 打印 &quot;true&quot;<br/>
+```</p>
 
                         
                       </div>
@@ -244,7 +652,7 @@ print(&quot;Car: \(car.description)&quot;)//返回自定义描述
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/4</span>
+                    <span class="date">2017/8/7</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -335,6 +743,12 @@ print(&quot;Car: \(car.description)&quot;)//返回自定义描述
 	      
 		      
 			      <li class="post">
+			        <a href="15037348375137.html">类型转换</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15034731740974.html">错误处理</a>
 			      </li>
 		     
@@ -354,12 +768,6 @@ print(&quot;Car: \(car.description)&quot;)//返回自定义描述
 		      
 			      <li class="post">
 			        <a href="15025006795297.html">析构过程</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15020961612430.html">构造过程</a>
 			      </li>
 		     
 		  

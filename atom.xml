@@ -4,7 +4,7 @@
   <title><![CDATA[栗豫塬的博客]]></title>
   <link href="https://acefish.github.io/atom.xml" rel="self"/>
   <link href="https://acefish.github.io/"/>
-  <updated>2017-08-23T15:28:01+08:00</updated>
+  <updated>2017-08-23T15:29:51+08:00</updated>
   <id>https://acefish.github.io/</id>
   <author>
     <name><![CDATA[]]></name>
@@ -13,11 +13,206 @@
   <generator uri="http://www.mweb.im/">MWeb</generator>
   
   <entry>
+    <title type="html"><![CDATA[类型转换]]></title>
+    <link href="https://acefish.github.io/15037348375137.html"/>
+    <updated>2017-08-26T16:07:17+08:00</updated>
+    <id>https://acefish.github.io/15037348375137.html</id>
+    <content type="html"><![CDATA[
+
+]]></content>
+  </entry>
+  
+  <entry>
     <title type="html"><![CDATA[错误处理]]></title>
     <link href="https://acefish.github.io/15034731740974.html"/>
     <updated>2017-08-23T15:26:14+08:00</updated>
     <id>https://acefish.github.io/15034731740974.html</id>
     <content type="html"><![CDATA[
+<p><strong>错误处理</strong>就是响应错误以及从错误中回复的过程</p>
+
+<p><code>Swift</code>提供了运行时对可恢复错误的抛出、捕获、传递和操作等的支持<br/>
+通常用来区分失败情况,让程序解决并处理某些错误，把解决不了的错误报告给用户</p>
+
+<h2 id="toc_0">表示并抛出错误</h2>
+
+<p><code>Swift</code>中 错误用符合<code>Error</code>协议的类型值来表示，这个空协议表明该类型可以用于错误处理</p>
+
+<p>通常用枚举类型来构建一组相关的错误状态,枚举的关联值可以提供错误状态的额外信息</p>
+
+<p>使用关键字<code>throw</code>关键字来抛出一个错误，表示有意外发生</p>
+
+<pre><code class="language-swift">enum VendingMachineError: Error {
+    case invalidSelection //选择无效
+    case insufficientFunds(coinsNeeded: Int) //金额不足
+    case outOfStock //缺货
+}
+
+throw VendingMachineError.insufficientFunds(coinsNeeded: 5)
+</code></pre>
+
+<h2 id="toc_1">处理错误</h2>
+
+<p><code>Swift</code>中有<code>4</code>种处理错误的方式<br/>
+1.把函数抛出的错误传递给调用此函数的代码<br/>
+2.用<code>do-catch</code>语句处理错误<br/>
+3.将错误作为可选类型处理<br/>
+4.断言此错误根本不会发生</p>
+
+<p>我们在调用一个能抛出错误的函数、方法或者构造器之前，用<code>try</code>关键字或者<code>try?</code><code>try!</code>这种变体关键字</p>
+
+<blockquote>
+<p>与其他语言的<code>try</code>，<code>catch</code>和<code>throw</code>不同的是<code>swift</code>的错误挫力不涉及解除调用栈,因此其性能特性是可以和<code>return</code>语句相媲美的</p>
+</blockquote>
+
+<h3 id="toc_2">用throwing函数传递错误</h3>
+
+<p>在函数声明的参数列表后加上<code>throws</code>关键字，表明可以抛出错误，这个函数就称为<code>throwing</code>函数<br/>
+如果这个函数指明了返回值类型，<code>throws</code>关键词需要写在箭头（<code>-&gt;</code>）的前面</p>
+
+<pre><code class="language-swift">func canThrowErrors() throws -&gt; String
+func cannotThrowErrors() -&gt; String
+</code></pre>
+
+<p><strong><code>throwing</code>函数可以在其内部抛出错误，并将错误传递到函数被调用时的作用域。</strong></p>
+
+<blockquote>
+<p>对于<code>throwing</code>函数可以传递错误,非<code>throwing</code>函数抛出的错误只能在函数内部处理</p>
+</blockquote>
+
+<pre><code class="language-swift">struct Item {
+    var price: Int
+    var count: Int
+}
+class VendingMachine {
+    var inventory = [
+                     &quot;Candy Bar&quot;: Item(price: 12, count: 7),
+                     &quot;Chips&quot;: Item(price: 10, count: 4),
+                     &quot;Pretzels&quot;: Item(price: 7, count: 11)
+                     ]
+    var coinsDeposited = 0
+    func dispenseSnack(snack: String) {
+        print(&quot;Dispensing \(snack)&quot;)
+    }
+    //throwing函数 会抛出VendingMachineError错误
+    func vend(itemNamed name: String) throws {
+        guard let item = inventory[name] else {
+            throw VendingMachineError.InvalidSelection
+        }
+        guard item.count &gt; 0 else {
+            throw VendingMachineError.OutOfStock
+        }
+        guard item.price &lt;= coinsDeposited else {
+            throw VendingMachineError.InsufficientFunds(coinsNeeded: item.price - coinsDeposited)
+        }
+        coinsDeposited -= item.price
+        var newItem = item
+        newItem.count -= 1
+        inventory[name] = newItem
+        print(&quot;Dispensing \(name)&quot;)
+    }
+}
+</code></pre>
+
+<p>使用了<code>guard</code>语句来提前退出方法，因为<code>throw</code>语句会立即退出方法，保证只有在满足所有条件时才成功卖出商品</p>
+
+<p><code>vend(itemNamed:)</code>会传递它抛出的所有错误,因此在跳用这个方法时，要么直接处理这些错误(<code>do-catch</code>语句,<code>try?</code>或<code>try!</code>)，要么将错误继续传递下去</p>
+
+<pre><code class="language-swift">let favoriteSnacks = [
+    &quot;Alice&quot;: &quot;Chips&quot;,
+    &quot;Bob&quot;: &quot;Licorice&quot;,
+    &quot;Eve&quot;: &quot;Pretzels&quot;,
+]
+func buyFavoriteSnack(person: String, vendingMachine: VendingMachine) throws {
+    let snackName = favoriteSnacks[person] ?? &quot;Candy Bar&quot;
+    try vendingMachine.vend(itemNamed: snackName)
+}
+//传似抛出的错误
+</code></pre>
+
+<p><code>buyFavoriteSnack</code>方法会查找某人最喜欢的零食，并通过调用<code>vend(itemNamed:)</code>方法尝试购买,通过在<code>vend(itemNamed:)</code>方法前加<code>try</code>关键字</p>
+
+<p><code>throwing</code>构造器和<code>throwing</code>一样可以传递错误</p>
+
+<pre><code class="language-swift">struct PurchasedSnack {
+    let name: String
+    init(name: String, vendingMachine: VendingMachine) throws {
+        try vendingMachine.vend(itemNamed: name)
+        self.name = name
+    }
+}
+</code></pre>
+
+<h3 id="toc_3">用Do-Catch处理错误</h3>
+
+<p><strong><code>do-catch</code>语句运行一段<code>闭包</code>代码来处理错误</strong></p>
+
+<p>在<code>do</code>语句抛出一个错误,与<code>catch</code>中的字句匹配</p>
+
+<pre><code class="language-swift">do {
+    try expression
+    statements
+} catch pattern 1 {
+    statements
+} catch pattern 2 where condition {
+    statements
+}
+</code></pre>
+
+<p><code>catch</code>后面写一个匹配模式来表明这个子句能处理什么样的错误.如果<code>catch</code>没有指定错误模式，那就可以匹配任何错误，并且把错误绑定到名字为<code>error</code>的局部变量</p>
+
+<p><code>catch</code>不必处理抛出的所有错误,错误可以传递到周围,但是必须被处理，可以使外围的<code>do-catch</code>语句 或者是一个<code>throwing</code>函数进行处理</p>
+
+<p>注意:<br/>
+在<code>do</code>语句中的<code>try</code>如果有抛出错误就立刻执行<code>catch</code>语句,并判断这个错误是否要被继续传递下去,否则执行<code>do</code>子句中余下的语句</p>
+
+<h3 id="toc_4">将错误转换成可选值</h3>
+
+<p>通过<code>try?</code>将错误转换为一个可选值,如果表达式有错误抛出,那么表达式的值就为<code>nil</code></p>
+
+<pre><code class="language-swift">func someThrowingFunction() throws -&gt; Int {
+    // ...
+}
+
+let x = try? someThrowingFunction()
+//等效于
+let y: Int?
+do {
+    y = try someThrowingFunction()
+} catch {
+    y = nil
+}
+</code></pre>
+
+<p>此时不论<code>someThrowingFunction()</code>返回值是什么类型,x，y就是该返回值类型的可选类型</p>
+
+<h3 id="toc_5">禁用错误传递</h3>
+
+<p>当我们确定知道某个<code>throwing</code>函数在运行时是不会抛出错误的,那么可以用<code>tr<br/>
+y!</code>来禁用错误传递，它会将调用包装在一个不会有错误抛出的运行时断言中</p>
+
+<h2 id="toc_6">指定清理操作</h2>
+
+<p><code>defer</code>语句在即将离开当前代码块时执行一系列语句，来执行一些必要的清理工作，而不管你是由于哪种方式离开代码块</p>
+
+<ul>
+<li><code>defer</code>语句将代码执行延迟到当前作用域退出之前。</li>
+<li>该语句由<code>defer</code>关键字和要延时执行的语句组成(延迟执行的语句不能包含任何控制转移语句，或是抛出一个错误)。</li>
+<li>延时执行的操作会按照他们被指定时的顺序的相反顺序执行(第一条<code>defer</code>语句中的代码会在第二条<code>defer</code>语句中的代码被执行之后才执行)</li>
+</ul>
+
+<pre><code class="language-swift">func processFile(filename: String) throws {
+    if exists(filename) {
+        let file = open(filename)
+        defer {
+            close(file)
+        }
+        while let line = try file.readline() {
+            // 处理文件。
+        }
+        // close(file) 会在这里被调用，即作用域的最后。
+    }
+}
+</code></pre>
 
 ]]></content>
   </entry>
@@ -3349,7 +3544,7 @@ print(&quot;Game over!&quot;)
 <p>与<code>if</code>语句类似<code>guard</code>语句的执行取决于其后的一个bool条件,如果为真时直接执行<code>guard</code>语句后的代码,如果为假时执行<code>else</code>中的语句</p>
 
 <p><strong>注意:</strong><br/>
-条件不满足会执行<code>else</code>分支上的代码,这个分支这个分支必须转移控制以退出<code>guard</code>语句出现的代码段。可以使用控制转移语句如<code>return</code>, <code>break</code>, <code>continue</code>或者<code>throw</code>做这件事，或者调用一个不返回的方法或函数，例如<code>fatalError()</code>。</p>
+条件不满足会执行<code>else</code>分支上的代码,这个分支这个分支<strong>必须转移控制以退出<code>guard</code>语句出现的代码段</strong>。可以使用控制转移语句如<code>return</code>, <code>break</code>, <code>continue</code>或者<code>throw</code>做这件事，或者调用一个不返回的方法或函数，例如<code>fatalError()</code>。</p>
 
 <pre><code class="language-swift">func greet(person: [String: String]) {
     guard let name = person[&quot;name&quot;] else {
@@ -4160,117 +4355,6 @@ UTF-32也是编码一样为21位，因此swift中的有了unicodeScalars属性�
 }
 // D o g !! 🐶
 </code></pre>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Swift 基本运算符]]></title>
-    <link href="https://acefish.github.io/14974389141976.html"/>
-    <updated>2017-06-14T19:15:14+08:00</updated>
-    <id>https://acefish.github.io/14974389141976.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">赋值运算符</h2>
-
-<pre><code class="language-swift">//赋值符可以赋值元组
-let (x, y) = (1, 2)
-// 现在 x 等于 1，y 等于 2
-</code></pre>
-
-<p>注意点:<br/>
-与OC不同，赋值符不返回值,防止把想要判断相等运算符（ == ）的地方写成赋值符导致的错误</p>
-
-<h2 id="toc_1">算术运算符</h2>
-
-<pre><code class="language-swift">//加法运算符也可用于 String 的拼接
-&quot;hello, &quot; + &quot;world&quot; // 等于 &quot;hello, world&quot;
-</code></pre>
-
-<p>注意:<br/>
-与<code>OC</code>不同,<code>Swift</code>默认情况下不允许在数值运算中出现溢出情况.(可以使用<code>Swift</code>提供的溢出运算符实现溢出运算)</p>
-
-<h2 id="toc_2">求余运算</h2>
-
-<p>求余运算(<code>%</code>)在其他语言也叫取模运算</p>
-
-<h3 id="toc_3">一元负号/正号运算符</h3>
-
-<p>一元负/正号符（ -/+ ）写在操作数之前，中间没有空格。<br/>
-负号或者正号可以抵消</p>
-
-<h2 id="toc_4">组合赋值运算符</h2>
-
-<p>例如:<br/>
-<code>a += 2</code> //这组合赋值运算符也是没有返回值的（和赋值运算符一样）</p>
-
-<blockquote>
-<p>在Swift3 中已经移除了 ++ 或 -- 的自增 自减运算符</p>
-
-<h2 id="toc_5">比较运算符</h2>
-
-<p>和OC中是相同的,返回一个表达式是否成立的布尔值</p>
-
-<p><code>Swift</code> 也提供恒等（<code>===</code>）和不恒等（<code>!==</code>）这两个比较符来判断两个对象是否引用同一个对象实例</p>
-</blockquote>
-
-<p>注意:</p>
-
-<p><strong>元组的比较方法:</strong><br/>
-当元组中的值可以比较时，你也可以使用这些运算符来比较它们的大小。例如，因为<code>Int</code>和<code>String</code>类型的值可以比较，所以类型为<code>(Int, String)</code>的元组也可以被比较。相反，<code>Bool</code> 不能被比较，也意味着存有布尔类型的元组不能被比较</p>
-
-<p>比较元组大小会按照从左到右、逐值比较的方式，直到发现有两个值不等时停止。如果所有的值都相等，那么这一对元组我们就称它们是相等的</p>
-
-<pre><code class="language-swift">//当比较到1小于2就判断为ture 不会再比较下去
-(1, &quot;zebra&quot;) &lt; (2, &quot;apple&quot;) // true，因为 1 小于 2
-(3, &quot;apple&quot;) &lt; (3, &quot;bird&quot;) // true，因为 3 等于 3，但是 apple 小于 bird
-(4, &quot;dog&quot;) == (4, &quot;dog&quot;) // true，因为 4 等于 4，dog 等于 dog
-</code></pre>
-
-<blockquote>
-<p>Swift 标准库只能比较七个以内元素的元组比较函数。如果你的元组元素超过七个时，你需要自己实现比较运算符。</p>
-</blockquote>
-
-<h2 id="toc_6">三目运算</h2>
-
-<h2 id="toc_7">空合运算符</h2>
-
-<p>空合运算符<code>（a ?? b）</code>将对可选类型<code>a</code>进行空判断，如果<code>a</code>包含一个值就进行解封，否则就返回一个默认值<code>b</code>。表达式<code>a</code>必须是<code>Optional</code>类型。默认值<code>b</code>的类型必须要和<code>a</code>存储值的类型保持一致。</p>
-
-<p>空合运算符有<code>a != nil ? a! : b</code>相当于这种表达</p>
-
-<p>注意:<br/>
-空合运算符也采用了短路求值,即当a为非空时,那么就不会再去计算b的值</p>
-
-<h2 id="toc_8">区间运算符</h2>
-
-<h3 id="toc_9">闭区间运算符</h3>
-
-<p><code>a...b</code>定义一个包含从a到b(包括a和b)</p>
-
-<pre><code class="language-swift">for index in 1...5 {
-    print(&quot;\(index) * 5 = \(index * 5)&quot;)
-}
-// 1 * 5 = 5
-// 2 * 5 = 10
-// 3 * 5 = 15
-// 4 * 5 = 20
-// 5 * 5 = 25
-</code></pre>
-
-<h3 id="toc_10">半开区间运算符</h3>
-
-<p><code>a..&lt;b</code>定义一个从<code>a</code>到<code>b</code>但不包括<code>b</code>的区间</p>
-
-<h2 id="toc_11">逻辑运算符</h2>
-
-<p>与<code>&amp;&amp;</code> 或<code>||</code> 非<code>!</code></p>
-
-<blockquote>
-<p>与或非运算也是使用短路计算的</p>
-</blockquote>
-
-<p>注意:<br/>
-<code>Swift</code>逻辑操作符 <code>&amp;&amp;</code> 和 <code>||</code> 是左结合的，即从左向右读,优先计算左边,建议加上括号来增加代码可读性</p>
 
 ]]></content>
   </entry>
