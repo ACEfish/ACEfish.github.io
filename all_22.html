@@ -105,206 +105,114 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14972592855571.html">
+                <a class="clearlink" href="14974389141976.html">
                 
-                  <h1>Block实现原理</h1>
+                  <h1>Swift 基本运算符</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>原文地址<a href="http://blog.ibireme.com/2013/11/27/objc-block/">objc 中的 block</a></p>
+                        	<h2 id="toc_0">赋值运算符</h2>
 
-<h2 id="toc_0">block中的数据结构</h2>
-
-<p><code>block</code>的定义:</p>
-
-<pre><code class="language-objc">struct Block_descriptor_1 {
-    uintptr_t reserved;
-    uintptr_t size;
-};
- 
-struct Block_layout {
-    void *isa;
-    volatile int32_t flags; // contains ref count
-    int32_t reserved; 
-    void (*invoke)(void *, ...);
-    struct Block_descriptor_1 *descriptor;
-    // imported variables
-};
+<pre><code class="language-swift">//赋值符可以赋值元组
+let (x, y) = (1, 2)
+// 现在 x 等于 1，y 等于 2
 </code></pre>
 
-<p>在oc中，凡是首地址是<code>*isa</code>的结构体指针，都可以认为是对象.这样在<code>objc</code>中，<code>block</code>实际上就算是对象。</p>
+<p>注意点:<br/>
+与OC不同，赋值符不返回值,防止把想要判断相等运算符（ == ）的地方写成赋值符导致的错误</p>
 
-<pre><code class="language-objc">void foo_(){
-    int i = 2;
-    NSNumber *num = @3;
- 
-    long (^myBlock)(void) = ^long() {
-        return i * num.intValue;
-    };
- 
-    long r = myBlock();
+<h2 id="toc_1">算术运算符</h2>
+
+<pre><code class="language-swift">//加法运算符也可用于 String 的拼接
+&quot;hello, &quot; + &quot;world&quot; // 等于 &quot;hello, world&quot;
+</code></pre>
+
+<p>注意:<br/>
+与<code>OC</code>不同,<code>Swift</code>默认情况下不允许在数值运算中出现溢出情况.(可以使用<code>Swift</code>提供的溢出运算符实现溢出运算)</p>
+
+<h2 id="toc_2">求余运算</h2>
+
+<p>求余运算(<code>%</code>)在其他语言也叫取模运算</p>
+
+<h3 id="toc_3">一元负号/正号运算符</h3>
+
+<p>一元负/正号符（ -/+ ）写在操作数之前，中间没有空格。<br/>
+负号或者正号可以抵消</p>
+
+<h2 id="toc_4">组合赋值运算符</h2>
+
+<p>例如:<br/>
+<code>a += 2</code> //这组合赋值运算符也是没有返回值的（和赋值运算符一样）</p>
+
+<blockquote>
+<p>在Swift3 中已经移除了 ++ 或 -- 的自增 自减运算符</p>
+
+<h2 id="toc_5">比较运算符</h2>
+
+<p>和OC中是相同的,返回一个表达式是否成立的布尔值</p>
+
+<p><code>Swift</code> 也提供恒等（<code>===</code>）和不恒等（<code>!==</code>）这两个比较符来判断两个对象是否引用同一个对象实例</p>
+</blockquote>
+
+<p>注意:</p>
+
+<p><strong>元组的比较方法:</strong><br/>
+当元组中的值可以比较时，你也可以使用这些运算符来比较它们的大小。例如，因为<code>Int</code>和<code>String</code>类型的值可以比较，所以类型为<code>(Int, String)</code>的元组也可以被比较。相反，<code>Bool</code> 不能被比较，也意味着存有布尔类型的元组不能被比较</p>
+
+<p>比较元组大小会按照从左到右、逐值比较的方式，直到发现有两个值不等时停止。如果所有的值都相等，那么这一对元组我们就称它们是相等的</p>
+
+<pre><code class="language-swift">//当比较到1小于2就判断为ture 不会再比较下去
+(1, &quot;zebra&quot;) &lt; (2, &quot;apple&quot;) // true，因为 1 小于 2
+(3, &quot;apple&quot;) &lt; (3, &quot;bird&quot;) // true，因为 3 等于 3，但是 apple 小于 bird
+(4, &quot;dog&quot;) == (4, &quot;dog&quot;) // true，因为 4 等于 4，dog 等于 dog
+</code></pre>
+
+<blockquote>
+<p>Swift 标准库只能比较七个以内元素的元组比较函数。如果你的元组元素超过七个时，你需要自己实现比较运算符。</p>
+</blockquote>
+
+<h2 id="toc_6">三目运算</h2>
+
+<h2 id="toc_7">空合运算符</h2>
+
+<p>空合运算符<code>（a ?? b）</code>将对可选类型<code>a</code>进行空判断，如果<code>a</code>包含一个值就进行解封，否则就返回一个默认值<code>b</code>。表达式<code>a</code>必须是<code>Optional</code>类型。默认值<code>b</code>的类型必须要和<code>a</code>存储值的类型保持一致。</p>
+
+<p>空合运算符有<code>a != nil ? a! : b</code>相当于这种表达</p>
+
+<p>注意:<br/>
+空合运算符也采用了短路求值,即当a为非空时,那么就不会再去计算b的值</p>
+
+<h2 id="toc_8">区间运算符</h2>
+
+<h3 id="toc_9">闭区间运算符</h3>
+
+<p><code>a...b</code>定义一个包含从a到b(包括a和b)</p>
+
+<pre><code class="language-swift">for index in 1...5 {
+    print(&quot;\(index) * 5 = \(index * 5)&quot;)
 }
-//我们对上面的block的简单使用转换为c形式
-//通用的block数据结构
-struct __block_impl {
-    void *isa;
-    int Flags;
-    int Reserved;
-    void *FuncPtr;
-};
-//通用的block数据结构描述
-struct __foo_block_desc_0 {
-    size_t reserved;
-    size_t Block_size;
-    void (*copy)(struct __foo_block_impl_0*, struct __foo_block_impl_0*);
-    void (*dispose)(struct __foo_block_impl_0*);
-};
- 
-//myBlock的数据结构定义
-struct __foo_block_impl_0 {
-    struct __block_impl impl;//包含通用数据结构定义
-    struct __foo_block_desc_0* Desc;//对本block的结构描述指针
-    int i;  //捕获的变量
-    NSNumber *num;  //捕获的变量
-};
- 
-//block数据的描述
-static struct __foo_block_desc_0 __foo_block_desc_0_DATA = {
-    0,
-    sizeof(struct __foo_block_impl_0), //本block的占的自己空间大小（便分配空间）
-    __foo_block_copy_0,
-    __foo_block_dispose_0 //通用数据结构描述
-};
- 
-//block中的方法
-static long __foo_block_func_0(struct __foo_block_impl_0 *__cself) {//这个函数引用这个block的数据结构
-    int i = __cself-&gt;i; // bound by copy
-    NSNumber *num = __cself-&gt;num; // bound by copy
- 
-    return i * num.intValue;
-}
- 
-void foo(){
-    int i = 2;
-    NSNumber *num = @3;
- 
-    struct __foo_block_impl_0 myBlockT;
-    struct __foo_block_impl_0 *myBlock = &amp;myBlockT;
-    myBlock-&gt;impl.isa = &amp;_NSConcreteStackBlock;
-    myBlock-&gt;impl.Flags = 570425344;
-    myBlock-&gt;impl.FuncPtr = __foo_block_func_0;
-    myBlock-&gt;Desc = &amp;__foo_block_desc_0_DATA;
-    myBlock-&gt;i = i;
-    myBlock-&gt;num = num;
- 
-    long r = myBlock-&gt;impl.FuncPtr(myBlock);
-}
-
+// 1 * 5 = 5
+// 2 * 5 = 10
+// 3 * 5 = 15
+// 4 * 5 = 20
+// 5 * 5 = 25
 </code></pre>
 
-<p>创建<code>block</code>就是创建了一个结构体,用<code>block捕获的变量</code>来初始化结构体体中数据,block内部的代码提取为block结构体中的c函数,这个c函数参数为一个指向本block的指针,执行时将这个struct指针传过去,通过这个指针获取block捕获的变量进行c函数的计算</p>
+<h3 id="toc_10">半开区间运算符</h3>
 
-<p><code>block</code>中包含了被引用的自由变量(由struct持有)，也包含了控制成分的代码块(由函数指针持有)符合闭包(<code>closure</code>)的概念。</p>
+<p><code>a..&lt;b</code>定义一个从<code>a</code>到<code>b</code>但不包括<code>b</code>的区间</p>
 
-<h2 id="toc_1">block的copy</h2>
+<h2 id="toc_11">逻辑运算符</h2>
 
-<p><code>block</code>中的<code>isa</code>指向的是该<code>block</code>的<code>Class</code>.这些Class都有:</p>
+<p>与<code>&amp;&amp;</code> 或<code>||</code> 非<code>!</code></p>
 
-<ul>
-<li>_NSConcreteStackBlock ---- 栈上创建的block</li>
-<li>_NSConcreteMallocBlock ---- 堆上创建的block</li>
-<li>_NSConcreteGlobalBlock ---- 作为全局变量的block</li>
-<li>_NSConcreteWeakBlockVariable ---- 用于GC不再讨论</li>
-<li>_NSConcreteAutoBlock ---- 用于GC不再讨论</li>
-<li>_NSConcreteFinalizingBlock ---- 用于GC不再讨论</li>
-</ul>
+<blockquote>
+<p>与或非运算也是使用短路计算的</p>
+</blockquote>
 
-<p>1.全局block<br/>
-全局block是当一个block内部没有捕获任何外部变量时，就会是一个全局block类型。此时，这个block与一个函数无异。所以，那么它就应该有和函数一样的静态特性。而且，我们在调用block的时候，其实和普通C函数的调用很相似，都是名称加括号：block()。 全局block的地址是在全局变量常量区的</p>
-
-<p><strong>当struct第一次被创建时，它是存在于该函数的栈帧上的，其Class是固定的_NSConcreteStackBlock。其捕获的变量是会赋值到结构体的成员上，所以当block初始化完成后，捕获到的变量不能更改。</strong></p>
-
-<p>函数返回时，函数的栈帧被销毁，这个<code>block</code>的内存也会被清除。所以在函数结束后仍然需要这个block时，就必须用<code>Block_copy()</code>方法将它拷贝到堆上。这个方法的核心动作很简单：申请内存，将栈数据复制过去，将Class改一下，最后向捕获到的对象发送<code>retain</code>，增加<code>block</code>的引用计数。</p>
-
-<h2 id="toc_2">__block类型变量</h2>
-
-<p>默认捕获到的对象直接赋值给<code>block</code>结构体，不能修改,那么当我们给其加上<code>__block</code>修饰时,原本的捕获的int值位置变为一个<code>struct</code>，这个struct首地址也为<code>*isa</code>.</p>
-
-<p>因此，这个值才能被<code>block</code>共享、并且不受栈帧生命周期的限制、在<code>block</code>被<code>copy</code>后，能够随着<code>block</code>复制到堆上。</p>
-
-<h2 id="toc_3">注意事项:</h2>
-
-<p>1.静态存储区的变量：例如全局变量、方法中的static变量<br/>
-<strong>引用，可修改</strong>。</p>
-
-<p>2.block接受的参数<br/>
-传值，可修改，和一般函数的参数相同。</p>
-
-<p>3.栈变量 (被捕获的上下文变量)<br/>
-const，不可修改。 当block被copy后，block会对 id类型的变量产生强引用。<br/>
-每次执行block时,捕获到的变量都是最初的值。</p>
-
-<p>4.栈变量 (有__block前缀)<br/>
-引用，可以修改。如果时id类型则不会被<code>block retain</code>,必须手动处理其内存管理。<br/>
-如果该类型是C类型变量，<code>block</code>被<code>copy</code>到<code>heap</code>后,该值也会被挪动到<code>heap</code></p>
-
-<h2 id="toc_4">使用注意点:</h2>
-
-<ol>
-<li><p>内存方面</p>
-
-<p><code>Block_copy()</code>和<code>Block_release()</code>必须一一匹配，否则会内存泄漏或crash。</p>
-
-<p><code>__block</code>这个修饰词会将原本的简单类型转化为较大的<code>struct</code>，这会给内存、调用带来额外的开销，使用时需要注意。</p></li>
-<li><p>ARC模式下的block使用<br/>
-在ARC模式下我们 不用手动<code>copy/release</code>，<br/>
-但是</p>
-
-<pre><code class="language-objc">void (^aBlock)(void);//定义一个aBlock对象（__strong）
-aBlock = ^{ printf(&quot;ok&quot;); };
-//只要一个block被赋值给一个strong变量，会自动copy
-//strong变量就是一个强引用指针  copy到堆后将对地址赋值给这个指针 对象引用着这个block
-</code></pre>
-
-<p>block是对象，所以这个aBlock默认是有__strong修饰符的，即<code>aBlock</code>对该block有<code>strong <br/>
-references</code>。即aBlock在被赋值的那一刻，这个block会被copy。所以，ARC开启后，所能接触到的<br/>
-block基本都是在堆上的。</p>
-
-<pre><code class="language-objc">//对于这个例子
-void (^aBlock)(void) = nil; 
-if (!aBlock) {
-    aBlock = ^{ printf(&quot;hehe&quot;); };
-}
-//block此时block已经被释放,该处留下了一个`dangling pointer`
-aBlock();
-</code></pre>
-
-<p>这种情况 苹果建议尽量避免这种情况。</p></li>
-<li><p>block易引起的循环引用问题</p>
-
-<p>当block被copy之后(如开启了ARC、或把block放入dispatch queue)，该block对它捕获的对象产生<br/>
-strong references (非ARC下是retain),所以有时需要避免block copy后产生的循环引用。</p>
-
-<p>如果用self引用了block，block又捕获了self，这样就会有循环引用。因此，需要用weak来声明self</p>
-
-<pre><code class="language-objc">    - (void)configureBlock {
-    XYZBlockKeeper * __weak weakSelf = self;
-    self.block = ^{
-    [weakSelf doSomething]; //捕获到的是弱引用
-    }
-    }
-    //当前前对象的成员变量对象，同样也会造成对self的引用
-    - (void)configureBlock {
-    id tmpIvar = _ivar; //临时变量,避免了self引用
-    self.block = ^{
-    [tmpIvar msg];
-    }
-    }
-</code></pre>
-
-<p>为了避免循环引用，可以这样理解<code>block</code>：<code>block</code>就是一个对象，它捕获到的值就是这个对象的<code>@property(strong)</code></p></li>
-</ol>
+<p>注意:<br/>
+<code>Swift</code>逻辑操作符 <code>&amp;&amp;</code> 和 <code>||</code> 是左结合的，即从左向右读,优先计算左边,建议加上括号来增加代码可读性</p>
 
                         
                       </div>
@@ -313,10 +221,10 @@ strong references (非ARC下是retain),所以有时需要避免block copy后产�
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/6/12</span>
+                    <span class="date">2017/6/14</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html'>iOS开发知识</a></span>
+          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -404,6 +312,18 @@ strong references (非ARC下是retain),所以有时需要避免block copy后产�
 	      
 		      
 			      <li class="post">
+			        <a href="15042587690391.html">扩展</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15042543172572.html">嵌套类型</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15037348375137.html">类型转换</a>
 			      </li>
 		     
@@ -417,18 +337,6 @@ strong references (非ARC下是retain),所以有时需要避免block copy后产�
 		      
 			      <li class="post">
 			        <a href="15031302948355.html">可选链式调用</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15028525854956.html">自动引用计数</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15025006795297.html">析构过程</a>
 			      </li>
 		     
 		  

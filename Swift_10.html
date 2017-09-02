@@ -105,147 +105,199 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15005513837564.html">
+                <a class="clearlink" href="15017296324997.html">
                 
-                  <h1>类和结构体</h1>
+                  <h1>方法</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>可以使用完全相同的语法规则来为<code>类</code>和<code>结构体</code>定义属性(<code>常量</code>、<code>变量</code>)和添加方法，从而扩展类和结构体的功能</p>
+                        	<p><code>类、结构体、枚举</code>都可以定义实例方法，实例方法为给定类型实例封装了具体的任务和功能</p>
 
-<p>与其他编程语言不同,<code>swift</code>不要求为自定义类和结构创建独立的接口和实现文件.所要做的是在一个单一文件中定义一个类或者结构体，系统将会自动生成面向其它代码的外部接口</p>
+<p><code>类、结构体、枚举</code>也可定义类型方法,类型方法与类型本身关联（与OC中类似）</p>
 
-<h2 id="toc_0">类和结构体对比</h2>
+<h2 id="toc_0">实例方法</h2>
 
-<blockquote>
-<p>类通过引用计数进行多次引用,结构体通过复制的方式在代码中传递,不使用引用计数</p>
-</blockquote>
+<p>实例方法提供访问和修改实例属性的方法或提供与实例目的相关的功能，并以此来支撑实例的功能。<br/>
+<strong>实例方法的语法与函数完全一致</strong></p>
 
-<h3 id="toc_1">定义语法</h3>
+<p>实例方法能够隐式访问它所属类型的所有的其他实例方法和属性</p>
 
-<p>通过关键之<code>class</code>和<code>struct</code>来分别标识类和结构体</p>
-
-<blockquote>
-<p>类和结构体名使用首字母大写的方式进行命名</p>
-</blockquote>
-
-<pre><code class="language-swift">//定义一个结构体 描述显示器屏幕分辨率
-struct Resolution {
-    var width = 0
-    var height = 0
-    //当这两个属性被初始化为整数 0 的时候，它们会被推断为 Int 类型。
+<pre><code class="language-swift">class Counter {
+    var count = 0
+    func increment() {
+        count += 1
+    }
+    func increment(by amount: Int) {
+        count += amount
+    }
+    func reset() {
+        count = 0
+    }
 }
 
-//定义一个类 描述视频显示器的特定模式
-//四个变量存储属性
-class VideoMode {
-    var resolution = Resolution()//分辨率 结构体
-    var interlaced = false
-    var frameRate = 0.0
-    var name: String?
+let counter = Counter()
+// 初始计数值是0
+counter.increment()
+// 计数值现在是1
+counter.increment(by: 5)
+// 计数值现在是6
+counter.reset()
+// 计数值现在是0
+</code></pre>
+
+<h3 id="toc_1">self属性</h3>
+
+<p>与OC类似,<code>self</code>等同于该类型的实例本身</p>
+
+<pre><code class="language-swift">//所以我们可以这么写
+func increment() {
+    self.count += 1
 }
 </code></pre>
 
-<p><code>存储属性</code>是被<code>捆绑</code>和<code>存储</code>在类或结构体中的常量或变量。</p>
+<p>其实没必要写<code>self</code>，使用已知的属性名或者方法名 <code>swift</code>会假定你使用的是当前实例属性或者方法</p>
 
-<h3 id="toc_2">类和结构体实例</h3>
+<p>我们使用的主要场景:<br/>
+实例方法的某个<code>参数名称</code>与实例的某个<code>属性名称</code>相同的时候,此时优先使用参数名,因此我们通过<code>self</code>属性来进行区分使用属性</p>
 
-<p>初始化结构体或类的实例</p>
+<pre><code class="language-swift">struct Point {
+    var x = 0.0, y = 0.0
+    func isToTheRightOfX(_ x: Double) -&gt; Bool {
+        return self.x &gt; x//用self来区分属性
+    }
+}
 
-<pre><code class="language-swift">let someResolution = Resolution()
-let someVideoMode = VideoMode()
+let somePoint = Point(x: 4.0, y: 5.0)
+
+if somePoint.isToTheRightOfX(1.0) {
+    print(&quot;This point is to the right of the line where x == 1.0&quot;)
+}
+// 打印 &quot;This point is to the right of the line where x == 1.0&quot;
 </code></pre>
 
-<p>通过这种方式创建类或者结构体实例,属性都会被初始化为默认值.</p>
+<h3 id="toc_2">实例方法中修改值类型</h3>
 
-<h3 id="toc_3">属性访问</h3>
+<p>结构体和枚举是值类型。默认情况下，值类型的属性不能在它的实例方法中被修改</p>
 
-<p>通过点语法访问实例属性。</p>
+<p>我们可以通过给这个实例方法选择<code>可变(mutating)</code>行为，就可以在方法内部修改改变它的属性;这个方法做的任何改变都会在方法执行结束时写回到原始结构中。方法还可以给它隐含的<code>self</code>属性赋予一个全新的实例，这个新实例在方法结束时会替换现存实例</p>
 
-<pre><code class="language-swift">//访问结构体属性
-print(&quot;The width of someResolution is \(someResolution.width)&quot;)
-// 打印 &quot;The width of someResolution is 0&quot;
-
-//访问变量属性
-someVideoMode.resolution.width = 1280
-print(&quot;The width of someVideoMode is now \(someVideoMode.resolution.width)&quot;)
-// 打印 &quot;The width of someVideoMode is now 1280&quot;
+<pre><code class="language-swift">struct Point {
+    var x = 0.0, y = 0.0
+    mutating func moveByX(deltaX: Double, y deltaY: Double) {
+        x += deltaX
+        y += deltaY
+    }
+}
+var somePoint = Point(x: 1.0, y: 1.0)
+somePoint.moveByX(2.0, y: 3.0)
+print(&quot;The point is now at (\(somePoint.x), \(somePoint.y))&quot;)
+// 打印 &quot;The point is now at (3.0, 4.0)&quot;
 </code></pre>
+
+<p>注意:<br/>
+不能在结构体类型的常量上调用可变方法，因为其属性不能被改变，即使属性是变量属性</p>
+
+<h3 id="toc_3">在可变方法中给self赋值</h3>
+
+<p>可以在可变方法中给隐含属性<code>self</code>赋予一个新的实例</p>
+
+<pre><code class="language-swift">struct Point1 {
+    var x = 0.0, y = 0.0
+    mutating func moveBy(x deltaX: Double, y deltaY: Double) {
+        self = Point1(x: x + deltaX, y: y + deltaY)
+    }
+}
+</code></pre>
+
+<p>创建一个新的结构体实例赋值给self，替换现在的实例</p>
+
+<p>枚举的可变方法，定义了一个三态开关状态枚举,通过调用<code>next()</code>进行切换状态</p>
+
+<pre><code class="language-swift">enum TriStateSwitch {
+    case Off, Low, High
+    mutating func next() {
+        switch self {
+        case .Off:
+            self = .Low
+        case .Low:
+            self = .High
+        case .High:
+            self = .Off
+        }
+    }
+}
+var ovenLight = TriStateSwitch.Low
+ovenLight.next()
+// ovenLight 现在等于 .High
+ovenLight.next()
+// ovenLight 现在等于 .Off
+</code></pre>
+
+<h2 id="toc_4">类型方法</h2>
+
+<p>定义在类型本身上的方法,即为类型方法<br/>
+通过在方法<code>func</code>前加关键字<code>static</code>，来指定类型方法,通过加关键字<code>class</code>来实现子类重写父类的方法实现</p>
 
 <blockquote>
-<p>在OC中是不能直接设置结构体子属性值，swift中可以直接设置比如<code>resolution.width</code>属性值,在oc中我们需要给整个结构体<code>resolution</code>设置新值</p>
+<p>在<code>oc</code>中只能为类定义类型方法,但是在<code>swift</code>中可以为类,结构体,枚举定义类方法</p>
 </blockquote>
 
-<h3 id="toc_4">结构体类型成员逐一构造器</h3>
+<p>类型方法在类型上通过点语法调用<br/>
+在类型方法中,<code>self</code>指向类型本身,同样的可以用其来区分同样的类型属性和类型方法参数</p>
 
-<p>对于<strong>结构体</strong><br/>
-所有结构体都有一个自动生成的<strong>成员逐一构造器</strong>，用来初始化新结构体成员的属性</p>
+<p>在类型方法体中可以调用本类中类型属性或的其他类型方法,调用是可以直接通过类型方法名称或者类型属性名称进行调用,而不用在前面添加类型名称</p>
 
-<pre><code class="language-swift">//通过属性名称
-let vga = Resolution(width:640, height: 480)
+<pre><code class="language-swift">//检测玩家等级的结构体
+struct LevelTracker {
+    static var highestUnlockedLevel = 1
+    var currentLevel = 1
+    static func unlock(_ level: Int) {
+        if level &gt; highestUnlockedLevel { highestUnlockedLevel = level }
+    }
+    static func isUnlocked(_ level: Int) -&gt; Bool {
+        return level &lt;= highestUnlockedLevel
+    }
+    @discardableResult //
+    mutating func advance(to level: Int) -&gt; Bool {
+        if LevelTracker.isUnlocked(level) {
+            currentLevel = level
+            return true
+        } else {
+            return false
+        }
+    }
+}
 </code></pre>
 
-<p>类是没有这个成员构造器的</p>
-
-<h2 id="toc_5">结构体和枚举时值类型</h2>
-
-<p><strong>值类型被赋予给一个变量、常量或者被传递给一个函数的时候，其值会被拷贝</strong></p>
-
-<p>实际上,在<code>Swift</code>中，所有的基本类型：整数（Integer）、浮点数（floating-point）、布尔值（Boolean）、字符串（string)、数组（array）和字典（dictionary），都是值类型，并且在底层都是<strong>以结构体的形式所实现</strong></p>
-
-<p>在<code>swift</code>中,所有结构体和枚举类型都是值类型。因此,它们的实例以及实例中包含的值类型属性,在传递时都会被复制</p>
-
-<pre><code class="language-swift">let hd = Resolution(width: 1920, height: 1080)
-var cinema = hd
-cinema.width = 2048
-print(&quot;cinema is now \(cinema.width) pixels wide&quot;)// &quot;cinema is now 2048 pixels wide&quot;
-print(&quot;hd is still \(hd.width) pixels wide&quot;)//&quot;hd is still 1920 pixels wide&quot;
+<pre><code class="language-swift">//玩家类
+class Player {
+    var tracker = LevelTracker()
+    let playerName: String
+    func complete(level: Int) {
+        LevelTracker.unlock(level + 1)
+        tracker.advance(to: level + 1)
+    }
+    init(name: String) {
+        playerName = name
+    }
+}
 </code></pre>
 
-<p>在对结构体进行赋值的时候,进行了拷贝,cinema和hd是完全不同的两个实例,因此改变了cinema的宽对hd没有影响</p>
+<pre><code class="language-swift">var player = Player(name: &quot;Argyrios&quot;)
+player.complete(level: 1)
+print(&quot;highest unlocked level is now \(LevelTracker.highestUnlockedLevel)&quot;)
+// 打印 &quot;highest unlocked level is now 2&quot;
 
-<p>枚举也是值类型,遵循相同的行为准则</p>
+player = Player(name: &quot;Beto&quot;)
+if player.tracker.advance(to: 6) {
+print(&quot;player is now on level 6&quot;)
+} else {
+print(&quot;level 6 has not yet been unlocked&quot;)
+}
+// 打印 &quot;level 6 has not yet been unlocked&quot;
 
-<h2 id="toc_6">类是引用类型</h2>
-
-<p>与值类型不同,引用类型在传递时,值不会被拷贝.因此，<strong>引用的是已存在的实例本身而不是其拷贝</strong>。</p>
-
-<pre><code class="language-swift">let tenEighty = VideoMode()
-tenEighty.frameRate = 25.0
-
-let alsoTenEighty = tenEighty
-alsoTenEighty.frameRate = 30.0
-print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&quot;)//30.0
 </code></pre>
-
-<p>类是引用类型，所以<code>tenEight</code>和<code>alsoTenEight</code>实际上引用的是相同的<code>VideoMode</code>实例<br/>
-注意:<br/>
-虽然<code>alsoTenEighty</code>为常量但是仍然可以改变<code>alsoTenEighty.frameRate</code>因为这两个常量的值并未改变,这个常量的值存储的并不是<code>ViewMode</code>的实例,而是对其的引用.</p>
-
-<h3 id="toc_7">恒等运算符</h3>
-
-<p>等价于 <code>===</code>  不等价于 <code>!==</code> 用来检测两个变量或常量是否引用同一个实例</p>
-
-<p><code>===</code>与<code>==</code>的不同:<br/>
-“等价于”表示两个类类型（class type）的常量或者变量引用同一个类实例。<br/>
-“等于”表示两个实例的值“相等”或“相同”，判定时要遵照设计者定义的评判标准</p>
-
-<h3 id="toc_8">指针</h3>
-
-<p>一个引用实例的<code>swift</code>常量或者变量,与C指针类似,但是并不直接指向某个内存地址,也不需要用<code>*</code>表明在创建引用.</p>
-
-<h2 id="toc_9">类和结构体的选择</h2>
-
-<h2 id="toc_10">字符串、数组、字典类型的赋值和复制行为</h2>
-
-<p>因为<code>swift</code>中很多基本类型,<code>String</code>，<code>Array</code>和<code>Dictionary</code>类型均以结构体的形式实现，赋值给新的常量变量或者传入函数方法中的时候会被拷贝</p>
-
-<blockquote>
-<p>在OC中<code>NSString</code>，<code>NSArray</code>和<code>NSDictionary</code>是以类的形式实现,不会发生值拷贝而是传递引用</p>
-
-<p>Swift会在绝对必要时才执行实际拷贝,确保性能最优,因此我们没有必要回避赋值来增加性能</p>
-</blockquote>
 
                         
                       </div>
@@ -254,7 +306,7 @@ print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&qu
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/7/20</span>
+                    <span class="date">2017/8/3</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -345,6 +397,18 @@ print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&qu
 	      
 		      
 			      <li class="post">
+			        <a href="15042587690391.html">扩展</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15042543172572.html">嵌套类型</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15037348375137.html">类型转换</a>
 			      </li>
 		     
@@ -358,18 +422,6 @@ print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&qu
 		      
 			      <li class="post">
 			        <a href="15031302948355.html">可选链式调用</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15028525854956.html">自动引用计数</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15025006795297.html">析构过程</a>
 			      </li>
 		     
 		  

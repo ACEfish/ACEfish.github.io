@@ -105,179 +105,119 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15031302948355.html">
+                <a class="clearlink" href="15037348375137.html">
                 
-                  <h1>可选链式调用</h1>
+                  <h1>类型转换</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><strong>可选链式调用</strong>是在当前值可能为<code>nil</code>的可选值上请求和调用属性、方法以及下标的方法。如果可选值不为空,调用成功,否则如果可选值为<code>nil</code>，那么调用将返回<code>nil</code>。多个调用可以结合为一个调用链,若任何一个节点为<code>nil</code>。整个调用链都会失败</p>
+                        	<p>在<code>Swift</code>中通过<code>is</code>和<code>as</code>操作符来实现<strong>类型转换</strong>，可以来检查值的类型或者转换类型<br/>
+可以用它检查一个类型是否实现了某个协议</p>
 
-<h2 id="toc_0">可选链式调用代替强制展开</h2>
+<h2 id="toc_0">定义一个类层次作为例子</h2>
 
-<p>在想调用的属性、方法、下标的可选值后加上<code>?</code>来定义一个可选链。</p>
-
-<blockquote>
-<p>很像在可选值后面放一个叹号（<code>!</code>）来强制展开它的值。它们的主要区别在于当可选值为空时可选链式调用只会调用失败，然而强制展开将会触发运行时错误</p>
-</blockquote>
-
-<p>可选链式调用,不论调用的属性、方法及下标返回值的类型,返回结果都是具有相同类型的可选值,可以利用这个可选返回值来判断链式调用是否成功,有值则返回成功，<code>nil</code>表示调用失败</p>
-
-<pre><code class="language-swift">class Person {
-    var residence: Residence?
-}
-class Residence {
-    var numberOfRooms = 1
-}
-let john = Person()
-</code></pre>
-
-<p>我们直接<code>let roomCount = john.residence!.numberOfRooms</code>因为<code>residence</code>为<code>nil</code>强制展开的话是会触发运行时错误的</p>
-
-<p>这时我们可以采用可选链式调用来访问<code>numberOfRooms</code>用<code>?</code>代替<code>!</code></p>
-
-<pre><code class="language-swift">if let roomCount = john.residence?.numberOfRooms {
-    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
-} else {
-    print(&quot;Unable to retrieve the number of rooms.&quot;)
-}
-</code></pre>
-
-<p><strong>添加问号之后，Swift 就会在<code>residence</code>不为<code>nil</code>的情况下访问<code>numberOfRooms</code></strong></p>
-
-<p>即使<code>numberOfRooms</code>是非可选类型<code>Int</code>，只要使用可选链式调用就意味着<code>numberOfRooms</code>会返回<code>Int?</code>而不是<code>Int</code></p>
-
-<h2 id="toc_1">为可选链式调用定义模型类</h2>
-
-<h2 id="toc_2">通过可选链式调用访问属性</h2>
-
-<p>通过可选链式调用<strong>访问可能不存在实例的属性</strong>:</p>
-
-<pre><code class="language-swift">//john.residence实例可能为nil
-let john = Person()
-if let roomCount = john.residence?.numberOfRooms {
-    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
-} else {
-    print(&quot;Unable to retrieve the number of rooms.&quot;)
-}
-</code></pre>
-
-<p>通过可选链式调用<strong>设置属性值</strong></p>
-
-<pre><code class="language-swift">//john.residence实例可能为nil
-let someAddress = Address()
-john.residence?.address = someAddress
-</code></pre>
-
-<p>对于这种可选链式调用的赋值,如果<code>john.residence</code>为<code>nil</code>，获取<code>address</code>属性失败，那么右侧的代码是不会被执行的</p>
-
-<h2 id="toc_3">通过可选链式调用调用方法</h2>
-
-<p>对于<code>Residence</code>类中定义的方法</p>
-
-<pre><code class="language-swift">func printNumberOfRooms() {
-    print(&quot;The number of rooms is \(numberOfRooms)&quot;)
-}
-</code></pre>
-
-<p>这个方法没有返回值,那就是具有隐式的返回值<code>Void</code><br/>
-那么如果用可选链式调用这个方法，返回值就为<code>Void?</code></p>
-
-<pre><code class="language-swift">//john.residence 为Residence类 可能为nil的实例
-if john.residence?.printNumberOfRooms() != nil {
-    print(&quot;It was possible to print the number of rooms.&quot;)
-} else {
-    print(&quot;It was not possible to print the number of rooms.&quot;)
-}
-//可以根据返回值是否为nil 判断调用是否成功
-</code></pre>
-
-<p>对实例中的属性赋值 也会返回一个可选类型</p>
-
-<pre><code class="language-swift">if (john.residence?.address = someAddress) != nil {
-print(&quot;It was possible to set the address.&quot;)
-} else {
-print(&quot;It was not possible to set the address.&quot;)
-}
-</code></pre>
-
-<h2 id="toc_4">通过可选链式调用访问下标</h2>
-
-<p>可以在一个可选值上访问下标,判断下标是否成功</p>
-
-<pre><code class="language-swift">//john.residence可能为nil
-if let firstRoomName = john.residence?[0].name {
-    print(&quot;The first room name is \(firstRoomName).&quot;)
-} else {
-    print(&quot;Unable to retrieve the first room name.&quot;)
-}
-</code></pre>
+<p>在数组中存了一个父类的两个子类的实例</p>
 
 <blockquote>
-<p>注意:下标调用的时候将问号放在下标方括号的前面而不是后面</p>
+<p>在数组中存在两种子类类型,会推断这个数组为共同的父类类型<br/>
+此时虽然数组中存的是子类类型实例,但是迭代的话取出的实例会为父类类型，此时我们需要判断和转换类型</p>
 </blockquote>
 
-<pre><code class="language-swift">john.residence?[0] = Room(name: &quot;Bathroom&quot;)
-</code></pre>
+<h2 id="toc_1">检查类型</h2>
 
-<p><code>john.residence</code>为nil时，赋值仍然会失败</p>
+<p>用类型检查操作符<code>is</code> 检查实例是否属于特定子类型，返回<code>bool</code>值</p>
 
-<h3 id="toc_5">访问可选类型的下标</h3>
-
-<p>如果下标返回可选类型值,可以在下标的结尾括号后面放一个问号来在其可选返回值上进行可选链式调用</p>
-
-<pre><code class="language-swift">var testScores = [&quot;Dave&quot;: [86, 82, 84], &quot;Bev&quot;: [79, 94, 81]]
-testScores[&quot;Dave&quot;]?[0] = 91
-testScores[&quot;Bev&quot;]?[0] += 1
-testScores[&quot;Brian&quot;]?[0] = 72
-</code></pre>
-
-<p>定义一个字典,包含两个键值对，因为字典下标返回的是可选类型值,对于<code>testScores[&quot;Brian&quot;]</code>因为字典中没有这个键，所以返回为<code>nil</code>，调用失败</p>
-
-<h2 id="toc_6">连接多层可选链式调用</h2>
-
-<p>可以连接多个可选链式调用在更深模型层级中访问属性、方法、下标，但是是不会增加返回值的可选层级的</p>
-
-<ul>
-<li>通过可选链式调用访问一个 Int 值，将会返回 Int? ，无论使用了多少层可选链式调用</li>
-<li>通过可选链式调用访问 Int? 值，依旧会返回 Int? 值，并不会返回 Int??</li>
-</ul>
-
-<pre><code class="language-swift">if let johnsStreet = john.residence?.address?.street {
-    print(&quot;John&#39;s street name is \(johnsStreet).&quot;)
-} else {
-    print(&quot;Unable to retrieve the address.&quot;)
-}
-</code></pre>
-
-<p><code>john.residence.address</code>为<code>nil</code>因此调用失败<br/>
-尽管<code>street</code>属性为<code>String？</code>  返回值仍然为<code>String?</code></p>
-
-<h2 id="toc_7">在方法的可选返回值上进行可选链式调用</h2>
-
-<pre><code class="language-swift">if let buildingIdentifier = john.residence?.address?.buildingIdentifier() {
-    print(&quot;John&#39;s building identifier is \(buildingIdentifier).&quot;)
-}
-</code></pre>
-
-<p>在可选值的基础上调用<code>buildingIdentifier()</code>方法  返回<code>String?</code>类型值</p>
-
-<pre><code class="language-swift">if let beginsWithThe =
-john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
-    if beginsWithThe {
-        print(&quot;John&#39;s building identifier begins with \&quot;The\&quot;.&quot;)
-    } else {
-        print(&quot;John&#39;s building identifier does not begin with \&quot;The\&quot;.&quot;)
+<pre><code class="language-swift">for item in library {
+    if item is Movie { //判断实例是否为 Movie类型
+        movieCount += 1
+    } else if item is Song { //判断实例是否为 Song类型
+        songCount += 1
     }
 }
 </code></pre>
 
-<p>在方法的返回值基础上进行可选链式调用 </p>
+<h2 id="toc_2">向下转型</h2>
+
+<p>当某类型的实例属于一个子类,可以用<code>as?</code>或者<code>as!</code>将其向下转换位子类类型</p>
+
+<p>因为向下转型可能失败，因此提供<code>as?</code>和<code>as!</code>(带上强制解包)，当不确定是否成功时用<code>as?</code> 确定一定成功时<code>as!</code></p>
+
+<pre><code class="language-swift">for item in library {
+    if let movie = item as? Movie {
+        print(&quot;Movie: &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
+    } else if let song = item as? Song {
+        print(&quot;Song: &#39;\(song.name)&#39;, by \(song.artist)&quot;)
+    }
+}
+</code></pre>
+
+<p><code>if let movie = item as? Movie</code>尝试将<code>item</code>转为<code>Movie</code>类型。若成功，设置一个新的临时常量<code>movie</code>来存储返回的可选<code>Movie</code>中的值</p>
+
+<h2 id="toc_3">Any和AnyObject的类型转换</h2>
+
+<p>不确定类型的表达方式:<br/>
+<code>Any</code>可以表示任何类型，包括函数类型。<br/>
+<code>AnyObject</code>可以表示任何类类型的实例</p>
+
+<p>建议只在确定需要使用时才使用<code>Any</code>和<code>AnyObject</code></p>
+
+<pre><code class="language-swift">var things = [Any]()
+
+things.append(0)
+things.append(0.0)
+things.append(42)
+things.append(3.14159)
+things.append(&quot;hello&quot;)
+things.append((3.0, 5.0))
+things.append(Movie(name: &quot;Ghostbusters&quot;, director: &quot;Ivan Reitman&quot;))
+things.append({ (name: String) -&gt; String in &quot;Hello, \(name)&quot; })
+</code></pre>
+
+<p>然后我们可以在<code>switch</code>表达式的</p>
+
+<pre><code class="language-swift">for thing in things {
+    switch thing {
+    case 0 as Int:
+        print(&quot;zero as an Int&quot;)
+    case 0 as Double:
+        print(&quot;zero as a Double&quot;)
+    case let someInt as Int:
+        print(&quot;an integer value of \(someInt)&quot;)
+    case let someDouble as Double where someDouble &gt; 0:
+        print(&quot;a positive double value of \(someDouble)&quot;)
+    case is Double:
+        print(&quot;some other double value that I don&#39;t want to print&quot;)
+    case let someString as String:
+        print(&quot;a string value of \&quot;\(someString)\&quot;&quot;)
+    case let (x, y) as (Double, Double):
+        print(&quot;an (x, y) point at \(x), \(y)&quot;)
+    case let movie as Movie:
+        print(&quot;a movie called &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
+    case let stringConverter as String -&gt; String:
+        print(stringConverter(&quot;Michael&quot;))
+    default:
+        print(&quot;something else&quot;)
+    }
+}
+// zero as an Int
+// zero as a Double
+// an integer value of 42
+// a positive double value of 3.14159
+// a string value of &quot;hello&quot;
+// an (x, y) point at 3.0, 5.0
+// a movie called &#39;Ghostbusters&#39;, dir. Ivan Reitman
+// Hello, Michael
+</code></pre>
 
 <blockquote>
-<p>在方法的圆括号后面加上问号即可</p>
+<p><code>Any</code>是可以表示所有类型的值,包括可选类型,当你在用<code>Any</code>类型来表示一个可选值时,会给出警告，此时可以用<code>as</code>操作符显示转换为<code>Any</code></p>
 </blockquote>
+
+<pre><code>let optionalNumber: Int? = 3
+things.append(optionalNumber) // 会有警告
+things.append(optionalNumber as Any) // 没有警告
+</code></pre>
 
                         
                       </div>
@@ -286,7 +226,7 @@ john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/19</span>
+                    <span class="date">2017/8/26</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -377,6 +317,18 @@ john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
 	      
 		      
 			      <li class="post">
+			        <a href="15042587690391.html">扩展</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15042543172572.html">嵌套类型</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15037348375137.html">类型转换</a>
 			      </li>
 		     
@@ -390,18 +342,6 @@ john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
 		      
 			      <li class="post">
 			        <a href="15031302948355.html">可选链式调用</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15028525854956.html">自动引用计数</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15025006795297.html">析构过程</a>
 			      </li>
 		     
 		  

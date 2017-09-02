@@ -105,79 +105,153 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14899954232802.html">
+                <a class="clearlink" href="14901598468257.html">
                 
-                  <h1>1.weak是怎么实现的</h1>
+                  <h1>隐式动画</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>在Objective-C中，用__weak修饰的指针，会在所指向的那个Objective-C对象被释放后，自动指向nil。</p>
+                        	<p>我们在前面介绍了图层的相关知识,现在我们开始学本次的重点<strong>动画</strong><br/>
+<strong>注意</strong><br/>
+<code>CALayer</code>呈现图层&lt;--&gt;模型图层<br/>
+我们在创建<code>CALayer</code>对象存储了我们设置的属性值（只是存值所以是模型图层）,但是模型图层显示或者说是呈现时就会基于模型图层创建一个呈现图层,然后我们所能看到的都是基于这个呈现图层的.</p>
 
-<p>参考<a href="http://www.jianshu.com/p/fe9865814668">weak是怎么实现的</a></p>
+<h3 id="toc_0">事务</h3>
 
-<p>通俗的解释就是，在Objective-C的运行时环境中，维护了一种<strong>weak表</strong>，这张<strong>哈希表</strong>用对象的首地址作为键，将由若干个__weak修饰的指针自身的地址组成的数组作为值。当一个Objective-C对象被释放后，通过这个对象的起始地址来找到所有指向它的__weak指针，并将它们指向nil。</p>
+<p><code>Core Animation</code>基于一个假设，说屏幕上的任何东西都可以（或者可能）做动画。动画并不需要你在<code>Core Animation</code>中手动打开，相反需要明确地关闭，否则他会一直存在。</p>
 
-<p>ARC下，编译器会生成一个全局的散列表数组，每个散列表的大小上限为128Byte，取这个数值也是为了和cache line size（64Byte）对齐，对于iOS系统，这个数组的大小为8*128（Byte），可以存放8张散列表<code>SideTable</code>结构体。<br/>
-一个对象的首地址经过哈希之后可以确定这个对象映射到那个<code>SideTable</code>。<br/>
-一个<code>SideTable</code>结构体中包含了一个<code>weak_table</code>:</p>
+<p>当我们改变了<code>CALayer</code>的一个可做动画的属性时,但是他并不会立刻在屏幕上显示出来。它默认会从先前的值平滑过渡到新值,不需要做额外操作。这就是<code>隐式动画</code>,之所以叫<strong><code>隐式</code>是因为我们并没有指定任何动画的类型</strong>.我们改变属性之后是<code>Core Animation</code>来决定如何并且何时去做动画（这是隐式当然也可以显式动画）.</p>
 
-<pre><code class="language-objc">struct SideTable {
-    //.......
-    weak_table_t weak_table;
-    //.......
-};
+<p>隐式动画的动画执行的时间取决于当前<code>事务</code>的设置，动画类型取决于图层行为。</p>
 
-struct weak_table_t {
-    weak_entry_t *weak_entries;
-    size_t    num_entries;
-    uintptr_t mask;
-    uintptr_t max_hash_displacement;
-};
+<p><code>事务</code>是<strong><code>Core Animation</code>用来包含一系列属性动画集合的机制</strong>，当用事务去改变可以做动画的图层属性都不会立刻变化,而是等到这个事务提交之后,才开始图层属性过渡到新值的动画.</p>
+
+<p>我们用<code>CATransaction</code>类来管理<code>事务</code>,这个类管理的事务并不能访问,也没有属性或者实例方法，并且也不能用<code>+alloc</code> 和<code>-init</code>方法创建它。但是可以用 <code>+begin</code> 和 <code>+commit</code> 分别来入栈或者出栈。</p>
+
+<p>任何可以做动画的图层属性的改变都会被添加到目前<code>栈顶</code>的<code>事务</code>中.我们可以用<code>+setAnimationDuration:</code>设置 或者<code>+animationDuration</code>获取当前的栈顶事务的动画时间(默认0.25秒)</p>
+
+<p><code>Core Animation</code>会在每个<code>run loop</code>周期中自动开始一次新的事务,，即使你不显式的用<code>[CATransaction begin]</code> 开始一次事务，任何在一次<code>run loop</code>循环中属性的改变都会被集中起来，然后做一次0.25秒的动画。  </p>
+
+<pre><code class="language-objc">/*我们在设置某个属性动画的事务属性（比如时间）时,我们通常会自己创建一个新的事务,
+否则会有可能影响到事务中其他属性动画*/
+[CATransaction begin];
+//set the animation duration to 1 second
+[CATransaction setAnimationDuration:1.0];
+
+self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
+//commit the transaction
+[CATransaction commit];
 </code></pre>
 
-<p>根据对象首地址查找weak_entry的方法为weak_entry_for_referent()，可以看到其中对对象首地址做了一次哈希，得到了对应的index。如果发生碰撞，则index依次+1，遍历整个数组，检查是否能获得正确的weak_entry_t对象。</p>
+<p><strong>补充</strong><br/>
+<code>UIView</code>有两个方法，<code>+beginAnimations:context:</code>和<code>+commitAnimations</code>，就是通过设置 <code>CATransaction</code>实现的,至于UIView的另外一个<code>+animateWithDuration:animations:</code>，只是将这些属性动画做成了一个block以避免开发者由于对<code>+begin</code> 和<code>+commit</code> 匹配的失误.</p>
 
-<pre><code class="language-objc">#define WEAK_INLINE_COUNT 4
-struct weak_entry_t {
-    DisguisedPtr&lt;objc_object&gt; referent;
-    union {
-        struct {
-            weak_referrer_t *referrers;//就是这个weak指针指向的对象地址
-            uintptr_t        out_of_line : 1;
-            uintptr_t        num_refs : PTR_MINUS_1;
-            uintptr_t        mask;
-            uintptr_t        max_hash_displacement;
-        };
-        struct {
-            // out_of_line=0 is LSB of one of these (don&#39;t care which)
-            weak_referrer_t  inline_referrers[WEAK_INLINE_COUNT];
-        };
-    };
-};
+<h3 id="toc_1">完成块</h3>
+
+<p>我们在做基于<code>UIView</code>的<code>block</code>动画时可以在动画结束时提供一个完成动作. <br/>
+<code>CATranscation</code>接口提供的<code>+setCompletionBlock:</code>方法也有同样的功能。</p>
+
+<pre><code class="language-objc">[CATransaction begin];
+[CATransaction setAnimationDuration:1.0];
+[CATransaction setCompletionBlock:^{
+//rotate the layer 90 degrees
+CGAffineTransform transform = self.colorLayer.affineTransform;
+transform = CGAffineTransformRotate(transform, M_PI_2);
+self.colorLayer.affineTransform = transform;
+}];
+self.colorLayer.backgroundColor = [UIColor redColor];
+[CATransaction commit];
+/**
+注意旋转动画要比颜色渐变快得多，这是因为完成块是在颜色渐变的事务提交并出
+栈之后才被执行，于是，用默认的事务做变换，默认的时间也就变成了0.25秒。
+*/
 </code></pre>
 
-<p>其中的<code>weak_referrer_t</code>实际就是指向Objective-C对象的指针的地址的类型：</p>
+<h3 id="toc_2">图层行为</h3>
 
-<pre><code class="language-objc">typedef objc_object ** weak_referrer_t;
+<p><code>UIKit</code>默认禁用了隐式动画.即UIView把它关联的图层属性改编动画特性关闭了</p>
+
+<p>我们先来看一下<code>隐式动画</code>是怎么实现的:<br/>
+<strong>我们把改变属性时<code>CALayer</code>自动应用的动画称作<code>行为</code>.</strong><br/>
+当我们改变了<code>CALayer</code>的属性时，会调用<code>-actionForKey:</code>方法，传递属性的名称。然后</p>
+
+<ul>
+<li>图层首先检测它是否有委托，并且是否实现 CALayerDelegate 协议指定的 <code>-actionForLayer:forKey</code> 方法。如果有，直接调用并返回结果。</li>
+<li>如果没有委托，或者委托没有实现<code>-actionForLayer:forKey</code>方法，图层接着检查包含属性名称对应行为映射的<code>actions</code>字典。</li>
+<li>如果<code>actions</code>字典 没有包含对应的属性，那么图层接着在它的<code>style</code>字典接着搜索属性名。</li>
+<li>最后，如果在 <code>style</code> 里面也找不到对应的行为，那么图层将会直接调用定义了每个属性的标准行为的<code>-defaultActionForKey:</code>方法。</li>
+</ul>
+
+<p><code>-actionForKey:</code>是用来找这个属性对应的动画(action),要么返回空（这种情况下将不会有动画发生），要么是<code>CAAction</code>协议对应的对象，最后<code>CALayer</code>拿这个结果去对先前和当前的值做动画。</p>
+
+<p>UIKit禁用隐式动画的方法就是,：每个<code>UIView</code> 对它关联的图层都扮演了一个委托，并且提供了<code>-actionForLayer:forKey</code> 的实现方法。当不在一个动画块的实现中，<code>UIView</code> 对所有图层行为返回 <code>nil</code>，但是在动画<code>block</code>范围之内，它就返回了一个非空值。</p>
+
+<p><strong>注意</strong><br/>
+1. 这里所说的关联是指UIView关联的图层即宿主图层,而对于其他add的图层并不是关联的图层所以是没有禁用隐式动画的</p>
+
+<p>当然对于<code>CATransacition</code>我们可以用<code>+setDisableActions:</code>来选择关闭/打开隐式动画<br/>
+<code>[CATransaction setDisableActions:YES]; //关闭隐式动画</code></p>
+
+<ul>
+<li>UIView 关联的图层禁用了隐式动画，对这种图层做动画的办法就是使用 <code>UIView</code> 的动画函数（而不是依赖 <code>CATransaction</code> ），或者继承 <code>UIView</code> ，并覆盖<code>-actionForLayer:forKey:</code>方法，或者直接创建一个显式动画（具体细节见第八章）。</li>
+<li>对于单独存在的图层，我们可以通过实现图层的<code>-actionForLayer:forKey:</code>委托方法，或者提供一个<code>actions</code> 字典来控制隐式动画(actions 字典可以写更少的代码)。</li>
+</ul>
+
+<p><code>行为</code>通常是一个被Core Animation隐式调用的显式动画对象。<br/>
+我们来改变一个图层属性的行为:</p>
+
+<pre><code class="language-objc">/**
+我们使用的是一个实现了 CATransaction 的实例，叫做推进过渡
+改变了CALayer的背景颜色属性行为.改变背景颜色，新的色块都是从左侧滑入，
+而不是默认的渐变效果
+*/
+CATransition *transition = [CATransition animation];
+transition.type = kCATransitionPush;
+transition.subtype = kCATransitionFromLeft;
+self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
+//add it to our view
+[self.layerView.layer addSublayer:self.colorLayer];
 </code></pre>
 
-<p>弱引用销毁过程:</p>
+<h3 id="toc_3">呈现与模型</h3>
 
-<p>在<code>runtime</code>的代码中，可以找到一个叫做<code>weak_clear_no_lock</code>的方法，它的注释表明，这个方法会被<code>dealloc</code>方法调用，然后将被销毁对象所对应的所有弱引用指针都置为<code>nil</code>。</p>
+<p>我们在改变一个<code>CALayer</code>的属性时，属性值确实会立即更新(这个属性值在设置时就会立刻生效)但是苹果并没有立即呈现出来。</p>
 
-<p>过程:<br/>
-1. 利用即将被销毁的对象的首地址，找到对应的weak_entry_t。<br/>
-2. 从weak_entry_t对象中获取指向weak_referrer_t数组的指针。<br/>
-3. 遍历这个数组，对于数组中的每个元素，检查是否真的指向即将被销毁的对象的首地址，如果是，则将它指向nil，如果不是则报错。<br/>
-4. 释放这个weak_entry_t对象，并更新weak_table_t中的entry数目。如果有必要，对weak_table_t进行缩容。</p>
+<p>当设置<code>CALayer</code>的属性，实际上是在定义当前事务结束之后图层如何显示的<code>模型</code>。而<code>Core Animation</code>则负责根据图层<code>行为</code>和<code>事务设置</code>去更新视图的这些属性在屏幕上的状态.</p>
 
-<p>补充:<br/>
-当使用一个__weak指针时，<code>objc_loadWeakRetained()</code>和<code>objc_release()</code>函数都被调用了。</p>
+<p>我们的手机屏幕是每60秒重绘一次,如果我们要做的动画时长大于1/60,就需要在新值之前对屏幕重绘,即知道当前属性值.<strong>每个图层属性的显示值都被存储在一个叫做呈现图层的独立图层当中</strong>,可以通过<code>-presentationLayer</code>方法来访问.</p>
 
-<p>其中<code>objc_loadWeakRetained()</code>会调用<code>retainWeakReference</code>方法，如果某个类重写了<code>retainWeakReference</code>方法并返回<code>NO</code>，则这个<code>__weak</code>指针获取的就永远是<code>nil</code>了。</p>
+<p>图层树(模型图层树)&lt;---&gt;呈现树:呈现树通过图层树中所有图层的呈现图层所形成。只有在图层首次在屏幕上呈现时候才会被创建,在之前获取呈现图层时会返回nil的.</p>
 
-<p>为什么需要在使用一个<code>__weak</code>指针时调用<code>objc_loadWeakRetained()</code>函数呢:是为了确保在使用这个<code>__weak</code>指针的过程中，指向的对象不被释放。</p>
+<p>在模型图层上调用<code>- presentationLayer</code>能获取呈现图层,同样的调用<code>–modelLayer</code>是会获取模型图层(通常是self).</p>
+
+<p><img src="media/14901598468257/14903368056823.jpg" alt=""/></p>
+
+<p>通常我们只需要和模型图层交互即可让<code>Core Animation</code>更新显示.<br/>
+但是以下两种情况下呈现图层会很有效：  </p>
+
+<ul>
+<li>实现一个基于定时器的动画,而不仅仅是基于事务的动画，这个时候准确地知道在某一时刻图层显示在什么位置就会对正确摆放图层很有用了。</li>
+<li>如果你想让你做动画的图层响应用户输入，你可以使用<code>-hitTest:</code>方法来判断指定图层是否被触摸，这时候对呈现图层而不是模型图层调用 <code>-hitTest:</code> 会显得更有意义</li>
+</ul>
+
+<pre><code class="language-objc">- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    //get the touch point
+    CGPoint point = [[touches anyObject] locationInView:self.view];
+    //check if we&#39;ve tapped the moving layer
+    if ([self.colorLayer.presentationLayer hitTest:point]) {
+        self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
+    } else {
+        //otherwise (slowly) move the layer to new position
+        [CATransaction begin];
+        [CATransaction setAnimationDuration:4.0];
+        self.colorLayer.position = point;
+        [CATransaction commit];
+    }
+}
+</code></pre>
 
                         
                       </div>
@@ -186,10 +260,10 @@ struct weak_entry_t {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/20</span>
+                    <span class="date">2017/3/22</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html'>iOS开发知识</a></span>
+          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -277,6 +351,18 @@ struct weak_entry_t {
 	      
 		      
 			      <li class="post">
+			        <a href="15042587690391.html">扩展</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15042543172572.html">嵌套类型</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15037348375137.html">类型转换</a>
 			      </li>
 		     
@@ -290,18 +376,6 @@ struct weak_entry_t {
 		      
 			      <li class="post">
 			        <a href="15031302948355.html">可选链式调用</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15028525854956.html">自动引用计数</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15025006795297.html">析构过程</a>
 			      </li>
 		     
 		  
