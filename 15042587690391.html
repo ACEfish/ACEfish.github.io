@@ -169,6 +169,135 @@
 
 <h2 id="toc_1">计算型属性</h2>
 
+<pre><code class="language-swift">extension Double {
+    var km: Double { return self * 1_000.0 }
+    var m : Double { return self }
+    var cm: Double { return self / 100.0 }
+    var mm: Double { return self / 1_000.0 }
+    var ft: Double { return self / 3.28084 }
+}
+let oneInch = 25.4.mm
+print(&quot;One inch is \(oneInch) meters&quot;)
+    // 打印 “One inch is 0.0254 meters”
+let threeFeet = 3.ft
+print(&quot;Three feet is \(threeFeet) meters&quot;)
+    // 打印 “Three feet is 0.914399970739201 meters”
+</code></pre>
+
+<p>扩展<code>Double</code>类型,增加计算型属性,实现距离转换<br/>
+上面的属性是只读的计算型属性,省略了<code>get</code>关键字</p>
+
+<blockquote>
+<p>可以增加新的计算型属性,但是不能增加存储型属性，也不能为已有属性添加属性观察器</p>
+</blockquote>
+
+<h2 id="toc_2">构造器</h2>
+
+<p>扩展可以为已有类型添加新的构造器。<br/>
+扩展能为类添加新的便利构造器,但是不能为类添加新的指定构造器或者析构器</p>
+
+<blockquote>
+<p>如果使用扩展为一个“值类型”添加构造器,同时该值类型的原始实现没有定义定制构造器,且所有存储属性提供了默认值,我们可以在扩展的构造器中调用默认构造器和逐一成员构造器(当原始实现中有定制的构造器,就不能调用了)</p>
+</blockquote>
+
+<pre><code class="language-swift">struct Size {
+    var width = 0.0, height = 0.0
+}
+struct Point {
+    var x = 0.0, y = 0.0
+}
+struct Rect {
+    var origin = Point()
+    var size = Size()
+}
+</code></pre>
+
+<p>因为<code>Rect</code>没有指定构造器,存储属性也都有默认值,因此获得一个逐一成员构造器和默认构造器，</p>
+
+<pre><code class="language-swift">extension Rect {
+    init(center: Point, size: Size) {
+        let originX = center.x - (size.width / 2)
+        let originY = center.y - (size.height / 2)
+        //调用结构体的逐一成员构造器
+        self.init(origin: Point(x: originX, y: originY), size: size)
+    }
+}
+</code></pre>
+
+<h2 id="toc_3">方法</h2>
+
+<p>为已有类型添加新的实例方法和类型方法</p>
+
+<pre><code class="language-swift">extension Int {
+    func repetitions(task: () -&gt; Void) {
+        for _ in 0..&lt;self {
+            task()
+        }
+    }
+}
+//为Int类型添加一个名为`repetitions`的实例方法
+//这个方法接受一个`()-&gt;Void`类型的单参数，没有参数也没有返回值的函数
+</code></pre>
+
+<h3 id="toc_4">可变实例方法</h3>
+
+<p>扩展中添加的实例方法也可以修改该实例本身，对于值类型即结构体或者枚举修改<code>self</code>或其属性的方法就必须将该实例方法标注为<code>mutating</code>(类似原始实现)</p>
+
+<pre><code class="language-swift">extension Int {
+    mutating func square() {
+        self = self * self
+    }
+}
+</code></pre>
+
+<h2 id="toc_5">下标</h2>
+
+<p>扩展为已有类型添加下标.</p>
+
+<pre><code class="language-swift">extension Int {
+    subscript(digitIndex: Int) -&gt; Int {
+        var decimalBase = 1
+        for _ in 0..&lt;digitIndex {
+            decimalBase *= 10
+        }
+        return (self / decimalBase) % 10
+    }
+}
+746381295[0]
+// 返回 5
+746381295[1]
+// 返回 9
+//取的下标越界时自动用0补充
+746381295[9]
+// 返回 0，即等同于：
+0746381295[9]
+</code></pre>
+
+<p>上面的例子为<code>Int</code>增加下标方法，<code>[n]</code>返回十进制数字从右向左数的第<code>n</code>个数字</p>
+
+<h2 id="toc_6">嵌套类型</h2>
+
+<p>扩展可以为已有的类、结构体和枚举添加新的嵌套类型:</p>
+
+<pre><code class="language-swift">extension Int {
+    enum Kind {
+    case Negative, Zero, Positive
+    }
+    var kind: Kind {
+        switch self {
+        case 0:
+            return .Zero
+        case let x where x &gt; 0:
+            return .Positive
+        default:
+            return .Negative
+        }
+    }
+}
+</code></pre>
+
+<p>为<code>Int</code>添加了一个嵌套枚举,来表明特定整数的类型，即正数、负数或零</p>
+
 
     
 
@@ -177,6 +306,9 @@
       <div class="row">
         <div class="large-6 columns">
         <p class="text-left" style="padding:15px 0px;">
+      
+          <a href="15047511695312.html" 
+          title="Previous Post: ">&laquo; </a>
       
         </p>
         </div>
@@ -261,6 +393,12 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15047511695312.html"></a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15042587690391.html">扩展</a>
 			      </li>
 		     
@@ -280,12 +418,6 @@
 		      
 			      <li class="post">
 			        <a href="15034731740974.html">错误处理</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15031302948355.html">可选链式调用</a>
 			      </li>
 		     
 		  

@@ -105,255 +105,179 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15028525854956.html">
+                <a class="clearlink" href="15031302948355.html">
                 
-                  <h1>自动引用计数</h1>
+                  <h1>可选链式调用</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>与<code>OC</code>相同 <code>Swift</code>使用自动引用计数(ARC)来跟踪和管理应用程序内存</p>
+                        	<p><strong>可选链式调用</strong>是在当前值可能为<code>nil</code>的可选值上请求和调用属性、方法以及下标的方法。如果可选值不为空,调用成功,否则如果可选值为<code>nil</code>，那么调用将返回<code>nil</code>。多个调用可以结合为一个调用链,若任何一个节点为<code>nil</code>。整个调用链都会失败</p>
 
-<h2 id="toc_0">工作机制</h2>
+<h2 id="toc_0">可选链式调用代替强制展开</h2>
 
-<p>创建类的实例时,<code>ARC</code>会分配一块内存来存储实例信息.不再使用该实例,ARC将其释放.当是实例被释放后，其方法或属性均不能被访问或调用。<br/>
-因此，为了确保使用中的实例不会被销毁，ARC 会跟踪和计算每一个实例正在被多少属性，常量和变量所引用。哪怕实例的引用数为1，ARC都不会销毁这个实例。</p>
-
-<h2 id="toc_1">循环强引用</h2>
-
-<p>如果两个类实例互相引用,那么类实例的强引用数永远不能变为0，这就是<strong>循环强引用</strong></p>
-
-<h2 id="toc_2">解决循环强引用方法</h2>
-
-<p>解决办法: <strong>弱引用</strong> <strong>无主引用</strong></p>
-
-<p>将循环引用中一个实例对另外的实例不保持强引用</p>
-
-<p>当其他的实例有更短的生命周期时,使用弱引用，即其 实例 析构在先时; 当其他实例有相同或者更长的声明周期时,请使用无主引用</p>
-
-<h3 id="toc_3">弱引用</h3>
-
-<p>弱引用不会对其引用的实例保持强引用，因而不会阻止<code>ARC</code>销毁被引用的实例。</p>
-
-<p>声明属性或变量时,在前面加上<code>weak</code>关键字表明是个弱引用</p>
-
-<p><code>ARC</code>会在引用的实例被销毁后自动将其赋值为<code>nil</code>.并且弱引用可以允许它们的值运行时赋值为<code>nil</code>，所以会被定义为可选类型变量而不是常量</p>
-
-<p>弱引用为可选类型变量,可以通过检查是否为nil,防止访问已经销毁的实例的引用</p>
+<p>在想调用的属性、方法、下标的可选值后加上<code>?</code>来定义一个可选链。</p>
 
 <blockquote>
-<p>在<code>ARC</code>设置弱引用为<code>nil</code>时,属性观察不会被触发</p>
+<p>很像在可选值后面放一个叹号（<code>!</code>）来强制展开它的值。它们的主要区别在于当可选值为空时可选链式调用只会调用失败，然而强制展开将会触发运行时错误</p>
 </blockquote>
+
+<p>可选链式调用,不论调用的属性、方法及下标返回值的类型,返回结果都是具有相同类型的可选值,可以利用这个可选返回值来判断链式调用是否成功,有值则返回成功，<code>nil</code>表示调用失败</p>
 
 <pre><code class="language-swift">class Person {
-    let name: String
-    init(name: String) { self.name = name }
-    var apartment: Apartment?
-    deinit { print(&quot;\(name) is being deinitialized&quot;) }
+    var residence: Residence?
 }
-
-class Apartment {
-    let unit: String
-    init(unit: String) { self.unit = unit }
-    weak var tenant: Person?
-    deinit { print(&quot;Apartment \(unit) is being deinitialized&quot;) }
+class Residence {
+    var numberOfRooms = 1
 }
-
-var john: Person?
-var unit4A: Apartment?
-john = Person(name: &quot;John Appleseed&quot;)
-unit4A = Apartment(unit: &quot;4A&quot;)
-john!.apartment = unit4A
-unit4A!.tenant = john
-//因为Apartment 中 的 tenant 属性为弱引用,因此即使这样也不会产生循环引用
-
-john = nil
-// 打印 “John Appleseed is being deinitialized”
-
-unit4A = nil
-// 打印 “Apartment 4A is being deinitialized”
-
+let john = Person()
 </code></pre>
 
-<p>变量<code>john</code>和<code>unit4A</code>在被赋值为<code>nil</code>后，<code>Person</code>实例和<code>Apartment</code>实例的析构函数都打印出“销毁”的信息</p>
+<p>我们直接<code>let roomCount = john.residence!.numberOfRooms</code>因为<code>residence</code>为<code>nil</code>强制展开的话是会触发运行时错误的</p>
 
-<h3 id="toc_4">无主引用</h3>
+<p>这时我们可以采用可选链式调用来访问<code>numberOfRooms</code>用<code>?</code>代替<code>!</code></p>
 
-<p>与弱引用类似,无主引用不会保持住引用的实例<br/>
-与弱引用不同,<strong>无主引用用在与其他实例有相同或者更长声明周期时使用</strong><br/>
-在属性前加<code>unowned</code>关键字进行声明</p>
-
-<p>无主引用为非可选类型,因此<code>ARC</code>无法在实例被销毁后将无主引用设置为<code>nil</code></p>
-
-<p><em>注意</em>:</p>
-
-<blockquote>
-<p>使用无主引用，必须<strong>保证引用始终指向一个未销毁的实例</strong><br/>
-试图在实例被销毁后，访问该实例的无主引用，会触发运行时错误</p>
-</blockquote>
-
-<p>举个栗子:<br/>
-<code>Customer</code>客户和<code>CreditCard</code>银行卡之间的关系,两个类都将另外一个类的实例作为自身属性,关系是客户可能没有银行卡,但是银行卡一定有客户,因此将银行卡的<code>customer</code>设置为无主引用</p>
-
-<pre><code class="language-swift">
-class Customer {
-    let name: String
-    var card: CreditCard?
-    init(name: String) {
-        self.name = name
-    }
-    deinit { print(&quot;\(name) is being deinitialized&quot;) }
-}
-
-class CreditCard {
-    let number: UInt64 //确保在32、64位机器上均可以保存16位的卡号
-    unowned let customer: Customer
-    init(number: UInt64, customer: Customer) {
-        self.number = number
-        self.customer = customer
-    }
-    deinit { print(&quot;Card #\(number) is being deinitialized&quot;) }
-}
-
-
-var john: Customer?
-john = Customer(name: &quot;John Appleseed&quot;)
-john!.card = CreditCard(number: 1234_5678_9012_3456, customer: john!)
-
-john = nil
-// 打印 “John Appleseed is being deinitialized”
-// 打印 ”Card #1234567890123456 is being deinitialized”
-
-</code></pre>
-
-<p><code>Customer</code>实例持有对<code>CreditCard</code>实例的强引用，而<code>CreditCard</code>实例持有对 <code>Customer</code>实例的无主引用</p>
-
-<blockquote>
-<p>对于需要禁用运行时的安全检查的情况（例如，出于性能方面的原因），Swift还提供了不安全的无主引用。与所有不安全的操作一样，你需要负责检查代码以确保其安全性。 你可以通过 <code>unowned(unsafe)</code>来声明不安全无主引用。如果你试图在实例被销毁后，访问该实例的不安全无主引用，你的程序会尝试访问该实例之前所在的内存地址，这是一个不安全的操作</p>
-</blockquote>
-
-<h3 id="toc_5">无主引用以及隐式解析可选属性</h3>
-
-<pre><code class="language-swift">class Country {
-    let name: String
-    var capitalCity: City!
-    init(name: String, capitalName: String) {
-        self.name = name
-        self.capitalCity = City(name: capitalName, country: self)
-    }
-}
-
-class City {
-    let name: String
-    unowned let country: Country
-    init(name: String, country: Country) {
-        self.name = name
-        self.country = country
-    }
+<pre><code class="language-swift">if let roomCount = john.residence?.numberOfRooms {
+    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
+} else {
+    print(&quot;Unable to retrieve the number of rooms.&quot;)
 }
 </code></pre>
 
-<p>我们在<code>Country</code>的<code>capitalCity</code>属性声明为<code>City!</code>隐式解析可选类型的属性,表明像其他可选类型一样，默认值为<code>nil</code>，但是不需要展开他的值就能访问</p>
+<p><strong>添加问号之后，Swift 就会在<code>residence</code>不为<code>nil</code>的情况下访问<code>numberOfRooms</code></strong></p>
 
-<p>因为<code>capitalCity</code>的默认值为默认为<code>nil</code>，因此在构造country时,当name赋值以后,初始化就完成了,此时我们就能把这个初始化的<code>country</code>实例传递给<code>City</code>来构造City实例</p>
+<p>即使<code>numberOfRooms</code>是非可选类型<code>Int</code>，只要使用可选链式调用就意味着<code>numberOfRooms</code>会返回<code>Int?</code>而不是<code>Int</code></p>
 
-<h2 id="toc_6">闭包引起的循环强引用</h2>
+<h2 id="toc_1">为可选链式调用定义模型类</h2>
 
-<p>闭包和类 类似,都是引用类型,因此,将闭包赋值为某属性时,是将这个闭包的引用赋值给属性,因此当闭包体中访问实例的某个属性时,就会造成循环引用</p>
+<h2 id="toc_2">通过可选链式调用访问属性</h2>
 
-<pre><code class="language-swift">class HTMLElement {
-    let name: String
-    let text: String?
-    lazy var asHTML: Void -&gt; String = {
-        if let text = self.text {
-            return &quot;&lt;\(self.name)&gt;\(text)&lt;/\(self.name)&gt;&quot;
-        } else {
-            return &quot;&lt;\(self.name) /&gt;&quot;
-        }
-    }
-    init(name: String, text: String? = nil) {
-        self.name = name
-        self.text = text
-    }
-    deinit {
-        print(&quot;\(name) is being deinitialized&quot;)
-    }
+<p>通过可选链式调用<strong>访问可能不存在实例的属性</strong>:</p>
+
+<pre><code class="language-swift">//john.residence实例可能为nil
+let john = Person()
+if let roomCount = john.residence?.numberOfRooms {
+    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
+} else {
+    print(&quot;Unable to retrieve the number of rooms.&quot;)
+}
+</code></pre>
+
+<p>通过可选链式调用<strong>设置属性值</strong></p>
+
+<pre><code class="language-swift">//john.residence实例可能为nil
+let someAddress = Address()
+john.residence?.address = someAddress
+</code></pre>
+
+<p>对于这种可选链式调用的赋值,如果<code>john.residence</code>为<code>nil</code>，获取<code>address</code>属性失败，那么右侧的代码是不会被执行的</p>
+
+<h2 id="toc_3">通过可选链式调用调用方法</h2>
+
+<p>对于<code>Residence</code>类中定义的方法</p>
+
+<pre><code class="language-swift">func printNumberOfRooms() {
+    print(&quot;The number of rooms is \(numberOfRooms)&quot;)
+}
+</code></pre>
+
+<p>这个方法没有返回值,那就是具有隐式的返回值<code>Void</code><br/>
+那么如果用可选链式调用这个方法，返回值就为<code>Void?</code></p>
+
+<pre><code class="language-swift">//john.residence 为Residence类 可能为nil的实例
+if john.residence?.printNumberOfRooms() != nil {
+    print(&quot;It was possible to print the number of rooms.&quot;)
+} else {
+    print(&quot;It was not possible to print the number of rooms.&quot;)
+}
+//可以根据返回值是否为nil 判断调用是否成功
+</code></pre>
+
+<p>对实例中的属性赋值 也会返回一个可选类型</p>
+
+<pre><code class="language-swift">if (john.residence?.address = someAddress) != nil {
+print(&quot;It was possible to set the address.&quot;)
+} else {
+print(&quot;It was not possible to set the address.&quot;)
+}
+</code></pre>
+
+<h2 id="toc_4">通过可选链式调用访问下标</h2>
+
+<p>可以在一个可选值上访问下标,判断下标是否成功</p>
+
+<pre><code class="language-swift">//john.residence可能为nil
+if let firstRoomName = john.residence?[0].name {
+    print(&quot;The first room name is \(firstRoomName).&quot;)
+} else {
+    print(&quot;Unable to retrieve the first room name.&quot;)
 }
 </code></pre>
 
 <blockquote>
-<p><code>asHTML</code>声明为<code>lazy</code>属性，因为只有当元素确实需要被处理为<code>HTML</code>输出的字符串时，才需要使用<code>asHTML</code>。也就是说，在默认的闭包中可以使用<code>self</code>，因为只有当初始化完成以及<code>self</code>确实存在后，才能访问<code>lazy</code>属性。</p>
+<p>注意:下标调用的时候将问号放在下标方括号的前面而不是后面</p>
 </blockquote>
 
-<p><strong>闭包捕获列表</strong>解决闭包引起的循环引用</p>
+<pre><code class="language-swift">john.residence?[0] = Room(name: &quot;Bathroom&quot;)
+</code></pre>
 
-<p>对于一个类的闭包属性,想要改变这个属性的行为,可以通过给这个属性再赋值一个闭包</p>
+<p><code>john.residence</code>为nil时，赋值仍然会失败</p>
 
-<p><code>HTMLElement</code>有类和作为<code>asHTML</code>默认值的闭包之间的循环强引用</p>
+<h3 id="toc_5">访问可选类型的下标</h3>
 
-<p>注意:<br/>
-虽然闭包中多次使用<code>self</code>，但是它只捕获<code>HTMLElement</code>实例的一个强引用</p>
+<p>如果下标返回可选类型值,可以在下标的结尾括号后面放一个问号来在其可选返回值上进行可选链式调用</p>
 
-<p>此时<code>HTMLElement</code>实例和它的闭包是不会被销毁和释放的</p>
+<pre><code class="language-swift">var testScores = [&quot;Dave&quot;: [86, 82, 84], &quot;Bev&quot;: [79, 94, 81]]
+testScores[&quot;Dave&quot;]?[0] = 91
+testScores[&quot;Bev&quot;]?[0] += 1
+testScores[&quot;Brian&quot;]?[0] = 72
+</code></pre>
 
-<h2 id="toc_7">解决闭包引起的循环强引用</h2>
+<p>定义一个字典,包含两个键值对，因为字典下标返回的是可选类型值,对于<code>testScores[&quot;Brian&quot;]</code>因为字典中没有这个键，所以返回为<code>nil</code>，调用失败</p>
 
-<p>在定义闭包时同时定义<strong>捕获列表</strong>作为闭包的一部分，捕获列表定义了闭包体内捕获一个或多个引用类型的规则.声明捕获的引用为弱引用或者无主引用,而不是强引用</p>
+<h2 id="toc_6">连接多层可选链式调用</h2>
+
+<p>可以连接多个可选链式调用在更深模型层级中访问属性、方法、下标，但是是不会增加返回值的可选层级的</p>
+
+<ul>
+<li>通过可选链式调用访问一个 Int 值，将会返回 Int? ，无论使用了多少层可选链式调用</li>
+<li>通过可选链式调用访问 Int? 值，依旧会返回 Int? 值，并不会返回 Int??</li>
+</ul>
+
+<pre><code class="language-swift">if let johnsStreet = john.residence?.address?.street {
+    print(&quot;John&#39;s street name is \(johnsStreet).&quot;)
+} else {
+    print(&quot;Unable to retrieve the address.&quot;)
+}
+</code></pre>
+
+<p><code>john.residence.address</code>为<code>nil</code>因此调用失败<br/>
+尽管<code>street</code>属性为<code>String？</code>  返回值仍然为<code>String?</code></p>
+
+<h2 id="toc_7">在方法的可选返回值上进行可选链式调用</h2>
+
+<pre><code class="language-swift">if let buildingIdentifier = john.residence?.address?.buildingIdentifier() {
+    print(&quot;John&#39;s building identifier is \(buildingIdentifier).&quot;)
+}
+</code></pre>
+
+<p>在可选值的基础上调用<code>buildingIdentifier()</code>方法  返回<code>String?</code>类型值</p>
+
+<pre><code class="language-swift">if let beginsWithThe =
+john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
+    if beginsWithThe {
+        print(&quot;John&#39;s building identifier begins with \&quot;The\&quot;.&quot;)
+    } else {
+        print(&quot;John&#39;s building identifier does not begin with \&quot;The\&quot;.&quot;)
+    }
+}
+</code></pre>
+
+<p>在方法的返回值基础上进行可选链式调用 </p>
 
 <blockquote>
-<p><code>Swift</code>规定:在闭包中使用<code>self</code>的成员，要使用<code>self.someProperty</code>或者<code>self.someMethod()</code>，而不是使用<code>someProperty</code>或<code>someMethod()</code></p>
+<p>在方法的圆括号后面加上问号即可</p>
 </blockquote>
-
-<h3 id="toc_8">定义捕获列表</h3>
-
-<p>捕获列表由一对元素组成,一个是<code>weak</code>或<code>unowned</code>关键字,另一个是类实例的引用如<code>self</code>或初始化的变量.在方括号中用逗号隔开</p>
-
-<pre><code class="language-swift">//如果闭包有参数列表和返回类型，把捕获列表放在它们前面
-lazy var someClosure: (Int, String) -&gt; String = {
-    [unowned self, weak delegate = self.delegate!] (index: Int, stringToProcess: String) -&gt; String in
-    // 这里是闭包的函数体
-}
-
-/**
-如果闭包没有指明参数列表或者返回类型，即它们会通过上下文推断，
-那么可以把捕获列表和关键字 in 放在闭包最开始的地方
-*/
-
-lazy var someClosure: Void -&gt; String = {
-    [unowned self, weak delegate = self.delegate!] in
-    // 这里是闭包的函数体
-}
-
-</code></pre>
-
-<h3 id="toc_9">弱引用和无主引用</h3>
-
-<p>在闭包和捕获的实例总是互相引用并且总是同时销毁时，将闭包内的捕获定义为<code>无主引用</code>。(即被捕获的引用不会变为nil使用无主引用)<br/>
-在被捕获的引用可能会变为<code>nil</code>时，将闭包内的捕获定义为<code>弱引用</code>，弱引用总是可选类型,在引用的实例被销毁后自动置为<code>nil</code></p>
-
-<pre><code class="language-swift">class HTMLElement {
-    let name: String
-    let text: String?
-    lazy var asHTML: Void -&gt; String = {
-        [unowned self] in
-        if let text = self.text {
-            return &quot;&lt;\(self.name)&gt;\(text)&lt;/\(self.name)&gt;&quot;
-        } else {
-            return &quot;&lt;\(self.name) /&gt;&quot;
-        }
-    }
-    init(name: String, text: String? = nil) {
-        self.name = name
-        self.text = text
-    }
-    deinit {
-        print(&quot;\(name) is being deinitialized&quot;)
-    }
-}
-</code></pre>
-
-<p>在<code>asHTML</code>闭包中多了一个捕获列表，<code>[unowned self]</code>将self声明为无主引用<br/>
-这时候没有了循环引用,我们就可以销毁<code>HTMLElement</code>实例了</p>
 
                         
                       </div>
@@ -362,7 +286,7 @@ lazy var someClosure: Void -&gt; String = {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/16</span>
+                    <span class="date">2017/8/19</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -453,6 +377,12 @@ lazy var someClosure: Void -&gt; String = {
 	      
 		      
 			      <li class="post">
+			        <a href="15047511695312.html"></a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15042587690391.html">扩展</a>
 			      </li>
 		     
@@ -472,12 +402,6 @@ lazy var someClosure: Void -&gt; String = {
 		      
 			      <li class="post">
 			        <a href="15034731740974.html">错误处理</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15031302948355.html">可选链式调用</a>
 			      </li>
 		     
 		  
