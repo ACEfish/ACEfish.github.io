@@ -105,389 +105,67 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14877347224030.html">
+                <a class="clearlink" href="14879241904124.html">
                 
-                  <h1>运行时实例:</h1>
+                  <h1>Method Swizzling</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">类与对象</h2>
+                        	<blockquote>
+<p>本文是由发表在南峰子博客的翻译由Mattt Thompson发表于<code>nshipster</code>的Method Swizzling文章</p>
+</blockquote>
 
-<pre><code class="language-Objc">//-----------------------------------------------------------
-// MyClass.h
-@interface MyClass : NSObject &lt;NSCopying, NSCoding&gt;
-@property (nonatomic, strong) NSArray *array;
-@property (nonatomic, copy) NSString *string;
-- (void)method1;
-- (void)method2;
-+ (void)classMethod1;
-@end
-//-----------------------------------------------------------
-// MyClass.m
-#import &quot;MyClass.h&quot;
-@interface MyClass () {
-    NSInteger       _instance1;
-    NSString    *   _instance2;
-}
-@property (nonatomic, assign) NSUInteger integer;
-- (void)method3WithArg1:(NSInteger)arg1 arg2:(NSString *)arg2;
-@end
-@implementation MyClass
-+ (void)classMethod1 {
-}
-- (void)method1 {
-    NSLog(@&quot;call method method1&quot;);
-}
-- (void)method2 {
-}
-- (void)method3WithArg1:(NSInteger)arg1 arg2:(NSString *)arg2 {
-    NSLog(@&quot;arg1 : %ld, arg2 : %@&quot;, arg1, arg2);
-}
-@end
-//-----------------------------------------------------------
-// main.h
-#import &quot;MyClass.h&quot;
-#import &quot;MySubClass.h&quot;
-#import &lt;objc/runtime.h&gt;
-int main(int argc, const char * argv[]) {
-    @autoreleasepool {
-    
-        MyClass *myClass = [[MyClass alloc] init];
-        unsigned int outCount = 0;
-        Class cls = myClass.class;
-        // 类名
-        NSLog(@&quot;class name: %s&quot;, class_getName(cls));
-        NSLog(@&quot;==========================================================&quot;);
-        // 父类
-        NSLog(@&quot;super class name: %s&quot;, class_getName(class_getSuperclass(cls)));
-        NSLog(@&quot;==========================================================&quot;);
-        // 是否是元类
-        NSLog(@&quot;MyClass is %@ a meta-class&quot;, (class_isMetaClass(cls) ? @&quot;&quot; : @&quot;not&quot;));
-        NSLog(@&quot;==========================================================&quot;);
-        Class meta_class = objc_getMetaClass(class_getName(cls));
-        NSLog(@&quot;%s&#39;s meta-class is %s&quot;, class_getName(cls), class_getName(meta_class));
-        NSLog(@&quot;==========================================================&quot;);
-        // 变量实例大小
-        NSLog(@&quot;instance size: %zu&quot;, class_getInstanceSize(cls));
-        NSLog(@&quot;==========================================================&quot;);
-        // 成员变量
-        Ivar *ivars = class_copyIvarList(cls, &amp;outCount);
-        for (int i = 0; i &lt; outCount; i++) {
-            Ivar ivar = ivars[i];
-            NSLog(@&quot;instance variable&#39;s name: %s at index: %d&quot;, ivar_getName(ivar), i);
-        }
-        free(ivars);
-        Ivar string = class_getInstanceVariable(cls, &quot;_string&quot;);
-        if (string != NULL) {
-            NSLog(@&quot;instace variable %s&quot;, ivar_getName(string));
-        }
-        NSLog(@&quot;==========================================================&quot;);
-        // 属性操作
-        objc_property_t * properties = class_copyPropertyList(cls, &amp;outCount);
-        for (int i = 0; i &lt; outCount; i++) {
-            objc_property_t property = properties[i];
-            NSLog(@&quot;property&#39;s name: %s&quot;, property_getName(property));
-        }
-        free(properties);
-        objc_property_t array = class_getProperty(cls, &quot;array&quot;);
-        if (array != NULL) {
-            NSLog(@&quot;property %s&quot;, property_getName(array));
-        }
-        NSLog(@&quot;==========================================================&quot;);
-        // 方法操作
-        Method *methods = class_copyMethodList(cls, &amp;outCount);
-        for (int i = 0; i &lt; outCount; i++) {
-            Method method = methods[i];
-            NSLog(@&quot;method&#39;s signature: %s&quot;, method_getName(method));
-        }
-        free(methods);
-        Method method1 = class_getInstanceMethod(cls, @selector(method1));
-        if (method1 != NULL) {
-            NSLog(@&quot;method %s&quot;, method_getName(method1));
-        }
-        Method classMethod = class_getClassMethod(cls, @selector(classMethod1));
-        if (classMethod != NULL) {
-            NSLog(@&quot;class method : %s&quot;, method_getName(classMethod));
-        }
-        NSLog(@&quot;MyClass is%@ responsd to selector: method3WithArg1:arg2:&quot;, class_respondsToSelector(cls, @selector(method3WithArg1:arg2:)) ? @&quot;&quot; : @&quot; not&quot;);
-        IMP imp = class_getMethodImplementation(cls, @selector(method1));
-        imp();
-        NSLog(@&quot;==========================================================&quot;);
-        // 协议
-        Protocol * __unsafe_unretained * protocols = class_copyProtocolList(cls, &amp;outCount);
-        Protocol * protocol;
-        for (int i = 0; i &lt; outCount; i++) {
-            protocol = protocols[i];
-            NSLog(@&quot;protocol name: %s&quot;, protocol_getName(protocol));
-        }
-        NSLog(@&quot;MyClass is%@ responsed to protocol %s&quot;, class_conformsToProtocol(cls, protocol) ? @&quot;&quot; : @&quot; not&quot;, protocol_getName(protocol));
-        NSLog(@&quot;==========================================================&quot;);
-    }
-    return 0;
-}
+<p><code>Method Swizzling</code>是改变一个selector的实际实现的技术。通过这一技术，我们可以在运行时通过修改类的分发表中<code>selector</code>对应的函数，来修改方法的实现。</p>
 
-//输出结果
+<p>本文讲一些Method Swiling中需要注意的问题:</p>
 
+<h2 id="toc_0">Swizzling应该总是在+load中执行</h2>
 
+<p>在Objective-C中，运行时会自动调用每个类的两个方法。+load会在类初始加载时调用，+initialize会在第一次调用类的类方法或实例方法之前被调用。这两个方法是可选的，且只有在实现了它们时才会被调用。由于method swizzling会影响到类的全局状态，因此要尽量避免在并发处理中出现竞争的情况。+load能保证在类的初始化过程中被加载，并保证这种改变应用级别的行为的一致性。相比之下，+initialize在其执行时不提供这种保证–事实上，如果在应用中没为给这个类发送消息，则它可能永远不会被调用。</p>
+
+<h2 id="toc_1">Swizzling应该总是在dispatch_once中执行</h2>
+
+<p>因为swizzling会改变全局状态，所以我们需要在运行时采取一些预防措施。原子性就是这样一种措施，它确保代码只被执行一次，不管有多少个线程。GCD的dispatch_once可以确保这种行为，我们应该将其作为method swizzling的最佳实践。</p>
+
+<h2 id="toc_2">选择器、方法与实现</h2>
+
+<p>在Objective-C中，选择器(selector)、方法(method)和实现(implementation)是运行时中一个特殊点，虽然在一般情况下，这些术语更多的是用在消息发送的过程描述中。</p>
+
+<p>以下是<code>Objective-C Runtime Reference</code>中的对这几个术语一些描述：  </p>
+
+<pre><code>1. Selector(typedef struct objc_selector *SEL)：用于在运行时中表示一个方法的名称。一个方法选择器是一个C字符串，它是在Objective-C运行时被注册的。选择器由编译器生成，并且在类被加载时由运行时自动做映射操作。
+2. Method(typedef struct objc_method *Method)：在类定义中表示方法的类型
+3. Implementation(typedef id (*IMP)(id, SEL, ...))：这是一个指针类型，指向方法实现函数的开始位置。这个函数使用为当前CPU架构实现的标准C调用规范。每一个参数是指向对象自身的指针(self)，第二个参数是方法选择器。然后是方法的实际参数。
 </code></pre>
 
-<h3 id="toc_1">动态创建类</h3>
+<p>理解这几个术语之间的关系最好的方式是：一个类维护一个运行时可接收的消息分发表；分发表中的每个入口是一个方法(Method)，其中key是一个特定名称，即选择器(SEL)，其对应一个实现(IMP)，即指向底层C函数的指针。</p>
 
-<pre><code class="language-Objc">Class cls = objc_allocateClassPair(MyClass.class, &quot;MySubClass&quot;, 0);
-class_addMethod(cls, @selector(submethod1), (IMP)imp_submethod1, &quot;v@:&quot;);
-class_replaceMethod(cls, @selector(method1), (IMP)imp_submethod1, &quot;v@:&quot;);
-class_addIvar(cls, &quot;_ivar1&quot;, sizeof(NSString *), log(sizeof(NSString *)), &quot;i&quot;);
-objc_property_attribute_t type = {&quot;T&quot;, &quot;@\&quot;NSString\&quot;&quot;};
-objc_property_attribute_t ownership = { &quot;C&quot;, &quot;&quot; };
-objc_property_attribute_t backingivar = { &quot;V&quot;, &quot;_ivar1&quot;};
-objc_property_attribute_t attrs[] = {type, ownership, backingivar};
-class_addProperty(cls, &quot;property2&quot;, attrs, 3);
-objc_registerClassPair(cls);
-id instance = [[cls alloc] init];
-[instance performSelector:@selector(submethod1)];
-[instance performSelector:@selector(method1)];
-//输出
-2014-10-23 11:35:31.006 RuntimeTest[3800:66152] run sub method 1
-2014-10-23 11:35:31.006 RuntimeTest[3800:66152] run sub method 1
+<p>为了swizzle一个方法，我们可以在分发表中将一个方法的现有的选择器映射到不同的实现，而将该选择器对应的原始实现关联到一个新的选择器中。（要将原来的实现映射到一个新的）</p>
 
-</code></pre>
+<h2 id="toc_3">调用_cmd</h2>
 
-<h3 id="toc_2">动态创建对象</h3>
+<p>我们自己的实现代码:</p>
 
-<pre><code class="language-Objc">id theObject = class_createInstance(NSString.class, sizeof(unsigned));
- 
-id str1 = [theObject init];
-NSLog(@&quot;%@&quot;, [str1 class]);
-id str2 = [[NSString alloc] initWithString:@&quot;test&quot;];
-NSLog(@&quot;%@&quot;, [str2 class]);
-//输出
-2014-10-23 12:46:50.781 RuntimeTest[4039:89088] NSString
-2014-10-23 12:46:50.781 RuntimeTest[4039:89088] __NSCFConstantString
-
-</code></pre>
-
-<h3 id="toc_3">实例操作函数</h3>
-
-<h4 id="toc_4">对象拷贝</h4>
-
-<pre><code class="language-Objc">NSObject *a = [[NSObject alloc] init];
-id newB = object_copy(a, class_getInstanceSize(MyClass.class));
-object_setClass(newB, MyClass.class);
-object_dispose(a);
-</code></pre>
-
-<h4 id="toc_5">获取类定义（获取已注册类）</h4>
-
-<pre><code class="language-Objc">int numClasses;
-Class * classes = NULL;
-numClasses = objc_getClassList(NULL, 0);
-if (numClasses &gt; 0) {
-    classes = malloc(sizeof(Class) * numClasses);
-    numClasses = objc_getClassList(classes, numClasses);
-    NSLog(@&quot;number of classes: %d&quot;, numClasses);
-    for (int i = 0; i &lt; numClasses; i++) {
-        Class cls = classes[i];
-        NSLog(@&quot;class name: %s&quot;, class_getName(cls));
-    }
-    free(classes);
-}
-</code></pre>
-
-<h2 id="toc_6">成员变量、属性</h2>
-
-<h3 id="toc_7">关联对象</h3>
-
-<p>假定我们想要动态地将一个Tap手势操作连接到任何UIView中，并且根据需要指定点击后的实际操作。这时候我们就可以将一个手势对象及操作的block对象关联到我们的UIView对象中。这项任务分两部分。<br/>
-首先，如果需要，我们要创建一个手势识别对象并将它及block做为关联对象。如下代码所示：</p>
-
-<pre><code class="language-objc">- (void)setTapActionWithBlock:(void (^)(void))block
-{
-    UITapGestureRecognizer *gesture = objc_getAssociatedObject(self, &amp;kDTActionHandlerTapGestureKey);
- 
-    if (!gesture)
-    {
-        gesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(__handleActionForTapGesture:)];
-        [self addGestureRecognizer:gesture];
-        objc_setAssociatedObject(self, &amp;kDTActionHandlerTapGestureKey, gesture, OBJC_ASSOCIATION_RETAIN);
-    }
-    objc_setAssociatedObject(self, &amp;kDTActionHandlerTapBlockKey, block, OBJC_ASSOCIATION_COPY);
-}
-</code></pre>
-
-<p>这段代码检测了手势识别的关联对象。如果没有，则创建并建立关联关系。同时，将传入的块对象连接到指定的key上。注意<code>block</code>对象的关联内存管理策略。<br/>
-手势识别对象需要一个<code>target</code>和<code>action</code>，所以接下来我们定义处理方法：</p>
-
-<pre><code class="language-objc">- (void)__handleActionForTapGesture:(UITapGestureRecognizer *)gesture
-{
-    if (gesture.state == UIGestureRecognizerStateRecognized)
-    {
-        void(^action)(void) = objc_getAssociatedObject(self, &amp;kDTActionHandlerTapBlockKey);
-        if (action)
-        {
-            action();
-        }
-    }
-}
-</code></pre>
-
-<h3 id="toc_8">设置属性</h3>
-
-<p>我们从服务端两个不同的接口获取相同的字典数据，但这两个接口是由两个人写的，相同的信息使用了不同的字段表示。我们在接收到数据时，可将这些数据保存在相同的对象中。对象类如下定义：</p>
-
-<pre><code class="language-objc">@interface MyObject: NSObject
-@property (nonatomic, copy) NSString    *   name;                  
-@property (nonatomic, copy) NSString    *   status;                 
-@end
-</code></pre>
-
-<p>接口A、B返回的字典数据如下所示：</p>
-
-<pre><code class="language-objc">@{@&quot;name1&quot;: &quot;张三&quot;, @&quot;status1&quot;: @&quot;start&quot;}
-@{@&quot;name2&quot;: &quot;张三&quot;, @&quot;status2&quot;: @&quot;end&quot;}
-</code></pre>
-
-<p>通常的方法是写两个方法分别做转换，不过如果能灵活地运用Runtime的话，可以只实现一个转换方法，为此，我们需要先定义一个映射字典(全局变量)</p>
-
-<pre><code class="language-objc">static NSMutableDictionary *map = nil;
-@implementation MyObject    
-+ (void)load
-{
-    map = [NSMutableDictionary dictionary];
-    map[@&quot;name1&quot;]                = @&quot;name&quot;;
-    map[@&quot;status1&quot;]              = @&quot;status&quot;;
-    map[@&quot;name2&quot;]                = @&quot;name&quot;;
-    map[@&quot;status2&quot;]              = @&quot;status&quot;;
-}
-@end
-</code></pre>
-
-<p>上面的代码将两个字典中不同的字段映射到MyObject中相同的属性上，这样，转换方法可如下处理：</p>
-
-<pre><code class="language-objc">- (void)setDataWithDic:(NSDictionary *)dic
-{
-    [dic enumerateKeysAndObjectsUsingBlock:^(NSString *key, id obj, BOOL *stop) {
-        NSString *propertyKey = [self propertyForKey:key];
-        if (propertyKey)
-        {
-            objc_property_t property = class_getProperty([self class], [propertyKey UTF8String]);
-            // TODO: 针对特殊数据类型做处理
-            NSString *attributeString = [NSString stringWithCString:property_getAttributes(property) encoding:NSUTF8StringEncoding];
-            ...
-            [self setValue:obj forKey:propertyKey];
-        }
-    }];
-}
-</code></pre>
-
-<h2 id="toc_9">方法和消息</h2>
-
-<h3 id="toc_10">消息转发 -</h3>
-
-<h4 id="toc_11">备用接收者</h4>
-
-<p>使用这个方法通常是在对象内部，可能还有一系列其它对象能处理该消息，我们便可借这些对象来处理消息并返回，这样在对象外部看来，还是由该对象亲自处理了这一消息。<br/>
-```objc<br/>
-@interface SUTRuntimeMethodHelper : NSObject<br/>
-- (void)method2;<br/>
-@end<br/>
-@implementation SUTRuntimeMethodHelper<br/>
-- (void)method2 {<br/>
-    NSLog(@&quot;%@, %p&quot;, self, _cmd);<br/>
-}<br/>
-@end</p>
-
-<h1 id="toc_12">pragma mark -</h1>
-
-<p>@interface SUTRuntimeMethod () {<br/>
-    SUTRuntimeMethodHelper *_helper;<br/>
-}<br/>
-@end<br/>
-@implementation SUTRuntimeMethod<br/>
-+ (instancetype)object {<br/>
-    return [[self alloc] init];<br/>
-}<br/>
-- (instancetype)init {<br/>
-    self = [super init];<br/>
-    if (self != nil) {<br/>
-        <u>helper = [[SUTRuntimeMethodHelper alloc] init];<br/>
-    }<br/>
-    return self;<br/>
-}<br/>
-- (void)test {<br/>
-    [self performSelector:@selector(method2)];<br/>
-}<br/>
-- (id)forwardingTargetForSelector:(SEL)aSelector {<br/>
-    NSLog(@&quot;forwardingTargetForSelector&quot;);<br/>
-    NSString *selectorString = NSStringFromSelector(aSelector);<br/>
-    // 将消息转发给</u>helper来处理<br/>
-    if ([selectorString isEqualToString:@&quot;method2&quot;]) {<br/>
-        return _helper;<br/>
-    }<br/>
-    return [super forwardingTargetForSelector:aSelector];<br/>
-}<br/>
-@end<br/>
-```<br/>
-这一步合适于我们只想将消息转发到另一个能处理该消息的对象上。但这一步无法对消息进行处理，如操作消息的参数和返回值。</p>
-
-<h4 id="toc_13">完整消息转发</h4>
-
-<pre><code class="language-objc">- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    NSMethodSignature *signature = [super methodSignatureForSelector:aSelector];
-    if (!signature) {
-        if ([SUTRuntimeMethodHelper instancesRespondToSelector:aSelector]) {
-            signature = [SUTRuntimeMethodHelper instanceMethodSignatureForSelector:aSelector];
-        }
-    }
-    return signature;
-}
-- (void)forwardInvocation:(NSInvocation *)anInvocation {
-    if ([SUTRuntimeMethodHelper instancesRespondToSelector:anInvocation.selector]) {
-        [anInvocation invokeWithTarget:_helper];
-    }
-}
-</code></pre>
-
-<h2 id="toc_14">Method Swizzing</h2>
-
-<p>例如，我们想跟踪在程序中每一个view controller展示给用户的次数：当然，我们可以在每个view controller的viewDidAppear中添加跟踪代码；但是这太过麻烦，需要在每个view controller中写重复的代码。创建一个子类可能是一种实现方式，但需要同时创建UIViewController, UITableViewController, UINavigationController及其它UIKit中view controller的子类，这同样会产生许多重复的代码。</p>
-
-<pre><code class="language-objc">#import &lt;objc/runtime.h&gt;
-@implementation UIViewController (Tracking)
-+ (void)load {
-    static dispatch_once_t onceToken;
-    dispatch_once(&amp;onceToken, ^{
-        Class class = [self class];         
-        // When swizzling a class method, use the following:
-        // Class class = object_getClass((id)self);
-        SEL originalSelector = @selector(viewWillAppear:);
-        SEL swizzledSelector = @selector(xxx_viewWillAppear:);
-        Method originalMethod = class_getInstanceMethod(class, originalSelector);
-        Method swizzledMethod = class_getInstanceMethod(class, swizzledSelector);
-        BOOL didAddMethod = class_addMethod(class,
-                originalSelector,
-                method_getImplementation(swizzledMethod),
-                method_getTypeEncoding(swizzledMethod));
-        if (didAddMethod) {
-            class_replaceMethod(class,
-                swizzledSelector,
-                method_getImplementation(originalMethod),
-                method_getTypeEncoding(originalMethod));
-        } else {
-            method_exchangeImplementations(originalMethod, swizzledMethod);
-        }
-    });
-}
-#pragma mark - Method Swizzling
-- (void)xxx_viewWillAppear:(BOOL)animated {
+<pre><code class="language-objc">- (void)xxx_viewWillAppear:(BOOL)animated {
     [self xxx_viewWillAppear:animated];
-    NSLog(@&quot;viewWillAppear: %@&quot;, self);
+    NSLog(@&quot;viewWillAppear: %@&quot;, NSStringFromClass([self class]));
 }
 </code></pre>
 
-<p>在这里，我们通过method swizzling修改了UIViewController的@selector(viewWillAppear:)对应的函数指针，使其实现指向了我们自定义的xxx_viewWillAppear的实现。这样，当UIViewController及其子类的对象调用viewWillAppear时，都会打印一条日志信息。</p>
+<p>咋看上去是会导致无限循环的。但令人惊奇的是，并没有出现这种情况。在<code>swizzling</code>的过程中，方法中的<code>[self xxx_viewWillAppear:animated]</code>已经被重新指定到UIViewController类的-<code>viewWillAppear:</code>中。在这种情况下，不会产生无限循环。不过如果我们调用的是<code>[self viewWillAppear:animated]</code>，则会产生无限循环，因为这个方法的实现在运行时已经被重新指定为<code>xxx_viewWillAppear:</code>了。</p>
 
-<p>上面的例子很好地展示了使用method swizzling来一个类中注入一些我们新的操作。当然，还有许多场景可以使用method swizzling，在此不多举例。</p>
+<h3 id="toc_4">注意事项</h3>
+
+<p>Swizzling通常被称作是一种黑魔法，容易产生不可预知的行为和无法预见的后果。虽然它不是最安全的，但如果遵从以下几点预防措施的话，还是比较安全的：</p>
+
+<ol>
+<li>总是调用方法的原始实现(除非有更好的理由不这么做)：API提供了一个输入与输出约定，但其内部实现是一个黑盒。Swizzle一个方法而不调用原始实现可能会打破私有状态底层操作，从而影响到程序的其它部分。</li>
+<li><p>避免冲突：给自定义的分类方法加前缀，从而使其与所依赖的代码库不会存在命名冲突。</p></li>
+<li><p>明白是怎么回事：简单地拷贝粘贴swizzle代码而不理解它是如何工作的，不仅危险，而且会浪费学习Objective-C运行时的机会。阅读Objective-C Runtime Reference和查看<objc/runtime.h>头文件以了解事件是如何发生的。</p></li>
+<li><p>小心操作：无论我们对Foundation, UIKit或其它内建框架执行Swizzle操作抱有多大信心，需要知道在下一版本中许多事可能会不一样。</p></li>
+<li></li>
+</ol>
 
                         
                       </div>
@@ -496,7 +174,7 @@ if (numClasses &gt; 0) {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/22</span>
+                    <span class="date">2017/2/24</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='RunTime.html'>运行时</a></span>
@@ -587,7 +265,19 @@ if (numClasses &gt; 0) {
 	      
 		      
 			      <li class="post">
-			        <a href="15047511695312.html"></a>
+			        <a href="15057532270985.html">访问控制</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15052932669633.html">泛型</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15047511695312.html">协议</a>
 			      </li>
 		     
 		  
@@ -600,18 +290,6 @@ if (numClasses &gt; 0) {
 		      
 			      <li class="post">
 			        <a href="15042543172572.html">嵌套类型</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15037348375137.html">类型转换</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15034731740974.html">错误处理</a>
 			      </li>
 		     
 		  

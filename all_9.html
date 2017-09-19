@@ -105,137 +105,32 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15018175799489.html">
+                <a class="clearlink" href="15025006795297.html">
                 
-                  <h1>继承</h1>
+                  <h1>析构过程</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>类可以继承父类的方法、属性和其他特征</p>
+                        	<p>只适用类类型,当类的实例被释放时,析构器会被立即调用。<br/>
+<code>deinit</code>关键字标示析构器</p>
 
-<p>类可以调用和访问超类的方法，属性和下标，并且可以重写这些方法，属性和下标来优化或修改它们的行为。</p>
+<h2 id="toc_0">析构过程原理</h2>
 
-<p>可以为类中继承的属性添加属性观察器</p>
+<p>自动释放不需要的实例来释放资源,通过自动引用计数来管理内存。实例被释放时会自动清理,但是使用自己的资源需要进行额外的清理(比如自己打开一个文件管理类，需要在类被释放前手动关闭该文件).</p>
 
-<h2 id="toc_0">定义一个基类</h2>
+<p>在类的定义中,每个类最多只能有一个析构器,不带任何参数</p>
 
-<p>不继承于其它类的类,称之为基类</p>
-
-<p>注意:</p>
-
-<blockquote>
-<p><code>Swift</code>中类并不是从一个通用类继承而来.如果没有为定义的类制定一个超类的话,这个类自动成为一个基类</p>
-</blockquote>
-
-<p>创建一个<code>Vehicle</code>的基类，来描述通用车辆</p>
-
-<pre><code class="language-swift">class Vehicle {
-    var currentSpeed = 0.0
-    var description: String {
-        return &quot;traveling at \(currentSpeed) miles per hour&quot;
-    }
-    func makeNoise() {
-        // 什么也不做-因为车辆不一定会有噪音
-    }
+<pre><code class="language-swift">deinit {
+    // 执行析构过程
 }
 </code></pre>
 
-<h2 id="toc_1">子类生成</h2>
+<p>析构器在实例被释放前被调用,不能主动调用析构器。子类继承了父类的析构器，并且在子类析构器<br/>
+实现的最后，父类的析构器会被自动调用。</p>
 
-<pre><code class="language-swift">//定义一个自行车Bicycle继承自Vehicle
-class Bicycle: Vehicle {
-    var hasBasket = false
-}
-</code></pre>
-
-<p>除了继承自父类的方法、属性外，还定义了一个默认值为<code>false</code>的存储属性<code>hasBasket</code></p>
-
-<pre><code class="language-swift">let bicycle = Bicycle()
-bicycle.hasBasket = true
-//修改继承的属性
-bicycle.currentSpeed = 15.0
-print(&quot;Bicycle: \(bicycle.description)&quot;)
-// 打印 &quot;Bicycle: traveling at 15.0 miles per hour&quot;
-</code></pre>
-
-<h2 id="toc_2">重写</h2>
-
-<p>为继承来的实例方法、类方法、实例属性、下标提供自己的实现,即为<strong>重写</strong></p>
-
-<p>需要在重写的定义前加上 <code>override</code>关键字表明重写,否则即为错误的提供了相同的定义</p>
-
-<h3 id="toc_3">访问父类的方法、属性和下标</h3>
-
-<p>通过<code>super</code>前缀来访问父类版本中的方法、属性或下标</p>
-
-<ul>
-<li>在方法 someMethod() 的重写实现中，可以通过 super.someMethod() 来调用超类版本的 someMethod() 方法</li>
-<li>在属性 someProperty 的 getter 或 setter 的重写实现中，可以通过 super.someProperty 来访问超类版本的someProperty 属性</li>
-<li>在下标的重写实现中，可以通过 super[someIndex] 来访问超类版本中的相同下标</li>
-</ul>
-
-<h3 id="toc_4">重写方法</h3>
-
-<pre><code class="language-swift">class Train: Vehicle {
-    override func makeNoise() {
-        print(&quot;Choo Choo&quot;)
-    }
-}
-</code></pre>
-
-<h3 id="toc_5">重写属性</h3>
-
-<p>重写继承来的实例或者类型属性来提供自己定制的<code>getter</code>或者<code>setter</code>或添加属性观察器来观察属性值的改变</p>
-
-<h4 id="toc_6">重写属性的setter和getter</h4>
-
-<p>子类并不知道继承来的属性是存储型还是计算型,重写时要提供属性名称和类型来让编译器去查找父类同名同类型的属性</p>
-
-<p>可以把继承的只读属性重写为可读写,但是没有办法把可读写的重写为只读属性</p>
-
-<blockquote>
-<p>如果你在重写属性中提供了<code>setter</code>，那么你也一定要提供<code>getter</code>。如果你不想在重写版本中的<br/>
-<code>getter</code>里修改继承来的属性值，你可以直接通过<code>super.someProperty</code>来返回继承来的值</p>
-</blockquote>
-
-<pre><code class="language-swift">class Car: Vehicle {
-    var gear = 1
-    //重写description属性
-    override var description: String {
-        return super.description + &quot; in gear \(gear)&quot;
-    }
-}
-
-let car = Car()
-car.currentSpeed = 25.0
-car.gear = 3
-print(&quot;Car: \(car.description)&quot;)//返回自定义描述
-// 打印 &quot;Car: traveling at 25.0 miles per hour in gear 3&quot;
-</code></pre>
-
-<h4 id="toc_7">重写属性观察器</h4>
-
-<p>注意:<br/>
-1. 不能为继承来的常量存储型属性或继承来的只读计算型属性添加属性观察器,因为它们不能被设置<br/>
-2. 不能同时提供重写的<code>setter</code>和重写的属性观察器。因为此时我们可以直接在setter中观察值的变化</p>
-
-<pre><code class="language-swift">class AutomaticCar: Car {
-    override var currentSpeed: Double {
-        didSet {
-            gear = Int(currentSpeed / 10.0) + 1(后向下取得最接近的整数值在加1)
-        }
-    }
-}
-</code></pre>
-
-<p>为属性<code>currentSpeed</code>添加观察器，设置速度时就会自动选择合适的档位</p>
-
-<h2 id="toc_8">防止重写</h2>
-
-<p>通过把方法、属性或下标 前加关键字<code>final</code>来防止被重写,例如:<code>final var</code> ， <code>final func</code> ， <code>final class func</code> ，以及 <code>final subscript</code></p>
-
-<p>通过在<code>class</code>前添加关键字<code>final</code>表示这个类是不可被继承的</p>
+<p>直到实例的析构器被调用后，实例才会被释放,所以析构器可以访问实例的所有属性，并且可以根据那些属<br/>
+性可以修改它的行为(比如查找一个需要被关闭的文件)</p>
 
                         
                       </div>
@@ -244,10 +139,10 @@ print(&quot;Car: \(car.description)&quot;)//返回自定义描述
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/4</span>
+                    <span class="date">2017/8/12</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
+          					    <span class="posted-in"><a href='Swift.html'>Swift初学笔记</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -335,7 +230,19 @@ print(&quot;Car: \(car.description)&quot;)//返回自定义描述
 	      
 		      
 			      <li class="post">
-			        <a href="15047511695312.html"></a>
+			        <a href="15057532270985.html">访问控制</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15052932669633.html">泛型</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15047511695312.html">协议</a>
 			      </li>
 		     
 		  
@@ -348,18 +255,6 @@ print(&quot;Car: \(car.description)&quot;)//返回自定义描述
 		      
 			      <li class="post">
 			        <a href="15042543172572.html">嵌套类型</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15037348375137.html">类型转换</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15034731740974.html">错误处理</a>
 			      </li>
 		     
 		  

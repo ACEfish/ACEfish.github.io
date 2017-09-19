@@ -105,154 +105,162 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14861704124969.html">
+                <a class="clearlink" href="14871449062159.html">
                 
-                  <h1>iOS 滤镜</h1>
+                  <h1>XCTest单元测试</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<hr/>
+                        	<h3 id="toc_0">1.基础知识</h3>
 
-<h3 id="toc_0">CIFilter实现滤镜效果</h3>
+<p>什么是单元测试:<br/>
+<strong>单元测试是开发者编写的一小段代码，用于检验被测代码中的一个很明确的功能是否正确。通常而言，一个单元测试是用于判断某个特定条件（或者场景）下某个特定函数的行为。</strong><br/>
+单元测试在程序里面可以理解一个模块一个方法，在每个可能存在的模块都进行测试，确保每个模块都没有问题，从而提高整体程序的质量。</p>
 
-<p>参考网址:<a href="http://www.jianshu.com/p/98ba256b034a" title="CoreImage滤镜学习 - 简书">CoreImage滤镜学习</a> </p>
-
-<h5 id="toc_1">CoreImage框架介绍</h5>
-
-<p>1.是一个图片框架 基于<code>OpenGL</code>顶层创建，底层用着色器来处理图像<br/><br/>
-2.利用GPU基于硬件加速来处理图像<br/><br/>
-3.CoreImage中有很多滤镜<br/><br/>
-4.它们能够一次给予一张图像或者视频帧多种视觉效果 -&gt; 滤镜链<br/><br/>
-5.滤镜可以连接起来组成一个滤镜链 把滤镜效果叠加起来处理图像</p>
-
-<h5 id="toc_2">CIFilter使用介绍</h5>
+<h3 id="toc_1">XCTest使用方法</h3>
 
 <ol>
-<li><p><code>CIFilter</code>滤镜类中有很多的滤镜效果 这里不一一列举，可以按住command 点击CIFilter 进入接口文件 找到第128行-148行全部都是 效果分类  </p></li>
-<li><p>常用效果<br/><br/>
-我们使用时需要先找到需要的效果类型 比如我们使用<code>kCICategoryDistortionEffect</code>失真的效果类型，有了效果类型我们需要找到里面我们需要的效果.<br/><br/>
-<code>NSLog -&gt; [CIFilter filterNamesInCategory:刚才拷贝的分类];</code><br/><br/>
-比如<code>CIColorMonochrome </code>,然后就可以使用这个滤镜效果<br/><br/>
-<code>CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome”];</code><br/><br/>
-然后打印这个效果中包含了那些属性:<br/><br/>
-<code>NSLog(@&quot;%@&quot;,filter.attributes);</code><br/><br/>
-在里面我们可以看到好多属性，里面是多个字典的形式，找到我们想要修改的属性(key值) 然后在他对应的value里面查看一下他的属性类型，比如我们打印的CIColorMonochrome里面有一个inputColor，他是一个CIColor类型的，有默认值，这里我们写了一个CIColor来给他进行赋值.<br/><br/>
-赋值时需要用kvc的方式:<br/><br/>
-<code>[filter setValue:colorforKey:kCIInputColorKey];</code><br/><br/>
-<img src="media/14861704124969/DraggedImage.png" alt="DraggedImage"/></p></li>
-<li><p>实现滤镜效果代码<br/><br/>
-首先我们创建一个全局变量的UIImageView，然后让他初始化出来,这个就是我们要处理的图片 一般我们从手机相册中取出来:<br/><br/>
- @interface ViewController ()&lt;UINavigationControllerDelegate,UIImagePickerControllerDelegate&gt;<br/>
-    {<br/>
-         UIImageView *imageView;<br/>
-    }<br/>
-    @end<br/>
-    然后我们需要从相册中取出一张图片,保存起来:<br/>
-    //跳转相册的触发方法<br/>
-    - (void)doit{<br/>
-    UIImagePickerController *vc = [[UIImagePickerController alloc]init];<br/>
-    vc.delegate = self;<br/>
-    [self presentViewController:vc animated:YES completion:nil];</p>
-
-<pre><code>}
-//让图片显示在VC上面的方法
-- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary&lt;NSString *,id&gt; *)info
-{
-NSLog(@&quot;%@&quot;,info);
-//获得选中的图像
-UIImage *chooseImage = info[UIImagePickerControllerOriginalImage];
-//先是在试图空间上
-imageView.image = chooseImage;
-
-[self dismissViewControllerAnimated:YES completion:nil];
-}
-</code></pre>
-
-<p><strong>接下来就是对图片进行滤镜处理:</strong><br/>
-    - (void)addColorFilter{<br/>
-    //CIImage 保存图像数据的类<br/>
-    CIImage <em>inputImage = [CIImage imageWithCGImage:imageView.image.CGImage];<br/>
-    //先打印NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);进去找到需要设置的属性(查询效果分类中都有什么效果)  可以设置什么效果<br/>
-    //然后通过[CIFilter filterWithName:@&quot;&quot;];找到属性   具体效果的属性<br/>
-    //然后通过KVC的方式设置属性<br/>
-    NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);<br/>
-    /</em><br/>
-     1.查询 效果分类中 包含什么效果：filterNamesInCategory:<br/>
-     2.查询 使用的效果中 可以设置什么属性（KVC） attributes</p>
-
-<pre><code> 使用步骤
- 1.需要添加滤镜的源图
- 2.初始化一个滤镜 设置滤镜（根据查询到的属性来设置）
- 3.把滤镜 输出的图像 和滤镜  合并 CIContext -&gt; 得到一个合成之后的图像
- 4.展示
- */
-//CIFilter 滤镜类  图片属性进行细节处理的类
-CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome&quot;];
-NSLog(@&quot;%@&quot;,filter.attributes);
-//这个属性是必须赋值的，假如你处理的是图片的话
-[filter setValue:inputImage forKey:kCIInputImageKey];
-CIColor *color = [CIColor colorWithRed:1.000 green:0.759 blue:0.592 alpha:1];
-[filter setValue:color forKey:kCIInputColorKey];
-//CIContext 上下文是实现对图像处理的具体对象 用来把滤镜和图片合成成为一张图片 滤镜对象输出的图像并不是合成之后的图像，需要使用图片处理的上下文 合并输出图像
-    CIContext *context = [CIContext contextWithOptions:nil];
-
-CIImage *outPutImage = filter.outputImage;
-//CGImageRef-&gt;图像中的数据
-    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];
-
-    imageView.image = [UIImage imageWithCGImage:image];
-
- }
-</code></pre>
-
-<p>注意：<br/><br/>
-对滤镜进行赋值之后图片就有了，但是我们这个时候拿出这个图片的时候发现他并没有发生变化，因为它只是单一进行了滤镜处理，还没有和原图片进行一个糅合。使用CIContext找到上下文对他进行糅合：<br/><br/>
-//extent得到图像的尺寸    合并一个包含源图   滤镜效果的图片<br/>
-    //1 滤镜输出的图像    2.合成之后图像的尺寸   图像.extent<br/>
-    CGImageRef imageRef = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
-注意:<br/><br/>
-假如你的图片消失了，请检查一下，第一步获取图片的时候一定要获得图片的CGImage再来来获取，不要直接使用imageView.image.CGImage。</p></li>
-<li><p>滤镜链:<br/><br/>
-在给一张图片添加多种滤镜效果的时候，我们把它称为<code>滤镜链</code>，我们再添加滤镜链的时候，就是把图片添加一层滤镜，然后，和原图片糅合处理，然后在处理之后的图片上再添加一层滤镜，并不是直接给一张图片添加了两层路径，所以称为滤镜链。<br/><br/>
-我们继续使用这个图片，在它添加第一层滤镜的时候做一些修改:  </p>
-
-<pre><code>//上接给效果属性赋值
-//把下面注释的给注释掉，然后添加一个方法
-    //CIContext
-//    CIContext *context = [CIContext contextWithOptions:nil];
-
-CIImage *outPutImage = filter.outputImage;
-[self addFilterLinkerWithImage:outPutImage];
-//    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];
-
-//    imageView.image = [UIImage imageWithCGImage:image];
-
-//再次添加滤镜  -&gt;  形成滤镜链
-- (void)addFilterLinkerWithImage:(CIImage *)image
-{
-CIFilter *filter = [CIFilter filterWithName:@&quot;CISepiaTone&quot;];
-[filter setValue:image forKey:kCIInputImageKey];
-CIContext *context = [CIContext contextWithOptions:nil];
-CGImageRef resultImage = [context createCGImage:filter.outputImage fromRect:filter.outputImage.extent];
-imageView.image = [UIImage imageWithCGImage:resultImage];
-//把添加好滤镜效果的图片   保存到相册
-//不可以直接保存 outputImage  -&gt;  这是一个没有吧滤镜效果和源图合成的图像
-UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishSavingWithError:contextInfo:), nil);
- }
-//保存图片回调
-- (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo
-{
-    NSLog(@&quot;保存成功&quot;);
-}
-</code></pre>
-
-<p>这样就是一个双重的滤镜效果,同时保存到了相册.</p></li>
+<li><p><strong>测试用例被分到继承 <code>XCTestCase</code> 的不同子类中去</strong>。<br/>
+每个以 test 为开头的方法都是一个测试用例。<br/>
+自定义类</p></li>
+<li><p>命名<br/><br/>
+我们可以用比如<code>testThatIt</code>将重点转移到期望的结果上的测试用例<br/>
+<code>test + 要测试的方法和类名</code>，比如像 testHTTPRequest来测试一些特定类型的<br/>
+我们还可以采用category 来将它们按主题分类</p></li>
+<li><p>Given / When / Then<br/>
+根据 <code>Given-When-Then</code> 模式来组织我们的测试用例<br/>
+这三部分分别指:Given:通过创建模型对象或将被测试的系统设置到指定的状态，来设定测试环境<br/>
+When:包含了我们要测试的代码<br/>
+Then:检查我们行为的结果，这里通常为一些断言</p></li>
+<li><p>可重用代码<br/>
+整理所有有用的代码片段，并将它们加入到一个<code>公共类</code>中，为所有的测试用例服务,这个公共类非常实用。这个测试基础类能够运行自己的 -setUp 和 -tearDown 方法来配置环境。我们大部分情况用它来初始化测试用的 Core Data 栈，来重新设置我们的具有确定性的 NSUUID (这是那些可以让调试简单得多的一些东西中的一个)，并且设置一些后台的魔法来简化异步测试。</p></li>
+<li><p>Mock<br/>
+我们使用的Mock框架是OCMock，mock 是一个在方法调用时返回标准答案的对象</p></li>
+<li></li>
 </ol>
 
-<hr/>
+<h4 id="toc_2">XCTest使用范畴</h4>
 
-<h3 id="toc_3">系统自带简单的滤镜效果</h3>
+<p>Apple在Xcode 6中新增了UnitTest<br/>
+XCTest测试范畴：<br/>
+基本逻辑测试处理测试<br/>
+异步加载数据测试<br/>
+数据mock测试</p>
+
+<p>XCTest常用基本测试工具<br/>
+XCTest常用的一些判断工具都是以XCT开头的</p>
+
+<p><strong>补充:</strong><code>代码覆盖率：</code>代码覆盖率 ＝ 实际执行的代码行数 / 整个工程总代码行数，直白来讲就是这样一个数值；  Xcode7以后Apple推出了更为人性化的<a href="http://www.cocoachina.com/ios/20150915/13163.html">工具</a>来统计代码覆盖率，<a href="http://www.jianshu.com/p/c9f8100a96e6">使用简介传送门</a></p>
+
+<h3 id="toc_3">用XCTest完成的最简单的测试Demo</h3>
+
+<ol>
+<li><p>创建项目时勾选</p>
+
+<p><img src="media/14871449062159/unitTest.png" alt="新建项目时勾选"/></p></li>
+<li><p>进入项目</p>
+
+<p><img src="media/14871449062159/unitTest2.png" alt="注意路径"/></p>
+
+<p>进入到这个类，<code>setUp</code>是每个测试方法调用前执行，<code>tearDown</code>是每个测试方法调用后执行。<code>testExample</code>是测试方法，和我们新建的没有差别。不过测试方法必须<code>testXXX</code>的格式，且不能有参数，不然不会识别为测试方法。测试方法的执行顺序是字典序排序。<br/>
+<img src="media/14871449062159/uinitTest5.png" alt="uinitTest5"/></p></li>
+<li><p>测试用例<br/><br/>
+点击上图箭头的开始图标即可测试这个文件中测试方法<br/>
+在测试方法前也有开始图标,点击即可测试这个方法<br/>
+<img src="media/14871449062159/uinitTest4.png" alt="开始测试" style="width:303px;"/></p>
+
+<p><strong>按快捷键Command + U进行单元测试，这个快捷键是全部测试</strong></p>
+
+<p><img src="media/14871449062159/uinitTest3.png" alt="测试方法出错"/><br/>
+这里我们<code>断言a=0</code>是错误的所以没有通过</p></li>
+<li><p>XCTest常见的断言</p>
+
+<pre><code class="language-Object-c">XCTFail(format…) 生成一个失败的测试；
+
+XCTAssertNil(a1, format...)为空判断，a1为空时通过，反之不通过；
+
+XCTAssertNotNil(a1, format…)不为空判断，a1不为空时通过，反之不通过；
+
+XCTAssert(expression, format...)当expression求值为TRUE时通过；
+
+XCTAssertTrue(expression, format...)当expression求值为TRUE时通过；
+
+XCTAssertFalse(expression, format...)当expression求值为False时通过；
+
+XCTAssertEqualObjects(a1, a2, format...)判断相等，[a1 isEqual:a2]值为TRUE时通过，其中一个不为空时，不通过；
+
+XCTAssertNotEqualObjects(a1, a2, format...)判断不等，[a1 isEqual:a2]值为False时通过；
+
+XCTAssertEqual(a1, a2, format...)判断相等（当a1和a2是 C语言标量、结构体或联合体时使用,实际测试发现NSString也可以）；
+
+XCTAssertNotEqual(a1, a2, format...)判断不等（当a1和a2是 C语言标量、结构体或联合体时使用）；
+
+XCTAssertEqualWithAccuracy(a1, a2, accuracy, format...)判断相等，（double或float类型）提供一个误差范围，当在误差范围（+/-accuracy）以内相等时通过测试；
+
+XCTAssertNotEqualWithAccuracy(a1, a2, accuracy, format...) 判断不等，（double或float类型）提供一个误差范围，当在误差范围以内不等时通过测试；
+
+XCTAssertThrows(expression, format...)异常测试，当expression发生异常时通过；反之不通过；（很变态） XCTAssertThrowsSpecific(expression, specificException, format...) 异常测试，当expression发生specificException异常时通过；反之发生其他异常或不发生异常均不通过；
+
+XCTAssertThrowsSpecificNamed(expression, specificException, exception_name, format...)异常测试，当expression发生具体异常、具体异常名称的异常时通过测试，反之不通过；
+
+XCTAssertNoThrow(expression, format…)异常测试，当expression没有发生异常时通过测试；
+
+XCTAssertNoThrowSpecific(expression, specificException, format...)异常测试，当expression没有发生具体异常、具体异常名称的异常时通过测试，反之不通过；
+
+XCTAssertNoThrowSpecificNamed(expression, specificException, exception_name, format...)异常测试，当expression没有发生具体异常、具体异常名称的异常时通过测试，反之不通过
+</code></pre>
+
+<p><strong>注意:</strong> 特别注意下XCTAssertEqualObjects和XCTAssertEqual。<br/>
+XCTAssertEqualObjects(a1, a2, format...)的判断条件是[a1 isEqual:a2]是否返回一个YES。XCTAssertEqual(a1, a2, format...)的判断条件是a1 == a2是否返回一个YES。对于后者，如果a1和a2都是基本数据类型变量，那么只有a1 == a2才会返回YES<br/>
+XCAssertEqual(a1, a2, format...)当a1和a2是 C语言标量、结构体或联合体时使用,实际测试发现NSString也可以</p></li>
+<li><p>性能测试用例的实现<br/>
+<img src="media/14871449062159/14872135691276.jpg" alt=""/></p></li>
+<li></li>
+</ol>
+
+<h4 id="toc_4">1. XCTest异步测试</h4>
+
+<p>XCTestExpression类带入了<strong>异步测试</strong>,我们可以可以等待指定长度的时间，一直到某些条件符合的时候在开始测试。而不用再写很多的GCD代码控制<br/>
+我们可以定义这样的宏</p>
+
+<pre><code class="language-Object-c">#define WAIT do {\
+[self expectationForNotification:@&quot;RSBaseTest&quot; object:nil handler:nil];\
+[self waitForExpectationsWithTimeout:30 handler:nil];\
+} while (0);
+
+#define NOTIFY \
+[[NSNotificationCenter defaultCenter]postNotificationName:@&quot;RSBaseTest&quot; object:nil];
+</code></pre>
+
+<p>异步网络测试用例</p>
+
+<pre><code class="language-Object-c">-(void)testRequest{
+    // 1.获得请求管理者
+    AFHTTPRequestOperationManager *mgr = [AFHTTPRequestOperationManager manager];
+    mgr.responseSerializer.acceptableContentTypes = [NSSet setWithObjects:@&quot;text/html&quot;,nil];
+    // 2.发送GET请求
+    [mgr GET:@&quot;http://www.weather.com.cn/adat/sk/101110101.html&quot; parameters:nil success:^(AFHTTPRequestOperation *operation, id responseObject) {
+        NSLog(@&quot;responseObject:%@&quot;,responseObject);
+        XCTAssertNotNil(responseObject, @&quot;返回出错&quot;);
+        self.stAlertView = [[STAlertView alloc]initWithTitle:@&quot;验证码&quot; message:nil textFieldHint:@&quot;请输入手机验证码&quot; textFieldValue:nil cancelButtonTitle:@&quot;取消&quot; otherButtonTitle:@&quot;确定&quot; cancelButtonBlock:^{
+            //点击取消返回后执行
+            [self testAlertViewCancel];
+            NOTIFY //继续执行
+        } otherButtonBlock:^(NSString *b) {
+            //点击确定后执行
+            [self alertViewComfirm:b];
+            NOTIFY //继续执行
+        }];
+        [self.stAlertView show];
+    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+        NSLog(@&quot;error:%@&quot;,error);
+        XCTAssertNil(error, @&quot;请求出错&quot;);
+        NOTIFY //继续执行
+    }];
+    WAIT  //暂停
+}
+</code></pre>
 
                         
                       </div>
@@ -261,10 +269,10 @@ UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishS
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/4</span>
+                    <span class="date">2017/2/15</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
+          					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -352,7 +360,19 @@ UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishS
 	      
 		      
 			      <li class="post">
-			        <a href="15047511695312.html"></a>
+			        <a href="15057532270985.html">访问控制</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15052932669633.html">泛型</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15047511695312.html">协议</a>
 			      </li>
 		     
 		  
@@ -365,18 +385,6 @@ UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishS
 		      
 			      <li class="post">
 			        <a href="15042543172572.html">嵌套类型</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15037348375137.html">类型转换</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15034731740974.html">错误处理</a>
 			      </li>
 		     
 		  

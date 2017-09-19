@@ -112,7 +112,7 @@
 
           <span>posted in&nbsp;</span> 
           
-              <span class="posted-in"><a href='Swift.html'>Swift初学笔记</a></span>
+              <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
            
          
           <span class="comments">
@@ -256,6 +256,87 @@ func findIndex&lt;T: Equatable&gt;(array: [T], _ valueToFind: T) -&gt; Int? {
 }
 </code></pre>
 
+<h2 id="toc_8">关联类型</h2>
+
+<p>定义协议时，声明一个或者多个<strong>关联类型</strong>作为协议的一部分</p>
+
+<p><strong>关联类型</strong>为协议中的的某个类型提供占位名(别名)，而其实际类型在协议被采纳时才会被指定</p>
+
+<p>用<code>associatedtype</code>关键字指定<strong>关联类型</strong></p>
+
+<pre><code class="language-swift">protocol Container {
+    associatedtype ItemType
+    mutating func append(item: ItemType)
+    var count: Int { get }
+    subscript(i: Int) -&gt; ItemType { get }
+}
+</code></pre>
+
+<p>在协议中声明了一个关联类型<code>ItemType</code>,来保证在不知道容器中元素的具体类型情况下行为能够正确执行</p>
+
+<pre><code class="language-swift">//定义类型遵循Contain协议
+Struct IntStack: Container {
+    // IntStack 的原始实现部分
+    var items = [Int]()
+    mutating func push(item: Int) {
+        items.append(item)
+    }
+    mutating func pop() -&gt; Int {
+        return items.removeLast()
+    }
+    // Container 协议的实现部分
+    typealias ItemType = Int//可以省略，swift会根据协议的实现推断出类型
+        mutating func append(item: Int) {
+        self.push(item)
+    }
+    var count: Int {
+        return items.count
+    }
+    subscript(i: Int) -&gt; Int {
+        return items[i]
+    }
+}
+
+</code></pre>
+
+<p>在实现协议时需要用<code>typealias ItemType = Int</code>来转换协议中的关联类型<br/>
+当然，这个是可以省略的，Swift可以根据方法推断出<code>ItemType</code>类型</p>
+
+<h3 id="toc_9">扩展存在的类型来指定关联类型</h3>
+
+<p>对于Contain协议，Swift中的Array已经默认提供了协议中要求，因此我们只需要声明Array遵循该协议就可以扩展<code>Array</code></p>
+
+<pre><code class="language-Swift">//我们只需要扩展Array来使其遵循该协议即可
+extension Array: Container {}
+</code></pre>
+
+<h2 id="toc_10">泛型Where语句</h2>
+
+<p><strong>泛型Where语句</strong>用于为关联类型定义约束，比如要求其必须遵循特定协议，以及特定类型参数和关联类型必须相同</p>
+
+<p>在函数体或者类型的大括号前添加<code>Where</code>子句</p>
+
+<pre><code class="language-swift">func allItemsMatch&lt;C1: Container, C2: Container&gt;
+(_ someContainer: C1, _ anotherContainer: C2) -&gt; Bool
+    where C1.ItemType == C2.ItemType, C1.ItemType: Equatable {
+        // 检查两个容器含有相同数量的元素
+        if someContainer.count != anotherContainer.count {
+            return false
+        }
+        // 检查每一对元素是否相等
+        for i in 0..&lt;someContainer.count {
+            if someContainer[i] != anotherContainer[i] {
+            return false
+        }
+    }
+    // 所有元素都匹配，返回 true
+    return true
+}
+</code></pre>
+
+<p>用<code>类型约束</code>约束类型参数:C1、C2必须符合<code>Contain</code>协议<br/>
+用<code>泛型Where语句</code>约束关联类型:C1和C2必须类型相同,并且C1符合<code>Equatable</code></p>
+
 
     
 
@@ -264,6 +345,9 @@ func findIndex&lt;T: Equatable&gt;(array: [T], _ valueToFind: T) -&gt; Int? {
       <div class="row">
         <div class="large-6 columns">
         <p class="text-left" style="padding:15px 0px;">
+      
+          <a href="15057532270985.html" 
+          title="Previous Post: 访问控制">&laquo; 访问控制</a>
       
         </p>
         </div>
@@ -348,6 +432,12 @@ func findIndex&lt;T: Equatable&gt;(array: [T], _ valueToFind: T) -&gt; Int? {
 	      
 		      
 			      <li class="post">
+			        <a href="15057532270985.html">访问控制</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15052932669633.html">泛型</a>
 			      </li>
 		     
@@ -367,12 +457,6 @@ func findIndex&lt;T: Equatable&gt;(array: [T], _ valueToFind: T) -&gt; Int? {
 		      
 			      <li class="post">
 			        <a href="15042543172572.html">嵌套类型</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15037348375137.html">类型转换</a>
 			      </li>
 		     
 		  

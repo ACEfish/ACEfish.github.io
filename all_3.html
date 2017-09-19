@@ -105,119 +105,185 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15037348375137.html">
+                <a class="clearlink" href="15042587690391.html">
                 
-                  <h1>类型转换</h1>
+                  <h1>扩展</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>在<code>Swift</code>中通过<code>is</code>和<code>as</code>操作符来实现<strong>类型转换</strong>，可以来检查值的类型或者转换类型<br/>
-可以用它检查一个类型是否实现了某个协议</p>
-
-<h2 id="toc_0">定义一个类层次作为例子</h2>
-
-<p>在数组中存了一个父类的两个子类的实例</p>
+                        	<p><strong>扩展</strong>就是为一个已有的类、结构体、枚举类型或者协议类型添加新功能</p>
 
 <blockquote>
-<p>在数组中存在两种子类类型,会推断这个数组为共同的父类类型<br/>
-此时虽然数组中存的是子类类型实例,但是迭代的话取出的实例会为父类类型，此时我们需要判断和转换类型</p>
+<p>类似OC中的分类功能,但是Swift中的分类没有名字</p>
 </blockquote>
 
-<h2 id="toc_1">检查类型</h2>
+<p><strong>Swift中的扩展可功能</strong>:</p>
 
-<p>用类型检查操作符<code>is</code> 检查实例是否属于特定子类型，返回<code>bool</code>值</p>
+<ul>
+<li>添加计算型属性和计算类型属性</li>
+<li>定义实例方法和类型方法</li>
+<li>提供新的构造器</li>
+<li>定义下标</li>
+<li>定义和使用新的嵌套类型</li>
+<li>使一个已有类型符合某个协议
+还可以对协议进行扩展、提供协议要求的实现，添加额外的功能，让符合协议的类型拥有这些功能</li>
+</ul>
 
-<pre><code class="language-swift">for item in library {
-    if item is Movie { //判断实例是否为 Movie类型
-        movieCount += 1
-    } else if item is Song { //判断实例是否为 Song类型
-        songCount += 1
-    }
+<blockquote>
+<p>扩展只能添加新的功能不能重写已有功能</p>
+</blockquote>
+
+<h2 id="toc_0">扩展语法</h2>
+
+<p>用关键字<code>extension</code>声明扩展:</p>
+
+<pre><code class="language-swift">extension SomeType {
+    // 为 SomeType 添加的新功能写到这里
 }
 </code></pre>
 
-<h2 id="toc_2">向下转型</h2>
+<p>扩展一个已有类型,使其采纳一个或多个协议</p>
 
-<p>当某类型的实例属于一个子类,可以用<code>as?</code>或者<code>as!</code>将其向下转换位子类类型</p>
-
-<p>因为向下转型可能失败，因此提供<code>as?</code>和<code>as!</code>(带上强制解包)，当不确定是否成功时用<code>as?</code> 确定一定成功时<code>as!</code></p>
-
-<pre><code class="language-swift">for item in library {
-    if let movie = item as? Movie {
-        print(&quot;Movie: &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
-    } else if let song = item as? Song {
-        print(&quot;Song: &#39;\(song.name)&#39;, by \(song.artist)&quot;)
-    }
+<pre><code class="language-swift">extension SomeType: SomeProtocol, AnotherProctocol {
+    // 协议实现写到这里
 }
-</code></pre>
-
-<p><code>if let movie = item as? Movie</code>尝试将<code>item</code>转为<code>Movie</code>类型。若成功，设置一个新的临时常量<code>movie</code>来存储返回的可选<code>Movie</code>中的值</p>
-
-<h2 id="toc_3">Any和AnyObject的类型转换</h2>
-
-<p>不确定类型的表达方式:<br/>
-<code>Any</code>可以表示任何类型，包括函数类型。<br/>
-<code>AnyObject</code>可以表示任何类类型的实例</p>
-
-<p>建议只在确定需要使用时才使用<code>Any</code>和<code>AnyObject</code></p>
-
-<pre><code class="language-swift">var things = [Any]()
-
-things.append(0)
-things.append(0.0)
-things.append(42)
-things.append(3.14159)
-things.append(&quot;hello&quot;)
-things.append((3.0, 5.0))
-things.append(Movie(name: &quot;Ghostbusters&quot;, director: &quot;Ivan Reitman&quot;))
-things.append({ (name: String) -&gt; String in &quot;Hello, \(name)&quot; })
-</code></pre>
-
-<p>然后我们可以在<code>switch</code>表达式的</p>
-
-<pre><code class="language-swift">for thing in things {
-    switch thing {
-    case 0 as Int:
-        print(&quot;zero as an Int&quot;)
-    case 0 as Double:
-        print(&quot;zero as a Double&quot;)
-    case let someInt as Int:
-        print(&quot;an integer value of \(someInt)&quot;)
-    case let someDouble as Double where someDouble &gt; 0:
-        print(&quot;a positive double value of \(someDouble)&quot;)
-    case is Double:
-        print(&quot;some other double value that I don&#39;t want to print&quot;)
-    case let someString as String:
-        print(&quot;a string value of \&quot;\(someString)\&quot;&quot;)
-    case let (x, y) as (Double, Double):
-        print(&quot;an (x, y) point at \(x), \(y)&quot;)
-    case let movie as Movie:
-        print(&quot;a movie called &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
-    case let stringConverter as String -&gt; String:
-        print(stringConverter(&quot;Michael&quot;))
-    default:
-        print(&quot;something else&quot;)
-    }
-}
-// zero as an Int
-// zero as a Double
-// an integer value of 42
-// a positive double value of 3.14159
-// a string value of &quot;hello&quot;
-// an (x, y) point at 3.0, 5.0
-// a movie called &#39;Ghostbusters&#39;, dir. Ivan Reitman
-// Hello, Michael
 </code></pre>
 
 <blockquote>
-<p><code>Any</code>是可以表示所有类型的值,包括可选类型,当你在用<code>Any</code>类型来表示一个可选值时,会给出警告，此时可以用<code>as</code>操作符显示转换为<code>Any</code></p>
+<p>扩展一个已有实例的新功能,那么新功能对该类型所有实例都可用，不论创建时间</p>
 </blockquote>
 
-<pre><code>let optionalNumber: Int? = 3
-things.append(optionalNumber) // 会有警告
-things.append(optionalNumber as Any) // 没有警告
+<h2 id="toc_1">计算型属性</h2>
+
+<pre><code class="language-swift">extension Double {
+    var km: Double { return self * 1_000.0 }
+    var m : Double { return self }
+    var cm: Double { return self / 100.0 }
+    var mm: Double { return self / 1_000.0 }
+    var ft: Double { return self / 3.28084 }
+}
+let oneInch = 25.4.mm
+print(&quot;One inch is \(oneInch) meters&quot;)
+    // 打印 “One inch is 0.0254 meters”
+let threeFeet = 3.ft
+print(&quot;Three feet is \(threeFeet) meters&quot;)
+    // 打印 “Three feet is 0.914399970739201 meters”
 </code></pre>
+
+<p>扩展<code>Double</code>类型,增加计算型属性,实现距离转换<br/>
+上面的属性是只读的计算型属性,省略了<code>get</code>关键字</p>
+
+<blockquote>
+<p>可以增加新的计算型属性,但是不能增加存储型属性，也不能为已有属性添加属性观察器</p>
+</blockquote>
+
+<h2 id="toc_2">构造器</h2>
+
+<p>扩展可以为已有类型添加新的构造器。<br/>
+扩展能为类添加新的便利构造器,但是不能为类添加新的指定构造器或者析构器</p>
+
+<blockquote>
+<p>如果使用扩展为一个“值类型”添加构造器,同时该值类型的原始实现没有定义定制构造器,且所有存储属性提供了默认值,我们可以在扩展的构造器中调用默认构造器和逐一成员构造器(当原始实现中有定制的构造器,就不能调用了)</p>
+</blockquote>
+
+<pre><code class="language-swift">struct Size {
+    var width = 0.0, height = 0.0
+}
+struct Point {
+    var x = 0.0, y = 0.0
+}
+struct Rect {
+    var origin = Point()
+    var size = Size()
+}
+</code></pre>
+
+<p>因为<code>Rect</code>没有指定构造器,存储属性也都有默认值,因此获得一个逐一成员构造器和默认构造器，</p>
+
+<pre><code class="language-swift">extension Rect {
+    init(center: Point, size: Size) {
+        let originX = center.x - (size.width / 2)
+        let originY = center.y - (size.height / 2)
+        //调用结构体的逐一成员构造器
+        self.init(origin: Point(x: originX, y: originY), size: size)
+    }
+}
+</code></pre>
+
+<h2 id="toc_3">方法</h2>
+
+<p>为已有类型添加新的实例方法和类型方法</p>
+
+<pre><code class="language-swift">extension Int {
+    func repetitions(task: () -&gt; Void) {
+        for _ in 0..&lt;self {
+            task()
+        }
+    }
+}
+//为Int类型添加一个名为`repetitions`的实例方法
+//这个方法接受一个`()-&gt;Void`类型的单参数，没有参数也没有返回值的函数
+</code></pre>
+
+<h3 id="toc_4">可变实例方法</h3>
+
+<p>扩展中添加的实例方法也可以修改该实例本身，对于值类型即结构体或者枚举修改<code>self</code>或其属性的方法就必须将该实例方法标注为<code>mutating</code>(类似原始实现)</p>
+
+<pre><code class="language-swift">extension Int {
+    mutating func square() {
+        self = self * self
+    }
+}
+</code></pre>
+
+<h2 id="toc_5">下标</h2>
+
+<p>扩展为已有类型添加下标.</p>
+
+<pre><code class="language-swift">extension Int {
+    subscript(digitIndex: Int) -&gt; Int {
+        var decimalBase = 1
+        for _ in 0..&lt;digitIndex {
+            decimalBase *= 10
+        }
+        return (self / decimalBase) % 10
+    }
+}
+746381295[0]
+// 返回 5
+746381295[1]
+// 返回 9
+//取的下标越界时自动用0补充
+746381295[9]
+// 返回 0，即等同于：
+0746381295[9]
+</code></pre>
+
+<p>上面的例子为<code>Int</code>增加下标方法，<code>[n]</code>返回十进制数字从右向左数的第<code>n</code>个数字</p>
+
+<h2 id="toc_6">嵌套类型</h2>
+
+<p>扩展可以为已有的类、结构体和枚举添加新的嵌套类型:</p>
+
+<pre><code class="language-swift">extension Int {
+    enum Kind {
+    case Negative, Zero, Positive
+    }
+    var kind: Kind {
+        switch self {
+        case 0:
+            return .Zero
+        case let x where x &gt; 0:
+            return .Positive
+        default:
+            return .Negative
+        }
+    }
+}
+</code></pre>
+
+<p>为<code>Int</code>添加了一个嵌套枚举,来表明特定整数的类型，即正数、负数或零</p>
 
                         
                       </div>
@@ -226,7 +292,7 @@ things.append(optionalNumber as Any) // 没有警告
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/26</span>
+                    <span class="date">2017/9/1</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -317,7 +383,19 @@ things.append(optionalNumber as Any) // 没有警告
 	      
 		      
 			      <li class="post">
-			        <a href="15047511695312.html"></a>
+			        <a href="15057532270985.html">访问控制</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15052932669633.html">泛型</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15047511695312.html">协议</a>
 			      </li>
 		     
 		  
@@ -330,18 +408,6 @@ things.append(optionalNumber as Any) // 没有警告
 		      
 			      <li class="post">
 			        <a href="15042543172572.html">嵌套类型</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15037348375137.html">类型转换</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15034731740974.html">错误处理</a>
 			      </li>
 		     
 		  

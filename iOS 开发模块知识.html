@@ -105,185 +105,54 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15042587690391.html">
+                <a class="clearlink" href="15057532270985.html">
                 
-                  <h1>扩展</h1>
+                  <h1>访问控制</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><strong>扩展</strong>就是为一个已有的类、结构体、枚举类型或者协议类型添加新功能</p>
-
-<blockquote>
-<p>类似OC中的分类功能,但是Swift中的分类没有名字</p>
-</blockquote>
-
-<p><strong>Swift中的扩展可功能</strong>:</p>
+                        	<p><strong>访问控制：限定其他源文件或者模块代码对你的代码的访问级别</strong></p>
 
 <ul>
-<li>添加计算型属性和计算类型属性</li>
-<li>定义实例方法和类型方法</li>
-<li>提供新的构造器</li>
-<li>定义下标</li>
-<li>定义和使用新的嵌套类型</li>
-<li>使一个已有类型符合某个协议
-还可以对协议进行扩展、提供协议要求的实现，添加额外的功能，让符合协议的类型拥有这些功能</li>
+<li>明确的给单个类型(类,结构体,枚举)设置访问级别</li>
+<li>给类型的属性、方法、构造器、下标等设置访问级别</li>
+<li>限定协议在一定范围使用，包括协议中的全局变量、常亮、函数</li>
 </ul>
 
-<blockquote>
-<p>扩展只能添加新的功能不能重写已有功能</p>
-</blockquote>
+<p><code>Swift</code>有显式提供多种访问级别，也有为场景提供了默认的访问级别</p>
 
-<h2 id="toc_0">扩展语法</h2>
+<h2 id="toc_0">模块和源文件</h2>
 
-<p>用关键字<code>extension</code>声明扩展:</p>
+<p><strong><code>Swift</code>中的访问控制基于模块和源文件</strong></p>
 
-<pre><code class="language-swift">extension SomeType {
-    // 为 SomeType 添加的新功能写到这里
-}
-</code></pre>
+<p><mark>模块</mark>指的是独立的代码单元，框架或应用程序会作为一个独立的模块来构建和发布。在 Swift 中，一个模块可以使用<code>import</code>关键字导入另外一个模块。<br/>
+在 Swift 中，Xcode 的每个目标（例如框架或应用程序）都被当作独立的模块处理。如果你是为了实现某个通用的功能，或者是为了封装一些常用方法而将代码打包成独立的框架，这个框架就是 Swift 中的一个模块。当它被导入到某个应用程序或者其他框架时，框架内容都将属于这个独立的模块。</p>
 
-<p>扩展一个已有类型,使其采纳一个或多个协议</p>
+<p><mark>源文件</mark>就是 Swift 中的源代码文件，它通常属于一个模块，即一个应用程序或者框架。尽管我们一般会将不同的类型分别定义在不同的源文件中，但是同一个源文件也可以包含多个类型、函数之类的定义。</p>
 
-<pre><code class="language-swift">extension SomeType: SomeProtocol, AnotherProctocol {
-    // 协议实现写到这里
-}
-</code></pre>
+<h2 id="toc_1">访问级别</h2>
 
-<blockquote>
-<p>扩展一个已有实例的新功能,那么新功能对该类型所有实例都可用，不论创建时间</p>
-</blockquote>
+<p><code>Swift</code>提供了5种访问级别</p>
 
-<h2 id="toc_1">计算型属性</h2>
+<ul>
+<li><strong>开放访问和公开访问</strong>:可以访问同一模块源文件中的任何实体，在模块外也可以导入该模块来访问源文件中的所有实体。我们通常将框架中的某个借口可以被任何使用时,设置为此级别</li>
+<li><strong>内部访问</strong>：可以访问同一模块源文件的任何实体，但是不能从外部访问该模块源文件中的实体。用于某借口只在应用程序或者内部使用时</li>
+<li><strong>文件私有访问限制</strong>：限值实体只能被所<em>定义</em>的<em>文件</em>内部访问。当需要把这些细节被整个文件使用的时候，使用文件私有访问隐藏了一些特定功能的实现细节。</li>
+<li><strong>私有访问限值</strong>： 限值实体只能在所定义的<em>作用域</em>使用,需要把这些细节被整个作用域使用的时候，使用文件私有访问隐藏了一些特定功能的实现细节。</li>
+</ul>
 
-<pre><code class="language-swift">extension Double {
-    var km: Double { return self * 1_000.0 }
-    var m : Double { return self }
-    var cm: Double { return self / 100.0 }
-    var mm: Double { return self / 1_000.0 }
-    var ft: Double { return self / 3.28084 }
-}
-let oneInch = 25.4.mm
-print(&quot;One inch is \(oneInch) meters&quot;)
-    // 打印 “One inch is 0.0254 meters”
-let threeFeet = 3.ft
-print(&quot;Three feet is \(threeFeet) meters&quot;)
-    // 打印 “Three feet is 0.914399970739201 meters”
-</code></pre>
+<p>开放权限由上向下变小</p>
 
-<p>扩展<code>Double</code>类型,增加计算型属性,实现距离转换<br/>
-上面的属性是只读的计算型属性,省略了<code>get</code>关键字</p>
+<p>开放访问和公开访问区别:(开放访问只作用于类类型和类的成员)</p>
 
-<blockquote>
-<p>可以增加新的计算型属性,但是不能增加存储型属性，也不能为已有属性添加属性观察器</p>
-</blockquote>
-
-<h2 id="toc_2">构造器</h2>
-
-<p>扩展可以为已有类型添加新的构造器。<br/>
-扩展能为类添加新的便利构造器,但是不能为类添加新的指定构造器或者析构器</p>
-
-<blockquote>
-<p>如果使用扩展为一个“值类型”添加构造器,同时该值类型的原始实现没有定义定制构造器,且所有存储属性提供了默认值,我们可以在扩展的构造器中调用默认构造器和逐一成员构造器(当原始实现中有定制的构造器,就不能调用了)</p>
-</blockquote>
-
-<pre><code class="language-swift">struct Size {
-    var width = 0.0, height = 0.0
-}
-struct Point {
-    var x = 0.0, y = 0.0
-}
-struct Rect {
-    var origin = Point()
-    var size = Size()
-}
-</code></pre>
-
-<p>因为<code>Rect</code>没有指定构造器,存储属性也都有默认值,因此获得一个逐一成员构造器和默认构造器，</p>
-
-<pre><code class="language-swift">extension Rect {
-    init(center: Point, size: Size) {
-        let originX = center.x - (size.width / 2)
-        let originY = center.y - (size.height / 2)
-        //调用结构体的逐一成员构造器
-        self.init(origin: Point(x: originX, y: originY), size: size)
-    }
-}
-</code></pre>
-
-<h2 id="toc_3">方法</h2>
-
-<p>为已有类型添加新的实例方法和类型方法</p>
-
-<pre><code class="language-swift">extension Int {
-    func repetitions(task: () -&gt; Void) {
-        for _ in 0..&lt;self {
-            task()
-        }
-    }
-}
-//为Int类型添加一个名为`repetitions`的实例方法
-//这个方法接受一个`()-&gt;Void`类型的单参数，没有参数也没有返回值的函数
-</code></pre>
-
-<h3 id="toc_4">可变实例方法</h3>
-
-<p>扩展中添加的实例方法也可以修改该实例本身，对于值类型即结构体或者枚举修改<code>self</code>或其属性的方法就必须将该实例方法标注为<code>mutating</code>(类似原始实现)</p>
-
-<pre><code class="language-swift">extension Int {
-    mutating func square() {
-        self = self * self
-    }
-}
-</code></pre>
-
-<h2 id="toc_5">下标</h2>
-
-<p>扩展为已有类型添加下标.</p>
-
-<pre><code class="language-swift">extension Int {
-    subscript(digitIndex: Int) -&gt; Int {
-        var decimalBase = 1
-        for _ in 0..&lt;digitIndex {
-            decimalBase *= 10
-        }
-        return (self / decimalBase) % 10
-    }
-}
-746381295[0]
-// 返回 5
-746381295[1]
-// 返回 9
-//取的下标越界时自动用0补充
-746381295[9]
-// 返回 0，即等同于：
-0746381295[9]
-</code></pre>
-
-<p>上面的例子为<code>Int</code>增加下标方法，<code>[n]</code>返回十进制数字从右向左数的第<code>n</code>个数字</p>
-
-<h2 id="toc_6">嵌套类型</h2>
-
-<p>扩展可以为已有的类、结构体和枚举添加新的嵌套类型:</p>
-
-<pre><code class="language-swift">extension Int {
-    enum Kind {
-    case Negative, Zero, Positive
-    }
-    var kind: Kind {
-        switch self {
-        case 0:
-            return .Zero
-        case let x where x &gt; 0:
-            return .Positive
-        default:
-            return .Negative
-        }
-    }
-}
-</code></pre>
-
-<p>为<code>Int</code>添加了一个嵌套枚举,来表明特定整数的类型，即正数、负数或零</p>
+<ul>
+<li>公开访问或者其他更严访问级别的类，只能在它们定义的模块内部被继承。</li>
+<li>公开访问或者其他更严访问级别的类成员，只能在它们定义的模块内部的子类中重写。</li>
+<li>开放访问的类，可以在它们定义的模块中被继承，也可以在引用它们的模块中被继承。</li>
+<li>开放访问的类成员，可以在它们定义的模块中子类中重写，也可以在引用它们的模块中的子类重写。</li>
+<li>把一个类标记为开放，显式地表明，你认为其他模块中的代码使用此类作为父类，然后你已经设计好了你的类的代码了。</li>
+</ul>
 
                         
                       </div>
@@ -292,7 +161,7 @@ struct Rect {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/9/1</span>
+                    <span class="date">2017/9/19</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -383,7 +252,19 @@ struct Rect {
 	      
 		      
 			      <li class="post">
-			        <a href="15047511695312.html"></a>
+			        <a href="15057532270985.html">访问控制</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15052932669633.html">泛型</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15047511695312.html">协议</a>
 			      </li>
 		     
 		  
@@ -396,18 +277,6 @@ struct Rect {
 		      
 			      <li class="post">
 			        <a href="15042543172572.html">嵌套类型</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15037348375137.html">类型转换</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15034731740974.html">错误处理</a>
 			      </li>
 		     
 		  

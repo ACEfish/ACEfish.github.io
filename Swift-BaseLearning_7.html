@@ -105,137 +105,179 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15018175799489.html">
+                <a class="clearlink" href="15031302948355.html">
                 
-                  <h1>继承</h1>
+                  <h1>可选链式调用</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>类可以继承父类的方法、属性和其他特征</p>
+                        	<p><strong>可选链式调用</strong>是在当前值可能为<code>nil</code>的可选值上请求和调用属性、方法以及下标的方法。如果可选值不为空,调用成功,否则如果可选值为<code>nil</code>，那么调用将返回<code>nil</code>。多个调用可以结合为一个调用链,若任何一个节点为<code>nil</code>。整个调用链都会失败</p>
 
-<p>类可以调用和访问超类的方法，属性和下标，并且可以重写这些方法，属性和下标来优化或修改它们的行为。</p>
+<h2 id="toc_0">可选链式调用代替强制展开</h2>
 
-<p>可以为类中继承的属性添加属性观察器</p>
-
-<h2 id="toc_0">定义一个基类</h2>
-
-<p>不继承于其它类的类,称之为基类</p>
-
-<p>注意:</p>
+<p>在想调用的属性、方法、下标的可选值后加上<code>?</code>来定义一个可选链。</p>
 
 <blockquote>
-<p><code>Swift</code>中类并不是从一个通用类继承而来.如果没有为定义的类制定一个超类的话,这个类自动成为一个基类</p>
+<p>很像在可选值后面放一个叹号（<code>!</code>）来强制展开它的值。它们的主要区别在于当可选值为空时可选链式调用只会调用失败，然而强制展开将会触发运行时错误</p>
 </blockquote>
 
-<p>创建一个<code>Vehicle</code>的基类，来描述通用车辆</p>
+<p>可选链式调用,不论调用的属性、方法及下标返回值的类型,返回结果都是具有相同类型的可选值,可以利用这个可选返回值来判断链式调用是否成功,有值则返回成功，<code>nil</code>表示调用失败</p>
 
-<pre><code class="language-swift">class Vehicle {
-    var currentSpeed = 0.0
-    var description: String {
-        return &quot;traveling at \(currentSpeed) miles per hour&quot;
-    }
-    func makeNoise() {
-        // 什么也不做-因为车辆不一定会有噪音
-    }
+<pre><code class="language-swift">class Person {
+    var residence: Residence?
+}
+class Residence {
+    var numberOfRooms = 1
+}
+let john = Person()
+</code></pre>
+
+<p>我们直接<code>let roomCount = john.residence!.numberOfRooms</code>因为<code>residence</code>为<code>nil</code>强制展开的话是会触发运行时错误的</p>
+
+<p>这时我们可以采用可选链式调用来访问<code>numberOfRooms</code>用<code>?</code>代替<code>!</code></p>
+
+<pre><code class="language-swift">if let roomCount = john.residence?.numberOfRooms {
+    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
+} else {
+    print(&quot;Unable to retrieve the number of rooms.&quot;)
 }
 </code></pre>
 
-<h2 id="toc_1">子类生成</h2>
+<p><strong>添加问号之后，Swift 就会在<code>residence</code>不为<code>nil</code>的情况下访问<code>numberOfRooms</code></strong></p>
 
-<pre><code class="language-swift">//定义一个自行车Bicycle继承自Vehicle
-class Bicycle: Vehicle {
-    var hasBasket = false
+<p>即使<code>numberOfRooms</code>是非可选类型<code>Int</code>，只要使用可选链式调用就意味着<code>numberOfRooms</code>会返回<code>Int?</code>而不是<code>Int</code></p>
+
+<h2 id="toc_1">为可选链式调用定义模型类</h2>
+
+<h2 id="toc_2">通过可选链式调用访问属性</h2>
+
+<p>通过可选链式调用<strong>访问可能不存在实例的属性</strong>:</p>
+
+<pre><code class="language-swift">//john.residence实例可能为nil
+let john = Person()
+if let roomCount = john.residence?.numberOfRooms {
+    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
+} else {
+    print(&quot;Unable to retrieve the number of rooms.&quot;)
 }
 </code></pre>
 
-<p>除了继承自父类的方法、属性外，还定义了一个默认值为<code>false</code>的存储属性<code>hasBasket</code></p>
+<p>通过可选链式调用<strong>设置属性值</strong></p>
 
-<pre><code class="language-swift">let bicycle = Bicycle()
-bicycle.hasBasket = true
-//修改继承的属性
-bicycle.currentSpeed = 15.0
-print(&quot;Bicycle: \(bicycle.description)&quot;)
-// 打印 &quot;Bicycle: traveling at 15.0 miles per hour&quot;
+<pre><code class="language-swift">//john.residence实例可能为nil
+let someAddress = Address()
+john.residence?.address = someAddress
 </code></pre>
 
-<h2 id="toc_2">重写</h2>
+<p>对于这种可选链式调用的赋值,如果<code>john.residence</code>为<code>nil</code>，获取<code>address</code>属性失败，那么右侧的代码是不会被执行的</p>
 
-<p>为继承来的实例方法、类方法、实例属性、下标提供自己的实现,即为<strong>重写</strong></p>
+<h2 id="toc_3">通过可选链式调用调用方法</h2>
 
-<p>需要在重写的定义前加上 <code>override</code>关键字表明重写,否则即为错误的提供了相同的定义</p>
+<p>对于<code>Residence</code>类中定义的方法</p>
 
-<h3 id="toc_3">访问父类的方法、属性和下标</h3>
+<pre><code class="language-swift">func printNumberOfRooms() {
+    print(&quot;The number of rooms is \(numberOfRooms)&quot;)
+}
+</code></pre>
 
-<p>通过<code>super</code>前缀来访问父类版本中的方法、属性或下标</p>
+<p>这个方法没有返回值,那就是具有隐式的返回值<code>Void</code><br/>
+那么如果用可选链式调用这个方法，返回值就为<code>Void?</code></p>
+
+<pre><code class="language-swift">//john.residence 为Residence类 可能为nil的实例
+if john.residence?.printNumberOfRooms() != nil {
+    print(&quot;It was possible to print the number of rooms.&quot;)
+} else {
+    print(&quot;It was not possible to print the number of rooms.&quot;)
+}
+//可以根据返回值是否为nil 判断调用是否成功
+</code></pre>
+
+<p>对实例中的属性赋值 也会返回一个可选类型</p>
+
+<pre><code class="language-swift">if (john.residence?.address = someAddress) != nil {
+print(&quot;It was possible to set the address.&quot;)
+} else {
+print(&quot;It was not possible to set the address.&quot;)
+}
+</code></pre>
+
+<h2 id="toc_4">通过可选链式调用访问下标</h2>
+
+<p>可以在一个可选值上访问下标,判断下标是否成功</p>
+
+<pre><code class="language-swift">//john.residence可能为nil
+if let firstRoomName = john.residence?[0].name {
+    print(&quot;The first room name is \(firstRoomName).&quot;)
+} else {
+    print(&quot;Unable to retrieve the first room name.&quot;)
+}
+</code></pre>
+
+<blockquote>
+<p>注意:下标调用的时候将问号放在下标方括号的前面而不是后面</p>
+</blockquote>
+
+<pre><code class="language-swift">john.residence?[0] = Room(name: &quot;Bathroom&quot;)
+</code></pre>
+
+<p><code>john.residence</code>为nil时，赋值仍然会失败</p>
+
+<h3 id="toc_5">访问可选类型的下标</h3>
+
+<p>如果下标返回可选类型值,可以在下标的结尾括号后面放一个问号来在其可选返回值上进行可选链式调用</p>
+
+<pre><code class="language-swift">var testScores = [&quot;Dave&quot;: [86, 82, 84], &quot;Bev&quot;: [79, 94, 81]]
+testScores[&quot;Dave&quot;]?[0] = 91
+testScores[&quot;Bev&quot;]?[0] += 1
+testScores[&quot;Brian&quot;]?[0] = 72
+</code></pre>
+
+<p>定义一个字典,包含两个键值对，因为字典下标返回的是可选类型值,对于<code>testScores[&quot;Brian&quot;]</code>因为字典中没有这个键，所以返回为<code>nil</code>，调用失败</p>
+
+<h2 id="toc_6">连接多层可选链式调用</h2>
+
+<p>可以连接多个可选链式调用在更深模型层级中访问属性、方法、下标，但是是不会增加返回值的可选层级的</p>
 
 <ul>
-<li>在方法 someMethod() 的重写实现中，可以通过 super.someMethod() 来调用超类版本的 someMethod() 方法</li>
-<li>在属性 someProperty 的 getter 或 setter 的重写实现中，可以通过 super.someProperty 来访问超类版本的someProperty 属性</li>
-<li>在下标的重写实现中，可以通过 super[someIndex] 来访问超类版本中的相同下标</li>
+<li>通过可选链式调用访问一个 Int 值，将会返回 Int? ，无论使用了多少层可选链式调用</li>
+<li>通过可选链式调用访问 Int? 值，依旧会返回 Int? 值，并不会返回 Int??</li>
 </ul>
 
-<h3 id="toc_4">重写方法</h3>
+<pre><code class="language-swift">if let johnsStreet = john.residence?.address?.street {
+    print(&quot;John&#39;s street name is \(johnsStreet).&quot;)
+} else {
+    print(&quot;Unable to retrieve the address.&quot;)
+}
+</code></pre>
 
-<pre><code class="language-swift">class Train: Vehicle {
-    override func makeNoise() {
-        print(&quot;Choo Choo&quot;)
+<p><code>john.residence.address</code>为<code>nil</code>因此调用失败<br/>
+尽管<code>street</code>属性为<code>String？</code>  返回值仍然为<code>String?</code></p>
+
+<h2 id="toc_7">在方法的可选返回值上进行可选链式调用</h2>
+
+<pre><code class="language-swift">if let buildingIdentifier = john.residence?.address?.buildingIdentifier() {
+    print(&quot;John&#39;s building identifier is \(buildingIdentifier).&quot;)
+}
+</code></pre>
+
+<p>在可选值的基础上调用<code>buildingIdentifier()</code>方法  返回<code>String?</code>类型值</p>
+
+<pre><code class="language-swift">if let beginsWithThe =
+john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
+    if beginsWithThe {
+        print(&quot;John&#39;s building identifier begins with \&quot;The\&quot;.&quot;)
+    } else {
+        print(&quot;John&#39;s building identifier does not begin with \&quot;The\&quot;.&quot;)
     }
 }
 </code></pre>
 
-<h3 id="toc_5">重写属性</h3>
-
-<p>重写继承来的实例或者类型属性来提供自己定制的<code>getter</code>或者<code>setter</code>或添加属性观察器来观察属性值的改变</p>
-
-<h4 id="toc_6">重写属性的setter和getter</h4>
-
-<p>子类并不知道继承来的属性是存储型还是计算型,重写时要提供属性名称和类型来让编译器去查找父类同名同类型的属性</p>
-
-<p>可以把继承的只读属性重写为可读写,但是没有办法把可读写的重写为只读属性</p>
+<p>在方法的返回值基础上进行可选链式调用 </p>
 
 <blockquote>
-<p>如果你在重写属性中提供了<code>setter</code>，那么你也一定要提供<code>getter</code>。如果你不想在重写版本中的<br/>
-<code>getter</code>里修改继承来的属性值，你可以直接通过<code>super.someProperty</code>来返回继承来的值</p>
+<p>在方法的圆括号后面加上问号即可</p>
 </blockquote>
-
-<pre><code class="language-swift">class Car: Vehicle {
-    var gear = 1
-    //重写description属性
-    override var description: String {
-        return super.description + &quot; in gear \(gear)&quot;
-    }
-}
-
-let car = Car()
-car.currentSpeed = 25.0
-car.gear = 3
-print(&quot;Car: \(car.description)&quot;)//返回自定义描述
-// 打印 &quot;Car: traveling at 25.0 miles per hour in gear 3&quot;
-</code></pre>
-
-<h4 id="toc_7">重写属性观察器</h4>
-
-<p>注意:<br/>
-1. 不能为继承来的常量存储型属性或继承来的只读计算型属性添加属性观察器,因为它们不能被设置<br/>
-2. 不能同时提供重写的<code>setter</code>和重写的属性观察器。因为此时我们可以直接在setter中观察值的变化</p>
-
-<pre><code class="language-swift">class AutomaticCar: Car {
-    override var currentSpeed: Double {
-        didSet {
-            gear = Int(currentSpeed / 10.0) + 1(后向下取得最接近的整数值在加1)
-        }
-    }
-}
-</code></pre>
-
-<p>为属性<code>currentSpeed</code>添加观察器，设置速度时就会自动选择合适的档位</p>
-
-<h2 id="toc_8">防止重写</h2>
-
-<p>通过把方法、属性或下标 前加关键字<code>final</code>来防止被重写,例如:<code>final var</code> ， <code>final func</code> ， <code>final class func</code> ，以及 <code>final subscript</code></p>
-
-<p>通过在<code>class</code>前添加关键字<code>final</code>表示这个类是不可被继承的</p>
 
                         
                       </div>
@@ -244,7 +286,7 @@ print(&quot;Car: \(car.description)&quot;)//返回自定义描述
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/4</span>
+                    <span class="date">2017/8/19</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -335,7 +377,19 @@ print(&quot;Car: \(car.description)&quot;)//返回自定义描述
 	      
 		      
 			      <li class="post">
-			        <a href="15047511695312.html"></a>
+			        <a href="15057532270985.html">访问控制</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15052932669633.html">泛型</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15047511695312.html">协议</a>
 			      </li>
 		     
 		  
@@ -348,18 +402,6 @@ print(&quot;Car: \(car.description)&quot;)//返回自定义描述
 		      
 			      <li class="post">
 			        <a href="15042543172572.html">嵌套类型</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15037348375137.html">类型转换</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15034731740974.html">错误处理</a>
 			      </li>
 		     
 		  
