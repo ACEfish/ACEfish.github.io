@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
     
-  iOS 开发模块知识 - 栗豫塬的博客
+  iOS 开发模块知识 - ACEfish-Blog
   
   </title>
   
   
-  <link href="atom.xml" rel="alternate" title="栗豫塬的博客" type="application/atom+xml">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
     <link rel="stylesheet" href="asset/css/foundation.min.css" />
     <link rel="stylesheet" href="asset/css/docs.css" />
     <script src="asset/js/vendor/modernizr.js"></script>
@@ -62,7 +62,7 @@
 
         <nav class="tab-bar show-for-small">
   <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
-    <span> &nbsp; 栗豫塬的博客</span>
+    <span> &nbsp; ACEfish-Blog</span>
   </a>
 </nav>
 
@@ -105,135 +105,404 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14939015823586.html">
+                <a class="clearlink" href="14940350647350.html">
                 
-                  <h1>高效绘图</h1>
+                  <h1>图像IO</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</p>
+                        	<p>和绘图相关的是图像性能，我们研究如何从闪存驱动器或者网络中加载和显示图片</p>
 
-<p>关于绘制的性能<br/>
-提高绘制性能或者减少需要绘制的数量</p>
+<p>补充知识:<br/>
+<a href="http://www.cocoachina.com/ios/20170227/18784.html">图片加载解压</a>原理知识学习<br/>
+<strong>图片解压缩的过程其实就是将图片的二进制数据转换成像素数据的过程</strong><br/>
+我们平常看大的图片大小其实只是图片的二进制数据大小即原始文件大小<br/>
+解压后的图片大小与原始文件大小之间没有任何关系，而只与图片的像素有关:</p>
 
-<h3 id="toc_0">软件绘图</h3>
+<blockquote>
+<p>解压缩后的图片大小 = 图片的像素宽 30 * 图片的像素高 30 * 每个像素所占的字节数 4</p>
+</blockquote>
 
-<p>在<code>Core Animation</code>中的绘图通常是指<strong>软件绘图</strong><br/>
-在iOS中，软件绘图通常是由<code>Core Graphics</code>框架完成来完成。但是，在一些必要的情况下，相比<code>Core Animation</code>和<code>OpenGL</code>，<code>Core Graphics</code>要慢了不少。</p>
+<p>事实上不管是<code>JPEG</code>还是<code>PNG</code>图片，都是一种压缩的位图图形格式。只不过<code>PNG</code>图片是无损压缩，并且支持<code>alpha</code>通道，而<code>JPEG</code>图片则是有损压缩，可以指定<code>0-100%</code>的压缩比。值得一提的是，在苹果的<code>SDK</code> 中专门提供了两个函数用来生成 PNG 和 JPEG 图片：</p>
 
-<p>软件绘图不仅效率很低 而且很耗内存.CALayer只需要和自己相关的内存,只有他的寄宿图会消耗一点内存控件，即使直接赋给<code>contents</code>属性一张图片,也不需要增加额外的照片存储大小,如果相同的一张图片被多个图层作为<code>contents</code>属性，那么他们将会共用同一块内存，而不是复制内存块。</p>
+<pre><code class="language-objc">UIKIT_EXTERN NSData * __nullable UIImagePNGRepresentation(UIImage * __nonnull image);
+ 
+// return image as JPEG. May return nil if image has no CGImageRef or invalid bitmap format. compression is 0(most)..1(least)            
+UIKIT_EXTERN NSData * __nullable UIImageJPEGRepresentation(UIImage * __nonnull image, CGFloat compressionQuality);
+</code></pre>
 
-<p><strong>但是如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</strong></p>
+<p>在将磁盘中的图片渲染到屏幕之前，必须先要得到图片的原始像素数据，才能执行后续的绘制操作</p>
 
-<p><strong>绘图代价很大，尽量避免重绘你的视图</strong></p>
+<h3 id="toc_0">加载和潜伏</h3>
 
-<h3 id="toc_1">矢量图形</h3>
+<p>绘图实际消耗的时间并不是影响性能主要因素。图片消耗很大一部分内存,而且不太可能把需要显示的图片都保留在内存中,所以在应用运行时周期性的加载和卸载图片</p>
 
-<p>我们用的矢量绘图包含:</p>
+<p>图片文件的加载速度被<code>CPU</code>和<code>IO(输入输出)</code>同时影响。iOS设备中的闪存虽然比传统硬盘块,但是比RAM仍然慢了200倍，我们需要小心加载来避免延迟</p>
+
+<ol>
+<li><p>在程序生命周期不易察觉时来加载图片</p>
+
+<p>比如启动或者屏幕切换<br/>
+按下按钮和按钮响应时间之间最大延时大概200ms,而切换每帧动画16ms<br/>
+可以程序首次启动加载图片,如果启动时间过长影响用户体验,超过20s苹果就会关闭你的应用了</p>
+
+<p>但是有时候不适合提前加载所有图片,比如图片过多或者需要从网络远程下载图片</p></li>
+</ol>
+
+<h4 id="toc_1">线程加载</h4>
+
+<p>对于在主线程加载图片(比如<code>[UIImage imageWithContentsOfFile:</code>)如果图片较大就会卡线程,我们需要在后台加载图片,可以使用<code>GCD</code>或者<code>NSOperationQueue</code>创建自定义线程，或者使用<code>CATiledLayer</code>,为了从远程网络加载图片，我们可以使用异步的<code>NSURLConnection</code>但是对本地存储的图片，并不十分有效。</p>
+
+<h5 id="toc_2">GCD和 NSOperationQueue</h5>
+
+<p>GCD（Grand Central Dispatch）和 NSOperationQueue 很类似，都给我们提供了队列闭包块来在线程中按一定顺序来执行。 NSOperationQueue 有一个Objecive-C接口（而不是使用GCD的全局C函数），同样在操作优先级和依赖关系上提供了很好的粒度控制，但是需要更多地设置代码。</p>
+
+<p>下面是  我们在低优先级的后台队列而不是主线程用<code>GCD</code>加载图片</p>
+
+<pre><code class="language-objc">- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
+cellForItemAtIndexPath:(NSIndexPath *)indexPath
+{
+//dequeue cell
+    UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@&quot;Cell&quot;
+forIndexPath:indexPath];
+    //add image view
+    const NSInteger imageTag = 99;
+    UIImageView *imageView = (UIImageView *)[cell viewWithTag:imageTag];
+    if (!imageView) {
+        imageView = [[UIImageView alloc] initWithFrame: cell.contentView.bounds];
+        imageView.tag = imageTag;
+        [cell.contentView addSubview:imageView];
+    }
+//tag cell with index and clear current image
+    cell.tag = indexPath.row;
+    imageView.image = nil;
+    //switch to background thread
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+    //load image
+        NSInteger index = indexPath.row;
+        NSString *imagePath = self.imagePaths[index];
+        UIImage *image = [UIImage imageWithContentsOfFile:imagePath];
+        //需要在主线程更新UI
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (index == cell.tag) {
+                imageView.image = image; 
+            }
+        });
+    });
+    return cell;
+}
+</code></pre>
+
+<p>由于视图在<code>UICollectionView</code>中是会重复利用的,因此我们加载图片时需要确定是否被不同索引重复利用。为<strong>避免图片加载到错误视图中,我们在加载前把单元格打上索引标签,然后在设置图片时检测标签是否改变</strong>.</p>
+
+<h4 id="toc_3">延迟解压</h4>
+
+<p>在上面我们认为 <strong>性能瓶颈在于 加载图片到内存中,其实这只是问题之一</strong>.</p>
+
+<p><strong>一旦图片文件被加载就必须要进行解码，解码过程是一个相当复杂的任务，需要消耗非常长的时间。解码后的图片将同样使用相当大的内存</strong>。</p>
+
+<p>用于加载的CPU时间与图片格式有关,<code>PNG</code>文件较大所以加载时间比<code>JPEG</code>更长,但是解码速度较快,而且<code>Xcode</code>会把<code>PNG</code>进行解码优化后引入工程.而<code>JPEG</code>图片较小,所以加载更快但是解压要消耗更长时间,因为<code>JPEG</code>解压算法比基于<code>zip</code>的<code>PNG</code>算法更加复杂</p>
+
+<p>在加载图片时,<strong>iOS通常会在图片加载到内存之后,绘制之前解压,这通常是消耗时间问题所在</strong></p>
+
+<blockquote>
+<p>此处的解码和解压意义相同<br/>
+避免延时加载方法:</p>
+</blockquote>
+
+<ol>
+<li>我们可以用<code>UIImage</code>的 <code>+imageNamed: 方法</code>，它不同于<code>+imageWithContentsOfFile: （和其他别的 UIImage 加载方法）</code>它可以避免延时加载，会在加载图片后立刻解压.但是这个方法只对资源束中图片有效.</li>
+<li>另一种立刻加载图片的方法就是把它设置成图层内容，或者是<code>UIImageView</code>的<code>image</code>属性,但是这都需要在主线程进行,不能提升性能.</li>
+<li><p>绕过<code>UIKit</code>，像下面这样使用<code>ImageIO</code>框架</p>
+
+<pre><code class="language-objc">NSInteger index = indexPath.row;
+NSURL *imageURL = [NSURL fileURLWithPath:self.imagePaths[index]];
+NSDictionary *options = @{(__bridge id)kCGImageSourceShouldCache: @YES};
+CGImageSourceRef source = CGImageSourceCreateWithURL((__bridge CFURLRef)imageURL, NULL);
+CGImageRef imageRef = CGImageSourceCreateImageAtIndex(source, 0,(__bridge CFDictionaryRef)options);
+UIImage *image = [UIImage imageWithCGImage:imageRef];
+CGImageRelease(imageRef);
+CFRelease(source);
+</code></pre>
+
+<p>可以使用<code>kCGImageSourceShouldCache</code>来创建图片，强制图片立刻解压，然后在图片的生命周期保留解压后的版本。</p></li>
+</ol>
+
+<p>最后一种方式用<code>UIKit</code>加载图片,但是会立即绘制到<code>CGContext</code>中去.因为图片必须要在绘制之前解压,所以强制了解压的及时性,好处是绘制图片可以在后台线程执行,不会阻塞UI</p>
+
+<p>强制解压提前渲染图片：</p>
 
 <ul>
-<li>任意多边形</li>
-<li>斜线或曲线</li>
-<li>文本</li>
-<li>渐变</li>
+<li>将图片的一个像素绘制成一个像素大小的<code>CGContext</code>。这样仍会解压整张图片,但是绘制本身并没有消耗任何时间.加载的图片并不会在特定设备上为绘制做优化,所以可以在任何时间点绘制出来,iOS也就可以丢弃解压后的图片来节省内存</li>
+<li>将整张图片绘制到<code>CGContext</code>中，丢弃原始的图片，并且用一个从上下文内容中新的图片来代替。这样比绘制单一像素更需要复杂的计算,但是因此产生的图片将会为绘制做优化,而且由于原始压缩图片被抛弃了,iOS就不能够随时丢弃任何解压后的图片来节省内存了。</li>
 </ul>
 
-<p>实现一个划线应用:将用户的触摸手势转换成一个 UIBezierPath 上的点，然后绘制成视图。</p>
+<p>注意苹果特别推荐了不要使用这些诡计来绕过标准图片解压逻辑（所以也是他们选择用默认处理方式的原因）,但是如果你使用很多大图来构建应用，那如果想提升性能，就只能和系统博弈了。</p>
 
-<p>1.用<code>Core Graphic</code>基于<code>drawRect</code>绘制</p>
+<p>如果不使用<code>+ imageNamed:</code>，那么把整张图片绘制到<code>CGContext</code>可能是最佳的方式了。。尽管你可能认为多余的绘制相较别的解压技术而言性能不是很高，但是新创建的图片（在特定的设备上做过优化）可能比原始图片绘制的更快。</p>
 
-<pre><code class="language-objc">- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
-{
-    CGPoint point = [[touches anyObject] locationInView:self];
-    [self.path addLineToPoint:point];
-    [self setNeedsDisplay];
-}
-- (void)drawRect:(CGRect)rect
-{
-    [[UIColor clearColor] setFill];
-    [[UIColor redColor] setStroke];
-    [self.path stroke];
-}
-</code></pre>
+<p>同样，如果想显示图片到比原始尺寸小的容器中，那么一次性在后台线程重新绘制到正确的尺寸会比每次显示的时候都做缩放会更有效</p>
 
-<p><code>[self setNeedsDisplay];</code>可以重绘视图,再次走<code>drawRect</code>方法,但是如果一直重绘而且绘制工作量增大就会导致帧数下降.</p>
-
-<p>2.用<code>CAShaperLayer</code>绘制</p>
-
-<pre><code class="language-objc">+ (Class)layerClass
-{
-    return [CAShapeLayer class];
-}
-</code></pre>
-
-<p><code>Core Animation</code>为这些图层类型提供了专门的类，并提供了硬件支持,比如<code>CAShapeLayer</code>可以绘制多边形，直线和曲线。 <code>CATextLayer</code>可以绘制文本。<code>CAGradientLayer</code>用来绘制渐变。这些总体上都比<code>Core Graphics</code>更快，同时他们也避免了创造一个寄宿图。(<strong>这些图层是CA提供的,而我们的绘图用的是CG</strong>)</p>
-
-<p>因此对于绘制矢量图层我们可以重写<code>UIView</code>的<code>layer</code>然后只需要将绘制的<code>path</code>赋值<code>CAShapeLayer</code>的<code>path</code>即可绘制，虽然性能依然下降但不明显几乎感觉不到帧率差异</p>
-
-<h3 id="toc_2">脏矩形</h3>
-
-<p>有时候我们没办法用<code>CAShapeLayer</code>等图层来代替<code>Core Graphics</code>，对于上面的例子,我们为了进一步提高性能,我们用一个“线刷”图片粘贴到用户手指触碰的地方</p>
-
-<p>我们如果在用户手指移动就重绘视图将图片粘贴到用户手指移动过的所有点,这样绘制越多就越慢,仍会引起性能问题</p>
-
-<p>为了减少不必要的绘制,Mac OS和iOS设备将会把屏幕区分为需要重绘的区域和不需要重绘的区域。<strong>那些需要重绘的部分被称作『脏区域』。</strong>为了方便我们通常指出包含需要重绘的视图的矩形位置,就是<strong>脏矩形</strong></p>
-
-<p>只改变了视图的部分区域的,重绘整个整个寄宿图就太浪费了,我们可以通过提供重绘区域.</p>
-
-<p>当检测到需要重绘的区域时通过<code>setNeedsDisplayInRect:</code>标记,这样就会在一次试图刷新时调用调用视图的<code>- drawRect:</code>（或图层代理的<code>- drawLayer:inContext:</code>方法）</p>
-
-<p>传入<code>- drawLayer:inContext:</code>的<code>CGContext</code>参数会自动被裁切以适应对应的矩形。为了确定矩形的尺寸大小，你可以用<code>CGContextGetClipBoundingBox()</code>方法来从上下文获得大小。调用<code>- drawRect()</code>会更简单，因为<code>CGRect</code>会作为参数直接传入。</p>
-
-<p>当然如果你的裁剪逻辑相当复杂,那还是是让<code>Core Graphics</code>来为你重绘吧，</p>
-
-<pre><code class="language-objc">- (void)addBrushStrokeAtPoint:(CGPoint)point
-{
-    //add brush stroke to array
-    [self.strokes addObject:[NSValue valueWithCGPoint:point]];
-    //set dirty rect
-    [self setNeedsDisplayInRect:[self brushRectForPoint:point]];
-}
-- (CGRect)brushRectForPoint:(CGPoint)point
-{
-    return CGRectMake(point.x - BRUSH_SIZE/2, point.y - BRUSH_SIZE/2, BRUSH_SIZE, BRUSH_SIZE);
-}
-- (void)drawRect:(CGRect)rect
-{
-    //redraw strokes
-    for (NSValue *value in self.strokes) {
-        //get point
-        CGPoint point = [value CGPointValue];
-        //get brush rect
-        CGRect brushRect = [self brushRectForPoint:point];
-        //only draw brush stroke if it intersects dirty rect
-        if (CGRectIntersectsRect(rect, brushRect)) {
-        //draw brush stroke
-        [[UIImage imageNamed:@&quot;Chalk.png&quot;] drawInRect:brushRect];
+<pre><code class="language-objc">//-collectionView:cellForItemAtIndexPath: 方法来重绘图片
+UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@&quot;Cell&quot; forIndexPath:indexPath];
+...
+//switch to background thread
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+//load image
+    NSInteger index = indexPath.row;
+    NSString *imagePath = self.imagePaths[index];
+    UIImage *image = [UIImage imageWithContentsOfFile:imagePath];
+    //redraw image using device context
+    UIGraphicsBeginImageContextWithOptions(imageView.bounds.size, YES, 0);
+    [image drawInRect:imageView.bounds];
+    image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    //set image on main thread, but only if index still matches up
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (index == cell.tag) {
+            imageView.image = image;
         }
-    }
-}
+    });
+});
+return cell;
+
 </code></pre>
-
-<h3 id="toc_3">异步绘制</h3>
-
-<p><code>UIKit</code>的单线程天性意味着寄宿图通畅要在主线程上更新，这意味着绘制会打断用户交互，甚至让整个<code>app</code>看起来处于无响应状态。</p>
-
-<p>为了可以避免用户等待绘制：</p>
 
 <h4 id="toc_4">CATiledLayer</h4>
 
-<p><code>CATiledLayer</code>除了将图层再次分割成独立更新的小块外<br/>
-<code>CATiledLayer</code>还有一个有趣的特性：在多个线程中为每个小块同时调用<code>- drawLayer:inContext:</code>方法。<br/>
-这就避免了阻塞用户交互而且能够利用多核心新片来更快地绘制。只有一个小块的<code>CATiledLayer</code>是实现异步更新图片视图的简单方法。</p>
+<p>我们在学习<code>CALayer</code>一章，<code>CATiledLayer</code>可以用来异步加载和显示大型图片，而不阻塞用户输入。</p>
 
-<h4 id="toc_5">drawsAsynchronously</h4>
+<p>我们同样可以用<code>CATiledLayer</code>在<code>UICollectionView</code>中为每个表格创建分离的<code>CATiledLayer</code>实例加载传动器图片，每个表格仅使用一个图层。</p>
 
-<p>苹果为<code>CALayer</code>引入了这个令人好奇的属性，<code>drawsAsynchronously</code>属性对传入<code>-drawLayer:inContext:</code>的<code>CGContext</code>进行改动，允许<code>CGContext</code>延缓绘制命令的执行以至于不阻塞用户交互。</p>
+<p>但是这样也有弊端:</p>
 
-<p>它与<code>CATiledLayer</code>使用的异步绘制并不相同。它自己的 <code>- drawLayer:inContext:</code>方法只会在主线程调用，但是<code>CGContext</code>并不等待每个绘制命令的结束。相反地，它会将命令加入队列，当方法返回时，在后台线程逐个执行真正的绘制。</p>
+<ul>
+<li><code>CATiledLayer</code>的队列和缓存算法没有暴露出来，所以我们只能祈祷它能匹配我们的需求</li>
+<li><code>CATiledLayer</code>需要我们每次重绘图片到<code>CGContext</code>中，即使它已经解压缩，而且和我们单元格尺寸一样（因此可以直接用作图层内容，而不需要重绘）</li>
+</ul>
 
-<p>根据苹果的说法。这个特性在需要频繁重绘的视图上效果最好（比如我们的绘图应用，或者诸如UITableViewCell 之类的），对那些只绘制一次或很少重绘的图层内容来说没什么太大的帮助。</p>
+<pre><code class="language-objc">- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    //dequeue cell
+    UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@&quot;Cell&quot; forIndexPath:indexPath];
+    //add the tiled layer
+    CATiledLayer *tileLayer = [cell.contentView.layer.sublayers lastObject];
+    if (!tileLayer) {
+        tileLayer = [CATiledLayer layer];
+        tileLayer.frame = cell.bounds;
+        tileLayer.contentsScale = [UIScreen mainScreen].scale;
+        tileLayer.tileSize = CGSizeMake(cell.bounds.size.width * [UIScreen mainScreen].scale, cell.bounds.size.height * [UIScreen mainScreen].scale);
+        tileLayer.delegate = self;
+        [tileLayer setValue:@(indexPath.row) forKey:@&quot;index&quot;];
+        [cell.contentView.layer addSublayer:tileLayer];
+    }
+    //tag the layer with the correct index and reload
+    tileLayer.contents = nil;
+    [tileLayer setValue:@(indexPath.row) forKey:@&quot;index&quot;];
+    [tileLayer setNeedsDisplay];
+    return cell;
+}
+
+- (void)drawLayer:(CATiledLayer *)layer inContext:(CGContextRef)ctx
+{
+    //get image index
+    NSInteger index = [[layer valueForKey:@&quot;index&quot;] integerValue];
+    //load tile image
+    NSString *imagePath = self.imagePaths[index];
+    UIImage *tileImage = [UIImage imageWithContentsOfFile:imagePath];
+    //calculate image rect
+    CGFloat aspectRatio = tileImage.size.height / tileImage.size.width;
+    CGRect imageRect = CGRectZero;
+    imageRect.size.width = layer.bounds.size.width;
+    imageRect.size.height = layer.bounds.size.height * aspectRatio;
+    imageRect.origin.y = (layer.bounds.size.height - imageRect.size.height)/2;
+    //draw tile
+    UIGraphicsPushContext(ctx);
+    [tileImage drawInRect:imageRect];
+    UIGraphicsPopContext();
+}
+
+/**
+CATiledLayer 的 tileSize 属性单位是像素，而不是点，所以为了保证瓦
+片和表格尺寸一致，需要乘以屏幕比例因子。
+在 - drawLayer:inContext: 方法中，我们需要知道图层属于哪一个 indexPath 以加载正确的图片。这里我们利用了 CALayer 的KVC来存储和检索任意的值，将图层和索引打标签
+*/
+</code></pre>
+
+<p>这样确实可以很好的解决了性能问题，有个小问题是图片加载到屏幕后有个明显的淡入,我们可以通过<code>CATiledLayer</code>的<code>fadeDuration</code>属性来调整淡入速度,甚至直接不要这个淡入,但是这样没法根本上去出问题:因为<strong>图片从加载到准备绘制总是有个延时的，所以会导致滑动时图片的跳入</strong>.(不仅仅是<code>CATiledLayer</code>，我们使用<code>GCD</code>也是有这个问题的)</p>
+
+<p>即使使用上述我们讨论的所有加载图片和缓存的技术，有时候仍然会发现实时加载大图还是有问题。就和13章中提到的那样，iPad上一整个视网膜屏图片分辨率达到了2048x1536，而且会消耗12MB的RAM（未压缩）。第三代iPad的硬件并不能支持1/60秒的帧率加载，解压和显示这种图片。即使用后台线程加载来避免动画卡顿，仍然解决不了问题。</p>
+
+<p>我们可以在加载的同时显示一个占位图片，但这并没有根本解决问题，我们可以做到更好。</p>
+
+<h4 id="toc_5">分辨率交换</h4>
+
+<p>视网膜分辨率代表人眼在正常视角能分辨的最小像素尺寸.但是这只是对于静态像素来说的,当我们观察一个移动图片时,眼镜对细节不敏感,所以低分辨率图片和视网膜质量图片就没什么区别了.</p>
+
+<p>因此我们需要快速加载和显示移动大图,可以在移动传送器的时候显示一张小图(或者低分辨率图片),然后在停止之后换为大图。这意味着我们需要存两份不同分辨率图片,不过我们在应用中为了支持retina和非retina屏,这本来就是要做的<br/>
+对于那些没有可用的低分辨率图片，我们可以动态将大图绘制到较小的CGContext,然后存到某处复用</p>
+
+<h3 id="toc_6">缓存</h3>
+
+<p>如果很多图片要显示 最好不要提前把所有图片都加载进来,而应该在移出屏幕后立即销毁。我们可以通过选择性缓存来避免来回滚动时图片的重复加载.</p>
+
+<p>缓存原理:存储昂贵计算后的结果(或者从闪存或者网络加载的文件)在内存中,以便后续使用.缓存本来就是一个权衡过程,消耗内存和提高性能的权衡</p>
+
+<p>大多数情况下,iOS为我们做好了图片的缓存.</p>
+
+<h4 id="toc_7">+ imageNamed:方法</h4>
+
+<p>我们知道用这个方法加载图片可以立刻解压图片而不用等到绘制的时候,除此之外另外一个好处就是:<strong>它在内存中自动缓存了解压后的图片</strong>，即使你没有保留对他的任何使用</p>
+
+<p>对于iOS中那些主要的图片(如图标、按钮和背景图片)，我们这是最简单有效的方式.在nib中的图片同样也是用这种机制。</p>
+
+<p>当然它并不是适用任何情况,有时候我们还是要实现自己的缓存机制:</p>
+
+<ul>
+<li><code>[UIImage imageNamed:]</code>方法仅仅适用于在应用程序资源束目录下的图片，但是大多数图片都是从网络或者用户的相机中获取,这种方法也就不适用了</li>
+<li><code>[UIImage imageNamed:]</code>如果用来缓存那些大图,iOS系统很可能会移除这些图片来节省内存，在切换页面时性能就会下降。所以我们队传送器的图片使用单独的缓存机制把它和应用图片的生命周期解耦</li>
+<li><code>[UIImage imageNamed:]</code>缓存机制并不是公开,所以我们不能很好的控制它。例如不能检测图片是否已经缓存，不能设置缓存大小，也没法控制图片从缓存移除</li>
+</ul>
+
+<h4 id="toc_8">自定义缓存</h4>
+
+<p>自定义一个缓存是非常困难的，需要涉及这些方面:</p>
+
+<ul>
+<li>选择一个合适的<code>缓存键 - 缓存键</code>用来做图片的唯一标识。如果实时创建图片,通常不好生成一个字符串来区分别的图片。在我们的图片传送器例子，我们可以用图片的文件名</li>
+<li>提前缓存 - 当然你如果我们生成和加载的代价很大,我们会想第一次用到的时候再去加载和缓存.提前加载的逻辑是应用内就有的,但是在我们的例子中这也很好实现，因为对于给定位置和方向我们很容易判读出下一张出现的图片。</li>
+<li>缓存失效 - 图片文件发生改变,我们需要怎么通知缓存更新呢。我们的例子中是存程序资源加载静态图片不需要考虑这些.对于那些可能会被修改和覆盖的图片来说我们通常给在图片缓存时打上一个时间戳当文件更新时来作比较</li>
+<li>缓存回收 - 当内存不够时,我们需要用合适的算法来清空缓存.幸运的是我们可以用苹果提供的叫<code>NSCache</code>通用解决方案</li>
+</ul>
+
+<h4 id="toc_9">NSCache</h4>
+
+<p><code>NSCache</code>和<code>NSDictionary</code>类似。你可以通过<code>- setObject:forKey:</code>和<code>- object:forKey:</code>方法分别来插入，检索。不同的是<code>NSCache</code>在系统低内存是自动丢弃存储对象</p>
+
+<p><code>NSCache</code>用来判断何时丢弃对象的算法并没有在文档中给出，但是你可以使用<code>- setCountLimit:</code>方法设置缓存大小，以及<code>- setObject:forKey:cost:</code>来对每个存储的对象指定消耗的值来提供一些暗示。</p>
+
+<p>指定消耗数值可以用来指定相对的重建成本。如果对大图指定一个大的消耗值，那么缓存就知道这些物体的存储更加昂贵，于是当有大的性能问题的时候才会丢弃这些物体。你也可以用<code>- setTotalCostLimit:</code>方法来指定全体缓存的尺寸。</p>
+
+<p><code>NSCache</code>是一个普遍的缓存解决方案</p>
+
+<p>使用图片缓存和提前加载来扩展之前的传送器案例:</p>
+
+<pre><code class="language-objc">- (UIImage *)loadImageAtIndex:(NSUInteger)index
+{
+    //set up cache
+    static NSCache *cache = nil;
+    if (!cache) {
+        cache = [[NSCache alloc] init];
+    }
+    //if already cached, return immediately
+    UIImage *image = [cache objectForKey:@(index)];
+    if (image) {
+        return [image isKindOfClass:[NSNull class]]? nil: image;
+    }
+    //set placeholder to avoid reloading image multiple times
+    [cache setObject:[NSNull null] forKey:@(index)];
+    //switch to background thread
+    dispatch_async( dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+        //load image
+        NSString *imagePath = self.imagePaths[index];
+        UIImage *image = [UIImage imageWithContentsOfFile:imagePath];
+        //redraw image using device context
+        UIGraphicsBeginImageContextWithOptions(image.size, YES, 0);
+        [image drawAtPoint:CGPointZero];
+        image = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
+        //set image for correct image view
+        dispatch_async(dispatch_get_main_queue(), ^{ //cache the image
+            [cache setObject:image forKey:@(index)];
+            //display the image
+            NSIndexPath *indexPath = [NSIndexPath indexPathForItem: index inSection:0]; 
+            UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
+            UIImageView *imageView = [cell.contentView.subviews lastObject];
+            imageView.image = image;
+        });
+    });
+    //not loaded yet
+    return nil;
+    }
+    
+    //效果确实更好了
+</code></pre>
+
+<h3 id="toc_10">文件格式</h3>
+
+<p><strong>图片加载性能取决于加载大图的时间和解压小图的权衡</strong>.<br/>
+很多苹果文档都说<code>PNG</code>是<code>iOS</code>所有图片加载的最好算法，但这是<strong>极度误导的过时信息</strong>了</p>
+
+<p><code>PNG</code>图片使用的无损压缩算法可以比使用<code>JPEG</code>的图片做到更快地解压，但是由于闪存访问的原因，这些加载的时间并没有什么区别。</p>
+
+<p>经过测试:<br/>
+<code>PNG</code>和<code>JPEG</code>压缩算法作用于两种不同的图片类型：<code>JPEG</code>对于噪点大的图片效果很好；但是<code>PNG</code>更适合于扁平颜色，锋利的线条或者一些渐变色的图片。</p>
+
+<p><img src="media/14940350647350/14949362399011.jpg" alt=""/></p>
+
+<p>但是<code>JPEG</code>图片并不是所有情况都适用，如果图片需要透明效果或者压缩之后细节损失很多,就需要用别的格式了</p>
+
+<h4 id="toc_11">混合图片</h4>
+
+<p>对于包含透明的图片来说，最好是使用压缩透明通道的PNG图片和压缩RGB部分的JPEG图片混合起来加载。这就对任何格式都适用了，而且无论从质量还是文件尺寸还是加载性能来说都和PNG和JPEG的图片相近。</p>
+
+<pre><code class="language-objc">- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    //load color image
+    UIImage *image = [UIImage imageNamed:@&quot;Snowman.jpg&quot;];
+    //load mask image
+    UIImage *mask = [UIImage imageNamed:@&quot;SnowmanMask.png&quot;];
+    //convert mask to correct format
+    CGColorSpaceRef graySpace = CGColorSpaceCreateDeviceGray();
+    CGImageRef maskRef = CGImageCreateCopyWithColorSpace(mask.CGImage, graySpace);
+    CGColorSpaceRelease(graySpace);
+    //combine images
+    CGImageRef resultRef = CGImageCreateWithMask(image.CGImage, maskRef);
+    UIImage *result = [UIImage imageWithCGImage:resultRef];
+    CGImageRelease(resultRef);
+    CGImageRelease(maskRef);
+    //display result
+    self.imageView.image = result;
+}
+</code></pre>
+
+<p>我们不可能对每张图片都使用两个独立文件:<br/>
+我们可以用一个第三方的<a href="https://github.com/nicklockwood/JPNG">JPNG库</a>，对这个技术提供了开源可复用的实现,并且直接添加<code>+imageNamed:</code>和 <code>+imageWithContentsOfFile:</code>方法的支持</p>
+
+<h4 id="toc_12">JPEG 2000</h4>
+
+<p>除了JPEG和PNG之外iOS还支持别的一些格式，例如TIFF和GIF，但是由于他们质量压缩得更厉害，性能比JPEG和PNG糟糕的多，所以大多数情况并不用考虑。</p>
+
+<p>苹果低调添加了对<code>JPEG 2000</code>图片格式的支持，虽然并不是很好的支持,但是<code>JPEG 2000</code>图片在（设备和模拟器）运行时会有效，而且比<code>JPEG</code>质量更好，同样也对透明通道有很好的支持。但是<code>JPEG 2000</code>图片在加载和显示图片方面明显要比<code>PNG</code>和<code>JPEG</code>慢得多，所以对图片大小比运行效率更敏感的时候，使用它是一个不错的选择。</p>
+
+<h4 id="toc_13">PVRTC</h4>
+
+<p>当前iOS设备都有用<code>Imagination Technologies PowerVR</code>图像芯片作为<code>GPU</code>，<code>PowerVR</code>芯片支持一种叫做<code>PVRTC</code>的标准图片压缩.</p>
+
+<p>和其他大多数图片格式不同,PVRTC不用提前解压就可以直接绘制到屏幕上。意味着在加载图片之后不需要有解压操作，所以内存中的图片比其他图片格式大大减少了(这取决于压缩设置，大概只有1/60那么大)</p>
+
+<p>弊端：</p>
+
+<ul>
+<li>虽然它加载时消耗的<code>RAM</code>少,但是文件比<code>JPEG</code>大，甚至比<code>PNG</code>还大</li>
+<li><code>PVRTC</code>必须是二维正方形</li>
+<li>质量并不好，尤其是透明图片</li>
+<li>PVRTC不能用Core Graphics绘制，也不能在普通的 UIImageView 显示，也不能直接用作图层的内容。你必须要用作OpenGL纹理加载PVRTC图片，然后映射到一对三角板来在 CAEAGLLayer 或者 GLKView 中显示。</li>
+<li>OpenGL纹理加载PVRTC图片开销很大</li>
+<li>使用的是不对称压缩算法,尽管立即解压 但是压缩过程很漫长</li>
+</ul>
+
+<p>如果愿意使用<code>OpenGL</code>,也愿意提前生成图片,那么可以用<code>PVRTC</code>，将提供相对于别的可用格式来说非常高效的加载性能。</p>
+
+<p>我们可以使用<a href="http://www.imgtec.com/powervr/insider/sdkdownloads">Imagination Technologies PVRTexTool</a>，</p>
+
+<pre><code class="language-objc">//终端将PNG转换为PVRTC命令
+/Applications/Imagination/PowerVR/GraphicsSDK/PVRTexTool/CL/OSX_x86/PVRTexToolCL -i {input_file_name}.png -o {output_file_name}.pvr -legacypvr -p -f PVRTC1_4 -q pvrtcbest
+</code></pre>
+
+<p>用<code>openGL</code>实现<code>UIImageView</code>功能： <a href="https://github.com/nicklockwood/GLView">GLView的库</a></p>
 
                         
                       </div>
@@ -242,7 +511,7 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/5/4</span>
+                    <span class="date">2017/5/6</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E6%80%A7%E8%83%BD.html'>性能</a></span>
@@ -281,8 +550,8 @@
     <div id="sidebar" class="sidebar">
           <div id="site-info" class="site-info">
             
-                <h1>栗豫塬的博客</h1>
-                <div class="site-des"></div>
+                <h1>ACEfish-Blog</h1>
+                <div class="site-des">这是一个记录学习的新知识的地方</div>
                 <div class="social">
 
 
@@ -293,7 +562,7 @@
 
 
 
-
+<a target="_blank" class="github" target="_blank" href="https://github.com/ACEfish/ACEfish.github.io" title="GitHub">GitHub</a>
 
   <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
                 
@@ -333,6 +602,12 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15059300219793.html">高级运算符</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15057532270985.html">访问控制</a>
 			      </li>
 		     
@@ -352,12 +627,6 @@
 		      
 			      <li class="post">
 			        <a href="15042587690391.html">扩展</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15042543172572.html">嵌套类型</a>
 			      </li>
 		     
 		  

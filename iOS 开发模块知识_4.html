@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
     
-  iOS 开发模块知识 - 栗豫塬的博客
+  iOS 开发模块知识 - ACEfish-Blog
   
   </title>
   
   
-  <link href="atom.xml" rel="alternate" title="栗豫塬的博客" type="application/atom+xml">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
     <link rel="stylesheet" href="asset/css/foundation.min.css" />
     <link rel="stylesheet" href="asset/css/docs.css" />
     <script src="asset/js/vendor/modernizr.js"></script>
@@ -62,7 +62,7 @@
 
         <nav class="tab-bar show-for-small">
   <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
-    <span> &nbsp; 栗豫塬的博客</span>
+    <span> &nbsp; ACEfish-Blog</span>
   </a>
 </nav>
 
@@ -105,73 +105,185 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15042543172572.html">
+                <a class="clearlink" href="15042587690391.html">
                 
-                  <h1>嵌套类型</h1>
+                  <h1>扩展</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><strong>嵌套类型:</strong>在支持的类型中定义嵌套的枚举、类和结构体</p>
+                        	<p><strong>扩展</strong>就是为一个已有的类、结构体、枚举类型或者协议类型添加新功能</p>
 
-<p>要在一个类型中嵌套另一个类型,将嵌套类型的定义写在其外部类型的<code>{}</code>内，而且可以根据需要定义多级嵌套</p>
+<blockquote>
+<p>类似OC中的分类功能,但是Swift中的分类没有名字</p>
+</blockquote>
 
-<h2 id="toc_0">嵌套类型实践</h2>
+<p><strong>Swift中的扩展可功能</strong>:</p>
 
-<pre><code class="language-swift">struct BlackjackCard {
-    //嵌套的 Suit 枚举//牌的花色
-    enum Suit: Character {
-        case Spades = &quot;块&quot;, Hearts = &quot;心&quot;, Diamonds = &quot;*&quot;, Clubs = &quot;额&quot;
-    }
-    //嵌套的 Rank 枚举
-    enum Rank: Int {
-        case Two = 2, Three, Four, Five, Six, Seven, Eight, Nine, Ten
-        case Jack, Queen, King, Ace
-        struct Values {//用于反应Ace有两种值，而其他只有一个
-            let first: Int, second: Int?
-        }
-        var values: Values {
-            switch self {
-                case .Ace:
-                    return Values(first: 1, second: 11)
-                case .Jack, .Queen, .King:
-                    return Values(first: 10, second: nil)
-                default:
-                    return Values(first: self.rawValue, second: nil)
-            }
-        }
-    }
-    // BlackjackCard 的属性和方法
-    let rank: Rank, suit: Suit
-    var description: String {
-        var output = &quot;suit is \(suit.rawValue),&quot;
-        output += &quot; value is \(rank.values.first)&quot;
-        if let second = rank.values.second {
-            output += &quot; or \(second)&quot;
-        }
-        return output
+<ul>
+<li>添加计算型属性和计算类型属性</li>
+<li>定义实例方法和类型方法</li>
+<li>提供新的构造器</li>
+<li>定义下标</li>
+<li>定义和使用新的嵌套类型</li>
+<li>使一个已有类型符合某个协议
+还可以对协议进行扩展、提供协议要求的实现，添加额外的功能，让符合协议的类型拥有这些功能</li>
+</ul>
+
+<blockquote>
+<p>扩展只能添加新的功能不能重写已有功能</p>
+</blockquote>
+
+<h2 id="toc_0">扩展语法</h2>
+
+<p>用关键字<code>extension</code>声明扩展:</p>
+
+<pre><code class="language-swift">extension SomeType {
+    // 为 SomeType 添加的新功能写到这里
+}
+</code></pre>
+
+<p>扩展一个已有类型,使其采纳一个或多个协议</p>
+
+<pre><code class="language-swift">extension SomeType: SomeProtocol, AnotherProctocol {
+    // 协议实现写到这里
+}
+</code></pre>
+
+<blockquote>
+<p>扩展一个已有实例的新功能,那么新功能对该类型所有实例都可用，不论创建时间</p>
+</blockquote>
+
+<h2 id="toc_1">计算型属性</h2>
+
+<pre><code class="language-swift">extension Double {
+    var km: Double { return self * 1_000.0 }
+    var m : Double { return self }
+    var cm: Double { return self / 100.0 }
+    var mm: Double { return self / 1_000.0 }
+    var ft: Double { return self / 3.28084 }
+}
+let oneInch = 25.4.mm
+print(&quot;One inch is \(oneInch) meters&quot;)
+    // 打印 “One inch is 0.0254 meters”
+let threeFeet = 3.ft
+print(&quot;Three feet is \(threeFeet) meters&quot;)
+    // 打印 “Three feet is 0.914399970739201 meters”
+</code></pre>
+
+<p>扩展<code>Double</code>类型,增加计算型属性,实现距离转换<br/>
+上面的属性是只读的计算型属性,省略了<code>get</code>关键字</p>
+
+<blockquote>
+<p>可以增加新的计算型属性,但是不能增加存储型属性，也不能为已有属性添加属性观察器</p>
+</blockquote>
+
+<h2 id="toc_2">构造器</h2>
+
+<p>扩展可以为已有类型添加新的构造器。<br/>
+扩展能为类添加新的便利构造器,但是不能为类添加新的指定构造器或者析构器</p>
+
+<blockquote>
+<p>如果使用扩展为一个“值类型”添加构造器,同时该值类型的原始实现没有定义定制构造器,且所有存储属性提供了默认值,我们可以在扩展的构造器中调用默认构造器和逐一成员构造器(当原始实现中有定制的构造器,就不能调用了)</p>
+</blockquote>
+
+<pre><code class="language-swift">struct Size {
+    var width = 0.0, height = 0.0
+}
+struct Point {
+    var x = 0.0, y = 0.0
+}
+struct Rect {
+    var origin = Point()
+    var size = Size()
+}
+</code></pre>
+
+<p>因为<code>Rect</code>没有指定构造器,存储属性也都有默认值,因此获得一个逐一成员构造器和默认构造器，</p>
+
+<pre><code class="language-swift">extension Rect {
+    init(center: Point, size: Size) {
+        let originX = center.x - (size.width / 2)
+        let originY = center.y - (size.height / 2)
+        //调用结构体的逐一成员构造器
+        self.init(origin: Point(x: originX, y: originY), size: size)
     }
 }
 </code></pre>
 
-<p><code>BlackjackCard</code>结构体有默认的成员构造器,可以用默认构造器去初始化常量:</p>
+<h2 id="toc_3">方法</h2>
 
-<pre><code class="language-swift">/**
-尽管Rank和Suit嵌套在BlackjackCard中,类型可以从上下文推断出来,
-因此可以用`.Ace 和.Spades`引用枚举实例
-*/
-let theAceOfSpades = BlackjackCard(rank: .Ace, suit: .Spades)
-print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
-// 打印 “theAceOfSpades: suit is ?, value is 1 or 11”
+<p>为已有类型添加新的实例方法和类型方法</p>
+
+<pre><code class="language-swift">extension Int {
+    func repetitions(task: () -&gt; Void) {
+        for _ in 0..&lt;self {
+            task()
+        }
+    }
+}
+//为Int类型添加一个名为`repetitions`的实例方法
+//这个方法接受一个`()-&gt;Void`类型的单参数，没有参数也没有返回值的函数
 </code></pre>
 
-<h2 id="toc_1">引用嵌套类型</h2>
+<h3 id="toc_4">可变实例方法</h3>
 
-<p>在嵌套类型的类型名前加上外部类型的类型名作为前缀:</p>
+<p>扩展中添加的实例方法也可以修改该实例本身，对于值类型即结构体或者枚举修改<code>self</code>或其属性的方法就必须将该实例方法标注为<code>mutating</code>(类似原始实现)</p>
 
-<pre><code class="language-swift">let heartsSymbol = BlackjackCard.Suit.Hearts.rawValue
-//红心符号
+<pre><code class="language-swift">extension Int {
+    mutating func square() {
+        self = self * self
+    }
+}
 </code></pre>
+
+<h2 id="toc_5">下标</h2>
+
+<p>扩展为已有类型添加下标.</p>
+
+<pre><code class="language-swift">extension Int {
+    subscript(digitIndex: Int) -&gt; Int {
+        var decimalBase = 1
+        for _ in 0..&lt;digitIndex {
+            decimalBase *= 10
+        }
+        return (self / decimalBase) % 10
+    }
+}
+746381295[0]
+// 返回 5
+746381295[1]
+// 返回 9
+//取的下标越界时自动用0补充
+746381295[9]
+// 返回 0，即等同于：
+0746381295[9]
+</code></pre>
+
+<p>上面的例子为<code>Int</code>增加下标方法，<code>[n]</code>返回十进制数字从右向左数的第<code>n</code>个数字</p>
+
+<h2 id="toc_6">嵌套类型</h2>
+
+<p>扩展可以为已有的类、结构体和枚举添加新的嵌套类型:</p>
+
+<pre><code class="language-swift">extension Int {
+    enum Kind {
+    case Negative, Zero, Positive
+    }
+    var kind: Kind {
+        switch self {
+        case 0:
+            return .Zero
+        case let x where x &gt; 0:
+            return .Positive
+        default:
+            return .Negative
+        }
+    }
+}
+</code></pre>
+
+<p>为<code>Int</code>添加了一个嵌套枚举,来表明特定整数的类型，即正数、负数或零</p>
 
                         
                       </div>
@@ -219,8 +331,8 @@ print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
     <div id="sidebar" class="sidebar">
           <div id="site-info" class="site-info">
             
-                <h1>栗豫塬的博客</h1>
-                <div class="site-des"></div>
+                <h1>ACEfish-Blog</h1>
+                <div class="site-des">这是一个记录学习的新知识的地方</div>
                 <div class="social">
 
 
@@ -231,7 +343,7 @@ print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
 
 
 
-
+<a target="_blank" class="github" target="_blank" href="https://github.com/ACEfish/ACEfish.github.io" title="GitHub">GitHub</a>
 
   <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
                 
@@ -271,6 +383,12 @@ print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
 	      
 		      
 			      <li class="post">
+			        <a href="15059300219793.html">高级运算符</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15057532270985.html">访问控制</a>
 			      </li>
 		     
@@ -290,12 +408,6 @@ print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
 		      
 			      <li class="post">
 			        <a href="15042587690391.html">扩展</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15042543172572.html">嵌套类型</a>
 			      </li>
 		     
 		  

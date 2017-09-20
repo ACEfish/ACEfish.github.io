@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
     
-  Swift基础知识 - 栗豫塬的博客
+  Swift基础知识 - ACEfish-Blog
   
   </title>
   
   
-  <link href="atom.xml" rel="alternate" title="栗豫塬的博客" type="application/atom+xml">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
     <link rel="stylesheet" href="asset/css/foundation.min.css" />
     <link rel="stylesheet" href="asset/css/docs.css" />
     <script src="asset/js/vendor/modernizr.js"></script>
@@ -62,7 +62,7 @@
 
         <nav class="tab-bar show-for-small">
   <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
-    <span> &nbsp; 栗豫塬的博客</span>
+    <span> &nbsp; ACEfish-Blog</span>
   </a>
 </nav>
 
@@ -105,350 +105,246 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14986177362678.html">
+                <a class="clearlink" href="14993105877642.html">
                 
-                  <h1>函数 Functions</h1>
+                  <h1>闭包</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>在<code>Swift</code>中，每个函数都有一个由函数的参数值类型和返回值类型组成的类型。可以把函数类型当做任何其他<br/>
-普通变量类型一样处理，这样就可以更简单地把函数当做别的函数的参数，也可以从其他函数中返回函数。函数<br/>
-的定义可以写在其他函数定义中，这样可以在嵌套函数范围内实现功能封装。</p>
+                        	<p>闭包是自包含的函数代码块,可以在代码中被传递和使用</p>
 
-<h2 id="toc_0">函数的定义与调用</h2>
-
-<pre><code class="language-swift">func greet(person: String) -&gt; String {
-    let greeting = &quot;Hello, &quot; + person + &quot;!&quot;
-    return greeting
-}
-</code></pre>
-
-<p>定义一个函数,以<code>func</code>为前缀，定义了一个输入参数一个叫<code>person</code>的<code>String</code>值，用<code>-&gt;</code>来指定函数返回类型一个<code>String</code>类型返回值</p>
+<p><strong>闭包可以捕获和存储其所在上下文中任意常量和变量的引用。被称为包裹常量和变量。 Swift 会为你管理在捕获过程中涉及到的所有内存操作。</strong></p>
 
 <blockquote>
-<p><code>print(_:separator:terminator:)</code>这个函数第一个参数为<code>_</code>即并没有设置标签,其他参数设置了标签并且有默认值因此是可选的 </p>
+<p><code>Swift</code>中的闭包与<code>C</code>和<code>Objective-C</code>中的代码块（<code>blocks</code>）以及其他一些编程语言中的匿名函数比较相似<br/>
+在函数章节中介绍的全局和嵌套函数实际上也是特殊的闭包</p>
 </blockquote>
 
-<h2 id="toc_1">函数参数与返回值</h2>
+<p>闭包的形式：</p>
 
-<p>在函数参数名称为<code>_</code>即不设置名称 </p>
+<ul>
+<li>全局函数是一个有名字但不会捕获任何值的闭包</li>
+<li>嵌套函数是一个有名字并可以捕获其封闭函数域内值的闭包</li>
+<li>闭包表达式是一个利用轻量级语法所写的可以捕获其上下文中变量或常量值的匿名闭包</li>
+</ul>
 
-<h3 id="toc_2">无参函数</h3>
+<p>闭包可以进行一定语法优化，常见优化:</p>
 
-<pre><code class="language-swift">func sayHelloWorld() -&gt; String {
-    return &quot;hello, world&quot;
+<ul>
+<li>利用上下文推断参数和返回值类型</li>
+<li>隐式返回<code>单表达式</code>闭包，即单表达式闭包可以省略<code>return</code>关键字</li>
+<li>参数名称缩写</li>
+<li>尾随闭包语法</li>
+</ul>
+
+<h2 id="toc_0">闭包表达式</h2>
+
+<p>闭包表达式是一种利用简洁语法构建内联闭包的方式。</p>
+
+<h3 id="toc_1">sorted方法</h3>
+
+<p><code>Swift</code>的<code>sorted(by:)</code>方法根据提供的排序的闭包函数.将数组排序后返回一个同样大小排序后的数组,原数组不变</p>
+
+<p><code>let names = [&quot;Chris&quot;, &quot;Alex&quot;, &quot;Ewa&quot;, &quot;Barry&quot;, &quot;Daniella&quot;]</code><br/>
+对于数组这个用于排序的闭包函数类型为<code>(String, String) -&gt; Bool</code>通过返回bool值决定第一个参数在前还是在后</p>
+
+<pre><code class="language-swift">func backward(_ s1: String, _ s2: String) -&gt; Bool {
+    return s1 &gt; s2
 }
-print(sayHelloWorld())
-// 打印 &quot;hello, world&quot;
+var reversedNames = names.sorted(by: backward)
+// reversedNames 为 [&quot;Ewa&quot;, &quot;Daniella&quot;, &quot;Chris&quot;, &quot;Barry&quot;, &quot;Alex&quot;]
 </code></pre>
 
-<p><strong>注意:</strong><br/>
-即使这个函数没有参数,但是定义中在函数名后还是<strong>需要一对圆括号</strong>。当被调用时，也需要<strong>在函数名后写一对圆括号</strong>与C语言函数相同</p>
+<p>为了写<code>return s1 &gt; s2</code>这么简单的表达式却需要写函数太过繁琐,我们可以使用闭包表达式语法</p>
 
-<h3 id="toc_3">多参函数</h3>
+<h3 id="toc_2">闭包表达式语法</h3>
 
-<pre><code class="language-swift">func greet(person: String, alreadyGreeted: Bool) -&gt; String {
-    if alreadyGreeted {
-        return greetAgain(person: person)
-    } else {
-        return greet(person: person)
+<pre><code class="language-swift">{ (parameters) -&gt; returnType in
+    statements
+}
+</code></pre>
+
+<p>闭包表达式参数 可以是<code>in-out</code>参数，但不能设定默认值。可以使用可变参数但是要放到参数最后</p>
+
+<p>闭包的函数体部分由关键字<code>in</code>引入。该关键字表示闭包的参数和返回值类型定义已经完成，闭包函数体即将开始。（<code>in</code>前为闭包定义,后为闭包函数体）</p>
+
+<pre><code class="language-swift">reversedNames = names.sorted(by: { (s1: String, s2: String) -&gt; Bool in
+    return s1 &gt; s2
+})
+</code></pre>
+
+<h3 id="toc_3">根据上下文推断类型</h3>
+
+<p>因为这个闭包函数的作为方法参数传入,因此其类型已经确定为<code>(String, String) -&gt; Bool</code>,因此我们可以省略这些类型声明,因为可以被正确推断出来</p>
+
+<pre><code class="language-swift">reversedNames = names.sorted(by: { s1, s2 in return s1 &gt; s2 } )
+//我们将闭包作为函数或方法的参数时,其类型总是可以推断出来的
+//推荐完整格式闭包,增加代码可读性
+</code></pre>
+
+<h3 id="toc_4">单表达式闭包隐式返回</h3>
+
+<p>如果闭包内只有一行单一表达式,并且明确了需要的返回类型,可以省略<code>return</code>关键字</p>
+
+<pre><code class="language-swift">//
+reversedNames = names.sorted(by: { s1, s2 in s1 &gt; s2 } )
+</code></pre>
+
+<h3 id="toc_5">参数名称缩写</h3>
+
+<p><code>Swift</code>自动为内联闭包提供了参数名称缩写功能，你可以直接通过<code>$0</code>，<code>$1</code>，<code>$2</code>来顺序调用闭包的参数</p>
+
+<p>如果使用参数名称缩写,那么在闭包定义中也可以省略参数列表,对应的参数名称缩写的类型也可以推断出来,这样的话<code>in</code>关键字也可以省略</p>
+
+<pre><code class="language-swift">//此时闭包表达式只剩下闭包函数体
+reversedNames = names.sorted(by: { $0 &gt; $1 } )
+</code></pre>
+
+<h3 id="toc_6">运算符方法</h3>
+
+<p><code>Swift</code>的<code>String</code>类型定义了关于大于号<code>（ &gt; ）</code>的字符串实现，其作为一个函数接受两个<code>String</code>类型的参数并返回<code>Bool</code>类型的值。而这正好与<code>sorted(by:)</code>方法的参数需要的函数类型相符合。因此，你可以简单地传递一个大于号，Swift 可以自动推断出你想使用大于号的字符串函数实现：</p>
+
+<pre><code class="language-swift">reversedNames = names.sorted(by: &gt;)
+</code></pre>
+
+<h2 id="toc_7">尾随闭包</h2>
+
+<p>如果要将一个很长的闭包作为函数最后一个参数,为了增强代码的可读性,我们可以使用<code>尾随闭包</code>的方式来调用函数</p>
+
+<pre><code class="language-swift">func someFunctionThatTakesAClosure(closure: () -&gt; Void) {
+    // 函数体部分
+}
+// 以下是不使用尾随闭包进行函数调用
+someFunctionThatTakesAClosure(closure: {
+    // 闭包主体部分
+})
+// 以下是使用尾随闭包进行函数调用
+someFunctionThatTakesAClosure() {
+    // 闭包主体部分
+}
+
+reversedNames = names.sorted() { $0 &gt; $1 }
+//如果闭包函数是函数的唯一参数我们还可以省略（）
+reversedNames = names.sorted { $0 &gt; $1 }
+</code></pre>
+
+<pre><code class="language-swift">//举栗子
+let strings = numbers.map {
+    (number) -&gt; String in
+    var number = number
+    var output = &quot;&quot;
+    repeat {
+        output = digitNames[number % 10]! + output
+        number /= 10
+    } while number &gt; 0
+    return output
+}
+// strings 常量被推断为字符串类型数组，即 [String]
+// 其值为 [&quot;OneSix&quot;, &quot;FiveEight&quot;, &quot;FiveOneZero&quot;]
+</code></pre>
+
+<h2 id="toc_8">值捕获</h2>
+
+<p>闭包可以在被定义的上下文捕获常量或变量</p>
+
+<p>最简单的捕获值的闭包形式是嵌套函数</p>
+
+<pre><code class="language-swift">func makeIncrementer(forIncrement amount: Int) -&gt; () -&gt; Int {
+    var runningTotal = 0
+    func incrementer() -&gt; Int {
+        runningTotal += amount
+    return runningTotal
+    }
+    return incrementer
+}
+</code></pre>
+
+<p><code>makeIncrementer</code>的返回类型是<code>() -&gt; Int</code>说明要返回一个函数<br/>
+对于嵌套函数<code>incrementer()</code>并没有参数，而是捕获了<code>runningTotal</code>和<code>amount</code>变量的引用.捕获引用保证了<code>runningTotal</code>和<code>amount</code>变量在调用完<code>makeIncrementer</code>后不会消失，并且保证了在下一次执行<code>incrementer</code>函数时，<code>runningTotal</code>依旧存在。</p>
+
+<blockquote>
+<p>如果一个值不会被闭包改变，或者在闭包创建后不会改变，Swift 可能会改为捕获并保存一份对值的拷贝。 Swift 也会负责被捕获变量的所有内存管理工作，包括释放不再需要的变量。</p>
+</blockquote>
+
+<pre><code class="language-swift">let incrementByTen = makeIncrementor(forIncrement: 10)
+incrementByTen()// 返回的值为10
+incrementByTen()// 返回的值为20
+incrementByTen()// 返回的值为30
+</code></pre>
+
+<p>这个常量函数每次调用都会将<code>runningTotal</code>变量增加<code>10</code></p>
+
+<h2 id="toc_9">闭包是引用类型</h2>
+
+<p><code>函数</code>和<code>闭包</code>都是引用类型，因此我们设置的常量或者变量是设置的对应函数或闭包的引用，而不是闭包内容本身</p>
+
+<blockquote>
+</blockquote>
+
+<h2 id="toc_10">逃逸闭包</h2>
+
+<p>将闭包作为参数传递到另一个函数中,但是这个闭包在函数返回后才执行,则这个闭包从函数中<code>逃逸</code>，我们可以通过在函数名之前标注<code>@escaping</code>表示这个闭包允许<code>逃逸</code></p>
+
+<p>一种能使闭包“逃逸”出函数的方法是，将这个闭包保存在一个函数外部定义的变量中,此时必须闭包是可逃逸的否则函数的作用域结束，这个外部变量保存的闭包。。。会导致编译错误</p>
+
+<p>逃逸闭包我们常用于在一个函数需要异步执行操作,通常会让函数返回,在异步操作完成后再调用执行这个闭包,因为闭包需要在函数返回之后被调用,所以需要逃逸闭包</p>
+
+<pre><code class="language-swift">var completionHandlers: [() -&gt; Void] = []
+func someFunctionWithEscapingClosure(completionHandler: @escaping () -&gt; Void) {
+    completionHandlers.append(completionHandler)
+}
+
+func someFunctionWithNonescapingClosure(closure: () -&gt; Void) {
+    closure()
+}
+class SomeClass {
+    var x = 10
+    func doSomething() {
+        someFunctionWithEscapingClosure { self.x = 100 }
+        someFunctionWithNonescapingClosure { x = 200 }
     }
 }
-print(greet(person: &quot;Tim&quot;, alreadyGreeted: true))
-// 打印 &quot;Hello again, Tim!&quot;
+let instance = SomeClass()
+instance.doSomething()
+print(instance.x)
+// 打印出 &quot;200&quot;
+completionHandlers.first?()
+print(instance.x)
 </code></pre>
 
-<p>传递多个参数,之前用<code>,</code>隔开,这个函数与前面函数虽然名称相同 但是参数不同因此是不同的两个函数</p>
+<h2 id="toc_11">自动闭包</h2>
 
-<blockquote>
-<p>重载:指两个函数的函数名相同,函数的参数列表不同(包括参数个数和参数类型)，至于返回类型可同可不同<br/>
-OC不完全支持重载,即OC支持参数个数不同的函数重载,Swift是完全支持重载的</p>
-</blockquote>
+<p>一种自动创建的闭包，用于包装传递给函数作为参数的表达式。不接受任何参数，当它被调用的时候，会返回被包装在其中的表达式的值。这样帮我们省略掉花括号,用一个普通表达式代替显式的闭包</p>
 
-<h3 id="toc_4">无返回值函数</h3>
+<p>我们经常会调用采用自动闭包的函数，但是很少去实现这样的函数。举个例子来说，<code>assert(condition:message:file:line:)</code>函数接受自动闭包作为它的<code>condition</code>参数和 <code>message</code>参数；它的<code>condition</code>参数仅会在<code>debug</code>模式下被求值，它的<code>message</code>参数仅当 <code>condition</code>参数为<code>false</code>时被计算求值。</p>
 
-<pre><code class="language-swift">func greet(person: String) {
-    print(&quot;Hello, \(person)!&quot;)
+<p><strong>自动闭包让你能够延迟求值，因为直到你调用这个闭包，代码段才会被执行。</strong></p>
+
+<pre><code class="language-swift">// customersInLine is [&quot;Alex&quot;, &quot;Ewa&quot;, &quot;Barry&quot;, &quot;Daniella&quot;]
+//未使用自动闭包
+func serve(customer customerProvider: () -&gt; String) {
+    print(&quot;Now serving \(customerProvider())!&quot;)
 }
-greet(person: &quot;Dave&quot;)
-// 打印 &quot;Hello, Dave!&quot;
-</code></pre>
+serve(customer: { customersInLine.remove(at: 0) } )
+// 打印出 &quot;Now serving Alex!&quot;
 
-<blockquote>
-<p>虽然没有定义返回值,其实返回了一个特殊的<code>Void</code>值,这是<strong>一个空的元组</strong>，没有任何元素,可以写为()</p>
-</blockquote>
-
-<h3 id="toc_5">多重返回值函数</h3>
-
-<p>我们可以用元组让多个值作为一个复合值从函数中返回</p>
-
-<pre><code class="language-swift">func minMax(array: [Int]) -&gt; (min: Int, max: Int) {
-    var currentMin = array[0]
-    var currentMax = array[0]
-    for value in array[1..&lt;array.count] {
-        if value &lt; currentMin {
-            currentMin = value
-        } else if value &gt; currentMax {
-            currentMax = value
-        }
-    }
-    return (currentMin, currentMax)
+//使用自动闭包
+func serve(customer customerProvider: @autoclosure () -&gt; String) {
+print(&quot;Now serving \(customerProvider())!&quot;)
 }
-
-let bounds = minMax(array: [8, -6, 2, 109, 3, 71])
-print(&quot;min is \(bounds.min) and max is \(bounds.max)&quot;)
-// 打印 &quot;min is -6 and max is 109&quot;
+serve(customer: customersInLine.remove(at: 0))
 </code></pre>
 
 <blockquote>
-<p>我们在返回元组时不需要给元组命名，因为它们的名字在函数返回类型中就已经确定了</p>
+<p>过度使用 autoclosures 会让你的代码变得难以理解。上下文和函数名应该能够清晰地表明求值是被延迟<br/>
+执行的</p>
 </blockquote>
 
-<h3 id="toc_6">可选元组返回值</h3>
-
-<p>如果函数返回的元组类型有可能整个元组都“没有值”,可以使用可选元组返回类型来说明元组可能为<code>nil</code></p>
-
-<blockquote>
-<p>注意 可选元组类型如 (Int, Int)? 与元组包含可选类型如 (Int?, Int?) 是不同的.可选的元组类型，整个元组是可选的，而不只是元组中的每个元素值。</p>
-</blockquote>
-
-<p>对于上面的数组我们添加一个空数组检查,当传入的数组为空时返回<code>nil</code>:</p>
-
-<pre><code class="language-swift">func minMax(array: [Int]) -&gt; (min: Int, max: Int)? {
-    if array.isEmpty { return nil }
-    var currentMin = array[0]
-    var currentMax = array[0]
-    for value in array[1..&lt;array.count] {
-        if value &lt; currentMin {
-            currentMin = value
-        } else if value &gt; currentMax {
-            currentMax = value
-        }
-    }
-    return (currentMin, currentMax)
+<pre><code class="language-swift">//可以通过同时加上@autoclosure @escaping 自动闭包可以“逃逸”
+func collectCustomerProviders(_ customerProvider: @autoclosure @escaping () -&gt; String) {
+    customerProviders.append(customerProvider)
 }
-
-//用可选类型绑定来检查函数返回的是一个存在的元组还是一个nil
-if let bounds = minMax(array: [8, -6, 2, 109, 3, 71]) {
-    print(&quot;min is \(bounds.min) and max is \(bounds.max)&quot;)
-}
-// 打印 &quot;min is -6 and max is 109&quot;
-
-</code></pre>
-
-<h2 id="toc_7">函数参数标签和参数名称</h2>
-
-<p>每个函数参数都有一个<code>参数标签</code>以及一个<code>参数名称</code>.<br/>
-<code>参数标签</code>在调用函数的时候使用:调用时需要将函数的参数标签写在对应参数前<br/>
-<code>参数名称</code>在函数的实现中使用。默认,函数参数使用参数名称来作为参数标签</p>
-
-<h3 id="toc_8">指定参数标签</h3>
-
-<p>在参数名称前指定它的参数标签，中间以空格分隔:</p>
-
-<pre><code class="language-swift">//参数标签使函数在调用时更有表达力,保持可读性
-//argumentLabel参数标签  parameterName参数名称
-func someFunction(argumentLabel parameterName: Int) {
-    // 在函数体内，parameterName 代表参数值
-}
-func greet(person: String, from hometown: String) -&gt; String {
-    return &quot;Hello \(person)! Glad you could visit from \(hometown).&quot;
-}
-print(greet(person: &quot;Bill&quot;, from: &quot;Cupertino&quot;))
-</code></pre>
-
-<h3 id="toc_9">忽略参数标签</h3>
-
-<p>我们用下划线来忽略 不设置参数标签</p>
-
-<pre><code class="language-swift">func someFunction(_ firstParameterName: Int, secondParameterName: Int) {
-    // 在函数体内，firstParameterName 和 secondParameterName 代表参数中的第一个和第二个参数值
-}
-someFunction(1, secondParameterName: 2)
-</code></pre>
-
-<blockquote>
-<p>如果一个参数有标签,那么在调用时必须使用标签来标记这个参数</p>
-</blockquote>
-
-<h3 id="toc_10">默认参数值</h3>
-
-<p>可以在函数体重通过给参数赋值来为任意一个参数定义默认值. 如果定义了默认值，可以在调用这个函数时忽略这个参数:</p>
-
-<pre><code class="language-swift">func someFunction(parameterWithoutDefault: Int, parameterWithDefault: Int = 12) {
-    // 如果你在调用时候不传第二个参数，parameterWithDefault 会值为 12 传入到函数体中。
-}
-someFunction(parameterWithoutDefault: 3, parameterWithDefault: 6) // parameterWithDefault = 6
-someFunction(parameterWithoutDefault: 4) // parameterWithDefault = 12
-</code></pre>
-
-<p>我们通常将不带默认值的参数放在函数参数列表最前。因为一般没有默认值参数更重要，将不带默认值的参<br/>
-数放在最前保证在函数调用时，非默认参数的顺序是一致的，同时也使得相同的函数在不同情况下调用时显得更<br/>
-为清晰。</p>
-
-<h3 id="toc_11">可变参数</h3>
-
-<p>通过在变量类型名后加上<code>...</code>的方式来定义可变参数<br/>
-可变参数可以接受零个或多个值,我们用其来指定函数传入不确定数量的输入值</p>
-
-<p>我们在函数体中将可变参数传入值变为数组来使用</p>
-
-<pre><code class="language-swift">func arithmeticMean(_ numbers: Double...) -&gt; Double {
-    var total: Double = 0
-    for number in numbers {
-        total += number
-    }
-    return total / Double(numbers.count)
-}
-arithmeticMean(1, 2, 3, 4, 5)
-// 返回 3.0, 是这 5 个数的平均数。
-arithmeticMean(3, 8.25, 18.75)
-// 返回 10.0, 是这 3 个数的平均数。
-</code></pre>
-
-<blockquote>
-<p>一个函数最多只能有一个可变参数</p>
-</blockquote>
-
-<h3 id="toc_12">输入输出参数</h3>
-
-<p>参考<a href="http://www.csdn.net/article/2015-01-20/2823635-swift-pointer">Swift中的指针操作及使用</a></p>
-
-<p>函数参数默认为常量,因此在函数体中修改会导致编译错误。如果想要在函数中修改某个参数值,并且这些修改在函数调用后仍然有效，那么需要把这个参数定义为输入输出参数</p>
-
-<p>在参数定义前加上<code>inout</code>关键字来定以输入输出参数，这个值被函数修改然后被传出函数替换原来的值.</p>
-
-<p>只能传递变量给输入输出参数,不能传入常量或字面量，调用时当传入的参数作为输入输出参数时,需要在参数名前加<code>&amp;</code>表示这个值可被修改</p>
-
-<blockquote>
-<p>输入输出参数不能有默认值，而且可变参数不能用<code>inout</code>标记</p>
-</blockquote>
-
-<pre><code class="language-swift">func swapTwoInts(_ a: inout Int, _ b: inout Int) {
-    let temporaryA = a
-    a = b
-    b = temporaryA
-}
-var someInt = 3
-var anotherInt = 107
-swapTwoInts(&amp;someInt, &amp;anotherInt)
-print(&quot;someInt is now \(someInt), and anotherInt is now \(anotherInt)&quot;)
-// 打印 &quot;someInt is now 107, and anotherInt is now 3&quot;
-</code></pre>
-
-<p><strong>可以参考C语言中函数的 指针参数</strong></p>
-
-<h2 id="toc_13">函数类型</h2>
-
-<p>每个函数都有 由<code>函数的参数类型</code>和<code>返回类型</code> 组成<code>函数类型</code></p>
-
-<pre><code class="language-swift">func addTwoInts(_ a: Int, _ b: Int) -&gt; Int {
-    return a + b
-}
-</code></pre>
-
-<p>函数类型为<code>(Int, Int) -&gt; Int</code></p>
-
-<pre><code class="language-swift">func printHelloWorld() {
-    print(&quot;hello, world&quot;)
-}
-</code></pre>
-
-<p>函数类型为<code>() -&gt; Void</code></p>
-
-<h3 id="toc_14">函数类型的使用</h3>
-
-<p>在<code>Swift</code>中使用函数类型和使用其他类型一样。</p>
-
-<pre><code class="language-swift">var mathFunction: (Int, Int) -&gt; Int = addTwoInts
-</code></pre>
-
-<p>定义一个类型是‘一个有两个Int型的参数并返回一个Int型的值的<code>mathFunction</code>变量，指向<code>addTwoInts</code>函数</p>
-
-<p>函数类型与其他类型一样可以通过赋值让<code>Swift</code>推断其函数类型</p>
-
-<h3 id="toc_15">函数类型作为参数类型</h3>
-
-<pre><code class="language-swift">func printMathResult(_ mathFunction: (Int, Int) -&gt; Int, _ a: Int, _ b: Int) {
-    print(&quot;Result: \(mathFunction(a, b))&quot;)
-}
-
-//调用
-printMathResult({ (a, b) -&gt; Int in
-    return a*b
-}, 10, 20)
-</code></pre>
-
-<p><code>printMathResult(_:_:_:)</code>函数的作用就是输出另一个适当类型的数学函数的调用结果。它不关心传入函数是如何实现的，只关心传入的函数是不是一个正确的类型。这使得<code>printMathResult(_:_:_:)</code>能以一种类型安全（type-safe）的方式将一部分功能转给调用者实现。</p>
-
-<h3 id="toc_16">函数类型作为返回类型</h3>
-
-<p>我们可以将函数类型作为另一个函数的返回类型</p>
-
-<pre><code class="language-swift">func stepForward(_ input: Int) -&gt; Int {
-    return input + 1
-}
-func stepBackward(_ input: Int) -&gt; Int {
-    return input - 1
-}
-
-func chooseStepFunction(backward: Bool) -&gt; (Int) -&gt; Int {
-    return backward ? stepBackward : stepForward
-}
-
-//执行
-var currentValue = 3
-let moveNearerToZero = chooseStepFunction(backward: currentValue &gt; 0)
-// moveNearerToZero 现在指向 stepBackward() 函数。
-</code></pre>
-
-<p>上面例子获取一个整形接近0应该用的函数</p>
-
-<pre><code class="language-swift">print(&quot;Counting to zero:&quot;)
-// Counting to zero:
-while currentValue != 0 {
-    print(&quot;\(currentValue)... &quot;)
-    currentValue = moveNearerToZero(currentValue)
-}
-print(&quot;zero!&quot;)
-// 3...
-// 2...
-// 1...
-// zero!
-</code></pre>
-
-<h2 id="toc_17">嵌套函数</h2>
-
-<p>前面定义的所有函数都为<code>全局函数</code><br/>
-我们可以把函数定义在其他函数中,这就是<code>嵌套函数</code><br/>
-默认情况下，嵌套函数是对外界不可见的，但是可以被它们的外围函数（enclosing function）调用。一个外围函数也可以返回它的某一个嵌套函数，使得这个函数可以在其他域中被使用。</p>
-
-<blockquote>
-<p>OC中是不支持在一个函数中定义另外一个函数</p>
-</blockquote>
-
-<p>我们用返回嵌套方式重写<code>chooseStepFunction(backward:)</code>函数</p>
-
-<pre><code class="language-swift">func chooseStepFunction(backward: Bool) -&gt; (Int) -&gt; Int {
-    //我们在函数中定义另外函数
-    func stepForward(input: Int) -&gt; Int { return input + 1 }
-    func stepBackward(input: Int) -&gt; Int { return input - 1 }
-    //返回嵌套函数
-    return backward ? stepBackward : stepForward
-}
-var currentValue = -4
-let moveNearerToZero = chooseStepFunction(backward: currentValue &gt; 0)
-while currentValue != 0 {
-print(&quot;\(currentValue)... &quot;)
-currentValue = moveNearerToZero(currentValue)
-}
-print(&quot;zero!&quot;)
-// -4...
-// -3...
-// -2...
-// -1...
-// zero!
 </code></pre>
 
                         
@@ -458,7 +354,7 @@ print(&quot;zero!&quot;)
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/6/28</span>
+                    <span class="date">2017/7/6</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -497,8 +393,8 @@ print(&quot;zero!&quot;)
     <div id="sidebar" class="sidebar">
           <div id="site-info" class="site-info">
             
-                <h1>栗豫塬的博客</h1>
-                <div class="site-des"></div>
+                <h1>ACEfish-Blog</h1>
+                <div class="site-des">这是一个记录学习的新知识的地方</div>
                 <div class="social">
 
 
@@ -509,7 +405,7 @@ print(&quot;zero!&quot;)
 
 
 
-
+<a target="_blank" class="github" target="_blank" href="https://github.com/ACEfish/ACEfish.github.io" title="GitHub">GitHub</a>
 
   <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
                 
@@ -549,6 +445,12 @@ print(&quot;zero!&quot;)
 	      
 		      
 			      <li class="post">
+			        <a href="15059300219793.html">高级运算符</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15057532270985.html">访问控制</a>
 			      </li>
 		     
@@ -568,12 +470,6 @@ print(&quot;zero!&quot;)
 		      
 			      <li class="post">
 			        <a href="15042587690391.html">扩展</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15042543172572.html">嵌套类型</a>
 			      </li>
 		     
 		  

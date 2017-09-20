@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
     
-  iOS 开发模块知识 - 栗豫塬的博客
+  iOS 开发模块知识 - ACEfish-Blog
   
   </title>
   
   
-  <link href="atom.xml" rel="alternate" title="栗豫塬的博客" type="application/atom+xml">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
     <link rel="stylesheet" href="asset/css/foundation.min.css" />
     <link rel="stylesheet" href="asset/css/docs.css" />
     <script src="asset/js/vendor/modernizr.js"></script>
@@ -62,7 +62,7 @@
 
         <nav class="tab-bar show-for-small">
   <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
-    <span> &nbsp; 栗豫塬的博客</span>
+    <span> &nbsp; ACEfish-Blog</span>
   </a>
 </nav>
 
@@ -105,179 +105,198 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15031302948355.html">
+                <a class="clearlink" href="15034731740974.html">
                 
-                  <h1>可选链式调用</h1>
+                  <h1>错误处理</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><strong>可选链式调用</strong>是在当前值可能为<code>nil</code>的可选值上请求和调用属性、方法以及下标的方法。如果可选值不为空,调用成功,否则如果可选值为<code>nil</code>，那么调用将返回<code>nil</code>。多个调用可以结合为一个调用链,若任何一个节点为<code>nil</code>。整个调用链都会失败</p>
+                        	<p><strong>错误处理</strong>就是响应错误以及从错误中回复的过程</p>
 
-<h2 id="toc_0">可选链式调用代替强制展开</h2>
+<p><code>Swift</code>提供了运行时对可恢复错误的抛出、捕获、传递和操作等的支持<br/>
+通常用来区分失败情况,让程序解决并处理某些错误，把解决不了的错误报告给用户</p>
 
-<p>在想调用的属性、方法、下标的可选值后加上<code>?</code>来定义一个可选链。</p>
+<h2 id="toc_0">表示并抛出错误</h2>
+
+<p><code>Swift</code>中 错误用符合<code>Error</code>协议的类型值来表示，这个空协议表明该类型可以用于错误处理</p>
+
+<p>通常用枚举类型来构建一组相关的错误状态,枚举的关联值可以提供错误状态的额外信息</p>
+
+<p>使用关键字<code>throw</code>关键字来抛出一个错误，表示有意外发生</p>
+
+<pre><code class="language-swift">enum VendingMachineError: Error {
+    case invalidSelection //选择无效
+    case insufficientFunds(coinsNeeded: Int) //金额不足
+    case outOfStock //缺货
+}
+
+throw VendingMachineError.insufficientFunds(coinsNeeded: 5)
+</code></pre>
+
+<h2 id="toc_1">处理错误</h2>
+
+<p><code>Swift</code>中有<code>4</code>种处理错误的方式<br/>
+1.把函数抛出的错误传递给调用此函数的代码<br/>
+2.用<code>do-catch</code>语句处理错误<br/>
+3.将错误作为可选类型处理<br/>
+4.断言此错误根本不会发生</p>
+
+<p>我们在调用一个能抛出错误的函数、方法或者构造器之前，用<code>try</code>关键字或者<code>try?</code><code>try!</code>这种变体关键字</p>
 
 <blockquote>
-<p>很像在可选值后面放一个叹号（<code>!</code>）来强制展开它的值。它们的主要区别在于当可选值为空时可选链式调用只会调用失败，然而强制展开将会触发运行时错误</p>
+<p>与其他语言的<code>try</code>，<code>catch</code>和<code>throw</code>不同的是<code>swift</code>的错误挫力不涉及解除调用栈,因此其性能特性是可以和<code>return</code>语句相媲美的</p>
 </blockquote>
 
-<p>可选链式调用,不论调用的属性、方法及下标返回值的类型,返回结果都是具有相同类型的可选值,可以利用这个可选返回值来判断链式调用是否成功,有值则返回成功，<code>nil</code>表示调用失败</p>
+<h3 id="toc_2">用throwing函数传递错误</h3>
 
-<pre><code class="language-swift">class Person {
-    var residence: Residence?
-}
-class Residence {
-    var numberOfRooms = 1
-}
-let john = Person()
+<p>在函数声明的参数列表后加上<code>throws</code>关键字，表明可以抛出错误，这个函数就称为<code>throwing</code>函数<br/>
+如果这个函数指明了返回值类型，<code>throws</code>关键词需要写在箭头（<code>-&gt;</code>）的前面</p>
+
+<pre><code class="language-swift">func canThrowErrors() throws -&gt; String
+func cannotThrowErrors() -&gt; String
 </code></pre>
 
-<p>我们直接<code>let roomCount = john.residence!.numberOfRooms</code>因为<code>residence</code>为<code>nil</code>强制展开的话是会触发运行时错误的</p>
-
-<p>这时我们可以采用可选链式调用来访问<code>numberOfRooms</code>用<code>?</code>代替<code>!</code></p>
-
-<pre><code class="language-swift">if let roomCount = john.residence?.numberOfRooms {
-    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
-} else {
-    print(&quot;Unable to retrieve the number of rooms.&quot;)
-}
-</code></pre>
-
-<p><strong>添加问号之后，Swift 就会在<code>residence</code>不为<code>nil</code>的情况下访问<code>numberOfRooms</code></strong></p>
-
-<p>即使<code>numberOfRooms</code>是非可选类型<code>Int</code>，只要使用可选链式调用就意味着<code>numberOfRooms</code>会返回<code>Int?</code>而不是<code>Int</code></p>
-
-<h2 id="toc_1">为可选链式调用定义模型类</h2>
-
-<h2 id="toc_2">通过可选链式调用访问属性</h2>
-
-<p>通过可选链式调用<strong>访问可能不存在实例的属性</strong>:</p>
-
-<pre><code class="language-swift">//john.residence实例可能为nil
-let john = Person()
-if let roomCount = john.residence?.numberOfRooms {
-    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
-} else {
-    print(&quot;Unable to retrieve the number of rooms.&quot;)
-}
-</code></pre>
-
-<p>通过可选链式调用<strong>设置属性值</strong></p>
-
-<pre><code class="language-swift">//john.residence实例可能为nil
-let someAddress = Address()
-john.residence?.address = someAddress
-</code></pre>
-
-<p>对于这种可选链式调用的赋值,如果<code>john.residence</code>为<code>nil</code>，获取<code>address</code>属性失败，那么右侧的代码是不会被执行的</p>
-
-<h2 id="toc_3">通过可选链式调用调用方法</h2>
-
-<p>对于<code>Residence</code>类中定义的方法</p>
-
-<pre><code class="language-swift">func printNumberOfRooms() {
-    print(&quot;The number of rooms is \(numberOfRooms)&quot;)
-}
-</code></pre>
-
-<p>这个方法没有返回值,那就是具有隐式的返回值<code>Void</code><br/>
-那么如果用可选链式调用这个方法，返回值就为<code>Void?</code></p>
-
-<pre><code class="language-swift">//john.residence 为Residence类 可能为nil的实例
-if john.residence?.printNumberOfRooms() != nil {
-    print(&quot;It was possible to print the number of rooms.&quot;)
-} else {
-    print(&quot;It was not possible to print the number of rooms.&quot;)
-}
-//可以根据返回值是否为nil 判断调用是否成功
-</code></pre>
-
-<p>对实例中的属性赋值 也会返回一个可选类型</p>
-
-<pre><code class="language-swift">if (john.residence?.address = someAddress) != nil {
-print(&quot;It was possible to set the address.&quot;)
-} else {
-print(&quot;It was not possible to set the address.&quot;)
-}
-</code></pre>
-
-<h2 id="toc_4">通过可选链式调用访问下标</h2>
-
-<p>可以在一个可选值上访问下标,判断下标是否成功</p>
-
-<pre><code class="language-swift">//john.residence可能为nil
-if let firstRoomName = john.residence?[0].name {
-    print(&quot;The first room name is \(firstRoomName).&quot;)
-} else {
-    print(&quot;Unable to retrieve the first room name.&quot;)
-}
-</code></pre>
+<p><strong><code>throwing</code>函数可以在其内部抛出错误，并将错误传递到函数被调用时的作用域。</strong></p>
 
 <blockquote>
-<p>注意:下标调用的时候将问号放在下标方括号的前面而不是后面</p>
+<p>对于<code>throwing</code>函数可以传递错误,非<code>throwing</code>函数抛出的错误只能在函数内部处理</p>
 </blockquote>
 
-<pre><code class="language-swift">john.residence?[0] = Room(name: &quot;Bathroom&quot;)
-</code></pre>
-
-<p><code>john.residence</code>为nil时，赋值仍然会失败</p>
-
-<h3 id="toc_5">访问可选类型的下标</h3>
-
-<p>如果下标返回可选类型值,可以在下标的结尾括号后面放一个问号来在其可选返回值上进行可选链式调用</p>
-
-<pre><code class="language-swift">var testScores = [&quot;Dave&quot;: [86, 82, 84], &quot;Bev&quot;: [79, 94, 81]]
-testScores[&quot;Dave&quot;]?[0] = 91
-testScores[&quot;Bev&quot;]?[0] += 1
-testScores[&quot;Brian&quot;]?[0] = 72
-</code></pre>
-
-<p>定义一个字典,包含两个键值对，因为字典下标返回的是可选类型值,对于<code>testScores[&quot;Brian&quot;]</code>因为字典中没有这个键，所以返回为<code>nil</code>，调用失败</p>
-
-<h2 id="toc_6">连接多层可选链式调用</h2>
-
-<p>可以连接多个可选链式调用在更深模型层级中访问属性、方法、下标，但是是不会增加返回值的可选层级的</p>
-
-<ul>
-<li>通过可选链式调用访问一个 Int 值，将会返回 Int? ，无论使用了多少层可选链式调用</li>
-<li>通过可选链式调用访问 Int? 值，依旧会返回 Int? 值，并不会返回 Int??</li>
-</ul>
-
-<pre><code class="language-swift">if let johnsStreet = john.residence?.address?.street {
-    print(&quot;John&#39;s street name is \(johnsStreet).&quot;)
-} else {
-    print(&quot;Unable to retrieve the address.&quot;)
+<pre><code class="language-swift">struct Item {
+    var price: Int
+    var count: Int
 }
-</code></pre>
-
-<p><code>john.residence.address</code>为<code>nil</code>因此调用失败<br/>
-尽管<code>street</code>属性为<code>String？</code>  返回值仍然为<code>String?</code></p>
-
-<h2 id="toc_7">在方法的可选返回值上进行可选链式调用</h2>
-
-<pre><code class="language-swift">if let buildingIdentifier = john.residence?.address?.buildingIdentifier() {
-    print(&quot;John&#39;s building identifier is \(buildingIdentifier).&quot;)
-}
-</code></pre>
-
-<p>在可选值的基础上调用<code>buildingIdentifier()</code>方法  返回<code>String?</code>类型值</p>
-
-<pre><code class="language-swift">if let beginsWithThe =
-john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
-    if beginsWithThe {
-        print(&quot;John&#39;s building identifier begins with \&quot;The\&quot;.&quot;)
-    } else {
-        print(&quot;John&#39;s building identifier does not begin with \&quot;The\&quot;.&quot;)
+class VendingMachine {
+    var inventory = [
+                     &quot;Candy Bar&quot;: Item(price: 12, count: 7),
+                     &quot;Chips&quot;: Item(price: 10, count: 4),
+                     &quot;Pretzels&quot;: Item(price: 7, count: 11)
+                     ]
+    var coinsDeposited = 0
+    func dispenseSnack(snack: String) {
+        print(&quot;Dispensing \(snack)&quot;)
+    }
+    //throwing函数 会抛出VendingMachineError错误
+    func vend(itemNamed name: String) throws {
+        guard let item = inventory[name] else {
+            throw VendingMachineError.InvalidSelection
+        }
+        guard item.count &gt; 0 else {
+            throw VendingMachineError.OutOfStock
+        }
+        guard item.price &lt;= coinsDeposited else {
+            throw VendingMachineError.InsufficientFunds(coinsNeeded: item.price - coinsDeposited)
+        }
+        coinsDeposited -= item.price
+        var newItem = item
+        newItem.count -= 1
+        inventory[name] = newItem
+        print(&quot;Dispensing \(name)&quot;)
     }
 }
 </code></pre>
 
-<p>在方法的返回值基础上进行可选链式调用 </p>
+<p>使用了<code>guard</code>语句来提前退出方法，因为<code>throw</code>语句会立即退出方法，保证只有在满足所有条件时才成功卖出商品</p>
 
-<blockquote>
-<p>在方法的圆括号后面加上问号即可</p>
-</blockquote>
+<p><code>vend(itemNamed:)</code>会传递它抛出的所有错误,因此在跳用这个方法时，要么直接处理这些错误(<code>do-catch</code>语句,<code>try?</code>或<code>try!</code>)，要么将错误继续传递下去</p>
+
+<pre><code class="language-swift">let favoriteSnacks = [
+    &quot;Alice&quot;: &quot;Chips&quot;,
+    &quot;Bob&quot;: &quot;Licorice&quot;,
+    &quot;Eve&quot;: &quot;Pretzels&quot;,
+]
+func buyFavoriteSnack(person: String, vendingMachine: VendingMachine) throws {
+    let snackName = favoriteSnacks[person] ?? &quot;Candy Bar&quot;
+    try vendingMachine.vend(itemNamed: snackName)
+}
+//传似抛出的错误
+</code></pre>
+
+<p><code>buyFavoriteSnack</code>方法会查找某人最喜欢的零食，并通过调用<code>vend(itemNamed:)</code>方法尝试购买,通过在<code>vend(itemNamed:)</code>方法前加<code>try</code>关键字</p>
+
+<p><code>throwing</code>构造器和<code>throwing</code>一样可以传递错误</p>
+
+<pre><code class="language-swift">struct PurchasedSnack {
+    let name: String
+    init(name: String, vendingMachine: VendingMachine) throws {
+        try vendingMachine.vend(itemNamed: name)
+        self.name = name
+    }
+}
+</code></pre>
+
+<h3 id="toc_3">用Do-Catch处理错误</h3>
+
+<p><strong><code>do-catch</code>语句运行一段<code>闭包</code>代码来处理错误</strong></p>
+
+<p>在<code>do</code>语句抛出一个错误,与<code>catch</code>中的字句匹配</p>
+
+<pre><code class="language-swift">do {
+    try expression
+    statements
+} catch pattern 1 {
+    statements
+} catch pattern 2 where condition {
+    statements
+}
+</code></pre>
+
+<p><code>catch</code>后面写一个匹配模式来表明这个子句能处理什么样的错误.如果<code>catch</code>没有指定错误模式，那就可以匹配任何错误，并且把错误绑定到名字为<code>error</code>的局部变量</p>
+
+<p><code>catch</code>不必处理抛出的所有错误,错误可以传递到周围,但是必须被处理，可以使外围的<code>do-catch</code>语句 或者是一个<code>throwing</code>函数进行处理</p>
+
+<p>注意:<br/>
+在<code>do</code>语句中的<code>try</code>如果有抛出错误就立刻执行<code>catch</code>语句,并判断这个错误是否要被继续传递下去,否则执行<code>do</code>子句中余下的语句</p>
+
+<h3 id="toc_4">将错误转换成可选值</h3>
+
+<p>通过<code>try?</code>将错误转换为一个可选值,如果表达式有错误抛出,那么表达式的值就为<code>nil</code></p>
+
+<pre><code class="language-swift">func someThrowingFunction() throws -&gt; Int {
+    // ...
+}
+
+let x = try? someThrowingFunction()
+//等效于
+let y: Int?
+do {
+    y = try someThrowingFunction()
+} catch {
+    y = nil
+}
+</code></pre>
+
+<p>此时不论<code>someThrowingFunction()</code>返回值是什么类型,x，y就是该返回值类型的可选类型</p>
+
+<h3 id="toc_5">禁用错误传递</h3>
+
+<p>当我们确定知道某个<code>throwing</code>函数在运行时是不会抛出错误的,那么可以用<code>tr<br/>
+y!</code>来禁用错误传递，它会将调用包装在一个不会有错误抛出的运行时断言中</p>
+
+<h2 id="toc_6">指定清理操作</h2>
+
+<p><code>defer</code>语句在即将离开当前代码块时执行一系列语句，来执行一些必要的清理工作，而不管你是由于哪种方式离开代码块</p>
+
+<ul>
+<li><code>defer</code>语句将代码执行延迟到当前作用域退出之前。</li>
+<li>该语句由<code>defer</code>关键字和要延时执行的语句组成(延迟执行的语句不能包含任何控制转移语句，或是抛出一个错误)。</li>
+<li>延时执行的操作会按照他们被指定时的顺序的相反顺序执行(第一条<code>defer</code>语句中的代码会在第二条<code>defer</code>语句中的代码被执行之后才执行)</li>
+</ul>
+
+<pre><code class="language-swift">func processFile(filename: String) throws {
+    if exists(filename) {
+        let file = open(filename)
+        defer {
+            close(file)
+        }
+        while let line = try file.readline() {
+            // 处理文件。
+        }
+        // close(file) 会在这里被调用，即作用域的最后。
+    }
+}
+</code></pre>
 
                         
                       </div>
@@ -286,7 +305,7 @@ john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/19</span>
+                    <span class="date">2017/8/23</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -325,8 +344,8 @@ john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
     <div id="sidebar" class="sidebar">
           <div id="site-info" class="site-info">
             
-                <h1>栗豫塬的博客</h1>
-                <div class="site-des"></div>
+                <h1>ACEfish-Blog</h1>
+                <div class="site-des">这是一个记录学习的新知识的地方</div>
                 <div class="social">
 
 
@@ -337,7 +356,7 @@ john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
 
 
 
-
+<a target="_blank" class="github" target="_blank" href="https://github.com/ACEfish/ACEfish.github.io" title="GitHub">GitHub</a>
 
   <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
                 
@@ -377,6 +396,12 @@ john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
 	      
 		      
 			      <li class="post">
+			        <a href="15059300219793.html">高级运算符</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15057532270985.html">访问控制</a>
 			      </li>
 		     
@@ -396,12 +421,6 @@ john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
 		      
 			      <li class="post">
 			        <a href="15042587690391.html">扩展</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15042543172572.html">嵌套类型</a>
 			      </li>
 		     
 		  

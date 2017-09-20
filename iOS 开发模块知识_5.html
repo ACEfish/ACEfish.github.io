@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
     
-  iOS 开发模块知识 - 栗豫塬的博客
+  iOS 开发模块知识 - ACEfish-Blog
   
   </title>
   
   
-  <link href="atom.xml" rel="alternate" title="栗豫塬的博客" type="application/atom+xml">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
     <link rel="stylesheet" href="asset/css/foundation.min.css" />
     <link rel="stylesheet" href="asset/css/docs.css" />
     <script src="asset/js/vendor/modernizr.js"></script>
@@ -62,7 +62,7 @@
 
         <nav class="tab-bar show-for-small">
   <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
-    <span> &nbsp; 栗豫塬的博客</span>
+    <span> &nbsp; ACEfish-Blog</span>
   </a>
 </nav>
 
@@ -105,118 +105,72 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15037348375137.html">
+                <a class="clearlink" href="15042543172572.html">
                 
-                  <h1>类型转换</h1>
+                  <h1>嵌套类型</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>在<code>Swift</code>中通过<code>is</code>和<code>as</code>操作符来实现<strong>类型转换</strong>，可以来检查值的类型或者转换类型<br/>
-可以用它检查一个类型是否实现了某个协议</p>
+                        	<p><strong>嵌套类型:</strong>在支持的类型中定义嵌套的枚举、类和结构体</p>
 
-<h2 id="toc_0">定义一个类层次作为例子</h2>
+<p>要在一个类型中嵌套另一个类型,将嵌套类型的定义写在其外部类型的<code>{}</code>内，而且可以根据需要定义多级嵌套</p>
 
-<p>在数组中存了一个父类的两个子类的实例</p>
+<h2 id="toc_0">嵌套类型实践</h2>
 
-<blockquote>
-<p>在数组中存在两种子类类型,会推断这个数组为共同的父类类型<br/>
-此时虽然数组中存的是子类类型实例,但是迭代的话取出的实例会为父类类型，此时我们需要判断和转换类型</p>
-</blockquote>
-
-<h2 id="toc_1">检查类型</h2>
-
-<p>用类型检查操作符<code>is</code> 检查实例是否属于特定子类型，返回<code>bool</code>值</p>
-
-<pre><code class="language-swift">for item in library {
-    if item is Movie { //判断实例是否为 Movie类型
-        movieCount += 1
-    } else if item is Song { //判断实例是否为 Song类型
-        songCount += 1
+<pre><code class="language-swift">struct BlackjackCard {
+    //嵌套的 Suit 枚举//牌的花色
+    enum Suit: Character {
+        case Spades = &quot;块&quot;, Hearts = &quot;心&quot;, Diamonds = &quot;*&quot;, Clubs = &quot;额&quot;
+    }
+    //嵌套的 Rank 枚举
+    enum Rank: Int {
+        case Two = 2, Three, Four, Five, Six, Seven, Eight, Nine, Ten
+        case Jack, Queen, King, Ace
+        struct Values {//用于反应Ace有两种值，而其他只有一个
+            let first: Int, second: Int?
+        }
+        var values: Values {
+            switch self {
+                case .Ace:
+                    return Values(first: 1, second: 11)
+                case .Jack, .Queen, .King:
+                    return Values(first: 10, second: nil)
+                default:
+                    return Values(first: self.rawValue, second: nil)
+            }
+        }
+    }
+    // BlackjackCard 的属性和方法
+    let rank: Rank, suit: Suit
+    var description: String {
+        var output = &quot;suit is \(suit.rawValue),&quot;
+        output += &quot; value is \(rank.values.first)&quot;
+        if let second = rank.values.second {
+            output += &quot; or \(second)&quot;
+        }
+        return output
     }
 }
 </code></pre>
 
-<h2 id="toc_2">向下转型</h2>
+<p><code>BlackjackCard</code>结构体有默认的成员构造器,可以用默认构造器去初始化常量:</p>
 
-<p>当某类型的实例属于一个子类,可以用<code>as?</code>或者<code>as!</code>将其向下转换位子类类型</p>
-
-<p>因为向下转型可能失败，因此提供<code>as?</code>和<code>as!</code>(带上强制解包)，当不确定是否成功时用<code>as?</code> 确定一定成功时<code>as!</code></p>
-
-<pre><code class="language-swift">for item in library {
-    if let movie = item as? Movie {
-        print(&quot;Movie: &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
-    } else if let song = item as? Song {
-        print(&quot;Song: &#39;\(song.name)&#39;, by \(song.artist)&quot;)
-    }
-}
+<pre><code class="language-swift">/**
+尽管Rank和Suit嵌套在BlackjackCard中,类型可以从上下文推断出来,
+因此可以用`.Ace 和.Spades`引用枚举实例
+*/
+let theAceOfSpades = BlackjackCard(rank: .Ace, suit: .Spades)
+print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
+// 打印 “theAceOfSpades: suit is ?, value is 1 or 11”
 </code></pre>
 
-<p><code>if let movie = item as? Movie</code>尝试将<code>item</code>转为<code>Movie</code>类型。若成功，设置一个新的临时常量<code>movie</code>来存储返回的可选<code>Movie</code>中的值</p>
+<h2 id="toc_1">引用嵌套类型</h2>
 
-<h2 id="toc_3">Any和AnyObject的类型转换</h2>
+<p>在嵌套类型的类型名前加上外部类型的类型名作为前缀:</p>
 
-<p>不确定类型的表达方式:<br/>
-<code>Any</code>可以表示任何类型，包括函数类型。<br/>
-<code>AnyObject</code>可以表示任何类类型的实例</p>
-
-<p>建议只在确定需要使用时才使用<code>Any</code>和<code>AnyObject</code></p>
-
-<pre><code class="language-swift">var things = [Any]()
-
-things.append(0)
-things.append(0.0)
-things.append(42)
-things.append(3.14159)
-things.append(&quot;hello&quot;)
-things.append((3.0, 5.0))
-things.append(Movie(name: &quot;Ghostbusters&quot;, director: &quot;Ivan Reitman&quot;))
-things.append({ (name: String) -&gt; String in &quot;Hello, \(name)&quot; })
-</code></pre>
-
-<p>然后我们可以在<code>switch</code>表达式的</p>
-
-<pre><code class="language-swift">for thing in things {
-    switch thing {
-    case 0 as Int:
-        print(&quot;zero as an Int&quot;)
-    case 0 as Double:
-        print(&quot;zero as a Double&quot;)
-    case let someInt as Int:
-        print(&quot;an integer value of \(someInt)&quot;)
-    case let someDouble as Double where someDouble &gt; 0:
-        print(&quot;a positive double value of \(someDouble)&quot;)
-    case is Double:
-        print(&quot;some other double value that I don&#39;t want to print&quot;)
-    case let someString as String:
-        print(&quot;a string value of \&quot;\(someString)\&quot;&quot;)
-    case let (x, y) as (Double, Double):
-        print(&quot;an (x, y) point at \(x), \(y)&quot;)
-    case let movie as Movie:
-        print(&quot;a movie called &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
-    case let stringConverter as String -&gt; String:
-        print(stringConverter(&quot;Michael&quot;))
-    default:
-        print(&quot;something else&quot;)
-    }
-}
-// zero as an Int
-// zero as a Double
-// an integer value of 42
-// a positive double value of 3.14159
-// a string value of &quot;hello&quot;
-// an (x, y) point at 3.0, 5.0
-// a movie called &#39;Ghostbusters&#39;, dir. Ivan Reitman
-// Hello, Michael
-</code></pre>
-
-<blockquote>
-<p><code>Any</code>是可以表示所有类型的值,包括可选类型,当你在用<code>Any</code>类型来表示一个可选值时,会给出警告，此时可以用<code>as</code>操作符显示转换为<code>Any</code></p>
-</blockquote>
-
-<pre><code>let optionalNumber: Int? = 3
-things.append(optionalNumber) // 会有警告
-things.append(optionalNumber as Any) // 没有警告
+<pre><code class="language-swift">let heartsSymbol = BlackjackCard.Suit.Hearts.rawValue
+//红心符号
 </code></pre>
 
                         
@@ -226,7 +180,7 @@ things.append(optionalNumber as Any) // 没有警告
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/26</span>
+                    <span class="date">2017/9/1</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -265,8 +219,8 @@ things.append(optionalNumber as Any) // 没有警告
     <div id="sidebar" class="sidebar">
           <div id="site-info" class="site-info">
             
-                <h1>栗豫塬的博客</h1>
-                <div class="site-des"></div>
+                <h1>ACEfish-Blog</h1>
+                <div class="site-des">这是一个记录学习的新知识的地方</div>
                 <div class="social">
 
 
@@ -277,7 +231,7 @@ things.append(optionalNumber as Any) // 没有警告
 
 
 
-
+<a target="_blank" class="github" target="_blank" href="https://github.com/ACEfish/ACEfish.github.io" title="GitHub">GitHub</a>
 
   <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
                 
@@ -317,6 +271,12 @@ things.append(optionalNumber as Any) // 没有警告
 	      
 		      
 			      <li class="post">
+			        <a href="15059300219793.html">高级运算符</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15057532270985.html">访问控制</a>
 			      </li>
 		     
@@ -336,12 +296,6 @@ things.append(optionalNumber as Any) // 没有警告
 		      
 			      <li class="post">
 			        <a href="15042587690391.html">扩展</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15042543172572.html">嵌套类型</a>
 			      </li>
 		     
 		  
