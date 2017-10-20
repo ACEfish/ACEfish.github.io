@@ -105,96 +105,119 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15017615739867.html">
+                <a class="clearlink" href="15037348375137.html">
                 
-                  <h1>下标</h1>
+                  <h1>类型转换</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>下标可以定义在类、结构体和枚举中，用于访问集合、列表或序列中的元素</p>
+                        	<p>在<code>Swift</code>中通过<code>is</code>和<code>as</code>操作符来实现<strong>类型转换</strong>，可以来检查值的类型或者转换类型<br/>
+可以用它检查一个类型是否实现了某个协议</p>
 
-<p>一个类型可以定义多个下标.通过不同索引类型进行重载.下标不限于一维</p>
+<h2 id="toc_0">定义一个类层次作为例子</h2>
 
-<h2 id="toc_0">下标语法</h2>
+<p>在数组中存了一个父类的两个子类的实例</p>
 
-<p>通过在实例名称后的方括号中传入一个或多个索引值来对实例进行存取</p>
+<blockquote>
+<p>在数组中存在两种子类类型,会推断这个数组为共同的父类类型<br/>
+此时虽然数组中存的是子类类型实例,但是迭代的话取出的实例会为父类类型，此时我们需要判断和转换类型</p>
+</blockquote>
 
-<p>定义下标使用<code>subscript</code>关键字,指定一个或者多个输入参数和返回类型<br/>
-下标可以设置为读写或者只读,通过是<code>getter</code>或者<code>setter</code>实现</p>
+<h2 id="toc_1">检查类型</h2>
 
-<pre><code class="language-swift">subscript(index: Int) -&gt; Int {
-    get {
-        // 返回一个适当的 Int 类型的值
-    }
-    set(newValue) {
-        // 执行适当的赋值操作
-    }
-}
-</code></pre>
+<p>用类型检查操作符<code>is</code> 检查实例是否属于特定子类型，返回<code>bool</code>值</p>
 
-<p>可以不指定<code>setter</code>的参数,默认提供<code>newValue</code></p>
-
-<pre><code class="language-swift">struct TimesTable {
-    let multiplier: Int
-    subscript(index: Int) -&gt; Int {
-        return multiplier * index
-    }
-}
-let threeTimesTable = TimesTable(multiplier: 3)
-print(&quot;six times three is \(threeTimesTable[6])&quot;)
-// 打印 &quot;six times three is 18&quot;
-</code></pre>
-
-<p>定义一个数学公式结构体,只读的下标语法</p>
-
-<h2 id="toc_1">下标用法</h2>
-
-<pre><code class="language-swift">//字典的下标语法
-var numberOfLegs = [&quot;spider&quot;: 8, &quot;ant&quot;: 6, &quot;cat&quot;: 4]
-numberOfLegs[&quot;bird&quot;] = 2
-</code></pre>
-
-<h2 id="toc_2">下标选项</h2>
-
-<p>下标可以使用变量参数和可变参数,但不能使用输入输出参数,也不能给参数设置默认值</p>
-
-<p>下标的重载:<br/>
-类和结构体可以根据自身需要提供多个下标实现,通过入参和类型进行区分</p>
-
-<pre><code class="language-swift">struct Matrix {
-    let rows: Int, columns: Int
-    var grid: [Double]
-    init(rows: Int, columns: Int) {
-        self.rows = rows
-        self.columns = columns
-        //通过传入数组长度和初始值0.0到数组的构造器，将矩阵中每个位置的值初始化为0.0
-        grid = Array(count: rows * columns, repeatedValue: 0.0)
-    }
-    func indexIsValidForRow(row: Int, column: Int) -&gt; Bool {
-        return row &gt;= 0 &amp;&amp; row &lt; rows &amp;&amp; column &gt;= 0 &amp;&amp; column &lt; columns
-    }
-    subscript(row: Int, column: Int) -&gt; Double {
-        get {
-            //断言语句
-            assert(indexIsValidForRow(row, column: column), &quot;Index out of range&quot;)
-            return grid[(row * columns) + column]
-        }
-        set {
-            //断言语句
-            assert(indexIsValidForRow(row, column: column), &quot;Index out of range&quot;)
-            grid[(row * columns) + column] = newValue
-        }
+<pre><code class="language-swift">for item in library {
+    if item is Movie { //判断实例是否为 Movie类型
+        movieCount += 1
+    } else if item is Song { //判断实例是否为 Song类型
+        songCount += 1
     }
 }
 </code></pre>
 
-<pre><code class="language-swift">var matrix = Matrix(rows: 2, columns: 2)
-//下标入参用逗号进行分割
-matrix[0, 1] = 1.5 //将下标为(0,1)位置设置为1.5
+<h2 id="toc_2">向下转型</h2>
+
+<p>当某类型的实例属于一个子类,可以用<code>as?</code>或者<code>as!</code>将其向下转换位子类类型</p>
+
+<p>因为向下转型可能失败，因此提供<code>as?</code>和<code>as!</code>(带上强制解包)，当不确定是否成功时用<code>as?</code> 确定一定成功时<code>as!</code></p>
+
+<pre><code class="language-swift">for item in library {
+    if let movie = item as? Movie {
+        print(&quot;Movie: &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
+    } else if let song = item as? Song {
+        print(&quot;Song: &#39;\(song.name)&#39;, by \(song.artist)&quot;)
+    }
+}
 </code></pre>
 
-<p>通过断言,检查下标入参<code>row</code>和<code>colum</code>的值是否有效.定义方法<code>indexIsValidForRow(_:column:)</code>检查入参<code>row</code>和<code>columu</code>是否越界,断言会在下标月结</p>
+<p><code>if let movie = item as? Movie</code>尝试将<code>item</code>转为<code>Movie</code>类型。若成功，设置一个新的临时常量<code>movie</code>来存储返回的可选<code>Movie</code>中的值</p>
+
+<h2 id="toc_3">Any和AnyObject的类型转换</h2>
+
+<p>不确定类型的表达方式:<br/>
+<code>Any</code>可以表示任何类型，包括函数类型。<br/>
+<code>AnyObject</code>可以表示任何类类型的实例</p>
+
+<p>建议只在确定需要使用时才使用<code>Any</code>和<code>AnyObject</code></p>
+
+<pre><code class="language-swift">var things = [Any]()
+
+things.append(0)
+things.append(0.0)
+things.append(42)
+things.append(3.14159)
+things.append(&quot;hello&quot;)
+things.append((3.0, 5.0))
+things.append(Movie(name: &quot;Ghostbusters&quot;, director: &quot;Ivan Reitman&quot;))
+things.append({ (name: String) -&gt; String in &quot;Hello, \(name)&quot; })
+</code></pre>
+
+<p>然后我们可以在<code>switch</code>表达式的</p>
+
+<pre><code class="language-swift">for thing in things {
+    switch thing {
+    case 0 as Int:
+        print(&quot;zero as an Int&quot;)
+    case 0 as Double:
+        print(&quot;zero as a Double&quot;)
+    case let someInt as Int:
+        print(&quot;an integer value of \(someInt)&quot;)
+    case let someDouble as Double where someDouble &gt; 0:
+        print(&quot;a positive double value of \(someDouble)&quot;)
+    case is Double:
+        print(&quot;some other double value that I don&#39;t want to print&quot;)
+    case let someString as String:
+        print(&quot;a string value of \&quot;\(someString)\&quot;&quot;)
+    case let (x, y) as (Double, Double):
+        print(&quot;an (x, y) point at \(x), \(y)&quot;)
+    case let movie as Movie:
+        print(&quot;a movie called &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
+    case let stringConverter as String -&gt; String:
+        print(stringConverter(&quot;Michael&quot;))
+    default:
+        print(&quot;something else&quot;)
+    }
+}
+// zero as an Int
+// zero as a Double
+// an integer value of 42
+// a positive double value of 3.14159
+// a string value of &quot;hello&quot;
+// an (x, y) point at 3.0, 5.0
+// a movie called &#39;Ghostbusters&#39;, dir. Ivan Reitman
+// Hello, Michael
+</code></pre>
+
+<blockquote>
+<p><code>Any</code>是可以表示所有类型的值,包括可选类型,当你在用<code>Any</code>类型来表示一个可选值时,会给出警告，此时可以用<code>as</code>操作符显示转换为<code>Any</code></p>
+</blockquote>
+
+<pre><code>let optionalNumber: Int? = 3
+things.append(optionalNumber) // 会有警告
+things.append(optionalNumber as Any) // 没有警告
+</code></pre>
 
                         
                       </div>
@@ -203,7 +226,7 @@ matrix[0, 1] = 1.5 //将下标为(0,1)位置设置为1.5
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/3</span>
+                    <span class="date">2017/8/26</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -294,31 +317,31 @@ matrix[0, 1] = 1.5 //将下标为(0,1)位置设置为1.5
 	      
 		      
 			      <li class="post">
-			        <a href="15059300219793.html">高级运算符</a>
+			        <a href="15082392311480.html">实战:ARKit捕捉平面</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15057532270985.html">访问控制</a>
+			        <a href="15082385455420.html">ARCamera</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15052932669633.html">泛型</a>
+			        <a href="15082349866219.html">ARSession</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15047511695312.html">协议</a>
+			        <a href="15082316038998.html">ARSCNView</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15042587690391.html">扩展</a>
+			        <a href="15082286345415.html">ARKit框架API简介</a>
 			      </li>
 		     
 		  

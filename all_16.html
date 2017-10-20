@@ -105,147 +105,255 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15005513837564.html">
+                <a class="clearlink" href="15028525854956.html">
                 
-                  <h1>类和结构体</h1>
+                  <h1>自动引用计数</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>可以使用完全相同的语法规则来为<code>类</code>和<code>结构体</code>定义属性(<code>常量</code>、<code>变量</code>)和添加方法，从而扩展类和结构体的功能</p>
+                        	<p>与<code>OC</code>相同 <code>Swift</code>使用自动引用计数(ARC)来跟踪和管理应用程序内存</p>
 
-<p>与其他编程语言不同,<code>swift</code>不要求为自定义类和结构创建独立的接口和实现文件.所要做的是在一个单一文件中定义一个类或者结构体，系统将会自动生成面向其它代码的外部接口</p>
+<h2 id="toc_0">工作机制</h2>
 
-<h2 id="toc_0">类和结构体对比</h2>
+<p>创建类的实例时,<code>ARC</code>会分配一块内存来存储实例信息.不再使用该实例,ARC将其释放.当是实例被释放后，其方法或属性均不能被访问或调用。<br/>
+因此，为了确保使用中的实例不会被销毁，ARC 会跟踪和计算每一个实例正在被多少属性，常量和变量所引用。哪怕实例的引用数为1，ARC都不会销毁这个实例。</p>
+
+<h2 id="toc_1">循环强引用</h2>
+
+<p>如果两个类实例互相引用,那么类实例的强引用数永远不能变为0，这就是<strong>循环强引用</strong></p>
+
+<h2 id="toc_2">解决循环强引用方法</h2>
+
+<p>解决办法: <strong>弱引用</strong> <strong>无主引用</strong></p>
+
+<p>将循环引用中一个实例对另外的实例不保持强引用</p>
+
+<p>当其他的实例有更短的生命周期时,使用弱引用，即其 实例 析构在先时; 当其他实例有相同或者更长的声明周期时,请使用无主引用</p>
+
+<h3 id="toc_3">弱引用</h3>
+
+<p>弱引用不会对其引用的实例保持强引用，因而不会阻止<code>ARC</code>销毁被引用的实例。</p>
+
+<p>声明属性或变量时,在前面加上<code>weak</code>关键字表明是个弱引用</p>
+
+<p><code>ARC</code>会在引用的实例被销毁后自动将其赋值为<code>nil</code>.并且弱引用可以允许它们的值运行时赋值为<code>nil</code>，所以会被定义为可选类型变量而不是常量</p>
+
+<p>弱引用为可选类型变量,可以通过检查是否为nil,防止访问已经销毁的实例的引用</p>
 
 <blockquote>
-<p>类通过引用计数进行多次引用,结构体通过复制的方式在代码中传递,不使用引用计数</p>
+<p>在<code>ARC</code>设置弱引用为<code>nil</code>时,属性观察不会被触发</p>
 </blockquote>
 
-<h3 id="toc_1">定义语法</h3>
-
-<p>通过关键之<code>class</code>和<code>struct</code>来分别标识类和结构体</p>
-
-<blockquote>
-<p>类和结构体名使用首字母大写的方式进行命名</p>
-</blockquote>
-
-<pre><code class="language-swift">//定义一个结构体 描述显示器屏幕分辨率
-struct Resolution {
-    var width = 0
-    var height = 0
-    //当这两个属性被初始化为整数 0 的时候，它们会被推断为 Int 类型。
+<pre><code class="language-swift">class Person {
+    let name: String
+    init(name: String) { self.name = name }
+    var apartment: Apartment?
+    deinit { print(&quot;\(name) is being deinitialized&quot;) }
 }
 
-//定义一个类 描述视频显示器的特定模式
-//四个变量存储属性
-class VideoMode {
-    var resolution = Resolution()//分辨率 结构体
-    var interlaced = false
-    var frameRate = 0.0
-    var name: String?
+class Apartment {
+    let unit: String
+    init(unit: String) { self.unit = unit }
+    weak var tenant: Person?
+    deinit { print(&quot;Apartment \(unit) is being deinitialized&quot;) }
+}
+
+var john: Person?
+var unit4A: Apartment?
+john = Person(name: &quot;John Appleseed&quot;)
+unit4A = Apartment(unit: &quot;4A&quot;)
+john!.apartment = unit4A
+unit4A!.tenant = john
+//因为Apartment 中 的 tenant 属性为弱引用,因此即使这样也不会产生循环引用
+
+john = nil
+// 打印 “John Appleseed is being deinitialized”
+
+unit4A = nil
+// 打印 “Apartment 4A is being deinitialized”
+
+</code></pre>
+
+<p>变量<code>john</code>和<code>unit4A</code>在被赋值为<code>nil</code>后，<code>Person</code>实例和<code>Apartment</code>实例的析构函数都打印出“销毁”的信息</p>
+
+<h3 id="toc_4">无主引用</h3>
+
+<p>与弱引用类似,无主引用不会保持住引用的实例<br/>
+与弱引用不同,<strong>无主引用用在与其他实例有相同或者更长声明周期时使用</strong><br/>
+在属性前加<code>unowned</code>关键字进行声明</p>
+
+<p>无主引用为非可选类型,因此<code>ARC</code>无法在实例被销毁后将无主引用设置为<code>nil</code></p>
+
+<p><em>注意</em>:</p>
+
+<blockquote>
+<p>使用无主引用，必须<strong>保证引用始终指向一个未销毁的实例</strong><br/>
+试图在实例被销毁后，访问该实例的无主引用，会触发运行时错误</p>
+</blockquote>
+
+<p>举个栗子:<br/>
+<code>Customer</code>客户和<code>CreditCard</code>银行卡之间的关系,两个类都将另外一个类的实例作为自身属性,关系是客户可能没有银行卡,但是银行卡一定有客户,因此将银行卡的<code>customer</code>设置为无主引用</p>
+
+<pre><code class="language-swift">
+class Customer {
+    let name: String
+    var card: CreditCard?
+    init(name: String) {
+        self.name = name
+    }
+    deinit { print(&quot;\(name) is being deinitialized&quot;) }
+}
+
+class CreditCard {
+    let number: UInt64 //确保在32、64位机器上均可以保存16位的卡号
+    unowned let customer: Customer
+    init(number: UInt64, customer: Customer) {
+        self.number = number
+        self.customer = customer
+    }
+    deinit { print(&quot;Card #\(number) is being deinitialized&quot;) }
+}
+
+
+var john: Customer?
+john = Customer(name: &quot;John Appleseed&quot;)
+john!.card = CreditCard(number: 1234_5678_9012_3456, customer: john!)
+
+john = nil
+// 打印 “John Appleseed is being deinitialized”
+// 打印 ”Card #1234567890123456 is being deinitialized”
+
+</code></pre>
+
+<p><code>Customer</code>实例持有对<code>CreditCard</code>实例的强引用，而<code>CreditCard</code>实例持有对 <code>Customer</code>实例的无主引用</p>
+
+<blockquote>
+<p>对于需要禁用运行时的安全检查的情况（例如，出于性能方面的原因），Swift还提供了不安全的无主引用。与所有不安全的操作一样，你需要负责检查代码以确保其安全性。 你可以通过 <code>unowned(unsafe)</code>来声明不安全无主引用。如果你试图在实例被销毁后，访问该实例的不安全无主引用，你的程序会尝试访问该实例之前所在的内存地址，这是一个不安全的操作</p>
+</blockquote>
+
+<h3 id="toc_5">无主引用以及隐式解析可选属性</h3>
+
+<pre><code class="language-swift">class Country {
+    let name: String
+    var capitalCity: City!
+    init(name: String, capitalName: String) {
+        self.name = name
+        self.capitalCity = City(name: capitalName, country: self)
+    }
+}
+
+class City {
+    let name: String
+    unowned let country: Country
+    init(name: String, country: Country) {
+        self.name = name
+        self.country = country
+    }
 }
 </code></pre>
 
-<p><code>存储属性</code>是被<code>捆绑</code>和<code>存储</code>在类或结构体中的常量或变量。</p>
+<p>我们在<code>Country</code>的<code>capitalCity</code>属性声明为<code>City!</code>隐式解析可选类型的属性,表明像其他可选类型一样，默认值为<code>nil</code>，但是不需要展开他的值就能访问</p>
 
-<h3 id="toc_2">类和结构体实例</h3>
+<p>因为<code>capitalCity</code>的默认值为默认为<code>nil</code>，因此在构造country时,当name赋值以后,初始化就完成了,此时我们就能把这个初始化的<code>country</code>实例传递给<code>City</code>来构造City实例</p>
 
-<p>初始化结构体或类的实例</p>
+<h2 id="toc_6">闭包引起的循环强引用</h2>
 
-<pre><code class="language-swift">let someResolution = Resolution()
-let someVideoMode = VideoMode()
-</code></pre>
+<p>闭包和类 类似,都是引用类型,因此,将闭包赋值为某属性时,是将这个闭包的引用赋值给属性,因此当闭包体中访问实例的某个属性时,就会造成循环引用</p>
 
-<p>通过这种方式创建类或者结构体实例,属性都会被初始化为默认值.</p>
-
-<h3 id="toc_3">属性访问</h3>
-
-<p>通过点语法访问实例属性。</p>
-
-<pre><code class="language-swift">//访问结构体属性
-print(&quot;The width of someResolution is \(someResolution.width)&quot;)
-// 打印 &quot;The width of someResolution is 0&quot;
-
-//访问变量属性
-someVideoMode.resolution.width = 1280
-print(&quot;The width of someVideoMode is now \(someVideoMode.resolution.width)&quot;)
-// 打印 &quot;The width of someVideoMode is now 1280&quot;
+<pre><code class="language-swift">class HTMLElement {
+    let name: String
+    let text: String?
+    lazy var asHTML: Void -&gt; String = {
+        if let text = self.text {
+            return &quot;&lt;\(self.name)&gt;\(text)&lt;/\(self.name)&gt;&quot;
+        } else {
+            return &quot;&lt;\(self.name) /&gt;&quot;
+        }
+    }
+    init(name: String, text: String? = nil) {
+        self.name = name
+        self.text = text
+    }
+    deinit {
+        print(&quot;\(name) is being deinitialized&quot;)
+    }
+}
 </code></pre>
 
 <blockquote>
-<p>在OC中是不能直接设置结构体子属性值，swift中可以直接设置比如<code>resolution.width</code>属性值,在oc中我们需要给整个结构体<code>resolution</code>设置新值</p>
+<p><code>asHTML</code>声明为<code>lazy</code>属性，因为只有当元素确实需要被处理为<code>HTML</code>输出的字符串时，才需要使用<code>asHTML</code>。也就是说，在默认的闭包中可以使用<code>self</code>，因为只有当初始化完成以及<code>self</code>确实存在后，才能访问<code>lazy</code>属性。</p>
 </blockquote>
 
-<h3 id="toc_4">结构体类型成员逐一构造器</h3>
+<p><strong>闭包捕获列表</strong>解决闭包引起的循环引用</p>
 
-<p>对于<strong>结构体</strong><br/>
-所有结构体都有一个自动生成的<strong>成员逐一构造器</strong>，用来初始化新结构体成员的属性</p>
+<p>对于一个类的闭包属性,想要改变这个属性的行为,可以通过给这个属性再赋值一个闭包</p>
 
-<pre><code class="language-swift">//通过属性名称
-let vga = Resolution(width:640, height: 480)
-</code></pre>
+<p><code>HTMLElement</code>有类和作为<code>asHTML</code>默认值的闭包之间的循环强引用</p>
 
-<p>类是没有这个成员构造器的</p>
+<p>注意:<br/>
+虽然闭包中多次使用<code>self</code>，但是它只捕获<code>HTMLElement</code>实例的一个强引用</p>
 
-<h2 id="toc_5">结构体和枚举时值类型</h2>
+<p>此时<code>HTMLElement</code>实例和它的闭包是不会被销毁和释放的</p>
 
-<p><strong>值类型被赋予给一个变量、常量或者被传递给一个函数的时候，其值会被拷贝</strong></p>
+<h2 id="toc_7">解决闭包引起的循环强引用</h2>
 
-<p>实际上,在<code>Swift</code>中，所有的基本类型：整数（Integer）、浮点数（floating-point）、布尔值（Boolean）、字符串（string)、数组（array）和字典（dictionary），都是值类型，并且在底层都是<strong>以结构体的形式所实现</strong></p>
-
-<p>在<code>swift</code>中,所有结构体和枚举类型都是值类型。因此,它们的实例以及实例中包含的值类型属性,在传递时都会被复制</p>
-
-<pre><code class="language-swift">let hd = Resolution(width: 1920, height: 1080)
-var cinema = hd
-cinema.width = 2048
-print(&quot;cinema is now \(cinema.width) pixels wide&quot;)// &quot;cinema is now 2048 pixels wide&quot;
-print(&quot;hd is still \(hd.width) pixels wide&quot;)//&quot;hd is still 1920 pixels wide&quot;
-</code></pre>
-
-<p>在对结构体进行赋值的时候,进行了拷贝,cinema和hd是完全不同的两个实例,因此改变了cinema的宽对hd没有影响</p>
-
-<p>枚举也是值类型,遵循相同的行为准则</p>
-
-<h2 id="toc_6">类是引用类型</h2>
-
-<p>与值类型不同,引用类型在传递时,值不会被拷贝.因此，<strong>引用的是已存在的实例本身而不是其拷贝</strong>。</p>
-
-<pre><code class="language-swift">let tenEighty = VideoMode()
-tenEighty.frameRate = 25.0
-
-let alsoTenEighty = tenEighty
-alsoTenEighty.frameRate = 30.0
-print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&quot;)//30.0
-</code></pre>
-
-<p>类是引用类型，所以<code>tenEight</code>和<code>alsoTenEight</code>实际上引用的是相同的<code>VideoMode</code>实例<br/>
-注意:<br/>
-虽然<code>alsoTenEighty</code>为常量但是仍然可以改变<code>alsoTenEighty.frameRate</code>因为这两个常量的值并未改变,这个常量的值存储的并不是<code>ViewMode</code>的实例,而是对其的引用.</p>
-
-<h3 id="toc_7">恒等运算符</h3>
-
-<p>等价于 <code>===</code>  不等价于 <code>!==</code> 用来检测两个变量或常量是否引用同一个实例</p>
-
-<p><code>===</code>与<code>==</code>的不同:<br/>
-“等价于”表示两个类类型（class type）的常量或者变量引用同一个类实例。<br/>
-“等于”表示两个实例的值“相等”或“相同”，判定时要遵照设计者定义的评判标准</p>
-
-<h3 id="toc_8">指针</h3>
-
-<p>一个引用实例的<code>swift</code>常量或者变量,与C指针类似,但是并不直接指向某个内存地址,也不需要用<code>*</code>表明在创建引用.</p>
-
-<h2 id="toc_9">类和结构体的选择</h2>
-
-<h2 id="toc_10">字符串、数组、字典类型的赋值和复制行为</h2>
-
-<p>因为<code>swift</code>中很多基本类型,<code>String</code>，<code>Array</code>和<code>Dictionary</code>类型均以结构体的形式实现，赋值给新的常量变量或者传入函数方法中的时候会被拷贝</p>
+<p>在定义闭包时同时定义<strong>捕获列表</strong>作为闭包的一部分，捕获列表定义了闭包体内捕获一个或多个引用类型的规则.声明捕获的引用为弱引用或者无主引用,而不是强引用</p>
 
 <blockquote>
-<p>在OC中<code>NSString</code>，<code>NSArray</code>和<code>NSDictionary</code>是以类的形式实现,不会发生值拷贝而是传递引用</p>
-
-<p>Swift会在绝对必要时才执行实际拷贝,确保性能最优,因此我们没有必要回避赋值来增加性能</p>
+<p><code>Swift</code>规定:在闭包中使用<code>self</code>的成员，要使用<code>self.someProperty</code>或者<code>self.someMethod()</code>，而不是使用<code>someProperty</code>或<code>someMethod()</code></p>
 </blockquote>
+
+<h3 id="toc_8">定义捕获列表</h3>
+
+<p>捕获列表由一对元素组成,一个是<code>weak</code>或<code>unowned</code>关键字,另一个是类实例的引用如<code>self</code>或初始化的变量.在方括号中用逗号隔开</p>
+
+<pre><code class="language-swift">//如果闭包有参数列表和返回类型，把捕获列表放在它们前面
+lazy var someClosure: (Int, String) -&gt; String = {
+    [unowned self, weak delegate = self.delegate!] (index: Int, stringToProcess: String) -&gt; String in
+    // 这里是闭包的函数体
+}
+
+/**
+如果闭包没有指明参数列表或者返回类型，即它们会通过上下文推断，
+那么可以把捕获列表和关键字 in 放在闭包最开始的地方
+*/
+
+lazy var someClosure: Void -&gt; String = {
+    [unowned self, weak delegate = self.delegate!] in
+    // 这里是闭包的函数体
+}
+
+</code></pre>
+
+<h3 id="toc_9">弱引用和无主引用</h3>
+
+<p>在闭包和捕获的实例总是互相引用并且总是同时销毁时，将闭包内的捕获定义为<code>无主引用</code>。(即被捕获的引用不会变为nil使用无主引用)<br/>
+在被捕获的引用可能会变为<code>nil</code>时，将闭包内的捕获定义为<code>弱引用</code>，弱引用总是可选类型,在引用的实例被销毁后自动置为<code>nil</code></p>
+
+<pre><code class="language-swift">class HTMLElement {
+    let name: String
+    let text: String?
+    lazy var asHTML: Void -&gt; String = {
+        [unowned self] in
+        if let text = self.text {
+            return &quot;&lt;\(self.name)&gt;\(text)&lt;/\(self.name)&gt;&quot;
+        } else {
+            return &quot;&lt;\(self.name) /&gt;&quot;
+        }
+    }
+    init(name: String, text: String? = nil) {
+        self.name = name
+        self.text = text
+    }
+    deinit {
+        print(&quot;\(name) is being deinitialized&quot;)
+    }
+}
+</code></pre>
+
+<p>在<code>asHTML</code>闭包中多了一个捕获列表，<code>[unowned self]</code>将self声明为无主引用<br/>
+这时候没有了循环引用,我们就可以销毁<code>HTMLElement</code>实例了</p>
 
                         
                       </div>
@@ -254,7 +362,7 @@ print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&qu
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/7/20</span>
+                    <span class="date">2017/8/16</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -345,31 +453,31 @@ print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&qu
 	      
 		      
 			      <li class="post">
-			        <a href="15059300219793.html">高级运算符</a>
+			        <a href="15082392311480.html">实战:ARKit捕捉平面</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15057532270985.html">访问控制</a>
+			        <a href="15082385455420.html">ARCamera</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15052932669633.html">泛型</a>
+			        <a href="15082349866219.html">ARSession</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15047511695312.html">协议</a>
+			        <a href="15082316038998.html">ARSCNView</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15042587690391.html">扩展</a>
+			        <a href="15082286345415.html">ARKit框架API简介</a>
 			      </li>
 		     
 		  

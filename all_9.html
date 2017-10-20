@@ -105,255 +105,224 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15028525854956.html">
+                <a class="clearlink" href="15052932669633.html">
                 
-                  <h1>自动引用计数</h1>
+                  <h1>泛型</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>与<code>OC</code>相同 <code>Swift</code>使用自动引用计数(ARC)来跟踪和管理应用程序内存</p>
+                        	<p><strong>泛型:</strong>根据自定义的需求，编写适用于任意类型，灵活可用的函数和类型</p>
 
-<h2 id="toc_0">工作机制</h2>
+<h2 id="toc_0">泛型函数</h2>
 
-<p>创建类的实例时,<code>ARC</code>会分配一块内存来存储实例信息.不再使用该实例,ARC将其释放.当是实例被释放后，其方法或属性均不能被访问或调用。<br/>
-因此，为了确保使用中的实例不会被销毁，ARC 会跟踪和计算每一个实例正在被多少属性，常量和变量所引用。哪怕实例的引用数为1，ARC都不会销毁这个实例。</p>
+<p>泛型函数适用与任何类型</p>
 
-<h2 id="toc_1">循环强引用</h2>
-
-<p>如果两个类实例互相引用,那么类实例的强引用数永远不能变为0，这就是<strong>循环强引用</strong></p>
-
-<h2 id="toc_2">解决循环强引用方法</h2>
-
-<p>解决办法: <strong>弱引用</strong> <strong>无主引用</strong></p>
-
-<p>将循环引用中一个实例对另外的实例不保持强引用</p>
-
-<p>当其他的实例有更短的生命周期时,使用弱引用，即其 实例 析构在先时; 当其他实例有相同或者更长的声明周期时,请使用无主引用</p>
-
-<h3 id="toc_3">弱引用</h3>
-
-<p>弱引用不会对其引用的实例保持强引用，因而不会阻止<code>ARC</code>销毁被引用的实例。</p>
-
-<p>声明属性或变量时,在前面加上<code>weak</code>关键字表明是个弱引用</p>
-
-<p><code>ARC</code>会在引用的实例被销毁后自动将其赋值为<code>nil</code>.并且弱引用可以允许它们的值运行时赋值为<code>nil</code>，所以会被定义为可选类型变量而不是常量</p>
-
-<p>弱引用为可选类型变量,可以通过检查是否为nil,防止访问已经销毁的实例的引用</p>
-
-<blockquote>
-<p>在<code>ARC</code>设置弱引用为<code>nil</code>时,属性观察不会被触发</p>
-</blockquote>
-
-<pre><code class="language-swift">class Person {
-    let name: String
-    init(name: String) { self.name = name }
-    var apartment: Apartment?
-    deinit { print(&quot;\(name) is being deinitialized&quot;) }
+<pre><code class="language-swift">func swapTwoValues&lt;T&gt;(_ a: inout T, _ b: inout T) {
+    let temporaryA = a
+    a = b
+    b = temporaryA
 }
-
-class Apartment {
-    let unit: String
-    init(unit: String) { self.unit = unit }
-    weak var tenant: Person?
-    deinit { print(&quot;Apartment \(unit) is being deinitialized&quot;) }
-}
-
-var john: Person?
-var unit4A: Apartment?
-john = Person(name: &quot;John Appleseed&quot;)
-unit4A = Apartment(unit: &quot;4A&quot;)
-john!.apartment = unit4A
-unit4A!.tenant = john
-//因为Apartment 中 的 tenant 属性为弱引用,因此即使这样也不会产生循环引用
-
-john = nil
-// 打印 “John Appleseed is being deinitialized”
-
-unit4A = nil
-// 打印 “Apartment 4A is being deinitialized”
-
 </code></pre>
 
-<p>变量<code>john</code>和<code>unit4A</code>在被赋值为<code>nil</code>后，<code>Person</code>实例和<code>Apartment</code>实例的析构函数都打印出“销毁”的信息</p>
+<p>函数的泛型版本:<br/>
+1）使用占位类型名来代替实际类型名(这里用字母<code>T</code>表示),这里并没有指明T必须是什么类型,而是a与b类型相同,在实际调用时才根据传入类型决定<code>T</code>所代表的类型<br/>
+2）在函数名后有<code>&lt;T&gt;</code>，声明了<code>T</code>是函数内定义的占位类型名<br/>
+因此，函数<code>swapTwoInts(_:_:)</code>可以接受任意相同类型的参数</p>
 
-<h3 id="toc_4">无主引用</h3>
+<h2 id="toc_1">类型参数</h2>
 
-<p>与弱引用类似,无主引用不会保持住引用的实例<br/>
-与弱引用不同,<strong>无主引用用在与其他实例有相同或者更长声明周期时使用</strong><br/>
-在属性前加<code>unowned</code>关键字进行声明</p>
+<p>类型参数指定并命名一个占位类型,紧随在函数名后,用尖括号括起来(如:<code>&lt;T&gt;</code>),也可以提供多个参数用逗号隔开</p>
 
-<p>无主引用为非可选类型,因此<code>ARC</code>无法在实例被销毁后将无主引用设置为<code>nil</code></p>
+<p>可以用指定的类型参数作为函数的参数类型或返回类型，</p>
 
-<p><em>注意</em>:</p>
+<h2 id="toc_2">命名类型参数</h2>
 
-<blockquote>
-<p>使用无主引用，必须<strong>保证引用始终指向一个未销毁的实例</strong><br/>
-试图在实例被销毁后，访问该实例的无主引用，会触发运行时错误</p>
-</blockquote>
+<p>我们可以使用有意义的单词来表明类型参数和泛型函数关系,当没有联系时,通常使用单个字母来命名</p>
 
-<p>举个栗子:<br/>
-<code>Customer</code>客户和<code>CreditCard</code>银行卡之间的关系,两个类都将另外一个类的实例作为自身属性,关系是客户可能没有银行卡,但是银行卡一定有客户,因此将银行卡的<code>customer</code>设置为无主引用</p>
+<p><strong>使用大写字母开头的驼峰命名法来为类型参数命名</strong></p>
 
-<pre><code class="language-swift">
-class Customer {
-    let name: String
-    var card: CreditCard?
-    init(name: String) {
-        self.name = name
+<h2 id="toc_3">泛型类型</h2>
+
+<p><strong>泛型类型：</strong>除了泛型函数，Swift 还允许你定义泛型类型。这些自定义类、结构体和枚举可以适用于任何类型,类型于<code>Array</code>和<code>Dictionary</code></p>
+
+<pre><code class="language-swift">//泛型 Stack（栈型） 结构体
+struct Stack&lt;Element&gt; {
+    var items = [Element]()
+    mutating func push(item: Element) {
+        items.append(item)
     }
-    deinit { print(&quot;\(name) is being deinitialized&quot;) }
-}
-
-class CreditCard {
-    let number: UInt64 //确保在32、64位机器上均可以保存16位的卡号
-    unowned let customer: Customer
-    init(number: UInt64, customer: Customer) {
-        self.number = number
-        self.customer = customer
-    }
-    deinit { print(&quot;Card #\(number) is being deinitialized&quot;) }
-}
-
-
-var john: Customer?
-john = Customer(name: &quot;John Appleseed&quot;)
-john!.card = CreditCard(number: 1234_5678_9012_3456, customer: john!)
-
-john = nil
-// 打印 “John Appleseed is being deinitialized”
-// 打印 ”Card #1234567890123456 is being deinitialized”
-
-</code></pre>
-
-<p><code>Customer</code>实例持有对<code>CreditCard</code>实例的强引用，而<code>CreditCard</code>实例持有对 <code>Customer</code>实例的无主引用</p>
-
-<blockquote>
-<p>对于需要禁用运行时的安全检查的情况（例如，出于性能方面的原因），Swift还提供了不安全的无主引用。与所有不安全的操作一样，你需要负责检查代码以确保其安全性。 你可以通过 <code>unowned(unsafe)</code>来声明不安全无主引用。如果你试图在实例被销毁后，访问该实例的不安全无主引用，你的程序会尝试访问该实例之前所在的内存地址，这是一个不安全的操作</p>
-</blockquote>
-
-<h3 id="toc_5">无主引用以及隐式解析可选属性</h3>
-
-<pre><code class="language-swift">class Country {
-    let name: String
-    var capitalCity: City!
-    init(name: String, capitalName: String) {
-        self.name = name
-        self.capitalCity = City(name: capitalName, country: self)
-    }
-}
-
-class City {
-    let name: String
-    unowned let country: Country
-    init(name: String, country: Country) {
-        self.name = name
-        self.country = country
+    mutating func pop() -&gt; Element {
+        return items.removeLast()
     }
 }
 </code></pre>
 
-<p>我们在<code>Country</code>的<code>capitalCity</code>属性声明为<code>City!</code>隐式解析可选类型的属性,表明像其他可选类型一样，默认值为<code>nil</code>，但是不需要展开他的值就能访问</p>
+<p>使用占位类型<code>Element</code>，这个类型参数包裹在紧随结构体名的一对尖括号里（<code>&lt;Element&gt;</code>）,类型参数用来初始化数组,用来作为<code>push</code><code>pop</code>方法的参数</p>
 
-<p>因为<code>capitalCity</code>的默认值为默认为<code>nil</code>，因此在构造country时,当name赋值以后,初始化就完成了,此时我们就能把这个初始化的<code>country</code>实例传递给<code>City</code>来构造City实例</p>
+<p><code>Stack</code>是泛型类型,可以创建任意有效类型栈<br/>
+可以通过在尖括号写出栈中需要存储的数据类型来创建并初始化一个<code>Stack</code>实例</p>
 
-<h2 id="toc_6">闭包引起的循环强引用</h2>
+<pre><code class="language-swift">var stackOfStrings = Stack&lt;String&gt;()
+stackOfStrings.push(&quot;uno&quot;)
+stackOfStrings.push(&quot;dos&quot;)
+let fromTheTop = stackOfStrings.pop()
+</code></pre>
 
-<p>闭包和类 类似,都是引用类型,因此,将闭包赋值为某属性时,是将这个闭包的引用赋值给属性,因此当闭包体中访问实例的某个属性时,就会造成循环引用</p>
+<h2 id="toc_4">扩展泛型类型</h2>
 
-<pre><code class="language-swift">class HTMLElement {
-    let name: String
-    let text: String?
-    lazy var asHTML: Void -&gt; String = {
-        if let text = self.text {
-            return &quot;&lt;\(self.name)&gt;\(text)&lt;/\(self.name)&gt;&quot;
-        } else {
-            return &quot;&lt;\(self.name) /&gt;&quot;
+<p>在扩展泛型类型时，不需要在扩展的定义中提供类型参数列表。可以在扩展中直接使用原始类型参数列表,并且这些来自原始类型中的参数名称会被用作原始定义中类型参数的引用。</p>
+
+<pre><code class="language-swift">//扩展泛型类型增加只读的计算属性
+extension Stack {
+    var topItem: Element? {
+        return items.isEmpty ? nil : items[items.count - 1]
+    }
+}
+</code></pre>
+
+<p>返回`<code>item</code>数组的最后一个元素</p>
+
+<p>扩展中直接使用了已有的类型参数<code>Element</code></p>
+
+<h2 id="toc_5">类型约束</h2>
+
+<p>给泛型函数和泛型类型添加一个特定的约束，可以指定一个类型参数必须继承自指定类，或者符合协议或协议组合</p>
+
+<p>例如:<code>Dictionary</code>类型约束了字典中的键必须是可哈希的（符合<code>Hashable协议</code>），也就是必须有唯一的方法表示她，才能根据键进行判断</p>
+
+<h3 id="toc_6">类型约束语法</h3>
+
+<p>在类型参数名后放置类型或协议名用冒号隔开来进行约束，</p>
+
+<pre><code class="language-swift">//类型约束的泛型函数
+func someFunction&lt;T: SomeClass, U: SomeProtocol&gt;(someT: T, someU: U) {
+    // 这里是泛型函数的函数体部分
+}
+</code></pre>
+
+<p>约束T必须是SomeClass的子类，要求U必须遵循SomeProtocol的</p>
+
+<h3 id="toc_7">类型约束实践</h3>
+
+<p>我们新建一个泛型函数来从实现从数组中查找特定元素的功能;</p>
+
+<pre><code class="language-swift">//从数组中查找特定自字符串的非泛型函数
+func findIndex(ofString valueToFind: String, in array: [String]) -&gt; Int? {
+    for (index, value) in array.enumerated() {
+        if value == valueToFind {
+            return index
         }
     }
-    init(name: String, text: String? = nil) {
-        self.name = name
-        self.text = text
-    }
-    deinit {
-        print(&quot;\(name) is being deinitialized&quot;)
-    }
-}
-</code></pre>
-
-<blockquote>
-<p><code>asHTML</code>声明为<code>lazy</code>属性，因为只有当元素确实需要被处理为<code>HTML</code>输出的字符串时，才需要使用<code>asHTML</code>。也就是说，在默认的闭包中可以使用<code>self</code>，因为只有当初始化完成以及<code>self</code>确实存在后，才能访问<code>lazy</code>属性。</p>
-</blockquote>
-
-<p><strong>闭包捕获列表</strong>解决闭包引起的循环引用</p>
-
-<p>对于一个类的闭包属性,想要改变这个属性的行为,可以通过给这个属性再赋值一个闭包</p>
-
-<p><code>HTMLElement</code>有类和作为<code>asHTML</code>默认值的闭包之间的循环强引用</p>
-
-<p>注意:<br/>
-虽然闭包中多次使用<code>self</code>，但是它只捕获<code>HTMLElement</code>实例的一个强引用</p>
-
-<p>此时<code>HTMLElement</code>实例和它的闭包是不会被销毁和释放的</p>
-
-<h2 id="toc_7">解决闭包引起的循环强引用</h2>
-
-<p>在定义闭包时同时定义<strong>捕获列表</strong>作为闭包的一部分，捕获列表定义了闭包体内捕获一个或多个引用类型的规则.声明捕获的引用为弱引用或者无主引用,而不是强引用</p>
-
-<blockquote>
-<p><code>Swift</code>规定:在闭包中使用<code>self</code>的成员，要使用<code>self.someProperty</code>或者<code>self.someMethod()</code>，而不是使用<code>someProperty</code>或<code>someMethod()</code></p>
-</blockquote>
-
-<h3 id="toc_8">定义捕获列表</h3>
-
-<p>捕获列表由一对元素组成,一个是<code>weak</code>或<code>unowned</code>关键字,另一个是类实例的引用如<code>self</code>或初始化的变量.在方括号中用逗号隔开</p>
-
-<pre><code class="language-swift">//如果闭包有参数列表和返回类型，把捕获列表放在它们前面
-lazy var someClosure: (Int, String) -&gt; String = {
-    [unowned self, weak delegate = self.delegate!] (index: Int, stringToProcess: String) -&gt; String in
-    // 这里是闭包的函数体
+    return nil
 }
 
-/**
-如果闭包没有指明参数列表或者返回类型，即它们会通过上下文推断，
-那么可以把捕获列表和关键字 in 放在闭包最开始的地方
-*/
 
-lazy var someClosure: Void -&gt; String = {
-    [unowned self, weak delegate = self.delegate!] in
-    // 这里是闭包的函数体
-}
-
-</code></pre>
-
-<h3 id="toc_9">弱引用和无主引用</h3>
-
-<p>在闭包和捕获的实例总是互相引用并且总是同时销毁时，将闭包内的捕获定义为<code>无主引用</code>。(即被捕获的引用不会变为nil使用无主引用)<br/>
-在被捕获的引用可能会变为<code>nil</code>时，将闭包内的捕获定义为<code>弱引用</code>，弱引用总是可选类型,在引用的实例被销毁后自动置为<code>nil</code></p>
-
-<pre><code class="language-swift">class HTMLElement {
-    let name: String
-    let text: String?
-    lazy var asHTML: Void -&gt; String = {
-        [unowned self] in
-        if let text = self.text {
-            return &quot;&lt;\(self.name)&gt;\(text)&lt;/\(self.name)&gt;&quot;
-        } else {
-            return &quot;&lt;\(self.name) /&gt;&quot;
+//泛型类型
+func findIndex&lt;T&gt;(of valueToFind: T, in array:[T]) -&gt; Int? {
+    for (index, value) in array.enumerated() {
+        if value == valueToFind {
+        return index
         }
     }
-    init(name: String, text: String? = nil) {
-        self.name = name
-        self.text = text
-    }
-    deinit {
-        print(&quot;\(name) is being deinitialized&quot;)
-    }
+    return nil
 }
 </code></pre>
 
-<p>在<code>asHTML</code>闭包中多了一个捕获列表，<code>[unowned self]</code>将self声明为无主引用<br/>
-这时候没有了循环引用,我们就可以销毁<code>HTMLElement</code>实例了</p>
+<p>上面的泛型函数，是无法通过编译的，因为不是任何类型都可以用<code>==</code>进行比较<br/>
+Swift定义了一个<code>Equatable</code>协议,所有遵守改协议的类型都必须实现<code>==或!=</code>，从而对该类型任意值进行比较</p>
+
+<pre><code class="language-swift">//此时泛型函数可以成功编译了
+func findIndex&lt;T: Equatable&gt;(array: [T], _ valueToFind: T) -&gt; Int? {
+    for (index, value) in array.enumerate() {
+        if value == valueToFind {
+            return index
+        }
+    }
+    return nil
+}
+</code></pre>
+
+<h2 id="toc_8">关联类型</h2>
+
+<p>定义协议时，声明一个或者多个<strong>关联类型</strong>作为协议的一部分</p>
+
+<p><strong>关联类型</strong>为协议中的的某个类型提供占位名(别名)，而其实际类型在协议被采纳时才会被指定</p>
+
+<p>用<code>associatedtype</code>关键字指定<strong>关联类型</strong></p>
+
+<pre><code class="language-swift">protocol Container {
+    associatedtype ItemType
+    mutating func append(item: ItemType)
+    var count: Int { get }
+    subscript(i: Int) -&gt; ItemType { get }
+}
+</code></pre>
+
+<p>在协议中声明了一个关联类型<code>ItemType</code>,来保证在不知道容器中元素的具体类型情况下行为能够正确执行</p>
+
+<pre><code class="language-swift">//定义类型遵循Contain协议
+Struct IntStack: Container {
+    // IntStack 的原始实现部分
+    var items = [Int]()
+    mutating func push(item: Int) {
+        items.append(item)
+    }
+    mutating func pop() -&gt; Int {
+        return items.removeLast()
+    }
+    // Container 协议的实现部分
+    typealias ItemType = Int//可以省略，swift会根据协议的实现推断出类型
+        mutating func append(item: Int) {
+        self.push(item)
+    }
+    var count: Int {
+        return items.count
+    }
+    subscript(i: Int) -&gt; Int {
+        return items[i]
+    }
+}
+
+</code></pre>
+
+<p>在实现协议时需要用<code>typealias ItemType = Int</code>来转换协议中的关联类型<br/>
+当然，这个是可以省略的，Swift可以根据方法推断出<code>ItemType</code>类型</p>
+
+<h3 id="toc_9">扩展存在的类型来指定关联类型</h3>
+
+<p>对于Contain协议，Swift中的Array已经默认提供了协议中要求，因此我们只需要声明Array遵循该协议就可以扩展<code>Array</code></p>
+
+<pre><code class="language-Swift">//我们只需要扩展Array来使其遵循该协议即可
+extension Array: Container {}
+</code></pre>
+
+<h2 id="toc_10">泛型Where语句</h2>
+
+<p><strong>泛型Where语句</strong>用于为关联类型定义约束，比如要求其必须遵循特定协议，以及特定类型参数和关联类型必须相同</p>
+
+<p>在函数体或者类型的大括号前添加<code>Where</code>子句</p>
+
+<pre><code class="language-swift">func allItemsMatch&lt;C1: Container, C2: Container&gt;
+(_ someContainer: C1, _ anotherContainer: C2) -&gt; Bool
+    where C1.ItemType == C2.ItemType, C1.ItemType: Equatable {
+        // 检查两个容器含有相同数量的元素
+        if someContainer.count != anotherContainer.count {
+            return false
+        }
+        // 检查每一对元素是否相等
+        for i in 0..&lt;someContainer.count {
+            if someContainer[i] != anotherContainer[i] {
+            return false
+        }
+    }
+    // 所有元素都匹配，返回 true
+    return true
+}
+</code></pre>
+
+<p>用<code>类型约束</code>约束类型参数:C1、C2必须符合<code>Contain</code>协议<br/>
+用<code>泛型Where语句</code>约束关联类型:C1和C2必须类型相同,并且C1符合<code>Equatable</code></p>
 
                         
                       </div>
@@ -362,7 +331,7 @@ lazy var someClosure: Void -&gt; String = {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/16</span>
+                    <span class="date">2017/9/13</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -453,31 +422,31 @@ lazy var someClosure: Void -&gt; String = {
 	      
 		      
 			      <li class="post">
-			        <a href="15059300219793.html">高级运算符</a>
+			        <a href="15082392311480.html">实战:ARKit捕捉平面</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15057532270985.html">访问控制</a>
+			        <a href="15082385455420.html">ARCamera</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15052932669633.html">泛型</a>
+			        <a href="15082349866219.html">ARSession</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15047511695312.html">协议</a>
+			        <a href="15082316038998.html">ARSCNView</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15042587690391.html">扩展</a>
+			        <a href="15082286345415.html">ARKit框架API简介</a>
 			      </li>
 		     
 		  

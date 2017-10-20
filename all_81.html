@@ -105,51 +105,157 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14872162581601.html">
+                <a class="clearlink" href="14873831706932.html">
                 
-                  <h1>测试</h1>
+                  <h1>OCMock</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h5 id="toc_0">1.流行框架</h5>
+                        	<h3 id="toc_0">Mock介绍</h3>
 
-<p>Apple自带的<code>XCTest</code>和第三方的<code>GHUnit</code>.他两之间的区别:XCTest：与Xcode深度集成。而且可以享受Apple后续对XCTest升级的福利。 GHUnit：集成度不如XCTest，安装麻烦。但是有自己的GUI界面。因为XCTest是苹果的，所以我们选择XCTest</p>
+<p>对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。</p>
 
-<h5 id="toc_1">2.OCMock</h5>
+<h3 id="toc_1">OCMock介绍</h3>
 
-<p>mock测试是个很神奇而又很酷的技术，在测试过程中，对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。<br/>
-而我们在进行iOS测试时候是使用<code>OCMock</code>来进行对象的mock</p>
+<p><a href="http://ocmock.org/features/">官方网站</a><br/>
+根据要mock的对象的class来创建一个对应的对象，并且设置好该对象的属性和调用预定方法后的动作（例如返回一个值，调用代码块，发送消息等等），然后将其记录到一个数组中，接下来开发者主动调用该方法，最后做一个verify（验证），从而判断该方法是否被调用，或者调用过程中是否抛出异常等。</p>
 
-<h5 id="toc_2">3.断言框架</h5>
+<h4 id="toc_2">1.OCMock中简单使用</h4>
 
-<p>Expecta和OCHamcrest这两个都是断言的扩展框架。一开始我选择了Expecta，因为我后来有一段时间将测试文件用BDD框架Specta来写（当然这是后话），而Expecta 和Specta都出自同一个人之手，不论是教程文档都更加丰富。但是后来我废弃了BDD框架，还是用原生的XCTest，Expecta在使用中也遇到了一些问题，我就把我们的断言框架由Expecta切换到了OCHamcrest。<br/>
-原因有两点：<br/>
-<code><br/>
-1.Expecta不成熟，至笔者切换的时候才0.3.1版本，遇到很多框架自身的问题。case跑着跑着验证通不过了，再跑一次又过了，是不是还爆出个Expecta框架内部的crash。<br/>
-2.OCHamcrest更加成熟，而且可扩展性高，可以自定义自己的断言，更灵活。<br/>
+<ol>
+<li><p>class mock一个对象</p>
+
+<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
+//创建mock object当做类的实例
+</code></pre></li>
+<li><p>Stubbing methods that return objects<br/>
+<code>Object-c<br/>
+/**<br/>
+意的就是有参数的方法，参数是可以具体指定的，也就是说只有满足你指定的具体参数的调用才会被mock指定的返回值。例子中的[OCMArg any]是指任意参数。<br/>
+*/<br/>
+//没有参数的方法<br/>
+OCMStub([mockClass someMethod]).andReturn(anObject);<br/>
+//有参数的方法<br/>
+OCMStub([mockClass someMethod:[OCMArg any]]).andReturn(anObject);<br/>
 </code><br/>
-比如OCHamcrest不支持superClass验证，我们必须自己去比较，返回一个bool值，然后去判断bool是否为真。很麻烦。自己自定义个superClass的验证，就不需要每次都这么麻烦的写这么多代码了。而如果Expecta不支持的断言，那就永远不能支持了。 我们可以通过OCHamcrest这个特性，做一些符合自己app场景的特有断言。</p>
+注意:<br/>
+<strong>OCMock会在mock实例上没有找到相同名字的实例方法的时候去找同名的类方法。</strong></p></li>
+<li><p>Verify-after-running<br/>
+有些时候需要验证我们执行的代码流程是否调用了某个外部的方法，这个时候用OCMock就比较简单来实现。如果没有调用过这个方法的话，会立即抛一个异常出来。</p>
 
-<h5 id="toc_3">BDD Or Not</h5>
+<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
+//...
+//some code
+//...
+OCMVerify([mockClass someMethod]);
+</code></pre></li>
+<li><p>验证mock方法没有被调用<br/>
+验证代码没有调用某个方法<br/>
+如果方法被调用了，就将isCalled设置为YES，这样最后assert的时候就会报错。<br/>
+<code>Object-c<br/>
+static BOOL isCalled = false;<br/>
+id mockClass = OCMClassMock([SomeClass class]);<br/>
+OCMStub([mockClass someMethod]).andDo(^(NSInvocation *invocation){<br/>
+isCalled = YES;<br/>
+});<br/>
+//...<br/>
+//some code<br/>
+//...<br/>
+XCTAssertFalse(isCalled);<br/>
+</code></p></li>
+<li><p>验证mock方法传入的参数<br/>
+验证传递给外部调用的参数是否符合预期</p>
 
-<p>BDD和TDD都是敏捷开发的技术;<br/>
-<strong>BDD</strong>（Behavior Driven Development），也就是行为驱动开发，它旨在解决具体问题，帮助开发人员确定应该测试些什么.此外，它提供了一个 <code>DSL</code>（译者注: Domain-specific language，域特定语言）鼓励开发者弄清楚他们的需求，并且它引入了一个通用语言帮助你轻易理解测试的目的。<br/>
-<strong>TDD</strong>（Test-Driven Development），就是测试驱动开发，通过测试来推动整个开发的进行<br/>
-目前使用比较多得是BDD框架:<br/>
-Cedar，Specta和Kiwi这3个框架就是目前Objc最流行的BDD测试框架<br/>
-    Specta和Kiwi的区别就是Kiwi包含了Specta和OCmock以及Expeata所有的功能<br/>
-除此之外还有Apple的XCTest:XCTest与Xcode深度集成，而且可以享受Apple后续对XCTest升级的福利</p>
+<pre><code class="language-Objec-c">id mockClass = OCMClassMock([SomeClass class]);
+OCMStub([mockClass someMethod:[OCMArg checkWithBlock:^BOOL(id obj) {
+//...
+//some code
+//...
+return YES;
+]]);
+</code></pre></li>
+<li><p>mock单例</p>
 
-<p>XCTest 的优势和缺点都是由于它太简单了。你只需要创建一个类，使用 “test” 作为测试方法名的前缀，只需要这样就可以了，不需要再做其他的。和 Xcode 很好的集成性也是 XCTest 获得青睐的原因。你可以点击边栏上的小菱形按钮来运行测试用例，你也可以很容易的查看所有失败的测试用例，也可以在测试用例列表中点击某一行而快速的跳转到某一个测试用例。</p>
+<p>如果我们mock的类是个单例的话，那么使用之前的方法进行mock是不会生效的。不过OCMock提供了一个很简单的解决方法，那就是调用单例返回mock</p>
 
-<p>不幸的是，这已经是 XCTest 的全部优点了。在开发和测试中，使用 XCTest 时我们没有碰到任何的障碍，但是经常会想如果它能更方便一些就好了。XCTest 类看起来就像普通的类，而一个 BDD 测试套件的结构和其嵌套的上下文是显而易见的。并且这种为测试创建嵌套上下文的可能性也是最缺失的。嵌套的上下文允许我们在使独立的测试相对简单的情况下创建越来越具体的场景。当然，在 XCTest 中这也是可以的，比如在一些测试用例中调用自定义的 setup 方法，但这并不方便。</p>
+<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
+OCMStub([mockClass instanceMethod]).andReturn(mockClass);
+</code></pre></li>
+<li><p>The any constraint</p>
 
-<p>BDD 框架的附加功能的重要性是取决于项目的大小。我们的结论是，XCTest 对中小型的工程来说是一个很好的选择，但是对于更大型的工程，就有必要参考一下像 Kiwi 或者 Specta 这样的 BDD 框架。</p>
+<pre><code class="language-Object-c">OCMStub([mock someMethodWithAnArgument:[OCMArg any]])
+OCMStub([mock someMethodWithPointerArgument:[OCMArg anyPointer]])
+OCMStub([mock someMethodWithSelectorArgument:[OCMArg anySelector]])
 
-<h5 id="toc_4">4.UITests</h5>
+</code></pre></li>
+<li><p>处理block参数<br/>
+OCMock也可以处理block回调参数。block回调通常用于网络代码，数据库代码，或者在任何异步操作中。在这个例子中，思考下下面的方法：<br/>
+<code>- (void)downloadWeatherDataForZip:(NSString *)zip callback:(void (^)(NSDictionary *response))callback;</code></p></li>
+</ol>
 
-<p>通过代码化来实现自动点击界面，输入文字等功能</p>
+<p>在这个例子中，我们有一个下载天气压缩数据的方法，并且把下载下来的dictionary代理到一个block的回调中。在测试中，我们通过预定义的天气数据来测试回调处理。这也是明智的测试失败场景。你永远不会知道网络上会返回你什么东西！</p>
+
+<pre><code class="language-Object">OCMStub([groupModelMock downloadWeatherDataForZip:@&quot;80304&quot; callback:[OCMArg any]]]).andDo(^(NSInvocation *invocation){
+        //2. declare a block with same signature
+        void (^weatherStubResponse)(NSDictionary *dict);
+        //3. link argument 3 with with our block callback
+        [invoke getArgument:&amp;weatherStubResponse atIndex:3];
+        //4. invoke block with pre-defined input
+        NSDictionary *testResponse = @{@&quot;high&quot;: 43 , @&quot;low&quot;: 12};
+        weatherStubResponse(groupMemberMock);
+    });
+    /**
+        1.这个mock对象使用带NSInvocation参数的“andDo”方法。一个NSInvocation对象代表一
+        个‘objectivetified’（实在不知道这个什么鬼）表现的方法调用。通过这个NSinvocation对
+        象，使得拦截传递给我们的方法的block参数变得可能。
+        2.用与我们测试的方法中相同的方法签名声明一个block参数。
+        3.NSInvocation实例方法&quot;getArgument:atIndex:&quot;将赋值后的块函数传递都原始函数中定义
+        的块函数中。注意：在Objective-C中，传递给任意方法的前两个参数都是“self”和“_cmd”.这是
+        一个运行时的小功能以及用下标来获取NSInvocation参数时我们需要考虑的东西。
+        4.最后，传递这个回调的预定义字典。
+    */
+</code></pre>
+
+<h4 id="toc_3">2.OCMock简单示例</h4>
+
+<p><img src="media/14873831706932/14873839517952.png" alt=""/></p>
+
+<p>示例2：</p>
+
+<pre><code class="language-Object-c">- (void)testStrictMock3{
+
+    id classMock = OCMClassMock([TweetView class]);
+
+    //设置期望或预设，这个classMock需要执行addTweet方法且参数不为nil。  不然的话会抛出异常
+    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
+    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
+
+    /* 如果不执行以下代码的话会抛出异常 */
+    Tweet *testTweet = [[Tweet alloc] init];
+    testTweet.userName = @&quot;齐滇大圣&quot;;
+    [classMock addTweet:testTweet];
+
+    OCMVerifyAll(classMock);
+}
+</code></pre>
+
+<p>这表示一种友好的mock，不会在没有OCMExpect或OCMStub设置类的所有方法时抛出异常。以上代码把OCMExpect和OCMStub注释掉时不会报错。</p>
+
+<p>还有一种表示严格的mock：OCMStrictClassMock，如果把OCMExpect和OCMStub注释掉时会报错，它要求你执行类中的所有方法，所以比较适合用来测试必须实现的方法，代码如下：</p>
+
+<pre><code class="language-Object-c">- (void)testStrictMock3{
+    id classMock = OCMStrictClassMock([TweetView class]);
+    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
+    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
+
+    Tweet *testTweet = [[Tweet alloc] init];
+    testTweet.userName = @&quot;齐滇大圣&quot;;
+    [classMock addTweet:testTweet]; 
+
+    OCMVerifyAll(classMock);
+}
+</code></pre>
 
                         
                       </div>
@@ -158,7 +264,7 @@ Cedar，Specta和Kiwi这3个框架就是目前Objc最流行的BDD测试框架<br
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/16</span>
+                    <span class="date">2017/2/18</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
@@ -249,31 +355,31 @@ Cedar，Specta和Kiwi这3个框架就是目前Objc最流行的BDD测试框架<br
 	      
 		      
 			      <li class="post">
-			        <a href="15059300219793.html">高级运算符</a>
+			        <a href="15082392311480.html">实战:ARKit捕捉平面</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15057532270985.html">访问控制</a>
+			        <a href="15082385455420.html">ARCamera</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15052932669633.html">泛型</a>
+			        <a href="15082349866219.html">ARSession</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15047511695312.html">协议</a>
+			        <a href="15082316038998.html">ARSCNView</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15042587690391.html">扩展</a>
+			        <a href="15082286345415.html">ARKit框架API简介</a>
 			      </li>
 		     
 		  

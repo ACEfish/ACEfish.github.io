@@ -105,259 +105,389 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14872969075485.html">
+                <a class="clearlink" href="14877347224030.html">
                 
-                  <h1>并发编程实践</h1>
+                  <h1>运行时实例:</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h4 id="toc_0">1.<a href="https://developer.apple.com/reference/dispatch">GCD</a> OR <a href="https://developer.apple.com/reference/foundation/operationqueue">操作队列</a></h4>
+                        	<h2 id="toc_0">类与对象</h2>
 
-<p>这两个是目前我们在iOS中用的最多的两套API</p>
+<pre><code class="language-Objc">//-----------------------------------------------------------
+// MyClass.h
+@interface MyClass : NSObject &lt;NSCopying, NSCoding&gt;
+@property (nonatomic, strong) NSArray *array;
+@property (nonatomic, copy) NSString *string;
+- (void)method1;
+- (void)method2;
++ (void)classMethod1;
+@end
+//-----------------------------------------------------------
+// MyClass.m
+#import &quot;MyClass.h&quot;
+@interface MyClass () {
+    NSInteger       _instance1;
+    NSString    *   _instance2;
+}
+@property (nonatomic, assign) NSUInteger integer;
+- (void)method3WithArg1:(NSInteger)arg1 arg2:(NSString *)arg2;
+@end
+@implementation MyClass
++ (void)classMethod1 {
+}
+- (void)method1 {
+    NSLog(@&quot;call method method1&quot;);
+}
+- (void)method2 {
+}
+- (void)method3WithArg1:(NSInteger)arg1 arg2:(NSString *)arg2 {
+    NSLog(@&quot;arg1 : %ld, arg2 : %@&quot;, arg1, arg2);
+}
+@end
+//-----------------------------------------------------------
+// main.h
+#import &quot;MyClass.h&quot;
+#import &quot;MySubClass.h&quot;
+#import &lt;objc/runtime.h&gt;
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+    
+        MyClass *myClass = [[MyClass alloc] init];
+        unsigned int outCount = 0;
+        Class cls = myClass.class;
+        // 类名
+        NSLog(@&quot;class name: %s&quot;, class_getName(cls));
+        NSLog(@&quot;==========================================================&quot;);
+        // 父类
+        NSLog(@&quot;super class name: %s&quot;, class_getName(class_getSuperclass(cls)));
+        NSLog(@&quot;==========================================================&quot;);
+        // 是否是元类
+        NSLog(@&quot;MyClass is %@ a meta-class&quot;, (class_isMetaClass(cls) ? @&quot;&quot; : @&quot;not&quot;));
+        NSLog(@&quot;==========================================================&quot;);
+        Class meta_class = objc_getMetaClass(class_getName(cls));
+        NSLog(@&quot;%s&#39;s meta-class is %s&quot;, class_getName(cls), class_getName(meta_class));
+        NSLog(@&quot;==========================================================&quot;);
+        // 变量实例大小
+        NSLog(@&quot;instance size: %zu&quot;, class_getInstanceSize(cls));
+        NSLog(@&quot;==========================================================&quot;);
+        // 成员变量
+        Ivar *ivars = class_copyIvarList(cls, &amp;outCount);
+        for (int i = 0; i &lt; outCount; i++) {
+            Ivar ivar = ivars[i];
+            NSLog(@&quot;instance variable&#39;s name: %s at index: %d&quot;, ivar_getName(ivar), i);
+        }
+        free(ivars);
+        Ivar string = class_getInstanceVariable(cls, &quot;_string&quot;);
+        if (string != NULL) {
+            NSLog(@&quot;instace variable %s&quot;, ivar_getName(string));
+        }
+        NSLog(@&quot;==========================================================&quot;);
+        // 属性操作
+        objc_property_t * properties = class_copyPropertyList(cls, &amp;outCount);
+        for (int i = 0; i &lt; outCount; i++) {
+            objc_property_t property = properties[i];
+            NSLog(@&quot;property&#39;s name: %s&quot;, property_getName(property));
+        }
+        free(properties);
+        objc_property_t array = class_getProperty(cls, &quot;array&quot;);
+        if (array != NULL) {
+            NSLog(@&quot;property %s&quot;, property_getName(array));
+        }
+        NSLog(@&quot;==========================================================&quot;);
+        // 方法操作
+        Method *methods = class_copyMethodList(cls, &amp;outCount);
+        for (int i = 0; i &lt; outCount; i++) {
+            Method method = methods[i];
+            NSLog(@&quot;method&#39;s signature: %s&quot;, method_getName(method));
+        }
+        free(methods);
+        Method method1 = class_getInstanceMethod(cls, @selector(method1));
+        if (method1 != NULL) {
+            NSLog(@&quot;method %s&quot;, method_getName(method1));
+        }
+        Method classMethod = class_getClassMethod(cls, @selector(classMethod1));
+        if (classMethod != NULL) {
+            NSLog(@&quot;class method : %s&quot;, method_getName(classMethod));
+        }
+        NSLog(@&quot;MyClass is%@ responsd to selector: method3WithArg1:arg2:&quot;, class_respondsToSelector(cls, @selector(method3WithArg1:arg2:)) ? @&quot;&quot; : @&quot; not&quot;);
+        IMP imp = class_getMethodImplementation(cls, @selector(method1));
+        imp();
+        NSLog(@&quot;==========================================================&quot;);
+        // 协议
+        Protocol * __unsafe_unretained * protocols = class_copyProtocolList(cls, &amp;outCount);
+        Protocol * protocol;
+        for (int i = 0; i &lt; outCount; i++) {
+            protocol = protocols[i];
+            NSLog(@&quot;protocol name: %s&quot;, protocol_getName(protocol));
+        }
+        NSLog(@&quot;MyClass is%@ responsed to protocol %s&quot;, class_conformsToProtocol(cls, protocol) ? @&quot;&quot; : @&quot; not&quot;, protocol_getName(protocol));
+        NSLog(@&quot;==========================================================&quot;);
+    }
+    return 0;
+}
 
-<ul>
-<li>操作队列提供了在 GCD 中不那么容易复制的有用特性。其中最重要的一个就是可以取消在任务处理队列中的任务</li>
-<li>操作队列在管理操作间的依赖关系方面也容易一些</li>
-<li>CD 给予你更多的控制权力以及操作队列中所不能使用的底层函数
-扩展阅读:
-<a href="http://stackoverflow.com/questions/10373331/nsoperation-vs-grand-central-dispatch">StackOverflow: NSOperation vs. Grand Central Dispatch</a>
-<a href="http://eschatologist.net/blog/?p=232">Blog: When to use NSOperation vs. GCD</a></li>
-</ul>
+//输出结果
 
-<h4 id="toc_1">2.后台的Core Data</h4>
 
-<p>在着手 Core Data 的并行处理之前，最好先打一些基础。我们强烈建议通读苹果的官方文档 <a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/CoreData/Articles/cdConcurrency.html">Concurrency with Core Data</a> </p>
-
-<blockquote>
-<p>Xcode 所提供的 Core Data 标准模版中，所设立的是运行在主线程中的一个存储调度 (persistent store coordinator)和一个托管对象上下文 (managed object context) 的方式。在很多情况下，这种模式可以运行良好。创建新的对象和修改已存在的对象开销都非常小，也都能在主线程中没有困难地完成。然后，如果你想要做大量的处理，那么把它放到一个后台上下文来做会比较好。一个典型的应用场景是将大量数据导入到 Core Data 中。</p>
-</blockquote>
-
-<p>示例:<br/>
-我们要导入一大组柏林的交通数据。在导入的过程中，我们展示一个进度条，如果耗时太长，我们希望可以取消当前的导入操作。同时，我们显示一个随着数据加入可以自动更新的 table view 来展示目前可用的数据。</p>
-
-<p>解决方案:<br/>
-我们创建一个<code>NSOperation</code> 的子类，将其叫做<code>ImportOperation</code>，我们通过重写 <code>main</code>方法，用来处理所有的导入工作。这里我们使用<code>NSPrivateQueueConcurrencyType</code>来创建一个独立并拥有自己的私有<code>dispatch queue</code>的 managed object context，这个 <code>context</code> 需要管理自己的队列。在队列中的所有操作必须使用<code>performBlock</code>或者<code>performBlockAndWait</code>来进行触发。</p>
-
-<pre><code class="language-Object-c">NSManagedObjectContext* context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
-context.persistentStoreCoordinator = self.persistentStoreCoordinator;
-context.undoManager = nil;
-//performBlockAndWait:Synchronously performs a given block on the receiver’s queue.
-[self.context performBlockAndWait:^
-{
-    [self import];
-}];
 </code></pre>
 
-<p>在这里我们重用了已经存在的<code>persistent store coordinator</code>。一般来说，初始化 managed object contexts 要么使用<code>NSPrivateQueueConcurrencyType</code>，要么使用 <code>NSMainQueueConcurrencyType</code>。</p>
+<h3 id="toc_1">动态创建类</h3>
 
-<p>导入文件内容</p>
+<pre><code class="language-Objc">Class cls = objc_allocateClassPair(MyClass.class, &quot;MySubClass&quot;, 0);
+class_addMethod(cls, @selector(submethod1), (IMP)imp_submethod1, &quot;v@:&quot;);
+class_replaceMethod(cls, @selector(method1), (IMP)imp_submethod1, &quot;v@:&quot;);
+class_addIvar(cls, &quot;_ivar1&quot;, sizeof(NSString *), log(sizeof(NSString *)), &quot;i&quot;);
+objc_property_attribute_t type = {&quot;T&quot;, &quot;@\&quot;NSString\&quot;&quot;};
+objc_property_attribute_t ownership = { &quot;C&quot;, &quot;&quot; };
+objc_property_attribute_t backingivar = { &quot;V&quot;, &quot;_ivar1&quot;};
+objc_property_attribute_t attrs[] = {type, ownership, backingivar};
+class_addProperty(cls, &quot;property2&quot;, attrs, 3);
+objc_registerClassPair(cls);
+id instance = [[cls alloc] init];
+[instance performSelector:@selector(submethod1)];
+[instance performSelector:@selector(method1)];
+//输出
+2014-10-23 11:35:31.006 RuntimeTest[3800:66152] run sub method 1
+2014-10-23 11:35:31.006 RuntimeTest[3800:66152] run sub method 1
 
-<pre><code class="language-Object-c">/**
-    在导入前，我们枚举文件中的各行，并对可以解析的每一行创建 managed object ：
-*/
-[lines enumerateObjectsUsingBlock:
-  ^(NSString* line, NSUInteger idx, BOOL* shouldStop)
-  {
-      NSArray* components = [line csvComponents];
-      if(components.count &lt; 5) {
-          NSLog(@&quot;couldn&#39;t parse: %@&quot;, components);
-          return;
-      }
-      [Stop importCSVComponents:components intoContext:context];
-  }];
 </code></pre>
 
-<pre><code class="language-Object-c">/**
-    在 view controller 中通过以下代码来开始操作：
-*/
-ImportOperation* operation = [[ImportOperation alloc]
-     initWithStore:self.store fileName:fileName];
-[self.operationQueue addOperation:operation];
+<h3 id="toc_2">动态创建对象</h3>
+
+<pre><code class="language-Objc">id theObject = class_createInstance(NSString.class, sizeof(unsigned));
+ 
+id str1 = [theObject init];
+NSLog(@&quot;%@&quot;, [str1 class]);
+id str2 = [[NSString alloc] initWithString:@&quot;test&quot;];
+NSLog(@&quot;%@&quot;, [str2 class]);
+//输出
+2014-10-23 12:46:50.781 RuntimeTest[4039:89088] NSString
+2014-10-23 12:46:50.781 RuntimeTest[4039:89088] __NSCFConstantString
+
 </code></pre>
 
-<pre><code class="language-Object-c">/**
-    至此为止，后台导入部分已经完成。接下来，我们要加入取消功能，这其实非常简单，只需要枚举的 block 中加一个判断就行了：
-*/
-if(self.isCancelled) {
-    *shouldStop = YES;
-    return;
+<h3 id="toc_3">实例操作函数</h3>
+
+<h4 id="toc_4">对象拷贝</h4>
+
+<pre><code class="language-Objc">NSObject *a = [[NSObject alloc] init];
+id newB = object_copy(a, class_getInstanceSize(MyClass.class));
+object_setClass(newB, MyClass.class);
+object_dispose(a);
+</code></pre>
+
+<h4 id="toc_5">获取类定义（获取已注册类）</h4>
+
+<pre><code class="language-Objc">int numClasses;
+Class * classes = NULL;
+numClasses = objc_getClassList(NULL, 0);
+if (numClasses &gt; 0) {
+    classes = malloc(sizeof(Class) * numClasses);
+    numClasses = objc_getClassList(classes, numClasses);
+    NSLog(@&quot;number of classes: %d&quot;, numClasses);
+    for (int i = 0; i &lt; numClasses; i++) {
+        Class cls = classes[i];
+        NSLog(@&quot;class name: %s&quot;, class_getName(cls));
+    }
+    free(classes);
 }
 </code></pre>
 
-<pre><code class="language-Object-c">/**
-    最后为了支持进度条，我们在 operation 中创建一个叫做 progressCallback 的属性。需要注意的是，更新进度条必须在主线程中完成，否则会导致 UIKit 崩溃。
-*/
-operation.progressCallback = ^(float progress)
+<h2 id="toc_6">成员变量、属性</h2>
+
+<h3 id="toc_7">关联对象</h3>
+
+<p>假定我们想要动态地将一个Tap手势操作连接到任何UIView中，并且根据需要指定点击后的实际操作。这时候我们就可以将一个手势对象及操作的block对象关联到我们的UIView对象中。这项任务分两部分。<br/>
+首先，如果需要，我们要创建一个手势识别对象并将它及block做为关联对象。如下代码所示：</p>
+
+<pre><code class="language-objc">- (void)setTapActionWithBlock:(void (^)(void))block
 {
-    [[NSOperationQueue mainQueue] addOperationWithBlock:^
+    UITapGestureRecognizer *gesture = objc_getAssociatedObject(self, &amp;kDTActionHandlerTapGestureKey);
+ 
+    if (!gesture)
     {
-        self.progressIndicator.progress = progress;
-    }];
-};
-//我们在枚举中来调用这个进度条更新的 block 的操作：
-
-self.progressCallback(idx / (float) count);
-
-</code></pre>
-
-<pre><code class="language-Object-c">  //  然而，如果你执行示例代码的话，你会发现它运行逐渐变得很慢，取消操作也有迟滞。这是因为主操作队列中塞满了要更新进度条的 block 操作。一个简单的解决方法是降低更新的频度，比如只在每导入一百行时更新一次：
-
-NSInteger progressGranularity = 100;
-
-if (idx % progressGranularity == 0) {
-    self.progressCallback(idx / (float) count);
+        gesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(__handleActionForTapGesture:)];
+        [self addGestureRecognizer:gesture];
+        objc_setAssociatedObject(self, &amp;kDTActionHandlerTapGestureKey, gesture, OBJC_ASSOCIATION_RETAIN);
+    }
+    objc_setAssociatedObject(self, &amp;kDTActionHandlerTapBlockKey, block, OBJC_ASSOCIATION_COPY);
 }
-
 </code></pre>
 
-<h5 id="toc_2">更新 Main Context</h5>
+<p>这段代码检测了手势识别的关联对象。如果没有，则创建并建立关联关系。同时，将传入的块对象连接到指定的key上。注意<code>block</code>对象的关联内存管理策略。<br/>
+手势识别对象需要一个<code>target</code>和<code>action</code>，所以接下来我们定义处理方法：</p>
 
-<p>在让一切运转起来之前之前，还有一件事情要做。现在在后台 context 中导入的数据还不能传送到主 context 中，除非我们显式地让它这么去做。我们在<code>Store</code>类的设置<code>Core Data stack</code>的<code>init</code>方法中加入下面的代码：</p>
-
-<pre><code class="language-Object-c">[NSNotificationCenter defaultCenter]
-    addObserverForName:NSManagedObjectContextDidSaveNotification
-                object:nil
-                 queue:nil
-            usingBlock:^(NSNotification* note)
+<pre><code class="language-objc">- (void)__handleActionForTapGesture:(UITapGestureRecognizer *)gesture
 {
-    NSManagedObjectContext *moc = self.mainManagedObjectContext;
-    if (note.object != moc)
-        [moc performBlock:^(){
-            [moc mergeChangesFromContextDidSaveNotification:note];
-        }];
-    }];
-}];
-/**
-    如果 block 在主队列中被作为参数传递的话，那么这个 block 也会在主队列中被执行。如果现在你运行程序的话，你会注意到 table view 会在完成导入数据后刷新数据，但是这个行为会阻塞用户大概几秒钟。
-    要修正这个问题，我们需要做一些无论如何都应该做的事情：批量保存。在导入较大的数据时，我们需要定期保存，逐渐导入，否则内存很可能就会被耗光，性能一般也会更坏。而且，定期保存也可以分散主线程在更新 table view 时的工作压力。
-    合理的保存的次数可以通过试错得到。保存太频繁的话，可能会在 I/O 操作上花太多时间；保存次数太少的话，应用会变得无响应。在经过一些尝试后，我们设定每 250 次导入就保存一次。改进后，导入过程变得很平滑，它可以适时更新 table view，也没有阻塞主 context 太久。
-*/
-</code></pre>
-
-<h5 id="toc_3">其他考虑</h5>
-
-<p>在导入操作时，我们将整个文件都读入到一个字符串中，然后将其分割成行。这种处理方式对于相对小的文件来说没有问题，但是对于大文件，最好采用惰性读取 (lazily read) 的方式逐行读入。本文最后的示例将使用输入流的方式来实现这个特性，在 StackOverflow 上 Dave DeLong 也提供了一段非常好的示例代码来说明这个问题。</p>
-
-<p>在 app 第一次运行时，除开将大量数据导入 Core Data 这一选择以外，你也可以在你的 app bundle 中直接放一个 sqlite 文件，或者从一个可以动态生成数据的服务器下载。如果使用这些方式的话，可以节省不少在设备上的处理时间。</p>
-
-<p>最后，最近对于 child contexts 有很多争议。我们的建议是不要在后台操作中使用它。如果你以主 context 的 child 的方式创建了一个后台 context 的话，保存这个后台 context 将阻塞主线程。而要是将主 context 作为后台 context 的 child 的话，实际上和与创建两个传统的独立 contexts 来说是没有区别的。因为你仍然需要手动将后台的改变合并回主 context 中去。</p>
-
-<p>设置一个 persistent store coordinator 和两个独立的 contexts 被证明了是在后台处理 Core Data 的好方法。除非你有足够好的理由，否则在处理时你应该坚持使用这种方式。</p>
-
-<p><a href="http://wiki.jikexueyuan.com/project/objc/concurrent-programming/2-2.html">扩展阅读</a></p>
-
-<h4 id="toc_4">3.后台 UI 代码</h4>
-
-<p>首先要强调：UIKit 只能在主线程上运行。而那部分不与 UIKit 直接相关，却会消耗大量时间的 UI 代码可以被移动到后台去处理，以避免其将主线程阻塞太久。但是在你将你的 UI 代码移到后台队列之前，你应该好好地测量哪一部分才是你代码中的瓶颈。这非常重要，否则你所做的优化根本是南辕北辙。</p>
-
-<p>如果你找到了你能够隔离出的昂贵操作的话，可以将其放到操作队列中去：</p>
-
-<pre><code class="language-Object-c">__weak id weakSelf = self;
-[self.operationQueue addOperationWithBlock:^{
-    NSNumber* result = findLargestMersennePrime();
-    [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-        MyClass* strongSelf = weakSelf;
-        strongSelf.textLabel.text = [result stringValue];
-    }];
-}];
-</code></pre>
-
-<blockquote>
-<p>如你所见，这些代码其实一点也不直接明了。我们首先声明了一个 weak 引用来参照 self，否则会形成循环引用（ block 持有了 self，私有的 operationQueue retain 了 block，而 self 又 retain 了 operationQueue ）。为了避免在运行 block 时访问到已被释放的对象，在 block 中我们又需要将其转回 strong 引用。</p>
-</blockquote>
-
-<h4 id="toc_5">4.后台绘制</h4>
-
-<p>如果你确定<code>drawRect:</code>是你的应用的性能瓶颈，那么你可以将这些绘制代码放到后台去做。但是在你这样做之前，检查下看看是不是有其他方法来解决，比如、考虑使用<code>core animation layers</code>或者预先渲染图片而不去做<code>Core Graphics</code>绘制。<br/>
-解决方案:<br/>
-其实解决起来也很简单，把<code>drawRect:</code>中的代码放到一个后台操作中去做就可以了。然后将原本打算绘制的视图用一个 image view 来替换，等到操作执行完后再去更新。在绘制的方法中，使用 <code>UIGraphicsBeginImageContextWithOptions</code>来取代<code>UIGraphicsGetCurrentContext ：</code></p>
-
-<pre><code class="language-Object-c">UIGraphicsBeginImageContextWithOptions(size, NO, 0);
-// drawing code here
-UIImage *i = UIGraphicsGetImageFromCurrentImageContext();
-UIGraphicsEndImageContext();
-return i;
-/**
-    通过在第三个参数中传入 0 ，设备的主屏幕的 scale 将被自动传入，这将使图片在普通设备和
-     retina 屏幕上都有良好的表现。
-*/
-</code></pre>
-
-<p>注意:<br/>
-如果你在 table view 或者是 collection view 的 cell 上做了自定义绘制的话，最好将它们放入 <code>operation</code> 的子类中去。你可以将它们添加到后台操作队列，也可以在用户将 cell 滚动出边界时的 <code>didEndDisplayingCell</code> 委托方法中进行取消。这些技巧都在 2012 年的<a href="https://developer.apple.com/videos/wwdc2012/">WWDC Session 211 -- Building Concurrent User Interfaces on iOS</a>中有详细阐述。</p>
-
-<p>除了在后台自己调度绘制代码，以也可以试试看使用 CALayer 的 drawsAsynchronously 属性。然而你需要精心衡量这样做的效果，因为有时候它能使绘制加速，有时候却适得其反。</p>
-
-<h4 id="toc_6">4.异步网络请求处理</h4>
-
-<p><strong>所有的网络请求都应该通过异步的方式进行</strong></p>
-
-<pre><code class="language-Object-c">// 警告：不要使用这些代码。
-dispatch_async(backgroundQueue, ^{
-   NSData* contents = [NSData dataWithContentsOfURL:url]
-   dispatch_async(dispatch_get_main_queue(), ^{
-      // 处理取到的日期
-   });
-});
-//这段代码问题：没有办法去取消这个同步的网络请求。它将阻塞住线程直到它完成。如果请求一直没结果，那就只能干等到超时
-</code></pre>
-
-<p>要解决上面的困境，我们可以使用<code>NSURLConnection</code>的异步方法，并且把所有操作转化为 operation 来执行. NSURLConnection 是通过<code>run loop</code>来发送事件的。因为事件发送不会花多少时间，因此最简单的是就只使用 main run loop 来做这个。然后，我们就可以用后台线程来处理输入的数据了。<br/>
-要处理URL 连接，我们重写自定义的 operation 子类中的 start 方法：</p>
-
-<pre><code class="language-Object-c">- (void)start
-{
-    NSURLRequest* request = [NSURLRequest requestWithURL:self.url];
-    self.isExecuting = YES;
-    self.isFinished = NO;
-    [[NSOperationQueue mainQueue] addOperationWithBlock:^
+    if (gesture.state == UIGestureRecognizerStateRecognized)
     {
-        self.connection = [NSURLConnectionconnectionWithRequest:request
-                                                       delegate:self];
+        void(^action)(void) = objc_getAssociatedObject(self, &amp;kDTActionHandlerTapBlockKey);
+        if (action)
+        {
+            action();
+        }
+    }
+}
+</code></pre>
+
+<h3 id="toc_8">设置属性</h3>
+
+<p>我们从服务端两个不同的接口获取相同的字典数据，但这两个接口是由两个人写的，相同的信息使用了不同的字段表示。我们在接收到数据时，可将这些数据保存在相同的对象中。对象类如下定义：</p>
+
+<pre><code class="language-objc">@interface MyObject: NSObject
+@property (nonatomic, copy) NSString    *   name;                  
+@property (nonatomic, copy) NSString    *   status;                 
+@end
+</code></pre>
+
+<p>接口A、B返回的字典数据如下所示：</p>
+
+<pre><code class="language-objc">@{@&quot;name1&quot;: &quot;张三&quot;, @&quot;status1&quot;: @&quot;start&quot;}
+@{@&quot;name2&quot;: &quot;张三&quot;, @&quot;status2&quot;: @&quot;end&quot;}
+</code></pre>
+
+<p>通常的方法是写两个方法分别做转换，不过如果能灵活地运用Runtime的话，可以只实现一个转换方法，为此，我们需要先定义一个映射字典(全局变量)</p>
+
+<pre><code class="language-objc">static NSMutableDictionary *map = nil;
+@implementation MyObject    
++ (void)load
+{
+    map = [NSMutableDictionary dictionary];
+    map[@&quot;name1&quot;]                = @&quot;name&quot;;
+    map[@&quot;status1&quot;]              = @&quot;status&quot;;
+    map[@&quot;name2&quot;]                = @&quot;name&quot;;
+    map[@&quot;status2&quot;]              = @&quot;status&quot;;
+}
+@end
+</code></pre>
+
+<p>上面的代码将两个字典中不同的字段映射到MyObject中相同的属性上，这样，转换方法可如下处理：</p>
+
+<pre><code class="language-objc">- (void)setDataWithDic:(NSDictionary *)dic
+{
+    [dic enumerateKeysAndObjectsUsingBlock:^(NSString *key, id obj, BOOL *stop) {
+        NSString *propertyKey = [self propertyForKey:key];
+        if (propertyKey)
+        {
+            objc_property_t property = class_getProperty([self class], [propertyKey UTF8String]);
+            // TODO: 针对特殊数据类型做处理
+            NSString *attributeString = [NSString stringWithCString:property_getAttributes(property) encoding:NSUTF8StringEncoding];
+            ...
+            [self setValue:obj forKey:propertyKey];
+        }
     }];
 }
 </code></pre>
 
-<p>由于重写的是 start 方法，所以我们需要自己要管理操作的 isExecuting 和 isFinished 状态。要取消一个操作，我们需要取消 connection ，并且设定合适的标记，这样操作队列才知道操作已经完成。</p>
+<h2 id="toc_9">方法和消息</h2>
 
-<pre><code class="language-Object-c">- (void)connectionDidFinishLoading:(NSURLConnection *)connection
-{
-    self.data = self.buffer;
-    self.buffer = nil;
-    self.isExecuting = NO;
-    self.isFinished = YES;
+<h3 id="toc_10">消息转发 -</h3>
+
+<h4 id="toc_11">备用接收者</h4>
+
+<p>使用这个方法通常是在对象内部，可能还有一系列其它对象能处理该消息，我们便可借这些对象来处理消息并返回，这样在对象外部看来，还是由该对象亲自处理了这一消息。<br/>
+```objc<br/>
+@interface SUTRuntimeMethodHelper : NSObject<br/>
+- (void)method2;<br/>
+@end<br/>
+@implementation SUTRuntimeMethodHelper<br/>
+- (void)method2 {<br/>
+    NSLog(@&quot;%@, %p&quot;, self, _cmd);<br/>
+}<br/>
+@end</p>
+
+<h1 id="toc_12">pragma mark -</h1>
+
+<p>@interface SUTRuntimeMethod () {<br/>
+    SUTRuntimeMethodHelper *_helper;<br/>
+}<br/>
+@end<br/>
+@implementation SUTRuntimeMethod<br/>
++ (instancetype)object {<br/>
+    return [[self alloc] init];<br/>
+}<br/>
+- (instancetype)init {<br/>
+    self = [super init];<br/>
+    if (self != nil) {<br/>
+        <u>helper = [[SUTRuntimeMethodHelper alloc] init];<br/>
+    }<br/>
+    return self;<br/>
+}<br/>
+- (void)test {<br/>
+    [self performSelector:@selector(method2)];<br/>
+}<br/>
+- (id)forwardingTargetForSelector:(SEL)aSelector {<br/>
+    NSLog(@&quot;forwardingTargetForSelector&quot;);<br/>
+    NSString *selectorString = NSStringFromSelector(aSelector);<br/>
+    // 将消息转发给</u>helper来处理<br/>
+    if ([selectorString isEqualToString:@&quot;method2&quot;]) {<br/>
+        return _helper;<br/>
+    }<br/>
+    return [super forwardingTargetForSelector:aSelector];<br/>
+}<br/>
+@end<br/>
+```<br/>
+这一步合适于我们只想将消息转发到另一个能处理该消息的对象上。但这一步无法对消息进行处理，如操作消息的参数和返回值。</p>
+
+<h4 id="toc_13">完整消息转发</h4>
+
+<pre><code class="language-objc">- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+    NSMethodSignature *signature = [super methodSignatureForSelector:aSelector];
+    if (!signature) {
+        if ([SUTRuntimeMethodHelper instancesRespondToSelector:aSelector]) {
+            signature = [SUTRuntimeMethodHelper instanceMethodSignatureForSelector:aSelector];
+        }
+    }
+    return signature;
+}
+- (void)forwardInvocation:(NSInvocation *)anInvocation {
+    if ([SUTRuntimeMethodHelper instancesRespondToSelector:anInvocation.selector]) {
+        [anInvocation invokeWithTarget:_helper];
+    }
 }
 </code></pre>
 
-<p><a href="https://github.com/objcio/issue-2-background-networking">Demo下载</a><br/>
-因此:我们总结如下:建议<strong>要么你花时间来把事情做对做好，要么就直接使用像<code>AFNetworking</code>这样的框架</strong><br/>
-其实 AFNetworking 还提供了不少好用的小工具，比如有个 UIImageView 的 category，来负责异步地从一个 URL 加载图片。在你的 table view 里使用的话，还能自动帮你处理取消加载操作，非常方便。</p>
+<h2 id="toc_14">Method Swizzing</h2>
 
-<h4 id="toc_7">5.进阶：后台文件 I/O</h4>
+<p>例如，我们想跟踪在程序中每一个view controller展示给用户的次数：当然，我们可以在每个view controller的viewDidAppear中添加跟踪代码；但是这太过麻烦，需要在每个view controller中写重复的代码。创建一个子类可能是一种实现方式，但需要同时创建UIViewController, UITableViewController, UINavigationController及其它UIKit中view controller的子类，这同样会产生许多重复的代码。</p>
 
-<p>一次性将文件读入内存中对于较小的文件可能没什么问题,但是对于大文件来说就并不友好。<br/>
-我们将构建一个类，它负责<code>一行一行</code>读取文件而不是一次将整个文件读入内存，另外要在<code>后台队列处理文件</code>，以保持应用相应用户的操作。<br/>
-为了达到这个目的，我们使用能让我们异步处理文件的<code>NSInputStream</code></p>
+<pre><code class="language-objc">#import &lt;objc/runtime.h&gt;
+@implementation UIViewController (Tracking)
++ (void)load {
+    static dispatch_once_t onceToken;
+    dispatch_once(&amp;onceToken, ^{
+        Class class = [self class];         
+        // When swizzling a class method, use the following:
+        // Class class = object_getClass((id)self);
+        SEL originalSelector = @selector(viewWillAppear:);
+        SEL swizzledSelector = @selector(xxx_viewWillAppear:);
+        Method originalMethod = class_getInstanceMethod(class, originalSelector);
+        Method swizzledMethod = class_getInstanceMethod(class, swizzledSelector);
+        BOOL didAddMethod = class_addMethod(class,
+                originalSelector,
+                method_getImplementation(swizzledMethod),
+                method_getTypeEncoding(swizzledMethod));
+        if (didAddMethod) {
+            class_replaceMethod(class,
+                swizzledSelector,
+                method_getImplementation(originalMethod),
+                method_getTypeEncoding(originalMethod));
+        } else {
+            method_exchangeImplementations(originalMethod, swizzledMethod);
+        }
+    });
+}
+#pragma mark - Method Swizzling
+- (void)xxx_viewWillAppear:(BOOL)animated {
+    [self xxx_viewWillAppear:animated];
+    NSLog(@&quot;viewWillAppear: %@&quot;, self);
+}
+</code></pre>
 
-<blockquote>
-<p>如果你总是需要从头到尾来读/写文件的话，streams 提供了一个简单的接口来异步完成这个操作</p>
-</blockquote>
+<p>在这里，我们通过method swizzling修改了UIViewController的@selector(viewWillAppear:)对应的函数指针，使其实现指向了我们自定义的xxx_viewWillAppear的实现。这样，当UIViewController及其子类的对象调用viewWillAppear时，都会打印一条日志信息。</p>
 
-<p>不管你是否使用 streams，大体上逐行读取一个文件的模式是这样的：</p>
-
-<ol>
-<li>建立一个中间缓冲层以提供，当没有找到换行符号的时候可以向其中添加数据</li>
-<li>从 stream 中读取一块数据</li>
-<li>对于这块数据中发现的每一个换行符，取中间缓冲层，向其中添加数据，直到（并包括）这个换行符，并将其输出</li>
-<li>将剩余的字节添加到中间缓冲层去</li>
-</ol>
-
-<p><strong>绝大部分时候，使用逐块读入的方式来处理大文件，是非常有用的技术。</strong></p>
-
-<h3 id="toc_8">总结</h3>
-
-<p><strong>在主队列中接收事件或者数据，然后用后台操作队列来执行实际操作，然后回到主队列去传递结果，遵循这样的原则来编写尽量简单的并行代码，将是保证高效正确的不二法则。</strong></p>
+<p>上面的例子很好地展示了使用method swizzling来一个类中注入一些我们新的操作。当然，还有许多场景可以使用method swizzling，在此不多举例。</p>
 
                         
                       </div>
@@ -366,10 +496,10 @@ dispatch_async(backgroundQueue, ^{
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/17</span>
+                    <span class="date">2017/2/22</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Concurrent-Programming.html'>多线程</a></span>
+          					    <span class="posted-in"><a href='RunTime.html'>运行时</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -457,31 +587,31 @@ dispatch_async(backgroundQueue, ^{
 	      
 		      
 			      <li class="post">
-			        <a href="15059300219793.html">高级运算符</a>
+			        <a href="15082392311480.html">实战:ARKit捕捉平面</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15057532270985.html">访问控制</a>
+			        <a href="15082385455420.html">ARCamera</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15052932669633.html">泛型</a>
+			        <a href="15082349866219.html">ARSession</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15047511695312.html">协议</a>
+			        <a href="15082316038998.html">ARSCNView</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15042587690391.html">扩展</a>
+			        <a href="15082286345415.html">ARKit框架API简介</a>
 			      </li>
 		     
 		  

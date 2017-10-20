@@ -105,239 +105,272 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14892022301750.html">
+                <a class="clearlink" href="14913623029277.html">
                 
-                  <h1>图层几何学、视觉效果</h1>
+                  <h1>基于定时器的动画</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>遗忘点:<br/>
-1. 用作mask的layer不一定非要静态的,只要有layer的都可以作为蒙版</p>
+                        	<p>缓冲主要学习<code>CAMediaTimingFunction</code>通过来做加速减速等增强现实感.</p>
 
-<p>2.<code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；我们常用这个方法获取点击位置的视图（判断点击在了哪个视图）</p>
+<p>本章学习精确地控制一帧一帧展示的基于定时器的动画,来更加真实模拟物理交互或者根据用户输入来改变动画</p>
 
-<pre><code>CALayer *layer = [self.layerView.layer hitTest:point];
-</code></pre>
+<h3 id="toc_0">定时帧</h3>
 
-<h2 id="toc_0">图层几何学</h2>
+<p>iOS按照每秒60次刷新屏幕,<code>CAAnimation</code>计算出需要展示的新的帧。</p>
 
-<h3 id="toc_1">布局</h3>
+<h4 id="toc_1">NSTimer</h4>
 
-<p>UIView布局属性:<code>frame</code> <code>bounds</code> <code>center</code><br/><br/>
-与之对应<br/>
-CALayer布局属性:<code>frame</code> <code>bounds</code> <code>position</code><br/>
-center和postion是一样的值，都代表了相对于父图层 <code>anchorPoint</code> 所在的位置</p>
+<p>我们可以用NStimer来一秒钟更新60次，来做动画.</p>
 
-<p>视图的布局属性仅仅是存取方法，对其进行改变其实是改变视图下方CALayer的frame  </p>
+<p>用<code>NSTimer</code>做动画的话需要几个属性来存储动画的<code>fromValue</code> ，<code>toValue</code>，<code>duration</code>和当前的 <code>timeOffset</code>。</p>
 
-<p>视图或者图层的frame是根据其bounds，position和transform计算而来的，其中任意一值发生改变都会导致其frame改变  </p>
+<p><code>示例代码省略</code></p>
 
-<p><img src="media/14892022301750/14892031426669.jpg" alt=""/></p>
+<p>但是用<code>NSTimer</code>并不是一个很好的方案</p>
 
-<h3 id="toc_2">锚点</h3>
+<p>iOS中每个线程都管理了一个<code>NSRunloop</code>，通过循环来完成一些任务列表</p>
 
-<p>视图的<code>center</code>属性和图层的<code>position</code>属性都指定了<code>anchorPoint</code>相对于父图层的位置。</p>
-
-<p><code>anchorPoint</code>是用来移动图层的把柄</p>
-
-<p>默认<code>anchorPoint</code>是在图层的中心,这个属性UIView并没有暴露出来,这也是视图的<code>position</code>属性被叫做“center”的原因。但是图层的锚点可以移动，锚点的移动会导致frame的改变即位置改变</p>
-
-<p><img src="media/14892022301750/14893741880682.jpg" alt=""/></p>
-
-<p>anchorPoint也是单位坐标，默认是{0.5，0.5}，可以通过指定大于或者小于1，使其在图层范围之外</p>
-
-<p>改变<code>anchorPoint</code>常用于做不随着中心点做动画的动画使用,比如 时钟的表针旋转</p>
-
-<p><strong>注意</strong><br/>
-中心和锚点（即position或者center和anchorPoint没有任何关系），锚点的改变不会影响中心点位置，只会影响frame</p>
-
-<pre><code class="language-objc">position.x = frame.origin.x + anchorPoint.x * bounds.size.width；  
-position.y = frame.origin.y + anchorPoint.y * bounds.size.height；
-
-frame.origin.x = position.x - anchorPoint.x * bounds.size.width；  
-frame.origin.y = position.y - anchorPoint.y * bounds.size.height；
-</code></pre>
-
-<h3 id="toc_3">坐标系转换</h3>
-
-<p>CALayer提供了转换坐标系的方法（视图也有）</p>
-
-<pre><code class="language-objc">- (CGPoint)convertPoint:(CGPoint)point fromLayer:(CALayer *)layer;
-- (CGPoint)convertPoint:(CGPoint)point toLayer:(CALayer *)layer;
-- (CGRect)convertRect:(CGRect)rect fromLayer:(CALayer *)layer;
-- (CGRect)convertRect:(CGRect)rect toLayer:(CALayer *)layer;
-</code></pre>
-
-<h3 id="toc_4">Z坐标</h3>
-
-<p>UIView是二维坐标 而CALayer则是三维的<br/><br/>
-因此CALayer还有两个属性:<code>zPosition</code> <code>anchorPointZ</code> 在Z轴上描述图层位置的浮点类型<br/>
-<code>zPosition</code>最实用的功能就是改变图层的显示顺序了，一般给图层增加<code>1.f</code>就可以控制显示顺序了</p>
-
-<h3 id="toc_5">HIT Testing</h3>
-
-<p><code>CALayer</code>并不关心任何响应链事件，所以不能直接处理触摸事件或者手势。但是它有一系列的方法帮你处理事件：<code>-containsPoint:</code>和<code>-hitTest:</code>。    </p>
-
-<p><code>-containsPoint:</code> 接受一个在本图层坐标系吓得一个CGPoint，如果这个点在图层frame内就返回YES。注意必须将这个点转为每个图层坐标系下的坐标</p>
-
-<p><code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；</p>
-
-<pre><code class="language-objc">//举个栗子
-- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
-{
-    //get touch position
-    CGPoint point = [[touches anyObject] locationInView:self.view];
-    //get touched layer
-    //获取这个点击的layer
-    CALayer *layer = [self.layerView.layer hitTest:point];
-    //get layer using hitTest
-    if (layer == self.blueLayer) {
-        [[[UIAlertView alloc] initWithTitle:@&quot;Inside Blue Layer&quot; message:nil delegate:nil cancelButtonTitle:@&quot;OK&quot; otherButtonTitles:nil] show];
-    } else if (layer == self.layerView.layer) {
-        [[[UIAlertView alloc] initWithTitle:@&quot;Inside White Layer&quot;
-        message:nil
-        delegate:nil
-        cancelButtonTitle:@&quot;OK&quot;
-        otherButtonTitles:nil] show];
-    }
-}
-
-</code></pre>
-
-<p><strong>注意</strong></p>
-
-<ol>
-<li>当调用图层的<code>-hitTest:</code>方法时，测算的顺序严格依赖于图层树当中的图层顺序（和<code>UIView</code>处理事件类似）。之前提到的<code>zPosition</code>属性可以明显改变屏幕上图层的顺序，但不能改变事件传递的顺序。<br/></li>
-<li>这两个方法是layer的实例方法 我们可以直接用layer调用而不需要作为系统判断方法</li>
-</ol>
-
-<h3 id="toc_6">自动布局</h3>
-
-<p>对于UIView如果想要自动布局我们可以使用<code>UIViewAutoresizingMask</code>  和<code>NSLayoutConstraint</code>API<br/><br/>
-CALayer没有自动布局办法<br/>
-如果想要随意控制CALayer的布局，我们可以用CALayerDelegate方法:  </p>
-
-<pre><code class="language-objc">- (void)layoutSublayersOfLayer:(CALayer *)layer;
-/**当图层的 bounds 发生改变，或者图层的 -setNeedsLayout 方法被调用的时候，这个函数将会被执
-行。（但是也没法做大自适应屏幕等自动布局,这也是为什么我们用UIView来布局）*/
-</code></pre>
-
-<h2 id="toc_7">视觉效果</h2>
-
-<h3 id="toc_8">圆角</h3>
-
-<p>CALayer有一个叫做<code>conrnerRadius</code>的属性控制着图层角的曲率。它是一个浮点数，默认为0（为0的时候就是直角）,默认这个值不影响背景图片或者子图层,但是如果设置<code>maskToBounds</code>为<code>YES</code>,图层中东西都会被截取.</p>
-
-<h3 id="toc_9">图层边框</h3>
-
-<p><code>borderWidth</code>和<code>borderColor</code>，这条线（stroke）沿着图层的bounds绘制,同时也包含图层的角.<br/>
-<code>borderWith</code>以点为单位的浮点数<br/><br/>
-<code>borderColor</code>边框的颜色默认黑色,<code>CGColorRef</code>类型，不是UIColor所以不是<code>Cocoa</code>内置对象  </p>
-
-<pre><code class="language-objc">// CGColorRef 属性即便是强引用也只能通过assign关键字来声明
-@property(nullable) CGColorRef borderColor;
-</code></pre>
-
-<p><strong>注意</strong></p>
-
-<ol>
-<li>边框是绘制在图层边界里面的，而且在所有子内容之前，也在子图层之前。（这个之前是显示最前而不是在最前绘制被遮盖）</li>
-<li>边框是跟随图层的边界变化的，而不是图层里面的内容</li>
-<li>
-<img src="media/14892022301750/14893838391060.jpg" alt=""/></li>
-</ol>
-
-<h3 id="toc_10">阴影</h3>
-
-<p><code>shadowOpacity</code>默认0。他是一个必须在<code>0.0</code>（不可见）和<code>1.0</code>（完全不透明）之间的浮点数。  </p>
-
-<p>阴影的另外三个属性:<br/><br/>
-<code>shadowColor</code>控制阴影的颜色，和 borderColor 和 backgroundColor 一样，它的类型也是 CGColorRef，默认黑色<br/><br/>
-<code>shadowOffset</code>阴影的方向和距离 CGSize类型，宽度为阴影横向位移，高度为纵向位移，默认{0,-3},即相对Y轴有3个点的向上位移<br/><br/>
-<code>shadowRadius</code>控制着阴影的模糊度，当它的值是0的时候，阴影就和视图一样有一个非常确定的边界线。我们推荐为大于0的值,值越大阴影越模糊,图层层次更明显.</p>
-
-<p><img src="media/14892022301750/14893848191222.jpg" alt=""/></p>
-
-<h4 id="toc_11">阴影裁剪</h4>
-
-<p>与边框不同,图层的阴影继承自内容的外形，CoreAnimation会将寄宿图（包括子视图）来结合图层形状创建一个阴影。<br/><br/>
-但是由于他们的不同,我们在包括子图层创建阴影后,如果按照边框进行裁剪就会导致部分阴影没有了，这时候我们只能额外创建一个裁剪后的图层形状的阴影图层（可以作为最外层的父图层）来实现效果。</p>
-
-<h3 id="toc_12">shadowPath属性</h3>
-
-<p>因为实时计算阴影是非常消耗资源的,我们可以通过事先指定<code>shadowPath</code>来提高性能.<code>shadowPath</code>是一个<code>CGPathRef</code>类型（一个指向<code>CGPath</code>的指针）。<code>CGPath</code> 是一个<code>Core Graphics</code>对象，用来指定任意的一个矢量图形。我们可以用这个属性在图层形状之外指定阴影形状.  </p>
-
-<p>举个栗子:</p>
-
-<pre><code class="language-objc">
-CGMutablePathRef squarePath = CGPathCreateMutable();
-CGPathAddRect(squarePath, NULL, self.layerView1.bounds);
-self.layerView1.layer.shadowPath = squarePath;
-//需要我们手动释放
-CGPathRelease(squarePath);
-//create a circular shadow
-CGMutablePathRef circlePath = CGPathCreateMutable();
-CGPathAddEllipseInRect(circlePath, NULL, self.layerView2.bounds);
-self.layerView2.layer.shadowPath = circlePath; 
-CGPathRelease(circlePath);
-</code></pre>
-
-<p><code>CGPath</code>适合搭建比较简单的形状,比如举行或者圆,但是如果是复杂的图形推荐<strong>使用<code>UIBezierPath</code></strong>，它是一个由UIKit提供的在<code>CGPath</code>基础上的<code>Objective-C</code>包装类</p>
-
-<h3 id="toc_13">图层蒙版</h3>
-
-<p>CALayer的<code>mask</code>属性是一个CALayer类型,它类似于一个自图层，mask图层定义了父图层的可见区域。  </p>
-
-<p>mask图层的color没用,轮廓才是重要的。对于mask图层中的部分会保留下来,其他部分会被抛弃（对于视图View其实你可以看做其他部分还在只不过颜色为透明色,但是这部分还会拦截点击事件）  </p>
-
-<p>这个<code>Mask</code><strong>不仅仅局限于静态图</strong>，任何有图层的构成都可以作为Mask，因此我们甚至可以用一个动画的layer作为蒙版.</p>
-
-<h3 id="toc_14">拉伸过滤</h3>
-
-<p>这里牵涉到<code>minificationFilter</code>和<code>magnificationFilter</code>属性。  </p>
-
-<p>当图片需要显示不同大小的时候,这种拉伸算法就起到作用。它作用于原图的像素上并根据需要生成新的像素显示在屏幕上。</p>
-
-<p><code>CALayer</code>提供给我们三种拉伸过滤方法:</p>
+<p>但是主线程的任务有:</p>
 
 <ul>
-<li>kCAFilterLinear </li>
-<li>kCAFilterNearest</li>
-<li>kCAFilterTrilinear</li>
+<li>处理触摸事件</li>
+<li>发送和接受网络数据包</li>
+<li>执行使用gcd的代码</li>
+<li>处理定时器行为</li>
+<li>屏幕重绘</li>
 </ul>
 
-<p><code>minification</code>（缩小图片）和<code>magnification</code>（放大图片）默认的过滤器都是<code>kCAFilterLinear</code></p>
+<p>当我们设置了一个NSTimer,会被插入到当前任务列表中,指定时间过去后才被执行.但是何时启动定时器并没有一个时间上限，而且它只会在列表中上一个任务完成之后开始执行。这通常会导致有几毫秒的延迟，但是如果上一个任务过了很久才完成就会导致延迟很长一段时间。</p>
 
-<p><code>kCAFilterLinear</code>双线性滤波，大多数情况下表现良好，但是当放大倍数较大时会比较模糊不清  </p>
+<p>屏幕重绘的频率是一秒钟六十次，但是和定时器行为一样，如果列表中上一个执行了很长时间，它也会延迟。这些延迟都是一个随机值，于是就不能保证定时器精准地一秒钟执行六十次。有时候发生在屏幕重绘之后，这就会使得更新屏幕会有个延迟，看起来就是动画卡壳了。有时候定时器会在屏幕更新的时候执行两次，于是动画看起来就跳动了。</p>
 
-<p><code>kCAFilterTrilinear</code>和<code>kCAFilterLinear</code>很相似，是三线性滤波<br/>
-<img src="media/14892022301750/14893953542514.jpg" alt=""/></p>
+<p>优化方法:</p>
 
-<p><code>kCAFilterNearest</code> 最近过滤 ，就是取样最近的单像素点而不管其他的颜色。总的来说，对于比较小的图或者是差异特别明显，极少斜线的大图，最近过滤算法会保留这种差异明显的特质以呈现更好的结果。但是对于大多数的图尤其是有很多斜线或是曲线轮廓的图片来说，最近过滤算法会导致更差的结果。换句话说，线性过滤保留了形状，最近过滤则保留了像素的差异。<br/>
-<img src="media/14892022301750/14893958244715.jpg" alt=""/></p>
+<ul>
+<li>我们可以用 CADisplayLink 让更新频率严格控制在每次屏幕刷新之后。</li>
+<li>基于真实帧的持续时间而不是假设的更新频率来做动画。</li>
+<li>调整动画计时器的 <code>run loop</code> 模式，这样就不会被别的事件干扰。</li>
+</ul>
 
-<h3 id="toc_15">组透明</h3>
+<h4 id="toc_2">CADisplayLink</h4>
 
-<p>UIView用<code>alpha</code>属性设置透明度<br/>
-CALayy用<code>opacity</code>设置图层透明度<br/>
-这两个属性都是影响子层级的，比如我们设置一个图层透明度为50%，图层的每个像素都会一半显示自己的颜色，另一半显示图层下面的颜色。。但是如果图层包含一个同样显示50%透明的子图层时，你所看到的视图，50%来自子视图，25%来了图层本身的颜色，另外的25%则来自背景色。因此经常导致我们我们视图颜色的不协调。</p>
+<p><code>CADisplayLink</code>是<code>CoreAnimation</code>提供的另一个类似<code>NSTimer</code>类,总是在屏幕完成一次更新之前启动,它和<code>NSTimer</code>的内部实现相同,只不过它不是以时间间隔秒为单位,<code>CADisplayLink</code> 有一个整型的<code>frameInterval</code> 属性，指定了间隔多少帧之后才执行。默认值是1，意味着每次屏幕更新之前都会执行一次。(我们可以根据动画的执行时间来确定多少帧执行一次)</p>
 
-<p>这时候我们可以<br/><br/>
-方法一：<br/><br/>
-通过设置<code>Info.plist</code>文件中的 <code>UIViewGroupOpacity</code>为<code>YES</code>来达到这个效果，但是这个设置会影响到这个应用，整个app可能会受到不良影响。</p>
+<p>虽然<code>CADisplayLink</code>也不能保证每帧都按计划执行,出现丢帧情况,但是和<code>NSTimer</code>不同的是<code>NSTimer</code>一有机会就会开启,而<code>CADisplayLink</code>如果丢帧的话会直接忽略它们,在下一次更新时接着运行;</p>
 
-<p>方法二：（推荐）<br/><br/>
-设置CALayer的一个叫做<code>shouldRasterize</code>属性来实现组透明的效果，如果它被设置为YES，在应用透明度之前，图层及其子图层都会被整合成一个整体的图片，这样就没有透明度混合的问题了</p>
+<pre><code class="language-objc">self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
 
-<p>为了启用<code>shouldRasterize</code>属性，我们设置了图层的<code>rasterizationScale</code>属性。默认情况下，所有图层拉伸都是1.0， 所以如果你使用了<code>shouldRasterize</code>属性，你就要确保你设置了 <code>rasterizationScale</code> 属性去匹配屏幕，以防止出现Retina屏幕像素化的问题。</p>
-
-<pre><code class="language-objc">button2.layer.shouldRasterize = YES;
-button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
+- (void)step:(CADisplayLink *)timer
+{
+    //calculate time delta
+    CFTimeInterval thisStep = CACurrentMediaTime();
+    CFTimeInterval stepDuration = thisStep - self.lastStep;
+    self.lastStep = thisStep;
+    
+    self.timeOffset = MIN(self.timeOffset + stepDuration, self.duration);
+    //get normalized time offset (in range 0 - 1)
+    float time = self.timeOffset / self.duration;
+    //apply easing
+    time = bounceEaseOut(time);
+    //interpolate position
+    id position = [self interpolateFromValue:self.fromValue toValue:self.toValue
+    time:time];
+    //move ball view to new position
+    self.ballView.center = [position CGPointValue];
+    //stop the timer if we&#39;ve reached the end of the animation
+    if (self.timeOffset &gt;= self.duration) {
+        [self.timer invalidate];
+        self.timer = nil;
+    }
+}
 </code></pre>
 
-<p><strong>注意</strong><br/>
-当<code>shouldRasterize</code>和<code>UIViewGroupOpacity</code>一起的时候，会出现性能问题（但是好像影响不大）</p>
+<h4 id="toc_3">Run Loop 模式</h4>
+
+<p>创建Run Loop时需要指定mode,iOS会根据指定的优先级,，而且当UI很活跃的时候的确会暂停一些别的任务.</p>
+
+<ul>
+<li>NSDefaultRunLoopMode - 标准优先级</li>
+<li>NSRunLoopCommonModes - 高优先级</li>
+<li>UITrackingRunLoopMode - 用于 UIScrollView 和别的控件的动画</li>
+</ul>
+
+<pre><code class="language-objc">/*我们可以同时加入 NSDefaultRunLoopMode 和 UITrackingRunLoopMode 
+    来保证它不会被滑动打断，也不会被其他UIKit控件动画影响性能
+**/
+self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:UITrackingRunLoop];
+</code></pre>
+
+<h3 id="toc_4">物理模拟</h3>
+
+<p>我们在上面的方法中，关键帧的实现中我们提前加计算了所有帧,这次我们按需要进行计算,这样我们可以根据用户输入实时修改动画的逻辑，或者和别的实时动画系统例如物理引擎进行整合。</p>
+
+<h4 id="toc_5">Chipmunk</h4>
+
+<p>基于物理学创建一个真实的重力模拟效果来取代当前基于缓冲的弹性动画,因为模拟物理效果太复杂了，我们直接使用开源的物理引擎,我这里使用<code>Chipmunk</code>，有很多版本包括和<code>Objective-C</code>绑定的<code>“indie”</code>版本<a href="http://chipmunk-physics.net/">下载地址</a></p>
+
+<p>我们只简单使用这个引擎中的几个类:</p>
+
+<ul>
+<li>cpSpace - 所有的物理结构体的容器。它有一个大小和一个可选的重力矢量</li>
+<li>cpBody - 一个固态无弹力的刚体。它有一个坐标，以及其他物理属性，例如质量，运动和摩擦系数等等。</li>
+<li>cpShape - 一个抽象的几何形状，用来检测碰撞。可以给结构体添加一个多边形，而且<code>cpShape</code>有各种子类来代表不同形状的类型。</li>
+</ul>
+
+<p>因为C语言是不支持引用计数的所以为了准确的创建和释放我们将<code>cpShape</code>和<code>cpBody</code>和<code>Crate</code>（木箱）类进行绑定，在木箱的<code>- init</code>方法中创建,<code>-dealloc</code>中释放。用视图控制器来管理<code>cpSpace</code></p>
+
+<p><code>Chipmunk</code>使用了一个和<code>UIKit</code>颠倒的坐标系（Y轴向上为正方向）。我们可以使用<code>geometryFlipped</code>属性翻转容器视图的集合坐标,这样模型和视图就共享一个坐标系了<br/>
+<strong>geometryFlipped</strong>设置layer的这个属性可以调整坐标系Y轴方向</p>
+
+<p>代码示例:</p>
+
+<pre><code class="language-objc">//创建木箱的image对象
+@interface Crate : UIImageView
+@property (nonatomic, assign) cpBody *body;
+@property (nonatomic, assign) cpShape *shape;
+@end
+
+@implementation Crate
+#define MASS 100
+- (id)initWithFrame:(CGRect)frame
+{
+    if ((self = [super initWithFrame:frame])) {
+        //set image
+        self.image = [UIImage imageNamed:@&quot;Crate.png&quot;];
+        self.contentMode = UIViewContentModeScaleAspectFill;
+        //create the body
+        self.body = cpBodyNew(MASS, cpMomentForBox(MASS, frame.size.width, frame.size.height));
+        //create the shape
+        cpVect corners[] = {
+            cpv(0, 0),
+            cpv(0, frame.size.height),
+            cpv(frame.size.width, frame.size.height),
+            cpv(frame.size.width, 0),
+        };
+    self.shape = cpPolyShapeNew(self.body, 4, corners, cpv(-frame.size.width/2, -frame.size.height/2));
+    //set shape friction &amp; elasticity
+    cpShapeSetFriction(self.shape, 0.5);
+    cpShapeSetElasticity(self.shape, 0.8);
+    //link the crate to the shape
+    //so we can refer to crate from callback later on
+    self.shape-&gt;data = (__bridge void *)self;
+    //set the body position to match view
+    cpBodySetPos(self.body, cpv(frame.origin.x + frame.size.width/2, 300 - frame.origin.y - frame.size.height/2));
+    }
+    return self;
+}
+- (void)dealloc
+{
+    //release shape and body
+    cpShapeFree(_shape);
+    cpBodyFree(_body);
+}
+@end
+
+//创建重力空间
+@interface ViewController ()
+@property (nonatomic, weak) IBOutlet UIView *containerView;
+@property (nonatomic, assign) cpSpace *space;
+@property (nonatomic, strong) CADisplayLink *timer;
+@property (nonatomic, assign) CFTimeInterval lastStep;
+@end
+
+@implementation ViewController
+#define GRAVITY 1000
+- (void)viewDidLoad
+{
+    //invert view coordinate system to match physics
+    self.containerView.layer.geometryFlipped = YES;
+    //set up physics space
+    self.space = cpSpaceNew();
+    cpSpaceSetGravity(self.space, cpv(0, -GRAVITY));
+    //add a crate
+    Crate *crate = [[Crate alloc] initWithFrame:CGRectMake(100, 0, 100, 100)];
+    [self.containerView addSubview:crate];
+    cpSpaceAddBody(self.space, crate.body);
+    cpSpaceAddShape(self.space, crate.shape);
+    //start the timer
+    self.lastStep = CACurrentMediaTime();
+    self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+    [self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+}
+
+void updateShape(cpShape *shape, void *unused)
+{
+    //get the crate object associated with the shape
+    Crate *crate = (__bridge Crate *)shape-&gt;data;
+    //update crate view position and angle to match physics shape
+    cpBody *body = shape-&gt;body;
+    crate.center = cpBodyGetPos(body);
+    crate.transform = CGAffineTransformMakeRotation(cpBodyGetAngle(body));
+}
+
+- (void)step:(CADisplayLink *)timer
+{
+    //calculate step duration
+    CFTimeInterval thisStep = CACurrentMediaTime();
+    CFTimeInterval stepDuration = thisStep - self.lastStep;
+    self.lastStep = thisStep;
+    //update physics
+    cpSpaceStep(self.space, stepDuration);
+    //update all the shapes
+    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
+}
+@end
+</code></pre>
+
+<h4 id="toc_6">添加用户交互</h4>
+
+<p>为了使木箱不掉落到屏幕外 我们在屏幕周围添加四条线来限制范围;</p>
+
+<p>通过给<code>cpSpace</code>添加四个<code>cpSegmentShape</code>对象（<code>cpSegmentShape</code>代表一条直线，所以四个拼起来就是一个矩形）。然后赋值给空间的<code>staticBody</code>属性(这是不受重力的结构体)，而不是像木箱那样会受重力的<code>cpBody</code>实例，因为我们不想这线画出屏幕或者被木箱击中消失。</p>
+
+<p>通过添加一个加速器,可以通过倾斜手机来调整重力矢量,在横屏模式下，要交换加速计矢量的x和y值，竖屏模式下再换回来.</p>
+
+<pre><code>代码省略
+</code></pre>
+
+<h4 id="toc_7">模拟时间以及固定的时间步长</h4>
+
+<p>在上面我们做动画的缓冲效果来说,都是计算每帧的持续时间，这样的话两个时间步长就是可变的,对于模拟物理效果并不理想:</p>
+
+<p>因此我们通过<strong>固定的时间步长</strong>来计算物理效果，还要保证在屏幕发生重绘时能够同步更新视图</p>
+
+<p>因为刚好我们的模型（在这个例子中就是Chipmunk的 cpSpace 中的 cpBody ）被视图（就是屏幕上代表木箱的 UIView 对象）分离，于是就很简单了。我们只需要根据屏幕刷新的时间跟踪时间步长，然后根据每帧去计算一个或者多个模拟出来的效果。</p>
+
+<pre><code class="language-objc">
+/**
+    通过每次 CADisplayLink 的启动来通知屏幕将要刷新，然后记录下当前的
+    CACurrentMediaTime() 。
+    在一个小增量中提前重复物理模拟（这里用120分之一秒）直到赶上显示的时间。然后更新我们的视图，
+    在屏幕刷新的时候匹配当前物理结构体的显示位置。
+*/
+
+#define SIMULATION_STEP (1/120.0)
+- (void)step:(CADisplayLink *)timer
+{
+    //calculate frame step duration
+    CFTimeInterval frameTime = CACurrentMediaTime();
+    //update simulation
+    while (self.lastStep &lt; frameTime) {
+        cpSpaceStep(self.space, SIMULATION_STEP);
+        self.lastStep += SIMULATION_STEP;
+    }
+    //update all the shapes
+    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
+}
+</code></pre>
+
+<h4 id="toc_8">避免死亡螺旋</h4>
+
+<p>在上面例子中我们随意选择了1/120秒来模拟物理效果,但是我们在场景很复杂，<code>cpSpaceStp()</code>计算也会超出1/120秒,这样就会造成延迟帧率,帧延迟的话，我们需要更多时间来同步真实时间,这样就越来越慢，直到应用程序卡死,这就是所谓的<code>死亡螺旋</code></p>
+
+<p>为了避免这种情况 我们需要留下足够的时间容错，如果物理计算超过了模拟时间的50%，就需要考虑增加模拟时间步长（或者简化场景）。如果模拟时间步长增加到超过1/60秒（一个完整的屏幕更新时间），你就需要减少动画帧率到一秒30帧或者增加<code>CADisplayLink</code>的<code>frameInterval</code>来保证不会随机丢帧，不然你的动画将会看起来不平滑。</p>
 
                         
                       </div>
@@ -346,10 +379,10 @@ button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/11</span>
+                    <span class="date">2017/4/5</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%9B%BE%E5%B1%82.html'>图层</a></span>
+          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -437,31 +470,31 @@ button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
 	      
 		      
 			      <li class="post">
-			        <a href="15059300219793.html">高级运算符</a>
+			        <a href="15082392311480.html">实战:ARKit捕捉平面</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15057532270985.html">访问控制</a>
+			        <a href="15082385455420.html">ARCamera</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15052932669633.html">泛型</a>
+			        <a href="15082349866219.html">ARSession</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15047511695312.html">协议</a>
+			        <a href="15082316038998.html">ARSCNView</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15042587690391.html">扩展</a>
+			        <a href="15082286345415.html">ARKit框架API简介</a>
 			      </li>
 		     
 		  

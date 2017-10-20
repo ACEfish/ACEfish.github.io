@@ -105,272 +105,384 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14913623029277.html">
+                <a class="clearlink" href="14964011409915.html">
                 
-                  <h1>基于定时器的动画</h1>
+                  <h1>iOS 开发中的九种锁</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>缓冲主要学习<code>CAMediaTimingFunction</code>通过来做加速减速等增强现实感.</p>
+                        	<p>我们在使用多线程的时候多个线程可能会访问同一块资源，这样就很容易引发数据错乱和数据安全等问题，这时候就需要我们保证每次只有一个线程访问这一块资源，锁 应运而生。</p>
 
-<p>本章学习精确地控制一帧一帧展示的基于定时器的动画,来更加真实模拟物理交互或者根据用户输入来改变动画</p>
+<p>补充:<a href="http://www.cnblogs.com/huangjianwu/p/4575763.html">实现锁的多种方式和锁的高级用法</a><br/>
+<a href="http://www.jianshu.com/p/938d68ed832c">iOS中保证线程安全的几种方式与性能对比</a></p>
 
-<h3 id="toc_0">定时帧</h3>
+<h2 id="toc_0">一、OSSpinLock 自旋锁</h2>
 
-<p>iOS按照每秒60次刷新屏幕,<code>CAAnimation</code>计算出需要展示的新的帧。</p>
+<p>OSSpinLock 自旋锁，性能最高的锁。在任何时刻只会有一个线程能获得锁,而其他线程忙着等待直到获得锁。缺点是<code>spinlock</code>使用不当(如临界区执行时间过长)会导致<code>cpu busy</code>飙高。不适合较长时间任务</p>
 
-<h4 id="toc_1">NSTimer</h4>
+<pre><code class="language-objc">__block OSSpinLock theLock = OS_SPINLOCK_INIT;
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    OSSpinLockLock(&amp;theLock);
+    NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+    sleep(3);
+    NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+    OSSpinLockUnlock(&amp;theLock);
 
-<p>我们可以用NStimer来一秒钟更新60次，来做动画.</p>
+});
 
-<p>用<code>NSTimer</code>做动画的话需要几个属性来存储动画的<code>fromValue</code> ，<code>toValue</code>，<code>duration</code>和当前的 <code>timeOffset</code>。</p>
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    OSSpinLockLock(&amp;theLock);
+    sleep(1);
+    NSLog(@&quot;需要线程同步的操作2&quot;);
+    OSSpinLockUnlock(&amp;theLock);
 
-<p><code>示例代码省略</code></p>
-
-<p>但是用<code>NSTimer</code>并不是一个很好的方案</p>
-
-<p>iOS中每个线程都管理了一个<code>NSRunloop</code>，通过循环来完成一些任务列表</p>
-
-<p>但是主线程的任务有:</p>
-
-<ul>
-<li>处理触摸事件</li>
-<li>发送和接受网络数据包</li>
-<li>执行使用gcd的代码</li>
-<li>处理定时器行为</li>
-<li>屏幕重绘</li>
-</ul>
-
-<p>当我们设置了一个NSTimer,会被插入到当前任务列表中,指定时间过去后才被执行.但是何时启动定时器并没有一个时间上限，而且它只会在列表中上一个任务完成之后开始执行。这通常会导致有几毫秒的延迟，但是如果上一个任务过了很久才完成就会导致延迟很长一段时间。</p>
-
-<p>屏幕重绘的频率是一秒钟六十次，但是和定时器行为一样，如果列表中上一个执行了很长时间，它也会延迟。这些延迟都是一个随机值，于是就不能保证定时器精准地一秒钟执行六十次。有时候发生在屏幕重绘之后，这就会使得更新屏幕会有个延迟，看起来就是动画卡壳了。有时候定时器会在屏幕更新的时候执行两次，于是动画看起来就跳动了。</p>
-
-<p>优化方法:</p>
-
-<ul>
-<li>我们可以用 CADisplayLink 让更新频率严格控制在每次屏幕刷新之后。</li>
-<li>基于真实帧的持续时间而不是假设的更新频率来做动画。</li>
-<li>调整动画计时器的 <code>run loop</code> 模式，这样就不会被别的事件干扰。</li>
-</ul>
-
-<h4 id="toc_2">CADisplayLink</h4>
-
-<p><code>CADisplayLink</code>是<code>CoreAnimation</code>提供的另一个类似<code>NSTimer</code>类,总是在屏幕完成一次更新之前启动,它和<code>NSTimer</code>的内部实现相同,只不过它不是以时间间隔秒为单位,<code>CADisplayLink</code> 有一个整型的<code>frameInterval</code> 属性，指定了间隔多少帧之后才执行。默认值是1，意味着每次屏幕更新之前都会执行一次。(我们可以根据动画的执行时间来确定多少帧执行一次)</p>
-
-<p>虽然<code>CADisplayLink</code>也不能保证每帧都按计划执行,出现丢帧情况,但是和<code>NSTimer</code>不同的是<code>NSTimer</code>一有机会就会开启,而<code>CADisplayLink</code>如果丢帧的话会直接忽略它们,在下一次更新时接着运行;</p>
-
-<pre><code class="language-objc">self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-
-- (void)step:(CADisplayLink *)timer
-{
-    //calculate time delta
-    CFTimeInterval thisStep = CACurrentMediaTime();
-    CFTimeInterval stepDuration = thisStep - self.lastStep;
-    self.lastStep = thisStep;
-    
-    self.timeOffset = MIN(self.timeOffset + stepDuration, self.duration);
-    //get normalized time offset (in range 0 - 1)
-    float time = self.timeOffset / self.duration;
-    //apply easing
-    time = bounceEaseOut(time);
-    //interpolate position
-    id position = [self interpolateFromValue:self.fromValue toValue:self.toValue
-    time:time];
-    //move ball view to new position
-    self.ballView.center = [position CGPointValue];
-    //stop the timer if we&#39;ve reached the end of the animation
-    if (self.timeOffset &gt;= self.duration) {
-        [self.timer invalidate];
-        self.timer = nil;
-    }
-}
+});
 </code></pre>
 
-<h4 id="toc_3">Run Loop 模式</h4>
-
-<p>创建Run Loop时需要指定mode,iOS会根据指定的优先级,，而且当UI很活跃的时候的确会暂停一些别的任务.</p>
-
-<ul>
-<li>NSDefaultRunLoopMode - 标准优先级</li>
-<li>NSRunLoopCommonModes - 高优先级</li>
-<li>UITrackingRunLoopMode - 用于 UIScrollView 和别的控件的动画</li>
-</ul>
-
-<pre><code class="language-objc">/*我们可以同时加入 NSDefaultRunLoopMode 和 UITrackingRunLoopMode 
-    来保证它不会被滑动打断，也不会被其他UIKit控件动画影响性能
-**/
-self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:UITrackingRunLoop];
-</code></pre>
-
-<h3 id="toc_4">物理模拟</h3>
-
-<p>我们在上面的方法中，关键帧的实现中我们提前加计算了所有帧,这次我们按需要进行计算,这样我们可以根据用户输入实时修改动画的逻辑，或者和别的实时动画系统例如物理引擎进行整合。</p>
-
-<h4 id="toc_5">Chipmunk</h4>
-
-<p>基于物理学创建一个真实的重力模拟效果来取代当前基于缓冲的弹性动画,因为模拟物理效果太复杂了，我们直接使用开源的物理引擎,我这里使用<code>Chipmunk</code>，有很多版本包括和<code>Objective-C</code>绑定的<code>“indie”</code>版本<a href="http://chipmunk-physics.net/">下载地址</a></p>
-
-<p>我们只简单使用这个引擎中的几个类:</p>
-
-<ul>
-<li>cpSpace - 所有的物理结构体的容器。它有一个大小和一个可选的重力矢量</li>
-<li>cpBody - 一个固态无弹力的刚体。它有一个坐标，以及其他物理属性，例如质量，运动和摩擦系数等等。</li>
-<li>cpShape - 一个抽象的几何形状，用来检测碰撞。可以给结构体添加一个多边形，而且<code>cpShape</code>有各种子类来代表不同形状的类型。</li>
-</ul>
-
-<p>因为C语言是不支持引用计数的所以为了准确的创建和释放我们将<code>cpShape</code>和<code>cpBody</code>和<code>Crate</code>（木箱）类进行绑定，在木箱的<code>- init</code>方法中创建,<code>-dealloc</code>中释放。用视图控制器来管理<code>cpSpace</code></p>
-
-<p><code>Chipmunk</code>使用了一个和<code>UIKit</code>颠倒的坐标系（Y轴向上为正方向）。我们可以使用<code>geometryFlipped</code>属性翻转容器视图的集合坐标,这样模型和视图就共享一个坐标系了<br/>
-<strong>geometryFlipped</strong>设置layer的这个属性可以调整坐标系Y轴方向</p>
-
-<p>代码示例:</p>
-
-<pre><code class="language-objc">//创建木箱的image对象
-@interface Crate : UIImageView
-@property (nonatomic, assign) cpBody *body;
-@property (nonatomic, assign) cpShape *shape;
-@end
-
-@implementation Crate
-#define MASS 100
-- (id)initWithFrame:(CGRect)frame
-{
-    if ((self = [super initWithFrame:frame])) {
-        //set image
-        self.image = [UIImage imageNamed:@&quot;Crate.png&quot;];
-        self.contentMode = UIViewContentModeScaleAspectFill;
-        //create the body
-        self.body = cpBodyNew(MASS, cpMomentForBox(MASS, frame.size.width, frame.size.height));
-        //create the shape
-        cpVect corners[] = {
-            cpv(0, 0),
-            cpv(0, frame.size.height),
-            cpv(frame.size.width, frame.size.height),
-            cpv(frame.size.width, 0),
-        };
-    self.shape = cpPolyShapeNew(self.body, 4, corners, cpv(-frame.size.width/2, -frame.size.height/2));
-    //set shape friction &amp; elasticity
-    cpShapeSetFriction(self.shape, 0.5);
-    cpShapeSetElasticity(self.shape, 0.8);
-    //link the crate to the shape
-    //so we can refer to crate from callback later on
-    self.shape-&gt;data = (__bridge void *)self;
-    //set the body position to match view
-    cpBodySetPos(self.body, cpv(frame.origin.x + frame.size.width/2, 300 - frame.origin.y - frame.size.height/2));
-    }
-    return self;
-}
-- (void)dealloc
-{
-    //release shape and body
-    cpShapeFree(_shape);
-    cpBodyFree(_body);
-}
-@end
-
-//创建重力空间
-@interface ViewController ()
-@property (nonatomic, weak) IBOutlet UIView *containerView;
-@property (nonatomic, assign) cpSpace *space;
-@property (nonatomic, strong) CADisplayLink *timer;
-@property (nonatomic, assign) CFTimeInterval lastStep;
-@end
-
-@implementation ViewController
-#define GRAVITY 1000
-- (void)viewDidLoad
-{
-    //invert view coordinate system to match physics
-    self.containerView.layer.geometryFlipped = YES;
-    //set up physics space
-    self.space = cpSpaceNew();
-    cpSpaceSetGravity(self.space, cpv(0, -GRAVITY));
-    //add a crate
-    Crate *crate = [[Crate alloc] initWithFrame:CGRectMake(100, 0, 100, 100)];
-    [self.containerView addSubview:crate];
-    cpSpaceAddBody(self.space, crate.body);
-    cpSpaceAddShape(self.space, crate.shape);
-    //start the timer
-    self.lastStep = CACurrentMediaTime();
-    self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-    [self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-}
-
-void updateShape(cpShape *shape, void *unused)
-{
-    //get the crate object associated with the shape
-    Crate *crate = (__bridge Crate *)shape-&gt;data;
-    //update crate view position and angle to match physics shape
-    cpBody *body = shape-&gt;body;
-    crate.center = cpBodyGetPos(body);
-    crate.transform = CGAffineTransformMakeRotation(cpBodyGetAngle(body));
-}
-
-- (void)step:(CADisplayLink *)timer
-{
-    //calculate step duration
-    CFTimeInterval thisStep = CACurrentMediaTime();
-    CFTimeInterval stepDuration = thisStep - self.lastStep;
-    self.lastStep = thisStep;
-    //update physics
-    cpSpaceStep(self.space, stepDuration);
-    //update all the shapes
-    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
-}
-@end
-</code></pre>
-
-<h4 id="toc_6">添加用户交互</h4>
-
-<p>为了使木箱不掉落到屏幕外 我们在屏幕周围添加四条线来限制范围;</p>
-
-<p>通过给<code>cpSpace</code>添加四个<code>cpSegmentShape</code>对象（<code>cpSegmentShape</code>代表一条直线，所以四个拼起来就是一个矩形）。然后赋值给空间的<code>staticBody</code>属性(这是不受重力的结构体)，而不是像木箱那样会受重力的<code>cpBody</code>实例，因为我们不想这线画出屏幕或者被木箱击中消失。</p>
-
-<p>通过添加一个加速器,可以通过倾斜手机来调整重力矢量,在横屏模式下，要交换加速计矢量的x和y值，竖屏模式下再换回来.</p>
-
-<pre><code>代码省略
-</code></pre>
-
-<h4 id="toc_7">模拟时间以及固定的时间步长</h4>
-
-<p>在上面我们做动画的缓冲效果来说,都是计算每帧的持续时间，这样的话两个时间步长就是可变的,对于模拟物理效果并不理想:</p>
-
-<p>因此我们通过<strong>固定的时间步长</strong>来计算物理效果，还要保证在屏幕发生重绘时能够同步更新视图</p>
-
-<p>因为刚好我们的模型（在这个例子中就是Chipmunk的 cpSpace 中的 cpBody ）被视图（就是屏幕上代表木箱的 UIView 对象）分离，于是就很简单了。我们只需要根据屏幕刷新的时间跟踪时间步长，然后根据每帧去计算一个或者多个模拟出来的效果。</p>
-
-<pre><code class="language-objc">
+<pre><code class="language-objc">//
+OS_SPINLOCK_INIT： 默认值为 0,在 locked 状态时就会大于 0，unlocked状态下为 0
+OSSpinLockLock(&amp;oslock)：上锁，参数为 OSSpinLock 地址
+OSSpinLockUnlock(&amp;oslock)：解锁，参数为 OSSpinLock 地址
+OSSpinLockTry(&amp;oslock)：尝试加锁，可以加锁则立即加锁并返回 YES,反之返回 NO
 /**
-    通过每次 CADisplayLink 的启动来通知屏幕将要刷新，然后记录下当前的
-    CACurrentMediaTime() 。
-    在一个小增量中提前重复物理模拟（这里用120分之一秒）直到赶上显示的时间。然后更新我们的视图，
-    在屏幕刷新的时候匹配当前物理结构体的显示位置。
+当前线程锁失败，也可以继续其它任务，用 trylock 合适
+当前线程只有锁成功后，才会做一些有意义的工作，那就 lock，没必要轮询 trylock
 */
-
-#define SIMULATION_STEP (1/120.0)
-- (void)step:(CADisplayLink *)timer
-{
-    //calculate frame step duration
-    CFTimeInterval frameTime = CACurrentMediaTime();
-    //update simulation
-    while (self.lastStep &lt; frameTime) {
-        cpSpaceStep(self.space, SIMULATION_STEP);
-        self.lastStep += SIMULATION_STEP;
-    }
-    //update all the shapes
-    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
-}
 </code></pre>
 
-<h4 id="toc_8">避免死亡螺旋</h4>
+<p>注意:<br/>
+<a href="http://blog.ibireme.com/2016/01/16/spinlock_is_unsafe_in_ios/">不再安全的 OSSpinLock</a></p>
 
-<p>在上面例子中我们随意选择了1/120秒来模拟物理效果,但是我们在场景很复杂，<code>cpSpaceStp()</code>计算也会超出1/120秒,这样就会造成延迟帧率,帧延迟的话，我们需要更多时间来同步真实时间,这样就越来越慢，直到应用程序卡死,这就是所谓的<code>死亡螺旋</code></p>
+<h2 id="toc_1">二、dispatch_semaphore 信号量</h2>
 
-<p>为了避免这种情况 我们需要留下足够的时间容错，如果物理计算超过了模拟时间的50%，就需要考虑增加模拟时间步长（或者简化场景）。如果模拟时间步长增加到超过1/60秒（一个完整的屏幕更新时间），你就需要减少动画帧率到一秒30帧或者增加<code>CADisplayLink</code>的<code>frameInterval</code>来保证不会随机丢帧，不然你的动画将会看起来不平滑。</p>
+<p>是GCD的用来同步的一种方式<br/>
+在没有等待情况出现时，它的性能比<code>pthread_mutex</code>还要高，但一旦有等待情况出现时，性能就会下降许多。相对于<code>OSSpinLock</code>来说，它的优势在于等待时不会消耗<code>CPU</code>资源。</p>
+
+<pre><code class="language-objc">  dispatch_semaphore_t signal = dispatch_semaphore_create(1);
+    dispatch_time_t overTime = dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC);
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        dispatch_semaphore_wait(signal, overTime);
+            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+            sleep(2);
+            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+        dispatch_semaphore_signal(signal);
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        sleep(1);
+        dispatch_semaphore_wait(signal, overTime);
+            NSLog(@&quot;需要线程同步的操作2&quot;);
+        dispatch_semaphore_signal(signal);
+    });
+</code></pre>
+
+<pre><code class="language-objc">dispatch_semaphore_create(1)： 传入值必须 &gt;=0, 若传入为 0 则阻塞线程并等待timeout,
+时间到后会执行其后的语句
+dispatch_semaphore_wait(signal, overTime)：可以理解为 lock,会使得 signal 值 -1，若信号量的值大于0，就可以继续往下执行,否则等待,如果在等待时间期间信号量一直为0，则会在`timeOut`后自动执行其后的语句。
+//
+dispatch_semaphore_signal(signal)：可以理解为 unlock,会使得 signal 值 +1
+</code></pre>
+
+<p>补充:<a href="http://www.cnblogs.com/snailHL/p/3906112.html">关于dispatch_semaphore的使用</a></p>
+
+<h2 id="toc_2">三、@synchronized</h2>
+
+<pre><code class="language-objc"> NSObject *obj = [[NSObject alloc] init];
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        @synchronized(obj) {
+            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+            sleep(3);
+            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+        }
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        sleep(1);
+        @synchronized(obj) {
+            NSLog(@&quot;需要线程同步的操作2&quot;);
+        }
+    });
+</code></pre>
+
+<p><code>@synchronized(obj)</code>指令使用的<code>obj</code>为该锁的唯一标识，只有当标识相同时，才为满足互斥.<br/>
+<code>@synchronized</code>指令实现锁的优点就是我们不需要在代码中显式的创建锁对象，便可以实现锁的机制，但作为一种预防措施，<code>@synchronized</code>块会隐式的添加一个异常处理例程来保护代码，该处理例程会在异常抛出的时候自动的释放互斥锁。所以如果不想让隐式的异常处理例程带来额外的开销，你可以考虑使用锁对象。</p>
+
+<p>补充：<a href="http://ios.jobbole.com/82826/">关于 @synchronized，这儿比你想知道的还要多</a></p>
+
+<h2 id="toc_3">四、NSLock</h2>
+
+<pre><code class="language-objc">    NSLock *lock = [[NSLock alloc] init];
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        //[lock lock];
+        [lock lockBeforeDate:[NSDate date]];
+            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+            sleep(2);
+            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+        [lock unlock];
+
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        sleep(1);
+        if ([lock tryLock]) {//尝试获取锁，如果获取不到返回NO，不会阻塞该线程
+            NSLog(@&quot;锁可用的操作&quot;);
+            [lock unlock];
+        }else{
+            NSLog(@&quot;锁不可用的操作&quot;);
+        }
+
+        NSDate *date = [[NSDate alloc] initWithTimeIntervalSinceNow:3];
+        if ([lock lockBeforeDate:date]) {//尝试在未来的3s内获取锁，并阻塞该线程，如果3s内获取不到恢复线程, 返回NO,不会阻塞该线程
+            NSLog(@&quot;没有超时，获得锁&quot;);
+            [lock unlock];
+        }else{
+            NSLog(@&quot;超时，没有获得锁&quot;);
+        }
+
+    });
+    //运行结果
+    2016-06-29 20:45:08.864 SafeMultiThread[35911:575795] 需要线程同步的操作1 开始
+    2016-06-29 20:45:09.869 SafeMultiThread[35911:575781] 锁不可用的操作
+    2016-06-29 20:45:10.869 SafeMultiThread[35911:575795] 需要线程同步的操作1 结束
+    2016-06-29 20:45:10.870 SafeMultiThread[35911:575781] 没有超时，获得锁
+
+</code></pre>
+
+<p><code>lock</code>一般用于多线程同时访问、修改同一个数据源，保证在同一时间内数据源只被访问、修改一次，其他线程的命令需要在<code>lock</code>外等待，只到<code>unlock</code>，才可访问</p>
+
+<p><code>NSLock</code>是<code>Cocoa</code>提供给我们最基本的锁对象，这也是我们经常所使用的，除了常使用的<code>lock</code>和<code>unlock</code>方法外,还提供了:<br/>
+<code>trylock</code>：能加锁返回<code>YES</code>并执行加锁操作，相当于<code>lock</code>，反之返回<code>NO</code><br/>
+<code>lockBeforeDate</code>：这个方法表示会在传入的时间内尝试加锁，若能加锁则执行加锁操作并返回<code>YES</code>，反之返回<code>NO</code></p>
+
+<h2 id="toc_4">五、NSRecursiveLock递归锁</h2>
+
+<pre><code class="language-objc">    NSRecursiveLock *lock = [[NSRecursiveLock alloc] init];
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+
+        static void (^RecursiveMethod)(int);
+
+        RecursiveMethod = ^(int value) {
+
+            [lock lock];
+            if (value &gt; 0) {
+
+                NSLog(@&quot;value = %d&quot;, value);
+                sleep(1);
+                RecursiveMethod(value - 1);
+            }
+            [lock unlock];
+        };
+
+        RecursiveMethod(5);
+    });
+    //执行结果
+    2016-06-30 19:09:41.414 SafeMultiThread[30949:450684] value = 5
+    2016-06-30 19:09:42.418 SafeMultiThread[30949:450684] value = 4
+    2016-06-30 19:09:43.419 SafeMultiThread[30949:450684] value = 3
+    2016-06-30 19:09:44.424 SafeMultiThread[30949:450684] value = 2
+    2016-06-30 19:09:45.426 SafeMultiThread[30949:450684] value = 1
+    
+    
+    //在上面如果用NSLock的话就会造成死锁的情况
+    NSLock *lock = [[NSLock alloc] init];
+    /**
+        在我们的线程中，RecursiveMethod是递归调用的。所以每次进入这个block时，都会去加一次
+        锁，而从第二次开始，由于锁已经被使用了且没有解锁，所以它需要等待锁被解除，这样就导致了死
+        锁，线程被阻塞住了。
+    */
+</code></pre>
+
+<p><code>NSRecursiveLock</code>递归锁，可以被同一线程多次请求，而不会引起死锁。这主要是用在循环或递归操作中。<br/>
+递归锁会跟踪它被lock的次数。每次成功的lock都必须平衡调用unlock操作。只有所有达到这种平衡，锁最后才能被释放，以供其它线程使用。</p>
+
+<p>补充:<a href="http://www.cocoachina.com/ios/20150513/11808.html">NSRecursiveLock递归锁的使用</a></p>
+
+<h2 id="toc_5">六、NSConditionLock条件锁</h2>
+
+<p>只是<code>lock</code>和<code>unlock</code>通常并不能满足我们的使用，我们通常在满足某条件的情况下才会打开这把锁，这时候我们可以使用<code>NSConditionLock条件锁</code></p>
+
+<pre><code class="language-objc">    NSConditionLock *cLock = [[NSConditionLock alloc] initWithCondition:0];
+
+//线程1
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    if([cLock tryLockWhenCondition:0]){
+        NSLog(@&quot;线程1&quot;);
+       [cLock unlockWithCondition:1];
+    }else{
+         NSLog(@&quot;失败&quot;);
+    }
+});
+
+//线程2
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    [cLock lockWhenCondition:3];
+    NSLog(@&quot;线程2&quot;);
+    [cLock unlockWithCondition:2];
+});
+
+//线程3
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    [cLock lockWhenCondition:1];
+    NSLog(@&quot;线程3&quot;);
+    [cLock unlockWithCondition:3];
+});
+/**
+    我们在初始化 NSConditionLock 对象时，给了他的标示为 0
+    执行 tryLockWhenCondition:时，我们传入的条件标示也是 0,所 以线程1 加锁成功
+    执行 unlockWithCondition:时，这时候会把condition由 0 修改为 1
+    因为condition 修改为了  1， 会先走到 线程3，然后 线程3 又将 condition 修改为 3
+    最后 走了 线程2 的流程
+*/
+    
+</code></pre>
+
+<p><img src="media/14964011409915/14967500416387.png" alt=""/></p>
+
+<p>相比于 NSLock 多了个<code>condition</code>参数，我们可以理解为一个条件标示.<br/>
+我们还用它实现了任务支架你的依赖</p>
+
+<pre><code class="language-objc">//可用功能如下:
+- (instancetype)initWithCondition:(NSInteger)condition NS_DESIGNATED_INITIALIZER;
+
+@property (readonly) NSInteger condition;
+- (void)lockWhenCondition:(NSInteger)condition;
+- (BOOL)tryLock;
+- (BOOL)tryLockWhenCondition:(NSInteger)condition;
+- (void)unlockWithCondition:(NSInteger)condition;
+- (BOOL)lockBeforeDate:(NSDate *)limit;
+- (BOOL)lockWhenCondition:(NSInteger)condition beforeDate:(NSDate *)limit;
+
+@property (nullable, copy) NSString *name NS_AVAILABLE(10_5, 2_0);
+</code></pre>
+
+<h2 id="toc_6">七、NSCondition</h2>
+
+<p>一种最基本的条件锁。手动控制线程<code>wait</code>和<code>signal</code>。</p>
+
+<pre><code class="language-objc">NSCondition *condition = [[NSCondition alloc] init];
+
+    NSMutableArray *products = [NSMutableArray array];
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        while (1) {
+            [condition lock];
+            if ([products count] == 0) {
+                NSLog(@&quot;wait for product&quot;);
+                [condition wait];
+            }
+            [products removeObjectAtIndex:0];
+            NSLog(@&quot;custome a product&quot;);
+            [condition unlock];
+        }
+
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        while (1) {
+            [condition lock];
+            [products addObject:[[NSObject alloc] init]];
+            NSLog(@&quot;produce a product,总量:%zi&quot;,products.count);
+            [condition signal];
+            [condition unlock];
+            sleep(1);
+        }
+
+    });
+    
+2016-06-30 20:21:25.295 SafeMultiThread[31256:513991] wait for product
+2016-06-30 20:21:25.296 SafeMultiThread[31256:513994] produce a product,总量:1
+2016-06-30 20:21:25.296 SafeMultiThread[31256:513991] custome a product
+</code></pre>
+
+<p><code>[condition lock]</code>一般用于多线程同时访问、修改同一个数据源，保证在同一时间内数据源只被访问、修改一次，其他线程的命令需要在lock 外等待，只到unlock ，才可访问<br/>
+<code>[condition unlock]</code>与lock 同时使用<br/>
+<code>[condition wait]</code>让当前线程处于等待状态<br/>
+<code>[condition signal]</code>CPU发信号告诉线程不用在等待，可以继续执行</p>
+
+<pre><code class="language-objc">- (void)wait;//进入等待状态(当一个线程调用wait时其他线程就可以获得这个锁)
+- (BOOL)waitUntilDate:(NSDate *)limit;//让一个线程等待一定的时间
+- (void)signal;//唤醒一个等待的线程
+- (void)broadcast;//唤醒所有等待的线程
+</code></pre>
+
+<p>补充:<br/>
+这里需要注意wait和signal的问题：<br/>
+    1: 其实，wait函数内部悄悄的调用了unlock函数（猜测，有兴趣可自行分析），也就是说在调用wati函数后，这个NSCondition对象就处于了无锁的状态，这样其他线程就可以对此对象加锁并触发该NSCondition对象。当NSCondition被其他线程触发时，在wait函数内部得到此事件被触发的通知，然后对此事件重新调用lock函数（猜测），而在外部看起来好像接收事件的线程（调用wait的线程）从来没有放开NSCondition对象的所有权，wati线程直接由阻塞状态进入了触发状态一样。这里容易造成误解。<br/>
+    2: wait函数并不是完全可信的。也就是说wait返回后，并不代表对应的事件一定被触发了，因此，为了保证线程之间的同步关系，使用NSCondtion时往往需要加入一个额外的变量来对非正常的wait返回进行规避。<br/>
+   3: 关于多个wait时的调用顺序，测试发现与wait执行顺序有关。</p>
+
+<h2 id="toc_7">八、pthread_mutex互斥锁</h2>
+
+<pre><code class="language-objc">  __block pthread_mutex_t theLock;
+    pthread_mutex_init(&amp;theLock, NULL);
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            pthread_mutex_lock(&amp;theLock);
+            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+            sleep(3);
+            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+            pthread_mutex_unlock(&amp;theLock);
+
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            sleep(1);
+            pthread_mutex_lock(&amp;theLock);
+            NSLog(@&quot;需要线程同步的操作2&quot;);
+            pthread_mutex_unlock(&amp;theLock);
+
+    });
+2016-06-30 21:13:32.440 SafeMultiThread[31429:548869] 需要线程同步的操作1 开始
+2016-06-30 21:13:35.445 SafeMultiThread[31429:548869] 需要线程同步的操作1 结束
+2016-06-30 21:13:35.446 SafeMultiThread[31429:548866] 需要线程同步的操作2
+    /**
+        与OSSpinLock类似,pthread_mutex 中也有个pthread_mutex_trylock(&amp;pLock)，和上面提
+        到的 OSSpinLockTry(&amp;oslock)区别在于，前者可以加锁时返回的是 0，否则返回一个错误提示
+        码；后者返回的 YES和NO
+    */
+</code></pre>
+
+<pre><code class="language-objc">1：pthread_mutex_init(pthread_mutex_t mutex,const pthread_mutexattr_t attr);
+初始化锁变量mutex。attr为锁属性，NULL值为默认属性。
+2：pthread_mutex_lock(pthread_mutex_t mutex);加锁
+3：pthread_mutex_tylock(*pthread_mutex_t *mutex);加锁，但是与2不一样的是当锁已经在使用的时候，返回为EBUSY，而不是挂起等待。
+4：pthread_mutex_unlock(pthread_mutex_t *mutex);释放锁
+5：pthread_mutex_destroy(pthread_mutex_t* mutex);使用完后释放
+</code></pre>
+
+<p><code>YYKit</code>源码<br/>
+<img src="media/14964011409915/14967514267813.png" alt=""/></p>
+
+<h2 id="toc_8">九、pthread_mutex(recursive)递归锁</h2>
+
+<p>之前的lock是和unlock成对出现，同一线程多次 lock 是不允许的，而递归锁允许同一个线程在未释放其拥有的锁时反复对该锁进行加锁操作。</p>
+
+<pre><code class="language-objc">static pthread_mutex_t pLock;
+pthread_mutexattr_t attr;
+pthread_mutexattr_init(&amp;attr); //初始化attr并且给它赋予默认
+pthread_mutexattr_settype(&amp;attr, PTHREAD_MUTEX_RECURSIVE); //设置锁类型，这边是设置为递归锁
+pthread_mutex_init(&amp;pLock, &amp;attr);
+pthread_mutexattr_destroy(&amp;attr); //销毁一个属性对象，在重新进行初始化之前该结构不能重新使用
+
+//1.线程1
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    static void (^RecursiveBlock)(int);
+    RecursiveBlock = ^(int value) {
+        pthread_mutex_lock(&amp;pLock);
+        if (value &gt; 0) {
+            NSLog(@&quot;value: %d&quot;, value);
+            RecursiveBlock(value - 1);
+        }
+        pthread_mutex_unlock(&amp;pLock);
+    };
+    RecursiveBlock(5);
+});
+//如果我们用 pthread_mutex_init(&amp;pLock, NULL) 初始化会出现死锁的情况，递归锁能很好的避免这种情况的死锁；
+</code></pre>
 
                         
                       </div>
@@ -379,10 +491,10 @@ void updateShape(cpShape *shape, void *unused)
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/4/5</span>
+                    <span class="date">2017/6/2</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
+          					    <span class="posted-in"><a href='Concurrent-Programming.html'>多线程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -470,31 +582,31 @@ void updateShape(cpShape *shape, void *unused)
 	      
 		      
 			      <li class="post">
-			        <a href="15059300219793.html">高级运算符</a>
+			        <a href="15082392311480.html">实战:ARKit捕捉平面</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15057532270985.html">访问控制</a>
+			        <a href="15082385455420.html">ARCamera</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15052932669633.html">泛型</a>
+			        <a href="15082349866219.html">ARSession</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15047511695312.html">协议</a>
+			        <a href="15082316038998.html">ARSCNView</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15042587690391.html">扩展</a>
+			        <a href="15082286345415.html">ARKit框架API简介</a>
 			      </li>
 		     
 		  

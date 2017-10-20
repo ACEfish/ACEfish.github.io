@@ -105,481 +105,163 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14896343426276.html">
+                <a class="clearlink" href="14924196525709.html">
                 
-                  <h1>专用图层</h1>
+                  <h1>性能调优</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>是Core Animation图层不仅仅能作用于图片和颜色而已。</p>
+                        	<h3 id="toc_0">CPU &amp;&amp; GPU</h3>
 
-<p>补充点:<br/>
-想UIView的图层上添加另外一个UIView的图层是会有两个UIVIew的（UIView的层级关系）<br/>
-像一个纯Layer上添加另外一个UIView的图层,就仅仅只是添加了这个视图的图层,这个视图不会在视图的层级关系中体现.</p>
+<p>绘图和动画处理方式:<code>CPU</code>(中央处理器)和<code>GPU</code>(图形处理器).<code>CPU</code>所做的工作都在软件层面，而<code>GPU</code>在硬件层面。</p>
 
-<h3 id="toc_0">CAShapeLayer</h3>
+<p>我们可以用<code>CPU</code>做任何事情，但是对于图像处理，使用硬件更快，因为<code>GPU</code>使用图像对高度并行浮点运算做了优化。但是<code>GPU</code>也不是无限制使用的,一旦资源用完的性能就下降了(即使CPU没有完全占用)</p>
 
-<p><code>CAShapeLayer</code> 是一个通过矢量图形而不是<code>bitmap</code>来绘制的图层子类.<br/><br/>
-即<code>CAShapeLayer</code>与<code>CGPath</code>搭配来绘制图形.与用<code>Core Graphics</code>直接向原始的<code>CALyer</code>的内容中绘制一个路径相比：  </p>
+<p>我们的优化就是智能使用<code>GPU</code>和<code>CPU</code>使他们都不会超过负荷,我们需要先了解这两个处理器分配工作的逻辑</p>
+
+<h4 id="toc_1">动画的舞台</h4>
+
+<p><strong>动画和屏幕上组合的图层实际上被一个单独的进程管理，而不是你的应用程序。这个进程就是所谓的渲染服务。</strong>在iOS6之后的版本中叫做<code>BackBoard</code>。</p>
+
+<p>当运行一段动画时,整个过程会分为4个阶段：</p>
 
 <ul>
-<li>渲染快速（ CAShapeLayer 使用了硬件加速）</li>
-<li>高效使用内存（CAShapeLayer 不需要像普通 CALayer 一样创建一个寄宿图形）</li>
-<li>不会被图层边界剪裁掉（CAShapeLayer 可以在边界之外绘制）</li>
-<li>不会出现像素化（当你给 CAShapeLayer 做3D变换时，它不像一个有寄宿图的普通图层一样变得像素化）</li>
+<li>布局 - 这是准备你的视图/图层的层级关系，以及设置图层属性（位置，背景色，边框等等）的阶段。</li>
+<li>显示 - 这是图层的寄宿图片被绘制的阶段。绘制有可能涉及你的<code>- drawRect:</code>和<code>-drawLayer:inContext:</code>方法的调用路径。</li>
+<li>准备 - 这是<code>Core Animation</code>准备发送动画数据到渲染服务的阶段。这同时也是<code>Core Animation</code>将要执行一些别的事务例如解码动画过程中将要显示的图片的时间点。</li>
+<li>提交 - 这是最后的阶段，<code>Core Animation</code>打包所有图层和动画属性，然后通过<code>IPC</code>（内部处理通信）发送到渲染服务进行显示。</li>
 </ul>
 
-<h4 id="toc_1">CGPath</h4>
+<p>这些仅仅只是发生在应用程序内内,在动画在屏幕上显示之前仍然有其他工作，一旦打包的图层和动画到了渲染服务进程，他们会被<em>反序列化</em>形成一个叫做<strong>渲染树</strong>的图层树,使用这个树状结构，渲染服务对动画的每一帧做出如下工作：</p>
 
-<p><code>CGPath</code>来创建形状,一定要闭合,可以设置一些属性lineWith、lineCap 、lineJoin等,但是一个图层只有一次机会设置,如果想要想用不同颜色或风格来绘制多个形状，就不得不为每个形状准备一个图层了。  </p>
+<ul>
+<li>对所有的图层属性计算中间值，设置<code>OpenGL</code>几何形状（纹理化的三角形）来执行渲染</li>
+<li>在屏幕上渲染可见的三角形</li>
+</ul>
 
-<pre><code class="language-objc">//create shape layer
-CAShapeLayer *shapeLayer = [CAShapeLayer layer];
-shapeLayer.strokeColor = [UIColor redColor].CGColor;
-shapeLayer.fillColor = [UIColor clearColor].CGColor;
-shapeLayer.lineWidth = 5;
-shapeLayer.lineJoin = kCALineJoinRound;
-shapeLayer.lineCap = kCALineCapRound;
-shapeLayer.path = path.CGPath;
-</code></pre>
+<p>所以一共有六个阶段；最后两个阶段在动画过程中不停地重复。前五个阶段都在软件层面处理（通过CPU），只有最后一个被GPU执行。而且，你真正只能控制前两个阶段：布局和显示。Core Animation框架在内部处理剩下的事务，你也控制不了它。</p>
 
-<h4 id="toc_2">圆角</h4>
+<p>我们<br/>
+<strong>在布局和显示阶段，可以决定哪些由CPU执行，哪些交给GPU去做。</strong></p>
 
-<p>我们虽然可以用<code>CALayer</code>的<code>cornerRadius</code>可以设置圆角，但是我使用<code>CAShapeLayer</code>来单独指定每个角的形状.</p>
+<h4 id="toc_2">GPU相关操作</h4>
 
-<pre><code class="language-objc">CGRect rect = CGRectMake(50, 50, 100, 100);
-CGSize radii = CGSizeMake(20, 20);
-UIRectCorner corners = UIRectCornerTopRight | UIRectCornerBottomRight | UIRectCornerBottomLeft;
-//create path
-UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:rect byRoundingCorners:corners cornerRadii:radii];
-</code></pre>
+<p>GPU为一个具体的任务做了优化：它用来采集图片和形状（三角形），运行变换，应用纹理和混合然后把它们输送到屏幕上。现代iOS设备上可编程的GPU在这些操作的执行上又很大的灵活性，但是<code>Core Animation</code>并没有暴露出直接的接口。除非你想绕开<code>Core Animation</code>并编写你自己的<code>OpenGL着色器</code>，从根本上解决硬件加速的问题，那么剩下的所有都还是需要在<code>CPU</code>的软件层面上完成。</p>
 
-<p>然后我们可以通过这个图层路径绘制一个既有直角又有圆角的视图,如果我们想依照此图形来剪裁视图内容，我们可以把<strong><code>CAShapeLayer</code>作为视图的宿主图层</strong>，而不是添加一个子视图</p>
+<p>宽泛的说，<strong>大多数<code>CALayer</code>的属性都是用<code>GPU</code>来绘制</strong>。<br/>
+比如如果你设置图层背景或者边框的颜色，那么这些可以通过着色的三角板实时绘制出来。如果对一个<code>contents</code> 属性设置一张图片，然后裁剪它 - 它就会被纹理的三角形绘制出来，而不需要软件层面做任何绘制。</p>
 
-<h3 id="toc_3">CATextLayer</h3>
+<p>但是有一些事情会降低（基于GPU）图层绘制:</p>
 
-<p>如果我们想要在一个图层中显示文字,我们可以通过借助图层的代理,直接将字符串用<code>Core<br/>
-Graphics</code>写入图层的内容--&gt;这就是UILabel实现  </p>
+<ul>
+<li>太多的几何结构<br/>
+太多的几何结构就需要太多的三角板来做变换,并不是GPU处理不了这么多几何结构,而是显示之前通过IPC发送到渲染服务器(图层实际上是由很多小物体组成的特别重量级的对象)时，会引起CPU的瓶颈，这就限制了一次展示的图层个数</li>
+<li><p>重绘</p>
 
-<p>如果不用上面的方式,我们还有比较简单的方式:<br/>
-<code>Core Animation</code>提供了一个<code>CALayer</code>的子类<code>CATextLayer</code>，它以图层的形式包含了<code>UILabel</code>几乎所有的绘制特性，并且额外提供了一些新的特性。而且<code>CATextLayer</code>也要比 <code>UILabel</code> 渲染得快得多</p>
+<p>主要由重叠的半透明图层引起。GPU的填充比率（用颜色填充像素的比率）是有限的，所以需要避免重（每一帧用相同的像素填充多次）的发生。</p></li>
+<li><p>离屏绘制<br/>
+发生在当不能直接在屏幕上绘制，并且必须绘制到离屏图片的上下文中的时候。离屏绘制发生在基于CPU或者是GPU的渲染，或者是为离屏图片分配额外内存，以及切换绘制上下文，这些都会降低<code>GPU</code>性能。对于特定图层效果的使用，比如圆角，图层遮罩，阴影或者是图层光栅化都会强制<code>Core Animation</code>提前渲染图层的离屏绘制。但这不意味着你需要避免使用这些效果，只是要明白这会带来性能的负面影响。</p></li>
+<li><p>过大的图片<br/>
+如果视图绘制超出GPU支持的<code>2048x2048</code>或者<code>4096x4096</code>尺寸的纹理，就必须要用CPU在图层每次显示之前对图片预处理，同样也会降低性能。</p></li>
+</ul>
 
-<pre><code class="language-objc">CATextLayer *textLayer = [[CATextLayer alloc] init];
-    textLayer.frame = self.textLayerView.bounds;
-    [self.textLayerView.layer addSublayer:textLayer];
-    //用retina屏进行渲染,否则文字会像素化
-    textLayer.contentsScale = [UIScreen mainScreen].scale;
-    //颜色 默认黑色
-    textLayer.foregroundColor = [UIColor yellowColor].CGColor;
-    
-    textLayer.alignmentMode = kCAAlignmentJustified;
-    
-    //这个属性为yes后为根据内容进行多行显示,Yes就是一行
-    textLayer.wrapped = NO;
-    
-    UIFont *font = [UIFont systemFontOfSize:15];
-    CFStringRef fontName = (__bridge CFStringRef)(font.fontName);
-    CGFontRef fontRef = CGFontCreateWithFontName(fontName);
-    textLayer.font = fontRef;
-    //字体大小是单独设置的
-    textLayer.fontSize = 10;
-    //设置显示字体
-    textLayer.string = @&quot;zhe shi yi ge textLayer&quot;;
-</code></pre>
+<h4 id="toc_3">CPU相关的操作</h4>
 
-<p><code>CATextLayer</code> 的 <code>font</code> 属性不是一个 <code>UIFont</code> 类型，而是一个 <code>CFTypeRef</code> 类型。这样可以根据你的具体需要来决定字体属性应该是用 <code>CGFontRef</code> 类型还是 <code>CTFontRef</code> 类型（<code>Core Text</code>字体）。</p>
+<p>CPU的工作对于<code>Core Animation</code>发生在动画开始前。所以不会影响到帧率,但是会延时动画开始时间，让界面看起来比较迟钝</p>
 
-<p>因为 <code>CTFontRef</code> 和 <code>CGFontRef</code> 并不像UIFont一样包含点大小，因此我们需要<strong>单独设置字体大小</strong>;</p>
+<p>延迟动画的开始时间的CPU操作:</p>
 
-<p>CATextLayer 的<code>string</code>属性是<code>id</code>类型的，因此我们可以用<code>NSString</code>和<code>NSAttributedString</code>来指定文本。  <strong>注意</strong>， <code>NSAttributedString</code> 并不是 <code>NSString</code> 的子类。属性化字符串是iOS用来渲染字体风格的机制，它以特定的方式来决定指定范围内的字符串的原始信息，比如字体，颜色，字重，斜体等。</p>
+<ul>
+<li><p>布局计算:<br/>
+视图层级过于复杂,视图修改或者呈现时计算图层帧率会消耗一部分时间</p></li>
+<li><p>视图懒加载<br/>
+iOS只会当视图控制器的视图显示到屏幕上时才会加载它。这对内存使用和程序启动时间很有好处，但是当呈现到屏幕上之前，按下按钮导致的许多工作都会不能被及时响应。比如控制器从数据库中获取数据，或者视图从一个nib文件中加载，或者涉及IO的图片显示（见后续“IO相关操作”），都会比CPU正常操作慢得多。</p></li>
+<li><p>Core Graphics绘制</p>
 
-<h4 id="toc_4">富文本</h4>
+<p>如果对视图实现了 -drawRect: 方法，或者 CALayerDelegate 的 -drawLayer:inContext: 方法，那么在绘制任何东西之前都会产生一个巨大的性能开销。为了支持对图层内容的任意绘制，Core Animation必须创建一个内存中等大小的寄宿图片。然后一旦绘制结束之后，必须把图片数据通过IPC传到渲染服务器。在此基础上，Core Graphics绘制就会变得十分缓慢，所以在一个对性能十分挑剔的场景下这样做十分不好。</p></li>
+<li><p>解压图片<br/>
+PNG或者JPEG压缩之后的图片文件会比同质量的位图小得多。为了节省内存，iOS通常直到真正绘制的时候才去解码图片，根据你加载图片的方式，第一次对图层内容赋值的时候，或者把它绘制<code>Core Graphics</code>中,需要解压,这样对于比较大的图片会占用时间</p></li>
+</ul>
 
-<p>iOS6之后，苹果给UILabel和UIKit添加直接的属性字符串支持.从iOS3.2开始 CATextLayer 就已<br/>
-经支持属性化字符串了(可以这样支持低版本 不过他吗太低了吧)。<br/><br/>
-我们可以看下CATextLayer的富文本:</p>
+<p>当图层被成功打包，发送到渲染服务器之后，CPU仍然要做如下工作:<br/>
+为了显示屏幕上的图层，<code>Core Animation</code>必须对渲染树种的每个可见图层通过<code>OpenGL</code>循环转换成纹理三角板。由于GPU并不知晓<code>Core Animation</code>图层的任何结构，所以必须要由<code>CPU</code>做这些事情。CPU涉及的工作和图层个数成正比，所以如果在你的层级关系中有太多的图层，就会导致CPU每一帧的渲染，</p>
 
-<pre><code class="language-objc">//convert UIFont to a CTFont
-CFStringRef fontName = (__bridge CFStringRef)font.fontName;
-CGFloat fontSize = font.pointSize;
-CTFontRef fontRef = CTFontCreateWithName(fontName, fontSize, NULL);
+<h4 id="toc_4">IO相关操作</h4>
 
-//set text attributes
-NSDictionary *attribs = @{(__bridge id)kCTForegroundColorAttributeName:(__bridge id)[UIColor blackColor].CGColor, 
-(__bridge id)kCTFontAttributeName: (__bridge id)fontRef};
-[string setAttributes:attribs range:NSMakeRange(0, [text length])];
+<p>上下文中的IO（输入/输出）指的是例如闪存或者网络接口的硬件访问。一些动画可能需要从闪存（甚至是远程URL）来加载。一个典型的例子就是两个视图控制器之间的过渡效果，这就需要从一个nib文件或者是它的内容中懒加载，或者一个旋转的图片，可能在内存中尺寸太大，需要动态滚动来加载。</p>
 
-attribs = @{(__bridge id)kCTForegroundColorAttributeName: (__bridge id)[UIColor redColor].CGColor,
-(__bridge id)kCTUnderlineStyleAttributeName:@(kCTUnderlineStyleSingle),(__bridge id)kCTFontAttributeName: (__bridge id)fontRef};
-[string setAttributes:attribs range:NSMakeRange(6, 5)];
-//release the CTFont we created earlier
-CFRelease(fontRef);
-//set layer text
-textLayer.string = string;
+<p>IO比内存访问更慢，所以如果动画涉及到IO，就是一个大问题。总的来说，这就需要使用聪敏但尴尬的技术，也就是多线程，缓存和投机加载（提前加载当前不需要的资源，但是之后可能需要用到）。</p>
 
-</code></pre>
+<h3 id="toc_5">测量，而不是猜测</h3>
 
-<h4 id="toc_5">行距和字距</h4>
+<p>有很多种诡计来优化动画，但如果盲目使用的话，可能会造成更多性能上的问题，而不是修复。<br/>
+我们需要正确测量性能</p>
 
-<p>由于绘制的实现机制不同（<code>Core Text</code>和<code>WebKit</code>），用 <code>CATextLayer</code> 渲染和用 <code>UILabel</code> 渲染出的文本行距和字距也不是不尽相同的。(影响不大)</p>
-
-<h4 id="toc_6">UILabel替代品</h4>
-
-<p>CATextLayer 比 UILabel 有着更好的性能表现,虽然UILabel很好用,但是如果我们非要找个UILabel替代品的话,有以下方法:</p>
+<h4 id="toc_6">真机测试，而不是模拟器</h4>
 
 <ol>
-<li><p>继承 UILabel后添加一个子图层 CATextLayer 并重写显示文本的方法。<br/>
-但是仍然会有由<code>UILabel</code>的<code>-drawRect:</code>方法创建的空寄宿图。而且由于CALayer不能自动布局,我们不能根据内容自动方法图层.</p></li>
-<li><p>用 CATextLayer 作为宿主图层的 UILabel 子类<br/>
-每一个 <code>UIView</code> 都是寄宿在一个 <code>CALayer</code> 的示例上。这个图层是由视图自动创建和管理的，这个图层一旦被创建就无法替代,但是我们可以继承了<code>UIView</code>，重写其<code>+layerClass</code>UIView 会在初始化的时候调用 +layerClass 方法，然后用它的返回类型来创建宿主图层。</p></li>
+<li>真机</li>
+<li>性能测试一定要用发布配置，而不是调试模式。因为当用发布环境打包的时候，编译器会引入一系列提高性能的优化，例如去掉调试符号或者移除并重新组织代码。你也可以自己做到这些，例如在发布环境禁用NSLog语句。你只关心发布性能，那才是你需要测试的点。</li>
+<li>最好在你支持的设备中性能最差的设备上测试.可能的话，测试不同的设备和iOS版本，因为苹果在不同的iOS版本和设备中做了一些改变，这也可能影响到一些性能。</li>
 </ol>
 
-<p>把 CATextLayer 作为宿主图层的另一好处就是视图自动设置了 contentsScale 属性。</p>
+<h4 id="toc_7">保持一致的帧率</h4>
 
-<p><strong>用 <code>+layerClass</code> 来创建基于不同图层的视图是一个简单可复用的方法</strong></p>
+<p>我们可以在程序中用<code>CADisplayLink</code>来测量帧率,在屏幕上显示出来,但是应用内的FPS并不能完全真实的测量出<code>Core Animation</code>性能,它仅仅测出应用内的帧率.但是我们知道很多动画都在应用外发生(在渲染服务器进程中处理),当然应用内的<code>FPS</code>可以对一些性能问题提供参考,发现问题后,我们可以通过<strong><code>Instruments</code>工具集</strong>获取更多数据.</p>
 
-<h3 id="toc_7">CATransformLayer</h3>
+<h3 id="toc_8">Instruments</h3>
 
-<p>我们之前说过所有图层都把他的子图层平面化到一个场景中,因此没法做出3D的层级体系变换.<code>CALayer</code>中存在<code>CATransfromLayer</code>，它不同于一般图层，它不显示自己内容，只有当存在了一个能作用于子图层的变换它才真正存在。</p>
+<p><code>Instruments</code>中的<code>Leaks</code>工具来检测循环引用,</p>
 
-<p>我们在前面创建过一个立方体的固体对象,但是因为这次我们是向CATransformLayer上添加图层，而不是之前的<code>contaninView</code>,我们<strong>不能向一个没有寄宿图的图层上添加有寄宿图图层</strong>(就是不能向一个不是UIVIew的Layer中添加另外一个UIView的layer，否则在视图体系中显示的添加的这个不是视图而是图层),因此我们选择向<code>CATransfromLayer</code>添加立方体图层.</p>
+<p>应该始终将程序设置成发布选项。幸运的是，配置文件默认就是发布选项，所以你不需要在分析的时候调整编译策略。</p>
 
-<pre><code class="language-objc">//举一段代码栗子
-//create cube layer
-CATransformLayer *cube = [CATransformLayer layer];
-//add cube face 1（添加立方体的一个面）
-CATransform3D ct = CATransform3DMakeTranslation(0, 0, 50);
-//[self faceWithTransform:ct] 这个方法根据Transform3D返回了一个这种变换的图层
-[cube addSublayer:[self faceWithTransform:ct]];
-//添加6个面后
-...
-//center the cube layer within the container
-CGSize containerSize = self.containerView.bounds.size;
-cube.position = CGPointMake(containerSize.width / 2.0, containerSize.height / 2.0);
-/**
-设置这个立方体的旋转（我们可以不用设置containerView的subTransform属性来进行立方体变换,而且可
-以有几个立方体就能变换几种）
-*/
-cube.transform = transform;
+<p>工具:<br/>
+1.时间分析器(timer profile)-用来测量被方法/函数打断的CPU使用情况<br/>
+2.Core Animation - 用来调试各种Core Animation性能问题。<br/>
+3.OpenGL ES驱动 - 用来调试GPU性能问题,这个工具在编写<code>Open GL</code>代码的时候很有用，但有时也用来处理<code>Core Animation</code>的工作。</p>
 
-//设置contaninView的sublayerTransform保证透视和灭点
-CATransform3D pt = CATransform3DIdentity;
-pt.m34 = -1.0 / 500.0;
-self.containerView.layer.sublayerTransform = pt;
-//将不同形状的cube添加
-[self.containerView.layer addSublayer:cube1];
-</code></pre>
+<h4 id="toc_9">时间分析器</h4>
 
-<h3 id="toc_8">CAGradientLayer</h3>
+<p>检测CPU使用情况,告诉我们程序中那个方法消耗大量CPU时间.查看CPU时间对于判断性能是不是和CPU相关，以及定位到函数都很有帮助</p>
 
-<p><code>CAGradientLayer</code>是用来生成两种或更多颜色平滑渐变的（绘制使用了硬件加速）.<br/>
-<code>CAGradientLayer</code>只适合做这种渐变没法定制,例如做环形渐变等,那样的话只能用<code>Core Graphic</code>了</p>
-
-<h4 id="toc_9">基础渐变</h4>
-
-<p>这是最简单的渐变,这些渐变色彩放在一个数组中，并赋给<code>colors</code>(<code>CGColorRef</code>类型)属性。</p>
-
-<p>CAGradientLayer 也有<code>startPoint</code>和<code>endPoint</code>属性，他们决定了渐变的方向。这两个参数是以单位坐标系进行的定义，所以左上角坐标是{0, 0}，右下角坐标是{1, 1}。</p>
-
-<pre><code class="language-objc">CAGradientLayer *gradientLayer = [CAGradientLayer layer];
-gradientLayer.frame = self.containerView.bounds;
-[self.containerView.layer addSublayer:gradientLayer];
-//set gradient colors
-gradientLayer.colors = @[(__bridge id)[UIColor redColor].CGColor, (__bridge id)[UIColor blueColor].CGColor];
-//set gradient start and end points
-gradientLayer.startPoint = CGPointMake(0, 0);
-gradientLayer.endPoint = CGPointMake(1, 1);
-</code></pre>
-
-<p><img src="media/14896343426276/14897191786083.jpg" alt=""/></p>
-
-<h4 id="toc_10">多重渐变</h4>
-
-<p><code>colors</code>属性是个数组,因此可以设置很多颜色的多重渐变.默认这些颜色在我们指定的空间是均匀渲染的,但是我们可以设置<code>location</code>属性来调整空间。<br/>
-<code>location</code>属性浮点型数组(以<code>NSNumber</code>包装),是以单位坐标(针对做渐变区域的单位坐标)系进行标定。0.0代表着渐变的开始，1.0代表着结束。<br/>
-<code>loaction</code>属性不一定非要设置,但是如果设置了,数组大小一定要与<code>colors</code>数组大小相同,否则会得到白色渐变.  </p>
-
-<pre><code class="language-objc">gradientLayer.colors = @[(__bridge id)[UIColor redColor].CGColor,(__bridge id)[UIColor blueColor].CGColor,(__bridge id)[UIColor greenColor].CGColor];
-/**
-    这个数组的意义是0.0-0.25为红色到黄色的渐变区域,0.25-0.5为黄色到绿色的渐变区域,
-    0.5之后为绿色的完全区域
-*/
-    gradientLayer.locations = @[@(0.1),@(0.5),@(0.9)];
-    gradientLayer.startPoint = CGPointMake(0.25, 0.25);
-    gradientLayer.endPoint = CGPointMake(0.5, 0.5);
-</code></pre>
-
-<p><img src="media/14896343426276/14897305344880.jpg" alt=""/></p>
-
-<h3 id="toc_11">CAReplicatorLayer</h3>
-
-<p><code>CAReplicatorLayer</code>的目的是为了高效生成许多相似的图层。它会绘制一个或多个图层的子图层，并在每个复制体上应用不同的变换。</p>
-
-<h4 id="toc_12">重复图层</h4>
-
-<p><code>instanceCount</code>属性指定了图层需要重复多少次<br/>
-<code>instanceTransform</code> 指定了一个 <code>CATransform3D</code> 3D变换，复制图层在被创建时产生的和上一个制图层的位移(位移的锚点是<code>CAReplicatorlayer</code>的中心点)<br/>
-<code>instanceDelay</code>在短时间内的复制延时,一般用在动画上(支持动画的延时)<br/>
- <code>preservesDepth</code>如果设置为YES,图层将保持于CATransformLayer类似的性质和相同的限制<br/>
- <code>instanceColor</code>设置这些复制图层的颜色,默认位白色(注意有可能会和要复制的图层的颜色冲突)<br/>
- 变换是逐步增加的，每个实例都是相对于前一实例布局。因此这些复制体最终不会出现在同一位置上</p>
-
-<pre><code class="language-objc">CAReplicatorLayer *replicator = [CAReplicatorLayer layer];
-replicator.frame = self.containerView.bounds;
-[self.containerView.layer addSublayer:replicator];
-//重复多少次
-replicator.instanceCount = 10;
-
-CATransform3D transform = CATransform3DIdentity;
-transform = CATransform3DTranslate(transform, 0, 200, 0);
-transform = CATransform3DRotate(transform, M_PI / 5.0, 0, 0, 1);
-transform = CATransform3DTranslate(transform, 0, -200, 0);
-replicator.instanceTransform = transform;
-
-replicator.instanceBlueOffset = -0.1;
-replicator.instanceGreenOffset = -0.1;
-
-CALayer *layer = [CALayer layer];
-layer.frame = CGRectMake(100.0f, 100.0f, 100.0f, 100.0f);
-layer.backgroundColor = [UIColor whiteColor].CGColor;
-[replicator addSublayer:layer];
-
-</code></pre>
-
-<p>由于我们设置了<code>instanceBlueOffset</code>和 <code>instanceGreenOffset</code>属性.的颜色也在变化.除了这两个还有<code>instanceBlueOffset</code> <code>instanceAlphaOffset</code>这都是改变某个颜色通道的值</p>
-
-<p><code>CAReplicatorLayer</code> 真正应用到实际程序上的场景比如：一个游戏中导弹的轨迹云，或者粒子爆炸（尽管iOS 5已经引入了 <code>CAEmitterLayer</code> ，它更适合创建任意的粒子效果）。除此之外，还有一个实际应用是：<code>反射</code>。</p>
-
-<h4 id="toc_13">反射</h4>
-
-<p>创建一个指定视图的镜像照片,我们只需要使用<code>CAReplicatorLayer</code>并用一个负比例变换创建一个复制图层即可.</p>
-
-<pre><code class="language-objc">+ (Class)layerClass
-{
-return [CAReplicatorLayer class];
-}
-- (void)setUp
-{
-//configure replicator
-CAReplicatorLayer *layer = (CAReplicatorLayer *)self.layer;
-layer.instanceCount = 2;
-//move reflection instance below original and flip vertically
-//核心代码是这个动画
-CATransform3D transform = CATransform3DIdentity;
-CGFloat verticalOffset = self.bounds.size.height + 2;
-transform = CATransform3DTranslate(transform, 0, verticalOffset, 0);
-transform = CATransform3DScale(transform, 1, -1, 0);
-layer.instanceTransform = transform;
-//reduce alpha of reflection layer
-layer.instanceAlphaOffset = -0.6;
-}
-- (id)initWithFrame:(CGRect)frame
-{
-//this is called when view is created in code
-if ((self = [super initWithFrame:frame])) {
-[self setUp];
-}
-return self;
-}
-- (void)awakeFromNib
-{
-//this is called when view is created from a nib
-[self setUp];
-}
-</code></pre>
-
-<p>这个镜像的是整个ReflectView视图内容(是视图层次)<br/>
-因为现在这个VIew的layer已经变为<code>CAReplicatorLayer</code>所以我们对这个layer本身改变什么是不会镜像的,当然如果add的Layer内容也会被镜像</p>
-
-<p>大神写的自适应渐变淡出效果的<a href="https://github.com/nicklockwood/ReflectionView">ReflectView</a></p>
-
-<h3 id="toc_14">CAScrollLayer</h3>
-
-<p>之前我们显示大图层中的一小部分是使用图层的<code>contentRect</code>属性,但是如果我们想要滑动可视区域的话这样就不是很好的办法.</p>
-
-<p><code>CALayey</code>提供了一个子类<code>CAScrollLayer</code>.<br/>
- <code>CAScrollLayer</code> 有一个 <code>-scrollToPoint:</code>方法，它自动适应 <code>bounds</code> 的原点以便图层内容现在滑动的地方。</p>
-
-<p>因为<code>Core Animation</code>是不处理用户输入的,所以<code>CAScrollLayer</code>并不负责将触摸事件转换为滑动事件，既不渲染滚动条，也不实现任何iOS指定行为例如滑动反弹.</p>
-
-<pre><code class="language-objc">//来用 CAScrollLayer 来常见一个基本的 UIScrollView 替代品
-+ (Class)layerClass
-{
-    return [CAScrollLayer class];
-}
-//添加平移手势
-//在平移手势中滚动视图
-CGPoint offset = self.bounds.origin;
-offset.x -= [recognizer translationInView:self].x;
-offset.y -= [recognizer translationInView:self].y;
-//scroll the layer
-[(CAScrollLayer *)self.layer scrollToPoint:offset];
-//reset the pan gesture translation
-[recognizer setTranslation:CGPointZero inView:self];
-//当然我们可以自己做边界检查
-</code></pre>
-
-<p>其实<strong><code>UIScrollView</code> 并没有用 <code>CAScrollLayer</code></strong>，事实上，就是简单的通过直接操作图层边界来实现滑动。</p>
-
-<p>那么这个<code>CAScrollLayer</code>的作用是什么呢?<br/>
-在<code>CAScrollerLayer</code>的头文件中有一个<code>CALayer (CALayerScrolling)</code>的扩展分类,实现了一些：</p>
-
-<pre><code class="language-objc">- (void)scrollPoint:(CGPoint)p;
-- (void)scrollRectToVisible:(CGRect)r;
-@property(readonly) CGRect visibleRect;
-</code></pre>
-
-<p>其实这些方法或者属性并不是给<code>CALayer</code>添加了滑动功能,事实上他们只是放置在<code>CAScrollLayer</code>中的图层的实用方法,<code>scrollPoint:</code>方法从图层树中查找并找到第一个可用的<code>CAScrollLayer</code>，然后滑动它使得指定点成为可视的。<code>scrollRectToVisible:</code>方法实现了同样的事情只不过是作用在一个矩形上的。<code>visibleRect</code> 属性决定图层（如果存在的话）的哪部分是当前的可视区域。当涉及到实现图层滑动的时候就可以用上了</p>
-
-<h3 id="toc_15">CATiledLayer</h3>
-
-<p>我们有可能会需要加载一张高像素图片,这时候我们不适合读取整张图片到内存中,因为载入大图会非常的慢,将会阻塞线程造成卡顿.<br/>
-能高效绘制在iOS上的图片也有一个大小限制。所有显示在屏幕上的图片最终都会被转化为<code>OpenGL</code>纹理，同时<code>OpenGL</code>有一个最大的纹理尺寸（通常是2048*2048，或4096*4096，这个取决于设备型号）。如果你想在单个纹理中显示一个比这大的图，即便图片已经存在于内存中了，你仍然会遇到很大的性能问题，因为<code>Core Animation</code>强制用CPU处理图片而不是更快的GPU</p>
-
-<p>这时候我们可以用<code>CATiledLayer</code>,它可以将大图分解成小片然后将他们单独按需载入<br/>
-<strong>CATiledLayer 很好地和 UIScrollView 集成在一起。</strong></p>
-
-<pre><code class="language-objc">- (void)viewDidLoad
-{
-    [super viewDidLoad];
-    //add the tiled layer
-    
-    /**
-    CATiledLayer 很好地和 UIScrollView 集成在一起。除了设置图层和滑动视图边界
-    以适配整个图片大小，我们真正要做的就是实现 -drawLayer:inContext: 方法，当
-    需要载入新的小图时， CATiledLayer 就会调用到这个方法。
-    */
-    
-    CATiledLayer *tileLayer = [CATiledLayer layer];
-    tileLayer.frame = CGRectMake(0, 0, 2048, 2048);
-    tileLayer.delegate = self; [self.scrollView.layer addSublayer:tileLayer];
-    //configure the scroll view
-    self.scrollView.contentSize = tileLayer.frame.size;
-    //draw layer
-    [tileLayer setNeedsDisplay];
-}
-- (void)drawLayer:(CATiledLayer *)layer inContext:(CGContextRef)ctx
-{
-    //determine tile coordinate
-    CGRect bounds = CGContextGetClipBoundingBox(ctx);
-    NSInteger x = floor(bounds.origin.x / layer.tileSize.width);
-    NSInteger y = floor(bounds.origin.y / layer.tileSize.height);
-    //load tile image
-    NSString *imageName = [NSString stringWithFormat: @&quot;Snowman_%02i_%02i&quot;, x, y];
-    NSString *imagePath = [[NSBundle mainBundle] pathForResource:imageName ofType:@&quot;jpg&quot;];
-    
-    UIImage *tileImage = [UIImage imageWithContentsOfFile:imagePath];
-    //draw tile
-    UIGraphicsPushContext(ctx);
-    [tileImage drawInRect:bounds];
-    UIGraphicsPopContext();
-}
-</code></pre>
-
-<p><code>CATiledLayer</code> 的默认以淡入的方式载入小图,可以用 <code>fadeDuration</code> 属性改变淡入时长或直接禁用<br/>
-掉。</p>
-
-<p><code>CATiledLayer</code> （不同于大部分的<code>UIKit</code> 和<code>Core Animation</code>方法）支持多线程绘制，<code>-drawLayer:inContext:</code>方法可以在多个线程中同时地并发调用，所以请小心谨慎地确保你在这个方法中实现的绘制代码是线程安全的。</p>
-
-<p><strong>补充</strong><br/>
-我们在使用<code>CATiledLayer *tileLayer = [CATiledLayer layer];</code>时载入图片并不是以以Retina的分辨率显示,我们可以<code>tileLayer.contentsScale = [UIScreen mainScreen].scale;</code>我们只需要设<br/>
-置了<code>CATiledLayer</code>的<code>contentsScale</code>即可(因为size是以像素为单位的,所以改变了contentsScale 就自动有了默认的小图尺寸),而不需要手工更新小图的尺寸或是在<code>Retina</code>分辨率下指定一个不同的小图。</p>
-
-<p>我们需要做的是适应小图渲染代码以对应安排 <code>scale</code>的变化</p>
-
-<pre><code class="language-objc">CGRect bounds = CGContextGetClipBoundingBox(ctx);
-CGFloat scale = [UIScreen mainScreen].scale;
-NSInteger x = floor(bounds.origin.x / layer.tileSize.width * scale);
-NSInteger y = floor(bounds.origin.y / layer.tileSize.height * scale);
-</code></pre>
-
-<h3 id="toc_16">CAEmitterLayer</h3>
-
-<p>iOS后引入了一个新的 <code>CALayer</code> 子类叫做 <code>CAEmitterLayer</code><br/>
-<code>CAEmitterLayer</code> 是一个高性能的粒子引擎，被用来创建实时例子动画如：烟雾，火，雨等等这些效果</p>
-
-<p><code>CAEmitterLayer</code>是很多<code>CAEmitterCell</code>的容器.这些<code>CAEmitierCell</code>定义了一个粒子效果.我们就是为不同的粒子效果定义一个或多个<code>CAEmitterCell</code>作为模版，同时<code>CAEmitterLayer</code>负责基于这些模版实例化一个粒子流。</p>
-
-<p><code>CAEmitterCell</code>它有一个<code>contents</code>属性可以定义为一个<code>CGImage</code>，还有一些可设置属性控制着表现和行为。<br/>
-举个栗子:</p>
-
-<pre><code class="language-objc">- (void)viewDidLoad
-{
-    [super viewDidLoad];
-    //create particle emitter layer
-    CAEmitterLayer *emitter = [CAEmitterLayer layer];
-    emitter.frame = self.containerView.bounds;
-    [self.containerView.layer addSublayer:emitter];
-    //configure emitter
-    emitter.renderMode = kCAEmitterLayerAdditive;
-    emitter.emitterPosition = CGPointMake(emitter.frame.size.width / 2.0, emitter.frame.size.height / 2.0);
-    //create a particle template
-    CAEmitterCell *cell = [[CAEmitterCell alloc] init];
-    cell.contents = (__bridge id)[UIImage imageNamed:@&quot;Spark.png&quot;].CGImage;
-    cell.birthRate = 150;
-    cell.lifetime = 5.0;
-    cell.color = [UIColor colorWithRed:1 green:0.5 blue:0.1 alpha:1.0].CGColor;
-    cell.alphaSpeed = -0.4;
-    cell.velocity = 50;
-    cell.velocityRange = 50;
-    cell.emissionRange = M_PI * 2.0;
-    //add particle template to emitter
-    emitter.emitterCells = @[cell];
-}
-@end
-</code></pre>
-
-<p><code>CAEMitterCell</code>的属性基本上可以分为三种：</p>
+<p>我们可以通过选择一些选项来定位到我们关心的方法:</p>
 
 <ul>
-<li>这种粒子某一属性的初始值。比如，<code>color</code>属性指定了一个可以混合图片内容颜色的混合色。在示例中，我们将它设置为桔色。</li>
-<li>粒子某一属性的变化范围。比如<code>emissionRange</code>属性的值是2π，这意味着粒子可以从360度任意位置反射出来。如果指定一个小一些的值，就可以创造出一个圆锥形</li>
-<li>指定值在时间线上的变化。比如，在示例中，我们将<code>alphaSpeed</code>设置为-0.4，就是说例子的透明度每过一秒就是减少0.4，这样就有发射出去之后逐渐消失的效果。</li>
+<li>通过线程分离 - 这可以通过执行的线程进行分组。如果代码被多线程分离的话，那么就可以判断到底是哪个线程造成了问题。</li>
+<li>隐藏系统库 - 可以隐藏所有苹果的框架代码，来帮助我们寻找哪一段代码造成了性能瓶颈。</li>
+<li>只显示Obj-C代码 - - 隐藏除了<code>Objective-C</code>之外的所有代码。大多数内部的<code>Core Animation</code>代码都是用<code>C</code>或者<code>C++</code>函数，所以这对我们集中精力到我们代码中显式调用的方法就很有用。</li>
 </ul>
 
-<p><code>CAEmitterLayer</code>的属性它自己控制着整个例子系统的位置和形状。一些属性比如 <code>birthRate</code>， <code>lifetime</code>和<code>celocity</code>，这些属性在<code>CAEmitterCell</code>中也有。这些属性会以相乘的方式作用在一起，这样你就可以用一个值来加速或者扩大整个例子系统。</p>
+<h4 id="toc_10">Core Animation</h4>
+
+<p>这个工具用来检测<code>Core Animation</code>性能。给我们提供了周期性FPS，并考虑到了发生在程序之外的动画</p>
+
+<p>提供的调试选项:</p>
 
 <ul>
-<li><code>preservesDepth</code>，是否将3D例子系统平面化到一个图层（默认值）或者可以在3D空间中混合其他的图层</li>
-<li><code>renderMode</code>，控制着在视觉上粒子图片是如何混合的。示例中我们把它设置为<code>kCAEmitterLayerAdditive</code> ，它实现了这样一个效果：合并例子重叠部分的亮度使得看上去更亮。如果我们把它设置为默认的<code>kCAEmitterLayerUnordered</code>，效果就没那么好看了</li>
+<li>Color Blended Layers - 这个选项基于渲染程度对屏幕中的混合区域进行绿到红的高亮（也就是多个半透明图层的叠加）。由于重绘的原因，混合对GPU性能会有影响，同时也是滑动或者动画帧率下降的罪魁祸首之一。</li>
+<li>ColorHitsGreenandMissesRed - 当使用<code>shouldRasterizep</code>属性的时候，耗时图层会被缓存,然后当做扁平化的图片呈现.当缓存再生时，这个选项用红色对栅格化图层进行了高亮。如果频繁再生就意味着栅格化可能会有负面的性能影响</li>
+<li>Color Copied Images - 有时候寄宿图片的生成意味着Core Animation被强制生成一些图片，然后发送到渲染服务器，而不是简单的指向原始指针。这个选项把这些图片渲染成蓝色。复制图片对内存和CPU使用来说都是一项非常昂贵的操作，所以应该尽可能的避免</li>
+<li>Color Immediately - 通常<code>Core Animation</code> <code>Instruments</code>以每毫秒10次的频率更新图层调试颜色，我们可以通过勾选这个选项来设置每帧都更新（可能影响性能）</li>
+<li>Color Misaligned Images - 会高亮那些被缩放或者拉伸以及没有正确对齐到像素边界的图片</li>
+<li>Color Offscreen-Rendered Yellow - 会把那些需要离屏渲染的图层高亮成黄色。这些图层很可能需要用<code>shadowPath</code>或者<code>shouldRasterize</code>来优化。</li>
+<li>Color OpenGL Fast Path Blue - 会对任何直接使用<code>OpenGL</code>绘制的图层进行高亮。</li>
+<li>Flash Updated Regions - 这个选项会对重绘的内容高亮成黄色（也就是任何在软件层面使用Core Graphics绘制的图层）。这种绘图速度很慢,频繁发生的话说明有个隐藏bug或者通过增加缓存或者使用替代方案会有提升性能的空间。</li>
 </ul>
 
-<p><strong>注意</strong><br/>
-之前我们学习了<code>CAReplicatorLayer</code> 它的真正应用到实际程序上的场景比如：一个游戏中导弹的轨迹云,或者反射等</p>
+<h4 id="toc_11">OpenGL ES驱动</h4>
 
-<h3 id="toc_17">CAEAGLLayer</h3>
+<p><code>OpenGL ES</code>驱动工具可以帮你测量GPU的利用率，是一个很好的判断和GPU相关动画性能的指示器.它类似<code>Core Animation</code>也提供显示<code>FPS</code>的工具</p>
 
-<p>再议</p>
+<p>其侧边栏选项卡中和性能相关的有:</p>
 
-<h3 id="toc_18">AVPlayerLayer</h3>
+<ul>
+<li>Renderer Utilization - 如果这个值超过了~50%，就意味着你的动画可能对帧率有所限制，很可能因为离屏渲染或者是重绘导致的过度混合。</li>
+<li>Tiler Utilization - 如果这个值超过了~50%，就意味着你的动画可能限制于几何结构方面，也就是在屏幕上有太多的图层占用了。</li>
+</ul>
 
-<p>它不是<code>Core Animation</code>框架的一部分，是在<code>AVFoundation</code>框架中的,但是它，提供了一个<code>CALayer</code> 子类来显示自定义的内容类型.</p>
-
-<p><code>AVPlayerLayer</code> 是用来在iOS上播放视频的。他是高级接口例如<code>MPMoivePlayer</code>的底层实现，提供了显示视频的底层控制。</p>
-
-<p><code>AVPlayerLayer</code>的使用相当简单：你可以用<code>+playerLayerWithPlayer:</code>方法创建一个已经绑定了视频播放器的图层，或者你可以先创建一个图层，然后用<code>player</code>属性绑定一个<code>AVPlayer</code>实例。</p>
-
-<pre><code class="language-objc">- (void)viewDidLoad
-{
-    [super viewDidLoad];
-    //get video URL
-    NSURL *URL = [[NSBundle mainBundle] URLForResource:@&quot;Ship&quot; withExtension:@&quot;mp4&quot;];
-    //create player and player layer
-    AVPlayer *player = [AVPlayer playerWithURL:URL];
-    AVPlayerLayer *playerLayer = [AVPlayerLayer playerLayerWithPlayer:player];
-    //set player layer frame and attach it to our view
-    playerLayer.frame = self.containerView.bounds;
-    [self.containerView.layer addSublayer:playerLayer];
-    //play the video
-    [player play];
-}
-</code></pre>
-
-<p><strong>注意</strong><br/>
-因为Core Animation并不支持自动大小和自动布局,因此我们要考虑<code>AVPlayerLayer</code>添加到自己创建的视图View而不是直接加到控制器的View</p>
-
-<p>因为<code>AVPlayerLayer</code>是<code>CALayer</code>的子类，它继承了父类的所有特性。我们并不会受限于要在一个矩形中播放视频(我们可以对Layer进行3D，圆角，有色边框，蒙板，阴影等)。</p>
+<h4 id="toc_12">一个找到性能瓶颈的实例</h4>
 
                         
                       </div>
@@ -588,10 +270,10 @@ NSInteger y = floor(bounds.origin.y / layer.tileSize.height * scale);
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/16</span>
+                    <span class="date">2017/4/17</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%9B%BE%E5%B1%82.html'>图层</a></span>
+          					    <span class="posted-in"><a href='%E6%80%A7%E8%83%BD.html'>性能</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -679,31 +361,31 @@ NSInteger y = floor(bounds.origin.y / layer.tileSize.height * scale);
 	      
 		      
 			      <li class="post">
-			        <a href="15059300219793.html">高级运算符</a>
+			        <a href="15082392311480.html">实战:ARKit捕捉平面</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15057532270985.html">访问控制</a>
+			        <a href="15082385455420.html">ARCamera</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15052932669633.html">泛型</a>
+			        <a href="15082349866219.html">ARSession</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15047511695312.html">协议</a>
+			        <a href="15082316038998.html">ARSCNView</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15042587690391.html">扩展</a>
+			        <a href="15082286345415.html">ARKit框架API简介</a>
 			      </li>
 		     
 		  
