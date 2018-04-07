@@ -83,6 +83,8 @@
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
         
             <li><a href="supplement.html">补充</a></li>
+        
+            <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
          
 
       </ul>
@@ -105,96 +107,32 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15017615739867.html">
+                <a class="clearlink" href="15025006795297.html">
                 
-                  <h1>下标</h1>
+                  <h1>析构过程</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>下标可以定义在类、结构体和枚举中，用于访问集合、列表或序列中的元素</p>
+                        	<p>只适用类类型,当类的实例被释放时,析构器会被立即调用。<br/>
+<code>deinit</code>关键字标示析构器</p>
 
-<p>一个类型可以定义多个下标.通过不同索引类型进行重载.下标不限于一维</p>
+<h2 id="toc_0">析构过程原理</h2>
 
-<h2 id="toc_0">下标语法</h2>
+<p>自动释放不需要的实例来释放资源,通过自动引用计数来管理内存。实例被释放时会自动清理,但是使用自己的资源需要进行额外的清理(比如自己打开一个文件管理类，需要在类被释放前手动关闭该文件).</p>
 
-<p>通过在实例名称后的方括号中传入一个或多个索引值来对实例进行存取</p>
+<p>在类的定义中,每个类最多只能有一个析构器,不带任何参数</p>
 
-<p>定义下标使用<code>subscript</code>关键字,指定一个或者多个输入参数和返回类型<br/>
-下标可以设置为读写或者只读,通过是<code>getter</code>或者<code>setter</code>实现</p>
-
-<pre><code class="language-swift">subscript(index: Int) -&gt; Int {
-    get {
-        // 返回一个适当的 Int 类型的值
-    }
-    set(newValue) {
-        // 执行适当的赋值操作
-    }
+<pre><code class="language-swift">deinit {
+    // 执行析构过程
 }
 </code></pre>
 
-<p>可以不指定<code>setter</code>的参数,默认提供<code>newValue</code></p>
+<p>析构器在实例被释放前被调用,不能主动调用析构器。子类继承了父类的析构器，并且在子类析构器<br/>
+实现的最后，父类的析构器会被自动调用。</p>
 
-<pre><code class="language-swift">struct TimesTable {
-    let multiplier: Int
-    subscript(index: Int) -&gt; Int {
-        return multiplier * index
-    }
-}
-let threeTimesTable = TimesTable(multiplier: 3)
-print(&quot;six times three is \(threeTimesTable[6])&quot;)
-// 打印 &quot;six times three is 18&quot;
-</code></pre>
-
-<p>定义一个数学公式结构体,只读的下标语法</p>
-
-<h2 id="toc_1">下标用法</h2>
-
-<pre><code class="language-swift">//字典的下标语法
-var numberOfLegs = [&quot;spider&quot;: 8, &quot;ant&quot;: 6, &quot;cat&quot;: 4]
-numberOfLegs[&quot;bird&quot;] = 2
-</code></pre>
-
-<h2 id="toc_2">下标选项</h2>
-
-<p>下标可以使用变量参数和可变参数,但不能使用输入输出参数,也不能给参数设置默认值</p>
-
-<p>下标的重载:<br/>
-类和结构体可以根据自身需要提供多个下标实现,通过入参和类型进行区分</p>
-
-<pre><code class="language-swift">struct Matrix {
-    let rows: Int, columns: Int
-    var grid: [Double]
-    init(rows: Int, columns: Int) {
-        self.rows = rows
-        self.columns = columns
-        //通过传入数组长度和初始值0.0到数组的构造器，将矩阵中每个位置的值初始化为0.0
-        grid = Array(count: rows * columns, repeatedValue: 0.0)
-    }
-    func indexIsValidForRow(row: Int, column: Int) -&gt; Bool {
-        return row &gt;= 0 &amp;&amp; row &lt; rows &amp;&amp; column &gt;= 0 &amp;&amp; column &lt; columns
-    }
-    subscript(row: Int, column: Int) -&gt; Double {
-        get {
-            //断言语句
-            assert(indexIsValidForRow(row, column: column), &quot;Index out of range&quot;)
-            return grid[(row * columns) + column]
-        }
-        set {
-            //断言语句
-            assert(indexIsValidForRow(row, column: column), &quot;Index out of range&quot;)
-            grid[(row * columns) + column] = newValue
-        }
-    }
-}
-</code></pre>
-
-<pre><code class="language-swift">var matrix = Matrix(rows: 2, columns: 2)
-//下标入参用逗号进行分割
-matrix[0, 1] = 1.5 //将下标为(0,1)位置设置为1.5
-</code></pre>
-
-<p>通过断言,检查下标入参<code>row</code>和<code>colum</code>的值是否有效.定义方法<code>indexIsValidForRow(_:column:)</code>检查入参<code>row</code>和<code>columu</code>是否越界,断言会在下标月结</p>
+<p>直到实例的析构器被调用后，实例才会被释放,所以析构器可以访问实例的所有属性，并且可以根据那些属<br/>
+性可以修改它的行为(比如查找一个需要被关闭的文件)</p>
 
                         
                       </div>
@@ -203,10 +141,10 @@ matrix[0, 1] = 1.5 //将下标为(0,1)位置设置为1.5
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/3</span>
+                    <span class="date">2017/8/12</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
+          					    <span class="posted-in"><a href='Swift.html'>Swift初学笔记</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -278,6 +216,8 @@ matrix[0, 1] = 1.5 //将下标为(0,1)位置设置为1.5
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
         
             <a href="supplement.html"><strong>补充</strong></a>
+        
+            <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
          
         </p>
 
@@ -294,6 +234,24 @@ matrix[0, 1] = 1.5 //将下标为(0,1)位置设置为1.5
 	      
 		      
 			      <li class="post">
+			        <a href="15205769334278.html">JS基础使用</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15143731430102.html">iOS11</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15124643482351.html">UISearchBar UISearchController UITextField</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15082392311480.html">实战:ARKit捕捉平面</a>
 			      </li>
 		     
@@ -301,24 +259,6 @@ matrix[0, 1] = 1.5 //将下标为(0,1)位置设置为1.5
 		      
 			      <li class="post">
 			        <a href="15082385455420.html">ARCamera</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15082349866219.html">ARSession</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15082316038998.html">ARSCNView</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15082286345415.html">ARKit框架API简介</a>
 			      </li>
 		     
 		  

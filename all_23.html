@@ -83,6 +83,8 @@
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
         
             <li><a href="supplement.html">补充</a></li>
+        
+            <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
          
 
       </ul>
@@ -105,147 +107,96 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15005513837564.html">
+                <a class="clearlink" href="15017615739867.html">
                 
-                  <h1>类和结构体</h1>
+                  <h1>下标</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>可以使用完全相同的语法规则来为<code>类</code>和<code>结构体</code>定义属性(<code>常量</code>、<code>变量</code>)和添加方法，从而扩展类和结构体的功能</p>
+                        	<p>下标可以定义在类、结构体和枚举中，用于访问集合、列表或序列中的元素</p>
 
-<p>与其他编程语言不同,<code>swift</code>不要求为自定义类和结构创建独立的接口和实现文件.所要做的是在一个单一文件中定义一个类或者结构体，系统将会自动生成面向其它代码的外部接口</p>
+<p>一个类型可以定义多个下标.通过不同索引类型进行重载.下标不限于一维</p>
 
-<h2 id="toc_0">类和结构体对比</h2>
+<h2 id="toc_0">下标语法</h2>
 
-<blockquote>
-<p>类通过引用计数进行多次引用,结构体通过复制的方式在代码中传递,不使用引用计数</p>
-</blockquote>
+<p>通过在实例名称后的方括号中传入一个或多个索引值来对实例进行存取</p>
 
-<h3 id="toc_1">定义语法</h3>
+<p>定义下标使用<code>subscript</code>关键字,指定一个或者多个输入参数和返回类型<br/>
+下标可以设置为读写或者只读,通过是<code>getter</code>或者<code>setter</code>实现</p>
 
-<p>通过关键之<code>class</code>和<code>struct</code>来分别标识类和结构体</p>
-
-<blockquote>
-<p>类和结构体名使用首字母大写的方式进行命名</p>
-</blockquote>
-
-<pre><code class="language-swift">//定义一个结构体 描述显示器屏幕分辨率
-struct Resolution {
-    var width = 0
-    var height = 0
-    //当这两个属性被初始化为整数 0 的时候，它们会被推断为 Int 类型。
-}
-
-//定义一个类 描述视频显示器的特定模式
-//四个变量存储属性
-class VideoMode {
-    var resolution = Resolution()//分辨率 结构体
-    var interlaced = false
-    var frameRate = 0.0
-    var name: String?
+<pre><code class="language-swift">subscript(index: Int) -&gt; Int {
+    get {
+        // 返回一个适当的 Int 类型的值
+    }
+    set(newValue) {
+        // 执行适当的赋值操作
+    }
 }
 </code></pre>
 
-<p><code>存储属性</code>是被<code>捆绑</code>和<code>存储</code>在类或结构体中的常量或变量。</p>
+<p>可以不指定<code>setter</code>的参数,默认提供<code>newValue</code></p>
 
-<h3 id="toc_2">类和结构体实例</h3>
-
-<p>初始化结构体或类的实例</p>
-
-<pre><code class="language-swift">let someResolution = Resolution()
-let someVideoMode = VideoMode()
+<pre><code class="language-swift">struct TimesTable {
+    let multiplier: Int
+    subscript(index: Int) -&gt; Int {
+        return multiplier * index
+    }
+}
+let threeTimesTable = TimesTable(multiplier: 3)
+print(&quot;six times three is \(threeTimesTable[6])&quot;)
+// 打印 &quot;six times three is 18&quot;
 </code></pre>
 
-<p>通过这种方式创建类或者结构体实例,属性都会被初始化为默认值.</p>
+<p>定义一个数学公式结构体,只读的下标语法</p>
 
-<h3 id="toc_3">属性访问</h3>
+<h2 id="toc_1">下标用法</h2>
 
-<p>通过点语法访问实例属性。</p>
-
-<pre><code class="language-swift">//访问结构体属性
-print(&quot;The width of someResolution is \(someResolution.width)&quot;)
-// 打印 &quot;The width of someResolution is 0&quot;
-
-//访问变量属性
-someVideoMode.resolution.width = 1280
-print(&quot;The width of someVideoMode is now \(someVideoMode.resolution.width)&quot;)
-// 打印 &quot;The width of someVideoMode is now 1280&quot;
+<pre><code class="language-swift">//字典的下标语法
+var numberOfLegs = [&quot;spider&quot;: 8, &quot;ant&quot;: 6, &quot;cat&quot;: 4]
+numberOfLegs[&quot;bird&quot;] = 2
 </code></pre>
 
-<blockquote>
-<p>在OC中是不能直接设置结构体子属性值，swift中可以直接设置比如<code>resolution.width</code>属性值,在oc中我们需要给整个结构体<code>resolution</code>设置新值</p>
-</blockquote>
+<h2 id="toc_2">下标选项</h2>
 
-<h3 id="toc_4">结构体类型成员逐一构造器</h3>
+<p>下标可以使用变量参数和可变参数,但不能使用输入输出参数,也不能给参数设置默认值</p>
 
-<p>对于<strong>结构体</strong><br/>
-所有结构体都有一个自动生成的<strong>成员逐一构造器</strong>，用来初始化新结构体成员的属性</p>
+<p>下标的重载:<br/>
+类和结构体可以根据自身需要提供多个下标实现,通过入参和类型进行区分</p>
 
-<pre><code class="language-swift">//通过属性名称
-let vga = Resolution(width:640, height: 480)
+<pre><code class="language-swift">struct Matrix {
+    let rows: Int, columns: Int
+    var grid: [Double]
+    init(rows: Int, columns: Int) {
+        self.rows = rows
+        self.columns = columns
+        //通过传入数组长度和初始值0.0到数组的构造器，将矩阵中每个位置的值初始化为0.0
+        grid = Array(count: rows * columns, repeatedValue: 0.0)
+    }
+    func indexIsValidForRow(row: Int, column: Int) -&gt; Bool {
+        return row &gt;= 0 &amp;&amp; row &lt; rows &amp;&amp; column &gt;= 0 &amp;&amp; column &lt; columns
+    }
+    subscript(row: Int, column: Int) -&gt; Double {
+        get {
+            //断言语句
+            assert(indexIsValidForRow(row, column: column), &quot;Index out of range&quot;)
+            return grid[(row * columns) + column]
+        }
+        set {
+            //断言语句
+            assert(indexIsValidForRow(row, column: column), &quot;Index out of range&quot;)
+            grid[(row * columns) + column] = newValue
+        }
+    }
+}
 </code></pre>
 
-<p>类是没有这个成员构造器的</p>
-
-<h2 id="toc_5">结构体和枚举时值类型</h2>
-
-<p><strong>值类型被赋予给一个变量、常量或者被传递给一个函数的时候，其值会被拷贝</strong></p>
-
-<p>实际上,在<code>Swift</code>中，所有的基本类型：整数（Integer）、浮点数（floating-point）、布尔值（Boolean）、字符串（string)、数组（array）和字典（dictionary），都是值类型，并且在底层都是<strong>以结构体的形式所实现</strong></p>
-
-<p>在<code>swift</code>中,所有结构体和枚举类型都是值类型。因此,它们的实例以及实例中包含的值类型属性,在传递时都会被复制</p>
-
-<pre><code class="language-swift">let hd = Resolution(width: 1920, height: 1080)
-var cinema = hd
-cinema.width = 2048
-print(&quot;cinema is now \(cinema.width) pixels wide&quot;)// &quot;cinema is now 2048 pixels wide&quot;
-print(&quot;hd is still \(hd.width) pixels wide&quot;)//&quot;hd is still 1920 pixels wide&quot;
+<pre><code class="language-swift">var matrix = Matrix(rows: 2, columns: 2)
+//下标入参用逗号进行分割
+matrix[0, 1] = 1.5 //将下标为(0,1)位置设置为1.5
 </code></pre>
 
-<p>在对结构体进行赋值的时候,进行了拷贝,cinema和hd是完全不同的两个实例,因此改变了cinema的宽对hd没有影响</p>
-
-<p>枚举也是值类型,遵循相同的行为准则</p>
-
-<h2 id="toc_6">类是引用类型</h2>
-
-<p>与值类型不同,引用类型在传递时,值不会被拷贝.因此，<strong>引用的是已存在的实例本身而不是其拷贝</strong>。</p>
-
-<pre><code class="language-swift">let tenEighty = VideoMode()
-tenEighty.frameRate = 25.0
-
-let alsoTenEighty = tenEighty
-alsoTenEighty.frameRate = 30.0
-print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&quot;)//30.0
-</code></pre>
-
-<p>类是引用类型，所以<code>tenEight</code>和<code>alsoTenEight</code>实际上引用的是相同的<code>VideoMode</code>实例<br/>
-注意:<br/>
-虽然<code>alsoTenEighty</code>为常量但是仍然可以改变<code>alsoTenEighty.frameRate</code>因为这两个常量的值并未改变,这个常量的值存储的并不是<code>ViewMode</code>的实例,而是对其的引用.</p>
-
-<h3 id="toc_7">恒等运算符</h3>
-
-<p>等价于 <code>===</code>  不等价于 <code>!==</code> 用来检测两个变量或常量是否引用同一个实例</p>
-
-<p><code>===</code>与<code>==</code>的不同:<br/>
-“等价于”表示两个类类型（class type）的常量或者变量引用同一个类实例。<br/>
-“等于”表示两个实例的值“相等”或“相同”，判定时要遵照设计者定义的评判标准</p>
-
-<h3 id="toc_8">指针</h3>
-
-<p>一个引用实例的<code>swift</code>常量或者变量,与C指针类似,但是并不直接指向某个内存地址,也不需要用<code>*</code>表明在创建引用.</p>
-
-<h2 id="toc_9">类和结构体的选择</h2>
-
-<h2 id="toc_10">字符串、数组、字典类型的赋值和复制行为</h2>
-
-<p>因为<code>swift</code>中很多基本类型,<code>String</code>，<code>Array</code>和<code>Dictionary</code>类型均以结构体的形式实现，赋值给新的常量变量或者传入函数方法中的时候会被拷贝</p>
-
-<blockquote>
-<p>在OC中<code>NSString</code>，<code>NSArray</code>和<code>NSDictionary</code>是以类的形式实现,不会发生值拷贝而是传递引用</p>
-
-<p>Swift会在绝对必要时才执行实际拷贝,确保性能最优,因此我们没有必要回避赋值来增加性能</p>
-</blockquote>
+<p>通过断言,检查下标入参<code>row</code>和<code>colum</code>的值是否有效.定义方法<code>indexIsValidForRow(_:column:)</code>检查入参<code>row</code>和<code>columu</code>是否越界,断言会在下标月结</p>
 
                         
                       </div>
@@ -254,7 +205,7 @@ print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&qu
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/7/20</span>
+                    <span class="date">2017/8/3</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -329,6 +280,8 @@ print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&qu
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
         
             <a href="supplement.html"><strong>补充</strong></a>
+        
+            <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
          
         </p>
 
@@ -345,6 +298,24 @@ print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&qu
 	      
 		      
 			      <li class="post">
+			        <a href="15205769334278.html">JS基础使用</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15143731430102.html">iOS11</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15124643482351.html">UISearchBar UISearchController UITextField</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15082392311480.html">实战:ARKit捕捉平面</a>
 			      </li>
 		     
@@ -352,24 +323,6 @@ print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&qu
 		      
 			      <li class="post">
 			        <a href="15082385455420.html">ARCamera</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15082349866219.html">ARSession</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15082316038998.html">ARSCNView</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15082286345415.html">ARKit框架API简介</a>
 			      </li>
 		     
 		  

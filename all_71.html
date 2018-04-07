@@ -83,6 +83,8 @@
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
         
             <li><a href="supplement.html">补充</a></li>
+        
+            <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
          
 
       </ul>
@@ -105,174 +107,239 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14883679213714.html">
+                <a class="clearlink" href="14892022301750.html">
                 
-                  <h1>图层树和寄宿图</h1>
+                  <h1>图层几何学、视觉效果</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>注意点:<br/>
-1. <code>contentsScale</code> 并不关心屏幕的拉伸因素而总是默认为1.0。如果我们想以Retina的质量来渲染图层，我们就得手动设置图层的 contentsScale 属性。</p>
+                        	<p>遗忘点:<br/>
+1. 用作mask的layer不一定非要静态的,只要有layer的都可以作为蒙版</p>
 
-<p><code>textLayer.contentsScale = [UIScreen mainScreen].scale;</code><br/>
-2. </p>
+<p>2.<code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；我们常用这个方法获取点击位置的视图（判断点击在了哪个视图）</p>
 
-<h2 id="toc_0">图层、视图</h2>
-
-<p>iOS中所有的视图都从UIView中派生而来。<code>UIView</code> 可以处理触摸事件，可以支持基于<code>Core Graphics</code>绘图，可以做仿射变换（例如旋转或者缩放），或者简单的类似于滑动或者渐变的动画。</p>
-
-<p><em><code>CALay</code>与UIView最大的不同是不处理用户的交互</em>，并不清楚具体的响应链（iOS通过视图层级关系用来传送触摸事件的机制），于是它并不能够响应事件，即使它提供了一些方法来判断是否一个触点在图层的范围之内</p>
-
-<p>每一个 UIView 都有一个 CALayer 实例的图层属性，视图的职责就是创建并管理这个图层，以确保当子视图在层级关系中添加或者被移除的时候，他们关联的图层也同样对应在层级关系树当中有相同的操作<br/>
-实际上视图的这些背后关联的图层才是真正用来在屏幕上显示和做动画， UIView 仅仅是对它的一个封装，提供了一些iOS类似于处理触摸的具体功能，以及<code>CoreAnimation</code>底层方法的高级接口。</p>
-
-<p>实际上，这里并不是两个层级关系，而是四个，每一个都扮演不同的角色，<strong>除了<br/>
-视图层级和图层树之外，还存在呈现树和渲染树</strong>。</p>
-
-<p>我们用CALayer处理UIView没有暴露出来的功能(UIView没有响应的高级接口，我们只能介入底层):</p>
-
-<ul>
-<li>阴影，圆角，带颜色的边框</li>
-<li>3D变换</li>
-<li>非矩形范围</li>
-<li>透明遮罩</li>
-<li>多级非线性动画</li>
-</ul>
-
-<p>标准的<code>Xcode</code>项目模板并没有包含<code>Core Animation</code>相关头文件。所以如果我们不给项目添加合适的库，是不能够使用任何图层相关的方法或者访问它的属性。所以首先需要添加<code>QuartzCore</code>框架</p>
-
-<p><strong>视图中的子视图就是图层中的子图层</strong></p>
-
-<h2 id="toc_1">寄宿图</h2>
-
-<p>CALayer的寄宿图（即<strong>图层中包含的图</strong>）</p>
-
-<h3 id="toc_2">contents属性</h3>
-
-<p>CALayer 有一个属性叫做<code>contents</code>，这个属性的类型被定义为<code>id</code>，意味着它可以是任何类型的对象。但是,在实践中，如果你给<code>contents</code>赋的不是<code>CGImage</code>，那么你得到的图层将是空白的。<br/>
-实际上真正应该赋值的类型是<code>CGImageRef</code>,它是指向<code>CGImage</code>的指针。<br/>
-UIImage有一个<code>CGImage</code>属性，它返回一个&quot;<code>CGImageRef</code>&quot;,如果你想把这个值直接赋值给<code>CALayer</code>的 <code>contents</code> ，那你将会得到一个编译错误。因为<code>CGImageRef</code>并不是一个真正的<code>Cocoa</code>对象，而是一个<code>Core Foundation</code>类型。</p>
-
-<pre><code class="language-objc">/**
-尽管Core Foundation类型跟Cocoa对象在运行时貌似很像（被称作toll-freebridging），
-他们并不是类型兼容的，不过你可以通过bridged关键字转换。
-*/
-layer.contents = (__bridge id)image.CGImage;
-/**
-    利用CALayer在一个普通的UIView中显示了一张图片。这不是一个UIImageView，它不是我们通常用来展示图片的方法。
-*/
+<pre><code>CALayer *layer = [self.layerView.layer hitTest:point];
 </code></pre>
 
-<h4 id="toc_3">contentGravity</h4>
+<h2 id="toc_0">图层几何学</h2>
 
-<p>我们这样设置的图片也会适应视图拉伸，CALay也有个属性<code>contentsGravity</code>,它是个NSString类型，<br/>
-类似于UIView的<code>contentMode</code>，<code>contentsGravity</code> 的目的是为了决定内容在图层的边界<br/>
-中怎么对齐，我们将使用<code>kCAGravityResizeAspect</code>，它的效果等同于<br/>
-<code>UIViewContentModeScaleAspectFit</code>.</p>
+<h3 id="toc_1">布局</h3>
 
-<pre><code class="language-objc">self.layerView.layer.contentsGravity = kCAGravityResizeAspect;
-</code></pre>
+<p>UIView布局属性:<code>frame</code> <code>bounds</code> <code>center</code><br/><br/>
+与之对应<br/>
+CALayer布局属性:<code>frame</code> <code>bounds</code> <code>position</code><br/>
+center和postion是一样的值，都代表了相对于父图层 <code>anchorPoint</code> 所在的位置</p>
 
-<h4 id="toc_4">contentScale</h4>
+<p>视图的布局属性仅仅是存取方法，对其进行改变其实是改变视图下方CALayer的frame  </p>
 
-<p><code>contentsScale</code>属性其实属于支持高分辨率（又称Hi-DPI或Retina）屏幕机制的一部分。它用来判断在绘制图层的时候应该为寄宿图创建的空间大小，和需要显示的图片的拉伸度（假设并没有设置<code>contentsGravity</code>属性）。UIView有一个类似功能但是非常少用到的<code>contentScaleFactor</code>属性。<br/>
-如果<code>contentsScale</code>设置为1.0，将会以每个点1个像素绘制图片，如果设置为2.0，则会以每个点2个像素绘制图片，这就是我们熟知的<code>Retina</code>屏幕。这并不会对我们在使用<code>kCAGravityResizeAspect</code>时产生任何影响，因为它就是拉伸图片以适应图层而已，根本不会考虑到分辨率问题。但是如果我们把<code>contentsGravity</code>设置为<code>kCAGravityCenter</code>（这个值并不会拉伸图片），那将会有很明显的变化</p>
+<p>视图或者图层的frame是根据其bounds，position和transform计算而来的，其中任意一值发生改变都会导致其frame改变  </p>
 
-<pre><code class="language-objc">self.layerView.layer.contentsGravity = kCAGravityCenter;
-self.layerView.layer.contentsScale = image.scale;
+<p><img src="media/14892022301750/14892031426669.jpg" alt=""/></p>
 
-/**
-当用代码的方式来处理寄宿图的时候，一定要记住要手动的设置图层的 contentsScale 属性
-，否则，你的图片在Retina设备上就显示得不正确啦
-*/
-layer.contentsScale = [UIScreen mainScreen].scale;
-</code></pre>
+<h3 id="toc_2">锚点</h3>
 
-<h4 id="toc_5">maskToBounds</h4>
+<p>视图的<code>center</code>属性和图层的<code>position</code>属性都指定了<code>anchorPoint</code>相对于父图层的位置。</p>
 
-<p>UIView有一个叫做<code>clipsToBounds</code>的属性可以用来决定是否显示超出边界的内容，CALayer对应的属性叫做<code>masksToBounds</code></p>
+<p><code>anchorPoint</code>是用来移动图层的把柄</p>
 
-<h4 id="toc_6">contentRect</h4>
+<p>默认<code>anchorPoint</code>是在图层的中心,这个属性UIView并没有暴露出来,这也是视图的<code>position</code>属性被叫做“center”的原因。但是图层的锚点可以移动，锚点的移动会导致frame的改变即位置改变</p>
 
-<p>CALayer的 <code>contentsRect</code> 属性允许我们在图层边框里显示寄宿图的一个子域。<br/>
-它使用单位坐标,指定0到1之间是一个相对值（像素和点就是绝对值）,相对于寄宿图的尺寸</p>
+<p><img src="media/14892022301750/14893741880682.jpg" alt=""/></p>
 
-<p>默认<code>contentRect</code>是{0，0，1，1},着整个寄宿图默认都是可见的，如果我们指定一个小一点的矩形，图片就会被裁剪<br/>
-事实上给 contentsRect 设置一个负数的原点或是大于{1, 1}的尺寸也是可以的。这种情况下，最外面的像素会被拉伸以填充剩下的区域。</p>
+<p>anchorPoint也是单位坐标，默认是{0.5，0.5}，可以通过指定大于或者小于1，使其在图层范围之外</p>
 
-<p><strong>iOS中的坐标系统:</strong></p>
-
-<ul>
-<li>点 —— 在iOS和Mac OS中最常见的坐标体系。点就像是虚拟的像素，也被称作逻辑像素。在标准设备上，一个点就是一个像素，但是在Retina设备上，一个点等于2*2个像素。iOS用点作为屏幕的坐标测算体系就是为了在Retina设备和普通设备上能有一致的视觉效果。</li>
-<li>像素 —— 物理像素坐标并不会用来屏幕布局，但是仍然与图片有相对关系。UIImage是一个屏幕分辨率解决方案，所以指定点来度量大小。但是一些底层的图片表示如CGImage就会使用像素，所以你要清楚在Retina设备和普通设备上，他们表现出来了不同的大小。</li>
-<li>单位 —— 对于与图片大小或是图层边界相关的显示，单位坐标是一个方便的度量方式， 当大小改变的时候，也不需要再次调整。单位坐标在OpenGL这种纹理坐标系统中用得很多，Core Animation中也用到了单位坐标。</li>
-</ul>
-
-<h4 id="toc_7">contentsCenter</h4>
-
-<p><code>contentsCenter</code>是一个CGRect,定义了一个固定的边框和一个在图层上可拉伸的区域.</p>
-
-<p>默认是{0，0，1，1},即当视图大小改变时会均匀大小的拉伸,但是当我们改变这个rect后,横向或者纵向拉伸图片时就只会拉伸我们选定的区域（是rect的区域被拉伸而不是rect之外区域被拉伸）</p>
-
-<p>工作起来的效果和<code>UIImage</code>里的<code>-resizableImageWithCapInsets:</code>方法效果非常类似，只是它可以运用到任何寄宿图，甚至包括在Core Graphics运行时绘制的图形</p>
+<p>改变<code>anchorPoint</code>常用于做不随着中心点做动画的动画使用,比如 时钟的表针旋转</p>
 
 <p><strong>注意</strong><br/>
-这个属性我们是可以在xib中直接设置的:<br/>
-<img src="media/14883679213714/14891971745538.jpg" alt=""/></p>
+中心和锚点（即position或者center和anchorPoint没有任何关系），锚点的改变不会影响中心点位置，只会影响frame</p>
 
-<h4 id="toc_8">Custom Drawing</h4>
+<pre><code class="language-objc">position.x = frame.origin.x + anchorPoint.x * bounds.size.width；  
+position.y = frame.origin.y + anchorPoint.y * bounds.size.height；
 
-<p>当然我们设置寄宿图的方法不仅仅只有给<code>content</code>赋值CGImage，我们也可以用Core Grapic直接绘制。我们可以通过继承UIView并且重写<code>-drawRect:</code>方法进行自定义绘制  </p>
-
-<p><code>drawRect</code>方法并没有默认实现，因为对于UIView来说,寄宿图并不是必须的，但是当UIView检测到<code>-drawRect:</code>被调用就会为视图分配一个寄宿图，寄宿图的像素尺寸等于视图大小乘以 <code>contentsScale</code>的值。如果不需要寄宿图就没必要创建这个方法会造成cpu、内存浪费，空的方法也不行.  </p>
-
-<p>当视图在屏幕上出现的时候 <code>-drawRect:</code>方法就会被自动调用。<code>-drawRect:</code> 方法里面的代码利用<code>Core Graphics</code>去绘制一个寄宿图，然后内容就会被缓存起来直到它需要被更新(通常是因为开发者调用了<code>-setNeedsDisplay</code>方法,尽管影响到表现效果属性值被更改时，视图类型会自动重绘，如bounds属性)。  </p>
-
-<p>虽然<code>-drawRect:</code>方法是一个UIView方法，事实上都是底层的<code>CALayer</code>安排了重绘工作和保存了因此产生的图片。</p>
-
-<h4 id="toc_9">CALayeDelegate</h4>
-
-<p><strong>CALaye的代理</strong></p>
-
-<p><strong>这个并不常用</strong></p>
-
-<p>实现了 <code>CALayerDelegate</code> 协议，当<code>CALayer</code>需要一个内容特定的信息时，就会从协议中请求.<br/>
-当需要被重绘的时候，CALayer会请求他的代理给他一个寄宿图来显示.</p>
-
-<pre><code class="language-objc">//如果想直接设置contents属性时,可以这样
--(void)displayLayer:(CALayerCALayer *)layer;
-//如果代理不实现 -displayLayer: 方法 就会调用
-- (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx;
-/**
-    在调用这个方法之前CALayer创建一个合适尺寸的空寄宿图（尺寸由bounds
-    和contentScale决定）和一个coreGraphic绘制的上下文环境ctx
-*/ 
+frame.origin.x = position.x - anchorPoint.x * bounds.size.width；  
+frame.origin.y = position.y - anchorPoint.y * bounds.size.height；
 </code></pre>
 
-<p>举个栗子:</p>
+<h3 id="toc_3">坐标系转换</h3>
 
-<pre><code class="language-objc">CALayer *blueLayer = [CALayer layer];
-[self.layerView.layer addSublayer:blueLayer];
-[blueLayer display];//强制layer重绘
+<p>CALayer提供了转换坐标系的方法（视图也有）</p>
 
-//代理
-- (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx
+<pre><code class="language-objc">- (CGPoint)convertPoint:(CGPoint)point fromLayer:(CALayer *)layer;
+- (CGPoint)convertPoint:(CGPoint)point toLayer:(CALayer *)layer;
+- (CGRect)convertRect:(CGRect)rect fromLayer:(CALayer *)layer;
+- (CGRect)convertRect:(CGRect)rect toLayer:(CALayer *)layer;
+</code></pre>
+
+<h3 id="toc_4">Z坐标</h3>
+
+<p>UIView是二维坐标 而CALayer则是三维的<br/><br/>
+因此CALayer还有两个属性:<code>zPosition</code> <code>anchorPointZ</code> 在Z轴上描述图层位置的浮点类型<br/>
+<code>zPosition</code>最实用的功能就是改变图层的显示顺序了，一般给图层增加<code>1.f</code>就可以控制显示顺序了</p>
+
+<h3 id="toc_5">HIT Testing</h3>
+
+<p><code>CALayer</code>并不关心任何响应链事件，所以不能直接处理触摸事件或者手势。但是它有一系列的方法帮你处理事件：<code>-containsPoint:</code>和<code>-hitTest:</code>。    </p>
+
+<p><code>-containsPoint:</code> 接受一个在本图层坐标系吓得一个CGPoint，如果这个点在图层frame内就返回YES。注意必须将这个点转为每个图层坐标系下的坐标</p>
+
+<p><code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；</p>
+
+<pre><code class="language-objc">//举个栗子
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
-    //draw a thick red circle
-    CGContextSetLineWidth(ctx, 10.0f);
-    CGContextSetStrokeColorWithColor(ctx, [UIColor redColor].CGColor);
-    CGContextStrokeEllipseInRect(ctx, layer.bounds);
+    //get touch position
+    CGPoint point = [[touches anyObject] locationInView:self.view];
+    //get touched layer
+    //获取这个点击的layer
+    CALayer *layer = [self.layerView.layer hitTest:point];
+    //get layer using hitTest
+    if (layer == self.blueLayer) {
+        [[[UIAlertView alloc] initWithTitle:@&quot;Inside Blue Layer&quot; message:nil delegate:nil cancelButtonTitle:@&quot;OK&quot; otherButtonTitles:nil] show];
+    } else if (layer == self.layerView.layer) {
+        [[[UIAlertView alloc] initWithTitle:@&quot;Inside White Layer&quot;
+        message:nil
+        delegate:nil
+        cancelButtonTitle:@&quot;OK&quot;
+        otherButtonTitles:nil] show];
+    }
 }
 
 </code></pre>
 
+<p><strong>注意</strong></p>
+
+<ol>
+<li>当调用图层的<code>-hitTest:</code>方法时，测算的顺序严格依赖于图层树当中的图层顺序（和<code>UIView</code>处理事件类似）。之前提到的<code>zPosition</code>属性可以明显改变屏幕上图层的顺序，但不能改变事件传递的顺序。<br/></li>
+<li>这两个方法是layer的实例方法 我们可以直接用layer调用而不需要作为系统判断方法</li>
+</ol>
+
+<h3 id="toc_6">自动布局</h3>
+
+<p>对于UIView如果想要自动布局我们可以使用<code>UIViewAutoresizingMask</code>  和<code>NSLayoutConstraint</code>API<br/><br/>
+CALayer没有自动布局办法<br/>
+如果想要随意控制CALayer的布局，我们可以用CALayerDelegate方法:  </p>
+
+<pre><code class="language-objc">- (void)layoutSublayersOfLayer:(CALayer *)layer;
+/**当图层的 bounds 发生改变，或者图层的 -setNeedsLayout 方法被调用的时候，这个函数将会被执
+行。（但是也没法做大自适应屏幕等自动布局,这也是为什么我们用UIView来布局）*/
+</code></pre>
+
+<h2 id="toc_7">视觉效果</h2>
+
+<h3 id="toc_8">圆角</h3>
+
+<p>CALayer有一个叫做<code>conrnerRadius</code>的属性控制着图层角的曲率。它是一个浮点数，默认为0（为0的时候就是直角）,默认这个值不影响背景图片或者子图层,但是如果设置<code>maskToBounds</code>为<code>YES</code>,图层中东西都会被截取.</p>
+
+<h3 id="toc_9">图层边框</h3>
+
+<p><code>borderWidth</code>和<code>borderColor</code>，这条线（stroke）沿着图层的bounds绘制,同时也包含图层的角.<br/>
+<code>borderWith</code>以点为单位的浮点数<br/><br/>
+<code>borderColor</code>边框的颜色默认黑色,<code>CGColorRef</code>类型，不是UIColor所以不是<code>Cocoa</code>内置对象  </p>
+
+<pre><code class="language-objc">// CGColorRef 属性即便是强引用也只能通过assign关键字来声明
+@property(nullable) CGColorRef borderColor;
+</code></pre>
+
+<p><strong>注意</strong></p>
+
+<ol>
+<li>边框是绘制在图层边界里面的，而且在所有子内容之前，也在子图层之前。（这个之前是显示最前而不是在最前绘制被遮盖）</li>
+<li>边框是跟随图层的边界变化的，而不是图层里面的内容</li>
+<li>
+<img src="media/14892022301750/14893838391060.jpg" alt=""/></li>
+</ol>
+
+<h3 id="toc_10">阴影</h3>
+
+<p><code>shadowOpacity</code>默认0。他是一个必须在<code>0.0</code>（不可见）和<code>1.0</code>（完全不透明）之间的浮点数。  </p>
+
+<p>阴影的另外三个属性:<br/><br/>
+<code>shadowColor</code>控制阴影的颜色，和 borderColor 和 backgroundColor 一样，它的类型也是 CGColorRef，默认黑色<br/><br/>
+<code>shadowOffset</code>阴影的方向和距离 CGSize类型，宽度为阴影横向位移，高度为纵向位移，默认{0,-3},即相对Y轴有3个点的向上位移<br/><br/>
+<code>shadowRadius</code>控制着阴影的模糊度，当它的值是0的时候，阴影就和视图一样有一个非常确定的边界线。我们推荐为大于0的值,值越大阴影越模糊,图层层次更明显.</p>
+
+<p><img src="media/14892022301750/14893848191222.jpg" alt=""/></p>
+
+<h4 id="toc_11">阴影裁剪</h4>
+
+<p>与边框不同,图层的阴影继承自内容的外形，CoreAnimation会将寄宿图（包括子视图）来结合图层形状创建一个阴影。<br/><br/>
+但是由于他们的不同,我们在包括子图层创建阴影后,如果按照边框进行裁剪就会导致部分阴影没有了，这时候我们只能额外创建一个裁剪后的图层形状的阴影图层（可以作为最外层的父图层）来实现效果。</p>
+
+<h3 id="toc_12">shadowPath属性</h3>
+
+<p>因为实时计算阴影是非常消耗资源的,我们可以通过事先指定<code>shadowPath</code>来提高性能.<code>shadowPath</code>是一个<code>CGPathRef</code>类型（一个指向<code>CGPath</code>的指针）。<code>CGPath</code> 是一个<code>Core Graphics</code>对象，用来指定任意的一个矢量图形。我们可以用这个属性在图层形状之外指定阴影形状.  </p>
+
+<p>举个栗子:</p>
+
+<pre><code class="language-objc">
+CGMutablePathRef squarePath = CGPathCreateMutable();
+CGPathAddRect(squarePath, NULL, self.layerView1.bounds);
+self.layerView1.layer.shadowPath = squarePath;
+//需要我们手动释放
+CGPathRelease(squarePath);
+//create a circular shadow
+CGMutablePathRef circlePath = CGPathCreateMutable();
+CGPathAddEllipseInRect(circlePath, NULL, self.layerView2.bounds);
+self.layerView2.layer.shadowPath = circlePath; 
+CGPathRelease(circlePath);
+</code></pre>
+
+<p><code>CGPath</code>适合搭建比较简单的形状,比如举行或者圆,但是如果是复杂的图形推荐<strong>使用<code>UIBezierPath</code></strong>，它是一个由UIKit提供的在<code>CGPath</code>基础上的<code>Objective-C</code>包装类</p>
+
+<h3 id="toc_13">图层蒙版</h3>
+
+<p>CALayer的<code>mask</code>属性是一个CALayer类型,它类似于一个自图层，mask图层定义了父图层的可见区域。  </p>
+
+<p>mask图层的color没用,轮廓才是重要的。对于mask图层中的部分会保留下来,其他部分会被抛弃（对于视图View其实你可以看做其他部分还在只不过颜色为透明色,但是这部分还会拦截点击事件）  </p>
+
+<p>这个<code>Mask</code><strong>不仅仅局限于静态图</strong>，任何有图层的构成都可以作为Mask，因此我们甚至可以用一个动画的layer作为蒙版.</p>
+
+<h3 id="toc_14">拉伸过滤</h3>
+
+<p>这里牵涉到<code>minificationFilter</code>和<code>magnificationFilter</code>属性。  </p>
+
+<p>当图片需要显示不同大小的时候,这种拉伸算法就起到作用。它作用于原图的像素上并根据需要生成新的像素显示在屏幕上。</p>
+
+<p><code>CALayer</code>提供给我们三种拉伸过滤方法:</p>
+
+<ul>
+<li>kCAFilterLinear </li>
+<li>kCAFilterNearest</li>
+<li>kCAFilterTrilinear</li>
+</ul>
+
+<p><code>minification</code>（缩小图片）和<code>magnification</code>（放大图片）默认的过滤器都是<code>kCAFilterLinear</code></p>
+
+<p><code>kCAFilterLinear</code>双线性滤波，大多数情况下表现良好，但是当放大倍数较大时会比较模糊不清  </p>
+
+<p><code>kCAFilterTrilinear</code>和<code>kCAFilterLinear</code>很相似，是三线性滤波<br/>
+<img src="media/14892022301750/14893953542514.jpg" alt=""/></p>
+
+<p><code>kCAFilterNearest</code> 最近过滤 ，就是取样最近的单像素点而不管其他的颜色。总的来说，对于比较小的图或者是差异特别明显，极少斜线的大图，最近过滤算法会保留这种差异明显的特质以呈现更好的结果。但是对于大多数的图尤其是有很多斜线或是曲线轮廓的图片来说，最近过滤算法会导致更差的结果。换句话说，线性过滤保留了形状，最近过滤则保留了像素的差异。<br/>
+<img src="media/14892022301750/14893958244715.jpg" alt=""/></p>
+
+<h3 id="toc_15">组透明</h3>
+
+<p>UIView用<code>alpha</code>属性设置透明度<br/>
+CALayy用<code>opacity</code>设置图层透明度<br/>
+这两个属性都是影响子层级的，比如我们设置一个图层透明度为50%，图层的每个像素都会一半显示自己的颜色，另一半显示图层下面的颜色。。但是如果图层包含一个同样显示50%透明的子图层时，你所看到的视图，50%来自子视图，25%来了图层本身的颜色，另外的25%则来自背景色。因此经常导致我们我们视图颜色的不协调。</p>
+
+<p>这时候我们可以<br/><br/>
+方法一：<br/><br/>
+通过设置<code>Info.plist</code>文件中的 <code>UIViewGroupOpacity</code>为<code>YES</code>来达到这个效果，但是这个设置会影响到这个应用，整个app可能会受到不良影响。</p>
+
+<p>方法二：（推荐）<br/><br/>
+设置CALayer的一个叫做<code>shouldRasterize</code>属性来实现组透明的效果，如果它被设置为YES，在应用透明度之前，图层及其子图层都会被整合成一个整体的图片，这样就没有透明度混合的问题了</p>
+
+<p>为了启用<code>shouldRasterize</code>属性，我们设置了图层的<code>rasterizationScale</code>属性。默认情况下，所有图层拉伸都是1.0， 所以如果你使用了<code>shouldRasterize</code>属性，你就要确保你设置了 <code>rasterizationScale</code> 属性去匹配屏幕，以防止出现Retina屏幕像素化的问题。</p>
+
+<pre><code class="language-objc">button2.layer.shouldRasterize = YES;
+button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
+</code></pre>
+
 <p><strong>注意</strong><br/>
-我们在blueLayer上显式地调用了<code>-display</code>。不同于UIView，当图层显示在屏幕上时，CALayer不会自动重绘它的内容。它把重绘的决定权交给了开发者。</p>
-
-<p>除非你创建了一个单独的图层，你几乎没有机会用到CALayerDelegate协议,因为当UIView创建了它的宿主图层时，它就会自动地把图层的<code>delegate</code>设置为它自己，并提供了一个<code>-displayLayer:</code>的实现</p>
-
-<p>当使用寄宿了视图的图层的时候，你也不必实现<code>-displayLayer:</code>和<code>-drawLayer:inContext:</code>方法来绘制你的寄宿图。通常做法是实现UIView的<code>-drawRect:</code>方法，UIView就会帮你做完剩下的工作，包括在需要重绘的时候调用<code>-display</code>方法。</p>
+当<code>shouldRasterize</code>和<code>UIViewGroupOpacity</code>一起的时候，会出现性能问题（但是好像影响不大）</p>
 
                         
                       </div>
@@ -281,7 +348,7 @@ layer.contentsScale = [UIScreen mainScreen].scale;
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/1</span>
+                    <span class="date">2017/3/11</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E5%9B%BE%E5%B1%82.html'>图层</a></span>
@@ -356,6 +423,8 @@ layer.contentsScale = [UIScreen mainScreen].scale;
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
         
             <a href="supplement.html"><strong>补充</strong></a>
+        
+            <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
          
         </p>
 
@@ -372,6 +441,24 @@ layer.contentsScale = [UIScreen mainScreen].scale;
 	      
 		      
 			      <li class="post">
+			        <a href="15205769334278.html">JS基础使用</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15143731430102.html">iOS11</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15124643482351.html">UISearchBar UISearchController UITextField</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15082392311480.html">实战:ARKit捕捉平面</a>
 			      </li>
 		     
@@ -379,24 +466,6 @@ layer.contentsScale = [UIScreen mainScreen].scale;
 		      
 			      <li class="post">
 			        <a href="15082385455420.html">ARCamera</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15082349866219.html">ARSession</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15082316038998.html">ARSCNView</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15082286345415.html">ARKit框架API简介</a>
 			      </li>
 		     
 		  
