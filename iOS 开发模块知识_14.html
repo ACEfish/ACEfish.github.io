@@ -85,6 +85,8 @@
             <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
+        
+            <li><a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html">全民认证</a></li>
          
 
       </ul>
@@ -107,118 +109,197 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15037348375137.html">
+                <a class="clearlink" href="15034731740974.html">
                 
-                  <h1>类型转换</h1>
+                  <h1>错误处理</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>在<code>Swift</code>中通过<code>is</code>和<code>as</code>操作符来实现<strong>类型转换</strong>，可以来检查值的类型或者转换类型<br/>
-可以用它检查一个类型是否实现了某个协议</p>
+                        	<p><strong>错误处理</strong>就是响应错误以及从错误中回复的过程</p>
 
-<h2 id="toc_0">定义一个类层次作为例子</h2>
+<p><code>Swift</code>提供了运行时对可恢复错误的抛出、捕获、传递和操作等的支持<br/>
+通常用来区分失败情况,让程序解决并处理某些错误，把解决不了的错误报告给用户</p>
 
-<p>在数组中存了一个父类的两个子类的实例</p>
+<h2 id="toc_0">表示并抛出错误</h2>
+
+<p><code>Swift</code>中 错误用符合<code>Error</code>协议的类型值来表示，这个空协议表明该类型可以用于错误处理</p>
+
+<p>通常用枚举类型来构建一组相关的错误状态,枚举的关联值可以提供错误状态的额外信息</p>
+
+<p>使用关键字<code>throw</code>关键字来抛出一个错误，表示有意外发生</p>
+
+<pre><code class="language-swift">enum VendingMachineError: Error {
+    case invalidSelection //选择无效
+    case insufficientFunds(coinsNeeded: Int) //金额不足
+    case outOfStock //缺货
+}
+
+throw VendingMachineError.insufficientFunds(coinsNeeded: 5)
+</code></pre>
+
+<h2 id="toc_1">处理错误</h2>
+
+<p><code>Swift</code>中有<code>4</code>种处理错误的方式<br/>
+1.把函数抛出的错误传递给调用此函数的代码<br/>
+2.用<code>do-catch</code>语句处理错误<br/>
+3.将错误作为可选类型处理<br/>
+4.断言此错误根本不会发生</p>
+
+<p>我们在调用一个能抛出错误的函数、方法或者构造器之前，用<code>try</code>关键字或者<code>try?</code><code>try!</code>这种变体关键字</p>
 
 <blockquote>
-<p>在数组中存在两种子类类型,会推断这个数组为共同的父类类型<br/>
-此时虽然数组中存的是子类类型实例,但是迭代的话取出的实例会为父类类型，此时我们需要判断和转换类型</p>
+<p>与其他语言的<code>try</code>，<code>catch</code>和<code>throw</code>不同的是<code>swift</code>的错误挫力不涉及解除调用栈,因此其性能特性是可以和<code>return</code>语句相媲美的</p>
 </blockquote>
 
-<h2 id="toc_1">检查类型</h2>
+<h3 id="toc_2">用throwing函数传递错误</h3>
 
-<p>用类型检查操作符<code>is</code> 检查实例是否属于特定子类型，返回<code>bool</code>值</p>
+<p>在函数声明的参数列表后加上<code>throws</code>关键字，表明可以抛出错误，这个函数就称为<code>throwing</code>函数<br/>
+如果这个函数指明了返回值类型，<code>throws</code>关键词需要写在箭头（<code>-&gt;</code>）的前面</p>
 
-<pre><code class="language-swift">for item in library {
-    if item is Movie { //判断实例是否为 Movie类型
-        movieCount += 1
-    } else if item is Song { //判断实例是否为 Song类型
-        songCount += 1
-    }
-}
+<pre><code class="language-swift">func canThrowErrors() throws -&gt; String
+func cannotThrowErrors() -&gt; String
 </code></pre>
 
-<h2 id="toc_2">向下转型</h2>
-
-<p>当某类型的实例属于一个子类,可以用<code>as?</code>或者<code>as!</code>将其向下转换位子类类型</p>
-
-<p>因为向下转型可能失败，因此提供<code>as?</code>和<code>as!</code>(带上强制解包)，当不确定是否成功时用<code>as?</code> 确定一定成功时<code>as!</code></p>
-
-<pre><code class="language-swift">for item in library {
-    if let movie = item as? Movie {
-        print(&quot;Movie: &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
-    } else if let song = item as? Song {
-        print(&quot;Song: &#39;\(song.name)&#39;, by \(song.artist)&quot;)
-    }
-}
-</code></pre>
-
-<p><code>if let movie = item as? Movie</code>尝试将<code>item</code>转为<code>Movie</code>类型。若成功，设置一个新的临时常量<code>movie</code>来存储返回的可选<code>Movie</code>中的值</p>
-
-<h2 id="toc_3">Any和AnyObject的类型转换</h2>
-
-<p>不确定类型的表达方式:<br/>
-<code>Any</code>可以表示任何类型，包括函数类型。<br/>
-<code>AnyObject</code>可以表示任何类类型的实例</p>
-
-<p>建议只在确定需要使用时才使用<code>Any</code>和<code>AnyObject</code></p>
-
-<pre><code class="language-swift">var things = [Any]()
-
-things.append(0)
-things.append(0.0)
-things.append(42)
-things.append(3.14159)
-things.append(&quot;hello&quot;)
-things.append((3.0, 5.0))
-things.append(Movie(name: &quot;Ghostbusters&quot;, director: &quot;Ivan Reitman&quot;))
-things.append({ (name: String) -&gt; String in &quot;Hello, \(name)&quot; })
-</code></pre>
-
-<p>然后我们可以在<code>switch</code>表达式的</p>
-
-<pre><code class="language-swift">for thing in things {
-    switch thing {
-    case 0 as Int:
-        print(&quot;zero as an Int&quot;)
-    case 0 as Double:
-        print(&quot;zero as a Double&quot;)
-    case let someInt as Int:
-        print(&quot;an integer value of \(someInt)&quot;)
-    case let someDouble as Double where someDouble &gt; 0:
-        print(&quot;a positive double value of \(someDouble)&quot;)
-    case is Double:
-        print(&quot;some other double value that I don&#39;t want to print&quot;)
-    case let someString as String:
-        print(&quot;a string value of \&quot;\(someString)\&quot;&quot;)
-    case let (x, y) as (Double, Double):
-        print(&quot;an (x, y) point at \(x), \(y)&quot;)
-    case let movie as Movie:
-        print(&quot;a movie called &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
-    case let stringConverter as String -&gt; String:
-        print(stringConverter(&quot;Michael&quot;))
-    default:
-        print(&quot;something else&quot;)
-    }
-}
-// zero as an Int
-// zero as a Double
-// an integer value of 42
-// a positive double value of 3.14159
-// a string value of &quot;hello&quot;
-// an (x, y) point at 3.0, 5.0
-// a movie called &#39;Ghostbusters&#39;, dir. Ivan Reitman
-// Hello, Michael
-</code></pre>
+<p><strong><code>throwing</code>函数可以在其内部抛出错误，并将错误传递到函数被调用时的作用域。</strong></p>
 
 <blockquote>
-<p><code>Any</code>是可以表示所有类型的值,包括可选类型,当你在用<code>Any</code>类型来表示一个可选值时,会给出警告，此时可以用<code>as</code>操作符显示转换为<code>Any</code></p>
+<p>对于<code>throwing</code>函数可以传递错误,非<code>throwing</code>函数抛出的错误只能在函数内部处理</p>
 </blockquote>
 
-<pre><code>let optionalNumber: Int? = 3
-things.append(optionalNumber) // 会有警告
-things.append(optionalNumber as Any) // 没有警告
+<pre><code class="language-swift">struct Item {
+    var price: Int
+    var count: Int
+}
+class VendingMachine {
+    var inventory = [
+                     &quot;Candy Bar&quot;: Item(price: 12, count: 7),
+                     &quot;Chips&quot;: Item(price: 10, count: 4),
+                     &quot;Pretzels&quot;: Item(price: 7, count: 11)
+                     ]
+    var coinsDeposited = 0
+    func dispenseSnack(snack: String) {
+        print(&quot;Dispensing \(snack)&quot;)
+    }
+    //throwing函数 会抛出VendingMachineError错误
+    func vend(itemNamed name: String) throws {
+        guard let item = inventory[name] else {
+            throw VendingMachineError.InvalidSelection
+        }
+        guard item.count &gt; 0 else {
+            throw VendingMachineError.OutOfStock
+        }
+        guard item.price &lt;= coinsDeposited else {
+            throw VendingMachineError.InsufficientFunds(coinsNeeded: item.price - coinsDeposited)
+        }
+        coinsDeposited -= item.price
+        var newItem = item
+        newItem.count -= 1
+        inventory[name] = newItem
+        print(&quot;Dispensing \(name)&quot;)
+    }
+}
+</code></pre>
+
+<p>使用了<code>guard</code>语句来提前退出方法，因为<code>throw</code>语句会立即退出方法，保证只有在满足所有条件时才成功卖出商品</p>
+
+<p><code>vend(itemNamed:)</code>会传递它抛出的所有错误,因此在跳用这个方法时，要么直接处理这些错误(<code>do-catch</code>语句,<code>try?</code>或<code>try!</code>)，要么将错误继续传递下去</p>
+
+<pre><code class="language-swift">let favoriteSnacks = [
+    &quot;Alice&quot;: &quot;Chips&quot;,
+    &quot;Bob&quot;: &quot;Licorice&quot;,
+    &quot;Eve&quot;: &quot;Pretzels&quot;,
+]
+func buyFavoriteSnack(person: String, vendingMachine: VendingMachine) throws {
+    let snackName = favoriteSnacks[person] ?? &quot;Candy Bar&quot;
+    try vendingMachine.vend(itemNamed: snackName)
+}
+//传似抛出的错误
+</code></pre>
+
+<p><code>buyFavoriteSnack</code>方法会查找某人最喜欢的零食，并通过调用<code>vend(itemNamed:)</code>方法尝试购买,通过在<code>vend(itemNamed:)</code>方法前加<code>try</code>关键字</p>
+
+<p><code>throwing</code>构造器和<code>throwing</code>一样可以传递错误</p>
+
+<pre><code class="language-swift">struct PurchasedSnack {
+    let name: String
+    init(name: String, vendingMachine: VendingMachine) throws {
+        try vendingMachine.vend(itemNamed: name)
+        self.name = name
+    }
+}
+</code></pre>
+
+<h3 id="toc_3">用Do-Catch处理错误</h3>
+
+<p><strong><code>do-catch</code>语句运行一段<code>闭包</code>代码来处理错误</strong></p>
+
+<p>在<code>do</code>语句抛出一个错误,与<code>catch</code>中的字句匹配</p>
+
+<pre><code class="language-swift">do {
+    try expression
+    statements
+} catch pattern 1 {
+    statements
+} catch pattern 2 where condition {
+    statements
+}
+</code></pre>
+
+<p><code>catch</code>后面写一个匹配模式来表明这个子句能处理什么样的错误.如果<code>catch</code>没有指定错误模式，那就可以匹配任何错误，并且把错误绑定到名字为<code>error</code>的局部变量</p>
+
+<p><code>catch</code>不必处理抛出的所有错误,错误可以传递到周围,但是必须被处理，可以使外围的<code>do-catch</code>语句 或者是一个<code>throwing</code>函数进行处理</p>
+
+<p>注意:<br/>
+在<code>do</code>语句中的<code>try</code>如果有抛出错误就立刻执行<code>catch</code>语句,并判断这个错误是否要被继续传递下去,否则执行<code>do</code>子句中余下的语句</p>
+
+<h3 id="toc_4">将错误转换成可选值</h3>
+
+<p>通过<code>try?</code>将错误转换为一个可选值,如果表达式有错误抛出,那么表达式的值就为<code>nil</code></p>
+
+<pre><code class="language-swift">func someThrowingFunction() throws -&gt; Int {
+    // ...
+}
+
+let x = try? someThrowingFunction()
+//等效于
+let y: Int?
+do {
+    y = try someThrowingFunction()
+} catch {
+    y = nil
+}
+</code></pre>
+
+<p>此时不论<code>someThrowingFunction()</code>返回值是什么类型,x，y就是该返回值类型的可选类型</p>
+
+<h3 id="toc_5">禁用错误传递</h3>
+
+<p>当我们确定知道某个<code>throwing</code>函数在运行时是不会抛出错误的,那么可以用<code>tr<br/>
+y!</code>来禁用错误传递，它会将调用包装在一个不会有错误抛出的运行时断言中</p>
+
+<h2 id="toc_6">指定清理操作</h2>
+
+<p><code>defer</code>语句在即将离开当前代码块时执行一系列语句，来执行一些必要的清理工作，而不管你是由于哪种方式离开代码块</p>
+
+<ul>
+<li><code>defer</code>语句将代码执行延迟到当前作用域退出之前。</li>
+<li>该语句由<code>defer</code>关键字和要延时执行的语句组成(延迟执行的语句不能包含任何控制转移语句，或是抛出一个错误)。</li>
+<li>延时执行的操作会按照他们被指定时的顺序的相反顺序执行(第一条<code>defer</code>语句中的代码会在第二条<code>defer</code>语句中的代码被执行之后才执行)</li>
+</ul>
+
+<pre><code class="language-swift">func processFile(filename: String) throws {
+    if exists(filename) {
+        let file = open(filename)
+        defer {
+            close(file)
+        }
+        while let line = try file.readline() {
+            // 处理文件。
+        }
+        // close(file) 会在这里被调用，即作用域的最后。
+    }
+}
 </code></pre>
 
                         
@@ -228,7 +309,7 @@ things.append(optionalNumber as Any) // 没有警告
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/26</span>
+                    <span class="date">2017/8/23</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -305,6 +386,8 @@ things.append(optionalNumber as Any) // 没有警告
             <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
+        
+            <a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html"><strong>全民认证</strong></a>
          
         </p>
 
