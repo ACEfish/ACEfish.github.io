@@ -107,157 +107,42 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14873831706932.html">
+                <a class="clearlink" href="14876675609253.html">
                 
-                  <h1>OCMock</h1>
+                  <h1>C语言</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h3 id="toc_0">Mock介绍</h3>
+                        	<h2 id="toc_0">1. 指针的用法</h2>
 
-<p>对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。</p>
+<pre><code>`int *pa;`//指针类型：int* 定义一个指针,指针只能指向一个地址（即指针所占的内存值为一个地址）
+</code></pre>
 
-<h3 id="toc_1">OCMock介绍</h3>
+<p><strong>指针是一种保存变量地址的变量</strong><br/>
+    <code>pa = &amp;a;</code>//指针变量pa的值为&amp;a（即为一个地址值,此时开辟的这个内存存的值为a的地址）<br/>
+    <code>*pa =200；</code>//用*号来给地址赋值，即地址指向的内存即a的值为200</p>
 
-<p><a href="http://ocmock.org/features/">官方网站</a><br/>
-根据要mock的对象的class来创建一个对应的对象，并且设置好该对象的属性和调用预定方法后的动作（例如返回一个值，调用代码块，发送消息等等），然后将其记录到一个数组中，接下来开发者主动调用该方法，最后做一个verify（验证），从而判断该方法是否被调用，或者调用过程中是否抛出异常等。</p>
+<pre><code>`*` 为间接寻址或间接引用运算符，用于指针式将访问指针所指向的对象
+指向void类型的指针可以存放指向任何类型的指针，但不能间接引用自身
 
-<h4 id="toc_2">1.OCMock中简单使用</h4>
+`pa= &amp;a[0] x= *pa 则 *(pa+i)= a[i] `因为数组名代表的就是数组最开始元素地址故`pa = &amp;a[0] `也可写为` pa = a; *(a+i) 则 &amp;a【i】 与a+i 含义相同 则pa【i】与*（pa+i）`是等价的 但是pa是指针也是个变量 `pa=a pa++`是合法的 但a不是变量` a=pa a++ `是不合法的
+pa++ 一次加的为其类型所占的字节长度 而非一次加一个字节
+
+![](media/14876675609253/14876685425266.jpg)
+</code></pre>
+
+<h2 id="toc_1">2. 函数重载、重写、隐藏</h2>
+
+<p>重载:指两个函数的函数名相同,函数的参数列表不同(包括参数个数和参数类型)，至于返回类型可同可不同</p>
+
+<p>重写（override）：发生于父类和子类之间，指的是子类不想继承使用父类的方法，通过重写同一个函数的实现实现对父类中同一个函数的覆盖，因此又叫函数覆盖。</p>
+
+<p>隐藏：重载和重写区分开后，隐藏又有可能会跟前两者混在一起。当然OC中也没有隐藏，典型的C++中有，通过虚函数和父子类之间的函数重载进行区分，其中重载和重写是针对函数的，而隐藏除了函数还会针对成员变量。隐藏发生在父类和子类之间，隐藏指的是父类的同名函数或变量在子类中隐藏，其中只要函数同名就隐藏，不管参数相同与否。在子类中父类的同名函数或变量不可见，但在父类中依然存在。</p>
 
 <ol>
-<li><p>class mock一个对象</p>
-
-<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
-//创建mock object当做类的实例
-</code></pre></li>
-<li><p>Stubbing methods that return objects<br/>
-<code>Object-c<br/>
-/**<br/>
-意的就是有参数的方法，参数是可以具体指定的，也就是说只有满足你指定的具体参数的调用才会被mock指定的返回值。例子中的[OCMArg any]是指任意参数。<br/>
-*/<br/>
-//没有参数的方法<br/>
-OCMStub([mockClass someMethod]).andReturn(anObject);<br/>
-//有参数的方法<br/>
-OCMStub([mockClass someMethod:[OCMArg any]]).andReturn(anObject);<br/>
-</code><br/>
-注意:<br/>
-<strong>OCMock会在mock实例上没有找到相同名字的实例方法的时候去找同名的类方法。</strong></p></li>
-<li><p>Verify-after-running<br/>
-有些时候需要验证我们执行的代码流程是否调用了某个外部的方法，这个时候用OCMock就比较简单来实现。如果没有调用过这个方法的话，会立即抛一个异常出来。</p>
-
-<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
-//...
-//some code
-//...
-OCMVerify([mockClass someMethod]);
-</code></pre></li>
-<li><p>验证mock方法没有被调用<br/>
-验证代码没有调用某个方法<br/>
-如果方法被调用了，就将isCalled设置为YES，这样最后assert的时候就会报错。<br/>
-<code>Object-c<br/>
-static BOOL isCalled = false;<br/>
-id mockClass = OCMClassMock([SomeClass class]);<br/>
-OCMStub([mockClass someMethod]).andDo(^(NSInvocation *invocation){<br/>
-isCalled = YES;<br/>
-});<br/>
-//...<br/>
-//some code<br/>
-//...<br/>
-XCTAssertFalse(isCalled);<br/>
-</code></p></li>
-<li><p>验证mock方法传入的参数<br/>
-验证传递给外部调用的参数是否符合预期</p>
-
-<pre><code class="language-Objec-c">id mockClass = OCMClassMock([SomeClass class]);
-OCMStub([mockClass someMethod:[OCMArg checkWithBlock:^BOOL(id obj) {
-//...
-//some code
-//...
-return YES;
-]]);
-</code></pre></li>
-<li><p>mock单例</p>
-
-<p>如果我们mock的类是个单例的话，那么使用之前的方法进行mock是不会生效的。不过OCMock提供了一个很简单的解决方法，那就是调用单例返回mock</p>
-
-<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
-OCMStub([mockClass instanceMethod]).andReturn(mockClass);
-</code></pre></li>
-<li><p>The any constraint</p>
-
-<pre><code class="language-Object-c">OCMStub([mock someMethodWithAnArgument:[OCMArg any]])
-OCMStub([mock someMethodWithPointerArgument:[OCMArg anyPointer]])
-OCMStub([mock someMethodWithSelectorArgument:[OCMArg anySelector]])
-
-</code></pre></li>
-<li><p>处理block参数<br/>
-OCMock也可以处理block回调参数。block回调通常用于网络代码，数据库代码，或者在任何异步操作中。在这个例子中，思考下下面的方法：<br/>
-<code>- (void)downloadWeatherDataForZip:(NSString *)zip callback:(void (^)(NSDictionary *response))callback;</code></p></li>
+<li></li>
 </ol>
-
-<p>在这个例子中，我们有一个下载天气压缩数据的方法，并且把下载下来的dictionary代理到一个block的回调中。在测试中，我们通过预定义的天气数据来测试回调处理。这也是明智的测试失败场景。你永远不会知道网络上会返回你什么东西！</p>
-
-<pre><code class="language-Object">OCMStub([groupModelMock downloadWeatherDataForZip:@&quot;80304&quot; callback:[OCMArg any]]]).andDo(^(NSInvocation *invocation){
-        //2. declare a block with same signature
-        void (^weatherStubResponse)(NSDictionary *dict);
-        //3. link argument 3 with with our block callback
-        [invoke getArgument:&amp;weatherStubResponse atIndex:3];
-        //4. invoke block with pre-defined input
-        NSDictionary *testResponse = @{@&quot;high&quot;: 43 , @&quot;low&quot;: 12};
-        weatherStubResponse(groupMemberMock);
-    });
-    /**
-        1.这个mock对象使用带NSInvocation参数的“andDo”方法。一个NSInvocation对象代表一
-        个‘objectivetified’（实在不知道这个什么鬼）表现的方法调用。通过这个NSinvocation对
-        象，使得拦截传递给我们的方法的block参数变得可能。
-        2.用与我们测试的方法中相同的方法签名声明一个block参数。
-        3.NSInvocation实例方法&quot;getArgument:atIndex:&quot;将赋值后的块函数传递都原始函数中定义
-        的块函数中。注意：在Objective-C中，传递给任意方法的前两个参数都是“self”和“_cmd”.这是
-        一个运行时的小功能以及用下标来获取NSInvocation参数时我们需要考虑的东西。
-        4.最后，传递这个回调的预定义字典。
-    */
-</code></pre>
-
-<h4 id="toc_3">2.OCMock简单示例</h4>
-
-<p><img src="media/14873831706932/14873839517952.png" alt=""/></p>
-
-<p>示例2：</p>
-
-<pre><code class="language-Object-c">- (void)testStrictMock3{
-
-    id classMock = OCMClassMock([TweetView class]);
-
-    //设置期望或预设，这个classMock需要执行addTweet方法且参数不为nil。  不然的话会抛出异常
-    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
-    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
-
-    /* 如果不执行以下代码的话会抛出异常 */
-    Tweet *testTweet = [[Tweet alloc] init];
-    testTweet.userName = @&quot;齐滇大圣&quot;;
-    [classMock addTweet:testTweet];
-
-    OCMVerifyAll(classMock);
-}
-</code></pre>
-
-<p>这表示一种友好的mock，不会在没有OCMExpect或OCMStub设置类的所有方法时抛出异常。以上代码把OCMExpect和OCMStub注释掉时不会报错。</p>
-
-<p>还有一种表示严格的mock：OCMStrictClassMock，如果把OCMExpect和OCMStub注释掉时会报错，它要求你执行类中的所有方法，所以比较适合用来测试必须实现的方法，代码如下：</p>
-
-<pre><code class="language-Object-c">- (void)testStrictMock3{
-    id classMock = OCMStrictClassMock([TweetView class]);
-    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
-    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
-
-    Tweet *testTweet = [[Tweet alloc] init];
-    testTweet.userName = @&quot;齐滇大圣&quot;;
-    [classMock addTweet:testTweet]; 
-
-    OCMVerifyAll(classMock);
-}
-</code></pre>
 
                         
                       </div>
@@ -266,10 +151,10 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/18</span>
+                    <span class="date">2017/2/21</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
+          					    <span class="posted-in"><a href='Computer-programming.html'>计算机编程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -306,7 +191,7 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
           <div id="site-info" class="site-info">
             
                 <h1>ACEfish-Blog</h1>
-                <div class="site-des">这是一个记录学习的新知识的地方</div>
+                <div class="site-des"></div>
                 <div class="social">
 
 
@@ -359,6 +244,12 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	      
 		      
 			      <li class="post">
+			        <a href="15252210899371.html">联系我们</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15205769334278.html">JS基础使用</a>
 			      </li>
 		     
@@ -378,12 +269,6 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 		      
 			      <li class="post">
 			        <a href="15082392311480.html">实战:ARKit捕捉平面</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15082385455420.html">ARCamera</a>
 			      </li>
 		     
 		  

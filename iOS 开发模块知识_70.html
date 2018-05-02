@@ -107,24 +107,64 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14862735041818.html">
+                <a class="clearlink" href="14866309753746.html">
                 
-                  <h1>iOS 控制器转场</h1>
+                  <h1>iOS中UISearchController</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>参考知识网站:<a href="https://github.com/seedante/iOS-Note/wiki/ViewController-Transition">iOS 视图控制器转场详解</a><br/><br/>
-我们平常所说的转场动画 = 转场+动画，两者互不相关。不管是简单的转场动画还是炫酷的转场动画，你想要的效果那是动画的事情，完全是另外一个话题。</p>
+                        	<h4 id="toc_0">1. 使用方法</h4>
 
-<h4 id="toc_0">文章前言</h4>
+<pre><code class="language-Object-c">SearchResultController *vc = [[SearchResultController alloc] init];
+    self.searchController = [[SearchControllerOfContacts alloc] initWithSearchResultsController:vc];
+    [self.tableView setTableHeaderView:self.searchController.searchBar];
+    [self.searchController setSearchResultsUpdater:vc];
+    [self.searchController.searchBar setPlaceholder:NSLocalizedString(@&quot;昵称、手机号&quot;, nil)];
+    self.resultController = vc;
+</code></pre>
 
-<p>视图控制器转换<code>View Controller Transition</code> : 在 NavigationController 里 push 或 pop 一个 View Controller，在 TabBarController 中切换到其他 View Controller，以 Modal 方式显示另外一个 View Controller，这些都是 View Controller Transition;<br/><br/>
-在iOS7之前我们只能使用系统提供的转场动画，仅仅够用而已，7之后开放了相关API允许我们进行转场动画的定制。<br/>
-如果对VC的结构不够了解推荐看:<a href="https://developer.apple.com/library/content/featuredarticles/ViewControllerPGforiPhoneOS/index.html#//apple_ref/doc/uid/TP40007457-CH2-SW1">View Controller Programming Guide for iOS</a><br/>
-<strong>接下来进入正题</strong>.</p>
+<p>此处是设置searchBar为tableView的头视图<br/>
+<strong>注意</strong><br/>
+此处的searchConroller 和 searchResultcontroller都必须为该控制器的属性(即强引用住）</p>
 
-<h4 id="toc_1">Transition</h4>
+<h4 id="toc_1">2. 自定义的UISearchController</h4>
+
+<p>我们可以继承自UISearchController，重写其<code>initWithSearchResultsController</code>方法即可:</p>
+
+<pre><code class="language-Object-c">- (id)initWithSearchResultsController:(UIViewController *)searchResultsController
+{
+    if (self = [super initWithSearchResultsController:searchResultsController]) {
+        self.searchBar.layer.borderWidth = 1;
+        self.searchBar.layer.borderColor = [ITRGBColor(239.0, 239.0, 244.0, 1.0)CGColor];
+        [self.searchBar setBarTintColor:ITRGBColor(239.0, 239.0, 244.0, 1.0)];
+        [self.searchBar setValue:@&quot;取消&quot; forKey:@&quot;_cancelButtonText&quot;];
+        UITextField *tf = [[[self.searchBar.subviews firstObject] subviews] lastObject];
+        [tf.layer setMasksToBounds:YES];
+        [tf.layer setBorderWidth:0.5f];
+        [tf.layer setBorderColor:[UIColor colorWithWhite:0.5 alpha:0.3].CGColor];
+        [tf.layer setCornerRadius:5.0f];
+        
+    }
+    return self;
+}
+</code></pre>
+
+<h4 id="toc_2">3.深度解析UISearchController 以及其SearchResultControll原理</h4>
+
+<p>当UISearchController出现时，UISearchController也是一个控制器就相当于模态出来一个控制器<br/>
+<img src="media/14866309753746/UISearchController.png" alt="UISearchControlle的层级表示"/><br/>
+<img src="media/14866309753746/searchController_big.png" alt="searchController_big"/></p>
+
+<p>我们可以看出来 我们首先从原来控制器模态出来我们自己的UISearchController 而UISearchControllView就是这个控制器的View即蓝色部分  而搜索结果的显示即在其上加了一个View这个view即为我们的搜索结果控制器的view<br/>
+因此我们改变这个SearchControllView颜色并不会影响显示 但是如果把其上加上别的视图 就会影响结果的显示的<br/>
+<img src="media/14866309753746/searchController2.png" alt="searchControlle"/><br/>
+可以看到显示结果的View被我们后加的tableView挡住了,这时候我们可以<strong><code>sendSubviewToBack</code></strong>来直接将tableView放置到显示结果的view后面即可了</p>
+
+<h4 id="toc_3">3.UISearchController 上的searchBar原理</h4>
+
+<p>显示的searchBar是因为searcontroller上有一块searBarContainView 在其上放置了searchBar,还有背景图片 取消按钮等<br/>
+<img src="media/14866309753746/UISearchBar.png" alt="UISearchBa"/></p>
 
                         
                       </div>
@@ -133,7 +173,7 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/5</span>
+                    <span class="date">2017/2/9</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
@@ -173,7 +213,7 @@
           <div id="site-info" class="site-info">
             
                 <h1>ACEfish-Blog</h1>
-                <div class="site-des">这是一个记录学习的新知识的地方</div>
+                <div class="site-des"></div>
                 <div class="social">
 
 
@@ -226,6 +266,12 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15252210899371.html">联系我们</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15205769334278.html">JS基础使用</a>
 			      </li>
 		     
@@ -245,12 +291,6 @@
 		      
 			      <li class="post">
 			        <a href="15082392311480.html">实战:ARKit捕捉平面</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15082385455420.html">ARCamera</a>
 			      </li>
 		     
 		  
