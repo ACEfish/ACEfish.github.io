@@ -68,10 +68,11 @@
 
 <aside class="left-off-canvas-menu">
       <ul class="off-canvas-list">
-       
-       <li><a href="index.html">HOME</a></li>
-    <li><a href="archives.html">Archives</a></li>
-    <li><a href="about.html">ABOUT</a></li>
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
 
     <li><label>Categories</label></li>
 
@@ -86,7 +87,7 @@
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
-            <li><a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html">全民认证</a></li>
+            <li><a href="React-Native.html">React-Native</a></li>
          
 
       </ul>
@@ -109,30 +110,202 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15266103811219.html">
+                <a class="clearlink" href="15304988629042.html">
                 
-                  <h1>JavaScript 与 ECMAScript 区别</h1>
+                  <h1>混合开发(OC)</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">基础名词</h2>
+                        	<h2 id="toc_0">声明类 实现协议</h2>
 
-<p>ECMA 为科学技术制定标准的组织</p>
+<p>需要实现了<code>RCTBridgeModule</code>协议类,<br/>
+导入<code>#import &lt;React/RCTBridgeModule.h&gt;</code></p>
 
-<p>ECMA-262 目前脚本语言的规范</p>
+<p>实现协议需要包含这个宏，可以添加参数作为访问此模块的名字 通常不指定默认使用类名<br/>
+<code>RCT_EXPORT_MODULE();</code></p>
 
-<p>ECMAScript是定义在ECMA-262中定义的标准,用于创建通用目的脚本语言</p>
+<h2 id="toc_1">声明原生方法给js调用</h2>
 
-<p>JavaScript 通用目的的脚本语言，遵循ECMAScript规范</p>
+<p>声明需要提供给<code>React Native</code>组件调用的方法，即导出的方法<br/>
+<code>RCT_EXPORT_METHOD()</code></p>
 
-<p>JavaScript引擎 能够理解和执行JavaScript代码的程序或解释器</p>
+<pre><code class="language-javascript">//在OC中
+RCT_EXPORT_METHOD(addEvent:(NSString *)name location:(NSString *)location)
+{
+  RCTLogInfo(@&quot;Pretending to create an event %@ at %@&quot;, name, location);
+}
+//在js中这样调用
+import { NativeModules } from &#39;react-native&#39;;
+var CalendarManager = NativeModules.CalendarManager;
+CalendarManager.addEvent(&#39;Birthday Party&#39;, &#39;4 Privet Drive, Surrey&#39;);
+</code></pre>
 
-<p>JavaScript运行时 js代码运行所在环境,为js引擎所解释。运行时提供js可以运行和操作的宿主对象，js代码被引擎传递,被解析和理解之后,运行时的实体或系统将执行解释行为。例如：浏览器的宿主环境提供的对象视窗或文档等WebAPIs 服务器的宿主环境Node.js，即文件系统、处理和请求等</p>
+<p>通常我们将多个参数使用一个字典进行存放</p>
 
-<p>ECMAScript 6  是ECMA的第6个版本,对规范有显著改变(同名的ES2015)</p>
+<pre><code class="language-javascript">#import &lt;React/RCTConvert.h&gt;
 
-<p>Babel 将ES6代码转换为ES5的转译器(目前主流js引擎都支持ES6 但不一定支持ES6)</p>
+RCT_EXPORT_METHOD(addEvent:(NSString *)name details:(NSDictionary *)details)
+{
+  NSString *location = [RCTConvert NSString:details[@&quot;location&quot;]];
+  NSDate *time = [RCTConvert NSDate:details[@&quot;time&quot;]];
+  ...
+}
+
+CalendarManager.addEvent(&#39;Birthday Party&#39;, {
+  location: &#39;4 Privet Drive, Surrey&#39;,
+  time: date.toTime(),
+  description: &#39;...&#39;
+})
+</code></pre>
+
+<h3 id="toc_2">声明回调函数</h3>
+
+<pre><code class="language-javascript">
+//原生
+//原生模块通常只应调用回调函数一次。但是，它可以保存callback并在将来调用
+RCT_EXPORT_METHOD(findEvents:(RCTResponseSenderBlock)callback)
+{
+  NSArray *events = ...
+  callback(@[[NSNull null], events]);
+}
+
+//js调用
+CalendarManager.findEvents((error, events) =&gt; {
+  if (error) {
+    console.error(error);
+  } else {
+    this.setState({events: events});
+  }
+})
+
+//采用promise
+
+//原生
+RCT_REMAP_METHOD(findEvents,
+                 resolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+  NSArray *events = ...
+  if (events) {
+    resolve(events);
+  } else {
+    reject(error);
+  }
+}
+//js调用
+async function updateEvents() {
+  try {
+    var events = await CalendarManager.findEvents();
+    this.setState({ events });
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+updateEvents();
+
+</code></pre>
+
+<h2 id="toc_3">多线程</h2>
+
+<p>生模块不应对自己被调用时所处的线程做任何假设。React Native在一个独立的串行GCD队列中调用原生模块的方法，但这属于实现的细节，并且可能会在将来的版本中改变。通过实现方法<code>- (dispatch_queue_t)methodQueue</code>，原生模块可以指定自己想在哪个队列中被执行。</p>
+
+<pre><code class="language-objectivec">- (dispatch_queue_t)methodQueue
+{
+  return dispatch_get_main_queue();
+}
+</code></pre>
+
+<p>如果一个操作需要花费很长时间，原生模块不应该阻塞住，而是应当声明一个用于执行操作的独立队列</p>
+
+<pre><code class="language-objectivec">- (dispatch_queue_t)methodQueue
+{
+  return dispatch_queue_create(&quot;com.facebook.React.AsyncLocalStorageQueue&quot;, DISPATCH_QUEUE_SERIAL);
+}
+</code></pre>
+
+<blockquote>
+<p>在模块之间共享分发队列<br/>
+methodQueue方法会在模块被初始化的时候被执行一次，然后会被React Native的桥接机制保存下来，所以你不需要自己保存队列的引用，除非你希望在模块的其它地方使用它。但是，如果你希望在若干个模块中共享同一个队列，则需要自己保存并返回相同的队列实例；仅仅是返回相同名字的队列是不行的。</p>
+</blockquote>
+
+<h2 id="toc_4">导出常量</h2>
+
+<pre><code class="language-objectivec">- (NSDictionary *)constantsToExport
+{
+  return @{ @&quot;firstDayOfTheWeek&quot;: @&quot;Monday&quot; };
+}
+</code></pre>
+
+<h2 id="toc_5">给JS发送事件</h2>
+
+<p>继承<code>RCTEventEmitter</code>，实现<code>suppportEvents</code>方法并调用<code>self sendEventWithName:</code></p>
+
+<pre><code class="language-objectivec">#import &lt;React/RCTEventEmitter.h&gt;
+
+- (NSArray&lt;NSString *&gt; *)supportedEvents
+{
+  return @[@&quot;EventReminder&quot;];
+}
+
+- (void)calendarEventReminderReceived:(NSNotification *)notification
+{
+  NSString *eventName = notification.userInfo[@&quot;name&quot;];
+  [self sendEventWithName:@&quot;EventReminder&quot; body:@{@&quot;name&quot;: eventName}];
+}
+
+</code></pre>
+
+<p>JavaScript代码可以创建一个包含你的模块的NativeEventEmitter实例来订阅这些事件。</p>
+
+<pre><code class="language-javascript">import { NativeEventEmitter, NativeModules } from &#39;react-native&#39;;
+const { CalendarManager } = NativeModules;
+
+const calendarManagerEmitter = new NativeEventEmitter(CalendarManager);
+
+const subscription = calendarManagerEmitter.addListener(
+  &#39;EventReminder&#39;,
+  (reminder) =&gt; console.log(reminder.name)
+);
+...
+// 别忘了取消订阅，通常在componentWillUnmount生命周期方法中实现。
+subscription.remove();
+</code></pre>
+
+<h2 id="toc_6">原生UI</h2>
+
+<p>原生视图需要被一个RCTViewManager来管理和创建。本质上都是单例 - React Native只会为每个管理器创建一个实例。它们创建原生的视图并提供给<code>RCTUIManager</code>，<code>RCTUIManager</code>则会反过来委托它们在需要的时候去设置和更新视图的属性。RCTViewManager还会代理视图的所有委托，并给JavaScript发回对应的事件</p>
+
+<ol>
+<li>创建<code>RCTViewManager</code>的子类</li>
+<li>添加<code>RCT_EXPORT_MODULE()</code>标记宏</li>
+<li><p>实现<code>-(UIView *)view</code>方法</p></li>
+<li><p>在js代码中将视图变为可用的React组件</p></li>
+</ol>
+
+<pre><code class="language-javascript">// MapView.js
+var { requireNativeComponent } = require(&#39;react-native&#39;);
+
+// requireNativeComponent 自动把这个组件提供给 &quot;RNTMapManager&quot;
+module.exports = requireNativeComponent(&#39;RNTMap&#39;, null);
+</code></pre>
+
+<h3 id="toc_7">声明属性</h3>
+
+<pre><code class="language-objectivec">//声明属性
+RCT_EXPORT_VIEW_PROPERTY(pitchEnabled, BOOL)
+
+//设置属性之后，在js中可以直接设置
+&lt;MapView pitchEnabled={false} /&gt;
+
+//比较复杂的属性
+RCT_CUSTOM_VIEW_PROPERTY(region, MKCoordinateRegion, RNTMap)
+{
+  [view setRegion:json ? [RCTConvert MKCoordinateRegion:json] : defaultView.region animated:YES];
+}
+
+</code></pre>
 
                         
                       </div>
@@ -141,10 +314,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/5/18</span>
+                    <span class="date">2018/7/2</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html'>知识普及</a></span>
+          					    <span class="posted-in"><a href='React-Native.html'>React-Native</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -219,7 +392,7 @@
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
-            <a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html"><strong>全民认证</strong></a>
+            <a href="React-Native.html"><strong>React-Native</strong></a>
          
         </p>
 
@@ -236,31 +409,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15266103811219.html">JavaScript 与 ECMAScript 区别</a>
+			        <a href="15304988629042.html">混合开发(OC)</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15266103180287.html"># iOS编译过程</a>
+			        <a href="15293961047296.html">组件属性一</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15260169489026.html">常用宏定义</a>
+			        <a href="15290351401483.html">补充</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15252210899371.html">全民认证</a>
+			        <a href="15289781671435.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15205769334278.html">JS基础使用</a>
+			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  

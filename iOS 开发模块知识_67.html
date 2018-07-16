@@ -68,10 +68,11 @@
 
 <aside class="left-off-canvas-menu">
       <ul class="off-canvas-list">
-       
-       <li><a href="index.html">HOME</a></li>
-    <li><a href="archives.html">Archives</a></li>
-    <li><a href="about.html">ABOUT</a></li>
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
 
     <li><label>Categories</label></li>
 
@@ -86,7 +87,7 @@
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
-            <li><a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html">全民认证</a></li>
+            <li><a href="React-Native.html">React-Native</a></li>
          
 
       </ul>
@@ -137,7 +138,7 @@
 
 <p><code>NSThread</code> 是 Objective-C 对 pthread 的一个封装。通过封装，在 Cocoa 环境中，可以让代码看起来更加亲切。我们可以用NSThread定义一个这样的子类(在一百万个数字中查找最小值和最大值):</p>
 
-<pre><code class="language-Object-c">@interface FindMinMaxThread : NSThread
+<pre><code class="language-object-c">@interface FindMinMaxThread : NSThread
 @property (nonatomic) NSUInteger min;
 @property (nonatomic) NSUInteger max;
 - (instancetype)initWithNumbers:(NSArray *)numbers;
@@ -169,7 +170,7 @@
 
 <p><strong>要想启动一个新的线程，需要创建一个线程对象，然后调用它的 start 方法：</strong></p>
 
-<pre><code class="language-Object-c">NSMutableSet *threads = [NSMutableSet set];
+<pre><code class="language-object-c">NSMutableSet *threads = [NSMutableSet set];
 NSUInteger numberCount = self.numbers.count;
 NSUInteger threadCount = 4;
 for (NSUInteger i = 0; i &lt; threadCount; i++) {
@@ -208,17 +209,17 @@ for (NSUInteger i = 0; i &lt; threadCount; i++) {
 
 <p>你可以通过重写 main 或者 start 方法 来定义自己的 operations;前一种方法非常简单，开发者不需要管理一些状态属性（例如 isExecuting 和 isFinished），当 main 方法返回的时候，这个 operation 就结束了。这种方式使用起来非常简单，但是灵活性相对重写 start 来说要少一些。<br/>
 //注意：在NSThread和NSOperation中重写Main方法来自定义子类时不需要调用[super main]<br/>
-子类的是NSOperation即在队列中的任务，而不是NSOperationQueue<br/>
-<code>Object-c<br/>
-@implementation YourOperation<br/>
-    - (void)main<br/>
-    {<br/>
-        // 进行处理 ...<br/>
-    }<br/>
-@end<br/>
-</code></p>
+子类的是NSOperation即在队列中的任务，而不是NSOperationQueue</p>
 
-<pre><code class="language-Object-c">//如果你希望拥有更多的控制权，以及在一个操作中可以执行异步任务，那么就重写 start 方法：
+<pre><code class="language-object-c">@implementation YourOperation
+    - (void)main
+    {
+        // 进行处理 ...
+    }
+@end
+</code></pre>
+
+<pre><code class="language-object-c">//如果你希望拥有更多的控制权，以及在一个操作中可以执行异步任务，那么就重写 start 方法：
 @implementation YourOperation
     - (void)start
     {
@@ -242,7 +243,7 @@ for (NSUInteger i = 0; i &lt; threadCount; i++) {
 
 <p>为了能使用操作队列所提供的取消功能，你需要在长时间操作中时不时地检查<code>isCancelled</code>属性：</p>
 
-<pre><code class="language-Object-c">- (void)main
+<pre><code class="language-object-c">- (void)main
 {
     while (notDone &amp;&amp; !self.isCancelled) {
         // 进行处理
@@ -252,14 +253,14 @@ for (NSUInteger i = 0; i &lt; threadCount; i++) {
 
 <p>当你定义好 operation 类之后，就可以很容易的将一个 operation 添加到队列中：</p>
 
-<pre><code class="language-Object-c">    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+<pre><code class="language-object-c">    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
     YourOperation *operation = [[YourOperation alloc] init];
     [queue  addOperation:operation];
 </code></pre>
 
 <p>另外，你也可以将 block 添加到操作队列中。这有时候会非常的方便，比如你希望在主队列中调度一个一次性任务：</p>
 
-<pre><code class="language-Object-c">[[NSOperationQueue mainQueue] addOperationWithBlock:^{
+<pre><code class="language-object-c">[[NSOperationQueue mainQueue] addOperationWithBlock:^{
     // 代码...
 }];
 </code></pre>
@@ -271,18 +272,16 @@ for (NSUInteger i = 0; i &lt; threadCount; i++) {
 <ol>
 <li>例如，你可以通过 maxConcurrentOperationCount 属性来控制一个特定队列中可以有多少个操作参与并发执行。将其设置为 1 的话，你将得到一个串行队列，这在以隔离为目的的时候会很有用。</li>
 <li><p>可以根据队列中 operation 的优先级对其进行排序，这不同于 GCD 的队列优先级，它只影响当前队列中所有被调度的 operation 的执行先后。如果你需要进一步在除了 5 个标准的优先级以外对 operation 的执行顺序进行控制的话，还可以在 operation 之间指定依赖关系，如下：</p>
-
-<pre><code class="language-Object-c">[intermediateOperation addDependency:operation1];
-[intermediateOperation addDependency:operation2];
-[finishedOperation addDependency:intermediateOperation];
-/**
-    这些简单的代码可以确保 operation1 和 operation2 在 intermediateOperation 之前执
-    行，当然，也会在 finishOperation 之前被执行。对于需要明确的执行顺序时，操作依赖是非常
-    强大的一个机制。它可以让你创建一些操作组，并确保这些操作组在依赖它们的操作被执行之前执
-    行，或者在并发队列中以串行的方式执行操作。
+<pre><code class="language-object-c">[intermediateOperation addDependency:operation1];
+[intermediateOperation addDependency:operation2];<br/>
+[finishedOperation addDependency:intermediateOperation];<br/>
+/**<br/>
+    这些简单的代码可以确保 operation1 和 operation2 在 intermediateOperation 之前执<br/>
+    行，当然，也会在 finishOperation 之前被执行。对于需要明确的执行顺序时，操作依赖是非常<br/>
+    强大的一个机制。它可以让你创建一些操作组，并确保这些操作组在依赖它们的操作被执行之前执<br/>
+    行，或者在并发队列中以串行的方式执行操作。<br/>
 */
 </code></pre>
-
 <p><em>从本质上来看，操作队列的性能比 GCD 要低那么一点，不过，大多数情况下这点负面影响可以忽略不计，操作队列是并发编程的首选工具。</em></p></li>
 </ol>
 
@@ -371,7 +370,7 @@ for (NSUInteger i = 0; i &lt; threadCount; i++) {
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
-            <a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html"><strong>全民认证</strong></a>
+            <a href="React-Native.html"><strong>React-Native</strong></a>
          
         </p>
 
@@ -388,31 +387,31 @@ for (NSUInteger i = 0; i &lt; threadCount; i++) {
 	      
 		      
 			      <li class="post">
-			        <a href="15266103811219.html">JavaScript 与 ECMAScript 区别</a>
+			        <a href="15304988629042.html">混合开发(OC)</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15266103180287.html"># iOS编译过程</a>
+			        <a href="15293961047296.html">组件属性一</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15260169489026.html">常用宏定义</a>
+			        <a href="15290351401483.html">补充</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15252210899371.html">全民认证</a>
+			        <a href="15289781671435.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15205769334278.html">JS基础使用</a>
+			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  

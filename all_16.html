@@ -68,10 +68,11 @@
 
 <aside class="left-off-canvas-menu">
       <ul class="off-canvas-list">
-       
-       <li><a href="index.html">HOME</a></li>
-    <li><a href="archives.html">Archives</a></li>
-    <li><a href="about.html">ABOUT</a></li>
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
 
     <li><label>Categories</label></li>
 
@@ -86,7 +87,7 @@
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
-            <li><a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html">全民认证</a></li>
+            <li><a href="React-Native.html">React-Native</a></li>
          
 
       </ul>
@@ -109,224 +110,143 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15052932669633.html">
+                <a class="clearlink" href="15082349866219.html">
                 
-                  <h1>泛型</h1>
+                  <h1>ARSession</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><strong>泛型:</strong>根据自定义的需求，编写适用于任意类型，灵活可用的函数和类型</p>
+                        	<p><code>ARSession</code>是连接底层与AR视图的桥梁，<code>ARCNView</code>内部所有的代理方法都是ARSession提供的</p>
 
-<h2 id="toc_0">泛型函数</h2>
+<p><img src="media/15082349866219/15082365566677.png" alt=""/></p>
 
-<p>泛型函数适用与任何类型</p>
+<h2 id="toc_0">获取相机位置的方法</h2>
 
-<pre><code class="language-swift">func swapTwoValues&lt;T&gt;(_ a: inout T, _ b: inout T) {
-    let temporaryA = a
-    a = b
-    b = temporaryA
-}
-</code></pre>
+<ol>
+<li>实时不断的获取相机位置,然后由<code>ARSession</code>告知用户</li>
+</ol>
 
-<p>函数的泛型版本:<br/>
-1）使用占位类型名来代替实际类型名(这里用字母<code>T</code>表示),这里并没有指明T必须是什么类型,而是a与b类型相同,在实际调用时才根据传入类型决定<code>T</code>所代表的类型<br/>
-2）在函数名后有<code>&lt;T&gt;</code>，声明了<code>T</code>是函数内定义的占位类型名<br/>
-因此，函数<code>swapTwoInts(_:_:)</code>可以接受任意相同类型的参数</p>
+<p>//获取相机位置<br/>
+<code>- (void)session:(ARSession *)session didUpdateFrame:(ARFrame *)frame</code></p>
 
-<h2 id="toc_1">类型参数</h2>
+<ol>
+<li>用户想要时主动去获取,通过其<code>currentFrame</code>属性获取</li>
+</ol>
 
-<p>类型参数指定并命名一个占位类型,紧随在函数名后,用尖括号括起来(如:<code>&lt;T&gt;</code>),也可以提供多个参数用逗号隔开</p>
+<h2 id="toc_1">API</h2>
 
-<p>可以用指定的类型参数作为函数的参数类型或返回类型，</p>
+<pre><code class="language-objectivec">/**
+ 代理
+ */
+@property (nonatomic, weak) id &lt;ARSessionDelegate&gt; delegate;
 
-<h2 id="toc_2">命名类型参数</h2>
+/**
+指定代理执行的线程（主线程不会有延迟，子线程会有延迟），不指定的话默认主线程
+ */
+@property (nonatomic, strong, nullable) dispatch_queue_t delegateQueue;
 
-<p>我们可以使用有意义的单词来表明类型参数和泛型函数关系,当没有联系时,通常使用单个字母来命名</p>
+/**
+相机当前的位置（是由会话追踪配置计算出来的）
+ */
+@property (nonatomic, copy, nullable, readonly) ARFrame *currentFrame;
 
-<p><strong>使用大写字母开头的驼峰命名法来为类型参数命名</strong></p>
+/**
+ 会话追踪配置
+ */
+@property (nonatomic, copy, nullable, readonly) ARSessionConfiguration *configuration;
 
-<h2 id="toc_3">泛型类型</h2>
+/**
+运行会话（这行代码就是开启AR的关键所在）
+ */
+- (void)runWithConfiguration:(ARSessionConfiguration *)configuration NS_SWIFT_UNAVAILABLE(&quot;Use run(_:options:)&quot;);
 
-<p><strong>泛型类型：</strong>除了泛型函数，Swift 还允许你定义泛型类型。这些自定义类、结构体和枚举可以适用于任何类型,类型于<code>Array</code>和<code>Dictionary</code></p>
+/**
+运行会话，只是多了一个参数ARSessionRunOptions：作用就是会话断开重连时的行为。
+ARSessionRunOptionResetTracking：表示重置追踪  
+ARSessionRunOptionRemoveExistingAnchors：移除现有锚点
+ */
+- (void)runWithConfiguration:(ARSessionConfiguration *)configuration options:(ARSessionRunOptions)options NS_SWIFT_NAME(run(_:options:));
 
-<pre><code class="language-swift">//泛型 Stack（栈型） 结构体
-struct Stack&lt;Element&gt; {
-    var items = [Element]()
-    mutating func push(item: Element) {
-        items.append(item)
-    }
-    mutating func pop() -&gt; Element {
-        return items.removeLast()
-    }
-}
-</code></pre>
+/**
+暂停会话
+ */
+- (void)pause;
 
-<p>使用占位类型<code>Element</code>，这个类型参数包裹在紧随结构体名的一对尖括号里（<code>&lt;Element&gt;</code>）,类型参数用来初始化数组,用来作为<code>push</code><code>pop</code>方法的参数</p>
+/**
+添加锚点
+ */
+- (void)addAnchor:(ARAnchor *)anchor NS_SWIFT_NAME(add(anchor:));
 
-<p><code>Stack</code>是泛型类型,可以创建任意有效类型栈<br/>
-可以通过在尖括号写出栈中需要存储的数据类型来创建并初始化一个<code>Stack</code>实例</p>
+/**
+移除锚点
+ */
+- (void)removeAnchor:(ARAnchor *)anchor NS_SWIFT_NAME(remove(anchor:));
 
-<pre><code class="language-swift">var stackOfStrings = Stack&lt;String&gt;()
-stackOfStrings.push(&quot;uno&quot;)
-stackOfStrings.push(&quot;dos&quot;)
-let fromTheTop = stackOfStrings.pop()
-</code></pre>
+@end
 
-<h2 id="toc_4">扩展泛型类型</h2>
-
-<p>在扩展泛型类型时，不需要在扩展的定义中提供类型参数列表。可以在扩展中直接使用原始类型参数列表,并且这些来自原始类型中的参数名称会被用作原始定义中类型参数的引用。</p>
-
-<pre><code class="language-swift">//扩展泛型类型增加只读的计算属性
-extension Stack {
-    var topItem: Element? {
-        return items.isEmpty ? nil : items[items.count - 1]
-    }
-}
-</code></pre>
-
-<p>返回`<code>item</code>数组的最后一个元素</p>
-
-<p>扩展中直接使用了已有的类型参数<code>Element</code></p>
-
-<h2 id="toc_5">类型约束</h2>
-
-<p>给泛型函数和泛型类型添加一个特定的约束，可以指定一个类型参数必须继承自指定类，或者符合协议或协议组合</p>
-
-<p>例如:<code>Dictionary</code>类型约束了字典中的键必须是可哈希的（符合<code>Hashable协议</code>），也就是必须有唯一的方法表示她，才能根据键进行判断</p>
-
-<h3 id="toc_6">类型约束语法</h3>
-
-<p>在类型参数名后放置类型或协议名用冒号隔开来进行约束，</p>
-
-<pre><code class="language-swift">//类型约束的泛型函数
-func someFunction&lt;T: SomeClass, U: SomeProtocol&gt;(someT: T, someU: U) {
-    // 这里是泛型函数的函数体部分
-}
-</code></pre>
-
-<p>约束T必须是SomeClass的子类，要求U必须遵循SomeProtocol的</p>
-
-<h3 id="toc_7">类型约束实践</h3>
-
-<p>我们新建一个泛型函数来从实现从数组中查找特定元素的功能;</p>
-
-<pre><code class="language-swift">//从数组中查找特定自字符串的非泛型函数
-func findIndex(ofString valueToFind: String, in array: [String]) -&gt; Int? {
-    for (index, value) in array.enumerated() {
-        if value == valueToFind {
-            return index
-        }
-    }
-    return nil
-}
+//session代理分类两部分，一个是观察者（KVO） 一个是委托者（代理）
+#pragma mark - ARSessionObserver
 
 
-//泛型类型
-func findIndex&lt;T&gt;(of valueToFind: T, in array:[T]) -&gt; Int? {
-    for (index, value) in array.enumerated() {
-        if value == valueToFind {
-        return index
-        }
-    }
-    return nil
-}
-</code></pre>
+//session KVO观察者
+@protocol ARSessionObserver &lt;NSObject&gt;
 
-<p>上面的泛型函数，是无法通过编译的，因为不是任何类型都可以用<code>==</code>进行比较<br/>
-Swift定义了一个<code>Equatable</code>协议,所有遵守改协议的类型都必须实现<code>==或!=</code>，从而对该类型任意值进行比较</p>
+@optional
 
-<pre><code class="language-swift">//此时泛型函数可以成功编译了
-func findIndex&lt;T: Equatable&gt;(array: [T], _ valueToFind: T) -&gt; Int? {
-    for (index, value) in array.enumerate() {
-        if value == valueToFind {
-            return index
-        }
-    }
-    return nil
-}
-</code></pre>
+/**
+ session失败
+ */
+- (void)session:(ARSession *)session didFailWithError:(NSError *)error;
 
-<h2 id="toc_8">关联类型</h2>
+/**
+相机改变追踪状态
+ */
+- (void)session:(ARSession *)session cameraDidChangeTrackingState:(ARCamera *)camera;
 
-<p>定义协议时，声明一个或者多个<strong>关联类型</strong>作为协议的一部分</p>
+/**
+ session意外断开（如果开启ARSession之后，APP退到后台就有可能导致会话断开）
+ */
+- (void)sessionWasInterrupted:(ARSession *)session;
 
-<p><strong>关联类型</strong>为协议中的的某个类型提供占位名(别名)，而其实际类型在协议被采纳时才会被指定</p>
+/**
+session会话断开恢复（短时间退到后台再进入APP会自动恢复）
+ */
+- (void)sessionInterruptionEnded:(ARSession *)session;
 
-<p>用<code>associatedtype</code>关键字指定<strong>关联类型</strong></p>
+@end
 
-<pre><code class="language-swift">protocol Container {
-    associatedtype ItemType
-    mutating func append(item: ItemType)
-    var count: Int { get }
-    subscript(i: Int) -&gt; ItemType { get }
-}
-</code></pre>
+#pragma mark - ARSessionDelegate
 
-<p>在协议中声明了一个关联类型<code>ItemType</code>,来保证在不知道容器中元素的具体类型情况下行为能够正确执行</p>
 
-<pre><code class="language-swift">//定义类型遵循Contain协议
-Struct IntStack: Container {
-    // IntStack 的原始实现部分
-    var items = [Int]()
-    mutating func push(item: Int) {
-        items.append(item)
-    }
-    mutating func pop() -&gt; Int {
-        return items.removeLast()
-    }
-    // Container 协议的实现部分
-    typealias ItemType = Int//可以省略，swift会根据协议的实现推断出类型
-        mutating func append(item: Int) {
-        self.push(item)
-    }
-    var count: Int {
-        return items.count
-    }
-    subscript(i: Int) -&gt; Int {
-        return items[i]
-    }
-}
+
+@protocol ARSessionDelegate &lt;ARSessionObserver&gt;
+
+@optional
+
+/**
+ 更新相机位置
+ */
+- (void)session:(ARSession *)session didUpdateFrame:(ARFrame *)frame;
+
+/**
+添加锚点
+ */
+- (void)session:(ARSession *)session didAddAnchors:(NSArray&lt;ARAnchor*&gt;*)anchors;
+
+/**
+刷新锚点
+ */
+- (void)session:(ARSession *)session didUpdateAnchors:(NSArray&lt;ARAnchor*&gt;*)anchors;
+
+/**
+移除锚点
+ */
+- (void)session:(ARSession *)session didRemoveAnchors:(NSArray&lt;ARAnchor*&gt;*)anchors;
+
+@end
 
 </code></pre>
-
-<p>在实现协议时需要用<code>typealias ItemType = Int</code>来转换协议中的关联类型<br/>
-当然，这个是可以省略的，Swift可以根据方法推断出<code>ItemType</code>类型</p>
-
-<h3 id="toc_9">扩展存在的类型来指定关联类型</h3>
-
-<p>对于Contain协议，Swift中的Array已经默认提供了协议中要求，因此我们只需要声明Array遵循该协议就可以扩展<code>Array</code></p>
-
-<pre><code class="language-Swift">//我们只需要扩展Array来使其遵循该协议即可
-extension Array: Container {}
-</code></pre>
-
-<h2 id="toc_10">泛型Where语句</h2>
-
-<p><strong>泛型Where语句</strong>用于为关联类型定义约束，比如要求其必须遵循特定协议，以及特定类型参数和关联类型必须相同</p>
-
-<p>在函数体或者类型的大括号前添加<code>Where</code>子句</p>
-
-<pre><code class="language-swift">func allItemsMatch&lt;C1: Container, C2: Container&gt;
-(_ someContainer: C1, _ anotherContainer: C2) -&gt; Bool
-    where C1.ItemType == C2.ItemType, C1.ItemType: Equatable {
-        // 检查两个容器含有相同数量的元素
-        if someContainer.count != anotherContainer.count {
-            return false
-        }
-        // 检查每一对元素是否相等
-        for i in 0..&lt;someContainer.count {
-            if someContainer[i] != anotherContainer[i] {
-            return false
-        }
-    }
-    // 所有元素都匹配，返回 true
-    return true
-}
-</code></pre>
-
-<p>用<code>类型约束</code>约束类型参数:C1、C2必须符合<code>Contain</code>协议<br/>
-用<code>泛型Where语句</code>约束关联类型:C1和C2必须类型相同,并且C1符合<code>Equatable</code></p>
 
                         
                       </div>
@@ -335,10 +255,10 @@ extension Array: Container {}
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/9/13</span>
+                    <span class="date">2017/10/17</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
+          					    <span class="posted-in"><a href='ARKit.html'>ARKit</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -413,7 +333,7 @@ extension Array: Container {}
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
-            <a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html"><strong>全民认证</strong></a>
+            <a href="React-Native.html"><strong>React-Native</strong></a>
          
         </p>
 
@@ -430,31 +350,31 @@ extension Array: Container {}
 	      
 		      
 			      <li class="post">
-			        <a href="15266103811219.html">JavaScript 与 ECMAScript 区别</a>
+			        <a href="15304988629042.html">混合开发(OC)</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15266103180287.html"># iOS编译过程</a>
+			        <a href="15293961047296.html">组件属性一</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15260169489026.html">常用宏定义</a>
+			        <a href="15290351401483.html">补充</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15252210899371.html">全民认证</a>
+			        <a href="15289781671435.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15205769334278.html">JS基础使用</a>
+			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  

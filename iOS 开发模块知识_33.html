@@ -68,10 +68,11 @@
 
 <aside class="left-off-canvas-menu">
       <ul class="off-canvas-list">
-       
-       <li><a href="index.html">HOME</a></li>
-    <li><a href="archives.html">Archives</a></li>
-    <li><a href="about.html">ABOUT</a></li>
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
 
     <li><label>Categories</label></li>
 
@@ -86,7 +87,7 @@
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
-            <li><a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html">全民认证</a></li>
+            <li><a href="React-Native.html">React-Native</a></li>
          
 
       </ul>
@@ -125,7 +126,7 @@
 
 <p>OSSpinLock 自旋锁，性能最高的锁。在任何时刻只会有一个线程能获得锁,而其他线程忙着等待直到获得锁。缺点是<code>spinlock</code>使用不当(如临界区执行时间过长)会导致<code>cpu busy</code>飙高。不适合较长时间任务</p>
 
-<pre><code class="language-objc">__block OSSpinLock theLock = OS_SPINLOCK_INIT;
+<pre><code class="language-objectivec">__block OSSpinLock theLock = OS_SPINLOCK_INIT;
 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
     OSSpinLockLock(&amp;theLock);
     NSLog(@&quot;需要线程同步的操作1 开始&quot;);
@@ -144,7 +145,7 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 });
 </code></pre>
 
-<pre><code class="language-objc">//
+<pre><code class="language-objectivec">//
 OS_SPINLOCK_INIT： 默认值为 0,在 locked 状态时就会大于 0，unlocked状态下为 0
 OSSpinLockLock(&amp;oslock)：上锁，参数为 OSSpinLock 地址
 OSSpinLockUnlock(&amp;oslock)：解锁，参数为 OSSpinLock 地址
@@ -163,7 +164,7 @@ OSSpinLockTry(&amp;oslock)：尝试加锁，可以加锁则立即加锁并返回
 <p>是GCD的用来同步的一种方式<br/>
 在没有等待情况出现时，它的性能比<code>pthread_mutex</code>还要高，但一旦有等待情况出现时，性能就会下降许多。相对于<code>OSSpinLock</code>来说，它的优势在于等待时不会消耗<code>CPU</code>资源。</p>
 
-<pre><code class="language-objc">  dispatch_semaphore_t signal = dispatch_semaphore_create(1);
+<pre><code class="language-objectivec">  dispatch_semaphore_t signal = dispatch_semaphore_create(1);
     dispatch_time_t overTime = dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC);
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -182,7 +183,7 @@ OSSpinLockTry(&amp;oslock)：尝试加锁，可以加锁则立即加锁并返回
     });
 </code></pre>
 
-<pre><code class="language-objc">dispatch_semaphore_create(1)： 传入值必须 &gt;=0, 若传入为 0 则阻塞线程并等待timeout,
+<pre><code class="language-objectivec">dispatch_semaphore_create(1)： 传入值必须 &gt;=0, 若传入为 0 则阻塞线程并等待timeout,
 时间到后会执行其后的语句
 dispatch_semaphore_wait(signal, overTime)：可以理解为 lock,会使得 signal 值 -1，若信号量的值大于0，就可以继续往下执行,否则等待,如果在等待时间期间信号量一直为0，则会在`timeOut`后自动执行其后的语句。
 //
@@ -193,7 +194,7 @@ dispatch_semaphore_signal(signal)：可以理解为 unlock,会使得 signal 值 
 
 <h2 id="toc_2">三、@synchronized</h2>
 
-<pre><code class="language-objc"> NSObject *obj = [[NSObject alloc] init];
+<pre><code class="language-objectivec"> NSObject *obj = [[NSObject alloc] init];
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         @synchronized(obj) {
@@ -218,7 +219,7 @@ dispatch_semaphore_signal(signal)：可以理解为 unlock,会使得 signal 值 
 
 <h2 id="toc_3">四、NSLock</h2>
 
-<pre><code class="language-objc">    NSLock *lock = [[NSLock alloc] init];
+<pre><code class="language-objectivec">    NSLock *lock = [[NSLock alloc] init];
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         //[lock lock];
         [lock lockBeforeDate:[NSDate date]];
@@ -263,7 +264,7 @@ dispatch_semaphore_signal(signal)：可以理解为 unlock,会使得 signal 值 
 
 <h2 id="toc_4">五、NSRecursiveLock递归锁</h2>
 
-<pre><code class="language-objc">    NSRecursiveLock *lock = [[NSRecursiveLock alloc] init];
+<pre><code class="language-objectivec">    NSRecursiveLock *lock = [[NSRecursiveLock alloc] init];
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 
@@ -309,7 +310,7 @@ dispatch_semaphore_signal(signal)：可以理解为 unlock,会使得 signal 值 
 
 <p>只是<code>lock</code>和<code>unlock</code>通常并不能满足我们的使用，我们通常在满足某条件的情况下才会打开这把锁，这时候我们可以使用<code>NSConditionLock条件锁</code></p>
 
-<pre><code class="language-objc">    NSConditionLock *cLock = [[NSConditionLock alloc] initWithCondition:0];
+<pre><code class="language-objectivec">    NSConditionLock *cLock = [[NSConditionLock alloc] initWithCondition:0];
 
 //线程1
 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -349,7 +350,7 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 <p>相比于 NSLock 多了个<code>condition</code>参数，我们可以理解为一个条件标示.<br/>
 我们还用它实现了任务支架你的依赖</p>
 
-<pre><code class="language-objc">//可用功能如下:
+<pre><code class="language-objectivec">//可用功能如下:
 - (instancetype)initWithCondition:(NSInteger)condition NS_DESIGNATED_INITIALIZER;
 
 @property (readonly) NSInteger condition;
@@ -367,7 +368,7 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 
 <p>一种最基本的条件锁。手动控制线程<code>wait</code>和<code>signal</code>。</p>
 
-<pre><code class="language-objc">NSCondition *condition = [[NSCondition alloc] init];
+<pre><code class="language-objectivec">NSCondition *condition = [[NSCondition alloc] init];
 
     NSMutableArray *products = [NSMutableArray array];
 
@@ -407,7 +408,7 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 <code>[condition wait]</code>让当前线程处于等待状态<br/>
 <code>[condition signal]</code>CPU发信号告诉线程不用在等待，可以继续执行</p>
 
-<pre><code class="language-objc">- (void)wait;//进入等待状态(当一个线程调用wait时其他线程就可以获得这个锁)
+<pre><code class="language-objectivec">- (void)wait;//进入等待状态(当一个线程调用wait时其他线程就可以获得这个锁)
 - (BOOL)waitUntilDate:(NSDate *)limit;//让一个线程等待一定的时间
 - (void)signal;//唤醒一个等待的线程
 - (void)broadcast;//唤醒所有等待的线程
@@ -421,7 +422,7 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 
 <h2 id="toc_7">八、pthread_mutex互斥锁</h2>
 
-<pre><code class="language-objc">  __block pthread_mutex_t theLock;
+<pre><code class="language-objectivec">  __block pthread_mutex_t theLock;
     pthread_mutex_init(&amp;theLock, NULL);
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -450,7 +451,7 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
     */
 </code></pre>
 
-<pre><code class="language-objc">1：pthread_mutex_init(pthread_mutex_t mutex,const pthread_mutexattr_t attr);
+<pre><code class="language-objectivec">1：pthread_mutex_init(pthread_mutex_t mutex,const pthread_mutexattr_t attr);
 初始化锁变量mutex。attr为锁属性，NULL值为默认属性。
 2：pthread_mutex_lock(pthread_mutex_t mutex);加锁
 3：pthread_mutex_tylock(*pthread_mutex_t *mutex);加锁，但是与2不一样的是当锁已经在使用的时候，返回为EBUSY，而不是挂起等待。
@@ -465,7 +466,7 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 
 <p>之前的lock是和unlock成对出现，同一线程多次 lock 是不允许的，而递归锁允许同一个线程在未释放其拥有的锁时反复对该锁进行加锁操作。</p>
 
-<pre><code class="language-objc">static pthread_mutex_t pLock;
+<pre><code class="language-objectivec">static pthread_mutex_t pLock;
 pthread_mutexattr_t attr;
 pthread_mutexattr_init(&amp;attr); //初始化attr并且给它赋予默认
 pthread_mutexattr_settype(&amp;attr, PTHREAD_MUTEX_RECURSIVE); //设置锁类型，这边是设置为递归锁
@@ -573,7 +574,7 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
-            <a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html"><strong>全民认证</strong></a>
+            <a href="React-Native.html"><strong>React-Native</strong></a>
          
         </p>
 
@@ -590,31 +591,31 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 	      
 		      
 			      <li class="post">
-			        <a href="15266103811219.html">JavaScript 与 ECMAScript 区别</a>
+			        <a href="15304988629042.html">混合开发(OC)</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15266103180287.html"># iOS编译过程</a>
+			        <a href="15293961047296.html">组件属性一</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15260169489026.html">常用宏定义</a>
+			        <a href="15290351401483.html">补充</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15252210899371.html">全民认证</a>
+			        <a href="15289781671435.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15205769334278.html">JS基础使用</a>
+			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  

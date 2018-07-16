@@ -68,10 +68,11 @@
 
 <aside class="left-off-canvas-menu">
       <ul class="off-canvas-list">
-       
-       <li><a href="index.html">HOME</a></li>
-    <li><a href="archives.html">Archives</a></li>
-    <li><a href="about.html">ABOUT</a></li>
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
 
     <li><label>Categories</label></li>
 
@@ -86,7 +87,7 @@
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
-            <li><a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html">全民认证</a></li>
+            <li><a href="React-Native.html">React-Native</a></li>
          
 
       </ul>
@@ -109,32 +110,167 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14873195104181.html">
+                <a class="clearlink" href="14878317610028.html">
                 
-                  <h1>NSRunLoop</h1>
+                  <h1>成员变量与属性</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>实际上，Run loop并不像 GCD 或者操作队列那样是一种并发机制，因为它并不能并行执行任务。不过在<code>主 dispatch/operation</code>队列中， <code>run loop</code> 将直接配合任务的执行，它提供了一种异步执行代码的机制。</p>
+                        	<h2 id="toc_0">类型编码(Type Encoding)</h2>
 
-<p><strong>一个 run loop 总是绑定到某个特定的线程中。main run loop 是与主线程相关的</strong><br/>
-在每一个 Cocoa 和 CocoaTouch 程序中，这个 main run loop 都扮演了一个核心角色，它负责处理 UI 事件、计时器，以及其它内核相关事件。无论你什么时候设置<code>计时器</code>、使用<code>NSURLConnection</code>或者调用 <code>performSelector:withObject:afterDelay:</code>，其实背后都是 run loop 在处理这些异步任务。</p>
+<p><strong>作为对Runtime的补充，编译器将每个方法的返回值和参数类型编码为一个字符串，并将其与方法的<code>selector</code>关联在一起。</strong>我们可以使用@encode编译器指令来获取它。当给定一个类型时，<code>@encode</code>返回这个类型的字符串编码。这些类型可以是诸如int、指针这样的基本类型，也可以是结构体、类等类型。任何可以作为<code>sizeof()</code>操作参数的类型都可以用于<code>@encode()</code>。</p>
 
-<p>run loop 可以运行在不同的模式中，每种模式都定义了一组事件，供 run loop 做出响应。这在对应 main run loop 中暂时性的将某个任务优先执行的一种聪明的做法。<br/>
-* NSDefalutRunLoopMode : 默认Mode, 通常主线程在这个模式下运行<br/>
-* UITrackingRunLoopMode : 滑动ScrollView是会切换到这个模式<br/>
-* NSRunLoopCommonModes: 包括上面两个模式</p>
+<p>在<code>Objective-C Runtime Programming Guide</code>中的<a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtTypeEncodings.html#//apple_ref/doc/uid/TP40008048-CH100-SW1">Type Encoding</a>一节中列出了Objective-C中所有的类型编码,需要注意的是这些类型很多是与我们用于存档和分发的编码类型是相同的。但有一些不能在存档时使用。</p>
 
-<p>例1:滑动ScrollView后系统把RunLoop切换为UITrackingRunLoopMode,因此加载默认模式中的定时器并不会执行,只有滚动停止回到默认模式才会继续执行。我们可以把定时器设为 <code>NSRunLoopCommonModes</code>的模式，并添加到 run loop 中；<br/>
-<code>[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];</code></p>
+<p><em>注：Objective-C不支持long double类型。@encode(long double)返回d，与double是一样的。</em><br/>
+举个栗子:</p>
 
-<p>例2:当tableview的cell从网络异步加载图片, 加载完成后在主线程刷新显示图片, 这时滑动tableview会造成卡顿. 通常的思路是tableview滑动的时候延迟加载图片, 等停止滑动时再显示图片. 这里我们可以通过RunLoop来实现.<br/>
-<code>[self.cellImageView performSelector:@sector(setImage:) withObject:downloadedImage afterDelay:0 inModes:@[NSDefaultRunLoopMode]];</code></p>
+<pre><code class="language-objectivec">float a[] = {1.0, 2.0, 3.0};
+NSLog(@&quot;array encoding type: %s&quot;, @encode(typeof(a)));
+//输出:
+2014-10-28 11:44:54.731 RuntimeTest[942:50791] array encoding type: [3f]
+</code></pre>
 
-<p>主线程一般来说都已经配置好了 main run loop。然而其他线程默认情况下都没有设置 run loop。你也可以自行为其他线程设置 run loop ，但是一般来说我们很少需要这么做。大多数时间使用 main run loop 会容易得多。如果你需要处理一些很重的工作，但是又不想在主线程里做，你仍然可以在你的代码在 main run loop 中被调用后将工作分配给其他队列。Chris 在他关于<a href="https://objccn.io/issue-2-2/">常见的后台实践</a>的文章里阐述了一些关于这种模式的很好的例子。</p>
+<p>另外，还有些编码类型，@encode虽然不会直接返回它们，但它们可以作为协议中声明的方法的类型限定符。</p>
 
-<p>如果你真需要在别的线程中添加一个 run loop ，那么不要忘记在 run loop 中至少添加一个 input source 。如果 run loop 中没有设置好的 input source，那么每次运行这个 run loop ，它都会立即退出。</p>
+<p>对于属性而言，还会有一些特殊的类型编码，以表明属性是只读、拷贝、retain等等，详情可以参考<a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtPropertyIntrospection.html#//apple_ref/doc/uid/TP40008048-CH101-SW6">Property Type String</a>。</p>
+
+<h2 id="toc_1">成员变量、属性</h2>
+
+<h3 id="toc_2">基础数据类型</h3>
+
+<h4 id="toc_3">Ivar</h4>
+
+<p>Ivar是表示实例变量的类型，其实际是一个指向objc_ivar结构体的指针</p>
+
+<pre><code class="language-objectivec">typedef struct objc_ivar *Ivar;
+struct objc_ivar {
+    char *ivar_name                 OBJC2_UNAVAILABLE;  // 变量名
+    char *ivar_type                 OBJC2_UNAVAILABLE;  // 变量类型
+    int ivar_offset                 OBJC2_UNAVAILABLE;  // 基地址偏移字节
+#ifdef __LP64__
+    int space                       OBJC2_UNAVAILABLE;
+#endif
+}
+</code></pre>
+
+<h4 id="toc_4">objc_property_t</h4>
+
+<p><code>objc_property_t</code>是表示Objective-C声明的属性的类型，其实际是指向objc_property结构体的指针</p>
+
+<p><code>typedef struct objc_property *objc_property_t;</code></p>
+
+<h5 id="toc_5">objc_property_attribute_t</h5>
+
+<p><code>objc_property_attribute_t</code>定义了属性的特性(attribute)，它是一个结构体</p>
+
+<pre><code class="language-objectivec">typedef struct {
+    const char *name;           // 特性名
+    const char *value;          // 特性值
+} objc_property_attribute_t;
+</code></pre>
+
+<h3 id="toc_6">关联对象(Associated Object)</h3>
+
+<p>关联对象类似于成员变量，不过是在运行时添加的。我们通常会把成员变量(Ivar)放在类声明的头文件中，或者放在类实现的@implementation后面。但这有一个缺点，我们不能在分类中添加成员变量。如果我们尝试在分类中添加新的成员变量，编译器会报错。</p>
+
+<p>Objective-C针对这一问题，提供了一个解决方案：即关联对象(<code>Associated Object</code>)。</p>
+
+<p>我们可以把关联对象想象成一个Objective-C对象(如字典)，这个对象通过给定的key连接到类的一个实例上。不过由于使用的是C接口，所以key是一个void指针(const void *)。我们还需要指定一个内存管理策略，以告诉Runtime如何管理这个对象的内存。这个内存管理的策略可以由以下值指定：</p>
+
+<pre><code class="language-objectivec">OBJC_ASSOCIATION_ASSIGN
+OBJC_ASSOCIATION_RETAIN_NONATOMIC
+OBJC_ASSOCIATION_COPY_NONATOMIC
+OBJC_ASSOCIATION_RETAIN
+OBJC_ASSOCIATION_COPY
+/**
+    当宿主对象被释放时，会根据指定的内存管理策略来处理关联对象。如果指定的策略是
+    assign，则宿主释放时，关联对象不会被释放；而如果指定的是retain或者是copy，则
+    宿主释放时，关联对象会被释放。我们甚至可以选择是否是自动retain/copy。当我们需
+    要在多个线程中处理访问关联对象的多线程代码时，这就非常有用了。
+*/
+</code></pre>
+
+<p>使用方法:</p>
+
+<pre><code class="language-objectivec">static char myKey;
+objc_setAssociatedObject(self, &amp;myKey, anObject, OBJC_ASSOCIATION_RETAIN);
+/**
+    Sets an associated value for a given object using a given key and association 
+    policy.
+    
+    object
+        The source object for the association.
+    key
+        The key for the association.
+    value
+        The value to associate with the key key for object. Pass nil to clear an 
+        existing association.
+*/
+</code></pre>
+
+<p>在这种情况下，self对象将获取一个新的关联的对象anObject，且内存管理策略是自动retain关联对象，当self对象释放时，会自动release关联对象。另外，如果我们使用同一个key来关联另外一个对象时，也会自动释放之前关联的对象，这种情况下，先前的关联对象会被妥善地处理掉，并且新的对象会使用它的内存。</p>
+
+<pre><code class="language-objectivec">id anObject = objc_getAssociatedObject(self, &amp;myKey);
+//Returns the value associated with a given object for a given key.
+/**
+object
+The source object for the association.
+key
+The key for the association.
+*/
+</code></pre>
+
+<p>我们可以使用<code>objc_removeAssociatedObjects</code>函数来移除一个关联对象，或者使用<code>objc_setAssociatedObject</code>函数将key指定的关联对象设置为nil。</p>
+
+<p>关联对象使用起来并不复杂。它让我们可以动态地增强类现有的功能。我们可以在实际编码中灵活地运用这一特性。</p>
+
+<h3 id="toc_7">成员变量、属性的操作方法</h3>
+
+<h4 id="toc_8">成员变量</h4>
+
+<p>成员变量包含以下方法:</p>
+
+<pre><code class="language-objectivec">// 获取成员变量名
+const char * ivar_getName ( Ivar v );
+// 获取成员变量类型编码
+const char * ivar_getTypeEncoding ( Ivar v );
+// 获取成员变量的偏移量
+ptrdiff_t ivar_getOffset ( Ivar v );
+</code></pre>
+
+<p><code>ivar_getOffset</code>函数，对于类型id或其它对象类型的实例变量，可以调用<code>object_getIvar</code>和<code>object_setIvar</code>来直接访问成员变量，而不使用偏移量。</p>
+
+<h4 id="toc_9">关联对象</h4>
+
+<p>关联操作函数</p>
+
+<pre><code class="language-objectivec">// 设置关联对象
+void objc_setAssociatedObject ( id object, const void *key, id value, objc_AssociationPolicy policy );
+// 获取关联对象
+id objc_getAssociatedObject ( id object, const void *key );
+// 移除关联对象
+void objc_removeAssociatedObjects ( id object );
+</code></pre>
+
+<h4 id="toc_10">属性</h4>
+
+<p>属性操作函数:</p>
+
+<pre><code class="language-objectivec">// 获取属性名
+const char * property_getName ( objc_property_t property );
+// 获取属性特性描述字符串
+const char * property_getAttributes ( objc_property_t property );
+// 获取属性中指定的特性
+char * property_copyAttributeValue ( objc_property_t property, const char *attributeName );
+// 获取属性的特性列表
+objc_property_attribute_t * property_copyAttributeList ( objc_property_t property, unsigned int *outCount );
+
+</code></pre>
+
+<p><code>property_copyAttributeValue</code>函数，返回的char *在使用完后需要调用free()释放.<br/>
+<code>property_copyAttributeList</code>函数，返回值在使用完后需要调用free()释放。</p>
 
                         
                       </div>
@@ -143,10 +279,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/17</span>
+                    <span class="date">2017/2/23</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Concurrent-Programming.html'>多线程</a></span>
+          					    <span class="posted-in"><a href='RunTime.html'>运行时</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -221,7 +357,7 @@
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
-            <a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html"><strong>全民认证</strong></a>
+            <a href="React-Native.html"><strong>React-Native</strong></a>
          
         </p>
 
@@ -238,31 +374,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15266103811219.html">JavaScript 与 ECMAScript 区别</a>
+			        <a href="15304988629042.html">混合开发(OC)</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15266103180287.html"># iOS编译过程</a>
+			        <a href="15293961047296.html">组件属性一</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15260169489026.html">常用宏定义</a>
+			        <a href="15290351401483.html">补充</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15252210899371.html">全民认证</a>
+			        <a href="15289781671435.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15205769334278.html">JS基础使用</a>
+			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  

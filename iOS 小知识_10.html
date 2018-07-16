@@ -68,10 +68,11 @@
 
 <aside class="left-off-canvas-menu">
       <ul class="off-canvas-list">
-       
-       <li><a href="index.html">HOME</a></li>
-    <li><a href="archives.html">Archives</a></li>
-    <li><a href="about.html">ABOUT</a></li>
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
 
     <li><label>Categories</label></li>
 
@@ -86,7 +87,7 @@
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
-            <li><a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html">全民认证</a></li>
+            <li><a href="React-Native.html">React-Native</a></li>
          
 
       </ul>
@@ -118,7 +119,7 @@
                         
                         	<h3 id="toc_0">1. @property属性中如果是copy属性要记得：</h3>
 
-<pre><code>**注意：**
+<pre><code class="language-text">**注意：**
 在重写setter方法时要记得加上 
 
 ``` Object-c
@@ -138,64 +139,49 @@ if (self = [super init]) {<br/>
     _type = spType;<br/>
 }<br/>
 return self;<br/>
-}<br/>
-```</p>
-
-<h3 id="toc_1">2. 注意在修改navigation时是只修改了navigationItem还是修改了NavigationBar</h3>
-
-<p>如果是仅仅修改了navigationItem那就只对本控制器有效 push或者pop了都不影响，一般有以下几种情况:<br/>
-1. 修改了navigationItem的元素</p>
-
-<pre><code>```Object-c
-self.navigationItem.title = @&quot;title&quot;;
-self.navigationItem.titleView = [[UIView alloc] init];
-```
-</code></pre>
-
-<ol>
-<li><p>修改了navigationItem的BarButtonItem</p>
-
-<pre><code class="language-Object-c">self.navigationItem.leftBarButtonItem = [UIBarButtonItem itemWithTarget:self action:@selector(popViewController) image:@&quot;general_arrow_back_white&quot; highImage:@&quot;general_arrow_back_orange&quot;];
-</code></pre>
-
-<p><strong>一般我们可以通过这种方法拦截返回点击事件，比如全局控制器的返回按键已经写好，而我们想要拦截点击事件就可以用这种方法,写一个同一样式的按键触发不同的事件</strong><br/>
-这些修改是不影响的整个navigationBar的仅此不需要在视图控制器消失时做额外的操作</p></li>
-</ol>
-
-<p>而如果是修改了navigationBar 那就对全局有影响了,需要在控制器消失时做额外还原处理,一般情况如下:</p>
-
-<pre><code class="language-Object-c">//修改背景图片
-[self.navigationController.navigationBar setShadowImage:[UIImage new]];
-//修改背景颜色
-[self.navigationController.navigationBar lt_setBackgroundColor:[UIColor clearColor]];
-//修改navigationBar的整体字体颜色
-[self.navigationController.navigationBar setTitleTextAttributes:
- [NSDictionary dictionaryWithObjectsAndKeys:[UIColor whiteColor],NSForegroundColorAttributeName,nil]];
- //隐藏navigationBar
+}</p>
+<pre><code class="language-text">### 2. 注意在修改navigation时是只修改了navigationItem还是修改了NavigationBar
+如果是仅仅修改了navigationItem那就只对本控制器有效 push或者pop了都不影响，一般有以下几种情况:<br/>
+1. 修改了navigationItem的元素<br/>
+    ```Object-c<br/>
+    self.navigationItem.title = @&quot;title&quot;;<br/>
+    self.navigationItem.titleView = [[UIView alloc] init];<br/>
+    ```<br/>
+2. 修改了navigationItem的BarButtonItem<br/>
+    ```Object-c<br/>
+    self.navigationItem.leftBarButtonItem = [UIBarButtonItem itemWithTarget:self action:@selector(popViewController) image:@&quot;general_arrow_back_white&quot; highImage:@&quot;general_arrow_back_orange&quot;];<br/>
+    ```<br/>
+    **一般我们可以通过这种方法拦截返回点击事件，比如全局控制器的返回按键已经写好，而我们想要拦截点击事件就可以用这种方法,写一个同一样式的按键触发不同的事件**<br/>
+这些修改是不影响的整个navigationBar的仅此不需要在视图控制器消失时做额外的操作<br/>
+而如果是修改了navigationBar 那就对全局有影响了,需要在控制器消失时做额外还原处理,一般情况如下:<br/>
+```Object-c<br/>
+//修改背景图片<br/>
+[self.navigationController.navigationBar setShadowImage:[UIImage new]];<br/>
+//修改背景颜色<br/>
+[self.navigationController.navigationBar lt_setBackgroundColor:[UIColor clearColor]];<br/>
+//修改navigationBar的整体字体颜色<br/>
+[self.navigationController.navigationBar setTitleTextAttributes:<br/>
+ [NSDictionary dictionaryWithObjectsAndKeys:[UIColor whiteColor],NSForegroundColorAttributeName,nil]];<br/>
+ //隐藏navigationBar<br/>
 self.navigationController.navigationBar.hidden = YES;
 </code></pre>
-
 <p>此时我们需要在退出时做一下还原操作</p>
-
-<pre><code class="language-Object-c">[super viewWillDisappear:animated];
-[self.navigationController.navigationBar lt_reset];
-[self.navigationController.navigationBar setTitleTextAttributes:
-[NSDictionary dictionaryWithObjectsAndKeys:[UIColor blackColor],NSForegroundColorAttributeName,nil]];
+<pre><code class="language-object-c">[super viewWillDisappear:animated];
+[self.navigationController.navigationBar lt_reset];<br/>
+[self.navigationController.navigationBar setTitleTextAttributes:<br/>
+[NSDictionary dictionaryWithObjectsAndKeys:[UIColor blackColor],NSForegroundColorAttributeName,nil]];<br/>
 self.navigationController.navigationBar.hidden = NO;
 </code></pre>
-
-<h3 id="toc_2">3. 隐藏tabbar</h3>
-
-<p>我们在某些界面需要隐藏Tabbar的时候，会出现原区域无法响应点击事件的问题。系统的Tabbar已经被我们hidden了，但是仍然无法响应事件，此时我们只要将系统的Tabbar的frame设置为CGRectZero即可。<br/>
-<code>objc<br/>
-[UIApplication sharedApplication].keyWindow.rootViewController).tabBar.frame <br/>
-= CGRectZero;<br/>
-</code></p></li>
+<h3 id="toc_1">3. 隐藏tabbar</h3>
+<p>我们在某些界面需要隐藏Tabbar的时候，会出现原区域无法响应点击事件的问题。系统的Tabbar已经被我们hidden了，但是仍然无法响应事件，此时我们只要将系统的Tabbar的frame设置为CGRectZero即可。</p>
+<pre><code class="language-objectivec">[UIApplication sharedApplication].keyWindow.rootViewController).tabBar.frame 
+= CGRectZero;
+</code></pre></li>
 </ul>
 
-<h3 id="toc_3">4. 自动布局的动画</h3>
+<h3 id="toc_2">4. 自动布局的动画</h3>
 
-<pre><code>用`xib`拉的视图或者`masonry`布局的视图在`[UIView animation...]`动画方法中都是可以直接改变`frame`或者`transform`来进行动画的
+<pre><code class="language-text">用`xib`拉的视图或者`masonry`布局的视图在`[UIView animation...]`动画方法中都是可以直接改变`frame`或者`transform`来进行动画的
 我们可以直接改变`frame`包括宽、高、中心等 直接进行各种动画,而不用担心因为`autolayout`问题,毕竟masony或者xib拉约束都只是布局问题,在运行时还是会转成`frame`的.
 
 而通常我们拖约束线出去是为了:
@@ -203,7 +189,7 @@ self.navigationController.navigationBar.hidden = NO;
 2. 真的是要改变某个约束值做动画（通常某个视图也和这个约束有关系）
 </code></pre>
 
-<h3 id="toc_4">让UIButton的title对齐方式</h3>
+<h3 id="toc_3">让UIButton的title对齐方式</h3>
 
 <p>有些时候我们想让UIButton的title居左对齐</p>
 
@@ -297,7 +283,7 @@ self.navigationController.navigationBar.hidden = NO;
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
-            <a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html"><strong>全民认证</strong></a>
+            <a href="React-Native.html"><strong>React-Native</strong></a>
          
         </p>
 
@@ -314,31 +300,31 @@ self.navigationController.navigationBar.hidden = NO;
 	      
 		      
 			      <li class="post">
-			        <a href="15266103811219.html">JavaScript 与 ECMAScript 区别</a>
+			        <a href="15304988629042.html">混合开发(OC)</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15266103180287.html"># iOS编译过程</a>
+			        <a href="15293961047296.html">组件属性一</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15260169489026.html">常用宏定义</a>
+			        <a href="15290351401483.html">补充</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15252210899371.html">全民认证</a>
+			        <a href="15289781671435.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15205769334278.html">JS基础使用</a>
+			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  

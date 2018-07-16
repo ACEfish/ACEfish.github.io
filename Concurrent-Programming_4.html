@@ -68,10 +68,11 @@
 
 <aside class="left-off-canvas-menu">
       <ul class="off-canvas-list">
-       
-       <li><a href="index.html">HOME</a></li>
-    <li><a href="archives.html">Archives</a></li>
-    <li><a href="about.html">ABOUT</a></li>
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
 
     <li><label>Categories</label></li>
 
@@ -86,7 +87,7 @@
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
-            <li><a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html">全民认证</a></li>
+            <li><a href="React-Native.html">React-Native</a></li>
          
 
       </ul>
@@ -123,7 +124,7 @@
 <ul>
 <li>操作队列提供了在 GCD 中不那么容易复制的有用特性。其中最重要的一个就是可以取消在任务处理队列中的任务</li>
 <li>操作队列在管理操作间的依赖关系方面也容易一些</li>
-<li>CD 给予你更多的控制权力以及操作队列中所不能使用的底层函数
+<li>CD 给予你更多的控制权力以及操作队列中所不能使用的底层函数<br/>
 扩展阅读:
 <a href="http://stackoverflow.com/questions/10373331/nsoperation-vs-grand-central-dispatch">StackOverflow: NSOperation vs. Grand Central Dispatch</a>
 <a href="http://eschatologist.net/blog/?p=232">Blog: When to use NSOperation vs. GCD</a></li>
@@ -143,7 +144,7 @@
 <p>解决方案:<br/>
 我们创建一个<code>NSOperation</code> 的子类，将其叫做<code>ImportOperation</code>，我们通过重写 <code>main</code>方法，用来处理所有的导入工作。这里我们使用<code>NSPrivateQueueConcurrencyType</code>来创建一个独立并拥有自己的私有<code>dispatch queue</code>的 managed object context，这个 <code>context</code> 需要管理自己的队列。在队列中的所有操作必须使用<code>performBlock</code>或者<code>performBlockAndWait</code>来进行触发。</p>
 
-<pre><code class="language-Object-c">NSManagedObjectContext* context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+<pre><code class="language-object-c">NSManagedObjectContext* context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
 context.persistentStoreCoordinator = self.persistentStoreCoordinator;
 context.undoManager = nil;
 //performBlockAndWait:Synchronously performs a given block on the receiver’s queue.
@@ -157,7 +158,7 @@ context.undoManager = nil;
 
 <p>导入文件内容</p>
 
-<pre><code class="language-Object-c">/**
+<pre><code class="language-object-c">/**
     在导入前，我们枚举文件中的各行，并对可以解析的每一行创建 managed object ：
 */
 [lines enumerateObjectsUsingBlock:
@@ -172,7 +173,7 @@ context.undoManager = nil;
   }];
 </code></pre>
 
-<pre><code class="language-Object-c">/**
+<pre><code class="language-object-c">/**
     在 view controller 中通过以下代码来开始操作：
 */
 ImportOperation* operation = [[ImportOperation alloc]
@@ -180,7 +181,7 @@ ImportOperation* operation = [[ImportOperation alloc]
 [self.operationQueue addOperation:operation];
 </code></pre>
 
-<pre><code class="language-Object-c">/**
+<pre><code class="language-object-c">/**
     至此为止，后台导入部分已经完成。接下来，我们要加入取消功能，这其实非常简单，只需要枚举的 block 中加一个判断就行了：
 */
 if(self.isCancelled) {
@@ -189,7 +190,7 @@ if(self.isCancelled) {
 }
 </code></pre>
 
-<pre><code class="language-Object-c">/**
+<pre><code class="language-object-c">/**
     最后为了支持进度条，我们在 operation 中创建一个叫做 progressCallback 的属性。需要注意的是，更新进度条必须在主线程中完成，否则会导致 UIKit 崩溃。
 */
 operation.progressCallback = ^(float progress)
@@ -205,7 +206,7 @@ self.progressCallback(idx / (float) count);
 
 </code></pre>
 
-<pre><code class="language-Object-c">  //  然而，如果你执行示例代码的话，你会发现它运行逐渐变得很慢，取消操作也有迟滞。这是因为主操作队列中塞满了要更新进度条的 block 操作。一个简单的解决方法是降低更新的频度，比如只在每导入一百行时更新一次：
+<pre><code class="language-object-c">  //  然而，如果你执行示例代码的话，你会发现它运行逐渐变得很慢，取消操作也有迟滞。这是因为主操作队列中塞满了要更新进度条的 block 操作。一个简单的解决方法是降低更新的频度，比如只在每导入一百行时更新一次：
 
 NSInteger progressGranularity = 100;
 
@@ -219,7 +220,7 @@ if (idx % progressGranularity == 0) {
 
 <p>在让一切运转起来之前之前，还有一件事情要做。现在在后台 context 中导入的数据还不能传送到主 context 中，除非我们显式地让它这么去做。我们在<code>Store</code>类的设置<code>Core Data stack</code>的<code>init</code>方法中加入下面的代码：</p>
 
-<pre><code class="language-Object-c">[NSNotificationCenter defaultCenter]
+<pre><code class="language-object-c">[NSNotificationCenter defaultCenter]
     addObserverForName:NSManagedObjectContextDidSaveNotification
                 object:nil
                  queue:nil
@@ -257,7 +258,7 @@ if (idx % progressGranularity == 0) {
 
 <p>如果你找到了你能够隔离出的昂贵操作的话，可以将其放到操作队列中去：</p>
 
-<pre><code class="language-Object-c">__weak id weakSelf = self;
+<pre><code class="language-object-c">__weak id weakSelf = self;
 [self.operationQueue addOperationWithBlock:^{
     NSNumber* result = findLargestMersennePrime();
     [[NSOperationQueue mainQueue] addOperationWithBlock:^{
@@ -277,7 +278,7 @@ if (idx % progressGranularity == 0) {
 解决方案:<br/>
 其实解决起来也很简单，把<code>drawRect:</code>中的代码放到一个后台操作中去做就可以了。然后将原本打算绘制的视图用一个 image view 来替换，等到操作执行完后再去更新。在绘制的方法中，使用 <code>UIGraphicsBeginImageContextWithOptions</code>来取代<code>UIGraphicsGetCurrentContext ：</code></p>
 
-<pre><code class="language-Object-c">UIGraphicsBeginImageContextWithOptions(size, NO, 0);
+<pre><code class="language-object-c">UIGraphicsBeginImageContextWithOptions(size, NO, 0);
 // drawing code here
 UIImage *i = UIGraphicsGetImageFromCurrentImageContext();
 UIGraphicsEndImageContext();
@@ -297,7 +298,7 @@ return i;
 
 <p><strong>所有的网络请求都应该通过异步的方式进行</strong></p>
 
-<pre><code class="language-Object-c">// 警告：不要使用这些代码。
+<pre><code class="language-object-c">// 警告：不要使用这些代码。
 dispatch_async(backgroundQueue, ^{
    NSData* contents = [NSData dataWithContentsOfURL:url]
    dispatch_async(dispatch_get_main_queue(), ^{
@@ -310,7 +311,7 @@ dispatch_async(backgroundQueue, ^{
 <p>要解决上面的困境，我们可以使用<code>NSURLConnection</code>的异步方法，并且把所有操作转化为 operation 来执行. NSURLConnection 是通过<code>run loop</code>来发送事件的。因为事件发送不会花多少时间，因此最简单的是就只使用 main run loop 来做这个。然后，我们就可以用后台线程来处理输入的数据了。<br/>
 要处理URL 连接，我们重写自定义的 operation 子类中的 start 方法：</p>
 
-<pre><code class="language-Object-c">- (void)start
+<pre><code class="language-object-c">- (void)start
 {
     NSURLRequest* request = [NSURLRequest requestWithURL:self.url];
     self.isExecuting = YES;
@@ -325,7 +326,7 @@ dispatch_async(backgroundQueue, ^{
 
 <p>由于重写的是 start 方法，所以我们需要自己要管理操作的 isExecuting 和 isFinished 状态。要取消一个操作，我们需要取消 connection ，并且设定合适的标记，这样操作队列才知道操作已经完成。</p>
 
-<pre><code class="language-Object-c">- (void)connectionDidFinishLoading:(NSURLConnection *)connection
+<pre><code class="language-object-c">- (void)connectionDidFinishLoading:(NSURLConnection *)connection
 {
     self.data = self.buffer;
     self.buffer = nil;
@@ -448,7 +449,7 @@ dispatch_async(backgroundQueue, ^{
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
-            <a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html"><strong>全民认证</strong></a>
+            <a href="React-Native.html"><strong>React-Native</strong></a>
          
         </p>
 
@@ -465,31 +466,31 @@ dispatch_async(backgroundQueue, ^{
 	      
 		      
 			      <li class="post">
-			        <a href="15266103811219.html">JavaScript 与 ECMAScript 区别</a>
+			        <a href="15304988629042.html">混合开发(OC)</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15266103180287.html"># iOS编译过程</a>
+			        <a href="15293961047296.html">组件属性一</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15260169489026.html">常用宏定义</a>
+			        <a href="15290351401483.html">补充</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15252210899371.html">全民认证</a>
+			        <a href="15289781671435.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15205769334278.html">JS基础使用</a>
+			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  

@@ -68,10 +68,11 @@
 
 <aside class="left-off-canvas-menu">
       <ul class="off-canvas-list">
-       
-       <li><a href="index.html">HOME</a></li>
-    <li><a href="archives.html">Archives</a></li>
-    <li><a href="about.html">ABOUT</a></li>
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
 
     <li><label>Categories</label></li>
 
@@ -86,7 +87,7 @@
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
-            <li><a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html">全民认证</a></li>
+            <li><a href="React-Native.html">React-Native</a></li>
          
 
       </ul>
@@ -142,36 +143,32 @@
 
 <ol>
 <li><p>class mock一个对象</p>
-
-<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
+<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
 //创建mock object当做类的实例
 </code></pre></li>
-<li><p>Stubbing methods that return objects<br/>
-<code>Object-c<br/>
-/**<br/>
+<li><p>Stubbing methods that return objects</p>
+<pre><code class="language-object-c">/**
 意的就是有参数的方法，参数是可以具体指定的，也就是说只有满足你指定的具体参数的调用才会被mock指定的返回值。例子中的[OCMArg any]是指任意参数。<br/>
 */<br/>
 //没有参数的方法<br/>
 OCMStub([mockClass someMethod]).andReturn(anObject);<br/>
 //有参数的方法<br/>
-OCMStub([mockClass someMethod:[OCMArg any]]).andReturn(anObject);<br/>
-</code><br/>
-注意:<br/>
+OCMStub([mockClass someMethod:[OCMArg any]]).andReturn(anObject);
+</code></pre>
+<p>注意:<br/>
 <strong>OCMock会在mock实例上没有找到相同名字的实例方法的时候去找同名的类方法。</strong></p></li>
 <li><p>Verify-after-running<br/>
 有些时候需要验证我们执行的代码流程是否调用了某个外部的方法，这个时候用OCMock就比较简单来实现。如果没有调用过这个方法的话，会立即抛一个异常出来。</p>
-
-<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
-//...
-//some code
-//...
+<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
+//...<br/>
+//some code<br/>
+//...<br/>
 OCMVerify([mockClass someMethod]);
 </code></pre></li>
 <li><p>验证mock方法没有被调用<br/>
 验证代码没有调用某个方法<br/>
-如果方法被调用了，就将isCalled设置为YES，这样最后assert的时候就会报错。<br/>
-<code>Object-c<br/>
-static BOOL isCalled = false;<br/>
+如果方法被调用了，就将isCalled设置为YES，这样最后assert的时候就会报错。</p>
+<pre><code class="language-object-c">static BOOL isCalled = false;
 id mockClass = OCMClassMock([SomeClass class]);<br/>
 OCMStub([mockClass someMethod]).andDo(^(NSInvocation *invocation){<br/>
 isCalled = YES;<br/>
@@ -179,32 +176,27 @@ isCalled = YES;<br/>
 //...<br/>
 //some code<br/>
 //...<br/>
-XCTAssertFalse(isCalled);<br/>
-</code></p></li>
+XCTAssertFalse(isCalled);
+</code></pre></li>
 <li><p>验证mock方法传入的参数<br/>
 验证传递给外部调用的参数是否符合预期</p>
-
-<pre><code class="language-Objec-c">id mockClass = OCMClassMock([SomeClass class]);
-OCMStub([mockClass someMethod:[OCMArg checkWithBlock:^BOOL(id obj) {
-//...
-//some code
-//...
-return YES;
+<pre><code class="language-objec-c">id mockClass = OCMClassMock([SomeClass class]);
+OCMStub([mockClass someMethod:[OCMArg checkWithBlock:^BOOL(id obj) {<br/>
+//...<br/>
+//some code<br/>
+//...<br/>
+return YES;<br/>
 ]]);
 </code></pre></li>
 <li><p>mock单例</p>
-
 <p>如果我们mock的类是个单例的话，那么使用之前的方法进行mock是不会生效的。不过OCMock提供了一个很简单的解决方法，那就是调用单例返回mock</p>
-
-<pre><code class="language-Object-c">id mockClass = OCMClassMock([SomeClass class]);
+<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
 OCMStub([mockClass instanceMethod]).andReturn(mockClass);
 </code></pre></li>
 <li><p>The any constraint</p>
-
-<pre><code class="language-Object-c">OCMStub([mock someMethodWithAnArgument:[OCMArg any]])
-OCMStub([mock someMethodWithPointerArgument:[OCMArg anyPointer]])
+<pre><code class="language-object-c">OCMStub([mock someMethodWithAnArgument:[OCMArg any]])
+OCMStub([mock someMethodWithPointerArgument:[OCMArg anyPointer]])<br/>
 OCMStub([mock someMethodWithSelectorArgument:[OCMArg anySelector]])
-
 </code></pre></li>
 <li><p>处理block参数<br/>
 OCMock也可以处理block回调参数。block回调通常用于网络代码，数据库代码，或者在任何异步操作中。在这个例子中，思考下下面的方法：<br/>
@@ -213,7 +205,7 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 
 <p>在这个例子中，我们有一个下载天气压缩数据的方法，并且把下载下来的dictionary代理到一个block的回调中。在测试中，我们通过预定义的天气数据来测试回调处理。这也是明智的测试失败场景。你永远不会知道网络上会返回你什么东西！</p>
 
-<pre><code class="language-Object">OCMStub([groupModelMock downloadWeatherDataForZip:@&quot;80304&quot; callback:[OCMArg any]]]).andDo(^(NSInvocation *invocation){
+<pre><code class="language-object">OCMStub([groupModelMock downloadWeatherDataForZip:@&quot;80304&quot; callback:[OCMArg any]]]).andDo(^(NSInvocation *invocation){
         //2. declare a block with same signature
         void (^weatherStubResponse)(NSDictionary *dict);
         //3. link argument 3 with with our block callback
@@ -240,7 +232,7 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 
 <p>示例2：</p>
 
-<pre><code class="language-Object-c">- (void)testStrictMock3{
+<pre><code class="language-object-c">- (void)testStrictMock3{
 
     id classMock = OCMClassMock([TweetView class]);
 
@@ -261,7 +253,7 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 
 <p>还有一种表示严格的mock：OCMStrictClassMock，如果把OCMExpect和OCMStub注释掉时会报错，它要求你执行类中的所有方法，所以比较适合用来测试必须实现的方法，代码如下：</p>
 
-<pre><code class="language-Object-c">- (void)testStrictMock3{
+<pre><code class="language-object-c">- (void)testStrictMock3{
     id classMock = OCMStrictClassMock([TweetView class]);
     //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
     //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
@@ -356,7 +348,7 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
-            <a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html"><strong>全民认证</strong></a>
+            <a href="React-Native.html"><strong>React-Native</strong></a>
          
         </p>
 
@@ -373,31 +365,31 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	      
 		      
 			      <li class="post">
-			        <a href="15266103811219.html">JavaScript 与 ECMAScript 区别</a>
+			        <a href="15304988629042.html">混合开发(OC)</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15266103180287.html"># iOS编译过程</a>
+			        <a href="15293961047296.html">组件属性一</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15260169489026.html">常用宏定义</a>
+			        <a href="15290351401483.html">补充</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15252210899371.html">全民认证</a>
+			        <a href="15289781671435.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15205769334278.html">JS基础使用</a>
+			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  

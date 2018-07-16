@@ -68,10 +68,11 @@
 
 <aside class="left-off-canvas-menu">
       <ul class="off-canvas-list">
-       
-       <li><a href="index.html">HOME</a></li>
-    <li><a href="archives.html">Archives</a></li>
-    <li><a href="about.html">ABOUT</a></li>
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
 
     <li><label>Categories</label></li>
 
@@ -86,7 +87,7 @@
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
-            <li><a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html">全民认证</a></li>
+            <li><a href="React-Native.html">React-Native</a></li>
          
 
       </ul>
@@ -141,7 +142,7 @@
 <p><code>CAAnimation</code>在动画结束时会属性会回到原值所以<br/>
 我们在做了显式动画后可以用<code>CAAnimationDelegate</code>中<code>- animationDidStop:finished:</code>方法来更新图层属性（一般设置其为终值）,更新属性的时候我们需要一个新的事务并且禁用图层行为.否则会有两次动画.</p>
 
-<pre><code class="language-objc">- (void)animationDidStop:(CABasicAnimation *)anim finished:(BOOL)flag
+<pre><code class="language-objectivec">- (void)animationDidStop:(CABasicAnimation *)anim finished:(BOOL)flag
 {
     //set the backgroundColor property to match animation toValue
     [CATransaction begin];
@@ -156,7 +157,7 @@
 2.使用<code>-addAnimation:forKey:</code>给动画设置不同key,<code>-animationForKey:</code>找到对应的key来对比，可实现但是比较复杂<br/>
 3.最简单的方法,<code>CAAnimation</code>实现了KVC,但是更像一个 NSDictionary ，可以让你<strong>随意设置键值对</strong>，即使和你使用的动画类所声明的属性并不匹配。</p>
 
-<pre><code class="language-objc">//初始化动画时用KVC设置键值对
+<pre><code class="language-objectivec">//初始化动画时用KVC设置键值对
 CABasicAnimation *animation = [CABasicAnimation animation];
 [self updateHandsAnimated:NO];
 animation.keyPath = @&quot;transform&quot;;
@@ -183,7 +184,7 @@ animation.delegate = self;
 
 <p><code>CAKeyframeAnimation</code>关键帧动画:只我们只需要绘制关键帧的动画，然后<code>Core Animation</code>在每帧之间进行插入。</p>
 
-<pre><code class="language-objc">- (IBAction)changeColor
+<pre><code class="language-objectivec">- (IBAction)changeColor
 {
     //create a keyframe animation
     CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
@@ -204,7 +205,7 @@ animation.delegate = self;
 <p>上面是使用<code>animation.values</code>来设置关键帧，我还可以用<code>path 属性</code>指定运动序列.<br/>
 我们要绘制一个<code>CGPath</code>的三次贝塞尔曲线，可以通过使用一个基于C的<code>Core Graphics</code>绘图指令来创建，不过用<code>UIKit</code>提供的<code>UIBezierPath</code>类会更简单.</p>
 
-<pre><code class="language-objc">UIBezierPath *bezierPath = [[UIBezierPath alloc] init];
+<pre><code class="language-objectivec">UIBezierPath *bezierPath = [[UIBezierPath alloc] init];
 [bezierPath moveToPoint:CGPointMake(0, 150)];
 [bezierPath addCurveToPoint:CGPointMake(300, 150) controlPoint1:CGPointMake(75, 0) controlPoint2:CGPointMake(225, 300)];
 CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
@@ -223,7 +224,7 @@ animation.path = bezierPath.CGPath;
 
 <p>例如:想要对物体做旋转动画,需要作用于<code>transform</code> 属性，因为<code>CALayer</code>没有显式提供角度或者方向之类的属性</p>
 
-<pre><code class="language-objc">CABasicAnimation *animation = [CABasicAnimation animation];
+<pre><code class="language-objectivec">CABasicAnimation *animation = [CABasicAnimation animation];
 animation.keyPath = @&quot;transform&quot;;
 animation.duration = 2.0;
 animation.toValue = [NSValue valueWithCATransform3D: CATransform3DMakeRotation(M_PI, 0, 0, 1)];
@@ -240,15 +241,16 @@ animation.toValue = [NSValue valueWithCATransform3D: CATransform3DMakeRotation(M
 
 <p>推荐:<br/>
 我们可以<br/>
-对<code>transform.rotation</code>关键路径应用动画，而不是<code>transform</code>本身<br/>
-<code>objc<br/>
-CABasicAnimation *animation = [CABasicAnimation animation];<br/>
-animation.keyPath = @&quot;transform.rotation&quot;;<br/>
-animation.duration = 2.0;<br/>
-animation.byValue = @(M_PI * 2);<br/>
-[shipLayer addAnimation:animation forKey:nil];<br/>
-</code><br/>
-这样我们就可以简单使用角度而不用复杂的矩阵,就可以使用<code>byValue</code>了. 还可以额外使用<code>transform.position</code> 或者<code>transform.scale</code></p>
+对<code>transform.rotation</code>关键路径应用动画，而不是<code>transform</code>本身</p>
+
+<pre><code class="language-objectivec">CABasicAnimation *animation = [CABasicAnimation animation];
+animation.keyPath = @&quot;transform.rotation&quot;;
+animation.duration = 2.0;
+animation.byValue = @(M_PI * 2);
+[shipLayer addAnimation:animation forKey:nil];
+</code></pre>
+
+<p>这样我们就可以简单使用角度而不用复杂的矩阵,就可以使用<code>byValue</code>了. 还可以额外使用<code>transform.position</code> 或者<code>transform.scale</code></p>
 
 <p><code>transform.rotation</code>属性其实并不存在,这是因为<code>CATransform3D</code>不是对象而是结构体，它就是一个 <code>CALayer</code> 用于处理动画变换的虚拟属性。当我们<code>transform.rotation</code>等虚拟属性做动画时，<code>Core Animation</code>自动地根据通过 <code>CAValueFunction</code> 来计算的值来更新<code>transform</code> 属性。<br/>
 <code>CAValueFunction</code>用于把我们赋给虚拟的 <code>transform.rotation</code>简单浮点值转换成真正的用于摆放图层的<code>CATransform3D</code> 矩阵值。可以通过设置 <code>CAPropertyAnimation</code> 的<code>valueFunction</code>属性来改变，于是你设置的函数将会覆盖默认的函数。</p>
@@ -259,7 +261,7 @@ animation.byValue = @(M_PI * 2);<br/>
 
 <p><code>属性动画</code>仅仅作用于单独的属性,<code>CAAnimationGroup</code>是另一个继承于 <code>CAAnimation</code> 的子类，它添加了一个 <code>animations</code> 数组的属性，用来组合别的动画。</p>
 
-<pre><code class="language-objc">CAKeyframeAnimation *animation1 = [CAKeyframeAnimation animation];
+<pre><code class="language-objectivec">CAKeyframeAnimation *animation1 = [CAKeyframeAnimation animation];
 animation1.keyPath = @&quot;position&quot;;
 animation1.path = bezierPath.CGPath;
 animation1.rotationMode = kCAAnimationRotateAuto;
@@ -283,7 +285,7 @@ groupAnimation.duration = 4.0;
 
 <p>我们用<code>CATransition</code>来创建过渡动画,它也是<code>CAAnimation</code>子类,有一个<code>type</code>和<code>subtype</code>来标识变换效果。</p>
 
-<pre><code class="language-objc">//type:
+<pre><code class="language-objectivec">//type:
 kCATransitionFade//默认,淡入淡出
 kCATransitionMoveIn //新图层从顶部滑入
 kCATransitionPush //推出老图层
@@ -293,7 +295,7 @@ kCATransitionReveal //滑动出原图层，显示新外观,而不是滑动入新
 
 <p><code>type</code>过渡类型都有一个默认的动画方向（从左侧滑入）,可以通过<code>subtype</code>控制方向</p>
 
-<pre><code>//subtype
+<pre><code class="language-text">//subtype
 kCATransitionFromRight
 kCATransitionFromLeft//
 kCATransitionFromTop
@@ -310,7 +312,7 @@ kCATransitionFromBottom
 <p><strong>注意</strong><br/>
 虽然我们用<code>过渡动画</code>来对图层的某些不可动画属性做动画,但是也不是说过渡动画不能对可动画属性做动画.</p>
 
-<pre><code class="language-objc">    CATransition *transition = [CATransition animation];
+<pre><code class="language-objectivec">    CATransition *transition = [CATransition animation];
     transition.type = kCATransitionPush;
     transition.subtype = kCATransitionFromRight;
     [self.containerView.layer addAnimation:transition forKey:nil];
@@ -331,7 +333,7 @@ onWithView:duration:options:animations:</code></p>
 
 <p>这些过渡方法中<code>options</code>参数可以由如下常量指定：</p>
 
-<pre><code class="language-objc">UIViewAnimationOptionTransitionFlipFromLeft//以Y轴从左向右旋转
+<pre><code class="language-objectivec">UIViewAnimationOptionTransitionFlipFromLeft//以Y轴从左向右旋转
 UIViewAnimationOptionTransitionFlipFromRight
 UIViewAnimationOptionTransitionCurlUp//从上向下翻页效果
 UIViewAnimationOptionTransitionCurlDown
@@ -347,7 +349,7 @@ UIViewAnimationOptionTransitionFlipFromBottom
 
 <p>对图层截图的方法:<code>CALayer</code>有一个 <code>- renderInContext:</code>方法，可以通过把它绘制到<code>Core Graphics</code>的上下文中捕获当前内容的图片，然后在另外的视图中显示出来。如果我们把这个截屏视图置于原始视图之上，就可以遮住真实视图的所有变化，于是重新创建了一个简单的过渡效果。</p>
 
-<pre><code class="language-objc">- (IBAction)performTransition
+<pre><code class="language-objectivec">- (IBAction)performTransition
 {
     //preserve the current view snapshot
     UIGraphicsBeginImageContextWithOptions(self.view.bounds.size, YES, 0.0);
@@ -472,7 +474,7 @@ UIViewAnimationOptionTransitionFlipFromBottom
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
-            <a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html"><strong>全民认证</strong></a>
+            <a href="React-Native.html"><strong>React-Native</strong></a>
          
         </p>
 
@@ -489,31 +491,31 @@ UIViewAnimationOptionTransitionFlipFromBottom
 	      
 		      
 			      <li class="post">
-			        <a href="15266103811219.html">JavaScript 与 ECMAScript 区别</a>
+			        <a href="15304988629042.html">混合开发(OC)</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15266103180287.html"># iOS编译过程</a>
+			        <a href="15293961047296.html">组件属性一</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15260169489026.html">常用宏定义</a>
+			        <a href="15290351401483.html">补充</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15252210899371.html">全民认证</a>
+			        <a href="15289781671435.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15205769334278.html">JS基础使用</a>
+			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  

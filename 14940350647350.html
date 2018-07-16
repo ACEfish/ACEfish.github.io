@@ -68,10 +68,11 @@
 
 <aside class="left-off-canvas-menu">
       <ul class="off-canvas-list">
-       
-       <li><a href="index.html">HOME</a></li>
-    <li><a href="archives.html">Archives</a></li>
-    <li><a href="about.html">ABOUT</a></li>
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
 
     <li><label>Categories</label></li>
 
@@ -86,7 +87,7 @@
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
-            <li><a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html">全民认证</a></li>
+            <li><a href="React-Native.html">React-Native</a></li>
          
 
       </ul>
@@ -143,7 +144,7 @@
 
 <p>事实上不管是<code>JPEG</code>还是<code>PNG</code>图片，都是一种压缩的位图图形格式。只不过<code>PNG</code>图片是无损压缩，并且支持<code>alpha</code>通道，而<code>JPEG</code>图片则是有损压缩，可以指定<code>0-100%</code>的压缩比。值得一提的是，在苹果的<code>SDK</code> 中专门提供了两个函数用来生成 PNG 和 JPEG 图片：</p>
 
-<pre><code class="language-objc">UIKIT_EXTERN NSData * __nullable UIImagePNGRepresentation(UIImage * __nonnull image);
+<pre><code class="language-objectivec">UIKIT_EXTERN NSData * __nullable UIImagePNGRepresentation(UIImage * __nonnull image);
  
 // return image as JPEG. May return nil if image has no CGImageRef or invalid bitmap format. compression is 0(most)..1(least)            
 UIKIT_EXTERN NSData * __nullable UIImageJPEGRepresentation(UIImage * __nonnull image, CGFloat compressionQuality);
@@ -159,11 +160,9 @@ UIKIT_EXTERN NSData * __nullable UIImageJPEGRepresentation(UIImage * __nonnull i
 
 <ol>
 <li><p>在程序生命周期不易察觉时来加载图片</p>
-
 <p>比如启动或者屏幕切换<br/>
 按下按钮和按钮响应时间之间最大延时大概200ms,而切换每帧动画16ms<br/>
 可以程序首次启动加载图片,如果启动时间过长影响用户体验,超过20s苹果就会关闭你的应用了</p>
-
 <p>但是有时候不适合提前加载所有图片,比如图片过多或者需要从网络远程下载图片</p></li>
 </ol>
 
@@ -177,7 +176,7 @@ UIKIT_EXTERN NSData * __nullable UIImageJPEGRepresentation(UIImage * __nonnull i
 
 <p>下面是  我们在低优先级的后台队列而不是主线程用<code>GCD</code>加载图片</p>
 
-<pre><code class="language-objc">- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
+<pre><code class="language-objectivec">- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
 cellForItemAtIndexPath:(NSIndexPath *)indexPath
 {
 //dequeue cell
@@ -232,17 +231,15 @@ forIndexPath:indexPath];
 <li>我们可以用<code>UIImage</code>的 <code>+imageNamed: 方法</code>，它不同于<code>+imageWithContentsOfFile: （和其他别的 UIImage 加载方法）</code>它可以避免延时加载，会在加载图片后立刻解压.但是这个方法只对资源束中图片有效.</li>
 <li>另一种立刻加载图片的方法就是把它设置成图层内容，或者是<code>UIImageView</code>的<code>image</code>属性,但是这都需要在主线程进行,不能提升性能.</li>
 <li><p>绕过<code>UIKit</code>，像下面这样使用<code>ImageIO</code>框架</p>
-
-<pre><code class="language-objc">NSInteger index = indexPath.row;
-NSURL *imageURL = [NSURL fileURLWithPath:self.imagePaths[index]];
-NSDictionary *options = @{(__bridge id)kCGImageSourceShouldCache: @YES};
-CGImageSourceRef source = CGImageSourceCreateWithURL((__bridge CFURLRef)imageURL, NULL);
-CGImageRef imageRef = CGImageSourceCreateImageAtIndex(source, 0,(__bridge CFDictionaryRef)options);
-UIImage *image = [UIImage imageWithCGImage:imageRef];
-CGImageRelease(imageRef);
+<pre><code class="language-objectivec">NSInteger index = indexPath.row;
+NSURL *imageURL = [NSURL fileURLWithPath:self.imagePaths[index]];<br/>
+NSDictionary *options = @{(__bridge id)kCGImageSourceShouldCache: @YES};<br/>
+CGImageSourceRef source = CGImageSourceCreateWithURL((__bridge CFURLRef)imageURL, NULL);<br/>
+CGImageRef imageRef = CGImageSourceCreateImageAtIndex(source, 0,(__bridge CFDictionaryRef)options);<br/>
+UIImage *image = [UIImage imageWithCGImage:imageRef];<br/>
+CGImageRelease(imageRef);<br/>
 CFRelease(source);
 </code></pre>
-
 <p>可以使用<code>kCGImageSourceShouldCache</code>来创建图片，强制图片立刻解压，然后在图片的生命周期保留解压后的版本。</p></li>
 </ol>
 
@@ -261,7 +258,7 @@ CFRelease(source);
 
 <p>同样，如果想显示图片到比原始尺寸小的容器中，那么一次性在后台线程重新绘制到正确的尺寸会比每次显示的时候都做缩放会更有效</p>
 
-<pre><code class="language-objc">//-collectionView:cellForItemAtIndexPath: 方法来重绘图片
+<pre><code class="language-objectivec">//-collectionView:cellForItemAtIndexPath: 方法来重绘图片
 UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@&quot;Cell&quot; forIndexPath:indexPath];
 ...
 //switch to background thread
@@ -299,7 +296,7 @@ return cell;
 <li><code>CATiledLayer</code>需要我们每次重绘图片到<code>CGContext</code>中，即使它已经解压缩，而且和我们单元格尺寸一样（因此可以直接用作图层内容，而不需要重绘）</li>
 </ul>
 
-<pre><code class="language-objc">- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath
+<pre><code class="language-objectivec">- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath
 {
     //dequeue cell
     UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@&quot;Cell&quot; forIndexPath:indexPath];
@@ -405,7 +402,7 @@ CATiledLayer 的 tileSize 属性单位是像素，而不是点，所以为了保
 
 <p>使用图片缓存和提前加载来扩展之前的传送器案例:</p>
 
-<pre><code class="language-objc">- (UIImage *)loadImageAtIndex:(NSUInteger)index
+<pre><code class="language-objectivec">- (UIImage *)loadImageAtIndex:(NSUInteger)index
 {
     //set up cache
     static NSCache *cache = nil;
@@ -464,7 +461,7 @@ CATiledLayer 的 tileSize 属性单位是像素，而不是点，所以为了保
 
 <p>对于包含透明的图片来说，最好是使用压缩透明通道的PNG图片和压缩RGB部分的JPEG图片混合起来加载。这就对任何格式都适用了，而且无论从质量还是文件尺寸还是加载性能来说都和PNG和JPEG的图片相近。</p>
 
-<pre><code class="language-objc">- (void)viewDidLoad
+<pre><code class="language-objectivec">- (void)viewDidLoad
 {
     [super viewDidLoad];
     //load color image
@@ -515,7 +512,7 @@ CATiledLayer 的 tileSize 属性单位是像素，而不是点，所以为了保
 
 <p>我们可以使用<a href="http://www.imgtec.com/powervr/insider/sdkdownloads">Imagination Technologies PVRTexTool</a>，</p>
 
-<pre><code class="language-objc">//终端将PNG转换为PVRTC命令
+<pre><code class="language-objectivec">//终端将PNG转换为PVRTC命令
 /Applications/Imagination/PowerVR/GraphicsSDK/PVRTexTool/CL/OSX_x86/PVRTexToolCL -i {input_file_name}.png -o {output_file_name}.pvr -legacypvr -p -f PVRTC1_4 -q pvrtcbest
 </code></pre>
 
@@ -603,7 +600,7 @@ CATiledLayer 的 tileSize 属性单位是像素，而不是点，所以为了保
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
-            <a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html"><strong>全民认证</strong></a>
+            <a href="React-Native.html"><strong>React-Native</strong></a>
          
         </p>
 
@@ -620,31 +617,31 @@ CATiledLayer 的 tileSize 属性单位是像素，而不是点，所以为了保
 	      
 		      
 			      <li class="post">
-			        <a href="15266103811219.html">JavaScript 与 ECMAScript 区别</a>
+			        <a href="15304988629042.html">混合开发(OC)</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15266103180287.html"># iOS编译过程</a>
+			        <a href="15293961047296.html">组件属性一</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15260169489026.html">常用宏定义</a>
+			        <a href="15290351401483.html">补充</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15252210899371.html">全民认证</a>
+			        <a href="15289781671435.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15205769334278.html">JS基础使用</a>
+			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  

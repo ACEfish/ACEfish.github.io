@@ -68,10 +68,11 @@
 
 <aside class="left-off-canvas-menu">
       <ul class="off-canvas-list">
-       
-       <li><a href="index.html">HOME</a></li>
-    <li><a href="archives.html">Archives</a></li>
-    <li><a href="about.html">ABOUT</a></li>
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
 
     <li><label>Categories</label></li>
 
@@ -86,7 +87,7 @@
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
-            <li><a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html">全民认证</a></li>
+            <li><a href="React-Native.html">React-Native</a></li>
          
 
       </ul>
@@ -122,7 +123,7 @@
 
 <p><code>block</code>的定义:</p>
 
-<pre><code class="language-objc">struct Block_descriptor_1 {
+<pre><code class="language-objectivec">struct Block_descriptor_1 {
     uintptr_t reserved;
     uintptr_t size;
 };
@@ -139,7 +140,7 @@ struct Block_layout {
 
 <p>在oc中，凡是首地址是<code>*isa</code>的结构体指针，都可以认为是对象.这样在<code>objc</code>中，<code>block</code>实际上就算是对象。</p>
 
-<pre><code class="language-objc">void foo_(){
+<pre><code class="language-objectivec">void foo_(){
     int i = 2;
     NSNumber *num = @3;
  
@@ -257,56 +258,46 @@ const，不可修改。 当block被copy后，block会对 id类型的变量产生
 
 <ol>
 <li><p>内存方面</p>
-
 <p><code>Block_copy()</code>和<code>Block_release()</code>必须一一匹配，否则会内存泄漏或crash。</p>
-
 <p><code>__block</code>这个修饰词会将原本的简单类型转化为较大的<code>struct</code>，这会给内存、调用带来额外的开销，使用时需要注意。</p></li>
 <li><p>ARC模式下的block使用<br/>
 在ARC模式下我们 不用手动<code>copy/release</code>，<br/>
 但是</p>
-
-<pre><code class="language-objc">void (^aBlock)(void);//定义一个aBlock对象（__strong）
-aBlock = ^{ printf(&quot;ok&quot;); };
-//只要一个block被赋值给一个strong变量，会自动copy
+<pre><code class="language-objectivec">void (^aBlock)(void);//定义一个aBlock对象（__strong）
+aBlock = ^{ printf(&quot;ok&quot;); };<br/>
+//只要一个block被赋值给一个strong变量，会自动copy<br/>
 //strong变量就是一个强引用指针  copy到堆后将对地址赋值给这个指针 对象引用着这个block
 </code></pre>
-
 <p>block是对象，所以这个aBlock默认是有__strong修饰符的，即<code>aBlock</code>对该block有<code>strong <br/>
 references</code>。即aBlock在被赋值的那一刻，这个block会被copy。所以，ARC开启后，所能接触到的<br/>
 block基本都是在堆上的。</p>
-
-<pre><code class="language-objc">//对于这个例子
-void (^aBlock)(void) = nil; 
-if (!aBlock) {
-    aBlock = ^{ printf(&quot;hehe&quot;); };
-}
-//block此时block已经被释放,该处留下了一个`dangling pointer`
+<pre><code class="language-objectivec">//对于这个例子
+void (^aBlock)(void) = nil; <br/>
+if (!aBlock) {<br/>
+    aBlock = ^{ printf(&quot;hehe&quot;); };<br/>
+}<br/>
+//block此时block已经被释放,该处留下了一个`dangling pointer`<br/>
 aBlock();
 </code></pre>
-
 <p>这种情况 苹果建议尽量避免这种情况。</p></li>
 <li><p>block易引起的循环引用问题</p>
-
 <p>当block被copy之后(如开启了ARC、或把block放入dispatch queue)，该block对它捕获的对象产生<br/>
 strong references (非ARC下是retain),所以有时需要避免block copy后产生的循环引用。</p>
-
 <p>如果用self引用了block，block又捕获了self，这样就会有循环引用。因此，需要用weak来声明self</p>
-
-<pre><code class="language-objc">    - (void)configureBlock {
-    XYZBlockKeeper * __weak weakSelf = self;
-    self.block = ^{
-    [weakSelf doSomething]; //捕获到的是弱引用
-    }
-    }
-    //当前前对象的成员变量对象，同样也会造成对self的引用
-    - (void)configureBlock {
-    id tmpIvar = _ivar; //临时变量,避免了self引用
-    self.block = ^{
-    [tmpIvar msg];
-    }
+<pre><code class="language-objectivec">    - (void)configureBlock {
+    XYZBlockKeeper * __weak weakSelf = self;<br/>
+    self.block = ^{<br/>
+    [weakSelf doSomething]; //捕获到的是弱引用<br/>
+    }<br/>
+    }<br/>
+    //当前前对象的成员变量对象，同样也会造成对self的引用<br/>
+    - (void)configureBlock {<br/>
+    id tmpIvar = _ivar; //临时变量,避免了self引用<br/>
+    self.block = ^{<br/>
+    [tmpIvar msg];<br/>
+    }<br/>
     }
 </code></pre>
-
 <p>为了避免循环引用，可以这样理解<code>block</code>：<code>block</code>就是一个对象，它捕获到的值就是这个对象的<code>@property(strong)</code></p></li>
 </ol>
 
@@ -395,7 +386,7 @@ strong references (非ARC下是retain),所以有时需要避免block copy后产�
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
-            <a href="%E5%85%A8%E6%B0%91%E8%AE%A4%E8%AF%81.html"><strong>全民认证</strong></a>
+            <a href="React-Native.html"><strong>React-Native</strong></a>
          
         </p>
 
@@ -412,31 +403,31 @@ strong references (非ARC下是retain),所以有时需要避免block copy后产�
 	      
 		      
 			      <li class="post">
-			        <a href="15266103811219.html">JavaScript 与 ECMAScript 区别</a>
+			        <a href="15304988629042.html">混合开发(OC)</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15266103180287.html"># iOS编译过程</a>
+			        <a href="15293961047296.html">组件属性一</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15260169489026.html">常用宏定义</a>
+			        <a href="15290351401483.html">补充</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15252210899371.html">全民认证</a>
+			        <a href="15289781671435.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15205769334278.html">JS基础使用</a>
+			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  
