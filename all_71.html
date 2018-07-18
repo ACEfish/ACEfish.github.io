@@ -88,6 +88,8 @@
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
             <li><a href="React-Native.html">React-Native</a></li>
+        
+            <li><a href="Python.html">Python</a></li>
          
 
       </ul>
@@ -110,272 +112,135 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14913623029277.html">
+                <a class="clearlink" href="14939015823586.html">
                 
-                  <h1>基于定时器的动画</h1>
+                  <h1>高效绘图</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>缓冲主要学习<code>CAMediaTimingFunction</code>通过来做加速减速等增强现实感.</p>
+                        	<p>如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</p>
 
-<p>本章学习精确地控制一帧一帧展示的基于定时器的动画,来更加真实模拟物理交互或者根据用户输入来改变动画</p>
+<p>关于绘制的性能<br/>
+提高绘制性能或者减少需要绘制的数量</p>
 
-<h3 id="toc_0">定时帧</h3>
+<h3 id="toc_0">软件绘图</h3>
 
-<p>iOS按照每秒60次刷新屏幕,<code>CAAnimation</code>计算出需要展示的新的帧。</p>
+<p>在<code>Core Animation</code>中的绘图通常是指<strong>软件绘图</strong><br/>
+在iOS中，软件绘图通常是由<code>Core Graphics</code>框架完成来完成。但是，在一些必要的情况下，相比<code>Core Animation</code>和<code>OpenGL</code>，<code>Core Graphics</code>要慢了不少。</p>
 
-<h4 id="toc_1">NSTimer</h4>
+<p>软件绘图不仅效率很低 而且很耗内存.CALayer只需要和自己相关的内存,只有他的寄宿图会消耗一点内存控件，即使直接赋给<code>contents</code>属性一张图片,也不需要增加额外的照片存储大小,如果相同的一张图片被多个图层作为<code>contents</code>属性，那么他们将会共用同一块内存，而不是复制内存块。</p>
 
-<p>我们可以用NStimer来一秒钟更新60次，来做动画.</p>
+<p><strong>但是如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</strong></p>
 
-<p>用<code>NSTimer</code>做动画的话需要几个属性来存储动画的<code>fromValue</code> ，<code>toValue</code>，<code>duration</code>和当前的 <code>timeOffset</code>。</p>
+<p><strong>绘图代价很大，尽量避免重绘你的视图</strong></p>
 
-<p><code>示例代码省略</code></p>
+<h3 id="toc_1">矢量图形</h3>
 
-<p>但是用<code>NSTimer</code>并不是一个很好的方案</p>
-
-<p>iOS中每个线程都管理了一个<code>NSRunloop</code>，通过循环来完成一些任务列表</p>
-
-<p>但是主线程的任务有:</p>
+<p>我们用的矢量绘图包含:</p>
 
 <ul>
-<li>处理触摸事件</li>
-<li>发送和接受网络数据包</li>
-<li>执行使用gcd的代码</li>
-<li>处理定时器行为</li>
-<li>屏幕重绘</li>
+<li>任意多边形</li>
+<li>斜线或曲线</li>
+<li>文本</li>
+<li>渐变</li>
 </ul>
 
-<p>当我们设置了一个NSTimer,会被插入到当前任务列表中,指定时间过去后才被执行.但是何时启动定时器并没有一个时间上限，而且它只会在列表中上一个任务完成之后开始执行。这通常会导致有几毫秒的延迟，但是如果上一个任务过了很久才完成就会导致延迟很长一段时间。</p>
+<p>实现一个划线应用:将用户的触摸手势转换成一个 UIBezierPath 上的点，然后绘制成视图。</p>
 
-<p>屏幕重绘的频率是一秒钟六十次，但是和定时器行为一样，如果列表中上一个执行了很长时间，它也会延迟。这些延迟都是一个随机值，于是就不能保证定时器精准地一秒钟执行六十次。有时候发生在屏幕重绘之后，这就会使得更新屏幕会有个延迟，看起来就是动画卡壳了。有时候定时器会在屏幕更新的时候执行两次，于是动画看起来就跳动了。</p>
+<p>1.用<code>Core Graphic</code>基于<code>drawRect</code>绘制</p>
 
-<p>优化方法:</p>
-
-<ul>
-<li>我们可以用 CADisplayLink 让更新频率严格控制在每次屏幕刷新之后。</li>
-<li>基于真实帧的持续时间而不是假设的更新频率来做动画。</li>
-<li>调整动画计时器的 <code>run loop</code> 模式，这样就不会被别的事件干扰。</li>
-</ul>
-
-<h4 id="toc_2">CADisplayLink</h4>
-
-<p><code>CADisplayLink</code>是<code>CoreAnimation</code>提供的另一个类似<code>NSTimer</code>类,总是在屏幕完成一次更新之前启动,它和<code>NSTimer</code>的内部实现相同,只不过它不是以时间间隔秒为单位,<code>CADisplayLink</code> 有一个整型的<code>frameInterval</code> 属性，指定了间隔多少帧之后才执行。默认值是1，意味着每次屏幕更新之前都会执行一次。(我们可以根据动画的执行时间来确定多少帧执行一次)</p>
-
-<p>虽然<code>CADisplayLink</code>也不能保证每帧都按计划执行,出现丢帧情况,但是和<code>NSTimer</code>不同的是<code>NSTimer</code>一有机会就会开启,而<code>CADisplayLink</code>如果丢帧的话会直接忽略它们,在下一次更新时接着运行;</p>
-
-<pre><code class="language-objectivec">self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-
-- (void)step:(CADisplayLink *)timer
+<pre><code class="language-objectivec">- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
 {
-    //calculate time delta
-    CFTimeInterval thisStep = CACurrentMediaTime();
-    CFTimeInterval stepDuration = thisStep - self.lastStep;
-    self.lastStep = thisStep;
-    
-    self.timeOffset = MIN(self.timeOffset + stepDuration, self.duration);
-    //get normalized time offset (in range 0 - 1)
-    float time = self.timeOffset / self.duration;
-    //apply easing
-    time = bounceEaseOut(time);
-    //interpolate position
-    id position = [self interpolateFromValue:self.fromValue toValue:self.toValue
-    time:time];
-    //move ball view to new position
-    self.ballView.center = [position CGPointValue];
-    //stop the timer if we&#39;ve reached the end of the animation
-    if (self.timeOffset &gt;= self.duration) {
-        [self.timer invalidate];
-        self.timer = nil;
+    CGPoint point = [[touches anyObject] locationInView:self];
+    [self.path addLineToPoint:point];
+    [self setNeedsDisplay];
+}
+- (void)drawRect:(CGRect)rect
+{
+    [[UIColor clearColor] setFill];
+    [[UIColor redColor] setStroke];
+    [self.path stroke];
+}
+</code></pre>
+
+<p><code>[self setNeedsDisplay];</code>可以重绘视图,再次走<code>drawRect</code>方法,但是如果一直重绘而且绘制工作量增大就会导致帧数下降.</p>
+
+<p>2.用<code>CAShaperLayer</code>绘制</p>
+
+<pre><code class="language-objectivec">+ (Class)layerClass
+{
+    return [CAShapeLayer class];
+}
+</code></pre>
+
+<p><code>Core Animation</code>为这些图层类型提供了专门的类，并提供了硬件支持,比如<code>CAShapeLayer</code>可以绘制多边形，直线和曲线。 <code>CATextLayer</code>可以绘制文本。<code>CAGradientLayer</code>用来绘制渐变。这些总体上都比<code>Core Graphics</code>更快，同时他们也避免了创造一个寄宿图。(<strong>这些图层是CA提供的,而我们的绘图用的是CG</strong>)</p>
+
+<p>因此对于绘制矢量图层我们可以重写<code>UIView</code>的<code>layer</code>然后只需要将绘制的<code>path</code>赋值<code>CAShapeLayer</code>的<code>path</code>即可绘制，虽然性能依然下降但不明显几乎感觉不到帧率差异</p>
+
+<h3 id="toc_2">脏矩形</h3>
+
+<p>有时候我们没办法用<code>CAShapeLayer</code>等图层来代替<code>Core Graphics</code>，对于上面的例子,我们为了进一步提高性能,我们用一个“线刷”图片粘贴到用户手指触碰的地方</p>
+
+<p>我们如果在用户手指移动就重绘视图将图片粘贴到用户手指移动过的所有点,这样绘制越多就越慢,仍会引起性能问题</p>
+
+<p>为了减少不必要的绘制,Mac OS和iOS设备将会把屏幕区分为需要重绘的区域和不需要重绘的区域。<strong>那些需要重绘的部分被称作『脏区域』。</strong>为了方便我们通常指出包含需要重绘的视图的矩形位置,就是<strong>脏矩形</strong></p>
+
+<p>只改变了视图的部分区域的,重绘整个整个寄宿图就太浪费了,我们可以通过提供重绘区域.</p>
+
+<p>当检测到需要重绘的区域时通过<code>setNeedsDisplayInRect:</code>标记,这样就会在一次试图刷新时调用调用视图的<code>- drawRect:</code>（或图层代理的<code>- drawLayer:inContext:</code>方法）</p>
+
+<p>传入<code>- drawLayer:inContext:</code>的<code>CGContext</code>参数会自动被裁切以适应对应的矩形。为了确定矩形的尺寸大小，你可以用<code>CGContextGetClipBoundingBox()</code>方法来从上下文获得大小。调用<code>- drawRect()</code>会更简单，因为<code>CGRect</code>会作为参数直接传入。</p>
+
+<p>当然如果你的裁剪逻辑相当复杂,那还是是让<code>Core Graphics</code>来为你重绘吧，</p>
+
+<pre><code class="language-objectivec">- (void)addBrushStrokeAtPoint:(CGPoint)point
+{
+    //add brush stroke to array
+    [self.strokes addObject:[NSValue valueWithCGPoint:point]];
+    //set dirty rect
+    [self setNeedsDisplayInRect:[self brushRectForPoint:point]];
+}
+- (CGRect)brushRectForPoint:(CGPoint)point
+{
+    return CGRectMake(point.x - BRUSH_SIZE/2, point.y - BRUSH_SIZE/2, BRUSH_SIZE, BRUSH_SIZE);
+}
+- (void)drawRect:(CGRect)rect
+{
+    //redraw strokes
+    for (NSValue *value in self.strokes) {
+        //get point
+        CGPoint point = [value CGPointValue];
+        //get brush rect
+        CGRect brushRect = [self brushRectForPoint:point];
+        //only draw brush stroke if it intersects dirty rect
+        if (CGRectIntersectsRect(rect, brushRect)) {
+        //draw brush stroke
+        [[UIImage imageNamed:@&quot;Chalk.png&quot;] drawInRect:brushRect];
+        }
     }
 }
 </code></pre>
 
-<h4 id="toc_3">Run Loop 模式</h4>
+<h3 id="toc_3">异步绘制</h3>
 
-<p>创建Run Loop时需要指定mode,iOS会根据指定的优先级,，而且当UI很活跃的时候的确会暂停一些别的任务.</p>
+<p><code>UIKit</code>的单线程天性意味着寄宿图通畅要在主线程上更新，这意味着绘制会打断用户交互，甚至让整个<code>app</code>看起来处于无响应状态。</p>
 
-<ul>
-<li>NSDefaultRunLoopMode - 标准优先级</li>
-<li>NSRunLoopCommonModes - 高优先级</li>
-<li>UITrackingRunLoopMode - 用于 UIScrollView 和别的控件的动画</li>
-</ul>
+<p>为了可以避免用户等待绘制：</p>
 
-<pre><code class="language-objectivec">/*我们可以同时加入 NSDefaultRunLoopMode 和 UITrackingRunLoopMode 
-    来保证它不会被滑动打断，也不会被其他UIKit控件动画影响性能
-**/
-self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:UITrackingRunLoop];
-</code></pre>
+<h4 id="toc_4">CATiledLayer</h4>
 
-<h3 id="toc_4">物理模拟</h3>
+<p><code>CATiledLayer</code>除了将图层再次分割成独立更新的小块外<br/>
+<code>CATiledLayer</code>还有一个有趣的特性：在多个线程中为每个小块同时调用<code>- drawLayer:inContext:</code>方法。<br/>
+这就避免了阻塞用户交互而且能够利用多核心新片来更快地绘制。只有一个小块的<code>CATiledLayer</code>是实现异步更新图片视图的简单方法。</p>
 
-<p>我们在上面的方法中，关键帧的实现中我们提前加计算了所有帧,这次我们按需要进行计算,这样我们可以根据用户输入实时修改动画的逻辑，或者和别的实时动画系统例如物理引擎进行整合。</p>
+<h4 id="toc_5">drawsAsynchronously</h4>
 
-<h4 id="toc_5">Chipmunk</h4>
+<p>苹果为<code>CALayer</code>引入了这个令人好奇的属性，<code>drawsAsynchronously</code>属性对传入<code>-drawLayer:inContext:</code>的<code>CGContext</code>进行改动，允许<code>CGContext</code>延缓绘制命令的执行以至于不阻塞用户交互。</p>
 
-<p>基于物理学创建一个真实的重力模拟效果来取代当前基于缓冲的弹性动画,因为模拟物理效果太复杂了，我们直接使用开源的物理引擎,我这里使用<code>Chipmunk</code>，有很多版本包括和<code>Objective-C</code>绑定的<code>“indie”</code>版本<a href="http://chipmunk-physics.net/">下载地址</a></p>
+<p>它与<code>CATiledLayer</code>使用的异步绘制并不相同。它自己的 <code>- drawLayer:inContext:</code>方法只会在主线程调用，但是<code>CGContext</code>并不等待每个绘制命令的结束。相反地，它会将命令加入队列，当方法返回时，在后台线程逐个执行真正的绘制。</p>
 
-<p>我们只简单使用这个引擎中的几个类:</p>
-
-<ul>
-<li>cpSpace - 所有的物理结构体的容器。它有一个大小和一个可选的重力矢量</li>
-<li>cpBody - 一个固态无弹力的刚体。它有一个坐标，以及其他物理属性，例如质量，运动和摩擦系数等等。</li>
-<li>cpShape - 一个抽象的几何形状，用来检测碰撞。可以给结构体添加一个多边形，而且<code>cpShape</code>有各种子类来代表不同形状的类型。</li>
-</ul>
-
-<p>因为C语言是不支持引用计数的所以为了准确的创建和释放我们将<code>cpShape</code>和<code>cpBody</code>和<code>Crate</code>（木箱）类进行绑定，在木箱的<code>- init</code>方法中创建,<code>-dealloc</code>中释放。用视图控制器来管理<code>cpSpace</code></p>
-
-<p><code>Chipmunk</code>使用了一个和<code>UIKit</code>颠倒的坐标系（Y轴向上为正方向）。我们可以使用<code>geometryFlipped</code>属性翻转容器视图的集合坐标,这样模型和视图就共享一个坐标系了<br/>
-<strong>geometryFlipped</strong>设置layer的这个属性可以调整坐标系Y轴方向</p>
-
-<p>代码示例:</p>
-
-<pre><code class="language-objectivec">//创建木箱的image对象
-@interface Crate : UIImageView
-@property (nonatomic, assign) cpBody *body;
-@property (nonatomic, assign) cpShape *shape;
-@end
-
-@implementation Crate
-#define MASS 100
-- (id)initWithFrame:(CGRect)frame
-{
-    if ((self = [super initWithFrame:frame])) {
-        //set image
-        self.image = [UIImage imageNamed:@&quot;Crate.png&quot;];
-        self.contentMode = UIViewContentModeScaleAspectFill;
-        //create the body
-        self.body = cpBodyNew(MASS, cpMomentForBox(MASS, frame.size.width, frame.size.height));
-        //create the shape
-        cpVect corners[] = {
-            cpv(0, 0),
-            cpv(0, frame.size.height),
-            cpv(frame.size.width, frame.size.height),
-            cpv(frame.size.width, 0),
-        };
-    self.shape = cpPolyShapeNew(self.body, 4, corners, cpv(-frame.size.width/2, -frame.size.height/2));
-    //set shape friction &amp; elasticity
-    cpShapeSetFriction(self.shape, 0.5);
-    cpShapeSetElasticity(self.shape, 0.8);
-    //link the crate to the shape
-    //so we can refer to crate from callback later on
-    self.shape-&gt;data = (__bridge void *)self;
-    //set the body position to match view
-    cpBodySetPos(self.body, cpv(frame.origin.x + frame.size.width/2, 300 - frame.origin.y - frame.size.height/2));
-    }
-    return self;
-}
-- (void)dealloc
-{
-    //release shape and body
-    cpShapeFree(_shape);
-    cpBodyFree(_body);
-}
-@end
-
-//创建重力空间
-@interface ViewController ()
-@property (nonatomic, weak) IBOutlet UIView *containerView;
-@property (nonatomic, assign) cpSpace *space;
-@property (nonatomic, strong) CADisplayLink *timer;
-@property (nonatomic, assign) CFTimeInterval lastStep;
-@end
-
-@implementation ViewController
-#define GRAVITY 1000
-- (void)viewDidLoad
-{
-    //invert view coordinate system to match physics
-    self.containerView.layer.geometryFlipped = YES;
-    //set up physics space
-    self.space = cpSpaceNew();
-    cpSpaceSetGravity(self.space, cpv(0, -GRAVITY));
-    //add a crate
-    Crate *crate = [[Crate alloc] initWithFrame:CGRectMake(100, 0, 100, 100)];
-    [self.containerView addSubview:crate];
-    cpSpaceAddBody(self.space, crate.body);
-    cpSpaceAddShape(self.space, crate.shape);
-    //start the timer
-    self.lastStep = CACurrentMediaTime();
-    self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-    [self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-}
-
-void updateShape(cpShape *shape, void *unused)
-{
-    //get the crate object associated with the shape
-    Crate *crate = (__bridge Crate *)shape-&gt;data;
-    //update crate view position and angle to match physics shape
-    cpBody *body = shape-&gt;body;
-    crate.center = cpBodyGetPos(body);
-    crate.transform = CGAffineTransformMakeRotation(cpBodyGetAngle(body));
-}
-
-- (void)step:(CADisplayLink *)timer
-{
-    //calculate step duration
-    CFTimeInterval thisStep = CACurrentMediaTime();
-    CFTimeInterval stepDuration = thisStep - self.lastStep;
-    self.lastStep = thisStep;
-    //update physics
-    cpSpaceStep(self.space, stepDuration);
-    //update all the shapes
-    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
-}
-@end
-</code></pre>
-
-<h4 id="toc_6">添加用户交互</h4>
-
-<p>为了使木箱不掉落到屏幕外 我们在屏幕周围添加四条线来限制范围;</p>
-
-<p>通过给<code>cpSpace</code>添加四个<code>cpSegmentShape</code>对象（<code>cpSegmentShape</code>代表一条直线，所以四个拼起来就是一个矩形）。然后赋值给空间的<code>staticBody</code>属性(这是不受重力的结构体)，而不是像木箱那样会受重力的<code>cpBody</code>实例，因为我们不想这线画出屏幕或者被木箱击中消失。</p>
-
-<p>通过添加一个加速器,可以通过倾斜手机来调整重力矢量,在横屏模式下，要交换加速计矢量的x和y值，竖屏模式下再换回来.</p>
-
-<pre><code class="language-text">代码省略
-</code></pre>
-
-<h4 id="toc_7">模拟时间以及固定的时间步长</h4>
-
-<p>在上面我们做动画的缓冲效果来说,都是计算每帧的持续时间，这样的话两个时间步长就是可变的,对于模拟物理效果并不理想:</p>
-
-<p>因此我们通过<strong>固定的时间步长</strong>来计算物理效果，还要保证在屏幕发生重绘时能够同步更新视图</p>
-
-<p>因为刚好我们的模型（在这个例子中就是Chipmunk的 cpSpace 中的 cpBody ）被视图（就是屏幕上代表木箱的 UIView 对象）分离，于是就很简单了。我们只需要根据屏幕刷新的时间跟踪时间步长，然后根据每帧去计算一个或者多个模拟出来的效果。</p>
-
-<pre><code class="language-objectivec">
-/**
-    通过每次 CADisplayLink 的启动来通知屏幕将要刷新，然后记录下当前的
-    CACurrentMediaTime() 。
-    在一个小增量中提前重复物理模拟（这里用120分之一秒）直到赶上显示的时间。然后更新我们的视图，
-    在屏幕刷新的时候匹配当前物理结构体的显示位置。
-*/
-
-#define SIMULATION_STEP (1/120.0)
-- (void)step:(CADisplayLink *)timer
-{
-    //calculate frame step duration
-    CFTimeInterval frameTime = CACurrentMediaTime();
-    //update simulation
-    while (self.lastStep &lt; frameTime) {
-        cpSpaceStep(self.space, SIMULATION_STEP);
-        self.lastStep += SIMULATION_STEP;
-    }
-    //update all the shapes
-    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
-}
-</code></pre>
-
-<h4 id="toc_8">避免死亡螺旋</h4>
-
-<p>在上面例子中我们随意选择了1/120秒来模拟物理效果,但是我们在场景很复杂，<code>cpSpaceStp()</code>计算也会超出1/120秒,这样就会造成延迟帧率,帧延迟的话，我们需要更多时间来同步真实时间,这样就越来越慢，直到应用程序卡死,这就是所谓的<code>死亡螺旋</code></p>
-
-<p>为了避免这种情况 我们需要留下足够的时间容错，如果物理计算超过了模拟时间的50%，就需要考虑增加模拟时间步长（或者简化场景）。如果模拟时间步长增加到超过1/60秒（一个完整的屏幕更新时间），你就需要减少动画帧率到一秒30帧或者增加<code>CADisplayLink</code>的<code>frameInterval</code>来保证不会随机丢帧，不然你的动画将会看起来不平滑。</p>
+<p>根据苹果的说法。这个特性在需要频繁重绘的视图上效果最好（比如我们的绘图应用，或者诸如UITableViewCell 之类的），对那些只绘制一次或很少重绘的图层内容来说没什么太大的帮助。</p>
 
                         
                       </div>
@@ -384,10 +249,10 @@ void updateShape(cpShape *shape, void *unused)
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/4/5</span>
+                    <span class="date">2017/5/4</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
+          					    <span class="posted-in"><a href='%E6%80%A7%E8%83%BD.html'>性能</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -463,6 +328,8 @@ void updateShape(cpShape *shape, void *unused)
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
             <a href="React-Native.html"><strong>React-Native</strong></a>
+        
+            <a href="Python.html"><strong>Python</strong></a>
          
         </p>
 
@@ -479,31 +346,31 @@ void updateShape(cpShape *shape, void *unused)
 	      
 		      
 			      <li class="post">
+			        <a href="15318121291068.html">函数</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15317414032911.html">语句</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15317258769792.html">Python基础</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15312926184354.html">Stack Navigation</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15304988629042.html">混合开发(OC)</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15293961047296.html">组件属性一</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15290351401483.html">补充</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15289781671435.html">对象</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  

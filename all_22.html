@@ -88,6 +88,8 @@
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
             <li><a href="React-Native.html">React-Native</a></li>
+        
+            <li><a href="Python.html">Python</a></li>
          
 
       </ul>
@@ -110,256 +112,238 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15057532270985.html">
+                <a class="clearlink" href="15082286345415.html">
                 
-                  <h1>访问控制</h1>
+                  <h1>ARKit框架API简介</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><strong>访问控制：限定其他源文件或者模块代码对你的代码的访问级别</strong></p>
+                        	<h2 id="toc_0">ARAnchor</h2>
 
-<ul>
-<li>明确的给单个类型(类,结构体,枚举)设置访问级别</li>
-<li>给类型的属性、方法、构造器、下标等设置访问级别</li>
-<li>限定协议在一定范围使用，包括协议中的全局变量、常亮、函数</li>
-</ul>
+<p>物体的3D锚点,表示物体在3D空间的位置和方向</p>
 
-<p><code>Swift</code>有显式提供多种访问级别，也有为场景提供了默认的访问级别</p>
+<pre><code class="language-objectivec">/**
+ 标识符
+ */
+@property (nonatomic, readonly) NSUUID *identifier;
 
-<h2 id="toc_0">模块和源文件</h2>
-
-<p><strong><code>Swift</code>中的访问控制基于模块和源文件</strong></p>
-
-<p><mark>模块</mark>指的是独立的代码单元，框架或应用程序会作为一个独立的模块来构建和发布。在 Swift 中，一个模块可以使用<code>import</code>关键字导入另外一个模块。<br/>
-在 Swift 中，Xcode 的每个目标（例如框架或应用程序）都被当作独立的模块处理。如果你是为了实现某个通用的功能，或者是为了封装一些常用方法而将代码打包成独立的框架，这个框架就是 Swift 中的一个模块。当它被导入到某个应用程序或者其他框架时，框架内容都将属于这个独立的模块。</p>
-
-<p><mark>源文件</mark>就是 Swift 中的源代码文件，它通常属于一个模块，即一个应用程序或者框架。尽管我们一般会将不同的类型分别定义在不同的源文件中，但是同一个源文件也可以包含多个类型、函数之类的定义。</p>
-
-<h2 id="toc_1">访问级别</h2>
-
-<p><code>Swift</code>提供了5种访问级别</p>
-
-<ul>
-<li><strong>开放访问和公开访问</strong>(open、public):可以访问同一模块源文件中的任何实体，在模块外也可以导入该模块来访问源文件中的所有实体。我们通常将框架中的某个借口可以被任何使用时,设置为此级别</li>
-<li><strong>内部访问</strong>(internal)：可以访问同一模块源文件的任何实体，但是不能从外部访问该模块源文件中的实体。用于某借口只在应用程序或者内部使用时</li>
-<li><strong>文件私有访问限制</strong>(filepart)：限值实体只能被所定义的<em>文件</em>内部访问。当需要把这些细节被整个文件使用的时候，使用文件私有访问隐藏了一些特定功能的实现细节。</li>
-<li><strong>私有访问限值</strong>(private)： 限值实体只能在所定义的<em>作用域</em>使用,需要把这些细节被整个作用域使用的时候，使用文件私有访问隐藏了一些特定功能的实现细节。</li>
-</ul>
-
-<p>开放权限由上向下变小，开放访问级别最高,私有访问级别最低</p>
-
-<blockquote>
-<p>访问级别可以看做这块代码的作用范围</p>
-</blockquote>
-
-<p>开放访问和公开访问区别:(开放访问只作用于类类型和类的成员)</p>
-
-<ul>
-<li>公开访问或者其他更严访问级别的类，只能在它们定义的模块内部被继承。</li>
-<li>公开访问或者其他更严访问级别的类成员，只能在它们定义的模块内部的子类中重写。</li>
-<li>开放访问的类，可以在它们定义的模块中被继承，也可以在引用它们的模块中被继承。</li>
-<li>开放访问的类成员，可以在它们定义的模块中子类中重写，也可以在引用它们的模块中的子类重写。</li>
-<li>把一个类标记为开放，显式地表明，你认为其他模块中的代码使用此类作为父类，然后你已经设计好了你的类的代码了。</li>
-</ul>
-
-<h3 id="toc_2">访问级别基本原则</h3>
-
-<p><strong>基本原则：不可以在某个实体中定义访问级别更低（限制更多）的实体</strong></p>
-
-<h3 id="toc_3">默认访问级别</h3>
-
-<p>如果不为代码中的实体指定访问级别,默认为<code>internal</code>级别。因此大多数情况下我们不需要显示指定实体的访问级别</p>
-
-<h3 id="toc_4">单目标应用程序的访问级别</h3>
-
-<p>对于单目标应用程序,应用的所有功能都为该应用进行服务而不需要提供给其他应用或者模块进行使用,因此使用默认的<code>internal</code>即可。也可以使用文件私有访问或者私有访问级别来进行一些功能的实现细节的隐藏</p>
-
-<h3 id="toc_5">框架访问级别</h3>
-
-<p>在开发框架时需要将对外的接口定义为开放访问或者公开访问级别，即API<br/>
-此时仍会使用默认的内部访问级别，但是对于需要开发的API可以指定为开放访问或者公开访问级别</p>
-
-<h3 id="toc_6">单元测试目标的访问级别</h3>
-
-<p>当我们用单元测试目标去访问程序代码，为了访问那些非公开访问或者开发访问代码,可以在导入的应用程序模块的语句前使用<code>@testable</code>特性，然后在允许测试的编译设置<code>（Build Options -&gt; Enable Testability）</code>下编译这个应用程序模块，单元测试目标就可以访问应用程序模块中所有内部级别的实体。</p>
-
-<h2 id="toc_7">访问控制语法</h2>
-
-<pre><code class="language-swift">//声明实体访问级别
-public class SomePublicClass {}
-internal class SomeInternalClass {}
-fileprivate class SomeFilePrivateClass {}
-private class SomePrivateClass {}
-public var somePublicVariable = 0
-internal let someInternalConstant = 0
-fileprivate func someFilePrivateFunction() {}
-private func somePrivateFunction() {}
-//默认为内部访问级别
-class SomeInternalClass {} // 隐式内部访问级别
-var someInternalConstant = 0 // 隐式内部访问级别
-</code></pre>
-
-<h2 id="toc_8">自定义类型</h2>
-
-<p>在自定义类型时指定访问的级别，然后这个类型就在访问级别限制范围内进行使用</p>
-
-<p>定义的类型访问级别会影响到类型成员(属性、方法、构造器、下标)的默认访问级别。如果你将类型指定为私有或者文件私有级别，那么该类型的所有成员的默认访问级别也会变成私有或者文件私有级别。如果你将类型为公开或者内部访问级别（或者不明确指定访问级别，而使用默认的内部访问级别），那么该类型的所有成员的默认访问级别将是内部访问。</p>
-
-<blockquote>
-<p>必须显式指定才能将成员设置为公开访问类型，避免不消息暴露内部使用接口</p>
-</blockquote>
-
-<h3 id="toc_9">元组类型</h3>
-
-<p>定义的一个元组的访问级别由元组中访问级别最严格的类型决定，其访问级别是在使用时自动推断出的无法明确指定</p>
-
-<h3 id="toc_10">函数类型</h3>
-
-<p>函数的访问类型也由参数或者返回类型的访问级别决定,但是我们可以明确<em>指定函数的访问级别</em>来符合函数定义或者环境默认访问级别</p>
-
-<pre><code class="language-swift">//定义一个全局函数
-func someFunction() -&gt; (SomeInternalClass, SomePrivateClass) {
-    // 此处是函数实现部分
-}
 /**
-    这样是无法通过编译的,这个函数返回了一个元组,元组中包含了两个自定义类，根据元组访问
-    级别,元组为privite的，因此函数也为private访问级别，因此并不是默认的internal级
-    别，因此需要用private修饰符明确指出函数访问级别
-*/
+ 锚点的旋转变换矩阵，定义了锚点的旋转、位置、缩放。是一个4x4的矩阵（读者可以自行科普什么叫4x4矩阵）
+ */
+@property (nonatomic, readonly) matrix_float4x4 transform;
 
-private func someFunction() -&gt; (SomeInternalClass, SomePrivateClass) {
-    // 此处是函数实现部分
-}
+/**
+ 构造方法,一般我们无需构造。因为添加一个3D物体时ARKit会有代理告知我们物体的锚点
+ */
+- (instancetype)initWithTransform:(matrix_float4x4)transform;
 </code></pre>
 
-<h3 id="toc_11">枚举类型</h3>
+<h2 id="toc_1">ARFrame</h2>
 
-<p>枚举成员的访问级别与枚举类型相同，不能单独指定</p>
+<p>主要用于追踪相机的当前状态,包括位置、图像帧以及时间等参数</p>
 
-<h4 id="toc_12">原始值和关联值</h4>
+<pre><code class="language-objectivec">/**
+时间戳.
+ */
+@property (nonatomic, readonly) NSTimeInterval timestamp;
 
-<p>枚举定义中的任何原始值或关联值的类型的访问级别至少不能低于枚举类型的访问级别。</p>
+/**
+ 缓冲区图像帧
+ */
+@property (nonatomic, readonly) CVPixelBufferRef capturedImage;
 
-<h3 id="toc_13">嵌套类型</h3>
+/**
+相机（表示这个ARFrame是哪一个相机的，iPhone7plus有两个摄像机）
+ */
+@property (nonatomic, copy, readonly) ARCamera *camera;
 
-<p>如果在 private 级别的类型中定义嵌套类型，那么该嵌套类型就自动拥有 private 访问级别。如果在 public 或者 internal 级别的类型中定义嵌套类型，那么该嵌套类型自动拥有internal 访问级别。如果想让嵌套类型拥有 public 访问级别，那么需要明确指定该嵌套类型的访问级别。</p>
+/**
+ 返回当前相机捕捉到的锚点数据（当一个3D虚拟模型加入到ARKit中时，锚点值得就是这个模型在AR中的位置）
+ */
+@property (nonatomic, copy, readonly) NSArray&lt;ARAnchor *&gt; *anchors;
 
-<h2 id="toc_14">子类</h2>
+/**
+灯光（指的是灯光强度 一般是0-2000，系统默认1000）
+ */
+@property (nonatomic, copy, nullable, readonly) ARLightEstimate *lightEstimate;
 
-<p><strong>子类的访问级别也不能高于父类</strong></p>
+/**
+特征点（捕捉平地或者人脸的，比较苹果有自带的人脸识别功能）
+ */
+@property (nonatomic, nullable, readonly) ARPointCloud *rawFeaturePoints;
 
-<p>可以通过重写为继承来的类成员(方法、属性、下标、构造器等)提供更高的访问级别</p>
+/**
+根据2D坐标点搜索3D模型，这个方法通常用于，当我们在手机屏幕点击某一个点的时候，可以捕捉到这一个点所在的3D模型的位置，至于为什么是一个数组非常好理解。手机屏幕一个是长方形，这是一个二维空间。而相机捕捉到的是一个由这个二维空间射出去的长方体，我们点击屏幕一个点可以理解为在这个长方体的边缘射出一条线，这一条线上可能会有多个3D物体模型
+point：2D坐标点（手机屏幕某一点）
+ARHitTestResultType：捕捉类型  点还是面
+(NSArray&lt;ARHitTestResult *&gt; *)：追踪结果数组  详情见本章节ARHitTestResult类介绍
 
-<pre><code class="language-swift">public class A {
-    private func someMethod() {}
-}
-internal class B: A {
-    override internal func someMethod() {}
-}
-//类B继承自A，重写了类A中的方法将访问级别指定为更高的访问级别
+ */
+- (NSArray&lt;ARHitTestResult *&gt; *)hitTest:(CGPoint)point types:(ARHitTestResultType)types;
+
+/**
+相机窗口的的坐标变换（可用于相机横竖屏的旋转适配）
+ */
+- (CGAffineTransform)displayTransformWithViewportSize:(CGSize)viewportSize orientation:(UIInterfaceOrientation)orientation;
 </code></pre>
 
-<pre><code class="language-swift">public class A {
-    private func someMethod() {}
-}
-internal class B: A {
-    override internal func someMethod() {
-        super.someMethod()
-    }
-}
-//子类中访问父类中级别更低成员（保证操作在相应访问级别的限值范围内）
+<h2 id="toc_2">ARHitTestResult</h2>
+
+<p>点击的回调结果,通常用于获取ARKit的捕捉结果，获取物体到相机的距离/位置、方向等</p>
+
+<pre><code class="language-swift">//捕捉类型枚举
+typedef NS_OPTIONS(NSUInteger, ARHitTestResultType) {
+    /** 点. */
+    ARHitTestResultTypeFeaturePoint              = (1 &lt;&lt; 0),
+
+    /** 水平面 y为0. */
+    ARHitTestResultTypeEstimatedHorizontalPlane  = (1 &lt;&lt; 1),
+
+    /** 已结存在的平面. */
+    ARHitTestResultTypeExistingPlane             = (1 &lt;&lt; 3),
+
+    /** 已结存在的锚点和平面. */
+    ARHitTestResultTypeExistingPlaneUsingExtent  = (1 &lt;&lt; 4),
+} NS_SWIFT_NAME(ARHitTestResult.ResultType);
+
+/**
+捕捉类型
+ */
+@property (nonatomic, readonly) ARHitTestResultType type;
+
+/**
+ 3D虚拟物体与相机的距离（单位：米）
+ */
+@property (nonatomic, readonly) CGFloat distance;
+
+/**
+本地坐标矩阵（世界坐标指的是相机为场景原点的坐标，而每一个3D物体自身有一个场景，本地坐标就是相对于这个场景的坐标）类似于frame和bounds的区别
+ */
+@property (nonatomic, readonly) matrix_float4x4 localTransform;
+
+/**
+世界坐标矩阵
+ */
+@property (nonatomic, readonly) matrix_float4x4 worldTransform;
+
+/**
+ 锚点（3D虚拟物体，在虚拟世界有一个位置，这个位置参数是SceneKit中的SCNVector3：三维矢量），而锚点anchor是这个物体在AR现实场景中的位置，是一个4x4的矩阵
+ */
+@property (nonatomic, strong, nullable, readonly) ARAnchor *anchor;
+
 </code></pre>
 
-<h3 id="toc_15">常亮、变量、属性、下标</h3>
+<h2 id="toc_3">ARLightEstimate</h2>
 
-<p>常量、变量、属性不能有比类型（成员的定义类型）更高的访问级别，下标也不能有比索引类型或返回类型更高的访问级别</p>
+<p>灯光效果</p>
 
-<h3 id="toc_16">Getter和Setter</h3>
+<pre><code class="language-swift">/**
+灯光强度  范围0-2000 默认1000
+ */
+@property (nonatomic, readonly) CGFloat ambientIntensity;
 
-<p>常量、变量、属性、下标的<code>Getters</code>和<code>Setters</code>的访问级别和它们所属类型的访问级别相同</p>
+</code></pre>
 
-<p><code>Setter</code>的访问级别可以低于<code>Getter</code>的访问级别，来控制其读写权限。可以通过添加<code>fileprivate(set)</code>、<code>private(set)</code>、<code>internal(set)</code>来为写入指定更低权限</p>
+<h2 id="toc_4">ARPlaneAnchor</h2>
+
+<p>平面锚点,是<code>ARAnchor</code>的子类,<code>ARKit</code>可以自动识别平面并且添加一个锚点到场景中</p>
+
+<p>所有被检测到的表面都会关联到一个<code>ARPlaneAnchor</code>对象，并可进一步使用提供物体到镜头的距离、位置和方向的<code>ARHitTestResult</code>进行描述。<code>ARPlaneAnchor</code>是<code>ARAnchor</code>的一个子类实例，可添加到AR场景中，实现在场景中放置虚拟物体。</p>
+
+<pre><code class="language-swift">/**
+平面类型，目前只有一个，就是水平面
+ */
+@property (nonatomic, readonly) ARPlaneAnchorAlignment alignment;
+
+/**
+3轴矢量结构体，表示平地的中心点  x/y/z
+ */
+@property (nonatomic, readonly) vector_float3 center;
+
+/**
+3轴矢量结构体，表示平地的大小（宽度和高度）  x/y/z
+ */
+@property (nonatomic, readonly) vector_float3 extent;
+</code></pre>
+
+<h2 id="toc_5">ARPointCloud</h2>
+
+<p>点状渲染云 主要用于渲染场景</p>
+
+<pre><code class="language-objectivec">/**
+ 点的数量
+ */
+@property (nonatomic, readonly) NSUInteger count;
+
+/**
+每一个点的位置的集合（结构体带*表示的是结构体数组）
+ */
+@property (nonatomic, readonly) const vector_float3 *points;
+</code></pre>
+
+<h2 id="toc_6">ARConfiguration</h2>
+
+<p>会话追踪配置，主要就是追踪相机的位置</p>
 
 <blockquote>
-<p>适用于存储型和计算型属性,对于存储性属性也会隐式创建setter和getter方法的</p>
+<p>子类ARWorldTrackingConfiguration</p>
 </blockquote>
 
-<pre><code class="language-swift">struct TrackedString {
-    private(set) var numberOfEdits = 0
-    var value: String = &quot;&quot; {
-        didSet {
-            numberOfEdits += 1
-        }
-    }
-}
-//结构体类型和valew属性为默认的interal级别
-//numberOfEdits的set定义为private级别,因此只能在定义该结构体的源文件中进行赋值，而访问仍为在该模块可访问的internal级别
+<pre><code class="language-objectivec">/**
+当前设备是否支持，一般A9芯片以下设备不支持
+ */
+@property(class, nonatomic, readonly) BOOL isSupported;
+
+/**
+会话的对齐方式，这里的对其指的是3D世界的坐标。枚举值见下方
+ */
+@property (nonatomic, readwrite) ARWorldAlignment worldAlignment;
+
+typedef NS_ENUM(NSInteger, ARWorldAlignment) {
+    ARWorldAlignmentGravity,//相机位置
+    ARWorldAlignmentGravityAndHeading,//相机位置及方向
+    ARWorldAlignmentCamera//相机方向
+} 
+
+/**
+是否需要自适应灯光效果，默认是YES
+ */
+@property (nonatomic, readwrite, getter=isLightEstimationEnabled) BOOL lightEstimationEnabled;
+
+@end
+
+
+//世界会话追踪配置，苹果建议我们使用这个类，这个子类只有一个属性，也就是可以帮助我们追踪相机捕捉到的平地
+@interface ARWorldTrackingSessionConfiguration : ARSessionConfiguration
+
+/**
+侦查类型。枚举值见下方（默认侦查平地）
+ */
+@property (nonatomic, readwrite) ARPlaneDetection planeDetection;
 </code></pre>
 
-<p>此时我们在其它源文件中可以访问但是不能修改结构体的<code>numberOfEdits</code>属性</p>
+<h2 id="toc_7">ARError</h2>
 
-<h2 id="toc_17">构造器</h2>
+<p>描述ARKit中的错误信息</p>
 
-<p><strong>我们自定义的构造器的访问级别可以等于或低于该类型的访问级别</strong>，但是对于<code>必要构造器</code>访问级别必须和所属类型访问级别相同</p>
+<pre><code class="language-swift">//作用域，一般会表示是哪一个类出现问题
+NSString *const ARErrorDomain;
+typedef NS_ERROR_ENUM(ARErrorDomain, ARErrorCode) {
+    /** Unsupported session configuration. */
+    ARErrorCodeUnsupportedConfiguration   = 100,//不支持会话追踪配置，由于A9芯片以下的机型会报错
 
-<h3 id="toc_18">默认构造器</h3>
+    /** A sensor required to run the session is not available. */
+    ARErrorCodeSensorUnavailable          = 101,//失活状态
 
-<p>对于swift为结构体和类提供的默认构造器,访问级别与类型相同(当类型为public时，默认构造器的访问级别为internal)</p>
+    /** A sensor failed to provide the required input. */
+    ARErrorCodeSensorFailed               = 102,//传感器故障
 
-<h3 id="toc_19">结构体默认的成员逐一构造器</h3>
+    /** World tracking has encountered a fatal error. */
+    ARErrorCodeWorldTrackingFailed        = 200,//追踪失败
+};
 
-<p>如果结构体中任意存储型属性的访问级别为<code>private</code>，那么该结构体默认的成员逐一构造器的访问级别就是<code>private</code>。否则，这种构造器的访问级别依然是 <code>internal</code>。</p>
-
-<h2 id="toc_20">协议</h2>
-
-<p>在定义协议时指定协议的访问级别,限值协议只能在指定范围被遵循<br/>
-<strong>协议中的每一个要求都具有和该协议相同的访问级别。你不能将协议中的要求设置为其他访问级别</strong></p>
-
-<blockquote>
-<p>不同于类型，对于public的协议其要求也是public级别的</p>
-</blockquote>
-
-<h3 id="toc_21">协议继承</h3>
-
-<p>继承的新协议其访问级别不能高于被继承的协议</p>
-
-<h3 id="toc_22">协议的一致性</h3>
-
-<p><strong>类型可以采纳比自身访问级别更低的协议</strong><br/>
-例如，你可以定义一个 public 级别的类型，它可以在其他模块中使用，同时它也可以采纳一个 internal 级别的协议，但是只能在该协议所在的模块中作为符合该协议的类型使用。</p>
-
-<p>注意:</p>
-
-<ol>
-<li>采纳了协议的类型的访问级别取它本身和所采纳协议两者间最低的访问级别</li>
-<li>遵循协议后，要确保协议的要求的实现访问级别不能低于协议的访问级别</li>
-</ol>
-
-<h2 id="toc_23">扩展</h2>
-
-<ol>
-<li>可以在访问级别允许的情况下对类、结构体、枚举进行扩展。扩展成员具有和原始类型成员一致的访问级别</li>
-<li>可以明确指定扩展的访问级别，从而给扩展中成员一个新的访问级别,但是新的默认访问级别仍会被单独指定的级别覆盖</li>
-</ol>
-
-<h3 id="toc_24">通过扩展添加协议一致性</h3>
-
-<p>通过扩展来采纳协议，那么你就不能显式指定该扩展的访问级别了。协议拥有相应的访问级别，并会为该扩展中所有协议要求的实现提供默认的访问级别。</p>
-
-<h2 id="toc_25">泛型</h2>
-
-<p>泛型类型或泛型函数的访问级别取决于泛型类型或泛型函数本身的访问级别，还需结合类型参数的类型约束的访问级别，根据这些访问级别中的最低访问级别来确定。</p>
-
-<h2 id="toc_26">类型别名</h2>
-
-<p>每个类型别名都会被当做不同类型处理</p>
-
-<p>类型别名的访问级别不可高于其表示的类型的访问级别</p>
-
-<blockquote>
-<p>这条规则也适用于为满足协议一致性而将类型别名用于关联类型的情况__</p>
-</blockquote>
+</code></pre>
 
                         
                       </div>
@@ -368,10 +352,10 @@ internal class B: A {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/9/19</span>
+                    <span class="date">2017/10/17</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
+          					    <span class="posted-in"><a href='ARKit.html'>ARKit</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -447,6 +431,8 @@ internal class B: A {
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
             <a href="React-Native.html"><strong>React-Native</strong></a>
+        
+            <a href="Python.html"><strong>Python</strong></a>
          
         </p>
 
@@ -463,31 +449,31 @@ internal class B: A {
 	      
 		      
 			      <li class="post">
+			        <a href="15318121291068.html">函数</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15317414032911.html">语句</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15317258769792.html">Python基础</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15312926184354.html">Stack Navigation</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15304988629042.html">混合开发(OC)</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15293961047296.html">组件属性一</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15290351401483.html">补充</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15289781671435.html">对象</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  

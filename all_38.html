@@ -88,6 +88,8 @@
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
             <li><a href="React-Native.html">React-Native</a></li>
+        
+            <li><a href="Python.html">Python</a></li>
          
 
       </ul>
@@ -110,211 +112,96 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15003778819226.html">
+                <a class="clearlink" href="15017615739867.html">
                 
-                  <h1>枚举</h1>
+                  <h1>下标</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<ol>
-<li><p>与C语言不同，<code>Swift</code>中的枚举更加灵活，不必给每一个枚举成员提供一个值。如果给枚举成员提供一个值（称为“原始”值），则该值的类型可以是字符串，字符，或是一个整型值或浮点数。</p></li>
-<li><p>枚举成员可以指定任意类型的关联值存储到枚举成员中</p></li>
-<li><p>在 Swift 中，<strong>枚举类型</strong>是一等（first-class）类型。采用了很多在传统上只被类（class）所支持的特性，例如计算属性（computed properties），用于提供枚举值的附加信息，实例方法（instance methods），用于提供和枚举值相关联的功能。枚举也可以定义构造函数（initializers）来提供一个初始值；可以在原始实现的基础上扩展它们的功能；还可以遵循协议（protocols）来提供标准的功能。</p></li>
-</ol>
+                        	<p>下标可以定义在类、结构体和枚举中，用于访问集合、列表或序列中的元素</p>
 
-<h2 id="toc_0">枚举语法</h2>
+<p>一个类型可以定义多个下标.通过不同索引类型进行重载.下标不限于一维</p>
 
-<p>用<code>enum</code>关键字来创建枚举</p>
+<h2 id="toc_0">下标语法</h2>
 
-<pre><code class="language-swift">enum CompassPoint {
-    case north
-    case south
-    case east
-    case west
-}
+<p>通过在实例名称后的方括号中传入一个或多个索引值来对实例进行存取</p>
 
-//多个成员可以在同一行 用 , 隔开
-enum Planet {
-    case mercury, venus, earth, mars, jupiter, saturn, uranus, neptune
-}
-</code></pre>
+<p>定义下标使用<code>subscript</code>关键字,指定一个或者多个输入参数和返回类型<br/>
+下标可以设置为读写或者只读,通过是<code>getter</code>或者<code>setter</code>实现</p>
 
-<p>我们使用<code>case</code>来定义一个新的枚举成员值</p>
-
-<blockquote>
-<p>与OC不同,Swift枚举成员不会再创建时被赋予一个默认的整型值。这些枚举成员本身就是完备的值，这些值的类型是已经明确定义好的<code>CompassPoint</code>类型</p>
-</blockquote>
-
-<p>在<code>Swift</code>中每个枚举定义了一个全新的类型，与Swift中的其他类型一样,名字以大写字母开头</p>
-
-<pre><code class="language-swift">var directionToHead = CompassPoint.west
-//此时directionToHead类型可以被推断出来,我们可以直接使用 . 语法将其设置为另一个枚举值
-directionToHead = .east
-</code></pre>
-
-<p>当 directionToHead 的类型已知时，再次为其赋值可以省略枚举类型名。</p>
-
-<h2 id="toc_1">用switch语句匹配枚举值</h2>
-
-<p>在判断一个枚举类型值时,<code>switch</code>必须穷举所有情况，如果不需要匹配每个成员可以使用<code>default</code>分支</p>
-
-<pre><code class="language-swift">let somePlanet = Planet.earth
-switch somePlanet {
-case .earth:
-    print(&quot;Mostly harmless&quot;)
-default:
-    print(&quot;Not a safe place for humans&quot;)
-}
-// 打印 &quot;Mostly harmless”
-</code></pre>
-
-<h2 id="toc_2">关联值</h2>
-
-<p>可以使用<code>Swift</code>的枚举来<strong>存储任意类型的关联值</strong>,枚举成员的关联值类型可以不同(关联值)</p>
-
-<pre><code class="language-swift">enum Barcode {
-    case upc(Int, Int, Int, Int)
-    case qrCode(String)
-}
-</code></pre>
-
-<p>定义一个枚举类型,一个成员值是具有 <code>(Int，Int，Int，Int)</code>类型关联值的 upc，另一个是<code>String</code>类型关联值的qrcode</p>
-
-<pre><code class="language-swift">//给其赋值关联的元组值
-var productBarcode = Barcode.upc(8, 85909, 51226, 3)
-//赋值新的枚举关联字符串
-productBarcode = .qrCode(&quot;ABCDEFGHIJKLMNOP&quot;)
-//productBarcode同一时间只能存储这两个值中的一个
-</code></pre>
-
-<pre><code class="language-swift">switch productBarcode {
-case .upc(let numberSystem, let manufacturer, let product, let check):
-    print(&quot;UPC: \(numberSystem), \(manufacturer), \(product), \(check).&quot;)
-case .qrCode(let productCode):
-    print(&quot;QR code: \(productCode).&quot;)
-}
-// 打印 &quot;QR code: ABCDEFGHIJKLMNOP.&quot;
-</code></pre>
-
-<p>我们可以提取出来关联值作为常量或变量</p>
-
-<p>如果一个枚举成员的所有关联值都被提取为常量，或者都被提取为变量，为了简洁，你可以只在成员名称前标注一个<code>let</code>或者<code>var</code>：</p>
-
-<pre><code class="language-swift">switch productBarcode {
-case let .upc(numberSystem, manufacturer, product, check):
-    print(&quot;UPC: \(numberSystem), \(manufacturer), \(product), \(check).&quot;)
-case let .qrCode(productCode):
-    print(&quot;QR code: \(productCode).&quot;)
-}
-// 输出 &quot;QR code: ABCDEFGHIJKLMNOP.&quot;
-</code></pre>
-
-<h2 id="toc_3">原始值</h2>
-
-<p>枚举成员可以被<strong>默认值（称为原始值）预填充</strong>，这些原始值的类型必须相同。</p>
-
-<pre><code class="language-swift">enum ASCIIControlCharacter: Character {
-    case tab = &quot;\t&quot;
-    case lineFeed = &quot;\n&quot;
-    case carriageReturn = &quot;\r&quot;
-}
-</code></pre>
-
-<p>枚举类型<code>ASCIIControlCharacter</code>的原始值类型被定义为<code>Character</code><br/>
-每个原始值在枚举声明中必须是唯一的。</p>
-
-<blockquote>
-<p>注意原始值与关联值的不同，原始值是在定义枚举是预先填充的值，对于特定的枚举成员其原始值不变<br/>
-关联值是创建一个基于枚举成员的常量或变量时才设置的值,枚举成员的关联值可以变化</p>
-</blockquote>
-
-<h3 id="toc_4">原始值的隐式赋值</h3>
-
-<p>当原始值为整数或者字符串类型的枚举时,Swift会自动为每个枚举成员设置原始值;</p>
-
-<ol>
-<li><p>原始值为整形枚举</p>
-<pre><code class="language-swift">enum Planet: Int {
-    case mercury = 1, venus, earth, mars, jupiter, saturn, uranus, neptune<br/>
-}
-</code></pre>
-<p>当使用整数作为原始值时，隐式赋值的值依次递增1。如果第一个枚举成员没有设置原始值，其原始值将为0</p></li>
-<li><p>原始值为字符串类型</p>
-<pre><code class="language-swift">enum CompassPoint: String {
-    case north, south, east, west<br/>
-}<br/>
-//CompassPoint.south 拥有隐式原始值 south
-</code></pre>
-<p>使用字符串作为枚举类型的原始值时，每个枚举成员的隐式原始值为该枚举成员的名称</p></li>
-</ol>
-
-<p>使用枚举成员的<code>rawValue</code>属性可以访问枚举成员初始值</p>
-
-<pre><code class="language-swift">let earthsOrder = Planet.earth.rawValue
-    // earthsOrder 值为 3
-let sunsetDirection = CompassPoint.west.rawValue
-    // sunsetDirection 值为 &quot;west&quot;
-</code></pre>
-
-<h3 id="toc_5">原始值初始化枚举实例</h3>
-
-<p>定义枚举时使用原始值,会获得一个初始化方法,有一个<code>rawValue</code>类型为原始值类型的参数，返回一个枚举类型或为<code>nil</code></p>
-
-<pre><code class="language-swift">let possiblePlanet = Planet(rawValue: 7)
-// possiblePlanet 类型为 Planet? 值为 Planet.uranus
-//因为不一定都能找到匹配的行星  返回的是可选类型
-let positionToFind = 11
-if let somePlanet = Planet(rawValue: positionToFind) {
-    switch somePlanet {
-    case .earth:
-        print(&quot;Mostly harmless&quot;)
-    default:
-        print(&quot;Not a safe place for humans&quot;)
+<pre><code class="language-swift">subscript(index: Int) -&gt; Int {
+    get {
+        // 返回一个适当的 Int 类型的值
     }
-} else {
-    print(&quot;There isn&#39;t a planet at position \(positionToFind)&quot;)
-}
-//找不到11代表的行星
-</code></pre>
-
-<h2 id="toc_6">递归枚举</h2>
-
-<p>是一种枚举类型  有一个或多个成员使用该枚举类型实例作为关联值</p>
-
-<p>可以在枚举成员前加<code>indirect</code>表示该成员可递归, 或者在枚举类型开头加上<code>indirect</code>关键字来表明它的所有成员都是可递归</p>
-
-<pre><code class="language-swift">enum ArithmeticExpression {
-    case number(Int)
-    indirect case addition(ArithmeticExpression, ArithmeticExpression)
-    indirect case multiplication(ArithmeticExpression, ArithmeticExpression)
-}
-
-indirect enum ArithmeticExpression {
-    case number(Int)
-    case addition(ArithmeticExpression, ArithmeticExpression)
-    case multiplication(ArithmeticExpression, ArithmeticExpression)
-}
-
-//递归枚举使用
-let five = ArithmeticExpression.number(5)
-let four = ArithmeticExpression.number(4)
-let sum = ArithmeticExpression.addition(five, four)
-let product = ArithmeticExpression.multiplication(sum, ArithmeticExpression.number(2))
-
-//递归函数中使用递归枚举
-func evaluate(_ expression: ArithmeticExpression) -&gt; Int {
-    switch expression {
-    case let .number(value):
-        return value
-    case let .addition(left, right):
-        return evaluate(left) + evaluate(right)
-    case let .multiplication(left, right):
-        return evaluate(left) * evaluate(right)
+    set(newValue) {
+        // 执行适当的赋值操作
     }
 }
-print(evaluate(product))//18
 </code></pre>
+
+<p>可以不指定<code>setter</code>的参数,默认提供<code>newValue</code></p>
+
+<pre><code class="language-swift">struct TimesTable {
+    let multiplier: Int
+    subscript(index: Int) -&gt; Int {
+        return multiplier * index
+    }
+}
+let threeTimesTable = TimesTable(multiplier: 3)
+print(&quot;six times three is \(threeTimesTable[6])&quot;)
+// 打印 &quot;six times three is 18&quot;
+</code></pre>
+
+<p>定义一个数学公式结构体,只读的下标语法</p>
+
+<h2 id="toc_1">下标用法</h2>
+
+<pre><code class="language-swift">//字典的下标语法
+var numberOfLegs = [&quot;spider&quot;: 8, &quot;ant&quot;: 6, &quot;cat&quot;: 4]
+numberOfLegs[&quot;bird&quot;] = 2
+</code></pre>
+
+<h2 id="toc_2">下标选项</h2>
+
+<p>下标可以使用变量参数和可变参数,但不能使用输入输出参数,也不能给参数设置默认值</p>
+
+<p>下标的重载:<br/>
+类和结构体可以根据自身需要提供多个下标实现,通过入参和类型进行区分</p>
+
+<pre><code class="language-swift">struct Matrix {
+    let rows: Int, columns: Int
+    var grid: [Double]
+    init(rows: Int, columns: Int) {
+        self.rows = rows
+        self.columns = columns
+        //通过传入数组长度和初始值0.0到数组的构造器，将矩阵中每个位置的值初始化为0.0
+        grid = Array(count: rows * columns, repeatedValue: 0.0)
+    }
+    func indexIsValidForRow(row: Int, column: Int) -&gt; Bool {
+        return row &gt;= 0 &amp;&amp; row &lt; rows &amp;&amp; column &gt;= 0 &amp;&amp; column &lt; columns
+    }
+    subscript(row: Int, column: Int) -&gt; Double {
+        get {
+            //断言语句
+            assert(indexIsValidForRow(row, column: column), &quot;Index out of range&quot;)
+            return grid[(row * columns) + column]
+        }
+        set {
+            //断言语句
+            assert(indexIsValidForRow(row, column: column), &quot;Index out of range&quot;)
+            grid[(row * columns) + column] = newValue
+        }
+    }
+}
+</code></pre>
+
+<pre><code class="language-swift">var matrix = Matrix(rows: 2, columns: 2)
+//下标入参用逗号进行分割
+matrix[0, 1] = 1.5 //将下标为(0,1)位置设置为1.5
+</code></pre>
+
+<p>通过断言,检查下标入参<code>row</code>和<code>colum</code>的值是否有效.定义方法<code>indexIsValidForRow(_:column:)</code>检查入参<code>row</code>和<code>columu</code>是否越界,断言会在下标月结</p>
 
                         
                       </div>
@@ -323,7 +210,7 @@ print(evaluate(product))//18
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/7/18</span>
+                    <span class="date">2017/8/3</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -402,6 +289,8 @@ print(evaluate(product))//18
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
             <a href="React-Native.html"><strong>React-Native</strong></a>
+        
+            <a href="Python.html"><strong>Python</strong></a>
          
         </p>
 
@@ -418,31 +307,31 @@ print(evaluate(product))//18
 	      
 		      
 			      <li class="post">
+			        <a href="15318121291068.html">函数</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15317414032911.html">语句</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15317258769792.html">Python基础</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15312926184354.html">Stack Navigation</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15304988629042.html">混合开发(OC)</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15293961047296.html">组件属性一</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15290351401483.html">补充</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15289781671435.html">对象</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  

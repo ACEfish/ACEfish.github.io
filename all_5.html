@@ -88,6 +88,8 @@
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
             <li><a href="React-Native.html">React-Native</a></li>
+        
+            <li><a href="Python.html">Python</a></li>
          
 
       </ul>
@@ -110,133 +112,128 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15288713693530.html">
+                <a class="clearlink" href="15293961047296.html">
                 
-                  <h1>状态机</h1>
+                  <h1>组件属性一</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>ReactNative 将UI视作一个状态机,每个UI场景就是状态机的一个状态</p>
+                        	<h2 id="toc_0">View</h2>
+
+<h3 id="toc_1">颜色与边框</h3>
+
+<ol>
+<li>backgroundColor: 背景颜色</li>
+<li>opacity: 0~1透明度</li>
+<li><p>borderStyle: 边框风格</p>
+<ul>
+<li>solid: default 实线边框</li>
+<li>dotted: 点状边框</li>
+<li>dashed: 虚线边框</li>
+</ul></li>
+<li><p>borderColor: 边框颜色,可以单独定义上下左右</p></li>
+<li><p>borderRadius: 定义圆角边框,可单独定义四个角</p></li>
+</ol>
 
 <blockquote>
-<p>不要在状态机变量中存放于显示无关的变量,会导致务必要渲染UI</p>
+<p>大部分组件继承了View的属性</p>
 </blockquote>
 
-<h2 id="toc_0">State</h2>
+<h3 id="toc_2">视觉效果</h3>
 
-<blockquote>
-<p>尽可能让自定义的组件成为无状态组件<br/>
-好的reactnative设计思路:创建多个只负责渲染数据的无状态组件，将他们封装在一个有状态的reactnative组件中,有状态的组件封装了UI交互的逻辑，而无状态的组件负责渲染UI界面。</p>
-</blockquote>
+<h4 id="toc_3">阴影</h4>
 
-<pre><code class="language-javascrip">constructor(props) {
+<ol>
+<li>shadowColor</li>
+<li>shadowOffset</li>
+<li>shadowOpacity</li>
+<li>shadowRadius</li>
+</ol>
+
+<h4 id="toc_4">overflow</h4>
+
+<p>取值为 visible和hidden(默认),定义子组件产出父组件部分的是否显示，当设置为visible时，仅对ios平台有效,显示超出父组件部分</p>
+
+<h4 id="toc_5">elevation</h4>
+
+<p>Android平台特有效果,在组件周围渲染阴影</p>
+
+<h3 id="toc_6">变形</h3>
+
+<p>利用<code>transform</code>设置组件的变形,包括<code>translate</code>平移,<code>scale</code>缩放,<code>rotate</code>旋转,<code>skew</code>倾斜</p>
+
+<pre><code class="language-javascript">const styles = StyleSheet.create({
+    view1Style: {
+        ....
+        transform: [{scale:2}, {rotateZ:&quot;45deg&quot;}]
+    }
+})
+//Xdeg 表示角度 取值0-360
+</code></pre>
+
+<h3 id="toc_7">回调函数</h3>
+
+<p>回调函数命名 onB 即B事件发生的回调函数</p>
+
+<h4 id="toc_8">onLayOut</h4>
+
+<p>当View组件被加载或者改变布局时</p>
+
+<h4 id="toc_9">onTouchStart、onTouchMove、onTouchEnd</h4>
+
+<p>开始触摸事件、触摸点移动事件、触摸结束事件<br/>
+三个回调函数带一个event参数,</p>
+
+<pre><code class="language-javascript">//Event结构有用对象
+{
+ timeStamp: aNumber, //时间戳
+ nativeEvent: {
+    locationX: aNumber,
+    locationY: aNumber,
+ }
+}
+</code></pre>
+
+<pre><code class="language-javascript">//示例 demo
+constructor(props) {
         super(props)
-        this.state = {
-            input: &#39;&#39;,
-            inputPWD: &#39;&#39;,
-        }
-    }
-    updateNum(newText) {
-        this.setState((state) =&gt; {
-            return {input: newText}
-        });
+        this._onTouchStart = this._onTouchStart.bind(this)
     }
 
-    updatePWD(newText) {
-        this.setState(() =&gt; {
-            return {
-                inputPWD : newText
-            }
-        })
+    _onTouchStart(event) {
+        console.log( event.nativeEvent.locationX)
+    }
+
+    render() {
+        return(
+            &lt;View style={styles.containStyle}&gt;
+                &lt;View style={styles.view1Style} onTouchStart={this._onTouchStart}&gt;
+
+                &lt;/View&gt;
+            &lt;/View&gt;
+        )
     }
 </code></pre>
 
-<p>通过this.state.状态机变量名 访问状态机变量</p>
+<h4 id="toc_10">removeClippedSubviews</h4>
 
-<p>我们需要将状态机变量看做 <strong>不可变常量</strong>，不能直接改变状态机变量，只能通过<strong>setState</strong>函数</p>
+<p>布尔属性，与性能有关的，属性为true将允许释放不在显示范围内的子组件，需要将overflow设置为hidden才会生效</p>
 
-<h2 id="toc_1">渲染</h2>
+<h3 id="toc_11">onLayOut</h3>
 
-<p>setState函数原型：<code>setState(oldState, callback)</code> 第二个参数为回调函数,会在setState完成并且重新渲染完成(如果需要的话)后被调用</p>
+<p>应用通过<code>Dimension</code>获取屏幕宽高，Dimensions.get(&#39;window&#39;).width/height,获取到的宽和高是实时屏幕的宽和高,当横置时宽大于高</p>
 
-<p>如果setState函数将传入函数的返回值与当前状态机相比没有任何修改或增加,将不会进行渲染</p>
+<h3 id="toc_12">pointEvents</h3>
 
-<p>改变状态机变量后 所有与状态机变量值有关系的组件都会被刷新。</p>
+<p>在RN中 触摸事件总是传递给最上层的组件，当被遮盖的组件需要向银行触摸事件，就需要从View继承的<code>pointEvents</code></p>
 
-<blockquote>
-<p>当修改组件的状态机变量值后，ReactNative会在考虑清楚如何高效的渲染UI后,执行SetState的箭头函数来渲染组件,因此setState是异步执行的函数</p>
+<p>可以取值为<code>none</code> <code>box-none</code> <code>box-only</code> <code>auto</code></p>
 
-<p>当子组件需要渲染时,那么该子组件的各个生命周期的函数都会按声明周期调用 这就是渲染高效的原因</p>
-</blockquote>
-
-<h3 id="toc_2">判断是否渲染</h3>
-
-<pre><code class="language-javascript">//判断是否渲染，实现这个函数后,会在重新渲染组件前，调用这个函数，返回false就放弃渲染组件
-shouldComponentUpdate() {
-        if (this.state.input.length &lt; 3) {
-            return true;
-        }
-        return false;
-    }
-</code></pre>
-
-<h3 id="toc_3">强制渲染</h3>
-
-<p><code>forceUpdate(callback)</code> <br/>
-当UI的可变数据来源为属性和状态之外获取时,可以使用这个函数要求重新渲染，这会导致所有级别的UI都重新读取、计算、渲染。</p>
-
-<blockquote>
-<p>这个渲染过程不会调用<code>shouldComponentUpdate</code><br/>
-可以通过回调函数,在执行结束后调用<br/>
-尽量避免使用</p>
-</blockquote>
-
-<h3 id="toc_4">render渲染过程</h3>
-
-<p>RN通过<code>render</code>实现重新渲染。原型为<code>ReactComponent render()</code><br/>
-任何组件都必须有这个函数 也必须只能返回一个可渲染组件<br/>
-通过修改属性或者状态机变量来触发render的重新渲染，而不是直接调用这个函数</p>
-
-<h3 id="toc_5">简洁写法</h3>
-
-<pre><code class="language-javascript">    //简洁写法1（通过指定参数名称与状态机变量名称相同 省略）
-    updateNum(input) {
-        this.setState(() =&gt; {
-            return {input}
-        })
-    }
-    
-    //简洁写法2（省略箭头函数）
-    updateNum(input) {
-        this.setState( {input})
-    }
- ```
-
-## 成员变量
-
-```javascript
-    constructor(props) {
-        super(props)
-        this.myProperty1 = &quot;test&quot;
-        this.myProperty2 = true
-        this.state = {
-            input: &#39;&#39;,
-            inputPWD: &#39;&#39;,
-        }
-    }
-    //就可以在组件中使用myProperty1  myProperty2 这两个成员变量
-</code></pre>
-
-<p>组件可以有静态变量、静态成员函数，直接用<code>类名.</code>调用</p>
-
-<h3 id="toc_6">回调函数绑定</h3>
-
-<pre><code class="language-javascript">//在constuctor函数中
-this.updateNum = this.updateNum.bind(this)
-</code></pre>
-
-<p>绑定操作是为了让回调函数能正确解析出this，否则this.updateNum函数被执行时,指向另外对象而不是该组建类的实例</p>
+<p><strong>none:</strong> 发生在本组件和子组件的触摸事件交给本组件的父组件处理<br/>
+<strong>box-none:</strong> 本组件显示范围内，非子组件显示范围内的时间交给本组件父组件处理,子组件显示范围交给子组件处理<br/>
+<strong>box-only:</strong> 本组件显示范围内的所有触摸事件都交给本组件处理<br/>
+<strong>auto:</strong> 视组件不同而不同 不是所有组件都支持box-none和box-only</p>
 
                         
                       </div>
@@ -245,7 +242,7 @@ this.updateNum = this.updateNum.bind(this)
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/6/13</span>
+                    <span class="date">2018/6/19</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='React-Native.html'>React-Native</a></span>
@@ -324,6 +321,8 @@ this.updateNum = this.updateNum.bind(this)
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
             <a href="React-Native.html"><strong>React-Native</strong></a>
+        
+            <a href="Python.html"><strong>Python</strong></a>
          
         </p>
 
@@ -340,31 +339,31 @@ this.updateNum = this.updateNum.bind(this)
 	      
 		      
 			      <li class="post">
+			        <a href="15318121291068.html">函数</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15317414032911.html">语句</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15317258769792.html">Python基础</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15312926184354.html">Stack Navigation</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15304988629042.html">混合开发(OC)</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15293961047296.html">组件属性一</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15290351401483.html">补充</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15289781671435.html">对象</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  

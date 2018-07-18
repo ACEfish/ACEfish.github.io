@@ -88,6 +88,8 @@
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
             <li><a href="React-Native.html">React-Native</a></li>
+        
+            <li><a href="Python.html">Python</a></li>
          
 
       </ul>
@@ -110,185 +112,242 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14882730004281.html">
+                <a class="clearlink" href="14892022301750.html">
                 
-                  <h1>拾遗</h1>
+                  <h1>图层几何学、视觉效果</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">super</h2>
+                        	<p>遗忘点:</p>
 
-<p>在Objective-C中，如果我们需要在类的方法中调用父类的方法时，通常都会用到<code>super</code></p>
+<ol>
+<li>用作mask的layer不一定非要静态的,只要有layer的都可以作为蒙版</li>
+</ol>
 
-<p>首先我们需要知道的是super与self不同。<code>self</code>是类的一个隐藏参数，每个方法的实现的第一个参数即为self。而<code>super</code>并不是隐藏参数，它实际上只是一个”编译器标示符”，它负责告诉编译器，当调用<code>viewDidLoad</code>方法时，去调用父类的方法，而不是本类中的方法。而它实际上与self指向的是相同的消息接收者。</p>
+<p>2.<code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；我们常用这个方法获取点击位置的视图（判断点击在了哪个视图）</p>
 
-<pre><code class="language-objectivec">struct objc_super { id receiver; Class superClass; };
+<pre><code class="language-text">CALayer *layer = [self.layerView.layer hitTest:point];
 </code></pre>
 
-<p><code>receiver</code>：即消息的实际接收者<br/>
-<code>superClass</code>：指针当前类的父类</p>
+<h2 id="toc_0">图层几何学</h2>
 
-<p>当我们使用super来接收消息时，编译器会生成一个<code>objc_super</code>结构体。就上面的例子而言，这个结构体的<code>receiver</code>就是<code>MyViewController</code>对象，与<code>self</code>相同；<code>superClass</code>指向<code>MyViewController的父类UIViewController</code>。</p>
+<h3 id="toc_1">布局</h3>
 
-<p>接下来，发送消息时，不是调用<code>objc_msgSend</code>函数，而是调用<code>objc_msgSendSuper</code>函数，其声明如下：</p>
+<p>UIView布局属性:<code>frame</code> <code>bounds</code> <code>center</code><br/><br/>
+与之对应<br/>
+CALayer布局属性:<code>frame</code> <code>bounds</code> <code>position</code><br/>
+center和postion是一样的值，都代表了相对于父图层 <code>anchorPoint</code> 所在的位置</p>
 
-<pre><code class="language-objectivec">id objc_msgSendSuper ( struct objc_super *super, SEL op, ... );
+<p>视图的布局属性仅仅是存取方法，对其进行改变其实是改变视图下方CALayer的frame  </p>
+
+<p>视图或者图层的frame是根据其bounds，position和transform计算而来的，其中任意一值发生改变都会导致其frame改变  </p>
+
+<p><img src="media/14892022301750/14892031426669.jpg" alt=""/></p>
+
+<h3 id="toc_2">锚点</h3>
+
+<p>视图的<code>center</code>属性和图层的<code>position</code>属性都指定了<code>anchorPoint</code>相对于父图层的位置。</p>
+
+<p><code>anchorPoint</code>是用来移动图层的把柄</p>
+
+<p>默认<code>anchorPoint</code>是在图层的中心,这个属性UIView并没有暴露出来,这也是视图的<code>position</code>属性被叫做“center”的原因。但是图层的锚点可以移动，锚点的移动会导致frame的改变即位置改变</p>
+
+<p><img src="media/14892022301750/14893741880682.jpg" alt=""/></p>
+
+<p>anchorPoint也是单位坐标，默认是{0.5，0.5}，可以通过指定大于或者小于1，使其在图层范围之外</p>
+
+<p>改变<code>anchorPoint</code>常用于做不随着中心点做动画的动画使用,比如 时钟的表针旋转</p>
+
+<p><strong>注意</strong><br/>
+中心和锚点（即position或者center和anchorPoint没有任何关系），锚点的改变不会影响中心点位置，只会影响frame</p>
+
+<pre><code class="language-objectivec">position.x = frame.origin.x + anchorPoint.x * bounds.size.width；  
+position.y = frame.origin.y + anchorPoint.y * bounds.size.height；
+
+frame.origin.x = position.x - anchorPoint.x * bounds.size.width；  
+frame.origin.y = position.y - anchorPoint.y * bounds.size.height；
 </code></pre>
 
-<p>该函数实际的操作是：从objc_super结构体指向的superClass的方法列表开始查找viewDidLoad的selector，找到后以objc-&gt;receiver去调用这个selector：</p>
+<h3 id="toc_3">坐标系转换</h3>
 
-<pre><code class="language-objectivec">objc_msgSend(objc_super-&gt;receiver, @selector(viewDidLoad))
+<p>CALayer提供了转换坐标系的方法（视图也有）</p>
+
+<pre><code class="language-objectivec">- (CGPoint)convertPoint:(CGPoint)point fromLayer:(CALayer *)layer;
+- (CGPoint)convertPoint:(CGPoint)point toLayer:(CALayer *)layer;
+- (CGRect)convertRect:(CGRect)rect fromLayer:(CALayer *)layer;
+- (CGRect)convertRect:(CGRect)rect toLayer:(CALayer *)layer;
 </code></pre>
 
-<p>由于<code>objc_super-&gt;receiver</code>就是<code>self</code>本身，所以该方法实际与下面这个调用是相同的：</p>
+<h3 id="toc_4">Z坐标</h3>
 
-<p><code>objc_msgSend(self, @selector(viewDidLoad))</code></p>
+<p>UIView是二维坐标 而CALayer则是三维的<br/><br/>
+因此CALayer还有两个属性:<code>zPosition</code> <code>anchorPointZ</code> 在Z轴上描述图层位置的浮点类型<br/>
+<code>zPosition</code>最实用的功能就是改变图层的显示顺序了，一般给图层增加<code>1.f</code>就可以控制显示顺序了</p>
 
-<pre><code class="language-text">![](media/14882730004281/14883295157748.jpg)
-</code></pre>
+<h3 id="toc_5">HIT Testing</h3>
 
-<h2 id="toc_1">库相关操作</h2>
+<p><code>CALayer</code>并不关心任何响应链事件，所以不能直接处理触摸事件或者手势。但是它有一系列的方法帮你处理事件：<code>-containsPoint:</code>和<code>-hitTest:</code>。    </p>
 
-<p>库相关的操作主要是用于获取由系统提供的库相关的信息，主要包含以下函数</p>
+<p><code>-containsPoint:</code> 接受一个在本图层坐标系吓得一个CGPoint，如果这个点在图层frame内就返回YES。注意必须将这个点转为每个图层坐标系下的坐标</p>
 
-<pre><code class="language-objectivec">// 获取所有加载的Objective-C框架和动态库的名称
-const char ** objc_copyImageNames ( unsigned int *outCount );
-// 获取指定类所在动态库
-const char * class_getImageName ( Class cls );
-// 获取指定库或框架中所有类的类名
-const char ** objc_copyClassNamesForImage ( const char *image, unsigned int *outCount );
-</code></pre>
+<p><code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；</p>
 
-<p>通过这几个函数，我们可以了解到某个类所有的库，以及某个库中包含哪些类。</p>
-
-<pre><code class="language-objectivec">NSLog(@&quot;获取指定类所在动态库&quot;);
-NSLog(@&quot;UIView&#39;s Framework: %s&quot;, class_getImageName(NSClassFromString(@&quot;UIView&quot;)));
-NSLog(@&quot;获取指定库或框架中所有类的类名&quot;);
-const char ** classes = objc_copyClassNamesForImage(class_getImageName(NSClassFromString(@&quot;UIView&quot;)), &amp;outCount);
-for (int i = 0; i &lt; outCount; i++) {
-    NSLog(@&quot;class name: %s&quot;, classes[i]);
+<pre><code class="language-objectivec">//举个栗子
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    //get touch position
+    CGPoint point = [[touches anyObject] locationInView:self.view];
+    //get touched layer
+    //获取这个点击的layer
+    CALayer *layer = [self.layerView.layer hitTest:point];
+    //get layer using hitTest
+    if (layer == self.blueLayer) {
+        [[[UIAlertView alloc] initWithTitle:@&quot;Inside Blue Layer&quot; message:nil delegate:nil cancelButtonTitle:@&quot;OK&quot; otherButtonTitles:nil] show];
+    } else if (layer == self.layerView.layer) {
+        [[[UIAlertView alloc] initWithTitle:@&quot;Inside White Layer&quot;
+        message:nil
+        delegate:nil
+        cancelButtonTitle:@&quot;OK&quot;
+        otherButtonTitles:nil] show];
+    }
 }
-//输出结果
-2014-11-08 12:57:32.689 [747:184013] 获取指定类所在动态库
-2014-11-08 12:57:32.690 [747:184013] UIView&#39;s Framework: /System/Library/Frameworks/UIKit.framework/UIKit
-2014-11-08 12:57:32.690 [747:184013] 获取指定库或框架中所有类的类名
-2014-11-08 12:57:32.691 [747:184013] class name: UIKeyboardPredictiveSettings
-2014-11-08 12:57:32.691 [747:184013] class name: _UIPickerViewTopFrame
-2014-11-08 12:57:32.691 [747:184013] class name: _UIOnePartImageView
-2014-11-08 12:57:32.692 [747:184013] class name: _UIPickerViewSelectionBar
-2014-11-08 12:57:32.692 [747:184013] class name: _UIPickerWheelView
-2014-11-08 12:57:32.692 [747:184013] class name: _UIPickerViewTestParameters
-......
+
 </code></pre>
 
-<h2 id="toc_2">块操作</h2>
+<p><strong>注意</strong></p>
 
-<p>block给我们带到极大的方便，苹果也不断提供一些使用block的新的API。同时，苹果在runtime中也提供了一些函数来支持针对block的操作，这些函数包括：</p>
+<ol>
+<li>当调用图层的<code>-hitTest:</code>方法时，测算的顺序严格依赖于图层树当中的图层顺序（和<code>UIView</code>处理事件类似）。之前提到的<code>zPosition</code>属性可以明显改变屏幕上图层的顺序，但不能改变事件传递的顺序。<br/></li>
+<li>这两个方法是layer的实例方法 我们可以直接用layer调用而不需要作为系统判断方法</li>
+</ol>
 
-<pre><code class="language-objectivec">// 创建一个指针函数的指针，该函数调用时会调用特定的block
-IMP imp_implementationWithBlock ( id block );
-// 返回与IMP(使用imp_implementationWithBlock创建的)相关的block
-id imp_getBlock ( IMP anImp );
-// 解除block与IMP(使用imp_implementationWithBlock创建的)的关联关系，并释放block的拷贝
-BOOL imp_removeBlock ( IMP anImp );
+<h3 id="toc_6">自动布局</h3>
+
+<p>对于UIView如果想要自动布局我们可以使用<code>UIViewAutoresizingMask</code>  和<code>NSLayoutConstraint</code>API<br/><br/>
+CALayer没有自动布局办法<br/>
+如果想要随意控制CALayer的布局，我们可以用CALayerDelegate方法:  </p>
+
+<pre><code class="language-objectivec">- (void)layoutSublayersOfLayer:(CALayer *)layer;
+/**当图层的 bounds 发生改变，或者图层的 -setNeedsLayout 方法被调用的时候，这个函数将会被执
+行。（但是也没法做大自适应屏幕等自动布局,这也是为什么我们用UIView来布局）*/
 </code></pre>
 
-<p><code>imp_implementationWithBlock</code>函数：参数block的签名必须是<code>method_return_type ^(id self, method_args …)</code>形式的。该方法能让我们使用block作为IMP。如下代码所示：</p>
+<h2 id="toc_7">视觉效果</h2>
 
-<p>举个栗子：</p>
+<h3 id="toc_8">圆角</h3>
 
-<pre><code class="language-objectivec">@interface MyRuntimeBlock : NSObject
-@end    
-@implementation MyRuntimeBlock
-@end
-// 测试代码
-IMP imp = imp_implementationWithBlock(^(id obj, NSString *str) {
-    NSLog(@&quot;%@&quot;, str);
-});
-class_addMethod(MyRuntimeBlock.class, @selector(testBlock:), imp, &quot;v@:@&quot;);
-MyRuntimeBlock *runtime = [[MyRuntimeBlock alloc] init];
-[runtime performSelector:@selector(testBlock:) withObject:@&quot;hello world!&quot;];
+<p>CALayer有一个叫做<code>conrnerRadius</code>的属性控制着图层角的曲率。它是一个浮点数，默认为0（为0的时候就是直角）,默认这个值不影响背景图片或者子图层,但是如果设置<code>maskToBounds</code>为<code>YES</code>,图层中东西都会被截取.</p>
 
-//输出结果
-2014-11-09 14:03:19.779 [1172:395446] hello world!
+<h3 id="toc_9">图层边框</h3>
+
+<p><code>borderWidth</code>和<code>borderColor</code>，这条线（stroke）沿着图层的bounds绘制,同时也包含图层的角.<br/>
+<code>borderWith</code>以点为单位的浮点数<br/><br/>
+<code>borderColor</code>边框的颜色默认黑色,<code>CGColorRef</code>类型，不是UIColor所以不是<code>Cocoa</code>内置对象  </p>
+
+<pre><code class="language-objectivec">// CGColorRef 属性即便是强引用也只能通过assign关键字来声明
+@property(nullable) CGColorRef borderColor;
 </code></pre>
 
-<h2 id="toc_3">弱引用操作</h2>
+<p><strong>注意</strong></p>
 
-<pre><code class="language-objectivec">// 加载弱引用指针引用的对象并返回
-id objc_loadWeak ( id *location );
-// 存储__weak变量的新值
-id objc_storeWeak ( id *location, id obj );
+<ol>
+<li>边框是绘制在图层边界里面的，而且在所有子内容之前，也在子图层之前。（这个之前是显示最前而不是在最前绘制被遮盖）</li>
+<li>边框是跟随图层的边界变化的，而不是图层里面的内容</li>
+<li>
+<img src="media/14892022301750/14893838391060.jpg" alt=""/></li>
+</ol>
+
+<h3 id="toc_10">阴影</h3>
+
+<p><code>shadowOpacity</code>默认0。他是一个必须在<code>0.0</code>（不可见）和<code>1.0</code>（完全不透明）之间的浮点数。  </p>
+
+<p>阴影的另外三个属性:<br/><br/>
+<code>shadowColor</code>控制阴影的颜色，和 borderColor 和 backgroundColor 一样，它的类型也是 CGColorRef，默认黑色<br/><br/>
+<code>shadowOffset</code>阴影的方向和距离 CGSize类型，宽度为阴影横向位移，高度为纵向位移，默认{0,-3},即相对Y轴有3个点的向上位移<br/><br/>
+<code>shadowRadius</code>控制着阴影的模糊度，当它的值是0的时候，阴影就和视图一样有一个非常确定的边界线。我们推荐为大于0的值,值越大阴影越模糊,图层层次更明显.</p>
+
+<p><img src="media/14892022301750/14893848191222.jpg" alt=""/></p>
+
+<h4 id="toc_11">阴影裁剪</h4>
+
+<p>与边框不同,图层的阴影继承自内容的外形，CoreAnimation会将寄宿图（包括子视图）来结合图层形状创建一个阴影。<br/><br/>
+但是由于他们的不同,我们在包括子图层创建阴影后,如果按照边框进行裁剪就会导致部分阴影没有了，这时候我们只能额外创建一个裁剪后的图层形状的阴影图层（可以作为最外层的父图层）来实现效果。</p>
+
+<h3 id="toc_12">shadowPath属性</h3>
+
+<p>因为实时计算阴影是非常消耗资源的,我们可以通过事先指定<code>shadowPath</code>来提高性能.<code>shadowPath</code>是一个<code>CGPathRef</code>类型（一个指向<code>CGPath</code>的指针）。<code>CGPath</code> 是一个<code>Core Graphics</code>对象，用来指定任意的一个矢量图形。我们可以用这个属性在图层形状之外指定阴影形状.  </p>
+
+<p>举个栗子:</p>
+
+<pre><code class="language-objectivec">
+CGMutablePathRef squarePath = CGPathCreateMutable();
+CGPathAddRect(squarePath, NULL, self.layerView1.bounds);
+self.layerView1.layer.shadowPath = squarePath;
+//需要我们手动释放
+CGPathRelease(squarePath);
+//create a circular shadow
+CGMutablePathRef circlePath = CGPathCreateMutable();
+CGPathAddEllipseInRect(circlePath, NULL, self.layerView2.bounds);
+self.layerView2.layer.shadowPath = circlePath; 
+CGPathRelease(circlePath);
 </code></pre>
 
-<p><code>objc_loadWeak</code>函数：该函数加载一个弱指针引用的对象，并在对其做retain和autoreleasing操作后返回它。这样，对象就可以在调用者使用它时保持足够长的生命周期。该函数典型的用法是在任何有使用<code>__weak</code>变量的表达式中使用。</p>
+<p><code>CGPath</code>适合搭建比较简单的形状,比如举行或者圆,但是如果是复杂的图形推荐<strong>使用<code>UIBezierPath</code></strong>，它是一个由UIKit提供的在<code>CGPath</code>基础上的<code>Objective-C</code>包装类</p>
 
-<p><code>objc_storeWeak</code>函数：该函数的典型用法是用于<code>__weak</code>变量做为赋值对象时。</p>
+<h3 id="toc_13">图层蒙版</h3>
 
-<h2 id="toc_4">宏定义</h2>
+<p>CALayer的<code>mask</code>属性是一个CALayer类型,它类似于一个自图层，mask图层定义了父图层的可见区域。  </p>
 
-<p>在runtime中，还定义了一些宏定义供我们使用，有些值我们会经常用到，如表示<code>BOOL</code>值的<code>YES/NO</code>；而有些值不常用，如<code>OBJC_ROOT_CLASS</code>。在此我们做一个简单的介绍。</p>
+<p>mask图层的color没用,轮廓才是重要的。对于mask图层中的部分会保留下来,其他部分会被抛弃（对于视图View其实你可以看做其他部分还在只不过颜色为透明色,但是这部分还会拦截点击事件）  </p>
 
-<h3 id="toc_5">布尔值</h3>
+<p>这个<code>Mask</code><strong>不仅仅局限于静态图</strong>，任何有图层的构成都可以作为Mask，因此我们甚至可以用一个动画的layer作为蒙版.</p>
 
-<pre><code class="language-objectivec">#define YES  (BOOL)1
-#define NO   (BOOL)0
+<h3 id="toc_14">拉伸过滤</h3>
+
+<p>这里牵涉到<code>minificationFilter</code>和<code>magnificationFilter</code>属性。  </p>
+
+<p>当图片需要显示不同大小的时候,这种拉伸算法就起到作用。它作用于原图的像素上并根据需要生成新的像素显示在屏幕上。</p>
+
+<p><code>CALayer</code>提供给我们三种拉伸过滤方法:</p>
+
+<ul>
+<li>kCAFilterLinear </li>
+<li>kCAFilterNearest</li>
+<li>kCAFilterTrilinear</li>
+</ul>
+
+<p><code>minification</code>（缩小图片）和<code>magnification</code>（放大图片）默认的过滤器都是<code>kCAFilterLinear</code></p>
+
+<p><code>kCAFilterLinear</code>双线性滤波，大多数情况下表现良好，但是当放大倍数较大时会比较模糊不清  </p>
+
+<p><code>kCAFilterTrilinear</code>和<code>kCAFilterLinear</code>很相似，是三线性滤波<br/>
+<img src="media/14892022301750/14893953542514.jpg" alt=""/></p>
+
+<p><code>kCAFilterNearest</code> 最近过滤 ，就是取样最近的单像素点而不管其他的颜色。总的来说，对于比较小的图或者是差异特别明显，极少斜线的大图，最近过滤算法会保留这种差异明显的特质以呈现更好的结果。但是对于大多数的图尤其是有很多斜线或是曲线轮廓的图片来说，最近过滤算法会导致更差的结果。换句话说，线性过滤保留了形状，最近过滤则保留了像素的差异。<br/>
+<img src="media/14892022301750/14893958244715.jpg" alt=""/></p>
+
+<h3 id="toc_15">组透明</h3>
+
+<p>UIView用<code>alpha</code>属性设置透明度<br/>
+CALayy用<code>opacity</code>设置图层透明度<br/>
+这两个属性都是影响子层级的，比如我们设置一个图层透明度为50%，图层的每个像素都会一半显示自己的颜色，另一半显示图层下面的颜色。。但是如果图层包含一个同样显示50%透明的子图层时，你所看到的视图，50%来自子视图，25%来了图层本身的颜色，另外的25%则来自背景色。因此经常导致我们我们视图颜色的不协调。</p>
+
+<p>这时候我们可以<br/><br/>
+方法一：<br/><br/>
+通过设置<code>Info.plist</code>文件中的 <code>UIViewGroupOpacity</code>为<code>YES</code>来达到这个效果，但是这个设置会影响到这个应用，整个app可能会受到不良影响。</p>
+
+<p>方法二：（推荐）<br/><br/>
+设置CALayer的一个叫做<code>shouldRasterize</code>属性来实现组透明的效果，如果它被设置为YES，在应用透明度之前，图层及其子图层都会被整合成一个整体的图片，这样就没有透明度混合的问题了</p>
+
+<p>为了启用<code>shouldRasterize</code>属性，我们设置了图层的<code>rasterizationScale</code>属性。默认情况下，所有图层拉伸都是1.0， 所以如果你使用了<code>shouldRasterize</code>属性，你就要确保你设置了 <code>rasterizationScale</code> 属性去匹配屏幕，以防止出现Retina屏幕像素化的问题。</p>
+
+<pre><code class="language-objectivec">button2.layer.shouldRasterize = YES;
+button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
 </code></pre>
 
-<p>这两个宏定义定义了表示布尔值的常量，需要注意的是YES的值是1，而不是非0值。</p>
-
-<h3 id="toc_6">空值</h3>
-
-<pre><code class="language-objectivec">#define nil  __DARWIN_NULL
-#define Nil  __DARWIN_NULL
-</code></pre>
-
-<p>其中nil用于空的实例对象，而Nil用于空类对象。</p>
-
-<h3 id="toc_7">分发函数原型</h3>
-
-<pre><code class="language-objectivec">#define OBJC_OLD_DISPATCH_PROTOTYPES  1
-</code></pre>
-
-<p>该宏指明分发函数是否必须转换为合适的函数指针类型。当值为0时，必须进行转换</p>
-
-<h3 id="toc_8">Objective-C根类</h3>
-
-<pre><code class="language-objectivec">#define OBJC_ROOT_CLASS
-</code></pre>
-
-<p>如果我们定义了一个Objective-C根类，则编译器会报错，指明我们定义的类没有指定一个基类。这种情况下，我们就可以使用这个宏定义来避过这个编译错误。该宏在iOS 7.0后可用。</p>
-
-<p>其实在NSObject的声明中，我们就可以看到这个宏的身影，如下所示：</p>
-
-<pre><code class="language-objectivec">__OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0)
-OBJC_ROOT_CLASS
-OBJC_EXPORT
-@interface NSObject &lt;NSObject&gt; {
-    Class isa  OBJC_ISA_AVAILABILITY;
-}
-</code></pre>
-
-<h3 id="toc_9">局部变量存储时长</h3>
-
-<pre><code class="language-objectivec">#define NS_VALID_UNTIL_END_OF_SCOPE
-</code></pre>
-
-<p>该宏表明存储在某些局部变量中的值在优化时不应该被编译器强制释放。</p>
-
-<p>我们将局部变量标记为id类型或者是指向ObjC对象类型的指针，以便存储在这些局部变量中的值在优化时不会被编译器强制释放。相反，这些值会在变量再次被赋值之前或者局部变量的作用域结束之前都会被保存。</p>
-
-<h3 id="toc_10">关联对象行为</h3>
-
-<pre><code class="language-objectivec">enum {
-   OBJC_ASSOCIATION_ASSIGN  = 0,
-   OBJC_ASSOCIATION_RETAIN_NONATOMIC  = 1,
-   OBJC_ASSOCIATION_COPY_NONATOMIC  = 3,
-   OBJC_ASSOCIATION_RETAIN  = 01401,
-   OBJC_ASSOCIATION_COPY  = 01403
-};
-</code></pre>
+<p><strong>注意</strong><br/>
+当<code>shouldRasterize</code>和<code>UIViewGroupOpacity</code>一起的时候，会出现性能问题（但是好像影响不大）</p>
 
                         
                       </div>
@@ -297,10 +356,10 @@ OBJC_EXPORT
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/28</span>
+                    <span class="date">2017/3/11</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='RunTime.html'>运行时</a></span>
+          					    <span class="posted-in"><a href='%E5%9B%BE%E5%B1%82.html'>图层</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -376,6 +435,8 @@ OBJC_EXPORT
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
             <a href="React-Native.html"><strong>React-Native</strong></a>
+        
+            <a href="Python.html"><strong>Python</strong></a>
          
         </p>
 
@@ -392,31 +453,31 @@ OBJC_EXPORT
 	      
 		      
 			      <li class="post">
+			        <a href="15318121291068.html">函数</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15317414032911.html">语句</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15317258769792.html">Python基础</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15312926184354.html">Stack Navigation</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15304988629042.html">混合开发(OC)</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15293961047296.html">组件属性一</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15290351401483.html">补充</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15289781671435.html">对象</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15289587744708.html">导航页面</a>
 			      </li>
 		     
 		  
