@@ -112,69 +112,199 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14988080333726.html">
+                <a class="clearlink" href="15017296324997.html">
                 
-                  <h1>NSNotification</h1>
+                  <h1>方法</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">notification的使用</h2>
+                        	<p><code>类、结构体、枚举</code>都可以定义实例方法，实例方法为给定类型实例封装了具体的任务和功能</p>
 
-<h3 id="toc_1">注册观察者</h3>
+<p><code>类、结构体、枚举</code>也可定义类型方法,类型方法与类型本身关联（与OC中类似）</p>
 
-<p><code>- (void)addObserver:(id)notificationObserver selector:(SEL)notificationSelector name:(NSString *)notificationName object:(id)notificationSender<br/>
-</code><br/>
-注意:</p>
+<h2 id="toc_0">实例方法</h2>
 
-<ol>
-<li><code>notificationObserver</code>不能为nil</li>
-<li><code>notification Selector</code>回调方法有且只有一个参数(<code>NSNotification</code>对象)</li>
-<li>如果<code>notificationName</code>为<code>nil</code>，则会接收所有的通知(如果<code>notificationSender</code>不为空，则接收所有来自于<code>notificationSender</code>的所有通知)</li>
-<li>如果<code>notificationSender</code>为<code>nil</code>，则会接收所有<code>notificationName</code>定义的通知；否则，接收由<code>notificationSender</code>发送的通知</li>
-<li>监听同一条通知的多个观察者，在通知到达时，它们执行回调的顺序是不确定的</li>
-</ol>
+<p>实例方法提供访问和修改实例属性的方法或提供与实例目的相关的功能，并以此来支撑实例的功能。<br/>
+<strong>实例方法的语法与函数完全一致</strong></p>
 
-<h3 id="toc_2">post通知</h3>
+<p>实例方法能够隐式访问它所属类型的所有的其他实例方法和属性</p>
 
-<pre><code class="language-objectivec">[[NSNotificationCenter defaultCenter] postNotificationName:@&quot;First&quot; object:@&quot;博客园-Fly_Elephant&quot;];
--(void)notificationFirst:(NSNotification *)notification{
-    NSString  *name=[notification name];
-    NSString  *object=[notification object];
-    NSLog(@&quot;名称:%@----对象:%@&quot;,name,object);
+<pre><code class="language-swift">class Counter {
+    var count = 0
+    func increment() {
+        count += 1
+    }
+    func increment(by amount: Int) {
+        count += amount
+    }
+    func reset() {
+        count = 0
+    }
 }
-//名称:First----对象:博客园-Fly_Elephant
 
-[[NSNotificationCenter defaultCenter] postNotificationName:@&quot;Second&quot; object:@&quot;http://www.cnblogs.com/xiaofeixiang&quot; userInfo:dict];
--(void)notificationSecond:(NSNotification *)notification{
-    NSString  *name=[notification name];
-    NSString  *object=[notification object];
-    NSDictionary  *dict=[notification userInfo];
-    NSLog(@&quot;名称:%@----对象:%@&quot;,name,object);
-    NSLog(@&quot;获取的值:%@&quot;,[dict objectForKey:@&quot;key&quot;]);
-}
-//名称:Second----对象:http://www.cnblogs.com/xiaofeixiang
-//获取的值:keso
+let counter = Counter()
+// 初始计数值是0
+counter.increment()
+// 计数值现在是1
+counter.increment(by: 5)
+// 计数值现在是6
+counter.reset()
+// 计数值现在是0
 </code></pre>
 
-<h2 id="toc_3">通知原理</h2>
+<h3 id="toc_1">self属性</h3>
 
-<p>单例的方式创建一个<code>NSNotificationCenter</code>对象<br/>
-对象注册观察者时 将注册的<code>name</code> <code>selector</code> <code>object</code> 作为一个模型 添加到一个数组中</p>
+<p>与OC类似,<code>self</code>等同于该类型的实例本身</p>
 
-<p>post时根据名字和object 找到数组中注册的对象 执行通知的方法</p>
+<pre><code class="language-swift">//所以我们可以这么写
+func increment() {
+    self.count += 1
+}
+</code></pre>
 
-<h2 id="toc_4">多线程</h2>
+<p>其实没必要写<code>self</code>，使用已知的属性名或者方法名 <code>swift</code>会假定你使用的是当前实例属性或者方法</p>
 
-<p>在多线程应用中，<code>Notification</code>在哪个线程中<code>post</code>，就在哪个线程中被转发，而不一定是在注册观察者的那个线程中。<br/>
-也就是说，<code>Notification</code>的发送与接收处理都是在同一个线程中.</p>
+<p>我们使用的主要场景:<br/>
+实例方法的某个<code>参数名称</code>与实例的某个<code>属性名称</code>相同的时候,此时优先使用参数名,因此我们通过<code>self</code>属性来进行区分使用属性</p>
 
-<h2 id="toc_5">通告队列 NSNotificationQueue</h2>
+<pre><code class="language-swift">struct Point {
+    var x = 0.0, y = 0.0
+    func isToTheRightOfX(_ x: Double) -&gt; Bool {
+        return self.x &gt; x//用self来区分属性
+    }
+}
 
-<p><code>NSNotificationQueue</code> 作用是充当通告中心(<code>NSNotificationCenter</code>)的缓冲区,以FIFO的顺序进行维护。当一个通告上升到队列最前时，就将他发送给通告中心，通告中心随后将它派发给所有注册为观察者的对象</p>
+let somePoint = Point(x: 4.0, y: 5.0)
 
-<p>参考<a href="http://www.jianshu.com/p/b4835026e8e9">NSNotification&amp;NSNotificationCenter(实现原理,多线程,内存管理角度)</a><br/>
-参考<a href="http://www.cnblogs.com/heyonggang/p/3681689.html">iOS NSNotification的使用</a></p>
+if somePoint.isToTheRightOfX(1.0) {
+    print(&quot;This point is to the right of the line where x == 1.0&quot;)
+}
+// 打印 &quot;This point is to the right of the line where x == 1.0&quot;
+</code></pre>
+
+<h3 id="toc_2">实例方法中修改值类型</h3>
+
+<p>结构体和枚举是值类型。默认情况下，值类型的属性不能在它的实例方法中被修改</p>
+
+<p>我们可以通过给这个实例方法选择<code>可变(mutating)</code>行为，就可以在方法内部修改改变它的属性;这个方法做的任何改变都会在方法执行结束时写回到原始结构中。方法还可以给它隐含的<code>self</code>属性赋予一个全新的实例，这个新实例在方法结束时会替换现存实例</p>
+
+<pre><code class="language-swift">struct Point {
+    var x = 0.0, y = 0.0
+    mutating func moveByX(deltaX: Double, y deltaY: Double) {
+        x += deltaX
+        y += deltaY
+    }
+}
+var somePoint = Point(x: 1.0, y: 1.0)
+somePoint.moveByX(2.0, y: 3.0)
+print(&quot;The point is now at (\(somePoint.x), \(somePoint.y))&quot;)
+// 打印 &quot;The point is now at (3.0, 4.0)&quot;
+</code></pre>
+
+<p>注意:<br/>
+不能在结构体类型的常量上调用可变方法，因为其属性不能被改变，即使属性是变量属性</p>
+
+<h3 id="toc_3">在可变方法中给self赋值</h3>
+
+<p>可以在可变方法中给隐含属性<code>self</code>赋予一个新的实例</p>
+
+<pre><code class="language-swift">struct Point1 {
+    var x = 0.0, y = 0.0
+    mutating func moveBy(x deltaX: Double, y deltaY: Double) {
+        self = Point1(x: x + deltaX, y: y + deltaY)
+    }
+}
+</code></pre>
+
+<p>创建一个新的结构体实例赋值给self，替换现在的实例</p>
+
+<p>枚举的可变方法，定义了一个三态开关状态枚举,通过调用<code>next()</code>进行切换状态</p>
+
+<pre><code class="language-swift">enum TriStateSwitch {
+    case Off, Low, High
+    mutating func next() {
+        switch self {
+        case .Off:
+            self = .Low
+        case .Low:
+            self = .High
+        case .High:
+            self = .Off
+        }
+    }
+}
+var ovenLight = TriStateSwitch.Low
+ovenLight.next()
+// ovenLight 现在等于 .High
+ovenLight.next()
+// ovenLight 现在等于 .Off
+</code></pre>
+
+<h2 id="toc_4">类型方法</h2>
+
+<p>定义在类型本身上的方法,即为类型方法<br/>
+通过在方法<code>func</code>前加关键字<code>static</code>，来指定类型方法,通过加关键字<code>class</code>来实现子类重写父类的方法实现</p>
+
+<blockquote>
+<p>在<code>oc</code>中只能为类定义类型方法,但是在<code>swift</code>中可以为类,结构体,枚举定义类方法</p>
+</blockquote>
+
+<p>类型方法在类型上通过点语法调用<br/>
+在类型方法中,<code>self</code>指向类型本身,同样的可以用其来区分同样的类型属性和类型方法参数</p>
+
+<p>在类型方法体中可以调用本类中类型属性或的其他类型方法,调用是可以直接通过类型方法名称或者类型属性名称进行调用,而不用在前面添加类型名称</p>
+
+<pre><code class="language-swift">//检测玩家等级的结构体
+struct LevelTracker {
+    static var highestUnlockedLevel = 1
+    var currentLevel = 1
+    static func unlock(_ level: Int) {
+        if level &gt; highestUnlockedLevel { highestUnlockedLevel = level }
+    }
+    static func isUnlocked(_ level: Int) -&gt; Bool {
+        return level &lt;= highestUnlockedLevel
+    }
+    @discardableResult //
+    mutating func advance(to level: Int) -&gt; Bool {
+        if LevelTracker.isUnlocked(level) {
+            currentLevel = level
+            return true
+        } else {
+            return false
+        }
+    }
+}
+</code></pre>
+
+<pre><code class="language-swift">//玩家类
+class Player {
+    var tracker = LevelTracker()
+    let playerName: String
+    func complete(level: Int) {
+        LevelTracker.unlock(level + 1)
+        tracker.advance(to: level + 1)
+    }
+    init(name: String) {
+        playerName = name
+    }
+}
+</code></pre>
+
+<pre><code class="language-swift">var player = Player(name: &quot;Argyrios&quot;)
+player.complete(level: 1)
+print(&quot;highest unlocked level is now \(LevelTracker.highestUnlockedLevel)&quot;)
+// 打印 &quot;highest unlocked level is now 2&quot;
+
+player = Player(name: &quot;Beto&quot;)
+if player.tracker.advance(to: 6) {
+print(&quot;player is now on level 6&quot;)
+} else {
+print(&quot;level 6 has not yet been unlocked&quot;)
+}
+// 打印 &quot;level 6 has not yet been unlocked&quot;
+
+</code></pre>
 
                         
                       </div>
@@ -183,10 +313,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/6/30</span>
+                    <span class="date">2017/8/3</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html'>iOS开发知识</a></span>
+          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -280,31 +410,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15318121291068.html">函数</a>
+			        <a href="15324890369623.html">面对对象高级编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15317414032911.html">语句</a>
+			        <a href="15324145349319.html">面对对象编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15317258769792.html">Python基础</a>
+			        <a href="15324005146874.html">模块</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15312926184354.html">Stack Navigation</a>
+			        <a href="15320795459657.html">函数式编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15304988629042.html">混合开发(OC)</a>
+			        <a href="15319012648780.html">高级特性</a>
 			      </li>
 		     
 		  

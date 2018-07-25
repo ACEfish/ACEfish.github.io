@@ -112,63 +112,72 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15266103180287.html">
+                <a class="clearlink" href="15289587744708.html">
                 
-                  <h1># iOS编译过程</h1>
+                  <h1>导航页面</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">大致过程</h2>
+                        	<h3 id="toc_0">适配不同平台</h3>
 
-<blockquote>
-<p>如果有工程依赖的第三方依赖库,会首先build依赖库target,然后build主target</p>
-</blockquote>
+<ol>
+<li><p>文件适配</p>
+<p>通过命名文件后缀为 <code>.android.js</code> 和 <code>.ios.js</code>文件 RN会根据不同平台加载不同文件</p></li>
+<li><p>平台检测</p></li>
+</ol>
 
-<p>大致流程:</p>
+<pre><code class="language-javascript">import {
+    Platform
 
-<ul>
-<li><p>compile各个.m文件<br/>
-<code>/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x objective-c -arch x86_64 -W -c path/main.m -o path/main.o</code></p>
-<ul>
-<li>-x 表示编译语言</li>
-<li>-arch 表示编译的架构</li>
-<li>-W表示各种编译警告</li>
-<li>-c 表示进行预处理，编译，汇编过程</li>
-<li>-o 输出结果</li>
-</ul></li>
-<li><p>Copy静态资源(包括img, string, font等)<br/>
-//copy图片到app<br/>
-<code>/Applications/Xcode.app/Contents/Developer/usr/bin/copypng <br/>
--compress -strip-PNG-text path/MaskView/MaskView/en.lproj/icons.png path/MaskView.app/en.lproj/icons.png</code></p></li>
-<li><p>compile xib文件<br/>
-编译xib，生成nib文件<br/>
- <code>/Applications/Xcode.app/Contents/Developer/usr/bin/ibtool</code></p></li>
-<li><p>compile storyboard文件<br/>
-编译storyBoard,生成.storyBoard，其包内容为nib+plist<br/>
-<code>/Applications/Xcode.app/Contents/Developer/usr/bin/ibtool</code></p></li>
-<li><p>compile asset catalogs<br/>
-生成Asset.car文件<br/>
-<code>/Applications/Xcode.app/Contents/Developer/usr/bin/actool</code></p></li>
-<li><p>process info.plist<br/>
-处理info.plist<br/>
-<code>builtin-infoPlistUtility</code></p></li>
-<li><p>link storyboards<br/>
-链接storyboard<br/>
-<code>/Applications/Xcode.app/Contents/Developer/usr/bin/ibtool</code></p></li>
-<li><p>run custom script<br/>
-执行脚本<br/>
-<code>/bin/sh</code></p></li>
-<li><p>touch app</p>
-<p><code>/usr/bin/touch</code></p></li>
-<li><p>sign app<br/>
-对app进行签名<br/>
-<code>/usr/bin/codesign</code></p></li>
-<li><p>validate app<br/>
-校验app<br/>
-<code>builtin-validationUtility</code></p></li>
-<li></li>
-</ul>
+} from &#39;react-native&#39;
+if(Platform.OS === &quot;android&quot;) {
+//安卓代码
+} else  {
+//iOS代码
+}
+</code></pre>
+
+<h3 id="toc_1">监测android物理后退按钮时间</h3>
+
+<pre><code class="language-javascript">//对于android 点击后退按钮 如果当前有后退视图就后退 并返回true 否则返回false标识后退事件没被处理 传递给操作系统 就退出应用
+    handleBackAndroid() {
+        if (this.navigator.getCurrentRoutes().length &gt; 1) {
+            this.navigator.pop()
+            return true
+        } else  {
+            return false
+        }
+    }
+    //组件挂接到当前页面
+    componentDidMount() {
+        if (Platform.OS === &quot;android&quot;) {
+            BackAndroid.addListener(&quot;hardwareBackPress&quot;, this.handleBackAndroid)
+        }
+    }
+    //组件挂接到当前页面
+    componentWillUnmount() {
+        if (Platform.OS === &quot;android&quot;) {
+            BackAndroid.removeListener(&quot;hardwareBackPress&quot;, this.handleBackAndroid)
+        }
+    }
+
+</code></pre>
+
+<p>可以使用<code>BackAndroid</code>的<code>addEventListener</code>函数挂接多个监听器,当返回键按下，最后的的最先执行 如果返回false会接下来执行倒数第二个 所有的都执行完 才会交给安卓操作系统</p>
+
+<p><code>BackAndroid.exitApp();</code>可以 直接退出应用</p>
+
+<h3 id="toc_2">颜色</h3>
+
+<ol>
+<li><code>rgba(52, 52, 52, 0.5)</code></li>
+<li><code>0xF5FCFF01</code></li>
+<li><code>#F5FCFF</code></li>
+<li><code>rgb(245, 255, 255)</code></li>
+<li><code>hsl(360, 100%, 100%)</code></li>
+<li><code>hsla(360, 100%, l00%, 1.0)</code></li>
+</ol>
 
                         
                       </div>
@@ -177,10 +186,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/5/18</span>
+                    <span class="date">2018/6/14</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='compile.html'>编译</a></span>
+          					    <span class="posted-in"><a href='React-Native.html'>React-Native</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -274,31 +283,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15318121291068.html">函数</a>
+			        <a href="15324890369623.html">面对对象高级编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15317414032911.html">语句</a>
+			        <a href="15324145349319.html">面对对象编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15317258769792.html">Python基础</a>
+			        <a href="15324005146874.html">模块</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15312926184354.html">Stack Navigation</a>
+			        <a href="15320795459657.html">函数式编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15304988629042.html">混合开发(OC)</a>
+			        <a href="15319012648780.html">高级特性</a>
 			      </li>
 		     
 		  

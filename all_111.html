@@ -112,64 +112,51 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14866309753746.html">
+                <a class="clearlink" href="14872162581601.html">
                 
-                  <h1>iOS中UISearchController</h1>
+                  <h1>测试</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h4 id="toc_0">1. 使用方法</h4>
+                        	<h5 id="toc_0">1.流行框架</h5>
 
-<pre><code class="language-object-c">SearchResultController *vc = [[SearchResultController alloc] init];
-    self.searchController = [[SearchControllerOfContacts alloc] initWithSearchResultsController:vc];
-    [self.tableView setTableHeaderView:self.searchController.searchBar];
-    [self.searchController setSearchResultsUpdater:vc];
-    [self.searchController.searchBar setPlaceholder:NSLocalizedString(@&quot;昵称、手机号&quot;, nil)];
-    self.resultController = vc;
-</code></pre>
+<p>Apple自带的<code>XCTest</code>和第三方的<code>GHUnit</code>.他两之间的区别:XCTest：与Xcode深度集成。而且可以享受Apple后续对XCTest升级的福利。 GHUnit：集成度不如XCTest，安装麻烦。但是有自己的GUI界面。因为XCTest是苹果的，所以我们选择XCTest</p>
 
-<p>此处是设置searchBar为tableView的头视图<br/>
-<strong>注意</strong><br/>
-此处的searchConroller 和 searchResultcontroller都必须为该控制器的属性(即强引用住）</p>
+<h5 id="toc_1">2.OCMock</h5>
 
-<h4 id="toc_1">2. 自定义的UISearchController</h4>
+<p>mock测试是个很神奇而又很酷的技术，在测试过程中，对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。<br/>
+而我们在进行iOS测试时候是使用<code>OCMock</code>来进行对象的mock</p>
 
-<p>我们可以继承自UISearchController，重写其<code>initWithSearchResultsController</code>方法即可:</p>
+<h5 id="toc_2">3.断言框架</h5>
 
-<pre><code class="language-object-c">- (id)initWithSearchResultsController:(UIViewController *)searchResultsController
-{
-    if (self = [super initWithSearchResultsController:searchResultsController]) {
-        self.searchBar.layer.borderWidth = 1;
-        self.searchBar.layer.borderColor = [ITRGBColor(239.0, 239.0, 244.0, 1.0)CGColor];
-        [self.searchBar setBarTintColor:ITRGBColor(239.0, 239.0, 244.0, 1.0)];
-        [self.searchBar setValue:@&quot;取消&quot; forKey:@&quot;_cancelButtonText&quot;];
-        UITextField *tf = [[[self.searchBar.subviews firstObject] subviews] lastObject];
-        [tf.layer setMasksToBounds:YES];
-        [tf.layer setBorderWidth:0.5f];
-        [tf.layer setBorderColor:[UIColor colorWithWhite:0.5 alpha:0.3].CGColor];
-        [tf.layer setCornerRadius:5.0f];
-        
-    }
-    return self;
-}
-</code></pre>
+<p>Expecta和OCHamcrest这两个都是断言的扩展框架。一开始我选择了Expecta，因为我后来有一段时间将测试文件用BDD框架Specta来写（当然这是后话），而Expecta 和Specta都出自同一个人之手，不论是教程文档都更加丰富。但是后来我废弃了BDD框架，还是用原生的XCTest，Expecta在使用中也遇到了一些问题，我就把我们的断言框架由Expecta切换到了OCHamcrest。<br/>
+原因有两点：<br/>
+<code><br/>
+1.Expecta不成熟，至笔者切换的时候才0.3.1版本，遇到很多框架自身的问题。case跑着跑着验证通不过了，再跑一次又过了，是不是还爆出个Expecta框架内部的crash。<br/>
+2.OCHamcrest更加成熟，而且可扩展性高，可以自定义自己的断言，更灵活。<br/>
+</code><br/>
+比如OCHamcrest不支持superClass验证，我们必须自己去比较，返回一个bool值，然后去判断bool是否为真。很麻烦。自己自定义个superClass的验证，就不需要每次都这么麻烦的写这么多代码了。而如果Expecta不支持的断言，那就永远不能支持了。 我们可以通过OCHamcrest这个特性，做一些符合自己app场景的特有断言。</p>
 
-<h4 id="toc_2">3.深度解析UISearchController 以及其SearchResultControll原理</h4>
+<h5 id="toc_3">BDD Or Not</h5>
 
-<p>当UISearchController出现时，UISearchController也是一个控制器就相当于模态出来一个控制器<br/>
-<img src="media/14866309753746/UISearchController.png" alt="UISearchControlle的层级表示"/><br/>
-<img src="media/14866309753746/searchController_big.png" alt="searchController_big"/></p>
+<p>BDD和TDD都是敏捷开发的技术;<br/>
+<strong>BDD</strong>（Behavior Driven Development），也就是行为驱动开发，它旨在解决具体问题，帮助开发人员确定应该测试些什么.此外，它提供了一个 <code>DSL</code>（译者注: Domain-specific language，域特定语言）鼓励开发者弄清楚他们的需求，并且它引入了一个通用语言帮助你轻易理解测试的目的。<br/>
+<strong>TDD</strong>（Test-Driven Development），就是测试驱动开发，通过测试来推动整个开发的进行<br/>
+目前使用比较多得是BDD框架:<br/>
+Cedar，Specta和Kiwi这3个框架就是目前Objc最流行的BDD测试框架<br/>
+    Specta和Kiwi的区别就是Kiwi包含了Specta和OCmock以及Expeata所有的功能<br/>
+除此之外还有Apple的XCTest:XCTest与Xcode深度集成，而且可以享受Apple后续对XCTest升级的福利</p>
 
-<p>我们可以看出来 我们首先从原来控制器模态出来我们自己的UISearchController 而UISearchControllView就是这个控制器的View即蓝色部分  而搜索结果的显示即在其上加了一个View这个view即为我们的搜索结果控制器的view<br/>
-因此我们改变这个SearchControllView颜色并不会影响显示 但是如果把其上加上别的视图 就会影响结果的显示的<br/>
-<img src="media/14866309753746/searchController2.png" alt="searchControlle"/><br/>
-可以看到显示结果的View被我们后加的tableView挡住了,这时候我们可以<strong><code>sendSubviewToBack</code></strong>来直接将tableView放置到显示结果的view后面即可了</p>
+<p>XCTest 的优势和缺点都是由于它太简单了。你只需要创建一个类，使用 “test” 作为测试方法名的前缀，只需要这样就可以了，不需要再做其他的。和 Xcode 很好的集成性也是 XCTest 获得青睐的原因。你可以点击边栏上的小菱形按钮来运行测试用例，你也可以很容易的查看所有失败的测试用例，也可以在测试用例列表中点击某一行而快速的跳转到某一个测试用例。</p>
 
-<h4 id="toc_3">3.UISearchController 上的searchBar原理</h4>
+<p>不幸的是，这已经是 XCTest 的全部优点了。在开发和测试中，使用 XCTest 时我们没有碰到任何的障碍，但是经常会想如果它能更方便一些就好了。XCTest 类看起来就像普通的类，而一个 BDD 测试套件的结构和其嵌套的上下文是显而易见的。并且这种为测试创建嵌套上下文的可能性也是最缺失的。嵌套的上下文允许我们在使独立的测试相对简单的情况下创建越来越具体的场景。当然，在 XCTest 中这也是可以的，比如在一些测试用例中调用自定义的 setup 方法，但这并不方便。</p>
 
-<p>显示的searchBar是因为searcontroller上有一块searBarContainView 在其上放置了searchBar,还有背景图片 取消按钮等<br/>
-<img src="media/14866309753746/UISearchBar.png" alt="UISearchBa"/></p>
+<p>BDD 框架的附加功能的重要性是取决于项目的大小。我们的结论是，XCTest 对中小型的工程来说是一个很好的选择，但是对于更大型的工程，就有必要参考一下像 Kiwi 或者 Specta 这样的 BDD 框架。</p>
+
+<h5 id="toc_4">4.UITests</h5>
+
+<p>通过代码化来实现自动点击界面，输入文字等功能</p>
 
                         
                       </div>
@@ -178,10 +165,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/9</span>
+                    <span class="date">2017/2/16</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
+          					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -275,31 +262,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15318121291068.html">函数</a>
+			        <a href="15324890369623.html">面对对象高级编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15317414032911.html">语句</a>
+			        <a href="15324145349319.html">面对对象编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15317258769792.html">Python基础</a>
+			        <a href="15324005146874.html">模块</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15312926184354.html">Stack Navigation</a>
+			        <a href="15320795459657.html">函数式编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15304988629042.html">混合开发(OC)</a>
+			        <a href="15319012648780.html">高级特性</a>
 			      </li>
 		     
 		  

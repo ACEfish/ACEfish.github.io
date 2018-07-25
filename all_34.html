@@ -112,255 +112,185 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15028525854956.html">
+                <a class="clearlink" href="15042587690391.html">
                 
-                  <h1>自动引用计数</h1>
+                  <h1>扩展</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>与<code>OC</code>相同 <code>Swift</code>使用自动引用计数(ARC)来跟踪和管理应用程序内存</p>
-
-<h2 id="toc_0">工作机制</h2>
-
-<p>创建类的实例时,<code>ARC</code>会分配一块内存来存储实例信息.不再使用该实例,ARC将其释放.当是实例被释放后，其方法或属性均不能被访问或调用。<br/>
-因此，为了确保使用中的实例不会被销毁，ARC 会跟踪和计算每一个实例正在被多少属性，常量和变量所引用。哪怕实例的引用数为1，ARC都不会销毁这个实例。</p>
-
-<h2 id="toc_1">循环强引用</h2>
-
-<p>如果两个类实例互相引用,那么类实例的强引用数永远不能变为0，这就是<strong>循环强引用</strong></p>
-
-<h2 id="toc_2">解决循环强引用方法</h2>
-
-<p>解决办法: <strong>弱引用</strong> <strong>无主引用</strong></p>
-
-<p>将循环引用中一个实例对另外的实例不保持强引用</p>
-
-<p>当其他的实例有更短的生命周期时,使用弱引用，即其 实例 析构在先时; 当其他实例有相同或者更长的声明周期时,请使用无主引用</p>
-
-<h3 id="toc_3">弱引用</h3>
-
-<p>弱引用不会对其引用的实例保持强引用，因而不会阻止<code>ARC</code>销毁被引用的实例。</p>
-
-<p>声明属性或变量时,在前面加上<code>weak</code>关键字表明是个弱引用</p>
-
-<p><code>ARC</code>会在引用的实例被销毁后自动将其赋值为<code>nil</code>.并且弱引用可以允许它们的值运行时赋值为<code>nil</code>，所以会被定义为可选类型变量而不是常量</p>
-
-<p>弱引用为可选类型变量,可以通过检查是否为nil,防止访问已经销毁的实例的引用</p>
+                        	<p><strong>扩展</strong>就是为一个已有的类、结构体、枚举类型或者协议类型添加新功能</p>
 
 <blockquote>
-<p>在<code>ARC</code>设置弱引用为<code>nil</code>时,属性观察不会被触发</p>
+<p>类似OC中的分类功能,但是Swift中的分类没有名字</p>
 </blockquote>
 
-<pre><code class="language-swift">class Person {
-    let name: String
-    init(name: String) { self.name = name }
-    var apartment: Apartment?
-    deinit { print(&quot;\(name) is being deinitialized&quot;) }
+<p><strong>Swift中的扩展可功能</strong>:</p>
+
+<ul>
+<li>添加计算型属性和计算类型属性</li>
+<li>定义实例方法和类型方法</li>
+<li>提供新的构造器</li>
+<li>定义下标</li>
+<li>定义和使用新的嵌套类型</li>
+<li>使一个已有类型符合某个协议<br/>
+还可以对协议进行扩展、提供协议要求的实现，添加额外的功能，让符合协议的类型拥有这些功能</li>
+</ul>
+
+<blockquote>
+<p>扩展只能添加新的功能不能重写已有功能</p>
+</blockquote>
+
+<h2 id="toc_0">扩展语法</h2>
+
+<p>用关键字<code>extension</code>声明扩展:</p>
+
+<pre><code class="language-swift">extension SomeType {
+    // 为 SomeType 添加的新功能写到这里
 }
-
-class Apartment {
-    let unit: String
-    init(unit: String) { self.unit = unit }
-    weak var tenant: Person?
-    deinit { print(&quot;Apartment \(unit) is being deinitialized&quot;) }
-}
-
-var john: Person?
-var unit4A: Apartment?
-john = Person(name: &quot;John Appleseed&quot;)
-unit4A = Apartment(unit: &quot;4A&quot;)
-john!.apartment = unit4A
-unit4A!.tenant = john
-//因为Apartment 中 的 tenant 属性为弱引用,因此即使这样也不会产生循环引用
-
-john = nil
-// 打印 “John Appleseed is being deinitialized”
-
-unit4A = nil
-// 打印 “Apartment 4A is being deinitialized”
-
 </code></pre>
 
-<p>变量<code>john</code>和<code>unit4A</code>在被赋值为<code>nil</code>后，<code>Person</code>实例和<code>Apartment</code>实例的析构函数都打印出“销毁”的信息</p>
+<p>扩展一个已有类型,使其采纳一个或多个协议</p>
 
-<h3 id="toc_4">无主引用</h3>
-
-<p>与弱引用类似,无主引用不会保持住引用的实例<br/>
-与弱引用不同,<strong>无主引用用在与其他实例有相同或者更长声明周期时使用</strong><br/>
-在属性前加<code>unowned</code>关键字进行声明</p>
-
-<p>无主引用为非可选类型,因此<code>ARC</code>无法在实例被销毁后将无主引用设置为<code>nil</code></p>
-
-<p><em>注意</em>:</p>
-
-<blockquote>
-<p>使用无主引用，必须<strong>保证引用始终指向一个未销毁的实例</strong><br/>
-试图在实例被销毁后，访问该实例的无主引用，会触发运行时错误</p>
-</blockquote>
-
-<p>举个栗子:<br/>
-<code>Customer</code>客户和<code>CreditCard</code>银行卡之间的关系,两个类都将另外一个类的实例作为自身属性,关系是客户可能没有银行卡,但是银行卡一定有客户,因此将银行卡的<code>customer</code>设置为无主引用</p>
-
-<pre><code class="language-swift">
-class Customer {
-    let name: String
-    var card: CreditCard?
-    init(name: String) {
-        self.name = name
-    }
-    deinit { print(&quot;\(name) is being deinitialized&quot;) }
+<pre><code class="language-swift">extension SomeType: SomeProtocol, AnotherProctocol {
+    // 协议实现写到这里
 }
-
-class CreditCard {
-    let number: UInt64 //确保在32、64位机器上均可以保存16位的卡号
-    unowned let customer: Customer
-    init(number: UInt64, customer: Customer) {
-        self.number = number
-        self.customer = customer
-    }
-    deinit { print(&quot;Card #\(number) is being deinitialized&quot;) }
-}
-
-
-var john: Customer?
-john = Customer(name: &quot;John Appleseed&quot;)
-john!.card = CreditCard(number: 1234_5678_9012_3456, customer: john!)
-
-john = nil
-// 打印 “John Appleseed is being deinitialized”
-// 打印 ”Card #1234567890123456 is being deinitialized”
-
 </code></pre>
 
-<p><code>Customer</code>实例持有对<code>CreditCard</code>实例的强引用，而<code>CreditCard</code>实例持有对 <code>Customer</code>实例的无主引用</p>
-
 <blockquote>
-<p>对于需要禁用运行时的安全检查的情况（例如，出于性能方面的原因），Swift还提供了不安全的无主引用。与所有不安全的操作一样，你需要负责检查代码以确保其安全性。 你可以通过 <code>unowned(unsafe)</code>来声明不安全无主引用。如果你试图在实例被销毁后，访问该实例的不安全无主引用，你的程序会尝试访问该实例之前所在的内存地址，这是一个不安全的操作</p>
+<p>扩展一个已有实例的新功能,那么新功能对该类型所有实例都可用，不论创建时间</p>
 </blockquote>
 
-<h3 id="toc_5">无主引用以及隐式解析可选属性</h3>
+<h2 id="toc_1">计算型属性</h2>
 
-<pre><code class="language-swift">class Country {
-    let name: String
-    var capitalCity: City!
-    init(name: String, capitalName: String) {
-        self.name = name
-        self.capitalCity = City(name: capitalName, country: self)
-    }
+<pre><code class="language-swift">extension Double {
+    var km: Double { return self * 1_000.0 }
+    var m : Double { return self }
+    var cm: Double { return self / 100.0 }
+    var mm: Double { return self / 1_000.0 }
+    var ft: Double { return self / 3.28084 }
 }
+let oneInch = 25.4.mm
+print(&quot;One inch is \(oneInch) meters&quot;)
+    // 打印 “One inch is 0.0254 meters”
+let threeFeet = 3.ft
+print(&quot;Three feet is \(threeFeet) meters&quot;)
+    // 打印 “Three feet is 0.914399970739201 meters”
+</code></pre>
 
-class City {
-    let name: String
-    unowned let country: Country
-    init(name: String, country: Country) {
-        self.name = name
-        self.country = country
+<p>扩展<code>Double</code>类型,增加计算型属性,实现距离转换<br/>
+上面的属性是只读的计算型属性,省略了<code>get</code>关键字</p>
+
+<blockquote>
+<p>可以增加新的计算型属性,但是不能增加存储型属性，也不能为已有属性添加属性观察器</p>
+</blockquote>
+
+<h2 id="toc_2">构造器</h2>
+
+<p>扩展可以为已有类型添加新的构造器。<br/>
+扩展能为类添加新的便利构造器,但是不能为类添加新的指定构造器或者析构器</p>
+
+<blockquote>
+<p>如果使用扩展为一个“值类型”添加构造器,同时该值类型的原始实现没有定义定制构造器,且所有存储属性提供了默认值,我们可以在扩展的构造器中调用默认构造器和逐一成员构造器(当原始实现中有定制的构造器,就不能调用了)</p>
+</blockquote>
+
+<pre><code class="language-swift">struct Size {
+    var width = 0.0, height = 0.0
+}
+struct Point {
+    var x = 0.0, y = 0.0
+}
+struct Rect {
+    var origin = Point()
+    var size = Size()
+}
+</code></pre>
+
+<p>因为<code>Rect</code>没有指定构造器,存储属性也都有默认值,因此获得一个逐一成员构造器和默认构造器，</p>
+
+<pre><code class="language-swift">extension Rect {
+    init(center: Point, size: Size) {
+        let originX = center.x - (size.width / 2)
+        let originY = center.y - (size.height / 2)
+        //调用结构体的逐一成员构造器
+        self.init(origin: Point(x: originX, y: originY), size: size)
     }
 }
 </code></pre>
 
-<p>我们在<code>Country</code>的<code>capitalCity</code>属性声明为<code>City!</code>隐式解析可选类型的属性,表明像其他可选类型一样，默认值为<code>nil</code>，但是不需要展开他的值就能访问</p>
+<h2 id="toc_3">方法</h2>
 
-<p>因为<code>capitalCity</code>的默认值为默认为<code>nil</code>，因此在构造country时,当name赋值以后,初始化就完成了,此时我们就能把这个初始化的<code>country</code>实例传递给<code>City</code>来构造City实例</p>
+<p>为已有类型添加新的实例方法和类型方法</p>
 
-<h2 id="toc_6">闭包引起的循环强引用</h2>
-
-<p>闭包和类 类似,都是引用类型,因此,将闭包赋值为某属性时,是将这个闭包的引用赋值给属性,因此当闭包体中访问实例的某个属性时,就会造成循环引用</p>
-
-<pre><code class="language-swift">class HTMLElement {
-    let name: String
-    let text: String?
-    lazy var asHTML: Void -&gt; String = {
-        if let text = self.text {
-            return &quot;&lt;\(self.name)&gt;\(text)&lt;/\(self.name)&gt;&quot;
-        } else {
-            return &quot;&lt;\(self.name) /&gt;&quot;
+<pre><code class="language-swift">extension Int {
+    func repetitions(task: () -&gt; Void) {
+        for _ in 0..&lt;self {
+            task()
         }
     }
-    init(name: String, text: String? = nil) {
-        self.name = name
-        self.text = text
-    }
-    deinit {
-        print(&quot;\(name) is being deinitialized&quot;)
+}
+//为Int类型添加一个名为`repetitions`的实例方法
+//这个方法接受一个`()-&gt;Void`类型的单参数，没有参数也没有返回值的函数
+</code></pre>
+
+<h3 id="toc_4">可变实例方法</h3>
+
+<p>扩展中添加的实例方法也可以修改该实例本身，对于值类型即结构体或者枚举修改<code>self</code>或其属性的方法就必须将该实例方法标注为<code>mutating</code>(类似原始实现)</p>
+
+<pre><code class="language-swift">extension Int {
+    mutating func square() {
+        self = self * self
     }
 }
 </code></pre>
 
-<blockquote>
-<p><code>asHTML</code>声明为<code>lazy</code>属性，因为只有当元素确实需要被处理为<code>HTML</code>输出的字符串时，才需要使用<code>asHTML</code>。也就是说，在默认的闭包中可以使用<code>self</code>，因为只有当初始化完成以及<code>self</code>确实存在后，才能访问<code>lazy</code>属性。</p>
-</blockquote>
+<h2 id="toc_5">下标</h2>
 
-<p><strong>闭包捕获列表</strong>解决闭包引起的循环引用</p>
+<p>扩展为已有类型添加下标.</p>
 
-<p>对于一个类的闭包属性,想要改变这个属性的行为,可以通过给这个属性再赋值一个闭包</p>
-
-<p><code>HTMLElement</code>有类和作为<code>asHTML</code>默认值的闭包之间的循环强引用</p>
-
-<p>注意:<br/>
-虽然闭包中多次使用<code>self</code>，但是它只捕获<code>HTMLElement</code>实例的一个强引用</p>
-
-<p>此时<code>HTMLElement</code>实例和它的闭包是不会被销毁和释放的</p>
-
-<h2 id="toc_7">解决闭包引起的循环强引用</h2>
-
-<p>在定义闭包时同时定义<strong>捕获列表</strong>作为闭包的一部分，捕获列表定义了闭包体内捕获一个或多个引用类型的规则.声明捕获的引用为弱引用或者无主引用,而不是强引用</p>
-
-<blockquote>
-<p><code>Swift</code>规定:在闭包中使用<code>self</code>的成员，要使用<code>self.someProperty</code>或者<code>self.someMethod()</code>，而不是使用<code>someProperty</code>或<code>someMethod()</code></p>
-</blockquote>
-
-<h3 id="toc_8">定义捕获列表</h3>
-
-<p>捕获列表由一对元素组成,一个是<code>weak</code>或<code>unowned</code>关键字,另一个是类实例的引用如<code>self</code>或初始化的变量.在方括号中用逗号隔开</p>
-
-<pre><code class="language-swift">//如果闭包有参数列表和返回类型，把捕获列表放在它们前面
-lazy var someClosure: (Int, String) -&gt; String = {
-    [unowned self, weak delegate = self.delegate!] (index: Int, stringToProcess: String) -&gt; String in
-    // 这里是闭包的函数体
+<pre><code class="language-swift">extension Int {
+    subscript(digitIndex: Int) -&gt; Int {
+        var decimalBase = 1
+        for _ in 0..&lt;digitIndex {
+            decimalBase *= 10
+        }
+        return (self / decimalBase) % 10
+    }
 }
-
-/**
-如果闭包没有指明参数列表或者返回类型，即它们会通过上下文推断，
-那么可以把捕获列表和关键字 in 放在闭包最开始的地方
-*/
-
-lazy var someClosure: Void -&gt; String = {
-    [unowned self, weak delegate = self.delegate!] in
-    // 这里是闭包的函数体
-}
-
+746381295[0]
+// 返回 5
+746381295[1]
+// 返回 9
+//取的下标越界时自动用0补充
+746381295[9]
+// 返回 0，即等同于：
+0746381295[9]
 </code></pre>
 
-<h3 id="toc_9">弱引用和无主引用</h3>
+<p>上面的例子为<code>Int</code>增加下标方法，<code>[n]</code>返回十进制数字从右向左数的第<code>n</code>个数字</p>
 
-<p>在闭包和捕获的实例总是互相引用并且总是同时销毁时，将闭包内的捕获定义为<code>无主引用</code>。(即被捕获的引用不会变为nil使用无主引用)<br/>
-在被捕获的引用可能会变为<code>nil</code>时，将闭包内的捕获定义为<code>弱引用</code>，弱引用总是可选类型,在引用的实例被销毁后自动置为<code>nil</code></p>
+<h2 id="toc_6">嵌套类型</h2>
 
-<pre><code class="language-swift">class HTMLElement {
-    let name: String
-    let text: String?
-    lazy var asHTML: Void -&gt; String = {
-        [unowned self] in
-        if let text = self.text {
-            return &quot;&lt;\(self.name)&gt;\(text)&lt;/\(self.name)&gt;&quot;
-        } else {
-            return &quot;&lt;\(self.name) /&gt;&quot;
+<p>扩展可以为已有的类、结构体和枚举添加新的嵌套类型:</p>
+
+<pre><code class="language-swift">extension Int {
+    enum Kind {
+    case Negative, Zero, Positive
+    }
+    var kind: Kind {
+        switch self {
+        case 0:
+            return .Zero
+        case let x where x &gt; 0:
+            return .Positive
+        default:
+            return .Negative
         }
     }
-    init(name: String, text: String? = nil) {
-        self.name = name
-        self.text = text
-    }
-    deinit {
-        print(&quot;\(name) is being deinitialized&quot;)
-    }
 }
 </code></pre>
 
-<p>在<code>asHTML</code>闭包中多了一个捕获列表，<code>[unowned self]</code>将self声明为无主引用<br/>
-这时候没有了循环引用,我们就可以销毁<code>HTMLElement</code>实例了</p>
+<p>为<code>Int</code>添加了一个嵌套枚举,来表明特定整数的类型，即正数、负数或零</p>
 
                         
                       </div>
@@ -369,7 +299,7 @@ lazy var someClosure: Void -&gt; String = {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/16</span>
+                    <span class="date">2017/9/1</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -466,31 +396,31 @@ lazy var someClosure: Void -&gt; String = {
 	      
 		      
 			      <li class="post">
-			        <a href="15318121291068.html">函数</a>
+			        <a href="15324890369623.html">面对对象高级编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15317414032911.html">语句</a>
+			        <a href="15324145349319.html">面对对象编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15317258769792.html">Python基础</a>
+			        <a href="15324005146874.html">模块</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15312926184354.html">Stack Navigation</a>
+			        <a href="15320795459657.html">函数式编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15304988629042.html">混合开发(OC)</a>
+			        <a href="15319012648780.html">高级特性</a>
 			      </li>
 		     
 		  

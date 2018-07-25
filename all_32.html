@@ -112,198 +112,224 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15034731740974.html">
+                <a class="clearlink" href="15052932669633.html">
                 
-                  <h1>错误处理</h1>
+                  <h1>泛型</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><strong>错误处理</strong>就是响应错误以及从错误中回复的过程</p>
+                        	<p><strong>泛型:</strong>根据自定义的需求，编写适用于任意类型，灵活可用的函数和类型</p>
 
-<p><code>Swift</code>提供了运行时对可恢复错误的抛出、捕获、传递和操作等的支持<br/>
-通常用来区分失败情况,让程序解决并处理某些错误，把解决不了的错误报告给用户</p>
+<h2 id="toc_0">泛型函数</h2>
 
-<h2 id="toc_0">表示并抛出错误</h2>
+<p>泛型函数适用与任何类型</p>
 
-<p><code>Swift</code>中 错误用符合<code>Error</code>协议的类型值来表示，这个空协议表明该类型可以用于错误处理</p>
-
-<p>通常用枚举类型来构建一组相关的错误状态,枚举的关联值可以提供错误状态的额外信息</p>
-
-<p>使用关键字<code>throw</code>关键字来抛出一个错误，表示有意外发生</p>
-
-<pre><code class="language-swift">enum VendingMachineError: Error {
-    case invalidSelection //选择无效
-    case insufficientFunds(coinsNeeded: Int) //金额不足
-    case outOfStock //缺货
+<pre><code class="language-swift">func swapTwoValues&lt;T&gt;(_ a: inout T, _ b: inout T) {
+    let temporaryA = a
+    a = b
+    b = temporaryA
 }
-
-throw VendingMachineError.insufficientFunds(coinsNeeded: 5)
 </code></pre>
 
-<h2 id="toc_1">处理错误</h2>
+<p>函数的泛型版本:<br/>
+1）使用占位类型名来代替实际类型名(这里用字母<code>T</code>表示),这里并没有指明T必须是什么类型,而是a与b类型相同,在实际调用时才根据传入类型决定<code>T</code>所代表的类型<br/>
+2）在函数名后有<code>&lt;T&gt;</code>，声明了<code>T</code>是函数内定义的占位类型名<br/>
+因此，函数<code>swapTwoInts(_:_:)</code>可以接受任意相同类型的参数</p>
 
-<p><code>Swift</code>中有<code>4</code>种处理错误的方式<br/>
-1.把函数抛出的错误传递给调用此函数的代码<br/>
-2.用<code>do-catch</code>语句处理错误<br/>
-3.将错误作为可选类型处理<br/>
-4.断言此错误根本不会发生</p>
+<h2 id="toc_1">类型参数</h2>
 
-<p>我们在调用一个能抛出错误的函数、方法或者构造器之前，用<code>try</code>关键字或者<code>try?</code><code>try!</code>这种变体关键字</p>
+<p>类型参数指定并命名一个占位类型,紧随在函数名后,用尖括号括起来(如:<code>&lt;T&gt;</code>),也可以提供多个参数用逗号隔开</p>
 
-<blockquote>
-<p>与其他语言的<code>try</code>，<code>catch</code>和<code>throw</code>不同的是<code>swift</code>的错误挫力不涉及解除调用栈,因此其性能特性是可以和<code>return</code>语句相媲美的</p>
-</blockquote>
+<p>可以用指定的类型参数作为函数的参数类型或返回类型，</p>
 
-<h3 id="toc_2">用throwing函数传递错误</h3>
+<h2 id="toc_2">命名类型参数</h2>
 
-<p>在函数声明的参数列表后加上<code>throws</code>关键字，表明可以抛出错误，这个函数就称为<code>throwing</code>函数<br/>
-如果这个函数指明了返回值类型，<code>throws</code>关键词需要写在箭头（<code>-&gt;</code>）的前面</p>
+<p>我们可以使用有意义的单词来表明类型参数和泛型函数关系,当没有联系时,通常使用单个字母来命名</p>
 
-<pre><code class="language-swift">func canThrowErrors() throws -&gt; String
-func cannotThrowErrors() -&gt; String
-</code></pre>
+<p><strong>使用大写字母开头的驼峰命名法来为类型参数命名</strong></p>
 
-<p><strong><code>throwing</code>函数可以在其内部抛出错误，并将错误传递到函数被调用时的作用域。</strong></p>
+<h2 id="toc_3">泛型类型</h2>
 
-<blockquote>
-<p>对于<code>throwing</code>函数可以传递错误,非<code>throwing</code>函数抛出的错误只能在函数内部处理</p>
-</blockquote>
+<p><strong>泛型类型：</strong>除了泛型函数，Swift 还允许你定义泛型类型。这些自定义类、结构体和枚举可以适用于任何类型,类型于<code>Array</code>和<code>Dictionary</code></p>
 
-<pre><code class="language-swift">struct Item {
-    var price: Int
-    var count: Int
-}
-class VendingMachine {
-    var inventory = [
-                     &quot;Candy Bar&quot;: Item(price: 12, count: 7),
-                     &quot;Chips&quot;: Item(price: 10, count: 4),
-                     &quot;Pretzels&quot;: Item(price: 7, count: 11)
-                     ]
-    var coinsDeposited = 0
-    func dispenseSnack(snack: String) {
-        print(&quot;Dispensing \(snack)&quot;)
+<pre><code class="language-swift">//泛型 Stack（栈型） 结构体
+struct Stack&lt;Element&gt; {
+    var items = [Element]()
+    mutating func push(item: Element) {
+        items.append(item)
     }
-    //throwing函数 会抛出VendingMachineError错误
-    func vend(itemNamed name: String) throws {
-        guard let item = inventory[name] else {
-            throw VendingMachineError.InvalidSelection
-        }
-        guard item.count &gt; 0 else {
-            throw VendingMachineError.OutOfStock
-        }
-        guard item.price &lt;= coinsDeposited else {
-            throw VendingMachineError.InsufficientFunds(coinsNeeded: item.price - coinsDeposited)
-        }
-        coinsDeposited -= item.price
-        var newItem = item
-        newItem.count -= 1
-        inventory[name] = newItem
-        print(&quot;Dispensing \(name)&quot;)
+    mutating func pop() -&gt; Element {
+        return items.removeLast()
     }
 }
 </code></pre>
 
-<p>使用了<code>guard</code>语句来提前退出方法，因为<code>throw</code>语句会立即退出方法，保证只有在满足所有条件时才成功卖出商品</p>
+<p>使用占位类型<code>Element</code>，这个类型参数包裹在紧随结构体名的一对尖括号里（<code>&lt;Element&gt;</code>）,类型参数用来初始化数组,用来作为<code>push</code><code>pop</code>方法的参数</p>
 
-<p><code>vend(itemNamed:)</code>会传递它抛出的所有错误,因此在跳用这个方法时，要么直接处理这些错误(<code>do-catch</code>语句,<code>try?</code>或<code>try!</code>)，要么将错误继续传递下去</p>
+<p><code>Stack</code>是泛型类型,可以创建任意有效类型栈<br/>
+可以通过在尖括号写出栈中需要存储的数据类型来创建并初始化一个<code>Stack</code>实例</p>
 
-<pre><code class="language-swift">let favoriteSnacks = [
-    &quot;Alice&quot;: &quot;Chips&quot;,
-    &quot;Bob&quot;: &quot;Licorice&quot;,
-    &quot;Eve&quot;: &quot;Pretzels&quot;,
-]
-func buyFavoriteSnack(person: String, vendingMachine: VendingMachine) throws {
-    let snackName = favoriteSnacks[person] ?? &quot;Candy Bar&quot;
-    try vendingMachine.vend(itemNamed: snackName)
-}
-//传似抛出的错误
+<pre><code class="language-swift">var stackOfStrings = Stack&lt;String&gt;()
+stackOfStrings.push(&quot;uno&quot;)
+stackOfStrings.push(&quot;dos&quot;)
+let fromTheTop = stackOfStrings.pop()
 </code></pre>
 
-<p><code>buyFavoriteSnack</code>方法会查找某人最喜欢的零食，并通过调用<code>vend(itemNamed:)</code>方法尝试购买,通过在<code>vend(itemNamed:)</code>方法前加<code>try</code>关键字</p>
+<h2 id="toc_4">扩展泛型类型</h2>
 
-<p><code>throwing</code>构造器和<code>throwing</code>一样可以传递错误</p>
+<p>在扩展泛型类型时，不需要在扩展的定义中提供类型参数列表。可以在扩展中直接使用原始类型参数列表,并且这些来自原始类型中的参数名称会被用作原始定义中类型参数的引用。</p>
 
-<pre><code class="language-swift">struct PurchasedSnack {
-    let name: String
-    init(name: String, vendingMachine: VendingMachine) throws {
-        try vendingMachine.vend(itemNamed: name)
-        self.name = name
+<pre><code class="language-swift">//扩展泛型类型增加只读的计算属性
+extension Stack {
+    var topItem: Element? {
+        return items.isEmpty ? nil : items[items.count - 1]
     }
 }
 </code></pre>
 
-<h3 id="toc_3">用Do-Catch处理错误</h3>
+<p>返回`<code>item</code>数组的最后一个元素</p>
 
-<p><strong><code>do-catch</code>语句运行一段<code>闭包</code>代码来处理错误</strong></p>
+<p>扩展中直接使用了已有的类型参数<code>Element</code></p>
 
-<p>在<code>do</code>语句抛出一个错误,与<code>catch</code>中的字句匹配</p>
+<h2 id="toc_5">类型约束</h2>
 
-<pre><code class="language-swift">do {
-    try expression
-    statements
-} catch pattern 1 {
-    statements
-} catch pattern 2 where condition {
-    statements
+<p>给泛型函数和泛型类型添加一个特定的约束，可以指定一个类型参数必须继承自指定类，或者符合协议或协议组合</p>
+
+<p>例如:<code>Dictionary</code>类型约束了字典中的键必须是可哈希的（符合<code>Hashable协议</code>），也就是必须有唯一的方法表示她，才能根据键进行判断</p>
+
+<h3 id="toc_6">类型约束语法</h3>
+
+<p>在类型参数名后放置类型或协议名用冒号隔开来进行约束，</p>
+
+<pre><code class="language-swift">//类型约束的泛型函数
+func someFunction&lt;T: SomeClass, U: SomeProtocol&gt;(someT: T, someU: U) {
+    // 这里是泛型函数的函数体部分
 }
 </code></pre>
 
-<p><code>catch</code>后面写一个匹配模式来表明这个子句能处理什么样的错误.如果<code>catch</code>没有指定错误模式，那就可以匹配任何错误，并且把错误绑定到名字为<code>error</code>的局部变量</p>
+<p>约束T必须是SomeClass的子类，要求U必须遵循SomeProtocol的</p>
 
-<p><code>catch</code>不必处理抛出的所有错误,错误可以传递到周围,但是必须被处理，可以使外围的<code>do-catch</code>语句 或者是一个<code>throwing</code>函数进行处理</p>
+<h3 id="toc_7">类型约束实践</h3>
 
-<p>注意:<br/>
-在<code>do</code>语句中的<code>try</code>如果有抛出错误就立刻执行<code>catch</code>语句,并判断这个错误是否要被继续传递下去,否则执行<code>do</code>子句中余下的语句</p>
+<p>我们新建一个泛型函数来从实现从数组中查找特定元素的功能;</p>
 
-<h3 id="toc_4">将错误转换成可选值</h3>
-
-<p>通过<code>try?</code>将错误转换为一个可选值,如果表达式有错误抛出,那么表达式的值就为<code>nil</code></p>
-
-<pre><code class="language-swift">func someThrowingFunction() throws -&gt; Int {
-    // ...
+<pre><code class="language-swift">//从数组中查找特定自字符串的非泛型函数
+func findIndex(ofString valueToFind: String, in array: [String]) -&gt; Int? {
+    for (index, value) in array.enumerated() {
+        if value == valueToFind {
+            return index
+        }
+    }
+    return nil
 }
 
-let x = try? someThrowingFunction()
-//等效于
-let y: Int?
-do {
-    y = try someThrowingFunction()
-} catch {
-    y = nil
+
+//泛型类型
+func findIndex&lt;T&gt;(of valueToFind: T, in array:[T]) -&gt; Int? {
+    for (index, value) in array.enumerated() {
+        if value == valueToFind {
+        return index
+        }
+    }
+    return nil
 }
 </code></pre>
 
-<p>此时不论<code>someThrowingFunction()</code>返回值是什么类型,x，y就是该返回值类型的可选类型</p>
+<p>上面的泛型函数，是无法通过编译的，因为不是任何类型都可以用<code>==</code>进行比较<br/>
+Swift定义了一个<code>Equatable</code>协议,所有遵守改协议的类型都必须实现<code>==或!=</code>，从而对该类型任意值进行比较</p>
 
-<h3 id="toc_5">禁用错误传递</h3>
-
-<p>当我们确定知道某个<code>throwing</code>函数在运行时是不会抛出错误的,那么可以用<code>tr<br/>
-y!</code>来禁用错误传递，它会将调用包装在一个不会有错误抛出的运行时断言中</p>
-
-<h2 id="toc_6">指定清理操作</h2>
-
-<p><code>defer</code>语句在即将离开当前代码块时执行一系列语句，来执行一些必要的清理工作，而不管你是由于哪种方式离开代码块</p>
-
-<ul>
-<li><code>defer</code>语句将代码执行延迟到当前作用域退出之前。</li>
-<li>该语句由<code>defer</code>关键字和要延时执行的语句组成(延迟执行的语句不能包含任何控制转移语句，或是抛出一个错误)。</li>
-<li>延时执行的操作会按照他们被指定时的顺序的相反顺序执行(第一条<code>defer</code>语句中的代码会在第二条<code>defer</code>语句中的代码被执行之后才执行)</li>
-</ul>
-
-<pre><code class="language-swift">func processFile(filename: String) throws {
-    if exists(filename) {
-        let file = open(filename)
-        defer {
-            close(file)
+<pre><code class="language-swift">//此时泛型函数可以成功编译了
+func findIndex&lt;T: Equatable&gt;(array: [T], _ valueToFind: T) -&gt; Int? {
+    for (index, value) in array.enumerate() {
+        if value == valueToFind {
+            return index
         }
-        while let line = try file.readline() {
-            // 处理文件。
-        }
-        // close(file) 会在这里被调用，即作用域的最后。
+    }
+    return nil
+}
+</code></pre>
+
+<h2 id="toc_8">关联类型</h2>
+
+<p>定义协议时，声明一个或者多个<strong>关联类型</strong>作为协议的一部分</p>
+
+<p><strong>关联类型</strong>为协议中的的某个类型提供占位名(别名)，而其实际类型在协议被采纳时才会被指定</p>
+
+<p>用<code>associatedtype</code>关键字指定<strong>关联类型</strong></p>
+
+<pre><code class="language-swift">protocol Container {
+    associatedtype ItemType
+    mutating func append(item: ItemType)
+    var count: Int { get }
+    subscript(i: Int) -&gt; ItemType { get }
+}
+</code></pre>
+
+<p>在协议中声明了一个关联类型<code>ItemType</code>,来保证在不知道容器中元素的具体类型情况下行为能够正确执行</p>
+
+<pre><code class="language-swift">//定义类型遵循Contain协议
+Struct IntStack: Container {
+    // IntStack 的原始实现部分
+    var items = [Int]()
+    mutating func push(item: Int) {
+        items.append(item)
+    }
+    mutating func pop() -&gt; Int {
+        return items.removeLast()
+    }
+    // Container 协议的实现部分
+    typealias ItemType = Int//可以省略，swift会根据协议的实现推断出类型
+        mutating func append(item: Int) {
+        self.push(item)
+    }
+    var count: Int {
+        return items.count
+    }
+    subscript(i: Int) -&gt; Int {
+        return items[i]
     }
 }
+
 </code></pre>
+
+<p>在实现协议时需要用<code>typealias ItemType = Int</code>来转换协议中的关联类型<br/>
+当然，这个是可以省略的，Swift可以根据方法推断出<code>ItemType</code>类型</p>
+
+<h3 id="toc_9">扩展存在的类型来指定关联类型</h3>
+
+<p>对于Contain协议，Swift中的Array已经默认提供了协议中要求，因此我们只需要声明Array遵循该协议就可以扩展<code>Array</code></p>
+
+<pre><code class="language-swift">//我们只需要扩展Array来使其遵循该协议即可
+extension Array: Container {}
+</code></pre>
+
+<h2 id="toc_10">泛型Where语句</h2>
+
+<p><strong>泛型Where语句</strong>用于为关联类型定义约束，比如要求其必须遵循特定协议，以及特定类型参数和关联类型必须相同</p>
+
+<p>在函数体或者类型的大括号前添加<code>Where</code>子句</p>
+
+<pre><code class="language-swift">func allItemsMatch&lt;C1: Container, C2: Container&gt;
+(_ someContainer: C1, _ anotherContainer: C2) -&gt; Bool
+    where C1.ItemType == C2.ItemType, C1.ItemType: Equatable {
+        // 检查两个容器含有相同数量的元素
+        if someContainer.count != anotherContainer.count {
+            return false
+        }
+        // 检查每一对元素是否相等
+        for i in 0..&lt;someContainer.count {
+            if someContainer[i] != anotherContainer[i] {
+            return false
+        }
+    }
+    // 所有元素都匹配，返回 true
+    return true
+}
+</code></pre>
+
+<p>用<code>类型约束</code>约束类型参数:C1、C2必须符合<code>Contain</code>协议<br/>
+用<code>泛型Where语句</code>约束关联类型:C1和C2必须类型相同,并且C1符合<code>Equatable</code></p>
 
                         
                       </div>
@@ -312,7 +338,7 @@ y!</code>来禁用错误传递，它会将调用包装在一个不会有错误�
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/23</span>
+                    <span class="date">2017/9/13</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -409,31 +435,31 @@ y!</code>来禁用错误传递，它会将调用包装在一个不会有错误�
 	      
 		      
 			      <li class="post">
-			        <a href="15318121291068.html">函数</a>
+			        <a href="15324890369623.html">面对对象高级编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15317414032911.html">语句</a>
+			        <a href="15324145349319.html">面对对象编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15317258769792.html">Python基础</a>
+			        <a href="15324005146874.html">模块</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15312926184354.html">Stack Navigation</a>
+			        <a href="15320795459657.html">函数式编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15304988629042.html">混合开发(OC)</a>
+			        <a href="15319012648780.html">高级特性</a>
 			      </li>
 		     
 		  

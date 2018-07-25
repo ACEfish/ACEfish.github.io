@@ -112,196 +112,284 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15318121291068.html">
+                <a class="clearlink" href="15324890369623.html">
                 
-                  <h1>函数</h1>
+                  <h1>面对对象高级编程</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">常用函数</h2>
+                        	<p>对于python这种动态语言,我们可以在创建了class实例之后，给其绑定属性甚至绑定方法</p>
 
-<h3 id="toc_1">类型转换</h3>
-
-<pre><code class="language-python">int(&#39;123&#39;)
-123
-&gt;&gt;&gt; int(12.34)
-12
-&gt;&gt;&gt; float(&#39;12.34&#39;)
-12.34
-&gt;&gt;&gt; str(1.23)
-&#39;1.23&#39;
-&gt;&gt;&gt; str(100)
-&#39;100&#39;
-&gt;&gt;&gt; bool(1)
-True
-&gt;&gt;&gt; bool(&#39;&#39;)
-False
-</code></pre>
-
-<h2 id="toc_2">定义函数</h2>
-
-<pre><code class="language-python">def my_abs(x):
-    # 检查参数类型 
-    if not isinstance(x, (int, float)):
-       # 当参数类型错误时  抛出错误
-        raise TypeError(&quot;bad operate Params type&quot;)
-
-    if x&gt;0:
-        return x
-    else:
-        return -x
-
-print(my_abs(&quot;-333&quot;)) #TypeError: bad operate Params type
-</code></pre>
-
-<p>定义一个空函数</p>
-
-<pre><code class="language-python">def nop():
+<pre><code class="language-python">class My_TestClass(object):
+    &quot;&quot;&quot;docstring for My_TestClass&quot;&quot;&quot;
     pass
-# pass用作占位符 
-</code></pre>
 
-<p>返回多个返回值<br/>
-返回的其实为单一一个值，一个<code>元组</code>,我们通过多个变量接收一个元组,按位置赋值</p>
+test1=My_TestClass()
+test1.name=&quot;liyuyuan&quot; # 给实例绑定对象
 
-<pre><code class="language-python">import math
+def set_name(self, name):
+    self.name=name
 
-def move(x, y, step, angle=0):
-    nx = x + step * math.cos(angle)
-    ny = y - step * math.sin(angle)
-    return nx, ny
-
-x, y = move(100, 100, 60, math.pi / 6)
-print(x, y)
-151.96152422706632 70.0
+from types import MethodType
+test1.set_name=MethodType(set_name, test1) #实例对象绑定方法
+test1.set_name(&quot;lyy&quot;)
+print(test1.name)  # lyy
 </code></pre>
 
 <blockquote>
-<p>若函数结束时没有<code>return</code>语句，就自动添加 <code>return None</code></p>
+<p>给一个实例对象绑定的方法，对另外的实例对象是不起作用的，应该给<code>class</code>绑定方法<br/>
+动态语言允许我们在程序运行过程中动态给<code>class</code>增加功能</p>
 </blockquote>
 
-<h2 id="toc_3">函数参数</h2>
-
-<p>python的函数定义简单,灵活度很大.除了正常的必选参数外,还能使用默认参数、可变参数、关键字参数。</p>
-
-<p><strong>参数组合</strong></p>
-
-<blockquote>
-<p>在Python中，可以使用必选参数、默认参数、可变参数、关键字参数和命名关键字参数，但是参数的定义顺序必须是:<code>必选参数、默认参数、可变参数、命名关键字参数和关键字参数</code></p>
-</blockquote>
-
-<pre><code class="language-python">def f1(a, b, c=0, *args, **kw):
-    print(&#39;a =&#39;, a, &#39;b =&#39;, b, &#39;c =&#39;, c, &#39;args =&#39;, args, &#39;kw =&#39;, kw)
-
-def f2(a, b, c=0, *, d, **kw):
-    print(&#39;a =&#39;, a, &#39;b =&#39;, b, &#39;c =&#39;, c, &#39;d =&#39;, d, &#39;kw =&#39;, kw)
+<pre><code class="language-python">My_TestClass.set_name=set_name
+test2=My_TestClass()
+test2.set_name(&quot;wtt&quot;)
+print(test2.name) # wtt
 </code></pre>
 
-<h3 id="toc_4">默认参数</h3>
+<h2 id="toc_0"><strong>slots</strong></h2>
 
-<p>必选参数在前,默认参数在后</p>
+<p>通过<code>__slots__</code>来对实例的属性进行限制能添加的属性</p>
 
-<pre><code class="language-python">def my_power(x, n=2):
-    total = 1
-    for s in range(1,n+1):
-        total = total*x
-    return total
+<pre><code class="language-python">class My_Slots_Class(object):
+    &quot;&quot;&quot;docstring for My_Slots_Class&quot;&quot;&quot;
+    __slots__=(&quot;name&quot;, &quot;score&quot;)
+    # def __init__(self, age): #不能有 name、score外的其他属性
+    #   self.age=age
+    pass
+        
 
-print(my_power(2))  # 4
-</code></pre>
-
-<p><strong>定义默认参数时: 默认参数必须指向不变对象,否则可变对象会成为函数内静态变量会在多次调用时变化，影响函数调用结果</strong></p>
-
-<blockquote>
-<p>使用默认参数即可省略参数，降低调用难度</p>
-</blockquote>
-
-<h3 id="toc_5">可变参数</h3>
-
-<p>当不确定参数的个数时,可以使用可变参数，可以传入任意个参数,包括0个参数</p>
-
-<pre><code class="language-python">def my_sum(*numbers):
-    sum=0
-    for x in numbers:
-        sum += x
-
-    return sum
-
-print(my_sum(1,2,3,4)) # 10
-numbers = [1,2,3,4,5]
-#通过给list 或者 tuple前加*  将其元素变为可变参数
-print(my_sum(*numbers)) #15 
-</code></pre>
-
-<p>传入的可变参数在函数内部封装为一个元组</p>
-
-<h3 id="toc_6">关键字参数</h3>
-
-<p>可以传入0个或任意个含参数名的参数,这些关键字参数在函数内部自动封装为dict</p>
-
-<pre><code class="language-python">def my_personFuc(name, age, **kw):
-    print(&quot;name:&quot;, name, &quot;age:&quot;, age, kw)
-
-my_personFuc(&quot;lyy&quot;, 24, city=&quot;luoyang&quot;) #name: lyy age: 24 {&#39;city&#39;: &#39;luoyang&#39;}
-my_personFuc(&quot;wt&quot;, 20) # name: wt age: 20 {}
-
-kwDict={&quot;city&quot;:&quot;beijing&quot;}
-# 解构字典
-my_personFuc(&quot;yt&quot;, &quot;25&quot;, **kwDict) # name: yt age: 25 {&#39;city&#39;: &#39;beijing&#39;}
+slot1=My_Slots_Class()
+slot1.age=10 #AttributeError: &#39;My_Slots_Class&#39; object has no attribute &#39;age&#39;
 </code></pre>
 
 <blockquote>
-<p>对于关键字参数，对于直接传入的参数，采用<code>=</code>而且<code>key</code>不能为str类似的字符串</p>
+<p><code>__slots__</code>定义属性仅对当前类实例起作用,对继承的子类是不起作用的，可以在子类中也定义<code>__slots__</code>，这样，子类实例允许定义的属性就是自身的<code>__slots__</code>加上父类的<code>__slots__</code>。</p>
 </blockquote>
 
-<h3 id="toc_7">命名关键字参数</h3>
+<pre><code class="language-python">class My_Slots_Subclass(My_Slots_Class):
+    &quot;&quot;&quot;docstring for My_Slots_Subclass&quot;&quot;&quot;
+    __slots__=(&quot;age&quot;)
+    pass
+#此时允许的属性为子类的__slots__加上父类的__slots__
+slot2=My_Slots_Subclass()
+slot2.age=22
+slot2.ttt=10  #AttributeError: &#39;My_Slots_Subclass&#39; object has no attribute &#39;ttt&#39;
+</code></pre>
 
-<pre><code class="language-python">#命名需要关键字 * ，在 * 之后的为命名关键字参数，
-def my_keyPerson(name, age, *, city, job):
-    print(name, age, city, job)
+<h2 id="toc_1">@property</h2>
 
-#命名关键字必须传入参数名 否则会报错 
-my_keyPerson(&quot;lyy&quot;, 24, city=&quot;luoyang&quot;, job=&quot;iOS&quot;) # lyy 24 luoyang iOS
+<p>python内置的<code>@property</code>装饰器就负责把一个方法变为属性调用</p>
 
-# 可以为可变参数隔开
-def my_keyPerson1(name, age, *args, city, job):
-    print(name, age, args, city, job)
+<pre><code class="language-python">class My_Property_Class(object):
+    @property
+    def age(self):
+        print(&quot;获取age&quot;,self._age)
+        return self._age
 
-# 明明关键字可以有缺省值,这样调用时候可以不传入city参数
-def my_keyPerson2(name, age, *, city=&#39;Beijing&#39;, job):
-    print(name, age, city, job)
+    @age.setter
+    def age(self, age):
+       #可以在此处检查传入参数处理
+        print(&quot;设置age&quot;,age)
+        self._age=age
+
+property1=My_Property_Class()
+property1.age=10 #设置age 10
+property1.age # 获取age 10
+</code></pre>
+
+<p>如果我们只定义<code>@property</code>那么该属性就是只读的</p>
+
+<h2 id="toc_2">多继承</h2>
+
+<p>python中支持多继承,一个子类可以同时获得多个父类的所有功能</p>
+
+<h3 id="toc_3">MixIn</h3>
+
+<p>一般设计为单继承,但是当需要额外功能时可以用过多继承实现,这就是<br/>
+<code>MixIn</code></p>
+
+<h2 id="toc_4">定制类</h2>
+
+<p>类似<code>__slots__</code>限制类的属性<br/>
+<code>__len__()</code>方法让class能作用域<code>len()</code>函数</p>
+
+<h3 id="toc_5"><strong>str</strong></h3>
+
+<p><code>__str__()</code> 对于打印出来的对象信息修改<br/>
+<code>__repr__()</code>对程序员看到的对象信息修改</p>
+
+<pre><code class="language-python">class Student(object):
+...     def __init__(self, name):
+...         self.name = name
+...     def __str__(self):
+...         return &#39;Student object (name: %s)&#39; % self.name
+            __repr__ = __str__ #经常把两个写作相同
+...
+print(Student(&#39;Michael&#39;)) #Student object (name: Michael)
+#当开发者在命令行直接输入对象 会打印对象信息，这是调用的是__repr__()
+</code></pre>
+
+<h3 id="toc_6"><strong>iter</strong></h3>
+
+<p>如果类需要被<code>for...in</code>循环,必须实现<code>__iter__()</code>方法,返回一个可迭代对象，然后调用对象的<code>__next__()</code>方法获取循环下一个值,直到遇到<code>StopIteration</code>错误退出循环</p>
+
+<blockquote>
+<p>学习迭代器一章知道,调用iter()方法转为迭代器,然后调用next方法获取下一个值,其内部实现就是<code>__iter__()</code>和<code>__next__()</code></p>
+</blockquote>
+
+<pre><code class="language-python">
+class My_Iter_Class(object):
+    &quot;&quot;&quot;docstring for My_Iter_Class&quot;&quot;&quot;
+    def __init__(self):
+        self.a=0
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self.a+=1
+        while self.a&gt;10:
+            raise StopIteration()
+        print(self.a)
+
+
+for x in My_Iter_Class():
+    pass
+
 
 </code></pre>
 
-<h2 id="toc_8">递归函数</h2>
+<h3 id="toc_7"><strong>getitem</strong></h3>
 
-<p>解决递归调用栈溢出的方法是通过<code>尾递归优化</code>，事实上尾递归和循环的效果是一样的，所以，把循环看成是一种特殊的尾递归函数也是可以的。<br/>
-<code>尾递归是指，在函数返回的时候，调用自身本身，并且，return语句不能包含表达式</code>。这样，编译器或者解释器就可以把尾递归做优化，使递归本身无论调用多少次，都只占用一个栈帧，不会出现栈溢出的情况</p>
+<p>对于实现了<code>__iter__()</code>和<code>__next__()</code>可以用for遍历,但是并不能像list一样取某个下标或者进行切片操作,这时需要实现<code>__getitem__()</code>方法</p>
 
-<pre><code class="language-python"># 递归函数
-def fact(n):
-    if n==1:
-        return 1
-    return n + fact(n - 1)
-
-print(fact(10))  # 55
-# 栈溢出
-print(fact(1000))  #RecursionError: maximum recursion depth exceeded in comparison
-
-#尾递归优化后
-def fact(n):
-    return fact_iter(n, 1)
-
-def fact_iter(num, product):
-    if num == 1:
-        return product
-    return fact_iter(num - 1, num * product)
+<pre><code class="language-python">class Fib(object):
+    def __getitem__(self, n):
+        if isinstance(n, int): # n是索引
+            a, b = 1, 1
+            for x in range(n):
+                a, b = b, a + b
+            return a
+        #判断是否为切片对象
+        if isinstance(n, slice): # n是切片  
+            start = n.start
+            stop = n.stop
+            if start is None:
+                start = 0
+            a, b = 1, 1
+            L = []
+            for x in range(stop):
+                if x &gt;= start:
+                    L.append(a)
+                a, b = b, a + b
+            return L
 </code></pre>
 
 <blockquote>
-<p>目前包括Python在内的编程语言都没有做尾递归优化,因此类似上面的尾递归优化之后仍会导致栈溢出</p>
+<p>在<code>__getitem__()</code>方法中，需要判断是取下标索引传入参数为<code>int</code>，还是传入的为切片<code>slice</code>进行切片操作<br/>
+上面对切片操作并不完善，比如对于负数的处理</p>
 </blockquote>
+
+<p><strong>对应于__getitem__()还有__setitem__()来对类进行赋值 <strong>delitem</strong>()删除某个元素</strong></p>
+
+<h3 id="toc_8"><strong>getattr</strong></h3>
+
+<p>当我们调用类中不存在的属性或方法时时，Python解释器会试图调用<code>__getattr__(self, &#39;attr&#39;)</code>来获得属性或方法，我们就可以通过这个方法来返回对应不存在属性值或方法</p>
+
+<blockquote>
+<p>如果我们实现了这个方法,默认返回是<code>None</code>无法提示用户该属性不存在,我们可以返回一个<code>raise AttributeError</code>错误</p>
+</blockquote>
+
+<h3 id="toc_9"><strong>call</strong></h3>
+
+<p>当我们在类内部实现<code>__call__()</code>方法后,我们就可以直接对实例进行调用</p>
+
+<pre><code class="language-python">class My_Call_Class(object):
+    def __call__(self):
+        print(&quot;调用自身call&quot;)
+
+obj1=My_Call_Class()
+obj1() # 调用自身call
+
+#判断一个对象是否可调用
+if callable(obj1): #True
+    print(&quot;可调用&quot;)  #可调用
+
+</code></pre>
+
+<blockquote>
+<p>对于可直接调用对象，可以将其看做函数,可以传参数</p>
+</blockquote>
+
+<h2 id="toc_10">枚举类</h2>
+
+<p>Python为定义大量常量的枚举 提供了<code>Enum</code>类</p>
+
+<p>使用Enum实现一个简单的枚举</p>
+
+<pre><code class="language-python">Month = Enum(&quot;Month&quot;, (&quot;Jan&quot;, &quot;Feb&quot;, &quot;Mar&quot;, &quot;Apr&quot;))
+print(Month.Jan) # Month.Jan
+print(Month.Mar.value) # 3
+
+# __members__返回所有成员的name-&gt;value的map
+for name, member in Month.__members__.items():
+    print(name, &#39;=&gt;&#39;, member, &#39;,&#39;, member.value)
+</code></pre>
+
+<p>对于某些情况我们可能需要自定义枚举,可以从<code>Enum</code>派生出自定义类</p>
+
+<pre><code class="language-python">class WeekDay(Enum):
+    Sun=7
+    Mon=1
+    Tue=2
+    Wed=3
+    Thu=4
+    Fri=5
+    Sat=6
+
+print(WeekDay.Sun) #WeekDay.Sun
+print(WeekDay.Fri.value) #5
+
+for name, member in WeekDay.__members__.items():
+    print(name, &#39;=&gt;&#39;, member, &#39;,&#39;, member.value)
+</code></pre>
+
+<p><code>Enum</code>可以把相关常量定义在一个不可变<code>class</code>中,成员之间可以直接比较</p>
+
+<h2 id="toc_11">元类</h2>
+
+<p><strong>动态语言和静态语言最大的不同就是,函数和类的定义不是编译时定义的而是运行时动态创建的</strong></p>
+
+<p>当python解释器载入模块时，就会依次执行该模块中的所有语句</p>
+
+<p><code>class</code>的定义是在运行时动态创建的，创建<code>class</code>的方法就是使用<code>type()</code>函数</p>
+
+<p>利用<code>type</code>函数创建一个class</p>
+
+<pre><code class="language-python">def hello_func(self, name=&quot;world&quot;):
+    print(&quot;hello, &quot;, name)
+
+#用type创建Hello class
+Hello_Class=type(&quot;Hello&quot;, (object,), dict(hello=hello_func))
+
+h1= Hello_Class()
+h1.hello() # hello,  world
+</code></pre>
+
+<p>用type定义的类与class定义的完全相同,python解释器遇到class定义类也是仅仅扫描一下后调用<code>type()</code>方法来定义类</p>
+
+<blockquote>
+<p>当前执行的模块名字为__main__</p>
+</blockquote>
+
+<h3 id="toc_12">metaclass</h3>
+
+<p><code>metaclass</code>允许我们创建或者修改类</p>
+
+<p><code>metaclass</code>是类的模板，所以必须从<code>type</code>类型派生</p>
+
+<p>该节不常用,自行参考<a href="https://www.liaoxuefeng.com/wiki/0014316089557264a6b348958f449949df42a6d3a2e542c000/0014319106919344c4ef8b1e04c48778bb45796e0335839000">廖雪峰的python学习元类</a></p>
 
                         
                       </div>
@@ -310,7 +398,7 @@ def fact_iter(num, product):
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/7/17</span>
+                    <span class="date">2018/7/25</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Python.html'>Python</a></span>
@@ -407,31 +495,31 @@ def fact_iter(num, product):
 	      
 		      
 			      <li class="post">
-			        <a href="15318121291068.html">函数</a>
+			        <a href="15324890369623.html">面对对象高级编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15317414032911.html">语句</a>
+			        <a href="15324145349319.html">面对对象编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15317258769792.html">Python基础</a>
+			        <a href="15324005146874.html">模块</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15312926184354.html">Stack Navigation</a>
+			        <a href="15320795459657.html">函数式编程</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15304988629042.html">混合开发(OC)</a>
+			        <a href="15319012648780.html">高级特性</a>
 			      </li>
 		     
 		  
