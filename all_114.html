@@ -112,93 +112,46 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14867842994268.html">
+                <a class="clearlink" href="14872305472033.html">
                 
-                  <h1>容易忘记的易错点</h1>
+                  <h1>UI测试</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h3 id="toc_0">1. @property属性中如果是copy属性要记得：</h3>
+                        	<p>关于iOS的UI自动化测试，Xcode 7 Apple从新提供了一个新的框架UITest，使用XCTest.framework，Xcode可以自动录制UI测试的动作流，还有就是可以使用<code>XCTest UI testing API</code></p>
 
-<pre><code class="language-text">**注意：**
-在重写setter方法时要记得加上 
+<h4 id="toc_0"><a href="http://www.itnose.net/detail/6507467.html">基础知识</a></h4>
 
-``` Object-c
-_name = [name copy]
-```
-在内部的init方法中 也要记得加copy，即在内部直接给属性变量赋值时记得加copy
+<p>核心的三个类:<code>XCUIApplication</code> <code>XCUIElement</code> <code>XCUIElementQuery</code><br/>
+<strong>XCUIApplication类</strong> 是Application的代理，就像我们项目工程中的AppDelegate，这个对象用来启动或者是终止UI测试程序，还可以在启动的时候设置一些启动参数，在获取程序中的UI元素的时候，就是通过这个类的实例。这个类继承自XCUIElement类<br/>
+<strong>XCUIElement类</strong> 是XCTest.framework对应用中的所有UI控件的抽象，在UI测试中，没有UIKit中的UI类型，只是用这个类的实例表示所有的UI控件，以及相应的交互方法，例如：执行手势（tap，press，swipe），滑动控件交互，拾取器交互，这个类采取了XCUIElementAttributes协议（描述UI元素的属性：Identity，Value，Interaction State，Size），XCUIElementTypeQueryProvider协议(为指定类型的子代元素提供ready-made查询，子代元素查询包含button，具体实现是:@property(readonly, copy) XCUIElementQuery *buttons;等一系列对UIKit中元素的映射)<br/>
+<strong>XCUIElementQuery类</strong> 是定位UI元素的查询，这个类使用类似key-value的机制得到XCUIElement的实例，使用Type(XCUIElementType枚举)，Predicate，Identifier创建query，使用elementAtIndex:, elementMatchingPredicate,elementMatchingType: identifier:方法访问匹配到的UI元素，此类采用XCUIElementTypeQueryProvider协议</p>
 
-```Object-c
-//这里尽量不要用self.实例变量 而用 _实例变量
-</code></pre>
+<p>XCTest一共提供了三种UI测试对象<br/>
+    XCUIApplication 当前测试应用target<br/>
+    XCUIElementQuery 定位查询当前UI中xctuielement的一个类<br/>
+    XCUIElement UI测试中任何一个item项都被抽象成一个XCUIElement类型<br/>
+因此:当我们获取了录制生成的代码以后，根据UITest提供的三种对象，我可以在此来对测试代码进行修改，调试,我们同样可以使用断言语句来进行测试</p>
 
+<h4 id="toc_1">UI测试Demo</h4>
+
+<ol>
+<li><p>创建项目时勾选UITest</p></li>
+<li><p>打开DemoUiTest.m,创建 - (void)testUI函数,同时将光标留在函数内<br/>
+<img src="media/14872305472033/14872344264789.png" alt=""/><br/>
+点击下面的红色按钮，开始recorder操作，程序运行起来后，点击APP界面进行操作,然后光标处就会生成测试代码</p></li>
+<li><p>进行测试<br/>
+之后我们测试只需要点击test函数前的测试按钮测试这个函数 或者command+u 来进行全部测试<br/>
+此时刚才的一连串动作会一步一步连续执行下来</p></li>
+<li><p>我们此时可以通过修改这段代码来进行我们想要的测试<br/>
+比如：</p>
 <ul>
-<li><p>initWithSpId:(SInt32)spId spName:(NSString *)spName type:(SInt32)spType spPinyin:(NSString *)spPinyin spLetter:(NSString *)spLetter {<br/>
-if (self = [super init]) {<br/>
-    _spId = spId;<br/>
-    _spName = [spName copy];<br/>
-    _type = spType;<br/>
-}<br/>
-return self;<br/>
-}</p>
-<pre><code class="language-text">### 2. 注意在修改navigation时是只修改了navigationItem还是修改了NavigationBar
-如果是仅仅修改了navigationItem那就只对本控制器有效 push或者pop了都不影响，一般有以下几种情况:<br/>
-1. 修改了navigationItem的元素<br/>
-    ```Object-c<br/>
-    self.navigationItem.title = @&quot;title&quot;;<br/>
-    self.navigationItem.titleView = [[UIView alloc] init];<br/>
-    ```<br/>
-2. 修改了navigationItem的BarButtonItem<br/>
-    ```Object-c<br/>
-    self.navigationItem.leftBarButtonItem = [UIBarButtonItem itemWithTarget:self action:@selector(popViewController) image:@&quot;general_arrow_back_white&quot; highImage:@&quot;general_arrow_back_orange&quot;];<br/>
-    ```<br/>
-    **一般我们可以通过这种方法拦截返回点击事件，比如全局控制器的返回按键已经写好，而我们想要拦截点击事件就可以用这种方法,写一个同一样式的按键触发不同的事件**<br/>
-这些修改是不影响的整个navigationBar的仅此不需要在视图控制器消失时做额外的操作<br/>
-而如果是修改了navigationBar 那就对全局有影响了,需要在控制器消失时做额外还原处理,一般情况如下:<br/>
-```Object-c<br/>
-//修改背景图片<br/>
-[self.navigationController.navigationBar setShadowImage:[UIImage new]];<br/>
-//修改背景颜色<br/>
-[self.navigationController.navigationBar lt_setBackgroundColor:[UIColor clearColor]];<br/>
-//修改navigationBar的整体字体颜色<br/>
-[self.navigationController.navigationBar setTitleTextAttributes:<br/>
- [NSDictionary dictionaryWithObjectsAndKeys:[UIColor whiteColor],NSForegroundColorAttributeName,nil]];<br/>
- //隐藏navigationBar<br/>
-self.navigationController.navigationBar.hidden = YES;
-</code></pre>
-<p>此时我们需要在退出时做一下还原操作</p>
-<pre><code class="language-object-c">[super viewWillDisappear:animated];
-[self.navigationController.navigationBar lt_reset];<br/>
-[self.navigationController.navigationBar setTitleTextAttributes:<br/>
-[NSDictionary dictionaryWithObjectsAndKeys:[UIColor blackColor],NSForegroundColorAttributeName,nil]];<br/>
-self.navigationController.navigationBar.hidden = NO;
-</code></pre>
-<h3 id="toc_1">3. 隐藏tabbar</h3>
-<p>我们在某些界面需要隐藏Tabbar的时候，会出现原区域无法响应点击事件的问题。系统的Tabbar已经被我们hidden了，但是仍然无法响应事件，此时我们只要将系统的Tabbar的frame设置为CGRectZero即可。</p>
-<pre><code class="language-objectivec">[UIApplication sharedApplication].keyWindow.rootViewController).tabBar.frame 
-= CGRectZero;
-</code></pre></li>
-</ul>
-
-<h3 id="toc_2">4. 自动布局的动画</h3>
-
-<pre><code class="language-text">用`xib`拉的视图或者`masonry`布局的视图在`[UIView animation...]`动画方法中都是可以直接改变`frame`或者`transform`来进行动画的
-我们可以直接改变`frame`包括宽、高、中心等 直接进行各种动画,而不用担心因为`autolayout`问题,毕竟masony或者xib拉约束都只是布局问题,在运行时还是会转成`frame`的.
-
-而通常我们拖约束线出去是为了:
-1. 在视图还没加载时用代码设置某个约束值  
-2. 真的是要改变某个约束值做动画（通常某个视图也和这个约束有关系）
-</code></pre>
-
-<h3 id="toc_3">让UIButton的title对齐方式</h3>
-
-<p>有些时候我们想让UIButton的title居左对齐</p>
-
-<p>button.textLabel.textAlignment = UITextAlignmentLeft  //是没有作用的，我们需要设置</p>
-
-<p>button.contentHorizontalAlignment = UIControlContentHorizonAlignmentLeft; //显示居左<br/>
-**除了水平 还有垂直方向的对齐方式</p>
+<li>通过添加循环语句来测试一直执行是否会出现问题,判断内存问题等</li>
+<li>通过添加断言来判断运行中元素或情况与我们预想是否一致</li>
+</ul></li>
+<li></li>
+</ol>
 
                         
                       </div>
@@ -207,10 +160,10 @@ self.navigationController.navigationBar.hidden = NO;
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/11</span>
+                    <span class="date">2017/2/16</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
+          					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -304,6 +257,24 @@ self.navigationController.navigationBar.hidden = NO;
 	      
 		      
 			      <li class="post">
+			        <a href="15331071952550.html">进程&&线程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15329386758024.html">IO编程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15325716345284.html">错误、调试、测试</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15324890369623.html">面对对象高级编程</a>
 			      </li>
 		     
@@ -311,24 +282,6 @@ self.navigationController.navigationBar.hidden = NO;
 		      
 			      <li class="post">
 			        <a href="15324145349319.html">面对对象编程</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15324005146874.html">模块</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15320795459657.html">函数式编程</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15319012648780.html">高级特性</a>
 			      </li>
 		     
 		  

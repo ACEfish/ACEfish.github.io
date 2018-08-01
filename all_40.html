@@ -112,32 +112,119 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15025006795297.html">
+                <a class="clearlink" href="15037348375137.html">
                 
-                  <h1>析构过程</h1>
+                  <h1>类型转换</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>只适用类类型,当类的实例被释放时,析构器会被立即调用。<br/>
-<code>deinit</code>关键字标示析构器</p>
+                        	<p>在<code>Swift</code>中通过<code>is</code>和<code>as</code>操作符来实现<strong>类型转换</strong>，可以来检查值的类型或者转换类型<br/>
+可以用它检查一个类型是否实现了某个协议</p>
 
-<h2 id="toc_0">析构过程原理</h2>
+<h2 id="toc_0">定义一个类层次作为例子</h2>
 
-<p>自动释放不需要的实例来释放资源,通过自动引用计数来管理内存。实例被释放时会自动清理,但是使用自己的资源需要进行额外的清理(比如自己打开一个文件管理类，需要在类被释放前手动关闭该文件).</p>
+<p>在数组中存了一个父类的两个子类的实例</p>
 
-<p>在类的定义中,每个类最多只能有一个析构器,不带任何参数</p>
+<blockquote>
+<p>在数组中存在两种子类类型,会推断这个数组为共同的父类类型<br/>
+此时虽然数组中存的是子类类型实例,但是迭代的话取出的实例会为父类类型，此时我们需要判断和转换类型</p>
+</blockquote>
 
-<pre><code class="language-swift">deinit {
-    // 执行析构过程
+<h2 id="toc_1">检查类型</h2>
+
+<p>用类型检查操作符<code>is</code> 检查实例是否属于特定子类型，返回<code>bool</code>值</p>
+
+<pre><code class="language-swift">for item in library {
+    if item is Movie { //判断实例是否为 Movie类型
+        movieCount += 1
+    } else if item is Song { //判断实例是否为 Song类型
+        songCount += 1
+    }
 }
 </code></pre>
 
-<p>析构器在实例被释放前被调用,不能主动调用析构器。子类继承了父类的析构器，并且在子类析构器<br/>
-实现的最后，父类的析构器会被自动调用。</p>
+<h2 id="toc_2">向下转型</h2>
 
-<p>直到实例的析构器被调用后，实例才会被释放,所以析构器可以访问实例的所有属性，并且可以根据那些属<br/>
-性可以修改它的行为(比如查找一个需要被关闭的文件)</p>
+<p>当某类型的实例属于一个子类,可以用<code>as?</code>或者<code>as!</code>将其向下转换位子类类型</p>
+
+<p>因为向下转型可能失败，因此提供<code>as?</code>和<code>as!</code>(带上强制解包)，当不确定是否成功时用<code>as?</code> 确定一定成功时<code>as!</code></p>
+
+<pre><code class="language-swift">for item in library {
+    if let movie = item as? Movie {
+        print(&quot;Movie: &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
+    } else if let song = item as? Song {
+        print(&quot;Song: &#39;\(song.name)&#39;, by \(song.artist)&quot;)
+    }
+}
+</code></pre>
+
+<p><code>if let movie = item as? Movie</code>尝试将<code>item</code>转为<code>Movie</code>类型。若成功，设置一个新的临时常量<code>movie</code>来存储返回的可选<code>Movie</code>中的值</p>
+
+<h2 id="toc_3">Any和AnyObject的类型转换</h2>
+
+<p>不确定类型的表达方式:<br/>
+<code>Any</code>可以表示任何类型，包括函数类型。<br/>
+<code>AnyObject</code>可以表示任何类类型的实例</p>
+
+<p>建议只在确定需要使用时才使用<code>Any</code>和<code>AnyObject</code></p>
+
+<pre><code class="language-swift">var things = [Any]()
+
+things.append(0)
+things.append(0.0)
+things.append(42)
+things.append(3.14159)
+things.append(&quot;hello&quot;)
+things.append((3.0, 5.0))
+things.append(Movie(name: &quot;Ghostbusters&quot;, director: &quot;Ivan Reitman&quot;))
+things.append({ (name: String) -&gt; String in &quot;Hello, \(name)&quot; })
+</code></pre>
+
+<p>然后我们可以在<code>switch</code>表达式的</p>
+
+<pre><code class="language-swift">for thing in things {
+    switch thing {
+    case 0 as Int:
+        print(&quot;zero as an Int&quot;)
+    case 0 as Double:
+        print(&quot;zero as a Double&quot;)
+    case let someInt as Int:
+        print(&quot;an integer value of \(someInt)&quot;)
+    case let someDouble as Double where someDouble &gt; 0:
+        print(&quot;a positive double value of \(someDouble)&quot;)
+    case is Double:
+        print(&quot;some other double value that I don&#39;t want to print&quot;)
+    case let someString as String:
+        print(&quot;a string value of \&quot;\(someString)\&quot;&quot;)
+    case let (x, y) as (Double, Double):
+        print(&quot;an (x, y) point at \(x), \(y)&quot;)
+    case let movie as Movie:
+        print(&quot;a movie called &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
+    case let stringConverter as String -&gt; String:
+        print(stringConverter(&quot;Michael&quot;))
+    default:
+        print(&quot;something else&quot;)
+    }
+}
+// zero as an Int
+// zero as a Double
+// an integer value of 42
+// a positive double value of 3.14159
+// a string value of &quot;hello&quot;
+// an (x, y) point at 3.0, 5.0
+// a movie called &#39;Ghostbusters&#39;, dir. Ivan Reitman
+// Hello, Michael
+</code></pre>
+
+<blockquote>
+<p><code>Any</code>是可以表示所有类型的值,包括可选类型,当你在用<code>Any</code>类型来表示一个可选值时,会给出警告，此时可以用<code>as</code>操作符显示转换为<code>Any</code></p>
+</blockquote>
+
+<pre><code class="language-text">let optionalNumber: Int? = 3
+things.append(optionalNumber) // 会有警告
+things.append(optionalNumber as Any) // 没有警告
+</code></pre>
 
                         
                       </div>
@@ -146,10 +233,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/12</span>
+                    <span class="date">2017/8/26</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift.html'>Swift初学笔记</a></span>
+          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -243,6 +330,24 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15331071952550.html">进程&&线程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15329386758024.html">IO编程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15325716345284.html">错误、调试、测试</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15324890369623.html">面对对象高级编程</a>
 			      </li>
 		     
@@ -250,24 +355,6 @@
 		      
 			      <li class="post">
 			        <a href="15324145349319.html">面对对象编程</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15324005146874.html">模块</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15320795459657.html">函数式编程</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15319012648780.html">高级特性</a>
 			      </li>
 		     
 		  

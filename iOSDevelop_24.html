@@ -112,28 +112,93 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14866921954417.html">
+                <a class="clearlink" href="14867842994268.html">
                 
-                  <h1>iOS中开发者知识</h1>
+                  <h1>容易忘记的易错点</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<ol>
-<li><p>unionid<br/>
-<img src="media/14866921954417/unionid.png" alt="unionid说明"/></p></li>
-<li><p>-fobjc-arc<br/>
-如果你的项目没有使用ARC而某个文件需要使用ARC  <strong>-fobjc-arc</strong><br/>
-你的项目使用ARC而某个文件需要使用非ARC    <strong>-fno-objc-arc</strong><br/>
-点击项目导航文件--&gt; 选中Targets--&gt; 选择 Build Phases --&gt; 展开Compile Sources,找到对应文件加上</p></li>
-<li><p>获取应用知识</p>
-<pre><code class="language-objectivec">#define BundleID      [[NSBundle mainBundle] bundleIdentifier]
-#define BundleVersionShort [[[NSBundle mainBundle] infoDictionary] objectForKey:@&quot;CFBundleShortVersionString&quot;]<br/>
-#define BundleVersion [[[NSBundle mainBundle] infoDictionary] objectForKey:@&quot;CFBundleVersion&quot;]<br/>
-#define IDFV          [[[UIDevice currentDevice] identifierForVendor]UUIDString]
+                        	<h3 id="toc_0">1. @property属性中如果是copy属性要记得：</h3>
+
+<pre><code class="language-text">**注意：**
+在重写setter方法时要记得加上 
+
+``` Object-c
+_name = [name copy]
+```
+在内部的init方法中 也要记得加copy，即在内部直接给属性变量赋值时记得加copy
+
+```Object-c
+//这里尽量不要用self.实例变量 而用 _实例变量
+</code></pre>
+
+<ul>
+<li><p>initWithSpId:(SInt32)spId spName:(NSString *)spName type:(SInt32)spType spPinyin:(NSString *)spPinyin spLetter:(NSString *)spLetter {<br/>
+if (self = [super init]) {<br/>
+    _spId = spId;<br/>
+    _spName = [spName copy];<br/>
+    _type = spType;<br/>
+}<br/>
+return self;<br/>
+}</p>
+<pre><code class="language-text">### 2. 注意在修改navigation时是只修改了navigationItem还是修改了NavigationBar
+如果是仅仅修改了navigationItem那就只对本控制器有效 push或者pop了都不影响，一般有以下几种情况:<br/>
+1. 修改了navigationItem的元素<br/>
+    ```Object-c<br/>
+    self.navigationItem.title = @&quot;title&quot;;<br/>
+    self.navigationItem.titleView = [[UIView alloc] init];<br/>
+    ```<br/>
+2. 修改了navigationItem的BarButtonItem<br/>
+    ```Object-c<br/>
+    self.navigationItem.leftBarButtonItem = [UIBarButtonItem itemWithTarget:self action:@selector(popViewController) image:@&quot;general_arrow_back_white&quot; highImage:@&quot;general_arrow_back_orange&quot;];<br/>
+    ```<br/>
+    **一般我们可以通过这种方法拦截返回点击事件，比如全局控制器的返回按键已经写好，而我们想要拦截点击事件就可以用这种方法,写一个同一样式的按键触发不同的事件**<br/>
+这些修改是不影响的整个navigationBar的仅此不需要在视图控制器消失时做额外的操作<br/>
+而如果是修改了navigationBar 那就对全局有影响了,需要在控制器消失时做额外还原处理,一般情况如下:<br/>
+```Object-c<br/>
+//修改背景图片<br/>
+[self.navigationController.navigationBar setShadowImage:[UIImage new]];<br/>
+//修改背景颜色<br/>
+[self.navigationController.navigationBar lt_setBackgroundColor:[UIColor clearColor]];<br/>
+//修改navigationBar的整体字体颜色<br/>
+[self.navigationController.navigationBar setTitleTextAttributes:<br/>
+ [NSDictionary dictionaryWithObjectsAndKeys:[UIColor whiteColor],NSForegroundColorAttributeName,nil]];<br/>
+ //隐藏navigationBar<br/>
+self.navigationController.navigationBar.hidden = YES;
+</code></pre>
+<p>此时我们需要在退出时做一下还原操作</p>
+<pre><code class="language-object-c">[super viewWillDisappear:animated];
+[self.navigationController.navigationBar lt_reset];<br/>
+[self.navigationController.navigationBar setTitleTextAttributes:<br/>
+[NSDictionary dictionaryWithObjectsAndKeys:[UIColor blackColor],NSForegroundColorAttributeName,nil]];<br/>
+self.navigationController.navigationBar.hidden = NO;
+</code></pre>
+<h3 id="toc_1">3. 隐藏tabbar</h3>
+<p>我们在某些界面需要隐藏Tabbar的时候，会出现原区域无法响应点击事件的问题。系统的Tabbar已经被我们hidden了，但是仍然无法响应事件，此时我们只要将系统的Tabbar的frame设置为CGRectZero即可。</p>
+<pre><code class="language-objectivec">[UIApplication sharedApplication].keyWindow.rootViewController).tabBar.frame 
+= CGRectZero;
 </code></pre></li>
-<li></li>
-</ol>
+</ul>
+
+<h3 id="toc_2">4. 自动布局的动画</h3>
+
+<pre><code class="language-text">用`xib`拉的视图或者`masonry`布局的视图在`[UIView animation...]`动画方法中都是可以直接改变`frame`或者`transform`来进行动画的
+我们可以直接改变`frame`包括宽、高、中心等 直接进行各种动画,而不用担心因为`autolayout`问题,毕竟masony或者xib拉约束都只是布局问题,在运行时还是会转成`frame`的.
+
+而通常我们拖约束线出去是为了:
+1. 在视图还没加载时用代码设置某个约束值  
+2. 真的是要改变某个约束值做动画（通常某个视图也和这个约束有关系）
+</code></pre>
+
+<h3 id="toc_3">让UIButton的title对齐方式</h3>
+
+<p>有些时候我们想让UIButton的title居左对齐</p>
+
+<p>button.textLabel.textAlignment = UITextAlignmentLeft  //是没有作用的，我们需要设置</p>
+
+<p>button.contentHorizontalAlignment = UIControlContentHorizonAlignmentLeft; //显示居左<br/>
+**除了水平 还有垂直方向的对齐方式</p>
 
                         
                       </div>
@@ -142,7 +207,7 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/10</span>
+                    <span class="date">2017/2/11</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
@@ -239,6 +304,24 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15331071952550.html">进程&&线程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15329386758024.html">IO编程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15325716345284.html">错误、调试、测试</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15324890369623.html">面对对象高级编程</a>
 			      </li>
 		     
@@ -246,24 +329,6 @@
 		      
 			      <li class="post">
 			        <a href="15324145349319.html">面对对象编程</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15324005146874.html">模块</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15320795459657.html">函数式编程</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15319012648780.html">高级特性</a>
 			      </li>
 		     
 		  

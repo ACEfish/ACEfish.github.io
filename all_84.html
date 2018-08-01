@@ -112,274 +112,272 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14903384285214.html">
+                <a class="clearlink" href="14913623029277.html">
                 
-                  <h1>显式动画</h1>
+                  <h1>基于定时器的动画</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>隐式动画是在iOS平台创建动态用户界面的一种直接方式，也是UIKit动画机制的基础<br/>
-显式动画，它能够对一些属性做指定的自定义动画，或者创建非线性动画</p>
+                        	<p>缓冲主要学习<code>CAMediaTimingFunction</code>通过来做加速减速等增强现实感.</p>
 
-<h3 id="toc_0">属性动画</h3>
+<p>本章学习精确地控制一帧一帧展示的基于定时器的动画,来更加真实模拟物理交互或者根据用户输入来改变动画</p>
 
-<p><code>core animation</code>里面有个很重要的类<code>CAPropertyAnimation</code>(属性动画)，它有两个子类，<code>CABasicAnimation</code>和<code>CAKeyFrameAnimation</code>。</p>
+<h3 id="toc_0">定时帧</h3>
 
-<h4 id="toc_1">属性动画</h4>
+<p>iOS按照每秒60次刷新屏幕,<code>CAAnimation</code>计算出需要展示的新的帧。</p>
 
-<p><code>CAAnimation</code>在动画结束时会属性会回到原值所以<br/>
-我们在做了显式动画后可以用<code>CAAnimationDelegate</code>中<code>- animationDidStop:finished:</code>方法来更新图层属性（一般设置其为终值）,更新属性的时候我们需要一个新的事务并且禁用图层行为.否则会有两次动画.</p>
+<h4 id="toc_1">NSTimer</h4>
 
-<pre><code class="language-objectivec">- (void)animationDidStop:(CABasicAnimation *)anim finished:(BOOL)flag
+<p>我们可以用NStimer来一秒钟更新60次，来做动画.</p>
+
+<p>用<code>NSTimer</code>做动画的话需要几个属性来存储动画的<code>fromValue</code> ，<code>toValue</code>，<code>duration</code>和当前的 <code>timeOffset</code>。</p>
+
+<p><code>示例代码省略</code></p>
+
+<p>但是用<code>NSTimer</code>并不是一个很好的方案</p>
+
+<p>iOS中每个线程都管理了一个<code>NSRunloop</code>，通过循环来完成一些任务列表</p>
+
+<p>但是主线程的任务有:</p>
+
+<ul>
+<li>处理触摸事件</li>
+<li>发送和接受网络数据包</li>
+<li>执行使用gcd的代码</li>
+<li>处理定时器行为</li>
+<li>屏幕重绘</li>
+</ul>
+
+<p>当我们设置了一个NSTimer,会被插入到当前任务列表中,指定时间过去后才被执行.但是何时启动定时器并没有一个时间上限，而且它只会在列表中上一个任务完成之后开始执行。这通常会导致有几毫秒的延迟，但是如果上一个任务过了很久才完成就会导致延迟很长一段时间。</p>
+
+<p>屏幕重绘的频率是一秒钟六十次，但是和定时器行为一样，如果列表中上一个执行了很长时间，它也会延迟。这些延迟都是一个随机值，于是就不能保证定时器精准地一秒钟执行六十次。有时候发生在屏幕重绘之后，这就会使得更新屏幕会有个延迟，看起来就是动画卡壳了。有时候定时器会在屏幕更新的时候执行两次，于是动画看起来就跳动了。</p>
+
+<p>优化方法:</p>
+
+<ul>
+<li>我们可以用 CADisplayLink 让更新频率严格控制在每次屏幕刷新之后。</li>
+<li>基于真实帧的持续时间而不是假设的更新频率来做动画。</li>
+<li>调整动画计时器的 <code>run loop</code> 模式，这样就不会被别的事件干扰。</li>
+</ul>
+
+<h4 id="toc_2">CADisplayLink</h4>
+
+<p><code>CADisplayLink</code>是<code>CoreAnimation</code>提供的另一个类似<code>NSTimer</code>类,总是在屏幕完成一次更新之前启动,它和<code>NSTimer</code>的内部实现相同,只不过它不是以时间间隔秒为单位,<code>CADisplayLink</code> 有一个整型的<code>frameInterval</code> 属性，指定了间隔多少帧之后才执行。默认值是1，意味着每次屏幕更新之前都会执行一次。(我们可以根据动画的执行时间来确定多少帧执行一次)</p>
+
+<p>虽然<code>CADisplayLink</code>也不能保证每帧都按计划执行,出现丢帧情况,但是和<code>NSTimer</code>不同的是<code>NSTimer</code>一有机会就会开启,而<code>CADisplayLink</code>如果丢帧的话会直接忽略它们,在下一次更新时接着运行;</p>
+
+<pre><code class="language-objectivec">self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+
+- (void)step:(CADisplayLink *)timer
 {
-    //set the backgroundColor property to match animation toValue
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.colorLayer.backgroundColor = (__bridge CGColorRef)anim.toValue;
-    [CATransaction commit];
+    //calculate time delta
+    CFTimeInterval thisStep = CACurrentMediaTime();
+    CFTimeInterval stepDuration = thisStep - self.lastStep;
+    self.lastStep = thisStep;
+    
+    self.timeOffset = MIN(self.timeOffset + stepDuration, self.duration);
+    //get normalized time offset (in range 0 - 1)
+    float time = self.timeOffset / self.duration;
+    //apply easing
+    time = bounceEaseOut(time);
+    //interpolate position
+    id position = [self interpolateFromValue:self.fromValue toValue:self.toValue
+    time:time];
+    //move ball view to new position
+    self.ballView.center = [position CGPointValue];
+    //stop the timer if we&#39;ve reached the end of the animation
+    if (self.timeOffset &gt;= self.duration) {
+        [self.timer invalidate];
+        self.timer = nil;
+    }
 }
 </code></pre>
 
-<p>但是如果我们有多个动画这个代理回调是无法区分是哪个图层的调用.<br/>
-1.因为这个代理传进来的动画的深拷贝,所以没有办法通过设置动画属性来分辨.<br/>
-2.使用<code>-addAnimation:forKey:</code>给动画设置不同key,<code>-animationForKey:</code>找到对应的key来对比，可实现但是比较复杂<br/>
-3.最简单的方法,<code>CAAnimation</code>实现了KVC,但是更像一个 NSDictionary ，可以让你<strong>随意设置键值对</strong>，即使和你使用的动画类所声明的属性并不匹配。</p>
+<h4 id="toc_3">Run Loop 模式</h4>
 
-<pre><code class="language-objectivec">//初始化动画时用KVC设置键值对
-CABasicAnimation *animation = [CABasicAnimation animation];
-[self updateHandsAnimated:NO];
-animation.keyPath = @&quot;transform&quot;;
-animation.toValue = [NSValue valueWithCATransform3D:transform];
-animation.duration = 0.5;
-animation.delegate = self;
-[animation setValue:handView forKey:@&quot;handView&quot;];
-[handView.layer addAnimation:animation forKey:nil];
-- (void)animationDidStop:(CABasicAnimation *)anim finished:(BOOL)flag
+<p>创建Run Loop时需要指定mode,iOS会根据指定的优先级,，而且当UI很活跃的时候的确会暂停一些别的任务.</p>
+
+<ul>
+<li>NSDefaultRunLoopMode - 标准优先级</li>
+<li>NSRunLoopCommonModes - 高优先级</li>
+<li>UITrackingRunLoopMode - 用于 UIScrollView 和别的控件的动画</li>
+</ul>
+
+<pre><code class="language-objectivec">/*我们可以同时加入 NSDefaultRunLoopMode 和 UITrackingRunLoopMode 
+    来保证它不会被滑动打断，也不会被其他UIKit控件动画影响性能
+**/
+self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:UITrackingRunLoop];
+</code></pre>
+
+<h3 id="toc_4">物理模拟</h3>
+
+<p>我们在上面的方法中，关键帧的实现中我们提前加计算了所有帧,这次我们按需要进行计算,这样我们可以根据用户输入实时修改动画的逻辑，或者和别的实时动画系统例如物理引擎进行整合。</p>
+
+<h4 id="toc_5">Chipmunk</h4>
+
+<p>基于物理学创建一个真实的重力模拟效果来取代当前基于缓冲的弹性动画,因为模拟物理效果太复杂了，我们直接使用开源的物理引擎,我这里使用<code>Chipmunk</code>，有很多版本包括和<code>Objective-C</code>绑定的<code>“indie”</code>版本<a href="http://chipmunk-physics.net/">下载地址</a></p>
+
+<p>我们只简单使用这个引擎中的几个类:</p>
+
+<ul>
+<li>cpSpace - 所有的物理结构体的容器。它有一个大小和一个可选的重力矢量</li>
+<li>cpBody - 一个固态无弹力的刚体。它有一个坐标，以及其他物理属性，例如质量，运动和摩擦系数等等。</li>
+<li>cpShape - 一个抽象的几何形状，用来检测碰撞。可以给结构体添加一个多边形，而且<code>cpShape</code>有各种子类来代表不同形状的类型。</li>
+</ul>
+
+<p>因为C语言是不支持引用计数的所以为了准确的创建和释放我们将<code>cpShape</code>和<code>cpBody</code>和<code>Crate</code>（木箱）类进行绑定，在木箱的<code>- init</code>方法中创建,<code>-dealloc</code>中释放。用视图控制器来管理<code>cpSpace</code></p>
+
+<p><code>Chipmunk</code>使用了一个和<code>UIKit</code>颠倒的坐标系（Y轴向上为正方向）。我们可以使用<code>geometryFlipped</code>属性翻转容器视图的集合坐标,这样模型和视图就共享一个坐标系了<br/>
+<strong>geometryFlipped</strong>设置layer的这个属性可以调整坐标系Y轴方向</p>
+
+<p>代码示例:</p>
+
+<pre><code class="language-objectivec">//创建木箱的image对象
+@interface Crate : UIImageView
+@property (nonatomic, assign) cpBody *body;
+@property (nonatomic, assign) cpShape *shape;
+@end
+
+@implementation Crate
+#define MASS 100
+- (id)initWithFrame:(CGRect)frame
 {
-    //通过kvc获取存储的值
-    UIView *handView = [anim valueForKey:@&quot;handView&quot;];
-    handView.layer.transform = [anim.toValue CATransform3DValue];
+    if ((self = [super initWithFrame:frame])) {
+        //set image
+        self.image = [UIImage imageNamed:@&quot;Crate.png&quot;];
+        self.contentMode = UIViewContentModeScaleAspectFill;
+        //create the body
+        self.body = cpBodyNew(MASS, cpMomentForBox(MASS, frame.size.width, frame.size.height));
+        //create the shape
+        cpVect corners[] = {
+            cpv(0, 0),
+            cpv(0, frame.size.height),
+            cpv(frame.size.width, frame.size.height),
+            cpv(frame.size.width, 0),
+        };
+    self.shape = cpPolyShapeNew(self.body, 4, corners, cpv(-frame.size.width/2, -frame.size.height/2));
+    //set shape friction &amp; elasticity
+    cpShapeSetFriction(self.shape, 0.5);
+    cpShapeSetElasticity(self.shape, 0.8);
+    //link the crate to the shape
+    //so we can refer to crate from callback later on
+    self.shape-&gt;data = (__bridge void *)self;
+    //set the body position to match view
+    cpBodySetPos(self.body, cpv(frame.origin.x + frame.size.width/2, 300 - frame.origin.y - frame.size.height/2));
+    }
+    return self;
 }
-</code></pre>
-
-<p><code>CABasicAnimation</code>只能作用于一个属性,只能有初始值和结束值</p>
-
-<h4 id="toc_2">关键帧动画</h4>
-
-<p><code>CABasicAnimation</code>揭示了大多数隐式动画背后依赖的机制,但是显式地给图层添加<code>CABasicAnimation</code>相较于<code>隐式动画</code>而言，只能说费力不讨好。</p>
-
-<p><code>CAKeyframeAnimation</code>和<code>CABasicAnimation</code> 类似同样是<code>CAPropertyAnimation</code> 的一个子类它依然作用于单一的一个属性,但是它不限制于设置一个起始和结束的值，而是可以根据一连串随意的值来做动画。</p>
-
-<p><code>CAKeyframeAnimation</code>关键帧动画:只我们只需要绘制关键帧的动画，然后<code>Core Animation</code>在每帧之间进行插入。</p>
-
-<pre><code class="language-objectivec">- (IBAction)changeColor
+- (void)dealloc
 {
-    //create a keyframe animation
-    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
-    animation.keyPath = @&quot;backgroundColor&quot;;
-    animation.duration = 2.0;
-    animation.values = @[
-    (__bridge id)[UIColor blueColor].CGColor,
-    (__bridge id)[UIColor redColor].CGColor,
-    (__bridge id)[UIColor greenColor].CGColor,
-    (__bridge id)[UIColor blueColor].CGColor ];
-    //apply animation to layer
-    [self.colorLayer addAnimation:animation forKey:nil];
+    //release shape and body
+    cpShapeFree(_shape);
+    cpBodyFree(_body);
 }
+@end
+
+//创建重力空间
+@interface ViewController ()
+@property (nonatomic, weak) IBOutlet UIView *containerView;
+@property (nonatomic, assign) cpSpace *space;
+@property (nonatomic, strong) CADisplayLink *timer;
+@property (nonatomic, assign) CFTimeInterval lastStep;
+@end
+
+@implementation ViewController
+#define GRAVITY 1000
+- (void)viewDidLoad
+{
+    //invert view coordinate system to match physics
+    self.containerView.layer.geometryFlipped = YES;
+    //set up physics space
+    self.space = cpSpaceNew();
+    cpSpaceSetGravity(self.space, cpv(0, -GRAVITY));
+    //add a crate
+    Crate *crate = [[Crate alloc] initWithFrame:CGRectMake(100, 0, 100, 100)];
+    [self.containerView addSubview:crate];
+    cpSpaceAddBody(self.space, crate.body);
+    cpSpaceAddShape(self.space, crate.shape);
+    //start the timer
+    self.lastStep = CACurrentMediaTime();
+    self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+    [self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+}
+
+void updateShape(cpShape *shape, void *unused)
+{
+    //get the crate object associated with the shape
+    Crate *crate = (__bridge Crate *)shape-&gt;data;
+    //update crate view position and angle to match physics shape
+    cpBody *body = shape-&gt;body;
+    crate.center = cpBodyGetPos(body);
+    crate.transform = CGAffineTransformMakeRotation(cpBodyGetAngle(body));
+}
+
+- (void)step:(CADisplayLink *)timer
+{
+    //calculate step duration
+    CFTimeInterval thisStep = CACurrentMediaTime();
+    CFTimeInterval stepDuration = thisStep - self.lastStep;
+    self.lastStep = thisStep;
+    //update physics
+    cpSpaceStep(self.space, stepDuration);
+    //update all the shapes
+    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
+}
+@end
 </code></pre>
 
-<p>是因为<code>CAKeyframeAnimation</code>并不能自动把当前值作为第一帧（就像<code>CABasicAnimation</code> 那样把 <code>fromValue</code> 设为 <code>nil</code> ），所以动画会在开始的时候突然由原来色变为蓝色,结束时又突然由结束色变为原来色.</p>
+<h4 id="toc_6">添加用户交互</h4>
 
-<p>上面是使用<code>animation.values</code>来设置关键帧，我还可以用<code>path 属性</code>指定运动序列.<br/>
-我们要绘制一个<code>CGPath</code>的三次贝塞尔曲线，可以通过使用一个基于C的<code>Core Graphics</code>绘图指令来创建，不过用<code>UIKit</code>提供的<code>UIBezierPath</code>类会更简单.</p>
+<p>为了使木箱不掉落到屏幕外 我们在屏幕周围添加四条线来限制范围;</p>
 
-<pre><code class="language-objectivec">UIBezierPath *bezierPath = [[UIBezierPath alloc] init];
-[bezierPath moveToPoint:CGPointMake(0, 150)];
-[bezierPath addCurveToPoint:CGPointMake(300, 150) controlPoint1:CGPointMake(75, 0) controlPoint2:CGPointMake(225, 300)];
-CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
-animation.keyPath = @&quot;position&quot;;
-animation.duration = 4.0;
-animation.path = bezierPath.CGPath;
-[shipLayer addAnimation:animation forKey:nil];
+<p>通过给<code>cpSpace</code>添加四个<code>cpSegmentShape</code>对象（<code>cpSegmentShape</code>代表一条直线，所以四个拼起来就是一个矩形）。然后赋值给空间的<code>staticBody</code>属性(这是不受重力的结构体)，而不是像木箱那样会受重力的<code>cpBody</code>实例，因为我们不想这线画出屏幕或者被木箱击中消失。</p>
+
+<p>通过添加一个加速器,可以通过倾斜手机来调整重力矢量,在横屏模式下，要交换加速计矢量的x和y值，竖屏模式下再换回来.</p>
+
+<pre><code class="language-text">代码省略
 </code></pre>
 
-<p>苹果很人性化的给我们提供了<code>rotationMode</code>属性,设置它为常量 <code>kCAAnimationRotateAuto</code>图层将会根据曲线的切线自动旋转。<br/>
-<code>animation.rotationMode = kCAAnimationRotateAuto;</code></p>
+<h4 id="toc_7">模拟时间以及固定的时间步长</h4>
 
-<h4 id="toc_3">虚拟属性</h4>
+<p>在上面我们做动画的缓冲效果来说,都是计算每帧的持续时间，这样的话两个时间步长就是可变的,对于模拟物理效果并不理想:</p>
 
-<p>属性动画实际上是针对于关键路径而不是一个键,这就意味着可以对<code>子属性</code>甚至是<code>虚拟属性</code>做动画.</p>
+<p>因此我们通过<strong>固定的时间步长</strong>来计算物理效果，还要保证在屏幕发生重绘时能够同步更新视图</p>
 
-<p>例如:想要对物体做旋转动画,需要作用于<code>transform</code> 属性，因为<code>CALayer</code>没有显式提供角度或者方向之类的属性</p>
+<p>因为刚好我们的模型（在这个例子中就是Chipmunk的 cpSpace 中的 cpBody ）被视图（就是屏幕上代表木箱的 UIView 对象）分离，于是就很简单了。我们只需要根据屏幕刷新的时间跟踪时间步长，然后根据每帧去计算一个或者多个模拟出来的效果。</p>
 
-<pre><code class="language-objectivec">CABasicAnimation *animation = [CABasicAnimation animation];
-animation.keyPath = @&quot;transform&quot;;
-animation.duration = 2.0;
-animation.toValue = [NSValue valueWithCATransform3D: CATransform3DMakeRotation(M_PI, 0, 0, 1)];
-[shipLayer addAnimation:animation forKey:nil];
+<pre><code class="language-objectivec">
 /**
-这样确实会旋转180°但是如果我们把M_PI改为2*M_PI就不会旋转了
-即使我们设置了byValue也无效,因为变换矩阵并不会像角度值一样叠加
+    通过每次 CADisplayLink 的启动来通知屏幕将要刷新，然后记录下当前的
+    CACurrentMediaTime() 。
+    在一个小增量中提前重复物理模拟（这里用120分之一秒）直到赶上显示的时间。然后更新我们的视图，
+    在屏幕刷新的时候匹配当前物理结构体的显示位置。
 */
-</code></pre>
 
-<p>对于<code>CATransform3D</code>因为0度旋转和360度旋转的矩阵完全相同,所以<code>fromValue</code> = <code>toValue</code>因此不会旋转的</p>
-
-<p>我们当然可以用关键帧动画,修改<code>transform</code>属性，实时地重新计算每个时间点的每个变换效果。这是非常复杂的，不推荐</p>
-
-<p>推荐:<br/>
-我们可以<br/>
-对<code>transform.rotation</code>关键路径应用动画，而不是<code>transform</code>本身</p>
-
-<pre><code class="language-objectivec">CABasicAnimation *animation = [CABasicAnimation animation];
-animation.keyPath = @&quot;transform.rotation&quot;;
-animation.duration = 2.0;
-animation.byValue = @(M_PI * 2);
-[shipLayer addAnimation:animation forKey:nil];
-</code></pre>
-
-<p>这样我们就可以简单使用角度而不用复杂的矩阵,就可以使用<code>byValue</code>了. 还可以额外使用<code>transform.position</code> 或者<code>transform.scale</code></p>
-
-<p><code>transform.rotation</code>属性其实并不存在,这是因为<code>CATransform3D</code>不是对象而是结构体，它就是一个 <code>CALayer</code> 用于处理动画变换的虚拟属性。当我们<code>transform.rotation</code>等虚拟属性做动画时，<code>Core Animation</code>自动地根据通过 <code>CAValueFunction</code> 来计算的值来更新<code>transform</code> 属性。<br/>
-<code>CAValueFunction</code>用于把我们赋给虚拟的 <code>transform.rotation</code>简单浮点值转换成真正的用于摆放图层的<code>CATransform3D</code> 矩阵值。可以通过设置 <code>CAPropertyAnimation</code> 的<code>valueFunction</code>属性来改变，于是你设置的函数将会覆盖默认的函数。</p>
-
-<h3 id="toc_4">动画组</h3>
-
-<h4 id="toc_5">动画组</h4>
-
-<p><code>属性动画</code>仅仅作用于单独的属性,<code>CAAnimationGroup</code>是另一个继承于 <code>CAAnimation</code> 的子类，它添加了一个 <code>animations</code> 数组的属性，用来组合别的动画。</p>
-
-<pre><code class="language-objectivec">CAKeyframeAnimation *animation1 = [CAKeyframeAnimation animation];
-animation1.keyPath = @&quot;position&quot;;
-animation1.path = bezierPath.CGPath;
-animation1.rotationMode = kCAAnimationRotateAuto;
-//create the color animation
-CABasicAnimation *animation2 = [CABasicAnimation animation];
-animation2.keyPath = @&quot;backgroundColor&quot;;
-animation2.toValue = (__bridge id)[UIColor redColor].CGColor;
-//create group animation
-CAAnimationGroup *groupAnimation = [CAAnimationGroup animation];
-groupAnimation.animations = @[animation1, animation2];
-groupAnimation.duration = 4.0;
-//add the animation to the color layer
-[colorLayer addAnimation:groupAnimation forKey:nil];
-</code></pre>
-
-<h3 id="toc_6">过渡</h3>
-
-<p><strong>属性动画只对图层的可动画属性起作用</strong>，所以如果要改变一个不能动画的属性（比如图片），或者从层级关系中添加或者移除图层，属性动画将不起作用。</p>
-
-<p>因为隐式动画或者属性动画都只能对图层的可动画属性做动画,如果这个属性不可动画，这时候我们就需要<code>过渡</code>了。过渡动画会影响到整个图层的变化,它首先展示的之前的图层外观,然后通过一个交换过渡到新的外观.</p>
-
-<p>我们用<code>CATransition</code>来创建过渡动画,它也是<code>CAAnimation</code>子类,有一个<code>type</code>和<code>subtype</code>来标识变换效果。</p>
-
-<pre><code class="language-objectivec">//type:
-kCATransitionFade//默认,淡入淡出
-kCATransitionMoveIn //新图层从顶部滑入
-kCATransitionPush //推出老图层
-kCATransitionReveal //滑动出原图层，显示新外观,而不是滑动入新图层
-//这是系统提供的,我们也可以自定义过渡动画效果
-</code></pre>
-
-<p><code>type</code>过渡类型都有一个默认的动画方向（从左侧滑入）,可以通过<code>subtype</code>控制方向</p>
-
-<pre><code class="language-text">//subtype
-kCATransitionFromRight
-kCATransitionFromLeft//
-kCATransitionFromTop
-kCATransitionFromBottom
-</code></pre>
-
-<p><strong>注意</strong><br/>
-与属性动画类似我们通过<code>-addAnimation:forKey:</code>方法，但是它对指定图层一次只能用一次<code>CATransition</code>，因此，过渡动画都会对它的键设置成“transition”，也就是常量 kCATransition 。</p>
-
-<h4 id="toc_7">隐式过渡</h4>
-
-<p>过渡动画和属性动画类似也是有隐式,如果设置了<code>CALayer</code>的<code>contents</code>属性,但是对于与视图关联的图层隐式过渡动画是被禁用的,但是如果是自己创建的图层<code>contents</code>图片做的改动都会自动附上淡入淡出的动画。</p>
-
-<p><strong>注意</strong><br/>
-虽然我们用<code>过渡动画</code>来对图层的某些不可动画属性做动画,但是也不是说过渡动画不能对可动画属性做动画.</p>
-
-<pre><code class="language-objectivec">    CATransition *transition = [CATransition animation];
-    transition.type = kCATransitionPush;
-    transition.subtype = kCATransitionFromRight;
-    [self.containerView.layer addAnimation:transition forKey:nil];
-    self.containerView.backgroundColor = [UIColor redColor];
-</code></pre>
-
-<h4 id="toc_8">图层树动画</h4>
-
-<p>添加过渡动画<code>不需要指定属性</code>,它涉及到整个图层树的改变,因此我们可以在即使不能准确得知图层改变什么的情况下对图层做动画.</p>
-
-<p>确保<code>CATransition</code>添加到的图层在过渡动画发生时不会在树状结构中被移除，否则<code>CATransition</code>将会和图层一起被移除。一般来说，你只需要将动画添加到被影响图层的<code>superlayer</code>。</p>
-
-<h4 id="toc_9">自定义动画</h4>
-
-<p><code>UIView</code>也有提供过渡动画函数:<br/>
- <code>UIView +transitionFromView:toView:duration:options:completion:</code>和 <code>+transiti<br/>
-onWithView:duration:options:animations:</code></p>
-
-<p>这些过渡方法中<code>options</code>参数可以由如下常量指定：</p>
-
-<pre><code class="language-objectivec">UIViewAnimationOptionTransitionFlipFromLeft//以Y轴从左向右旋转
-UIViewAnimationOptionTransitionFlipFromRight
-UIViewAnimationOptionTransitionCurlUp//从上向下翻页效果
-UIViewAnimationOptionTransitionCurlDown
-UIViewAnimationOptionTransitionCrossDissolve//溶解渐变效果
-UIViewAnimationOptionTransitionFlipFromTop//以X轴从下向上旋转
-UIViewAnimationOptionTransitionFlipFromBottom
-</code></pre>
-
-<p>因此只需要根据要实现效果<code>CATransition</code>还是<code>UIView</code>的过渡方法就行了.</p>
-
-<p>如果真的要实现自定义的过渡效果:<br/>
-因为过渡动画的原则就是对原始的图层外观截图，然后添加一段动画，平滑过渡到图层改变之后那个截图的效果。如果我们会对图层截图,就可以用属性动画来代替过渡动画了.</p>
-
-<p>对图层截图的方法:<code>CALayer</code>有一个 <code>- renderInContext:</code>方法，可以通过把它绘制到<code>Core Graphics</code>的上下文中捕获当前内容的图片，然后在另外的视图中显示出来。如果我们把这个截屏视图置于原始视图之上，就可以遮住真实视图的所有变化，于是重新创建了一个简单的过渡效果。</p>
-
-<pre><code class="language-objectivec">- (IBAction)performTransition
+#define SIMULATION_STEP (1/120.0)
+- (void)step:(CADisplayLink *)timer
 {
-    //preserve the current view snapshot
-    UIGraphicsBeginImageContextWithOptions(self.view.bounds.size, YES, 0.0);
-    [self.view.layer renderInContext:UIGraphicsGetCurrentContext()];
-    UIImage *coverImage = UIGraphicsGetImageFromCurrentImageContext();
-    //insert snapshot view in front of this one
-    UIView *coverView = [[UIImageView alloc] initWithImage:coverImage];
-    coverView.frame = self.view.bounds;
-    [self.view addSubview:coverView];
-    //update the view (we&#39;ll simply randomize the layer background color)
-    CGFloat red = arc4random() / (CGFloat)INT_MAX;
-    CGFloat green = arc4random() / (CGFloat)INT_MAX;
-    CGFloat blue = arc4random() / (CGFloat)INT_MAX;
-    self.view.backgroundColor = [UIColor colorWithRed:red green:green blue:blue alpha:1.0];
-    //perform animation (anything you like)
-    [UIView animateWithDuration:1.0 animations:^{
-        //scale, rotate and fade the view
-        CGAffineTransform transform = CGAffineTransformMakeScale(0.01, 0.01);
-        transform = CGAffineTransformRotate(transform, M_PI_2);
-        coverView.transform = transform;
-        coverView.alpha = 0.0;
-    } completion:^(BOOL finished) {
-        //remove the cover view now we&#39;re finished with it
-        [coverView removeFromSuperview];
-    }];
+    //calculate frame step duration
+    CFTimeInterval frameTime = CACurrentMediaTime();
+    //update simulation
+    while (self.lastStep &lt; frameTime) {
+        cpSpaceStep(self.space, SIMULATION_STEP);
+        self.lastStep += SIMULATION_STEP;
+    }
+    //update all the shapes
+    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
 }
 </code></pre>
 
-<p><strong>注意</strong><br/>
-<code>- renderInContext:</code>捕获了图层的图片和子图层，但是不能对子图层正确地处理变换效果，而且对视频和OpenGL内容也不起作用。但是用<code>CATransition</code>，或者用私有的截屏方式就没有这个限制了。</p>
+<h4 id="toc_8">避免死亡螺旋</h4>
 
-<h3 id="toc_10">动画过程中取消动画</h3>
+<p>在上面例子中我们随意选择了1/120秒来模拟物理效果,但是我们在场景很复杂，<code>cpSpaceStp()</code>计算也会超出1/120秒,这样就会造成延迟帧率,帧延迟的话，我们需要更多时间来同步真实时间,这样就越来越慢，直到应用程序卡死,这就是所谓的<code>死亡螺旋</code></p>
 
-<p>添加动画:<code>-addAnimation:forKey:</code><br/>
-检索动画:<code>- (CAAnimation *)animationForKey:(NSString *)key</code><br/>
-<em>不支持动画过程中修改动画</em><br/>
-移除指定动画:<code>- (void)removeAnimationForKey:(NSString *)key;</code><br/>
-移除所有动画:<code>- (void)removeAllAnimations;</code></p>
-
-<p><strong>注意</strong><br/>
-一般说来，动画在结束之后被自动移除，除非设置<code>removedOnCompletion</code>为<code>NO</code>，如果你设置动画在结束之后不被自动移除，那么当它不需要的时候你要手动移除它；否则它会一直存在于内存中，直到图层被销毁。</p>
+<p>为了避免这种情况 我们需要留下足够的时间容错，如果物理计算超过了模拟时间的50%，就需要考虑增加模拟时间步长（或者简化场景）。如果模拟时间步长增加到超过1/60秒（一个完整的屏幕更新时间），你就需要减少动画帧率到一秒30帧或者增加<code>CADisplayLink</code>的<code>frameInterval</code>来保证不会随机丢帧，不然你的动画将会看起来不平滑。</p>
 
                         
                       </div>
@@ -388,7 +386,7 @@ UIViewAnimationOptionTransitionFlipFromBottom
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/24</span>
+                    <span class="date">2017/4/5</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
@@ -485,6 +483,24 @@ UIViewAnimationOptionTransitionFlipFromBottom
 	      
 		      
 			      <li class="post">
+			        <a href="15331071952550.html">进程&&线程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15329386758024.html">IO编程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15325716345284.html">错误、调试、测试</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15324890369623.html">面对对象高级编程</a>
 			      </li>
 		     
@@ -492,24 +508,6 @@ UIViewAnimationOptionTransitionFlipFromBottom
 		      
 			      <li class="post">
 			        <a href="15324145349319.html">面对对象编程</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15324005146874.html">模块</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15320795459657.html">函数式编程</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15319012648780.html">高级特性</a>
 			      </li>
 		     
 		  

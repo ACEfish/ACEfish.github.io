@@ -112,147 +112,140 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15005513837564.html">
+                <a class="clearlink" href="15018175799489.html">
                 
-                  <h1>类和结构体</h1>
+                  <h1>继承</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>可以使用完全相同的语法规则来为<code>类</code>和<code>结构体</code>定义属性(<code>常量</code>、<code>变量</code>)和添加方法，从而扩展类和结构体的功能</p>
+                        	<p>类可以继承父类的方法、属性和其他特征</p>
 
-<p>与其他编程语言不同,<code>swift</code>不要求为自定义类和结构创建独立的接口和实现文件.所要做的是在一个单一文件中定义一个类或者结构体，系统将会自动生成面向其它代码的外部接口</p>
+<p>类可以调用和访问超类的方法，属性和下标，并且可以重写这些方法，属性和下标来优化或修改它们的行为。</p>
 
-<h2 id="toc_0">类和结构体对比</h2>
+<p>可以为类中继承的属性添加属性观察器</p>
 
-<blockquote>
-<p>类通过引用计数进行多次引用,结构体通过复制的方式在代码中传递,不使用引用计数</p>
-</blockquote>
+<h2 id="toc_0">定义一个基类</h2>
 
-<h3 id="toc_1">定义语法</h3>
+<p>不继承于其它类的类,称之为基类</p>
 
-<p>通过关键之<code>class</code>和<code>struct</code>来分别标识类和结构体</p>
+<p>注意:</p>
 
 <blockquote>
-<p>类和结构体名使用首字母大写的方式进行命名</p>
+<p><code>Swift</code>中类并不是从一个通用类继承而来.如果没有为定义的类制定一个超类的话,这个类自动成为一个基类</p>
 </blockquote>
 
-<pre><code class="language-swift">//定义一个结构体 描述显示器屏幕分辨率
-struct Resolution {
-    var width = 0
-    var height = 0
-    //当这两个属性被初始化为整数 0 的时候，它们会被推断为 Int 类型。
-}
+<p>创建一个<code>Vehicle</code>的基类，来描述通用车辆</p>
 
-//定义一个类 描述视频显示器的特定模式
-//四个变量存储属性
-class VideoMode {
-    var resolution = Resolution()//分辨率 结构体
-    var interlaced = false
-    var frameRate = 0.0
-    var name: String?
+<pre><code class="language-swift">class Vehicle {
+    var currentSpeed = 0.0
+    var description: String {
+        return &quot;traveling at \(currentSpeed) miles per hour&quot;
+    }
+    func makeNoise() {
+        // 什么也不做-因为车辆不一定会有噪音
+    }
 }
 </code></pre>
 
-<p><code>存储属性</code>是被<code>捆绑</code>和<code>存储</code>在类或结构体中的常量或变量。</p>
+<h2 id="toc_1">子类生成</h2>
 
-<h3 id="toc_2">类和结构体实例</h3>
-
-<p>初始化结构体或类的实例</p>
-
-<pre><code class="language-swift">let someResolution = Resolution()
-let someVideoMode = VideoMode()
+<pre><code class="language-swift">//定义一个自行车Bicycle继承自Vehicle
+class Bicycle: Vehicle {
+    var hasBasket = false
+}
 </code></pre>
 
-<p>通过这种方式创建类或者结构体实例,属性都会被初始化为默认值.</p>
+<p>除了继承自父类的方法、属性外，还定义了一个默认值为<code>false</code>的存储属性<code>hasBasket</code></p>
 
-<h3 id="toc_3">属性访问</h3>
-
-<p>通过点语法访问实例属性。</p>
-
-<pre><code class="language-swift">//访问结构体属性
-print(&quot;The width of someResolution is \(someResolution.width)&quot;)
-// 打印 &quot;The width of someResolution is 0&quot;
-
-//访问变量属性
-someVideoMode.resolution.width = 1280
-print(&quot;The width of someVideoMode is now \(someVideoMode.resolution.width)&quot;)
-// 打印 &quot;The width of someVideoMode is now 1280&quot;
+<pre><code class="language-swift">let bicycle = Bicycle()
+bicycle.hasBasket = true
+//修改继承的属性
+bicycle.currentSpeed = 15.0
+print(&quot;Bicycle: \(bicycle.description)&quot;)
+// 打印 &quot;Bicycle: traveling at 15.0 miles per hour&quot;
 </code></pre>
+
+<h2 id="toc_2">重写</h2>
+
+<p>为继承来的实例方法、类方法、实例属性、下标提供自己的实现,即为<strong>重写</strong></p>
+
+<p>需要在重写的定义前加上 <code>override</code>关键字表明重写,否则即为错误的提供了相同的定义</p>
+
+<h3 id="toc_3">访问父类的方法、属性和下标</h3>
+
+<p>通过<code>super</code>前缀来访问父类版本中的方法、属性或下标</p>
+
+<ul>
+<li>在方法 someMethod() 的重写实现中，可以通过 super.someMethod() 来调用超类版本的 someMethod() 方法</li>
+<li>在属性 someProperty 的 getter 或 setter 的重写实现中，可以通过 super.someProperty 来访问超类版本的someProperty 属性</li>
+<li>在下标的重写实现中，可以通过 super[someIndex] 来访问超类版本中的相同下标</li>
+</ul>
+
+<h3 id="toc_4">重写方法</h3>
+
+<pre><code class="language-swift">class Train: Vehicle {
+    override func makeNoise() {
+        print(&quot;Choo Choo&quot;)
+    }
+}
+</code></pre>
+
+<h3 id="toc_5">重写属性</h3>
+
+<p>重写继承来的实例或者类型属性来提供自己定制的<code>getter</code>或者<code>setter</code>或添加属性观察器来观察属性值的改变</p>
+
+<h4 id="toc_6">重写属性的setter和getter</h4>
+
+<p>子类并不知道继承来的属性是存储型还是计算型,重写时要提供属性名称和类型来让编译器去查找父类同名同类型的属性</p>
+
+<p>可以把继承的只读属性重写为可读写,但是没有办法把可读写的重写为只读属性</p>
 
 <blockquote>
-<p>在OC中是不能直接设置结构体子属性值，swift中可以直接设置比如<code>resolution.width</code>属性值,在oc中我们需要给整个结构体<code>resolution</code>设置新值</p>
+<p>如果你在重写属性中提供了<code>setter</code>，那么你也一定要提供<code>getter</code>。如果你不想在重写版本中的<br/>
+<code>getter</code>里修改继承来的属性值，你可以直接通过<code>super.someProperty</code>来返回继承来的值</p>
 </blockquote>
 
-<h3 id="toc_4">结构体类型成员逐一构造器</h3>
+<pre><code class="language-swift">class Car: Vehicle {
+    var gear = 1
+    //重写description属性
+    override var description: String {
+        return super.description + &quot; in gear \(gear)&quot;
+    }
+}
 
-<p>对于<strong>结构体</strong><br/>
-所有结构体都有一个自动生成的<strong>成员逐一构造器</strong>，用来初始化新结构体成员的属性</p>
-
-<pre><code class="language-swift">//通过属性名称
-let vga = Resolution(width:640, height: 480)
+let car = Car()
+car.currentSpeed = 25.0
+car.gear = 3
+print(&quot;Car: \(car.description)&quot;)//返回自定义描述
+// 打印 &quot;Car: traveling at 25.0 miles per hour in gear 3&quot;
 </code></pre>
 
-<p>类是没有这个成员构造器的</p>
+<h4 id="toc_7">重写属性观察器</h4>
 
-<h2 id="toc_5">结构体和枚举时值类型</h2>
+<p>注意:</p>
 
-<p><strong>值类型被赋予给一个变量、常量或者被传递给一个函数的时候，其值会被拷贝</strong></p>
+<ol>
+<li>不能为继承来的常量存储型属性或继承来的只读计算型属性添加属性观察器,因为它们不能被设置</li>
+<li>不能同时提供重写的<code>setter</code>和重写的属性观察器。因为此时我们可以直接在setter中观察值的变化</li>
+</ol>
 
-<p>实际上,在<code>Swift</code>中，所有的基本类型：整数（Integer）、浮点数（floating-point）、布尔值（Boolean）、字符串（string)、数组（array）和字典（dictionary），都是值类型，并且在底层都是<strong>以结构体的形式所实现</strong></p>
-
-<p>在<code>swift</code>中,所有结构体和枚举类型都是值类型。因此,它们的实例以及实例中包含的值类型属性,在传递时都会被复制</p>
-
-<pre><code class="language-swift">let hd = Resolution(width: 1920, height: 1080)
-var cinema = hd
-cinema.width = 2048
-print(&quot;cinema is now \(cinema.width) pixels wide&quot;)// &quot;cinema is now 2048 pixels wide&quot;
-print(&quot;hd is still \(hd.width) pixels wide&quot;)//&quot;hd is still 1920 pixels wide&quot;
+<pre><code class="language-swift">class AutomaticCar: Car {
+    override var currentSpeed: Double {
+        didSet {
+            gear = Int(currentSpeed / 10.0) + 1(后向下取得最接近的整数值在加1)
+        }
+    }
+}
 </code></pre>
 
-<p>在对结构体进行赋值的时候,进行了拷贝,cinema和hd是完全不同的两个实例,因此改变了cinema的宽对hd没有影响</p>
+<p>为属性<code>currentSpeed</code>添加观察器，设置速度时就会自动选择合适的档位</p>
 
-<p>枚举也是值类型,遵循相同的行为准则</p>
+<h2 id="toc_8">防止重写</h2>
 
-<h2 id="toc_6">类是引用类型</h2>
+<p>通过把方法、属性或下标 前加关键字<code>final</code>来防止被重写,例如:<code>final var</code> ， <code>final func</code> ， <code>final class func</code> ，以及 <code>final subscript</code></p>
 
-<p>与值类型不同,引用类型在传递时,值不会被拷贝.因此，<strong>引用的是已存在的实例本身而不是其拷贝</strong>。</p>
-
-<pre><code class="language-swift">let tenEighty = VideoMode()
-tenEighty.frameRate = 25.0
-
-let alsoTenEighty = tenEighty
-alsoTenEighty.frameRate = 30.0
-print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&quot;)//30.0
-</code></pre>
-
-<p>类是引用类型，所以<code>tenEight</code>和<code>alsoTenEight</code>实际上引用的是相同的<code>VideoMode</code>实例<br/>
-注意:<br/>
-虽然<code>alsoTenEighty</code>为常量但是仍然可以改变<code>alsoTenEighty.frameRate</code>因为这两个常量的值并未改变,这个常量的值存储的并不是<code>ViewMode</code>的实例,而是对其的引用.</p>
-
-<h3 id="toc_7">恒等运算符</h3>
-
-<p>等价于 <code>===</code>  不等价于 <code>!==</code> 用来检测两个变量或常量是否引用同一个实例</p>
-
-<p><code>===</code>与<code>==</code>的不同:<br/>
-“等价于”表示两个类类型（class type）的常量或者变量引用同一个类实例。<br/>
-“等于”表示两个实例的值“相等”或“相同”，判定时要遵照设计者定义的评判标准</p>
-
-<h3 id="toc_8">指针</h3>
-
-<p>一个引用实例的<code>swift</code>常量或者变量,与C指针类似,但是并不直接指向某个内存地址,也不需要用<code>*</code>表明在创建引用.</p>
-
-<h2 id="toc_9">类和结构体的选择</h2>
-
-<h2 id="toc_10">字符串、数组、字典类型的赋值和复制行为</h2>
-
-<p>因为<code>swift</code>中很多基本类型,<code>String</code>，<code>Array</code>和<code>Dictionary</code>类型均以结构体的形式实现，赋值给新的常量变量或者传入函数方法中的时候会被拷贝</p>
-
-<blockquote>
-<p>在OC中<code>NSString</code>，<code>NSArray</code>和<code>NSDictionary</code>是以类的形式实现,不会发生值拷贝而是传递引用</p>
-
-<p>Swift会在绝对必要时才执行实际拷贝,确保性能最优,因此我们没有必要回避赋值来增加性能</p>
-</blockquote>
+<p>通过在<code>class</code>前添加关键字<code>final</code>表示这个类是不可被继承的</p>
 
                         
                       </div>
@@ -261,7 +254,7 @@ print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&qu
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/7/20</span>
+                    <span class="date">2017/8/4</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
@@ -358,6 +351,24 @@ print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&qu
 	      
 		      
 			      <li class="post">
+			        <a href="15331071952550.html">进程&&线程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15329386758024.html">IO编程</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15325716345284.html">错误、调试、测试</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15324890369623.html">面对对象高级编程</a>
 			      </li>
 		     
@@ -365,24 +376,6 @@ print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&qu
 		      
 			      <li class="post">
 			        <a href="15324145349319.html">面对对象编程</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15324005146874.html">模块</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15320795459657.html">函数式编程</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15319012648780.html">高级特性</a>
 			      </li>
 		     
 		  
