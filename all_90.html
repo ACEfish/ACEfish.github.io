@@ -112,156 +112,28 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14901598468257.html">
+                <a class="clearlink" href="14921642710849.html">
                 
-                  <h1>隐式动画</h1>
+                  <h1>动画</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>我们在前面介绍了图层的相关知识,现在我们开始学本次的重点<strong>动画</strong><br/>
-<strong>注意</strong><br/>
-<code>CALayer</code>呈现图层&lt;--&gt;模型图层<br/>
-我们在创建<code>CALayer</code>对象存储了我们设置的属性值（只是存值所以是模型图层）,但是模型图层显示或者说是呈现时就会基于模型图层创建一个呈现图层,然后我们所能看到的都是基于这个呈现图层的.</p>
+                        	<p>1.隐式动画<br/>
+    利用图层的属性动画来做动画<br/>
+    通过事务来控制动画的时间等属性<br/>
+    UIView的animateWithDuration:animations:方法创建的动画。<br/>
+2.显式动画<br/>
+    就是直接显式的向图层上添加一个动画<br/>
+    beginAnimations:context:和commitAnimations创建的动画。</p>
 
-<h3 id="toc_0">事务</h3>
-
-<p><code>Core Animation</code>基于一个假设，说屏幕上的任何东西都可以（或者可能）做动画。动画并不需要你在<code>Core Animation</code>中手动打开，相反需要明确地关闭，否则他会一直存在。</p>
-
-<p>当我们改变了<code>CALayer</code>的一个可做动画的属性时,但是他并不会立刻在屏幕上显示出来。它默认会从先前的值平滑过渡到新值,不需要做额外操作。这就是<code>隐式动画</code>,之所以叫<strong><code>隐式</code>是因为我们并没有指定任何动画的类型</strong>.我们改变属性之后是<code>Core Animation</code>来决定如何并且何时去做动画（这是隐式当然也可以显式动画）.</p>
+<p>之所以叫<strong><code>隐式</code>是因为我们并没有指定任何动画的类型</strong>.我们改变属性之后是<code>Core Animation</code>来决定如何并且何时去做动画（这是隐式当然也可以显式动画）.</p>
 
 <p>隐式动画的动画执行的时间取决于当前<code>事务</code>的设置，动画类型取决于图层行为。</p>
 
-<p><code>事务</code>是<strong><code>Core Animation</code>用来包含一系列属性动画集合的机制</strong>，当用事务去改变可以做动画的图层属性都不会立刻变化,而是等到这个事务提交之后,才开始图层属性过渡到新值的动画.</p>
-
-<p>我们用<code>CATransaction</code>类来管理<code>事务</code>,这个类管理的事务并不能访问,也没有属性或者实例方法，并且也不能用<code>+alloc</code> 和<code>-init</code>方法创建它。但是可以用 <code>+begin</code> 和 <code>+commit</code> 分别来入栈或者出栈。</p>
-
-<p>任何可以做动画的图层属性的改变都会被添加到目前<code>栈顶</code>的<code>事务</code>中.我们可以用<code>+setAnimationDuration:</code>设置 或者<code>+animationDuration</code>获取当前的栈顶事务的动画时间(默认0.25秒)</p>
-
-<p><code>Core Animation</code>会在每个<code>run loop</code>周期中自动开始一次新的事务,，即使你不显式的用<code>[CATransaction begin]</code> 开始一次事务，任何在一次<code>run loop</code>循环中属性的改变都会被集中起来，然后做一次0.25秒的动画。  </p>
-
-<pre><code class="language-objectivec">/*我们在设置某个属性动画的事务属性（比如时间）时,我们通常会自己创建一个新的事务,
-否则会有可能影响到事务中其他属性动画*/
-[CATransaction begin];
-//set the animation duration to 1 second
-[CATransaction setAnimationDuration:1.0];
-
-self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
-//commit the transaction
-[CATransaction commit];
-</code></pre>
-
-<p><strong>补充</strong><br/>
-<code>UIView</code>有两个方法，<code>+beginAnimations:context:</code>和<code>+commitAnimations</code>，就是通过设置 <code>CATransaction</code>实现的,至于UIView的另外一个<code>+animateWithDuration:animations:</code>，只是将这些属性动画做成了一个block以避免开发者由于对<code>+begin</code> 和<code>+commit</code> 匹配的失误.</p>
-
-<h3 id="toc_1">完成块</h3>
-
-<p>我们在做基于<code>UIView</code>的<code>block</code>动画时可以在动画结束时提供一个完成动作. <br/>
-<code>CATranscation</code>接口提供的<code>+setCompletionBlock:</code>方法也有同样的功能。</p>
-
-<pre><code class="language-objectivec">[CATransaction begin];
-[CATransaction setAnimationDuration:1.0];
-[CATransaction setCompletionBlock:^{
-//rotate the layer 90 degrees
-CGAffineTransform transform = self.colorLayer.affineTransform;
-transform = CGAffineTransformRotate(transform, M_PI_2);
-self.colorLayer.affineTransform = transform;
-}];
-self.colorLayer.backgroundColor = [UIColor redColor];
-[CATransaction commit];
-/**
-注意旋转动画要比颜色渐变快得多，这是因为完成块是在颜色渐变的事务提交并出
-栈之后才被执行，于是，用默认的事务做变换，默认的时间也就变成了0.25秒。
-*/
-</code></pre>
-
-<h3 id="toc_2">图层行为</h3>
-
-<p><code>UIKit</code>默认禁用了隐式动画.即UIView把它关联的图层属性改编动画特性关闭了</p>
-
-<p>我们先来看一下<code>隐式动画</code>是怎么实现的:<br/>
-<strong>我们把改变属性时<code>CALayer</code>自动应用的动画称作<code>行为</code>.</strong><br/>
-当我们改变了<code>CALayer</code>的属性时，会调用<code>-actionForKey:</code>方法，传递属性的名称。然后</p>
-
-<ul>
-<li>图层首先检测它是否有委托，并且是否实现 CALayerDelegate 协议指定的 <code>-actionForLayer:forKey</code> 方法。如果有，直接调用并返回结果。</li>
-<li>如果没有委托，或者委托没有实现<code>-actionForLayer:forKey</code>方法，图层接着检查包含属性名称对应行为映射的<code>actions</code>字典。</li>
-<li>如果<code>actions</code>字典 没有包含对应的属性，那么图层接着在它的<code>style</code>字典接着搜索属性名。</li>
-<li>最后，如果在 <code>style</code> 里面也找不到对应的行为，那么图层将会直接调用定义了每个属性的标准行为的<code>-defaultActionForKey:</code>方法。</li>
-</ul>
-
-<p><code>-actionForKey:</code>是用来找这个属性对应的动画(action),要么返回空（这种情况下将不会有动画发生），要么是<code>CAAction</code>协议对应的对象，最后<code>CALayer</code>拿这个结果去对先前和当前的值做动画。</p>
-
-<p>UIKit禁用隐式动画的方法就是,：每个<code>UIView</code> 对它关联的图层都扮演了一个委托，并且提供了<code>-actionForLayer:forKey</code> 的实现方法。当不在一个动画块的实现中，<code>UIView</code> 对所有图层行为返回 <code>nil</code>，但是在动画<code>block</code>范围之内，它就返回了一个非空值。</p>
-
-<p><strong>注意</strong></p>
-
-<ol>
-<li>这里所说的关联是指UIView关联的图层即宿主图层,而对于其他add的图层并不是关联的图层所以是没有禁用隐式动画的</li>
-</ol>
-
-<p>当然对于<code>CATransacition</code>我们可以用<code>+setDisableActions:</code>来选择关闭/打开隐式动画<br/>
-<code>[CATransaction setDisableActions:YES]; //关闭隐式动画</code></p>
-
-<ul>
-<li>UIView 关联的图层禁用了隐式动画，对这种图层做动画的办法就是使用 <code>UIView</code> 的动画函数（而不是依赖 <code>CATransaction</code> ），或者继承 <code>UIView</code> ，并覆盖<code>-actionForLayer:forKey:</code>方法，或者直接创建一个显式动画（具体细节见第八章）。</li>
-<li>对于单独存在的图层，我们可以通过实现图层的<code>-actionForLayer:forKey:</code>委托方法，或者提供一个<code>actions</code> 字典来控制隐式动画(actions 字典可以写更少的代码)。</li>
-</ul>
-
-<p><code>行为</code>通常是一个被Core Animation隐式调用的显式动画对象。<br/>
-我们来改变一个图层属性的行为:</p>
-
-<pre><code class="language-objectivec">/**
-我们使用的是一个实现了 CATransaction 的实例，叫做推进过渡
-改变了CALayer的背景颜色属性行为.改变背景颜色，新的色块都是从左侧滑入，
-而不是默认的渐变效果
-*/
-CATransition *transition = [CATransition animation];
-transition.type = kCATransitionPush;
-transition.subtype = kCATransitionFromLeft;
-self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
-//add it to our view
-[self.layerView.layer addSublayer:self.colorLayer];
-</code></pre>
-
-<h3 id="toc_3">呈现与模型</h3>
-
-<p>我们在改变一个<code>CALayer</code>的属性时，属性值确实会立即更新(这个属性值在设置时就会立刻生效)但是苹果并没有立即呈现出来。</p>
-
-<p>当设置<code>CALayer</code>的属性，实际上是在定义当前事务结束之后图层如何显示的<code>模型</code>。而<code>Core Animation</code>则负责根据图层<code>行为</code>和<code>事务设置</code>去更新视图的这些属性在屏幕上的状态.</p>
-
-<p>我们的手机屏幕是每60秒重绘一次,如果我们要做的动画时长大于1/60,就需要在新值之前对屏幕重绘,即知道当前属性值.<strong>每个图层属性的显示值都被存储在一个叫做呈现图层的独立图层当中</strong>,可以通过<code>-presentationLayer</code>方法来访问.</p>
-
-<p>图层树(模型图层树)&lt;---&gt;呈现树:呈现树通过图层树中所有图层的呈现图层所形成。只有在图层首次在屏幕上呈现时候才会被创建,在之前获取呈现图层时会返回nil的.</p>
-
-<p>在模型图层上调用<code>- presentationLayer</code>能获取呈现图层,同样的调用<code>–modelLayer</code>是会获取模型图层(通常是self).</p>
-
-<p><img src="media/14901598468257/14903368056823.jpg" alt=""/></p>
-
-<p>通常我们只需要和模型图层交互即可让<code>Core Animation</code>更新显示.<br/>
-但是以下两种情况下呈现图层会很有效：  </p>
-
-<ul>
-<li>实现一个基于定时器的动画,而不仅仅是基于事务的动画，这个时候准确地知道在某一时刻图层显示在什么位置就会对正确摆放图层很有用了。</li>
-<li>如果你想让你做动画的图层响应用户输入，你可以使用<code>-hitTest:</code>方法来判断指定图层是否被触摸，这时候对呈现图层而不是模型图层调用 <code>-hitTest:</code> 会显得更有意义</li>
-</ul>
-
-<pre><code class="language-objectivec">- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
-{
-    //get the touch point
-    CGPoint point = [[touches anyObject] locationInView:self.view];
-    //check if we&#39;ve tapped the moving layer
-    if ([self.colorLayer.presentationLayer hitTest:point]) {
-        self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
-    } else {
-        //otherwise (slowly) move the layer to new position
-        [CATransaction begin];
-        [CATransaction setAnimationDuration:4.0];
-        self.colorLayer.position = point;
-        [CATransaction commit];
-    }
-}
-</code></pre>
+<p>3.<br/>
+<code>CATransaction</code> 隐式动画<br/>
+<code>CATransition</code> 过渡动画</p>
 
                         
                       </div>
@@ -270,7 +142,7 @@ self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/22</span>
+                    <span class="date">2017/4/14</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
@@ -367,31 +239,31 @@ self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
 	      
 		      
 			      <li class="post">
-			        <a href="15331071952550.html">进程&&线程</a>
+			        <a href="15350923380421.html">CGColor</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15329386758024.html">IO编程</a>
+			        <a href="15350771796806.html">CGColorSpace</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15325716345284.html">错误、调试、测试</a>
+			        <a href="15350068830702.html">CGBlendMode</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324890369623.html">面对对象高级编程</a>
+			        <a href="15332875866545.html">常见内置模块</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324145349319.html">面对对象编程</a>
+			        <a href="15331955872244.html">常用第三方模块</a>
 			      </li>
 		     
 		  

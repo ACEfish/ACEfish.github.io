@@ -112,34 +112,135 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14903444013647.html">
+                <a class="clearlink" href="14939015823586.html">
                 
-                  <h1>CAAnimation</h1>
+                  <h1>高效绘图</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h3 id="toc_0">keyPath</h3>
+                        	<p>如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</p>
 
-<ol>
-<li><p>@&quot;backgroundColor&quot;  背景颜色<br/>
-<code>(__bridge id)[UIColor blueColor].CGColor</code></p></li>
-<li><p>@&quot;transform&quot;  动画<code>CATransform3D</code><br/>
-<code>animation.toValue = [NSValue valueWithCATransform3D:transform];</code></p></li>
-<li><p>@&quot;position&quot; 中心位置<br/>
-可以直接设置值<br/>
-也可以<strong>常用于CAKeyAnimation动画路径设置</strong></p></li>
-</ol>
+<p>关于绘制的性能<br/>
+提高绘制性能或者减少需要绘制的数量</p>
 
-<pre><code class="language-objectivec">CAKeyframeAnimation *animation1 = [CAKeyframeAnimation animation];
-animation1.keyPath = @&quot;position&quot;;
-animation1.path = bezierPath.CGPath;
-animation1.rotationMode = kCAAnimationRotateAuto;
+<h3 id="toc_0">软件绘图</h3>
+
+<p>在<code>Core Animation</code>中的绘图通常是指<strong>软件绘图</strong><br/>
+在iOS中，软件绘图通常是由<code>Core Graphics</code>框架完成来完成。但是，在一些必要的情况下，相比<code>Core Animation</code>和<code>OpenGL</code>，<code>Core Graphics</code>要慢了不少。</p>
+
+<p>软件绘图不仅效率很低 而且很耗内存.CALayer只需要和自己相关的内存,只有他的寄宿图会消耗一点内存控件，即使直接赋给<code>contents</code>属性一张图片,也不需要增加额外的照片存储大小,如果相同的一张图片被多个图层作为<code>contents</code>属性，那么他们将会共用同一块内存，而不是复制内存块。</p>
+
+<p><strong>但是如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</strong></p>
+
+<p><strong>绘图代价很大，尽量避免重绘你的视图</strong></p>
+
+<h3 id="toc_1">矢量图形</h3>
+
+<p>我们用的矢量绘图包含:</p>
+
+<ul>
+<li>任意多边形</li>
+<li>斜线或曲线</li>
+<li>文本</li>
+<li>渐变</li>
+</ul>
+
+<p>实现一个划线应用:将用户的触摸手势转换成一个 UIBezierPath 上的点，然后绘制成视图。</p>
+
+<p>1.用<code>Core Graphic</code>基于<code>drawRect</code>绘制</p>
+
+<pre><code class="language-objectivec">- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    CGPoint point = [[touches anyObject] locationInView:self];
+    [self.path addLineToPoint:point];
+    [self setNeedsDisplay];
+}
+- (void)drawRect:(CGRect)rect
+{
+    [[UIColor clearColor] setFill];
+    [[UIColor redColor] setStroke];
+    [self.path stroke];
+}
 </code></pre>
 
-<ol>
-<li></li>
-</ol>
+<p><code>[self setNeedsDisplay];</code>可以重绘视图,再次走<code>drawRect</code>方法,但是如果一直重绘而且绘制工作量增大就会导致帧数下降.</p>
+
+<p>2.用<code>CAShaperLayer</code>绘制</p>
+
+<pre><code class="language-objectivec">+ (Class)layerClass
+{
+    return [CAShapeLayer class];
+}
+</code></pre>
+
+<p><code>Core Animation</code>为这些图层类型提供了专门的类，并提供了硬件支持,比如<code>CAShapeLayer</code>可以绘制多边形，直线和曲线。 <code>CATextLayer</code>可以绘制文本。<code>CAGradientLayer</code>用来绘制渐变。这些总体上都比<code>Core Graphics</code>更快，同时他们也避免了创造一个寄宿图。(<strong>这些图层是CA提供的,而我们的绘图用的是CG</strong>)</p>
+
+<p>因此对于绘制矢量图层我们可以重写<code>UIView</code>的<code>layer</code>然后只需要将绘制的<code>path</code>赋值<code>CAShapeLayer</code>的<code>path</code>即可绘制，虽然性能依然下降但不明显几乎感觉不到帧率差异</p>
+
+<h3 id="toc_2">脏矩形</h3>
+
+<p>有时候我们没办法用<code>CAShapeLayer</code>等图层来代替<code>Core Graphics</code>，对于上面的例子,我们为了进一步提高性能,我们用一个“线刷”图片粘贴到用户手指触碰的地方</p>
+
+<p>我们如果在用户手指移动就重绘视图将图片粘贴到用户手指移动过的所有点,这样绘制越多就越慢,仍会引起性能问题</p>
+
+<p>为了减少不必要的绘制,Mac OS和iOS设备将会把屏幕区分为需要重绘的区域和不需要重绘的区域。<strong>那些需要重绘的部分被称作『脏区域』。</strong>为了方便我们通常指出包含需要重绘的视图的矩形位置,就是<strong>脏矩形</strong></p>
+
+<p>只改变了视图的部分区域的,重绘整个整个寄宿图就太浪费了,我们可以通过提供重绘区域.</p>
+
+<p>当检测到需要重绘的区域时通过<code>setNeedsDisplayInRect:</code>标记,这样就会在一次试图刷新时调用调用视图的<code>- drawRect:</code>（或图层代理的<code>- drawLayer:inContext:</code>方法）</p>
+
+<p>传入<code>- drawLayer:inContext:</code>的<code>CGContext</code>参数会自动被裁切以适应对应的矩形。为了确定矩形的尺寸大小，你可以用<code>CGContextGetClipBoundingBox()</code>方法来从上下文获得大小。调用<code>- drawRect()</code>会更简单，因为<code>CGRect</code>会作为参数直接传入。</p>
+
+<p>当然如果你的裁剪逻辑相当复杂,那还是是让<code>Core Graphics</code>来为你重绘吧，</p>
+
+<pre><code class="language-objectivec">- (void)addBrushStrokeAtPoint:(CGPoint)point
+{
+    //add brush stroke to array
+    [self.strokes addObject:[NSValue valueWithCGPoint:point]];
+    //set dirty rect
+    [self setNeedsDisplayInRect:[self brushRectForPoint:point]];
+}
+- (CGRect)brushRectForPoint:(CGPoint)point
+{
+    return CGRectMake(point.x - BRUSH_SIZE/2, point.y - BRUSH_SIZE/2, BRUSH_SIZE, BRUSH_SIZE);
+}
+- (void)drawRect:(CGRect)rect
+{
+    //redraw strokes
+    for (NSValue *value in self.strokes) {
+        //get point
+        CGPoint point = [value CGPointValue];
+        //get brush rect
+        CGRect brushRect = [self brushRectForPoint:point];
+        //only draw brush stroke if it intersects dirty rect
+        if (CGRectIntersectsRect(rect, brushRect)) {
+        //draw brush stroke
+        [[UIImage imageNamed:@&quot;Chalk.png&quot;] drawInRect:brushRect];
+        }
+    }
+}
+</code></pre>
+
+<h3 id="toc_3">异步绘制</h3>
+
+<p><code>UIKit</code>的单线程天性意味着寄宿图通畅要在主线程上更新，这意味着绘制会打断用户交互，甚至让整个<code>app</code>看起来处于无响应状态。</p>
+
+<p>为了可以避免用户等待绘制：</p>
+
+<h4 id="toc_4">CATiledLayer</h4>
+
+<p><code>CATiledLayer</code>除了将图层再次分割成独立更新的小块外<br/>
+<code>CATiledLayer</code>还有一个有趣的特性：在多个线程中为每个小块同时调用<code>- drawLayer:inContext:</code>方法。<br/>
+这就避免了阻塞用户交互而且能够利用多核心新片来更快地绘制。只有一个小块的<code>CATiledLayer</code>是实现异步更新图片视图的简单方法。</p>
+
+<h4 id="toc_5">drawsAsynchronously</h4>
+
+<p>苹果为<code>CALayer</code>引入了这个令人好奇的属性，<code>drawsAsynchronously</code>属性对传入<code>-drawLayer:inContext:</code>的<code>CGContext</code>进行改动，允许<code>CGContext</code>延缓绘制命令的执行以至于不阻塞用户交互。</p>
+
+<p>它与<code>CATiledLayer</code>使用的异步绘制并不相同。它自己的 <code>- drawLayer:inContext:</code>方法只会在主线程调用，但是<code>CGContext</code>并不等待每个绘制命令的结束。相反地，它会将命令加入队列，当方法返回时，在后台线程逐个执行真正的绘制。</p>
+
+<p>根据苹果的说法。这个特性在需要频繁重绘的视图上效果最好（比如我们的绘图应用，或者诸如UITableViewCell 之类的），对那些只绘制一次或很少重绘的图层内容来说没什么太大的帮助。</p>
 
                         
                       </div>
@@ -148,10 +249,10 @@ animation1.rotationMode = kCAAnimationRotateAuto;
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/24</span>
+                    <span class="date">2017/5/4</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html'>iOS开发知识</a></span>
+          					    <span class="posted-in"><a href='%E6%80%A7%E8%83%BD.html'>性能</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -245,31 +346,31 @@ animation1.rotationMode = kCAAnimationRotateAuto;
 	      
 		      
 			      <li class="post">
-			        <a href="15331071952550.html">进程&&线程</a>
+			        <a href="15350923380421.html">CGColor</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15329386758024.html">IO编程</a>
+			        <a href="15350771796806.html">CGColorSpace</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15325716345284.html">错误、调试、测试</a>
+			        <a href="15350068830702.html">CGBlendMode</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324890369623.html">面对对象高级编程</a>
+			        <a href="15332875866545.html">常见内置模块</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324145349319.html">面对对象编程</a>
+			        <a href="15331955872244.html">常用第三方模块</a>
 			      </li>
 		     
 		  

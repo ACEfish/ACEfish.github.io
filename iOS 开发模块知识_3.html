@@ -112,96 +112,52 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15082316038998.html">
+                <a class="clearlink" href="15331791133617.html">
                 
-                  <h1>ARSCNView</h1>
+                  <h1>NetworkExtension</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>用于3DAR场景的视图</p>
+                        	<p>Network Extension框架包含可用于定制和扩展iOS和macOS核心网络功能的API。</p>
 
-<ul>
-<li>在视图中渲染设备摄像头的实时视频流，并就其设置为 3D 场景的背景</li>
-<li>ARKit 的 3D 坐标系会匹配 SceneKit 的 3D 坐标系，所以此视图渲染的对象会自动匹配增强后的 ARKit 世界视图</li>
-<li>自动移动虚拟 SceneKit 3D 摄像头来匹配 ARKit 追踪到的 3D 位置，所以不需要再写代码连接 ARKit 移动事件与 SceneKit 3D 渲染</li>
-</ul>
+<h2 id="toc_0">常用功能:</h2>
 
-<pre><code class="language-objectivec">/**
-代理
- */
-@property (nonatomic, weak, nullable) id&lt;ARSCNViewDelegate&gt; delegate;
+<ol>
+<li><p>Network Extension Hotspot Entitlements<br/>
+当需要使用<code>NEHotspotHelper</code>这个类时,这个就是必须的 需要向apple申请，也是这边文章重点</p></li>
+<li><p>Personal VPN<br/>
+<code>NEVPNManager</code>API 帮助app创建个人VPN，通常用于向用户提供服务,保护其因特网浏览活动。</p></li>
+<li><p>About Always-on VPN<br/>
+Always-on VPN </p></li>
+<li><p>Network Tunneling Protocol Client<br/>
+<code>NETunnelProvider</code>系列API将iOS和macOS设备连接到使用非标准网络隧道协议的VPN服务器，例如SSL-VPN服务器。<br/>
+帮助app自定义vpn服务</p></li>
+<li><p>Wi-Fi Hotspot Authentication and Configuration<br/>
+<code>NEFilterProvider</code>API帮助过滤网络服务内容</p></li>
+<li><p>Wi-Fi Hotspot Authentication and Configuration<br/>
+<code>NEHotspotHelper</code>API使您的应用能够为Wi-Fi热点执行自定义身份验证<br/>
+<code>NEHotspotConfiguration</code>API可让您的应用配置这些热点。</p></li>
+</ol>
 
-/**
-AR会话
- */
-@property (nonatomic, strong) ARSession *session;
+<h2 id="toc_1">常用类</h2>
 
-/**
-场景
- */
-@property(nonatomic, strong) SCNScene *scene;
+<p>本文只介绍和<code>NEHotspotHelper</code>相关类</p>
 
-/**
-是否自动适应灯光
- */
-@property(nonatomic) BOOL automaticallyUpdatesLighting;
+<ol>
+<li><p>NEHotspotHelper<br/>
+注册本app为网络助手应用</p></li>
+<li><p>NEHotspotHelperCommand<br/>
+app要处理的命令类</p></li>
+<li><p>NEHotspotHelperResponse<br/>
+对<code>NEHotspotHelperCommand</code>命令的响应</p></li>
+<li><p>NEHotspotNetwork<br/>
+NEHotspotNetwork将有关网络的信息传达给Hotspot Helper应用程序。</p></li>
+</ol>
 
-/**
-返回对应节点的锚点，节点是一个3D虚拟物体，它的坐标是虚拟场景中的坐标，而锚点ARAnchor是ARKit中现实世界的坐标。
- */
-- (nullable ARAnchor *)anchorForNode:(SCNNode *)node;
+<h2 id="toc_2">NEHotspotHelper</h2>
 
-/**
-返回对应锚点的物体
- */
-- (nullable SCNNode *)nodeForAnchor:(ARAnchor *)anchor;
-
-/**
-根据2D坐标点搜索3D模型，这个方法通常用于，当我们在手机屏幕点击某一个点的时候，可以捕捉到这一个点所在的3D模型的位置，至于为什么是一个数组非常好理解。手机屏幕一个是长方形，这是一个二维空间。而相机捕捉到的是一个由这个二维空间射出去的长方体，我们点击屏幕一个点可以理解为在这个长方体的边缘射出一条线，这一条线上可能会有多个3D物体模型
-point：2D坐标点（手机屏幕某一点）
-ARHitTestResultType：捕捉类型  点还是面
-(NSArray&lt;ARHitTestResult *&gt; *)：追踪结果数组  详情见本章节ARHitTestResult类介绍
-数组的结果排序是由近到远
- */
-- (NSArray&lt;ARHitTestResult *&gt; *)hitTest:(CGPoint)point types:(ARHitTestResultType)types;
-
-@end
-
-//代理
-#pragma mark - ARSCNViewDelegate
-
-
-//代理的内部实现了SCNSceneRendererDelegate：scenekit代理 和ARSessionObserver：ARSession监听（KVO机制）
-@protocol ARSCNViewDelegate &lt;SCNSceneRendererDelegate, ARSessionObserver&gt;
-@optional
-
-/**
-自定义节点的锚点
- */
-- (nullable SCNNode *)renderer:(id &lt;SCNSceneRenderer&gt;)renderer nodeForAnchor:(ARAnchor *)anchor;
-
-/**
-当添加节点是会调用，我们可以通过这个代理方法得知我们添加一个虚拟物体到AR场景下的锚点（AR现实世界中的坐标）
- */
-- (void)renderer:(id &lt;SCNSceneRenderer&gt;)renderer didAddNode:(SCNNode *)node forAnchor:(ARAnchor *)anchor;
-
-/**
-将要刷新节点
- */
-- (void)renderer:(id &lt;SCNSceneRenderer&gt;)renderer willUpdateNode:(SCNNode *)node forAnchor:(ARAnchor *)anchor;
-
-/**
- 已经刷新节点
- */
-- (void)renderer:(id &lt;SCNSceneRenderer&gt;)renderer didUpdateNode:(SCNNode *)node forAnchor:(ARAnchor *)anchor;
-
-/**
- 移除节点
- */
-- (void)renderer:(id &lt;SCNSceneRenderer&gt;)renderer didRemoveNode:(SCNNode *)node forAnchor:(ARAnchor *)anchor;
-
-</code></pre>
+<p>帮助app参与wifi热点过程成为热点帮助程序,<code>Hotspot Helper</code>要在后台接收命令，参与wifi状态变化处理,参考<a href="https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/Hotspot_Network_Subsystem_Guide/Contents/Introduction.html#//apple_ref/doc/uid/TP40016639">Hotspot Network Subsystem Programming Guide.</a></p>
 
                         
                       </div>
@@ -210,10 +166,10 @@ ARHitTestResultType：捕捉类型  点还是面
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/10/17</span>
+                    <span class="date">2018/8/2</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='ARKit.html'>ARKit</a></span>
+          					    <span class="posted-in"><a href='NetworkExtension.html'>NetworkExtension</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -307,31 +263,31 @@ ARHitTestResultType：捕捉类型  点还是面
 	      
 		      
 			      <li class="post">
-			        <a href="15331071952550.html">进程&&线程</a>
+			        <a href="15350923380421.html">CGColor</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15329386758024.html">IO编程</a>
+			        <a href="15350771796806.html">CGColorSpace</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15325716345284.html">错误、调试、测试</a>
+			        <a href="15350068830702.html">CGBlendMode</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324890369623.html">面对对象高级编程</a>
+			        <a href="15332875866545.html">常见内置模块</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324145349319.html">面对对象编程</a>
+			        <a href="15331955872244.html">常用第三方模块</a>
 			      </li>
 		     
 		  

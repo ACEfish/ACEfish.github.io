@@ -68,10 +68,11 @@
 
 <aside class="left-off-canvas-menu">
       <ul class="off-canvas-list">
-       
-       <li><a href="index.html">HOME</a></li>
-    <li><a href="archives.html">Archives</a></li>
-    <li><a href="about.html">ABOUT</a></li>
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
 
     <li><label>Categories</label></li>
 
@@ -85,6 +86,10 @@
             <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
+        
+            <li><a href="React-Native.html">React-Native</a></li>
+        
+            <li><a href="Python.html">Python</a></li>
          
 
       </ul>
@@ -107,61 +112,64 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14861702798513.html">
+                <a class="clearlink" href="14866309753746.html">
                 
-                  <h1>iOS中主要框架</h1>
+                  <h1>iOS中UISearchController</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h4 id="toc_0">1. 系统框架层</h4>
+                        	<h4 id="toc_0">1. 使用方法</h4>
 
-<p>每个框架对应IOS系统里的一层，每层建立在它下面层的上面。应该尽量使用上层的框架来代替下面的框架。更高层次的框架是对底层框架基于对象的抽象。<br/><br/>
-<img src="media/14861702798513/DraggedImage.png" alt="DraggedImage"/></p>
-
-<h4 id="toc_1">2. 两个基础框架</h4>
-
-<p>iOS应用程序基于Foundation和UIKit框架<br/>
-<strong>Foundation</strong><br/><br/>
-Foundation框架为所有的应用程序提供基本系统服务你的应用程序，UIKit和其它的框架都是建立在Foundation框架上面的。Foundation框架是用Object-C对CoreFoundation框架里许多特性的封装。<br/><br/>
-使用Foundation可以:<br/>
-1. 创建和管理集合，比如数组和字典<br/>
-    2. 访问存储在应用程序里的图片和其它资源<br/>
-        3. 创建和管理字符串<br/>
-        4. 提交和接收通<br/>
-        5. 创建日期和时间对象<br/>
-        6. 自动发现IP网络上的设备<br/>
-        7. 操作URL流<br/>
-<strong>UIKit</strong><br/><br/>
-所有的iOS应用程序都基于UIKit，你不能是应用程序脱离这个框架。UIKit提供了在屏幕上绘制的机制，捕获事件，和创建通用用户界面元素。UIKit也通过管理显示在屏幕上的组件来组织复杂的项目。<br/>
-使用UIKit可以：<br/>
-1. 构建和管理你的用户界面<br/>
-    2. 捕获触摸和基于移动的事件<br/>
-        3. 呈现文字和web内容<br/>
-        4. 优化多任务程序<br/>
-        5. 创建定制的用户界面元素</p>
-
-<h4 id="toc_2">3. 其他重要框架</h4>
-
-<pre><code>Core Data , Core Graphics, CoreAnimation,和OpenGLES框架都是高级的技术
-1. **CoreData框架管着理应用程序数据模型**
-    Core Data提供对象的管理，使用CoreData，你可以创建模型对象，并管理这些对象。你管理这这些对象间的联系并修改数据。CoreData提供的内建SQLlite技术可以高效的管理数据。
-    使用CoreData可以:
-    - 在库里存储和接受对象
-    - 提供基本的undo/redo
-    - 自动验证属性值
-    - 过滤、分组和优化内存中的数据
-    - 用[NSFetchedResultsController]管理表视图中的结果
-    - 支持基于文档的应用程序
-2. **CoreGraphics框架帮助你创建图形
-
-3. **CoreAnimation允许你创建高级的动画和虚拟效果
-4. **OpenGL ES框架提供2D和3D绘图工具
+<pre><code class="language-object-c">SearchResultController *vc = [[SearchResultController alloc] init];
+    self.searchController = [[SearchControllerOfContacts alloc] initWithSearchResultsController:vc];
+    [self.tableView setTableHeaderView:self.searchController.searchBar];
+    [self.searchController setSearchResultsUpdater:vc];
+    [self.searchController.searchBar setPlaceholder:NSLocalizedString(@&quot;昵称、手机号&quot;, nil)];
+    self.resultController = vc;
 </code></pre>
 
-<ol>
-<li><br/></li>
-</ol>
+<p>此处是设置searchBar为tableView的头视图<br/>
+<strong>注意</strong><br/>
+此处的searchConroller 和 searchResultcontroller都必须为该控制器的属性(即强引用住）</p>
+
+<h4 id="toc_1">2. 自定义的UISearchController</h4>
+
+<p>我们可以继承自UISearchController，重写其<code>initWithSearchResultsController</code>方法即可:</p>
+
+<pre><code class="language-object-c">- (id)initWithSearchResultsController:(UIViewController *)searchResultsController
+{
+    if (self = [super initWithSearchResultsController:searchResultsController]) {
+        self.searchBar.layer.borderWidth = 1;
+        self.searchBar.layer.borderColor = [ITRGBColor(239.0, 239.0, 244.0, 1.0)CGColor];
+        [self.searchBar setBarTintColor:ITRGBColor(239.0, 239.0, 244.0, 1.0)];
+        [self.searchBar setValue:@&quot;取消&quot; forKey:@&quot;_cancelButtonText&quot;];
+        UITextField *tf = [[[self.searchBar.subviews firstObject] subviews] lastObject];
+        [tf.layer setMasksToBounds:YES];
+        [tf.layer setBorderWidth:0.5f];
+        [tf.layer setBorderColor:[UIColor colorWithWhite:0.5 alpha:0.3].CGColor];
+        [tf.layer setCornerRadius:5.0f];
+        
+    }
+    return self;
+}
+</code></pre>
+
+<h4 id="toc_2">3.深度解析UISearchController 以及其SearchResultControll原理</h4>
+
+<p>当UISearchController出现时，UISearchController也是一个控制器就相当于模态出来一个控制器<br/>
+<img src="media/14866309753746/UISearchController.png" alt="UISearchControlle的层级表示"/><br/>
+<img src="media/14866309753746/searchController_big.png" alt="searchController_big"/></p>
+
+<p>我们可以看出来 我们首先从原来控制器模态出来我们自己的UISearchController 而UISearchControllView就是这个控制器的View即蓝色部分  而搜索结果的显示即在其上加了一个View这个view即为我们的搜索结果控制器的view<br/>
+因此我们改变这个SearchControllView颜色并不会影响显示 但是如果把其上加上别的视图 就会影响结果的显示的<br/>
+<img src="media/14866309753746/searchController2.png" alt="searchControlle"/><br/>
+可以看到显示结果的View被我们后加的tableView挡住了,这时候我们可以<strong><code>sendSubviewToBack</code></strong>来直接将tableView放置到显示结果的view后面即可了</p>
+
+<h4 id="toc_3">3.UISearchController 上的searchBar原理</h4>
+
+<p>显示的searchBar是因为searcontroller上有一块searBarContainView 在其上放置了searchBar,还有背景图片 取消按钮等<br/>
+<img src="media/14866309753746/UISearchBar.png" alt="UISearchBa"/></p>
 
                         
                       </div>
@@ -170,7 +178,7 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/4</span>
+                    <span class="date">2017/2/9</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
@@ -197,7 +205,7 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
 			  </div>
 			  <div class="large-6 columns">
 			<p class="text-right" style="padding-top:25px;">
-			
+			 <a href="iOS 开发模块知识_74.html">&raquo; Next Page</a> 
 			</p>
 			  </div>
 			</div>
@@ -247,6 +255,10 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
             <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
+        
+            <a href="React-Native.html"><strong>React-Native</strong></a>
+        
+            <a href="Python.html"><strong>Python</strong></a>
          
         </p>
 
@@ -263,31 +275,31 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
 	      
 		      
 			      <li class="post">
-			        <a href="15252210899371.html">全民认证</a>
+			        <a href="15350923380421.html">CGColor</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15205769334278.html">JS基础使用</a>
+			        <a href="15350771796806.html">CGColorSpace</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15143731430102.html">iOS11</a>
+			        <a href="15350068830702.html">CGBlendMode</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15124643482351.html">UISearchBar UISearchController UITextField</a>
+			        <a href="15332875866545.html">常见内置模块</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15082392311480.html">实战:ARKit捕捉平面</a>
+			        <a href="15331955872244.html">常用第三方模块</a>
 			      </li>
 		     
 		  

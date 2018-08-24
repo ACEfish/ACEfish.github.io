@@ -112,139 +112,261 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15319012648780.html">
+                <a class="clearlink" href="15329386758024.html">
                 
-                  <h1>高级特性</h1>
+                  <h1>IO编程</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">切片</h2>
-
-<p>list的切片</p>
-
-<pre><code class="language-python">listTest = list(range(100))
-
-listTest[:10]  # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-listTest[:10:2] #[0, 2, 4, 6, 8]
-listTest[-10:] # [90, 91, 92, 93, 94, 95, 96, 97, 98, 99]
-listTest[:] # 拷贝一个新的list 相当于深拷贝
+                        	<pre><code class="language-python">f = open(&#39;/Users/fish/Desktop/readme.txt&#39;, &#39;r&#39;)
+content=f.read() 
+print(content)
+f.close()
 </code></pre>
 
-<p>元组:<br/>
-元组的切片结果 仍为不可变的元组</p>
+<p>文件使用完必须关闭，文件对象会占用系统资源，操作系统同时能打开文件数量也是有限的<br/>
+为了保证每次不论是否文件读碟出现<code>IOError</code>出错 都能正确关闭文件，通常这么写:</p>
 
-<pre><code class="language-python">(0, 1, 2, 3, 4, 5)[:3] #(0, 1, 2)
+<pre><code class="language-python">try:
+    f = open(&#39;/path/to/file&#39;, &#39;r&#39;)
+    print(f.read())
+finally:
+    if f:
+        f.close()
+
+# 使用 python的with语句来自动帮我们调用close()方法
+#与try...finall..效果相同代码更简洁
+
+with open(&#39;/path/to/file&#39;, &#39;r&#39;) as f:
+    print(f.read())
 </code></pre>
 
-<p>字符串也可看做一种list，可执行切片</p>
-
-<pre><code class="language-python">&#39;ABCDEFG&#39;[:3] #&#39;ABC&#39;
-&#39;ABCDEFG&#39;[::2] #&#39;ACEG&#39;
-</code></pre>
-
-<h2 id="toc_1">迭代</h2>
-
-<pre><code class="language-python">#遍历dict
-for key in dict2: #遍历所有键
-for key in dict2.values(): #遍历所有值
-for key in dict2.items(): #遍历所有键值对，返回为元组
-    print(key)
-</code></pre>
-
-<p>当遍历时需要下标时,用enumerate()方法可以获取索引</p>
-
-<pre><code class="language-python">for x, value in enumerate(dict2):
-    print(x, value)
-</code></pre>
-
-<h2 id="toc_2">列表生成器</h2>
-
-<pre><code class="language-python">L1=list(range(1,11))
-print(L1) #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-L2=[x*x for x in L1]
-print(L2) #[1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
-L3=[x*x for x in L1 if x%2 == 0]
-print(L3) # [4, 16, 36, 64, 100]
-L4=[str(x1)+str(x2) for x1 in list(range(3)) for x2 in list(range(3,6))]
-print(L4) # [&#39;03&#39;, &#39;04&#39;, &#39;05&#39;, &#39;13&#39;, &#39;14&#39;, &#39;15&#39;, &#39;23&#39;, &#39;24&#39;, &#39;25&#39;]
-</code></pre>
-
-<h2 id="toc_3">生成器 generator</h2>
-
-<p>在列表中一遍循环一边计算的机制,称为生成器：<code>generator</code></p>
-
-<p>创建生成器:</p>
-
-<ol>
-<li><p>方法一: 通过将列表生成器的<code>[]</code>改为<code>()</code></p>
-<pre><code class="language-python"> LI1=list(range(1,5))
-LI2=(x*x for x in LI1)<br/>
-#通过next()方法来获取生成器中的下一个值 直到最后一个元素抛出错误<br/>
-print(next(LI2))<br/>
-print(next(LI2))<br/>
-print(next(LI2))<br/>
-print(next(LI2))<br/>
-print(next(LI2)) # 抛出 StopIteration错误<br/>
-# 通过next()方法太麻烦,我们应该用 for 循环 不用关心StopIteration错误<br/>
-for x in LI2:<br/>
-    print(x)<br/>
-# 1<br/>
-# 4<br/>
-# 9<br/>
-# 16
-</code></pre></li>
-<li><p>方法二: 函数中包含<code>yield</code>关键字,为一个generator函数<br/>
-generator函数在遇到yield关键字时会中断，返回yeild后的值,next之后会继续执行,直到没有yeild就会报错<br/>
-当然也可以通过<code>for</code>循环来获取</p>
-<pre><code class="language-python">def my_generatorFuc():
-    print(&quot;step1&quot;)<br/>
-    yield (1)<br/>
-    print(&quot;step2&quot;)<br/>
-    yield (5)<br/>
-    print(&quot;step3&quot;)<br/>
-    yield(10)<br/>
-    return 100
-</code></pre></li>
-</ol>
+<p><code>read()</code>方法会一次性读取全部内容,如果文件过大会挑战内存<br/>
+<code>read(size)</code>每次最多读取size字节的内容<br/>
+<code>readline()</code>每次读取一行内容<br/>
+<code>readlines()</code>一次性读取所有行,返回一个<code>list</code></p>
 
 <blockquote>
-<p>采用<code>next()</code>可以当遇到<code>StopIteration</code>错误可以获取到<code>generator</code>函数的<code>return</code>值,返回值包含在<code>StopIteration</code>的<code>value</code>中<br/>
-采用<code>for</code>循环获取不到函数的返回值,因此需要捕获<code>StopIteration</code>错误</p>
+<p>类似文件这种 open()函数返回可以read()的对象，均称为 file-like Object，除此之外还有内存的字节流、网络流、自定义流</p>
 </blockquote>
 
-<h2 id="toc_4">迭代器</h2>
+<h3 id="toc_0">二进制文件</h3>
 
-<p> 对于可以用for循环的对象称为可迭代对象:<code>Iterable</code><br/>
- 目前常用的可迭代对象有:<br/>
- 1. list、tuple、dict、set、str<br/>
- 2. generator:生成器和带<code>yield</code>的generator函数<br/>
- <br/>
- 可以被next()函数调用并不断返回下一个值的对象称为迭代器：<code>Iterator</code><br/>
- 生成器都是迭代器,但是list、tuple、dict、set、str等是可迭代对象但不是迭代器<br/>
- </p>
+<p>默认读取的为UTF-8编码的文本文件,如果为二进制文件,需要用<code>rb</code>模式打开</p>
+
+<pre><code class="language-python">&gt;&gt;&gt; f = open(&#39;/Users/michael/test.jpg&#39;, &#39;rb&#39;)
+&gt;&gt;&gt; f.read()
+# b&#39;\xff\xd8\xff\xe1\x00\x18Exif\x00\x00...&#39; # 十六进制表示的字节
+</code></pre>
+
+<h3 id="toc_1">其它编码格式</h3>
+
+<p>对于非<code>UTF-8</code>编码的文本文件,需要<code>open()</code>函数需要传入<code>encoding</code>参数</p>
+
+<pre><code class="language-python">f = open(&#39;/Users/michael/gbk.txt&#39;, &#39;r&#39;, encoding=&#39;gbk&#39;)
+</code></pre>
+
+<p>当编码不规范，文本中夹杂着非法编码字符时，会发生转码错误(<code>UnicodeDecodeError</code>)，此时可以通过加入参数<code>errors</code>来指定处理方式，常用的为直接忽略</p>
+
+<pre><code class="language-python">f = open(&#39;/Users/michael/gbk.txt&#39;, &#39;r&#39;, encoding=&#39;gbk&#39;, errors=&#39;ignore&#39;)
+</code></pre>
+
+<h3 id="toc_2">写文件</h3>
+
+<p>写文件也是调用<code>open()</code>函数 只是传入的标识符为<code>w</code>或者<code>wb</code>表示写文本文件或写二进制文件</p>
+
+<pre><code class="language-python">f3 = open(&#39;/Users/fish/Desktop/readme.txt&#39;, &#39;wb&#39;)
+f3.write(b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;)
+f3.close()
+</code></pre>
 
 <blockquote>
-<p><code>Iterator</code>对象表示的是一个数据流，是一个惰性序列,不能事先知道序列长度，只能通过需要是<code>next()</code>计算下一个序列值</p>
-
-<p><code>for</code>循环本质上是通过不停调用<code>next()</code>来实现的</p>
-
-<p>list、tuple、dict、set、str等可迭代对象可以通过<code>iter()</code>函数获得一个<code>Iterator</code>对象</p>
+<p>与读文件相同要记得调用<code>close()</code>方法,否则可能有部分未写入</p>
 </blockquote>
 
-<pre><code class="language-python">it = iter([1, 2, 3, 4, 5])
-# 循环:
+<p>与读文件相同,可以通过<code>with</code>语句 确保自动调用close()方法</p>
+
+<pre><code class="language-python">with open(&#39;/Users/michael/test.txt&#39;, &#39;w&#39;) as f:
+    f.write(&#39;Hello, world!&#39;)
+</code></pre>
+
+<blockquote>
+<p>通过<code>encoding</code>参数将字符转为指定编码<br/>
+<code>w</code>默认为覆盖模式 <code>a</code>是append模式</p>
+</blockquote>
+
+<h2 id="toc_3">StringIO 和 BytesIO</h2>
+
+<p>内存中进行读写</p>
+
+<pre><code class="language-python">from io import StringIO
+
+f4=StringIO(&quot;初始\n 字符串&quot;)
+f4.write(&quot;hello,&quot;)
+f4.write(&quot; &quot;)
+f4.write(&quot;world!&quot;)
+
+print(f4.getvalue())  # getvalue()方法用于获得写入后的内容
+#hello, world!
+
+from io import BytesIO
+f5=BytesIO()
+f5.write(&quot;中文&quot;.encode(&quot;utf-8&quot;))
+print(f5.getvalue())
+# b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;
+</code></pre>
+
+<p>要读取StringIO，可以用一个str初始化StringIO，然后，像读文件一样读取：<br/>
+和StringIO类似，可以用一个bytes初始化BytesIO，然后，像读文件一样读取：</p>
+
+<pre><code class="language-python">from io import StringIO
+f = StringIO(&#39;Hello!\nHi!\nGoodbye!&#39;)
 while True:
-    try:
-        # 获得下一个值:
-        x = next(it)
-    except StopIteration:
-        # 遇到StopIteration就退出循环
-        break
+     s = f.readline()
+     if s == &#39;&#39;:
+         break
+     print(s.strip())
+
+# Hello!
+# Hi!
+# Goodbye!
+
+from io import BytesIO
+f = BytesIO(b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;)
+f.read()
+# b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;
+
 </code></pre>
 
-<p> <br/>
- </p>
+<h2 id="toc_4">操作文件和目录</h2>
+
+<p>操作文件和目录<br/>
+通过<code>os</code>模块提供的功能</p>
+
+<pre><code class="language-python">import os
+os.name # posix 操作系统类型(posix表示是Linux、Unix、Mac OS，nt表示是Windows)
+
+os.uname() #查看详细的系统信息
+#posix.uname_result(sysname=&#39;Darwin&#39;, nodename=&#39;fishdeMacBook-Pro.local&#39;, release=&#39;17.5.0&#39;, version=&#39;Darwin Kernel Version 17.5.0: Fri Apr 13 19:32:32 PDT 2018; root:xnu-4570.51.2~1/RELEASE_X86_64&#39;, machine=&#39;x86_64&#39;)
+</code></pre>
+
+<h3 id="toc_5">环境变量</h3>
+
+<pre><code class="language-python">os.environ #操作系统定义的全部环境变量
+os.environ.get(&quot;PATH&quot;) # 获取某个环境变量值
+os.environ.get(&#39;x&#39;, &#39;default&#39;) # 
+</code></pre>
+
+<h3 id="toc_6">操作文件和目录</h3>
+
+<p>操作文件和目录的函数 在<code>os</code>和<code>os.path</code>中</p>
+
+<pre><code class="language-python">import os
+
+currentPath=os.path.abspath(&quot;.&quot;)  # .表示当前路径
+print(currentPath) # /Users/fish/Desktop/LYY/Python
+
+joinDir=os.path.join(&quot;/Users/fish/Desktop&quot;, &quot;testDir&quot;) #在目录下新建目录 获取新目录路径
+print(joinDir) # /Users/fish/Desktop/testDir
+
+splitDir=os.path.split(&quot;/Users/fish/Desktop/testDir&quot;)
+print(splitDir) #(&#39;/Users/fish/Desktop&#39;, &#39;testDir&#39;)  获取最后一部分文件或目录
+splitext=os.path.splitext(&quot;/Users/fish/Desktop/testDir&quot;) #获取扩展名 如果最后一部分为目录 则为空
+print(splitext) # (&#39;/Users/fish/Desktop/testDir/readme&#39;, &#39;.txt&#39;)
+
+os.mkdir(&quot;/Users/fish/Desktop/testDir2&quot;) #新建目录
+os.rmdir(&quot;/Users/fish/Desktop/testDir2&quot;) #删除目录
+
+os.path.join(&quot;/Users/fish/Desktop&quot;, &quot;readme.txt&quot;)
+os.rename(&#39;/Users/fish/Desktop/readme.txt&#39;, &#39;/Users/fish/Desktop/readme.py&#39;)  # 重命名文件
+os.remove(&#39;/Users/fish/Desktop/readme.py&#39;) # 删除文件
+
+dirlist=os.listdir(&quot;.&quot;) #获取当前目录下的所有文件夹列表
+os.path.isdir(&quot;.&quot;) # 判断是否为文件夹目录
+
+</code></pre>
+
+<p>当合并路径时,不要直接拼接字符串，通过<code>os.path.join()</code>函数可以正确处理不用操作系统的路径分隔符.<br/>
+同理，拆分字符串时通过<code>os.path.split()</code>函数，可以把路径拆分为两部分，后一部分总是最后级别的目录或文件名<br/>
+<code>os.path.splitext()</code>可以直接让你得到文件扩展名</p>
+
+<blockquote>
+<p>在<code>os</code>模块中并没有复制文件函数,可以再<code>shutil</code>模块中提供了<code>copyfile()</code>函数等使用的文件操作函数</p>
+</blockquote>
+
+<h2 id="toc_7">序列化</h2>
+
+<p>Python通过<code>pickle</code>模块实现序列化</p>
+
+<pre><code class="language-python">import pickle
+#序列化
+dict1=dict(name=&quot;Bob&quot;, age=24, score=88)
+data=pickle.dumps(dict1)
+print(data) #b&#39;\x80\x03}q\...\x04KXu.&#39;
+
+#直接将序列化的内容写入文件
+file1=open(&quot;/Users/fish/Desktop/readme.txt&quot;, &quot;wb&quot;)
+pickle.dump(dict1, file1)
+file1.close()
+
+#  将文件从磁盘读到内存后使用pickle.loads()方法反序列化出对象， 
+#  也可以直接用pickle.load()方法从一个file-like Object中直接反序列化出对象
+file2=open(&quot;/Users/fish/Desktop/readme.txt&quot;, &quot;rb&quot;)
+dict2=pickle.load(file2)
+file2.close()
+print(dict2) #{&#39;name&#39;: &#39;Bob&#39;, &#39;age&#39;: 24, &#39;score&#39;: 88}
+
+
+</code></pre>
+
+<h3 id="toc_8">JSON</h3>
+
+<p>dict可以转为json序列化</p>
+
+<pre><code class="language-python">import json
+print(json.dumps(dict1)) # {&quot;name&quot;: &quot;Bob&quot;, &quot;age&quot;: 24, &quot;score&quot;: 88}
+
+file1=open(&quot;/Users/fish/Desktop/readme.txt&quot;, &quot;w&quot;)
+json.dump(dict1, file1)
+file1.close()  # 文件内容为 {&quot;name&quot;: &quot;Bob&quot;, &quot;age&quot;: 24, &quot;score&quot;: 88}
+</code></pre>
+
+<p>将class 序列化为 json</p>
+
+<pre><code class="language-python">import json
+
+#序列化  原理是先将class转为dict 然后将dict序列化json
+
+class Student(object):
+    def __init__(self, name, age, score):
+        self.name = name
+        self.age = age
+        self.score = score
+
+s = Student(&#39;Bob&#39;, 20, 88)
+
+#专门写一个转换函数 将 class 转为json
+def student2dict(std):
+    return {
+        &#39;name&#39;: std.name,
+        &#39;age&#39;: std.age,
+        &#39;score&#39;: std.score
+    }
+# 传入更多参数来 指定序列化规则
+print(json.dumps(s, default=student2dict))  #{&quot;age&quot;: 20, &quot;name&quot;: &quot;Bob&quot;, &quot;score&quot;: 88}
+
+# 可以这么写 对大多数class都有__dict__属性来存储实例变量(__slots__除外)
+print(json.dumps(s, default=lambda obj: obj.__dict__))
+
+# 反序列化  原理为将json反序列化为dict 然后转为 class实例
+
+def dict2student(d):
+    return Student(d[&#39;name&#39;], d[&#39;age&#39;], d[&#39;score&#39;])
+json_str = &#39;{&quot;age&quot;: 20, &quot;score&quot;: 88, &quot;name&quot;: &quot;Bob&quot;}&#39;
+print(json.loads(json_str, object_hook=dict2student))
+
+</code></pre>
 
                         
                       </div>
@@ -253,7 +375,7 @@ while True:
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/7/18</span>
+                    <span class="date">2018/7/30</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Python.html'>Python</a></span>
@@ -350,31 +472,31 @@ while True:
 	      
 		      
 			      <li class="post">
-			        <a href="15331071952550.html">进程&&线程</a>
+			        <a href="15350923380421.html">CGColor</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15329386758024.html">IO编程</a>
+			        <a href="15350771796806.html">CGColorSpace</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15325716345284.html">错误、调试、测试</a>
+			        <a href="15350068830702.html">CGBlendMode</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324890369623.html">面对对象高级编程</a>
+			        <a href="15332875866545.html">常见内置模块</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324145349319.html">面对对象编程</a>
+			        <a href="15331955872244.html">常用第三方模块</a>
 			      </li>
 		     
 		  

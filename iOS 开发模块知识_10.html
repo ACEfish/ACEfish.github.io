@@ -112,417 +112,24 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15047511695312.html">
+                <a class="clearlink" href="15077234771115.html">
                 
-                  <h1>协议</h1>
+                  <h1>ARKit</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>类和结构体、枚举都可以遵循协议,并为协议定义的这些要求提供实现<br/>
-除了遵循协议的类型必须实现外还可以对协议进行扩展，通过扩展来实现一部分要求或者添加附加功能</p>
+                        	<p>AR即虚拟现实增强技术</p>
 
-<h2 id="toc_0">协议语法</h2>
+<p><code>ARKit</code>是基于苹果的游戏引擎3D(SceneKit)和2D的(SpriktKit)</p>
 
-<p>协议的定义:</p>
+<p>注意:需要A9处理器的的iOS11以上的系统</p>
 
-<pre><code class="language-swift">protocol SomeProtocol {
-    // 这里是协议的定义部分
-}
-</code></pre>
+<p>增强现实的目标是往真实世界中的特定点插入虚拟内容，并且在真实世界中移动时还能对此虚拟内容保持追踪。ARKit 的基本流程包括从 iOS 设备摄像头中读取视频帧，对每一帧的图片进行处理并获得特征点。特征有很多很多，但我们需要从图片中找出能在多个帧中都被追踪到的特征。特征可能是物体的某个角，或是有纹理的织物的某条边等等。有很多种方式可以生成这些特征，可以在网上了解更多（例如搜索 SIFT）但目前我们只需知道，每张图片里会产生多个唯一标识的特征就足够了。</p>
 
-<p>自定义类型遵循某个协议,定义类型时,可以在类型名称后加上协议名称,中间用<code>:</code>分割,多个协议之间用<code>,</code>分割</p>
+<p>获得某张图片的特征后，就可以从多个帧中追踪这些特征，随着用户在世界中移动，就可以利用相应的特征点来估算 3D 世界信息，例如当前摄像头的位置和特征的位置。用户移动地越多，就会获得越多的特征，并优化这些估算的 3D 世界信息。</p>
 
-<pre><code class="language-swift">struct SomeStructure: FirstProtocol, AnotherProtocol {
-    // 这里是结构体的定义部分
-}
-</code></pre>
-
-<p>拥有父类的类在遵循协议时，应该将父类名放在协议名之前，以逗号分隔：</p>
-
-<pre><code class="language-swift">class SomeClass: SomeSuperClass, FirstProtocol, AnotherProtocol {
-    // 这里是类的定义部分
-}
-</code></pre>
-
-<h2 id="toc_1">属性要求</h2>
-
-<p>协议可以指定遵循协议的类型提供特定名称或属性的实例属性或类型属性。它只指定类型名称和属性而不能指定属性是存储型的还是计算型的,此外，还可以指定属性是可读的还是可写的</p>
-
-<p>如果协议要求属性是可读可写的，那么该属性不能是常量属性或只读的计算型属性。如果协议只要求属性是可读的，那么该属性不仅可以是可读的，如果代码需要的话，还可以是可写的</p>
-
-<p>协议总是用<code>var</code>关键字来声明变量属性，在类型声明后加上<code>{ set get }</code>来表示属性是可读可写的，可读属性则用<code>{ get }</code>来表示</p>
-
-<pre><code class="language-swift">protocol SomeProtocol {
-    var mustBeSettable: Int { get set }
-    var doesNotNeedToBeSettable: Int { get }
-}
-</code></pre>
-
-<p>在协议中定义类型属性时，使用<code>static</code>关键字作为前缀。当类类型遵循协议时,除了<code>static</code>关键字,还可以使用<code>class</code>关键字声明类型属性:</p>
-
-<pre><code class="language-swift">protocol AnotherProtocol {
-    static var someTypeProperty: Int { get set }
-}
-</code></pre>
-
-<h2 id="toc_2">方法要求</h2>
-
-<p>遵循协议的类型实现某些指定的实例方法或类方法</p>
-
-<ul>
-<li>方法像普通方法一样放在协议的定义中,但是不需要大括号和方法体</li>
-<li>与普通方法类似可以在方法中提供可变参数,但是不能为参数提供默认值</li>
-<li>在协议中定义类方法时，总是使用<code>static</code>关键字为前缀.当类类型遵循协议时，除了<code>static</code>关键字，还可以使用<code>class</code>关键字作为前缀</li>
-</ul>
-
-<pre><code class="language-swift">protocol RandomNumberGenerator {
-    func random() -&gt; Double
-}
-</code></pre>
-
-<pre><code class="language-swift">class LinearCongruentialGenerator: RandomNumberGenerator {
-    var lastRandom = 42.0
-    let m = 139968.0
-    let a = 3877.0
-    let c = 29573.0
-    func random() -&gt; Double {
-        lastRandom = ((lastRandom * a + c) % m)
-        return lastRandom / m
-    }
-}
-</code></pre>
-
-<h2 id="toc_3">Mutating方法要求</h2>
-
-<p>如果在协议中定义了一个实例方法，该方法会改变遵循该协议的类型的实例，那么在定义协议时需要在方法前加<code>mutating</code>关键字,使得结构体和枚举能够遵循此协议并满足方法要求</p>
-
-<blockquote>
-<p>在实现协议的<code>mutating</code>方法时，若是类类型则不用写<code>mutating</code>关键字，而若是结构体或枚举必须写<code>mutating</code>关键字</p>
-</blockquote>
-
-<pre><code class="language-swift">protocol Togglable {
-    mutating func toggle()
-}
-
-//定义在两种状态间切换的枚举
-enum OnOffSwitch: Togglable {
-    case Off, On
-    mutating func toggle() {
-        switch self {
-        case Off:
-            self = On
-        case On:
-            self = Off
-        }
-    }
-}
-</code></pre>
-
-<h2 id="toc_4">构造器要求</h2>
-
-<p><strong>协议可以要求遵循协议的类型实现指定的构造器</strong></p>
-
-<pre><code class="language-swift">protocol SomeProtocol {
-    init(someParameter: Int)
-}
-</code></pre>
-
-<h3 id="toc_5">构造器要求在类中的实现</h3>
-
-<p>遵循协议的类实现构造器.不论指定构造器或者便利构造器都必须在实现加上<code>required</code>修饰符</p>
-
-<pre><code class="language-swift">class SomeClass: SomeProtocol {
-    required init(someParameter: Int) {
-        // 这里是构造器的实现部分
-    }
-}
-</code></pre>
-
-<p>使用<code>required</code>修饰符可以确保所有子类也必须提供此构造器实现，即符合协议</p>
-
-<p>注意:</p>
-
-<blockquote>
-<p>如果类被标记为<code>final</code>，就不需要在协议构造器中使用<code>required</code>修饰符,因为<code>final</code>类不会有子类</p>
-</blockquote>
-
-<p>如果一个子类重写了父类的指定构造器，并且该构造器满足了某个协议的要求,那么重写上需要同时加上<code>required</code>和<code>override</code>修饰符</p>
-
-<pre><code class="language-swift">protocol SomeProtocol {
-    init()
-}
-class SomeSuperClass {
-    init() {
-        // 这里是构造器的实现部分
-    }
-}
-class SomeSubClass: SomeSuperClass, SomeProtocol {
-    // 因为遵循协议，需要加上 required
-    // 因为继承自父类，需要加上 override
-    required override init() {
-        // 这里是构造器的实现部分
-    }
-}
-</code></pre>
-
-<h3 id="toc_6">可失败构造器要求</h3>
-
-<p>协议还可以为遵循协议的类型定义可失败构造器要求</p>
-
-<p>遵循协议的类型可以通过可失败构造器<code>（init?）</code>或非可失败构造器<code>（init）</code>来满足协议中定义的可失败构造器要求。协议中定义的非可失败构造器要求可以通过非可失败构造器<code>（init</code>或隐式解包可失败构造器<code>（init!）</code>来满足</p>
-
-<h2 id="toc_7">协议作为类型</h2>
-
-<p>协议可以作为成熟的类型来使用:</p>
-
-<ul>
-<li>作为函数、方法或构造器中的参数类型或返回值类型</li>
-<li>作为常量、变量或属性的类型</li>
-<li>作为数组、字典或其他容器中的元素类型</li>
-</ul>
-
-<p>协议作为一种类型,因此与它类型的命名写法相同 应该使用驼峰写法</p>
-
-<pre><code class="language-swift">class Dice {
-    let sides: Int
-    let generator: RandomNumberGenerator
-    init(sides: Int, generator: RandomNumberGenerator) {
-        self.sides = sides
-        self.generator = generator
-    }
-    func roll() -&gt; Int {
-        return Int(generator.random() * Double(sides)) + 1
-    }
-}
-</code></pre>
-
-<p>类<code>Dice</code>中含有属性<code>generator</code>为<code>RandomNumberGenerator</code>协议类型,因此遵循了<code>RandomNumberGenerator</code>协议类型的实例都可以赋值给<code>generator</code></p>
-
-<p>在类中有<code>roll</code>的实例方法,调用<code>generator</code>的<code>random()</code>方法来生成一个<code>[0.0,1.0)</code>区间内的随机数</p>
-
-<h2 id="toc_8">委托（代理）模式</h2>
-
-<hr/>
-
-<p>委托是一种设计模式，它允许类或结构体将一些需要它们负责的功能委托给其他类型的实例.<br/>
-委托模式的实现很简单：定义协议来封装那些需要被委托的功能，这样就能确保遵循协议的类型能提供这些功能。<br/>
-委托模式可以用来响应特定的动作，或者接收外部数据源提供的数据，而无需关心外部数据源的类型</p>
-
-<hr/>
-
-<h2 id="toc_9">通过扩展添加协议一致性</h2>
-
-<p>我们可以通过扩展代码来为已有类型添加属性、方法、下标以及构造器，因此可以符合协议中相应要求</p>
-
-<blockquote>
-<p>通过扩展使已有类型遵循并符合协议时,该类型的所有实例也会获得协议中定义的各项功能</p>
-</blockquote>
-
-<pre><code class="language-swift">protocol TextRepresentable {
-    var textualDescription: String { get }
-}
-
-extension Dice: TextRepresentable {
-    var textualDescription: String {
-        return &quot;A \(sides)-sided dice&quot;
-    }
-}
-</code></pre>
-
-<p>扩展来遵循并符合协议与原始定义中效果相同</p>
-
-<h2 id="toc_10">通过扩展遵循协议</h2>
-
-<pre><code class="language-swift">struct Hamster {
-    var name: String
-    var textualDescription: String {
-        return &quot;A hamster named \(name)&quot;
-    }
-}
-
-extension Hamster: TextRepresentable {}
-</code></pre>
-
-<h2 id="toc_11">协议类型的集合</h2>
-
-<p>协议类型可以在数组或字典这样的集合使用</p>
-
-<p><code>let things: [TextRepresentable] = [game, d12, simonTheHamster]</code></p>
-
-<h2 id="toc_12">协议的继承</h2>
-
-<p>协议可以继承一个或多个其他协议,可以在继承协议基础上增加新的要求.协议继承与发与类相似,多个协议用逗号分割：</p>
-
-<pre><code class="language-swift">protocol InheritingProtocol: SomeProtocol, AnotherProtocol {
-    // 这里是协议的定义部分
-}
-</code></pre>
-
-<h2 id="toc_13">类类型专属协议</h2>
-
-<p>在协议的继承列表中，通过添加<code>class</code>关键字来限制协议只能被类类型遵循，而值类型如枚举和结构体不能遵循该协议</p>
-
-<pre><code class="language-swift">protocol SomeClassOnlyProtocol: class, SomeInheritedProtocol {
-    // 这里是类类型专属协议的定义部分
-}
-</code></pre>
-
-<p><code>class</code>关键字必须第一个出现在协议的继承列表中，在其他继承的协议之前</p>
-
-<h2 id="toc_14">协议合成</h2>
-
-<p>同时遵循多个协议时,可以将多个协议采用<code>SomeProtocol &amp; AnotherProtocol</code>的格式进行组合,即<strong>协议合成</strong></p>
-
-<pre><code class="language-swift">protocol Named {
-    var name: String { get }
-}
-protocol Aged {
-    var age: Int { get }
-}
-struct Person: Named, Aged {
-    var name: String
-    var age: Int
-}
-
-func wishHappyBirthday(to celebrator: Named &amp; Aged) {
-    print(&quot;Happy birthday, \(celebrator.name), you&#39;re \(celebrator.age)!&quot;)
-}
-
-let birthdayPerson = Person(name: &quot;Malcolm&quot;, age: 21)
-wishHappyBirthday(to: birthdayPerson)// “Happy birthday Malcolm - you&#39;re 21!”
-</code></pre>
-
-<blockquote>
-<p>协议合成并不是生成一个新的、永久的协议</p>
-</blockquote>
-
-<h2 id="toc_15">检查协议一致性</h2>
-
-<p>使用<code>is</code>和<code>as</code>检查协议的一致性,即是否符合某协议，并且可以转换到指定的协议类型,与类型检查和转换用法相同:</p>
-
-<ul>
-<li><code>is</code>用来检查实例是否符合某个协议，若符合则返回<code>true</code>，否则返回<code>false</code></li>
-<li><code>as?</code>返回一个可选值，当实例符合某个协议时，返回类型为协议类型的可选值，否则返回<code>nil</code></li>
-<li><code>as!</code>将实例强制向下转换到某个协议类型，如果强转失败，会引发运行时错误</li>
-</ul>
-
-<pre><code class="language-swift">protocol HasArea {
-    var area: Double { get }
-}
-
-for object in objects {
-    if let objectWithArea = object as? HasArea {
-        print(&quot;Area is \(objectWithArea.area)&quot;)
-    } else {
-        print(&quot;Something that doesn&#39;t have an area&quot;)
-    }
-}
-</code></pre>
-
-<p>判断元素是否符合<code>HasArea</code>协议后将<code>as?</code>操作符通过可选绑定，绑定到<code>objectWithArea</code>常量上进行访问</p>
-
-<blockquote>
-<p>在数据中的元素类型并不会因为强转而丢失类型信息,只是在被赋值为<code>objectWithArea</code>时，被视为<code>HasArea</code>类型，因此只有<code>area</code>属性可以被访问</p>
-</blockquote>
-
-<h2 id="toc_16">可选的协议要求</h2>
-
-<p>协议可以被定义为可选的，用<code>option</code>关键字作为前缀来标记可选要求<br/>
-可选要求用在你需要和<code>Objective-C</code>打交道的代码中<br/>
-协议和可选要求都必须带上<code>@objc</code>属性<br/>
-标记<code>@objc</code>特性的协议只能被继承自<code>Objective-C</code>类的类或者<code>@objc</code>类遵循，其他类以及结构体和枚举均不能遵循这种协议</p>
-
-<p>当使用可选要求时，协议中的可选的方法或属性会自动变成可选的（函数的话整个函数类型是可选的而不是函数的返回值）</p>
-
-<pre><code class="language-swift">@objc protocol CounterDataSource {
-    optional func incrementForCount(count: Int) -&gt; Int
-    optional var fixedIncrement: Int { get }
-}
-</code></pre>
-
-<pre><code class="language-swift">class Counter {
-    var count = 0
-    var dataSource: CounterDataSource?
-    func increment() {
-    //此处无法确定是否存在dataSource 以及 datasource是否遵循了协议 因此需要两层的可选链式调用
-        if let amount = dataSource?.incrementForCount?(count) {
-            count += amount
-        } else if let amount = dataSource?.fixedIncrement {
-            count += amount
-        }
-    }
-}
-</code></pre>
-
-<p>通过可选链式调用可选协议</p>
-
-<p><code>CounterDataSource</code>的简单实现</p>
-
-<pre><code class="language-swift">//继承自OC的NSObject
-class ThreeSource: NSObject, CounterDataSource {
-    let fixedIncrement = 3
-}
-
-//@objc类
-@objc class TowardsZeroSource: NSObject, CounterDataSource {
-    func increment(forCount count: Int) -&gt; Int {
-        if count == 0 {
-            return 0
-        } else if count &lt; 0 {
-            return 1
-        } else {
-            return -1
-        }
-    }
-}
-</code></pre>
-
-<h2 id="toc_17">协议扩展</h2>
-
-<p>通过扩展来为遵循协议的类型提供属性、方法以及下标的&quot;实现&quot;.这样可以基于协议本身实现这些功能,而不需要给每个遵循协议的类型进行重复的实现或者使用全局函数</p>
-
-<pre><code class="language-swift">//定义一个协议
-protocol RandomNumberGenerator {
-    func random() -&gt; Double
-}
-//为协议进行协议扩展
-extension RandomNumberGenerator {
-    func randomBool() -&gt; Bool {
-        return random() &gt; 0.5
-    }
-}
-</code></pre>
-
-<p>所有遵循该协议的类型 都能获得扩展所增加的方法实现</p>
-
-<h3 id="toc_18">提供默认实现</h3>
-
-<p>可以通过协议扩展来为协议中的的要求提供默认实现，如果遵循该协议的类型提供了自己的实现,那么自定义实现会代替扩展中的默认实现</p>
-
-<h3 id="toc_19">为协议扩展添加限制条件</h3>
-
-<p>在协议扩展的时候条件一些限制条件,只有遵循协议的类型满足这些条件的时候才能获取协议扩展提供的默认实现</p>
-
-<p>将这些限制条件写在协议名字之后,并且使用<code>where</code>字句描述</p>
-
-<pre><code class="language-swift">/**
-扩展CollectionType协议,但是只适用于集合中的元素遵循`TextRepresentable`协议的情况
-*/
-extension CollectionType where Generator.Element: TextRepresentable {
-    var textualDescription: String {
-        let itemsAsText = self.map { $0.textualDescription }
-        return &quot;[&quot; + itemsAsText.joinWithSeparator(&quot;, &quot;) + &quot;]&quot;
-    }
-}
-</code></pre>
-
-<p>因此需要一个集合类型的遵循CollectionType协议,而且其中的每个元素都遵循TextRepresentable协议<br/>
-这样的话这个集合就默认有扩展协议的默认实现</p>
-
-<blockquote>
-<p>如果多个协议扩展都为同一个协议要求提供了默认实现，而遵循协议的类型又同时满足这些协议扩展的限制条件，那么将会使用限制条件最多的那个协议扩展提供的默认实现。</p>
-</blockquote>
+<p>至于平面检测，就是在获得一定数量的 3D 特征点后，尝试在这些点中安装一些平面，然后根据尺度、方向和位置找出最匹配的那个。ARKit 会不断分析 3D 特征点并在代码中报告找到的平面。</p>
 
                         
                       </div>
@@ -531,10 +138,10 @@ extension CollectionType where Generator.Element: TextRepresentable {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/9/7</span>
+                    <span class="date">2017/10/11</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
+          					    <span class="posted-in"><a href='ARKit.html'>ARKit</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -628,31 +235,31 @@ extension CollectionType where Generator.Element: TextRepresentable {
 	      
 		      
 			      <li class="post">
-			        <a href="15331071952550.html">进程&&线程</a>
+			        <a href="15350923380421.html">CGColor</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15329386758024.html">IO编程</a>
+			        <a href="15350771796806.html">CGColorSpace</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15325716345284.html">错误、调试、测试</a>
+			        <a href="15350068830702.html">CGBlendMode</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324890369623.html">面对对象高级编程</a>
+			        <a href="15332875866545.html">常见内置模块</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324145349319.html">面对对象编程</a>
+			        <a href="15331955872244.html">常用第三方模块</a>
 			      </li>
 		     
 		  

@@ -112,14 +112,133 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15143731430102.html">
+                <a class="clearlink" href="15288713693530.html">
                 
-                  <h1>iOS11</h1>
+                  <h1>状态机</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><code>estimatedRowHeight</code>是一个预估高度，iOS11之前是为0，在iOS11下，这个值默认为44。</p>
+                        	<p>ReactNative 将UI视作一个状态机,每个UI场景就是状态机的一个状态</p>
+
+<blockquote>
+<p>不要在状态机变量中存放于显示无关的变量,会导致务必要渲染UI</p>
+</blockquote>
+
+<h2 id="toc_0">State</h2>
+
+<blockquote>
+<p>尽可能让自定义的组件成为无状态组件<br/>
+好的reactnative设计思路:创建多个只负责渲染数据的无状态组件，将他们封装在一个有状态的reactnative组件中,有状态的组件封装了UI交互的逻辑，而无状态的组件负责渲染UI界面。</p>
+</blockquote>
+
+<pre><code class="language-javascrip">constructor(props) {
+        super(props)
+        this.state = {
+            input: &#39;&#39;,
+            inputPWD: &#39;&#39;,
+        }
+    }
+    updateNum(newText) {
+        this.setState((state) =&gt; {
+            return {input: newText}
+        });
+    }
+
+    updatePWD(newText) {
+        this.setState(() =&gt; {
+            return {
+                inputPWD : newText
+            }
+        })
+    }
+</code></pre>
+
+<p>通过this.state.状态机变量名 访问状态机变量</p>
+
+<p>我们需要将状态机变量看做 <strong>不可变常量</strong>，不能直接改变状态机变量，只能通过<strong>setState</strong>函数</p>
+
+<h2 id="toc_1">渲染</h2>
+
+<p>setState函数原型：<code>setState(oldState, callback)</code> 第二个参数为回调函数,会在setState完成并且重新渲染完成(如果需要的话)后被调用</p>
+
+<p>如果setState函数将传入函数的返回值与当前状态机相比没有任何修改或增加,将不会进行渲染</p>
+
+<p>改变状态机变量后 所有与状态机变量值有关系的组件都会被刷新。</p>
+
+<blockquote>
+<p>当修改组件的状态机变量值后，ReactNative会在考虑清楚如何高效的渲染UI后,执行SetState的箭头函数来渲染组件,因此setState是异步执行的函数</p>
+
+<p>当子组件需要渲染时,那么该子组件的各个生命周期的函数都会按声明周期调用 这就是渲染高效的原因</p>
+</blockquote>
+
+<h3 id="toc_2">判断是否渲染</h3>
+
+<pre><code class="language-javascript">//判断是否渲染，实现这个函数后,会在重新渲染组件前，调用这个函数，返回false就放弃渲染组件
+shouldComponentUpdate() {
+        if (this.state.input.length &lt; 3) {
+            return true;
+        }
+        return false;
+    }
+</code></pre>
+
+<h3 id="toc_3">强制渲染</h3>
+
+<p><code>forceUpdate(callback)</code> <br/>
+当UI的可变数据来源为属性和状态之外获取时,可以使用这个函数要求重新渲染，这会导致所有级别的UI都重新读取、计算、渲染。</p>
+
+<blockquote>
+<p>这个渲染过程不会调用<code>shouldComponentUpdate</code><br/>
+可以通过回调函数,在执行结束后调用<br/>
+尽量避免使用</p>
+</blockquote>
+
+<h3 id="toc_4">render渲染过程</h3>
+
+<p>RN通过<code>render</code>实现重新渲染。原型为<code>ReactComponent render()</code><br/>
+任何组件都必须有这个函数 也必须只能返回一个可渲染组件<br/>
+通过修改属性或者状态机变量来触发render的重新渲染，而不是直接调用这个函数</p>
+
+<h3 id="toc_5">简洁写法</h3>
+
+<pre><code class="language-javascript">    //简洁写法1（通过指定参数名称与状态机变量名称相同 省略）
+    updateNum(input) {
+        this.setState(() =&gt; {
+            return {input}
+        })
+    }
+    
+    //简洁写法2（省略箭头函数）
+    updateNum(input) {
+        this.setState( {input})
+    }
+ ```
+
+## 成员变量
+
+```javascript
+    constructor(props) {
+        super(props)
+        this.myProperty1 = &quot;test&quot;
+        this.myProperty2 = true
+        this.state = {
+            input: &#39;&#39;,
+            inputPWD: &#39;&#39;,
+        }
+    }
+    //就可以在组件中使用myProperty1  myProperty2 这两个成员变量
+</code></pre>
+
+<p>组件可以有静态变量、静态成员函数，直接用<code>类名.</code>调用</p>
+
+<h3 id="toc_6">回调函数绑定</h3>
+
+<pre><code class="language-javascript">//在constuctor函数中
+this.updateNum = this.updateNum.bind(this)
+</code></pre>
+
+<p>绑定操作是为了让回调函数能正确解析出this，否则this.updateNum函数被执行时,指向另外对象而不是该组建类的实例</p>
 
                         
                       </div>
@@ -128,10 +247,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/12/27</span>
+                    <span class="date">2018/6/13</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
+          					    <span class="posted-in"><a href='React-Native.html'>React-Native</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -225,31 +344,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15331071952550.html">进程&&线程</a>
+			        <a href="15350923380421.html">CGColor</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15329386758024.html">IO编程</a>
+			        <a href="15350771796806.html">CGColorSpace</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15325716345284.html">错误、调试、测试</a>
+			        <a href="15350068830702.html">CGBlendMode</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324890369623.html">面对对象高级编程</a>
+			        <a href="15332875866545.html">常见内置模块</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324145349319.html">面对对象编程</a>
+			        <a href="15331955872244.html">常用第三方模块</a>
 			      </li>
 		     
 		  

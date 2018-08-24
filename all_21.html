@@ -112,30 +112,128 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15266103811219.html">
+                <a class="clearlink" href="15293961047296.html">
                 
-                  <h1>JavaScript 与 ECMAScript 区别</h1>
+                  <h1>组件属性一</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">基础名词</h2>
+                        	<h2 id="toc_0">View</h2>
 
-<p>ECMA 为科学技术制定标准的组织</p>
+<h3 id="toc_1">颜色与边框</h3>
 
-<p>ECMA-262 目前脚本语言的规范</p>
+<ol>
+<li>backgroundColor: 背景颜色</li>
+<li>opacity: 0~1透明度</li>
+<li><p>borderStyle: 边框风格</p>
+<ul>
+<li>solid: default 实线边框</li>
+<li>dotted: 点状边框</li>
+<li>dashed: 虚线边框</li>
+</ul></li>
+<li><p>borderColor: 边框颜色,可以单独定义上下左右</p></li>
+<li><p>borderRadius: 定义圆角边框,可单独定义四个角</p></li>
+</ol>
 
-<p>ECMAScript是定义在ECMA-262中定义的标准,用于创建通用目的脚本语言</p>
+<blockquote>
+<p>大部分组件继承了View的属性</p>
+</blockquote>
 
-<p>JavaScript 通用目的的脚本语言，遵循ECMAScript规范</p>
+<h3 id="toc_2">视觉效果</h3>
 
-<p>JavaScript引擎 能够理解和执行JavaScript代码的程序或解释器</p>
+<h4 id="toc_3">阴影</h4>
 
-<p>JavaScript运行时 js代码运行所在环境,为js引擎所解释。运行时提供js可以运行和操作的宿主对象，js代码被引擎传递,被解析和理解之后,运行时的实体或系统将执行解释行为。例如：浏览器的宿主环境提供的对象视窗或文档等WebAPIs 服务器的宿主环境Node.js，即文件系统、处理和请求等</p>
+<ol>
+<li>shadowColor</li>
+<li>shadowOffset</li>
+<li>shadowOpacity</li>
+<li>shadowRadius</li>
+</ol>
 
-<p>ECMAScript 6  是ECMA的第6个版本,对规范有显著改变(同名的ES2015)</p>
+<h4 id="toc_4">overflow</h4>
 
-<p>Babel 将ES6代码转换为ES5的转译器(目前主流js引擎都支持ES6 但不一定支持ES6)</p>
+<p>取值为 visible和hidden(默认),定义子组件产出父组件部分的是否显示，当设置为visible时，仅对ios平台有效,显示超出父组件部分</p>
+
+<h4 id="toc_5">elevation</h4>
+
+<p>Android平台特有效果,在组件周围渲染阴影</p>
+
+<h3 id="toc_6">变形</h3>
+
+<p>利用<code>transform</code>设置组件的变形,包括<code>translate</code>平移,<code>scale</code>缩放,<code>rotate</code>旋转,<code>skew</code>倾斜</p>
+
+<pre><code class="language-javascript">const styles = StyleSheet.create({
+    view1Style: {
+        ....
+        transform: [{scale:2}, {rotateZ:&quot;45deg&quot;}]
+    }
+})
+//Xdeg 表示角度 取值0-360
+</code></pre>
+
+<h3 id="toc_7">回调函数</h3>
+
+<p>回调函数命名 onB 即B事件发生的回调函数</p>
+
+<h4 id="toc_8">onLayOut</h4>
+
+<p>当View组件被加载或者改变布局时</p>
+
+<h4 id="toc_9">onTouchStart、onTouchMove、onTouchEnd</h4>
+
+<p>开始触摸事件、触摸点移动事件、触摸结束事件<br/>
+三个回调函数带一个event参数,</p>
+
+<pre><code class="language-javascript">//Event结构有用对象
+{
+ timeStamp: aNumber, //时间戳
+ nativeEvent: {
+    locationX: aNumber,
+    locationY: aNumber,
+ }
+}
+</code></pre>
+
+<pre><code class="language-javascript">//示例 demo
+constructor(props) {
+        super(props)
+        this._onTouchStart = this._onTouchStart.bind(this)
+    }
+
+    _onTouchStart(event) {
+        console.log( event.nativeEvent.locationX)
+    }
+
+    render() {
+        return(
+            &lt;View style={styles.containStyle}&gt;
+                &lt;View style={styles.view1Style} onTouchStart={this._onTouchStart}&gt;
+
+                &lt;/View&gt;
+            &lt;/View&gt;
+        )
+    }
+</code></pre>
+
+<h4 id="toc_10">removeClippedSubviews</h4>
+
+<p>布尔属性，与性能有关的，属性为true将允许释放不在显示范围内的子组件，需要将overflow设置为hidden才会生效</p>
+
+<h3 id="toc_11">onLayOut</h3>
+
+<p>应用通过<code>Dimension</code>获取屏幕宽高，Dimensions.get(&#39;window&#39;).width/height,获取到的宽和高是实时屏幕的宽和高,当横置时宽大于高</p>
+
+<h3 id="toc_12">pointEvents</h3>
+
+<p>在RN中 触摸事件总是传递给最上层的组件，当被遮盖的组件需要向银行触摸事件，就需要从View继承的<code>pointEvents</code></p>
+
+<p>可以取值为<code>none</code> <code>box-none</code> <code>box-only</code> <code>auto</code></p>
+
+<p><strong>none:</strong> 发生在本组件和子组件的触摸事件交给本组件的父组件处理<br/>
+<strong>box-none:</strong> 本组件显示范围内，非子组件显示范围内的时间交给本组件父组件处理,子组件显示范围交给子组件处理<br/>
+<strong>box-only:</strong> 本组件显示范围内的所有触摸事件都交给本组件处理<br/>
+<strong>auto:</strong> 视组件不同而不同 不是所有组件都支持box-none和box-only</p>
 
                         
                       </div>
@@ -144,10 +242,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/5/18</span>
+                    <span class="date">2018/6/19</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html'>知识普及</a></span>
+          					    <span class="posted-in"><a href='React-Native.html'>React-Native</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -241,31 +339,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15331071952550.html">进程&&线程</a>
+			        <a href="15350923380421.html">CGColor</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15329386758024.html">IO编程</a>
+			        <a href="15350771796806.html">CGColorSpace</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15325716345284.html">错误、调试、测试</a>
+			        <a href="15350068830702.html">CGBlendMode</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324890369623.html">面对对象高级编程</a>
+			        <a href="15332875866545.html">常见内置模块</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324145349319.html">面对对象编程</a>
+			        <a href="15331955872244.html">常用第三方模块</a>
 			      </li>
 		     
 		  

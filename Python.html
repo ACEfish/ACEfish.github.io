@@ -112,245 +112,366 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15331071952550.html">
+                <a class="clearlink" href="15332875866545.html">
                 
-                  <h1>进程&&线程</h1>
+                  <h1>常见内置模块</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<pre><code class="language-python">print(&#39;Process (%s) start...&#39; % os.getpid())
-# Only works on Unix/Linux/Mac:
-pid = os.fork()
-if pid == 0:
-    #子进程
-    print(&#39;I am child process (%s) and my parent is %s.&#39; % (os.getpid(), os.getppid()))
-else:
-    print(&#39;I (%s) just created a child process (%s).&#39; % (os.getpid(), pid))
-    
-# Process (28301) start...
-# I (28301) just created a child process (28302).
-# I am child process (28302) and my parent is 28301.
+                        	<p>datetime是Python处理日期和时间的标准库。</p>
+
+<p><code>datetime</code>是模块，<code>datetime</code>模块还包含一个<code>datetime</code>类，通过<code>from datetime import datetime</code>导入的才是<code>datetime</code>这个类</p>
+
+<h2 id="toc_0">datetime</h2>
+
+<pre><code class="language-text">from datetime import datetime 
+
+now=datetime.now() # 获取当前时间
+print(now)  # 2018-08-03 15:06:09.944095
+print(type(now)) # &lt;class &#39;datetime.datetime&#39;&gt;
+
+date1=datetime(2015, 10, 8, 1, 11)  # 创建指定日期时间
+print(date1)  # 2015-10-08 01:11:00
+
+# 在计算机中 时间使用数字(时间戳)表示的
+
+timestamp=date1.timestamp() #将datetime转为时间戳
+print(timestamp) # 1444237860.0
+
+date2=datetime.fromtimestamp(timestamp) # 将时间戳转为本地时间
+date3=datetime.utcfromtimestamp(timestamp) #将时间转为UTC时间
+print(date2)  # 2015-10-08 01:11:00
+print(date3) # 2015-10-07 17:11:00
+
+# str转date
+date4=datetime.strptime(&quot;2015-6-1 18:19:59&quot;, &quot;%Y-%m-%d %H:%M:%S&quot;) 
+print(date4) # 2015-06-01 18:19:59
+
+# date转str
+str1=date4.strftime(&quot;%a, %b %d %H:%M&quot;)
+print(str1)  # Mon, Jun 01 18:19
+
+
+# 时间增减
+from datetime import datetime, timedelta
+
+now1=datetime.now()
+newdate1=now1+timedelta(hours=12)  # 增加12小时的时间
+newdate2=now1-timedelta(days=2, minutes=50)
+print(newdate1) # 2018-08-04 04:09:26.450345
+print(newdate2) # 2018-08-01 16:25:14.299462
+
+
+
+# datetime 有一个时区属性tzinfo 但是默认为 None 因此无法区分时间的时区 我们可以给其设置一个时区，帮助区分是哪个时区的时间
+
+from datetime import datetime, timedelta, timezone
+
+tz_utc_8=timezone(timedelta(hours=8))
+print(tz_utc_8)  # UTC+08:00
+
+print(now) # 2018-08-03 17:26:29.846861
+date_utc_8=now.replace(tzinfo=tz_utc_8)
+
+print(date_utc_8)  # 2018-08-03 17:26:29.846861+08:00
+
+# 获取当前的utc时间 并且加上utc时区信息
+utc_dt=datetime.utcnow().replace(tzinfo=timezone.utc)
+print(utc_dt) # 2018-08-03 09:30:57.959514+00:00
+print(datetime.utcnow()) # 2018-08-03 09:30:57.959525
+print(timezone.utc) # UTC
+
+# 将utc时间转为北京时区时间
+bj_dt=utc_dt.astimezone(timezone(timedelta(hours=8)))
+print(bj_dt) # 2018-08-03 17:39:22.703278+08:00
 </code></pre>
 
-<h2 id="toc_0">multiprocessing</h2>
+<blockquote>
+<p><code>datetime</code>有一个时区属性<code>tzinfo</code> 但是默认为 <code>None</code> 因此无法区分时间的时区 我们可以给其设置一个时区，帮助区分是哪个时区的时间</p>
 
-<p>因为在windows是没有<code>fork</code>调用的，所以为了跨平台支持,可以使用<code>multiprocessing</code>跨平台的多进程模块<br/>
-<code>multiprocessing</code>模块提供了一个<code>Process</code>类来代表一个进程对象</p>
+<p>任何带时区新的<code>date</code> 都可以转换时间</p>
+
+<p>要存储<code>datetime</code>，最佳方法是将其转换为<code>timestamp</code>再存储，因为<code>timestamp</code>的值与时区完全无关</p>
+</blockquote>
+
+<h2 id="toc_1">collections</h2>
+
+<p>内置的一个集合模块 提供了许多有用的集合类</p>
+
+<h3 id="toc_2">namedtuple</h3>
+
+<p>是一个用来创建自定义的<code>tuple</code>对象，规定了元素个数,可以用属性而不是索引来引用<code>tuple</code>中的元素</p>
 
 <pre><code class="language-python">
-from multiprocessing import Process
-import os
+from collections import namedtuple
+Point=namedtuple(&quot;point&quot;, [&quot;x&quot;, &quot;y&quot;])
+p1=Point(2, 3)
 
-def run_proc(name):
-    print(&#39;Run child process %s (%s)...&#39; % (name, os.getpid()))
+print(&quot;坐标为 %s %s&quot; % (p1.x, p1.y)) # 坐标为 2 3
 
-print(&quot;parent process %s&quot; % os.getpid())
-p=Process(target=run_proc, args=(&quot;test&quot;,)) #创建子进程
-print(&quot;child process will start&quot;)  
-p.start()# 启动子进程
-p.join() # 等待子进程结束后继续运行
-print(&quot;child process end&quot;)
+isinstance(p1, Point) #True
+</code></pre>
 
-# parent process 28492
-# child process will start
-# Run child process test (28493)...
-# child process end
+<h3 id="toc_3">deque</h3>
 
+<p>为了弥补<code>list</code>线性存储插入和删除元素慢,<code>deque</code>是双向列表，适合于队列和栈，除了实现了list的<code>append()</code>和<code>pop()</code>外，还支持<code>appendleft()</code>和<code>popleft()</code>，可以方便的向头部添加或删除数据</p>
+
+<pre><code class="language-python">from collections import deque
+q1=deque([&quot;1&quot;, &quot;2&quot;, &quot;3&quot;])
+q1.append(&quot;x&quot;)
+q1.appendleft(&quot;y&quot;)
+print(q1)  # deque([&#39;y&#39;, &#39;1&#39;, &#39;2&#39;, &#39;3&#39;, &#39;x&#39;])
+</code></pre>
+
+<h3 id="toc_4">defaultdict</h3>
+
+<p>当<code>dict</code>中引用的key不存在时,返回默认值<br/>
+<strong>默认值</strong>是调用函数返回的，而函数在创建defaultdict对象时传入。</p>
+
+<pre><code class="language-python">from collections import defaultdict
+dd1=defaultdict(lambda:&quot;defaultValue&quot;)
+dd1[&quot;key1&quot;]=&quot;abc&quot;
+print(dd1[&quot;key1&quot;]) # abc
+print(dd1[&quot;key2&quot;]) # defaultValue
+</code></pre>
+
+<h3 id="toc_5">OrderedDict</h3>
+
+<p><code>dict</code>是无序的 如果要保持<code>key</code>顺序 可以使用<code>OrderedDict</code>,<code>OrderedDict</code>会按照插入的顺序排除</p>
+
+<h3 id="toc_6">Counter</h3>
+
+<p>简单的计数器，也是<code>dict</code>的一个子类</p>
+
+<pre><code class="language-python">from collections import Counter
+c1=OrderedDict()
+for char in &quot;programming&quot;:
+    c1[char]=c1[char]+1
+print(c1)
+# Counter({&#39;r&#39;: 2, &#39;g&#39;: 2, &#39;m&#39;: 2, &#39;p&#39;: 1, &#39;o&#39;: 1, &#39;a&#39;: 1, &#39;i&#39;: 1, &#39;n&#39;: 1})
+</code></pre>
+
+<h2 id="toc_7">base64</h2>
+
+<p><code>base64</code>将3字节的数据编码为4字节,长度增加了33%,如果不足的话会用<code>0x00</code>在末尾补全，然后在末尾加同样数量的<code>=</code>标识，这样解码的时候会自动去掉</p>
+
+<p><code>Python</code>内置的有<code>base64</code>编码方法<br/>
+由于标准的base64编码后可能出现字符+和/ 不能在url中作为参数，因此可以受用<code>url safe</code>的base64，将+和/换位-和_</p>
+
+<pre><code class="language-python">import base64
+b64encodestr1=base64.b64encode(b&quot;binary\x00string&quot;)
+print(b64encodestr1) # b&#39;YmluYXJ5AHN0cmluZw==&#39;
+b64decodestr2=base64.b64decode(b64encodestr1)
+print(b64decodestr2) # b&#39;binary\x00string&#39;
+
+#urlsafe_b64encode
+base64encodestr2=base64.b64encode(b&quot;i\xb7\x1d\xfb\xef\xff&quot;)
+print(base64encodestr2) # b&#39;abcd++//&#39;
+base64urlsafeencode=base64.urlsafe_b64encode(b&quot;i\xb7\x1d\xfb\xef\xff&quot;)
+print(base64urlsafeencode) # b&#39;abcd--__&#39;
+</code></pre>
+
+<h2 id="toc_8">struct</h2>
+
+<p>python内置了<code>struct</code>模块来解决<code>bytes</code>和其它二进制数据类型的转换</p>
+
+<pre><code class="language-python">import struct
+struct1=struct.pack(&quot;&gt;I&quot;, 10240099)
+print(struct1) # b&#39;\x00\x9c@c&#39;
+
+struct2=struct.unpack(&quot;&gt;IH&quot;, b&quot;\xf0\xf0\xf0\xf0\x80\x80&quot;)
+print(struct2) # (4042322160, 32896)
+</code></pre>
+
+<p>参数中<code>&gt;</code>表示网络序的大端， I：4字节无符号整数  H：2字节无符号整数</p>
+
+<h2 id="toc_9">hashlib</h2>
+
+<p>python提供摘要算法,包括MD5 SHA1等</p>
+
+<p>MD5摘要</p>
+
+<pre><code class="language-python">import hashlib
+#md5()可以不加参数 然后update()内容 如果内容过多也可以多次 update
+md5=hashlib.md5(&quot;到付奥佛八奥保护管安排表佛八&quot;.encode(&quot;utf-8&quot;))
+md5.update(&quot;dddd&quot;.encode(&quot;utf-8&quot;))
+print(md5.hexdigest()) # a459918710ca186970b2ed69cedee466
+</code></pre>
+
+<p>SHA1摘要</p>
+
+<pre><code class="language-python">import hashlib
+
+sha1 = hashlib.sha1()
+sha1.update(&#39;how to use sha1 in &#39;.encode(&#39;utf-8&#39;))
+sha1.update(&#39;python hashlib?&#39;.encode(&#39;utf-8&#39;))
+print(sha1.hexdigest())
+</code></pre>
+
+<h2 id="toc_10">hmac</h2>
+
+<p>只是简单的摘要哈希的话，有被黑客破译的风险,这时候我们经常需要做加盐处理</p>
+
+<pre><code class="language-python">import hmac
+message=b&quot;Hello, world&quot;
+key=b&quot;secert&quot;
+h=hmac.new(key, message, digestmod=&quot;MD5&quot;)
+print(h.hexdigest())  # 4f05d03996e3c5c96ccde51100246253
+</code></pre>
+
+<h2 id="toc_11">itertools</h2>
+
+<p><code>itertools</code>提供了有用于操作迭代对象的函数</p>
+
+<pre><code class="language-python">import itertools
+# 创建几个 无限重复序列
+
+
+natuals=itertools.count(1) # 1 2 3 4 ....
+cs=itertools.cycle(&quot;ABc&quot;) # A B C A B C ...
+ns=itertools.repeat(&quot;A&quot;) # A A A A A A ...
+# 可以加第二个参数 指定重复次数
+ns=itertools.repeat(&quot;A&quot;, 3) # A A A
+
+</code></pre>
+
+<h3 id="toc_12">takewhile()</h3>
+
+<p>对于itertools无限序列,通常用<code>takewhile()</code>截取有用序列</p>
+
+<pre><code class="language-python">natuals1=itertools.count(1)
+result1=itertools.takewhile(lambda x : x&lt;4, natuals1)
+print(list(result1)) # [1, 2, 3]
+</code></pre>
+
+<h3 id="toc_13">chain()</h3>
+
+<p>chain()可以把一组迭代对象串联起来，形成一个更大的迭代器</p>
+
+<pre><code class="language-python">for c in itertools.chain(&#39;ABC&#39;, &#39;XYZ&#39;):
+     print(c)
+# 迭代效果：&#39;A&#39; &#39;B&#39; &#39;C&#39; &#39;X&#39; &#39;Y&#39; &#39;Z&#39;
+</code></pre>
+
+<h3 id="toc_14">groupby()</h3>
+
+<p>groupby()把迭代器中相邻的重复元素挑出来放在一起：</p>
+
+<pre><code class="language-python">for key, group in itertools.groupby(&#39;AAABBBCCAAA&#39;):
+     print(key, list(group))
+
+A [&#39;A&#39;, &#39;A&#39;, &#39;A&#39;]
+B [&#39;B&#39;, &#39;B&#39;, &#39;B&#39;]
+C [&#39;C&#39;, &#39;C&#39;]
+A [&#39;A&#39;, &#39;A&#39;, &#39;A&#39;]
+
+# 挑选规则实际上是通过函数完成的
+for key, group in itertools.groupby(&#39;AaaBBbcCAAa&#39;, lambda c: c.upper()):
+     print(key, list(group))
+
+A [&#39;A&#39;, &#39;a&#39;, &#39;a&#39;]
+B [&#39;B&#39;, &#39;B&#39;, &#39;b&#39;]
+C [&#39;c&#39;, &#39;C&#39;]
+A [&#39;A&#39;, &#39;A&#39;, &#39;a&#39;]
+</code></pre>
+
+<h2 id="toc_15">contextlib</h2>
+
+<p>对于读写文件我们已经使用过<code>with()</code>语句 其实只要实现了上下文管理都可以使用with语句</p>
+
+<h2 id="toc_16">urllib</h2>
+
+<p><code>urllib</code>内建模块提供了操作url功能</p>
+
+<h3 id="toc_17">get</h3>
+
+<h3 id="toc_18">POST</h3>
+
+<h2 id="toc_19">XML</h2>
+
+<p>操作XML通常有两种方法:DOM和SAX<br/><br/>
+DOM会把整个XML读入内存，可以解析遍历树的任何节点，缺点是占用内存大，解析慢<br/>
+SAX是流模式，边读边解析,占用内存小，解析快，缺点是需要自己处理事件<br/>
+通常选择SAX 因为DOM太耗内存</p>
+
+<pre><code class="language-python">from xml.parsers.expat import ParserCreate
+
+class DefaultSaxHandler(object):
+    def start_element(self, name, attrs):
+        print(&#39;sax:start_element: %s, attrs: %s&#39; % (name, str(attrs)))
+
+    def end_element(self, name):
+        print(&#39;sax:end_element: %s&#39; % name)
+
+    def char_data(self, text):
+        print(&#39;sax:char_data: %s&#39; % text)
+
+xml = r&#39;&#39;&#39;&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;ol&gt;
+    &lt;li&gt;&lt;a href=&quot;/python&quot;&gt;Python&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href=&quot;/ruby&quot;&gt;Ruby&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&#39;&#39;&#39;
+
+handler = DefaultSaxHandler()
+parser = ParserCreate()
+parser.StartElementHandler = handler.start_element
+parser.EndElementHandler = handler.end_element
+parser.CharacterDataHandler = handler.char_data
+parser.Parse(xml)
 </code></pre>
 
 <blockquote>
-<p><code>join()</code>方法可以等待子进程结束后再继续往下运行，通常用于进程间的同步。</p>
+<p>需要注意的是读取一大段字符串时，CharacterDataHandler可能被多次调用，所以需要自己保存起来，在EndElementHandler里面再合并。</p>
+
+<p>因为XML解析太复杂 建议你改用JSON</p>
 </blockquote>
 
-<h3 id="toc_1">Pool</h3>
+<h2 id="toc_20">HTMLParser</h2>
 
-<pre><code class="language-python">from multiprocessing import Pool
-import os, time, random
+<p>当需要解析HTML内容时，因为HTML的语法没有XML那么严格,所以不能用标准的<code>DOM</code>或<code>SAX</code>解析，python提供了<code>HTMLParser</code>来解析HTML</p>
 
-def long_time_task(name):
-    print(&#39;Run task %s (%s)...&#39; % (name, os.getpid()))
-    start = time.time()
-    time.sleep(random.random() * 3)
-    end = time.time()
-    print(&#39;Task %s runs %0.2f seconds.&#39; % (name, (end - start)))
+<pre><code class="language-python">from html.parser import HTMLParser
+from html.entities import name2codepoint
 
-if __name__==&#39;__main__&#39;:
-    print(&#39;Parent process %s.&#39; % os.getpid())
-    p = Pool(4) #设置同事可以执行4个进程
-    for i in range(5):
-        p.apply_async(long_time_task, args=(i,))
-    print(&#39;Waiting for all subprocesses done...&#39;)
-    p.close() # 调用close()之后就不能继续添加新的Process了
-    p.join()  # 对Pool对象调用join()会等待所有子进程执行完毕，在
-    print(&#39;All subprocesses done.&#39;)
-</code></pre>
+class MyHTMLParser(HTMLParser):
 
-<h3 id="toc_2">子进程</h3>
+    def handle_starttag(self, tag, attrs):
+        print(&#39;&lt;%s&gt;&#39; % tag)
 
-<p><code>subprocess</code>模块 允许我们创建子线程,连接其输入、输出、错误通道</p>
+    def handle_endtag(self, tag):
+        print(&#39;&lt;/%s&gt;&#39; % tag)
 
-<pre><code class="language-python">import subprocess
+    def handle_startendtag(self, tag, attrs):
+        print(&#39;&lt;%s/&gt;&#39; % tag)
 
-print(&#39;$ nslookup www.python.org&#39;)
-r = subprocess.call([&#39;nslookup&#39;, &#39;www.python.org&#39;])
-# 相当于在命令行执行  nslookup www.python.org
-print(&#39;Exit code:&#39;, r)
+    def handle_data(self, data):
+        print(data)
 
+    def handle_comment(self, data):
+        print(&#39;&lt;!--&#39;, data, &#39;--&gt;&#39;)
 
-# 子进程还需要输入，则可以通过communicate()方法输入：
-import subprocess
+    def handle_entityref(self, name):
+        print(&#39;&amp;%s;&#39; % name)
 
-print(&#39;$ nslookup&#39;)
-p = subprocess.Popen([&#39;nslookup&#39;], stdin=·, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-output, err = p.communicate(b&#39;set q=mx\npython.org\nexit\n&#39;)
-print(output.decode(&#39;utf-8&#39;))
-print(&#39;Exit code:&#39;, p.returncode)
+    def handle_charref(self, name):
+        print(&#39;&amp;#%s;&#39; % name)
 
-</code></pre>
-
-<h3 id="toc_3">进程间通信</h3>
-
-<p>进程间通信，可以通过<code>mutiprocessing</code>提供的<code>Queue</code>和<code>pipes</code>等方式交换数据</p>
-
-<pre><code class="language-python"># 一个queue 可以往里 读写数据 实现数据交换共享
-
-from multiprocessing import Process, Queue
-import os, time, random
-
-# 写数据进程执行的代码:
-def write(q):
-    print(&#39;Process to write: %s&#39; % os.getpid())
-    for value in [&#39;A&#39;, &#39;B&#39;, &#39;C&#39;]:
-        print(&#39;Put %s to queue...&#39; % value)
-        q.put(value)
-        time.sleep(random.random())
-
-# 读数据进程执行的代码:
-def read(q):
-    print(&#39;Process to read: %s&#39; % os.getpid())
-    while True:
-        value = q.get(True)
-        print(&#39;Get %s from queue.&#39; % value)
-
-if __name__==&#39;__main__&#39;:
-    # 父进程创建Queue，并传给各个子进程：
-    q = Queue()
-    pw = Process(target=write, args=(q,))
-    pr = Process(target=read, args=(q,))
-    # 启动子进程pw，写入:
-    pw.start()
-    # 启动子进程pr，读取:
-    pr.start()
-    # 等待pw结束:
-    pw.join()
-    # pr进程里是死循环，无法等待其结束，只能强行终止:
-    pr.terminate()
+parser = MyHTMLParser()
+parser.feed(&#39;&#39;&#39;&lt;html&gt;
+&lt;head&gt;&lt;/head&gt;
+&lt;body&gt;
+&lt;!-- test html parser --&gt;
+    &lt;p&gt;Some &lt;a href=\&quot;#\&quot;&gt;html&lt;/a&gt; HTML&amp;nbsp;tutorial...&lt;br&gt;END&lt;/p&gt;
+&lt;/body&gt;&lt;/html&gt;&#39;&#39;&#39;)
 </code></pre>
 
 <blockquote>
-<p>父进程所有Python对象都必须通过pickle序列化再传到子进程去</p>
+<p><code>feed()</code>方法可以多次调用，也就是不一定一次把整个HTML字符串都塞进去，可以一部分一部分塞进去。</p>
+
+<p>特殊字符有两种，一种是英文表示的<code>&amp;nbsp</code>;，一种是数字表示的<code>&amp;#1234</code>;，这两种字符都可以通过Parser解析出来。</p>
 </blockquote>
-
-<h2 id="toc_4">多线程</h2>
-
-<p>我们通常使用<code>threading</code>模块操作线程</p>
-
-<p>启动线程: 就是将要执行的任务任务函数传入创建<code>Thread</code>实例，然后<code>start()</code>开始执行</p>
-
-<pre><code class="language-python">import time, threading
-
-# 新线程执行的代码:
-def loop():
-    print(&#39;thread %s is running...&#39; % threading.current_thread().name)
-    n = 0
-    while n &lt; 5:
-        n = n + 1
-        print(&#39;thread %s &gt;&gt;&gt; %s&#39; % (threading.current_thread().name, n))
-        time.sleep(1)
-    print(&#39;thread %s ended.&#39; % threading.current_thread().name)
-
-print(&#39;thread %s is running...&#39; % threading.current_thread().name)
-#
-t = threading.Thread(target=loop, name=&#39;LoopThread&#39;)
-t.start()
-t.join()
-print(&#39;thread %s ended.&#39; % threading.current_thread().name)
-</code></pre>
-
-<blockquote>
-<p><code>Python</code>的<code>threading</code>模块有个<code>current_thread()</code>函数，它永远返回当前线程的实例。主线程实例的名字叫<code>MainThread</code>，子线程的名字在创建时指定，我们用<code>LoopThread</code>命名子线程。名字仅仅在打印时用来显示，完全没有其他意义，如果不起名字Python就自动给线程命名为Thread-1，Thread-2</p>
-</blockquote>
-
-<h3 id="toc_5">Lock</h3>
-
-<p>避免多线程对数据读写的冲突，需要lock</p>
-
-<pre><code class="language-python">balance = 0
-lock = threading.Lock()
-
-def run_thread(n):
-    for i in range(100000):
-        # 先要获取锁:
-        lock.acquire() #当有多个线程执行时，只有一个县城能成功获取锁
-        try:
-            # 放心地改吧:
-            change_it(n)
-        finally:
-            # 改完了一定要释放锁:
-            lock.release()
-</code></pre>
-
-<h3 id="toc_6">多核问题</h3>
-
-<p>Python由于历史遗留问题,同一进程的不同线程其实只能用到一个cpu核,即使启动了多个线程</p>
-
-<blockquote>
-<p>Python的线程虽然是真正的线程，但解释器执行代码时，有一个GIL锁：Global Interpreter Lock，任何Python线程执行前，必须先获得GIL锁，然后，每执行100条字节码，解释器就自动释放GIL锁，让别的线程有机会执行。这个GIL全局锁实际上把所有线程的执行代码都给上了锁，所以，多线程在Python中只能交替执行，即使100个线程跑在100核CPU上，也只能用到1个核。</p>
-
-<p>Python虽然不能利用多线程实现多核任务，但可以通过多进程实现多核任务。多个Python进程有各自独立的GIL锁，互不影响。</p>
-</blockquote>
-
-<h2 id="toc_7">ThreadLocal</h2>
-
-<p>多线程中，为不同线程绑定不同数据时,可以使用<code>ThreadLocal</code></p>
-
-<pre><code class="language-python">import threading
-
-# 创建全局ThreadLocal对象:
-local_school = threading.local()
-
-def process_student():
-    # 获取当前线程关联的student:
-    std = local_school.student
-    print(&#39;Hello, %s (in %s)&#39; % (std, threading.current_thread().name))
-
-def process_thread(name):
-    # 绑定ThreadLocal的student:
-    local_school.student = name
-    process_student()
-
-t1 = threading.Thread(target= process_thread, args=(&#39;Alice&#39;,), name=&#39;Thread-A&#39;)
-t2 = threading.Thread(target= process_thread, args=(&#39;Bob&#39;,), name=&#39;Thread-B&#39;)
-t1.start()
-t2.start()
-t1.join()
-t2.join()
-</code></pre>
-
-<p>每个线程可以读写<code>ThreadLocal</code>对象的属性,但是互不影响，只操作自己线程对应值，互不干扰，也不用管理锁的问题</p>
-
-<blockquote>
-<p>一个ThreadLocal变量虽然是全局变量，但每个线程都只能读写自己线程的独立副本，互不干扰。ThreadLocal解决了参数在一个线程中各个函数之间互相传递的问题。</p>
-</blockquote>
-
-<h3 id="toc_8">分布式进程</h3>
-
-<p>在<code>Thread</code>和<code>Process</code>中应该优先选择<code>Process</code>，因为其更稳定，而且可以分布到多台机器上，而<code>Thread</code>只能分不到同一台机器的多个CPU上</p>
-
-<p>在<code>mutiprocessing</code>的子模块<code>manager</code>支持把多进程分布到多台机器</p>
-
-<p>一个服务进程可以作为调度者，将任务分布到其他多个进程中，依靠网络通信。由于managers模块封装很好，不必了解网络通信的细节，就可以很容易地编写分布式多进程程序。</p>
 
                         
                       </div>
@@ -359,7 +480,7 @@ t2.join()
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/8/1</span>
+                    <span class="date">2018/8/3</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='Python.html'>Python</a></span>
@@ -456,31 +577,31 @@ t2.join()
 	      
 		      
 			      <li class="post">
-			        <a href="15331071952550.html">进程&&线程</a>
+			        <a href="15350923380421.html">CGColor</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15329386758024.html">IO编程</a>
+			        <a href="15350771796806.html">CGColorSpace</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15325716345284.html">错误、调试、测试</a>
+			        <a href="15350068830702.html">CGBlendMode</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324890369623.html">面对对象高级编程</a>
+			        <a href="15332875866545.html">常见内置模块</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15324145349319.html">面对对象编程</a>
+			        <a href="15331955872244.html">常用第三方模块</a>
 			      </li>
 		     
 		  
