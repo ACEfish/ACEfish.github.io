@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,176 +114,543 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14861705181412.html">
+                <a class="clearlink" href="15020961612430.html">
                 
-                  <h1>小知识</h1>
+                  <h1>构造过程</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h3 id="toc_0">1. 判断字符character是不是英文字母 是的话返回1 否则返回0</h3>
+                        	<p>在类、结构体、枚举实例可用前必须执行<strong>构造过程</strong>，用来设置存储属性的初始值和其他的设置或初始化任务</p>
 
-<pre><code class="language-text">isalpha(chanracter)
+<p>通过定义<strong>构造器</strong>来实现构造过程，构造器是用来创建特定类型新实例的特殊方法。</p>
+
+<blockquote>
+<p>与OC不同,swift的构造器无序返回值,只需保证实例在第一次使用前完成正确的初始化</p>
+</blockquote>
+
+<p><strong>类的实例</strong>也可以通过定义<strong>析构器</strong>在实例释放之前执行特定的清除工作</p>
+
+<h2 id="toc_0">存储属性的初始化赋值</h2>
+
+<p>类和结构体在创建实例时,存储属性必须有合适的值<br/>
+可以在构造器中为存储型属性赋值,也可以在定义属性值时设置默认值,这两种方法设置存储属性值时,值是被直接设置的,不会触发任何属性观察者</p>
+
+<h3 id="toc_1">构造器</h3>
+
+<pre><code class="language-swift">//最简单形式
+init() {
+    // 在此处执行构造过程
+}
 </code></pre>
 
-<h3 id="toc_1">2. 判断一个字符串是否全为空格</h3>
+<h3 id="toc_2">默认属性值</h3>
 
-<pre><code class="language-object-c">[[string stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]] length]==0
+<pre><code class="language-swift">struct Fahrenheit {
+    var temperature = 32.0
+}
 </code></pre>
 
-<h3 id="toc_2">3. 数组排序方法</h3>
+<h2 id="toc_3">自定义构造过程</h2>
 
-<pre><code class="language-objectivec">NSSortDescriptor *timeDescriptor = [[NSSortDescriptor alloc] initWithKey:@&quot;creatTime&quot; ascending:NO];
-NSArray *inviteNoticeArray = [noticeRecordModelArray sortedArrayUsingDescriptors:@[timeDescriptor]];
+<h3 id="toc_4">构造参数</h3>
+
+<p>自定义构造过程，在定义中提供<strong>构造参数</strong></p>
+
+<pre><code class="language-swift">struct Celsius {
+    var temperatureInCelsius: Double
+    init(fromFahrenheit fahrenheit: Double) {
+        temperatureInCelsius = (fahrenheit - 32.0) / 1.8
+    }
+    init(fromKelvin kelvin: Double) {
+        temperatureInCelsius = kelvin - 273.15
+    }
+}
+let boilingPointOfWater = Celsius(fromFahrenheit: 212.0)
+// boilingPointOfWater.temperatureInCelsius 是 100.0
+let freezingPointOfWater = Celsius(fromKelvin: 273.15)
+// freezingPointOfWater.temperatureInCelsius 是 0.0
 </code></pre>
 
-<h3 id="toc_3">4. 自动调节字体大小</h3>
+<h3 id="toc_5">参数的内部名称和外部名称</h3>
 
-<pre><code class="language-text">`adjustsFontSizeToFitWidth`这个属性的意思是根据UILabel的宽度来自动适应字体大小，但要注意的是，这个属性不会让字体变大，只会缩小，所以开始的时候，可以设置字体fontSize大一点。
+<p>构造器并没有可区分的名字,都为<code>init</code>，因此需要构造器中的参数名和类型来确定应该被调用的构造器,因此外部名称很重要</p>
+
+<pre><code class="language-swift">struct Color {
+    let red, green, blue: Double
+    init(red: Double, green: Double, blue: Double) {
+        self.red = red
+        self.green = green
+        self.blue = blue
+    }
+    init(white: Double) {
+        red = white
+        green = white
+        blue = white
+    }
+}
+
+let magenta = Color(red: 1.0, green: 0.0, blue: 1.0)
+let halfGray = Color(white: 0.5)
+
+//只要构造器定义了外部名称就必须使用,否则报错
+let veryGreen = Color(0.0, 1.0, 0.0)//报编译时错误，需要外部名称
 </code></pre>
 
-<h3 id="toc_4">5. %s 为c语言字符串的输入输出控制格式</h3>
+<h3 id="toc_6">不带外部名的构造器参数</h3>
 
-<h3 id="toc_5">6. NSString 转化为 char *</h3>
+<p>使用下划线来<code>_</code>来不为构造器某个参数提供外部名称</p>
 
-<pre><code class="language-text">```objc
-NSString * str＝ @“Test”;
-const char * a =[str UTF8String];
-```
+<pre><code class="language-swift">struct Celsius {
+    var temperatureInCelsius: Double
+    init(_ celsius: Double){
+        temperatureInCelsius = celsius
+    }
+}
+
+let bodyTemperature = Celsius(37.0)
+// bodyTemperature.temperatureInCelsius 为 37.0
 </code></pre>
 
-<h3 id="toc_6">7. 按属性字段排序</h3>
+<p>此时构造器意图明确 可以不需要外部参数名称</p>
 
-<pre><code class="language-objectivec">    NSSortDescriptor *timeDescriptor = [[NSSortDescriptor alloc] initWithKey:@&quot;createTime&quot; ascending:NO];
-    NSArray *noticesArray = [[UserDataManager sharedInstance].userNotifyInfoArray sortedArrayUsingDescriptors:@[timeDescriptor]];
+<h3 id="toc_7">可选属性类型</h3>
+
+<p>在类型中包含一个逻辑上允许为空的存储型属性,要将其定义为<code>可选类型</code>,可选类型属性在初始化时自动初始化为<code>nil</code></p>
+
+<pre><code class="language-swift">class SurveyQuestion {
+    var text: String
+    var response: String?
+    init(text: String) {
+        self.text = text
+    }
+    func ask() {
+        print(text)
+    }
+}
+let cheeseQuestion = SurveyQuestion(text: &quot;Do you like cheese?&quot;)
+cheeseQuestion.ask()
+// 打印 &quot;Do you like cheese?&quot;
+cheeseQuestion.response = &quot;Yes, I do like cheese.&quot;
 </code></pre>
 
-<h3 id="toc_7">8. auyolayout拉伸压缩</h3>
+<p>定义一个可选类型<code>response</code>因为答案在问题之前是无法确定,所以设为<code>String?</code>类型，在实例初始化是,自动赋值为<code>nil</code></p>
 
-<pre><code class="language-text">`Content Hugging Priority`(控件抗拉伸优先级) 优先级越高越不容易被拉伸，默认是250。
-`Content Compression Resistance Priority`(控件抗压缩优先级) 和拉伸一样，优先级越高的越不容易和压缩，默认是750。
+<h3 id="toc_8">构造过程中常量属性的修改</h3>
+
+<p>在构造过程中任意时间点都可以给常量属性指定值,直到构造过程结束为一个确定的值,一旦常量属性赋值就永不能更改</p>
+
+<blockquote>
+<p>对于类的实例来说，它的常量属性只能在定义它的类的构造过程中修改；不能在子类中修改。</p>
+</blockquote>
+
+<pre><code class="language-swift">class SurveyQuestion {
+    let text: String
+    var response: String?
+    init(text: String) {
+        self.text = text
+    }
+    func ask() {
+        print(text)
+    }
+}
 </code></pre>
 
-<h3 id="toc_8">9. 从字符串中获取类名</h3>
+<h2 id="toc_9">默认构造器</h2>
 
-<p>NSClassFromString(@&quot;UIView&quot;)</p>
+<p>如果结构体或者类的所有属性都有默认值,那么<code>Swift</code>会提供一个默认构造器,将所有值设置为默认值</p>
 
-<h3 id="toc_9">10. 视图点击拦截</h3>
-
-<p>对于一个视图遮盖另外一个视图,如果上面视图是hidden或者alpha值为0是可以点击到后面的视图,但是如果上面的视图是clearColor 那么是点不到后面的视图的</p>
-
-<h3 id="toc_10">11. CGRectInset、 CGRectOffset</h3>
-
-<pre><code class="language-objectivec">    //该结构体的应用是以原rect为中心，再参考dx，dy，进行缩放或者放大。
-    CGRect CGRectInset (
-        CGRect rect,
-        CGFloat dx,
-        CGFloat dy
-    );
+<pre><code class="language-swift">class ShoppingListItem {
+    var name: String?
+    var quantity = 1
+    var purchased = false
+}
+var item = ShoppingListItem()
 </code></pre>
 
-<pre><code class="language-objectivec">    // 相对于源矩形原点rect（左上角的点）沿x轴和y轴偏移, 再rect基础上沿x轴和y轴偏移
-    CGRect CGRectOffset(
-　 　 CGRect rect,
-　　  CGFloat dx,
-　 　 CGFloat dy
-    );
+<h3 id="toc_10">结构体的逐一成员构造器</h3>
+
+<p>在结构体中,如果没有提供自定义构造器，会自动获得逐一成员构造器</p>
+
+<pre><code class="language-swift">struct Size {
+    var width = 0.0, height = 0.0
+}
+let twoByTwo = Size(width: 2.0, height: 2.0)
 </code></pre>
 
-<h3 id="toc_11">12. 无限重复动画</h3>
+<h2 id="toc_11"><strong>值类型</strong>的构造器代理</h2>
 
-<pre><code class="language-objectivec">//我们可以通过指定这个“options:UIViewAnimationOptionRepeat”实现无限重复动画
-//注意这个‘delay’是动画开始前的延迟而不是动画重复之间的延时,动画重复之间的延时这里是没法设置的
-[UIView animateWithDuration:offset/50 delay:2 options:UIViewAnimationOptionRepeat animations:^{
-        self.firstLabel.transform = CGAffineTransformMakeTranslation(-offset, 0);
-        self.secondLabel.transform = CGAffineTransformMakeTranslation(-offset, 0);
-    } completion:^(BOOL finished) {
-        self.firstLabel.transform = CGAffineTransformIdentity;
-        self.secondLabel.transform = CGAffineTransformIdentity;
-    }];
+<p>构造器可以通过调用其他构造器来完成实例的部分构造过程,即<strong>构造器代理</strong></p>
+
+<p>对于值类型不支持继承,所以构造代理只能代理自己的其他构造器,对于类类型可以继承,需要保证其所有继承的存储型属性在构造时也能正确的初始化</p>
+
+<p>值类型,可以使用也只能用<code>self.init</code>在自定义构造器中引用同类型的其他构造器</p>
+
+<p>值类型定义一个自定义构造器,将无法访问默认构造器(结构体也无法访问逐一构造器),防止在给值类型增加一个复杂的自定义构造器后仍然有人使用自动生成的构造器</p>
+
+<blockquote>
+<p>可以通过将自定义的构造器写在扩展中,而不是将值类型写在原始定义中,来使可以通过默认构造器，逐一成员构造器,以及自定义构造器来创建实例</p>
+</blockquote>
+
+<h2 id="toc_12">类的继承和构造过程</h2>
+
+<p>类里面的所有存储属性,包括所有继承自父类的属性，都必须在构造过程中设置初始值</p>
+
+<p>类类型的两种构造器:  <strong>指定构造器</strong> <strong>便利构造器</strong></p>
+
+<h3 id="toc_13">指定构造器和便利构造器</h3>
+
+<p>指定构造器初始化类中提供的所有属性,并根据父类链向上条用父类构造器实现父类的初始化<br/>
+每个类都必须至少有一个指定构造器,可以通过继承父类的指定构造器来满足条件;</p>
+
+<p>便利构造器是次要、辅助的构造器，定义便利构造器来调用同一个类中的指定构造器，并为其参数提供默认值。你也可以定义便利构造器来创建一个特殊用途或特定输入值的实例。</p>
+
+<h3 id="toc_14">指定构造器、便利构造器语法</h3>
+
+<p>类的指定构造器语法与值类型简单构造器相同:</p>
+
+<pre><code class="language-swift">init(parameters) {
+    statements
+}
 </code></pre>
 
-<h3 id="toc_12">13. KVC</h3>
+<p>便利构造器在<code>init</code>关键字前加<code>convenience</code>关键字</p>
 
-<p>所有的<code>NSObject</code>子类实现了KVC（键-值-编码）协议，可以用 <code>- setValue:forKey:</code>和<code>-valueForKey:</code>方法来存取属性，但是这个类需要有与之对应的属性.。但是<code>CAAnimation</code> 有一个不同的性能：它更像一个<code>NSDictionary</code>，可以让你随意设置键值对，即使和你使用的动画类所声明的属性并不匹配。</p>
-
-<h3 id="toc_13">14.改变push动画效果</h3>
-
-<p>[self.navigationController.view.layer addAnimation:transition forKey:nil];</p>
-
-<h3 id="toc_14">15. 设置cell的accessView</h3>
-
-<p>设置cell的 accessView相当于把cell变短了<br/>
-<img src="media/14861705181412/14918746728664.jpg" alt=""/></p>
-
-<h3 id="toc_15">设置tableView分割线颜色</h3>
-
-<p>tableView.separatorColor = ICColorOfDividingLine;</p>
-
-<h3 id="toc_16">Json格式化option</h3>
-
-<p>//option为0 解析出来的字符串是没有被格式化的即没有回车换行<br/>
-[NSJSONSerialization dataWithJSONObject:self options:0 error:nil]</p>
-
-<p>//option为NSJSONWritingPrettyPrinted 解析出来的字符串是被格式化的即存在回车换行方便阅读<br/>
-[NSJSONSerialization dataWithJSONObject:self options:NSJSONWritingPrettyPrinted error:nil]</p>
-
-<h3 id="toc_17">16.retain和strong</h3>
-
-<p><img src="media/14861705181412/14949171761445.jpg" alt=""/></p>
-
-<h3 id="toc_18">17.逆序枚举</h3>
-
-<pre><code class="language-objectivec">//1.原始数组  
-NSMutableArray *array = [NSMutableArray arrayWithObjects:@&quot;1&quot;,@&quot;2&quot;,@&quot;3&quot;,nil];  
-//2.倒序的数组  
-NSArray* reversedArray = [[array reverseObjectEnumerator] allObjects]; 
+<pre><code class="language-swift">convenience init(parameters) {
+    statements
+}
 </code></pre>
 
-<pre><code class="language-objectivec">NSLog(@&quot;------- 枚举器法---------&quot;);  
-                                        //ObjectEnumerator        正序  
-                                        //reverseObjectEnumerator 逆序  
-        NSEnumerator *enumerator = [array reverseObjectEnumerator];  
-        id obj = nil;  //不确定数组里面具体对象的类型，所以定义成id 类型指针  
-        while (obj = [enumerator nextObject]) { //通过枚举器，取数组里面的每一个元素  
-            NSLog(@&quot;%@&quot;, obj);                  //将元素赋给 obj， 直到数组结束  
-                                                //取到的结果为nil，退出while  
-        }  
+<h3 id="toc_15">类的构造器代理规则</h3>
+
+<p>构造器之间代理调用限制:</p>
+
+<ol>
+<li>指定构造器必须调用父类的指定构造器</li>
+<li>便利构造器必须调用同类中定义的其它构造器</li>
+<li>便利构造器必须最终导致一个指定构造器被调用</li>
+</ol>
+
+<h3 id="toc_16">两段式构造过程</h3>
+
+<p>构造过程的两个阶段:<br/>
+第一阶段: 存储属性指定一个初始值<br/>
+第二阶段: 进一步定制它们的存储型属性</p>
+
+<p>可以防止属性值在初始化前被访问和被另外的构造器意外赋其他值</p>
+
+<p>两段式构造过程的构造流程:</p>
+
+<p>阶段1:</p>
+
+<ul>
+<li>某个指定构造器或便利构造器被调用。</li>
+<li>完成新实例内存的分配，但此时内存还没有被初始化。</li>
+<li>指定构造器确保其所在类引入的所有存储型属性都已赋初值。存储型属性所属的内存完成初始化。</li>
+<li>指定构造器将调用父类的构造器，完成父类属性的初始化。</li>
+<li>这个调用父类构造器的过程沿着构造器链一直往上执行，直到到达构造器链的最顶部</li>
+<li>当到达了构造器链最顶部，且已确保所有实例包含的存储型属性都已经赋值，这个实例的内存被认为已经完全初始化，阶段1结束</li>
+</ul>
+
+<p>阶段2：</p>
+
+<ul>
+<li>从顶部构造器链一直往下，每个构造器链中类的指定构造器都有机会进一步定制实例。构造器此时可以访问<code>self</code>、修改它的属性并调用实例方法等等</li>
+<li>最终，任意构造器链中的便利构造器可以有机会定制实例和使用 self</li>
+</ul>
+
+<h3 id="toc_17">构造器的继承和重写</h3>
+
+<p>与<code>OC</code>不同,<strong><code>swift</code>的子类默认情况下不继承父类构造器</strong>，以防止父类的简单构造器被一个更精细的子类继承，并被错误地用来创建子类的实例</p>
+
+<p>要在子类中提供和父类相同指定构造器时,需要重写父类的这个指定构造器,因此必须在子类构造器前加上<code>override</code>修饰符，即使重写的是系统提供的默认构造器,也需要带上<code>override</code></p>
+
+<blockquote>
+<p>重写一个父类的指定构造器时，你总是需要写<code>override</code>修饰符，即使你的子类将父类的指定构造器重写为了便利构造器</p>
+</blockquote>
+
+<p>而在子类中写一个和父类相同的便利构造器,因为子类不能直接调用父类的便利构造器,因此并未对其进行重写，也不需要加上<code>override</code>前缀</p>
+
+<pre><code class="language-swift">class Vehicle {
+    var numberOfWheels = 0
+    var description: String {
+        return &quot;\(numberOfWheels) wheel(s)&quot;
+    }
+}
 </code></pre>
 
-<h3 id="toc_19">18.大端小端</h3>
+<p>因为存储属性有默认值,因此会自动获得一个默认构造器</p>
 
-<p>对于iPhone采用的是小端模式</p>
+<pre><code class="language-swift">class Bicycle: Vehicle {
+    override init() {
+        super.init()//可以确保继承的属性 numberOfWheels 能被 Vehicle 类初始化
+        numberOfWheels = 2
+    }
+}
+//子类可以在初始化时修改继承来的变量属性，但是不能修改继承来的常量属性。
+</code></pre>
 
-<p>补充:<br/>
-<code>Little endian</code>和<code>Big endian</code><br/>
-上一节已经提到，<code>Unicode</code>码可以采用<code>UCS-2</code>格式直接存储。以汉字&quot;严&quot;为例，<code>Unicode</code>码是4E25，需要用两个字节存储，一个字节是4E，另一个字节是25。存储的时候，4E在前，25在后，就是Big endian方式；25在前，4E在后，就是Little endian方式。<br/>
-这两个古怪的名称来自英国作家斯威夫特的《格列佛游记》。在该书中，小人国里爆发了内战，战争起因是人们争论，吃鸡蛋时究竟是从大头(Big-Endian)敲开还是从小头(Little-Endian)敲开。为了这件事情，前后爆发了六次战争，一个皇帝送了命，另一个皇帝丢了王位。<br/>
-因此，第一个字节在前，就是&quot;大头方式&quot;（Big endian），第二个字节在前就是&quot;小头方式&quot;（Little endian）。<br/>
-那么很自然的，就会出现一个问题：计算机怎么知道某一个文件到底采用哪一种方式编码？<br/>
-Unicode规范中定义，每一个文件的最前面分别加入一个表示编码顺序的字符，这个字符的名字叫做&quot;零宽度非换行空格&quot;（ZERO WIDTH NO-BREAK SPACE），用FEFF表示。这正好是两个字节，而且FF比FE大1。<br/>
-如果一个文本文件的头两个字节是FE FF，就表示该文件采用大头方式；如果头两个字节是FF FE，就表示该文件采用小头方式。</p>
+<h3 id="toc_18">构造器的自动继承</h3>
 
-<h3 id="toc_20">19.图片呈现过程</h3>
+<p>默认子类不继承父类构造器,但是如果满足特定条件是可以被自动继承的</p>
 
-<p>1.初始化阶段：从磁盘初始化图片，生成一个未解压缩的 UIImage 对象；<br/>
-2.解压缩阶段:UIImage 对象进行解压缩<br/>
-3.绘制阶段:绘制到屏幕上<br/>
-图片解压缩的过程其实就是将图片的二进制数据转换成像素数据的过程</p>
+<p>如果为<strong>子类引用的新属性都提供了默认值</strong>:</p>
 
-<h3 id="toc_21">20.更改视图frame 和 设置transform 进行动画的区别</h3>
+<ol>
+<li>如果子类没有定义任何指定构造器,将自动继承<strong>所有父类</strong>的指定构造器</li>
+<li>如果子类提供了所有父类指定构造器的实现——无论是通过规则1继承过来的，还是提供了自定义实现——它将自动继承所有父类的便利构造器</li>
+</ol>
 
-<p>对于一个视图 我们更改其frame来做动画 不论子视图是否与其有约束关系 那么子视图frame是不会改变的,即子视图是不会跟着做动画的</p>
+<h3 id="toc_19">指定构造器和便利构造器实践</h3>
 
-<p>而用transform的话 不论子视图是否与其有约束关系,子视图是会随着其一起变化的</p>
+<pre><code class="language-swift">class Food {
+    var name: String
+    init(name: String) {
+        self.name = name
+    }
+    convenience init() {
+        self.init(name: &quot;[Unnamed]&quot;)
+    }
+}
 
-<h3 id="toc_22">21.运算符重载</h3>
+let namedMeat = Food(name: &quot;Bacon&quot;)
+// namedMeat 的名字是 &quot;Bacon”
+let mysteryMeat = Food()
+// mysteryMeat 的名字是 [Unnamed]
+</code></pre>
 
-<p>运算符重载，就是对已有的运算符重新进行定义，赋予其另一种功能，以适应不同的数据类型。</p>
+<pre><code class="language-swift">class RecipeIngredient: Food {
+    var quantity: Int
+    init(name: String, quantity: Int) {
+        self.quantity = quantity
+        super.init(name: name)
+    }
+    //便利构造器重写了父类的指定构造器
+    override convenience init(name: String) {
+        self.init(name: name, quantity: 1)
+    }
+}
+let oneMysteryItem = RecipeIngredient() //会继承父类的便利构造器
+let oneBacon = RecipeIngredient(name: &quot;Bacon&quot;)
+let sixEggs = RecipeIngredient(name: &quot;Eggs&quot;, quantity: 6)
+</code></pre>
 
-<h3 id="toc_23">22.unicode utf-8</h3>
+<pre><code class="language-swift">class ShoppingListItem: RecipeIngredient {
+    var purchased = false
+    var description: String {
+        var output = &quot;\(quantity) x \(name)&quot;
+        output += purchased ? &quot; ?&quot; : &quot; ?&quot;
+        return output
+    }
+}
+/**
+    子类引用的属性都提供了默认值,并且没有自定义构造器,将自动继承所有父类中指定和便利
+    构造器
+*/
+</code></pre>
 
-<p>已知&quot;严&quot;的unicode是4E25（100111000100101），根据上表，可以发现4E25处在第三行的范围内（0000 0800-0000 FFFF），因此&quot;严&quot;的UTF-8编码需要三个字节，即格式是&quot;1110xxxx 10xxxxxx 10xxxxxx&quot;。然后，从&quot;严&quot;的最后一个二进制位开始，依次从后向前填入格式中的x，多出的位补0。这样就得到了，&quot;严&quot;的UTF-8编码是&quot;11100100 10111000 10100101&quot;，转换成十六进制就是E4B8A5。</p>
+<h2 id="toc_20">可失败构造器</h2>
+
+<p>如果类、结构体、枚举类型对象在构造时可能会失败,则为其定义一个<strong>可失败构造器</strong></p>
+
+<p>可失败构造器通过在<code>init</code>关键字后添加<code>?</code></p>
+
+<p>注意:<br/>
+可失败构造器的参数名和参数类型不能与其他非可失败构造器参数名及参数类型相同</p>
+
+<p>可失败构造器创建自身类型的可选类型对象，构造器并不支持返回值,我们在构造器方法中通过<code>return nil</code>来表示构造失败，</p>
+
+<pre><code class="language-swift">struct Animal {
+    let species: String
+    init?(species: String) {
+        if species.isEmpty { return nil }
+        self.species = species
+    }
+}
+
+let anonymousCreature = Animal(species: &quot;&quot;)
+// anonymousCreature 的类型是 Animal?, 而不是 Animal
+if anonymousCreature == nil {
+    print(&quot;The anonymous creature could not be initialized&quot;)
+}
+// 打印 &quot;The anonymous creature could not be initialized&quot;
+</code></pre>
+
+<h3 id="toc_21">枚举类型的可失败构造器</h3>
+
+<p>通过提供的参数来获取特定的枚举成员,如果参数无法匹配任何枚举成员,则构造失败</p>
+
+<pre><code class="language-swift">enum TemperatureUnit {
+    case Kelvin, Celsius, Fahrenheit
+    init?(symbol: Character) {
+        switch symbol {
+        case &quot;K&quot;:
+            self = .Kelvin
+        case &quot;C&quot;:
+            self = .Celsius
+        case &quot;F&quot;:
+            self = .Fahrenheit
+        default:
+            return nil
+        }
+    }
+}
+</code></pre>
+
+<h3 id="toc_22">带原始值的枚举类型可失败构造器</h3>
+
+<p>带原始值的枚举类型会自带可失败构造器 <code>init?(rawValue:)</code>，参数<code>rawvalue</code>的和枚举类型原始值类型相同,如果能和枚举成员原始值匹配则构造响应枚举成员,否则构造失败</p>
+
+<pre><code class="language-swift">enum TemperatureUnit: Character {
+    case Kelvin = &quot;K&quot;, Celsius = &quot;C&quot;, Fahrenheit = &quot;F&quot;
+}
+</code></pre>
+
+<h3 id="toc_23">构造失败的传递</h3>
+
+<p>类，结构体，枚举的可失败构造器可以横向代理到类型中的其他可失败构造器，也能向上代理到父类可失败构造器,如果在代理的其他可失败构造器触发构造失败，构造过程终止,接下来构造代码不执行</p>
+
+<pre><code class="language-swift">class Product {
+    let name: String
+    init?(name: String) {
+        if name.isEmpty { return nil }
+        self.name = name
+    }
+}
+class CartItem: Product {
+    let quantity: Int
+    init?(name: String, quantity: Int) {
+        if quantity &lt; 1 { return nil }
+        self.quantity = quantity
+        super.init(name: name)
+    }
+}
+//尝试用空name初始化CarItem导致父类构造过程失败
+if let oneUnnamed = CartItem(name: &quot;&quot;, quantity: 1) {
+    print(&quot;Item: \(oneUnnamed.name), quantity: \(oneUnnamed.quantity)&quot;)
+} else {
+    print(&quot;Unable to initialize one unnamed product&quot;)
+}
+// 打印 &quot;Unable to initialize one unnamed product”
+
+</code></pre>
+
+<h3 id="toc_24">可失败构造器重写</h3>
+
+<p>可以在子类中重写父类的可失败构造器。或者你也可以用子类的非可失败构造器重写一个父类的可失败构造器,但是不能用可失败构造器重写非可失败构造器</p>
+
+<pre><code class="language-swift">class Document {
+    var name: String?
+    // 该构造器创建了一个 name 属性的值为 nil 的 document 实例
+    init() {}
+    // 该构造器创建了一个 name 属性的值为非空字符串的 document 实例
+    init?(name: String) {
+        self.name = name
+        if name.isEmpty { return nil }
+    }
+}
+
+class AutomaticallyNamedDocument: Document {
+    override init() {
+        super.init()
+        self.name = &quot;[Untitled]&quot;
+    }
+    //用非可失败构造器 init(name:) 重写了父类的可失败构造器 init?(name:)
+    override init(name: String) {
+        super.init()
+        if name.isEmpty {
+            self.name = &quot;[Untitled]&quot;
+        } else {
+            self.name = name
+        }
+    }
+}
+
+//或者可以写为
+
+class UntitledDocument: Document {
+    override init() {
+    //通过强制解包调用父类的可失败构造器
+        super.init(name: &quot;[Untitled]&quot;)!
+    }
+}
+</code></pre>
+
+<h3 id="toc_25">可失败构造器 init!</h3>
+
+<p>可以通过在<code>init</code>后加上<code>!</code>定义一个可失败构造器，会构造一个对应类型的隐式解包可选类型对象</p>
+
+<p>可以在<code>init?</code>中代理到<code>init!</code>，反之亦然。你也可以用<code>init?</code>重写<code>init!</code>，反之亦然。你还可以用 <code>init</code>代理到<code>init!</code>，不过，一旦<code>init!</code>构造失败，则会触发一个断言</p>
+
+<h2 id="toc_26">必要构造器</h2>
+
+<p>类的构造器前添加<code>required</code>修饰符表明所有该类的<code>子类</code>都必须实现该构造器</p>
+
+<pre><code class="language-swift">class SomeClass {
+    required init() {
+        // 构造器的实现代码
+    }
+}
+</code></pre>
+
+<p>在子类重写父类的必要构造器时，必须在子类的构造器前也添加<code>required</code>修饰符,不需要添加<code>override</code>修饰符</p>
+
+<pre><code class="language-swift">class SomeSubclass: SomeClass {
+    required init() {
+        // 构造器的实现代码
+    }
+}
+</code></pre>
+
+<p>注意：<br/>
+<strong>如果在子类继承的构造器能满足必要构造器的要求,则无须在子类中显式提供必要构造器的实现</strong></p>
+
+<h2 id="toc_27">用闭包或函数设置属性默认值</h2>
+
+<p>使用闭包或全局函数为村塾属性提供默认值,当该类型实例被创建，对应闭包或函数会被调用,他们的返回值会作为这个属性的默认值</p>
+
+<pre><code class="language-swift">class SomeClass {
+    let someProperty: SomeType = {
+        // 在这个闭包中给 someProperty 创建一个默认值
+        // someValue 必须和 SomeType 类型相同
+        return someValue
+    }()
+}
+</code></pre>
+
+<p>闭包结尾的必须需要一对空的<code>小括号</code>.表明<code>swift</code>立即执行闭包，将闭包的返回值赋值给属性，如果没有括号就相当于将闭包作为值赋值给属性</p>
+
+<blockquote>
+<p>在使用闭包来初始化属性时,在闭包被执行时，实例其他部分还没有被初始化,因此不能再闭包中访问其他属性，即使有默认值。也不能隐式使用<code>self</code>或者调用任何实例方法</p>
+</blockquote>
+
+<p>闭包初始化存储属性</p>
+
+<pre><code class="language-swift">struct Checkerboard {
+//设置100个bool颜色的数组
+    let boardColors: [Bool] = {
+        var temporaryBoard = [Bool]()
+        var isBlack = false
+        for i in 1...8 {
+            for j in 1...8 {
+                temporaryBoard.append(isBlack)
+                isBlack = !isBlack
+            }
+            isBlack = !isBlack
+        }
+        return temporaryBoard
+    }()
+    
+    //返回某一行或列的颜色
+    func squareIsBlackAtRow(row: Int, column: Int) -&gt; Bool {
+        return boardColors[(row * 8) + column]
+    }
+}
+
+let board = Checkerboard()
+print(board.squareIsBlackAtRow(0, column: 1))
+// 打印 &quot;true&quot;
+</code></pre>
 
                         
                       </div>
@@ -290,10 +659,10 @@ Unicode规范中定义，每一个文件的最前面分别加入一个表示编�
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/4</span>
+                    <span class="date">2017/8/7</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
+          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -358,6 +727,8 @@ Unicode规范中定义，每一个文件的最前面分别加入一个表示编�
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -387,31 +758,31 @@ Unicode规范中定义，每一个文件的最前面分别加入一个表示编�
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,255 +114,129 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15028525854956.html">
+                <a class="clearlink" href="15287061850668.html">
                 
-                  <h1>自动引用计数</h1>
+                  <h1>Flex</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>与<code>OC</code>相同 <code>Swift</code>使用自动引用计数(ARC)来跟踪和管理应用程序内存</p>
+                        	<h2 id="toc_0">基本概念</h2>
 
-<h2 id="toc_0">工作机制</h2>
+<p>采用Flex布局的元素，称为容器，它的所有子元素 自动成为容器成员<br/>
+<img src="media/15287061850668/15287068668255.png" alt=""/></p>
 
-<p>创建类的实例时,<code>ARC</code>会分配一块内存来存储实例信息.不再使用该实例,ARC将其释放.当是实例被释放后，其方法或属性均不能被访问或调用。<br/>
-因此，为了确保使用中的实例不会被销毁，ARC 会跟踪和计算每一个实例正在被多少属性，常量和变量所引用。哪怕实例的引用数为1，ARC都不会销毁这个实例。</p>
+<h2 id="toc_1">容器属性</h2>
 
-<h2 id="toc_1">循环强引用</h2>
-
-<p>如果两个类实例互相引用,那么类实例的强引用数永远不能变为0，这就是<strong>循环强引用</strong></p>
-
-<h2 id="toc_2">解决循环强引用方法</h2>
-
-<p>解决办法: <strong>弱引用</strong> <strong>无主引用</strong></p>
-
-<p>将循环引用中一个实例对另外的实例不保持强引用</p>
-
-<p>当其他的实例有更短的生命周期时,使用弱引用，即其 实例 析构在先时; 当其他实例有相同或者更长的声明周期时,请使用无主引用</p>
-
-<h3 id="toc_3">弱引用</h3>
-
-<p>弱引用不会对其引用的实例保持强引用，因而不会阻止<code>ARC</code>销毁被引用的实例。</p>
-
-<p>声明属性或变量时,在前面加上<code>weak</code>关键字表明是个弱引用</p>
-
-<p><code>ARC</code>会在引用的实例被销毁后自动将其赋值为<code>nil</code>.并且弱引用可以允许它们的值运行时赋值为<code>nil</code>，所以会被定义为可选类型变量而不是常量</p>
-
-<p>弱引用为可选类型变量,可以通过检查是否为nil,防止访问已经销毁的实例的引用</p>
-
-<blockquote>
-<p>在<code>ARC</code>设置弱引用为<code>nil</code>时,属性观察不会被触发</p>
-</blockquote>
-
-<pre><code class="language-swift">class Person {
-    let name: String
-    init(name: String) { self.name = name }
-    var apartment: Apartment?
-    deinit { print(&quot;\(name) is being deinitialized&quot;) }
-}
-
-class Apartment {
-    let unit: String
-    init(unit: String) { self.unit = unit }
-    weak var tenant: Person?
-    deinit { print(&quot;Apartment \(unit) is being deinitialized&quot;) }
-}
-
-var john: Person?
-var unit4A: Apartment?
-john = Person(name: &quot;John Appleseed&quot;)
-unit4A = Apartment(unit: &quot;4A&quot;)
-john!.apartment = unit4A
-unit4A!.tenant = john
-//因为Apartment 中 的 tenant 属性为弱引用,因此即使这样也不会产生循环引用
-
-john = nil
-// 打印 “John Appleseed is being deinitialized”
-
-unit4A = nil
-// 打印 “Apartment 4A is being deinitialized”
-
+<pre><code class="language-text">flex-direction
+flex-warp
+flex-flow
+justify-content
+align-items
+align-content
 </code></pre>
 
-<p>变量<code>john</code>和<code>unit4A</code>在被赋值为<code>nil</code>后，<code>Person</code>实例和<code>Apartment</code>实例的析构函数都打印出“销毁”的信息</p>
+<h3 id="toc_2">flex-direction</h3>
 
-<h3 id="toc_4">无主引用</h3>
+<p>决定主轴的方向 </p>
 
-<p>与弱引用类似,无主引用不会保持住引用的实例<br/>
-与弱引用不同,<strong>无主引用用在与其他实例有相同或者更长声明周期时使用</strong><br/>
-在属性前加<code>unowned</code>关键字进行声明</p>
+<ul>
+<li>row:default 主轴为水平方向，起点在左端</li>
+<li>row-reverse: 主轴为水平 起点在右端</li>
+<li>column: 主轴为垂直方向，起点在上</li>
+<li>colum-reverse:主轴为垂直方向 起点在下</li>
+</ul>
 
-<p>无主引用为非可选类型,因此<code>ARC</code>无法在实例被销毁后将无主引用设置为<code>nil</code></p>
+<h3 id="toc_3">flex-warp</h3>
 
-<p><em>注意</em>:</p>
+<p>当一条轴线放不下的情况 如何换行</p>
 
-<blockquote>
-<p>使用无主引用，必须<strong>保证引用始终指向一个未销毁的实例</strong><br/>
-试图在实例被销毁后，访问该实例的无主引用，会触发运行时错误</p>
-</blockquote>
+<ul>
+<li>nowarp: default 不换行</li>
+<li>wrap: 换行 第一行在上方</li>
+<li>warp-reverse:换行，第一行在下方</li>
+</ul>
 
-<p>举个栗子:<br/>
-<code>Customer</code>客户和<code>CreditCard</code>银行卡之间的关系,两个类都将另外一个类的实例作为自身属性,关系是客户可能没有银行卡,但是银行卡一定有客户,因此将银行卡的<code>customer</code>设置为无主引用</p>
+<h3 id="toc_4">flex-flow</h3>
 
-<pre><code class="language-swift">
-class Customer {
-    let name: String
-    var card: CreditCard?
-    init(name: String) {
-        self.name = name
-    }
-    deinit { print(&quot;\(name) is being deinitialized&quot;) }
-}
+<p>flex-flow属性是flex-direction属性和flex-wrap属性的简写形式，默认值为row nowrap。</p>
 
-class CreditCard {
-    let number: UInt64 //确保在32、64位机器上均可以保存16位的卡号
-    unowned let customer: Customer
-    init(number: UInt64, customer: Customer) {
-        self.number = number
-        self.customer = customer
-    }
-    deinit { print(&quot;Card #\(number) is being deinitialized&quot;) }
-}
+<h3 id="toc_5">justify-content</h3>
 
+<p>项目在主轴上的对齐方式</p>
 
-var john: Customer?
-john = Customer(name: &quot;John Appleseed&quot;)
-john!.card = CreditCard(number: 1234_5678_9012_3456, customer: john!)
+<ul>
+<li>flex-start: 左对齐</li>
+<li>flex-end: 右对齐</li>
+<li>center: 居中</li>
+<li>space-between: 两端对齐，项目之间间隔相等</li>
+<li>space-around: 每个项目两侧间隔相等</li>
+</ul>
 
-john = nil
-// 打印 “John Appleseed is being deinitialized”
-// 打印 ”Card #1234567890123456 is being deinitialized”
+<h3 id="toc_6">align-items属性</h3>
 
+<p>align-items属性定义项目在交叉轴上如何对齐</p>
+
+<ul>
+<li>flex-start: 交叉轴的起点对齐</li>
+<li>flex-end: 交叉轴的终点对齐</li>
+<li>center: 交叉轴的中间对齐</li>
+<li>baseline: 项目的第一行文字的基线对齐</li>
+<li>strech: default 项目未设置高度或者设为auto，将默认占满整个容器</li>
+</ul>
+
+<h3 id="toc_7">align-content</h3>
+
+<p><code>align-content</code>属性定义了多根轴线的对齐方式。如果项目只有一根轴线，该属性不起作用</p>
+
+<ul>
+<li>flex-start：与交叉轴的起点对齐。</li>
+<li>flex-end：与交叉轴的终点对齐。</li>
+<li>center：与交叉轴的中点对齐。</li>
+<li>space-between：与交叉轴两端对齐，轴线之间的间隔平均分布。</li>
+<li>space-around：每根轴线两侧的间隔都相等。所以，轴线之间的间隔比轴线与边框的间隔大一倍。</li>
+<li>stretch：default 轴线占满整个交叉轴。</li>
+</ul>
+
+<h2 id="toc_8">项目属性</h2>
+
+<pre><code class="language-text">order
+flex-grow
+flex-shrink
+flex-basis
+flex
+align-self
 </code></pre>
 
-<p><code>Customer</code>实例持有对<code>CreditCard</code>实例的强引用，而<code>CreditCard</code>实例持有对 <code>Customer</code>实例的无主引用</p>
+<h3 id="toc_9">order属性</h3>
 
-<blockquote>
-<p>对于需要禁用运行时的安全检查的情况（例如，出于性能方面的原因），Swift还提供了不安全的无主引用。与所有不安全的操作一样，你需要负责检查代码以确保其安全性。 你可以通过 <code>unowned(unsafe)</code>来声明不安全无主引用。如果你试图在实例被销毁后，访问该实例的不安全无主引用，你的程序会尝试访问该实例之前所在的内存地址，这是一个不安全的操作</p>
-</blockquote>
+<p>定义项目的排列顺序 数值越小 越靠前 默认为NO</p>
 
-<h3 id="toc_5">无主引用以及隐式解析可选属性</h3>
+<h3 id="toc_10">flex-grow</h3>
 
-<pre><code class="language-swift">class Country {
-    let name: String
-    var capitalCity: City!
-    init(name: String, capitalName: String) {
-        self.name = name
-        self.capitalCity = City(name: capitalName, country: self)
-    }
-}
+<p>定义项目的放大比例 默认为0，即 如果存在剩余空间 也不放大<br/>
+如果所有项目的<code>flex-grow</code>属性都为1，它们将等分剩余空间,如果属性为2，其它项目为1，则前者占据的剩余空间比其它多一倍</p>
 
-class City {
-    let name: String
-    unowned let country: Country
-    init(name: String, country: Country) {
-        self.name = name
-        self.country = country
-    }
-}
-</code></pre>
+<h3 id="toc_11">flex-shrink</h3>
 
-<p>我们在<code>Country</code>的<code>capitalCity</code>属性声明为<code>City!</code>隐式解析可选类型的属性,表明像其他可选类型一样，默认值为<code>nil</code>，但是不需要展开他的值就能访问</p>
+<p>定义项目的缩小比例 默认为1 即如果空间不足 该项目将缩小<br/>
+如果所有项目的flex-shrink属性都为1，当空间不足时，都将等比例缩小。如果一个项目的flex-shrink属性为0，其他项目都为1，则空间不足时，前者不缩小<br/>
+负值无效</p>
 
-<p>因为<code>capitalCity</code>的默认值为默认为<code>nil</code>，因此在构造country时,当name赋值以后,初始化就完成了,此时我们就能把这个初始化的<code>country</code>实例传递给<code>City</code>来构造City实例</p>
+<h3 id="toc_12">flex-basis</h3>
 
-<h2 id="toc_6">闭包引起的循环强引用</h2>
+<p>定义在分配多余空间之前，项目占据的主轴空间， 根据这个值计算是否有剩余空间，默认值为<code>auto</code>即项目的本来大小</p>
 
-<p>闭包和类 类似,都是引用类型,因此,将闭包赋值为某属性时,是将这个闭包的引用赋值给属性,因此当闭包体中访问实例的某个属性时,就会造成循环引用</p>
+<h3 id="toc_13">flex</h3>
 
-<pre><code class="language-swift">class HTMLElement {
-    let name: String
-    let text: String?
-    lazy var asHTML: Void -&gt; String = {
-        if let text = self.text {
-            return &quot;&lt;\(self.name)&gt;\(text)&lt;/\(self.name)&gt;&quot;
-        } else {
-            return &quot;&lt;\(self.name) /&gt;&quot;
-        }
-    }
-    init(name: String, text: String? = nil) {
-        self.name = name
-        self.text = text
-    }
-    deinit {
-        print(&quot;\(name) is being deinitialized&quot;)
-    }
-}
-</code></pre>
+<p>flex属性是flex-shrink、flex-grow、flex-basis的简写，默认值是0，1，auto，后两个属性是可选的<br/>
+该属性有两个快捷值：auto（1 1 auto） 和none（0 0 auto）</p>
 
-<blockquote>
-<p><code>asHTML</code>声明为<code>lazy</code>属性，因为只有当元素确实需要被处理为<code>HTML</code>输出的字符串时，才需要使用<code>asHTML</code>。也就是说，在默认的闭包中可以使用<code>self</code>，因为只有当初始化完成以及<code>self</code>确实存在后，才能访问<code>lazy</code>属性。</p>
-</blockquote>
+<h3 id="toc_14">align-self</h3>
 
-<p><strong>闭包捕获列表</strong>解决闭包引起的循环引用</p>
+<p>允许单个项目与其它项目有不一样的对齐方式，可覆盖<code>align-items</code>属性 默认值为<code>auto</code>表示继承父元素的<code>align-items</code>属性,如果没有父属性则等同于<code>stretch</code></p>
 
-<p>对于一个类的闭包属性,想要改变这个属性的行为,可以通过给这个属性再赋值一个闭包</p>
-
-<p><code>HTMLElement</code>有类和作为<code>asHTML</code>默认值的闭包之间的循环强引用</p>
-
-<p>注意:<br/>
-虽然闭包中多次使用<code>self</code>，但是它只捕获<code>HTMLElement</code>实例的一个强引用</p>
-
-<p>此时<code>HTMLElement</code>实例和它的闭包是不会被销毁和释放的</p>
-
-<h2 id="toc_7">解决闭包引起的循环强引用</h2>
-
-<p>在定义闭包时同时定义<strong>捕获列表</strong>作为闭包的一部分，捕获列表定义了闭包体内捕获一个或多个引用类型的规则.声明捕获的引用为弱引用或者无主引用,而不是强引用</p>
-
-<blockquote>
-<p><code>Swift</code>规定:在闭包中使用<code>self</code>的成员，要使用<code>self.someProperty</code>或者<code>self.someMethod()</code>，而不是使用<code>someProperty</code>或<code>someMethod()</code></p>
-</blockquote>
-
-<h3 id="toc_8">定义捕获列表</h3>
-
-<p>捕获列表由一对元素组成,一个是<code>weak</code>或<code>unowned</code>关键字,另一个是类实例的引用如<code>self</code>或初始化的变量.在方括号中用逗号隔开</p>
-
-<pre><code class="language-swift">//如果闭包有参数列表和返回类型，把捕获列表放在它们前面
-lazy var someClosure: (Int, String) -&gt; String = {
-    [unowned self, weak delegate = self.delegate!] (index: Int, stringToProcess: String) -&gt; String in
-    // 这里是闭包的函数体
-}
-
-/**
-如果闭包没有指明参数列表或者返回类型，即它们会通过上下文推断，
-那么可以把捕获列表和关键字 in 放在闭包最开始的地方
-*/
-
-lazy var someClosure: Void -&gt; String = {
-    [unowned self, weak delegate = self.delegate!] in
-    // 这里是闭包的函数体
-}
-
-</code></pre>
-
-<h3 id="toc_9">弱引用和无主引用</h3>
-
-<p>在闭包和捕获的实例总是互相引用并且总是同时销毁时，将闭包内的捕获定义为<code>无主引用</code>。(即被捕获的引用不会变为nil使用无主引用)<br/>
-在被捕获的引用可能会变为<code>nil</code>时，将闭包内的捕获定义为<code>弱引用</code>，弱引用总是可选类型,在引用的实例被销毁后自动置为<code>nil</code></p>
-
-<pre><code class="language-swift">class HTMLElement {
-    let name: String
-    let text: String?
-    lazy var asHTML: Void -&gt; String = {
-        [unowned self] in
-        if let text = self.text {
-            return &quot;&lt;\(self.name)&gt;\(text)&lt;/\(self.name)&gt;&quot;
-        } else {
-            return &quot;&lt;\(self.name) /&gt;&quot;
-        }
-    }
-    init(name: String, text: String? = nil) {
-        self.name = name
-        self.text = text
-    }
-    deinit {
-        print(&quot;\(name) is being deinitialized&quot;)
-    }
-}
-</code></pre>
-
-<p>在<code>asHTML</code>闭包中多了一个捕获列表，<code>[unowned self]</code>将self声明为无主引用<br/>
-这时候没有了循环引用,我们就可以销毁<code>HTMLElement</code>实例了</p>
+<h1 id="toc_15">ReactNative Flex</h1>
 
                         
                       </div>
@@ -369,10 +245,10 @@ lazy var someClosure: Void -&gt; String = {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/16</span>
+                    <span class="date">2018/6/11</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
+          					    <span class="posted-in"><a href='Flex.html'>Flex</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -437,6 +313,8 @@ lazy var someClosure: Void -&gt; String = {
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -466,31 +344,31 @@ lazy var someClosure: Void -&gt; String = {
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

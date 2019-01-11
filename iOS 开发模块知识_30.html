@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,351 +114,67 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14986177362678.html">
+                <a class="clearlink" href="14872918920673.html">
                 
-                  <h1>函数 Functions</h1>
+                  <h1>并发编程中的问题</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>在<code>Swift</code>中，每个函数都有一个由函数的参数值类型和返回值类型组成的类型。可以把函数类型当做任何其他<br/>
-普通变量类型一样处理，这样就可以更简单地把函数当做别的函数的参数，也可以从其他函数中返回函数。函数<br/>
-的定义可以写在其他函数定义中，这样可以在嵌套函数范围内实现功能封装。</p>
+                        	<p>使用并发编程会带来许多陷阱<br/>
+优先级反转:也就是说低优先级的线程一直阻塞着高优先级的线程</p>
 
-<h2 id="toc_0">函数的定义与调用</h2>
+<h4 id="toc_0">1.资源共享</h4>
 
-<pre><code class="language-swift">func greet(person: String) -&gt; String {
-    let greeting = &quot;Hello, &quot; + person + &quot;!&quot;
-    return greeting
-}
-</code></pre>
+<p>并发编程中许多问题的根源就是在多线程中访问共享资源。资源可以是一个属性、一个对象，通用的内存、网络设备或者一个文件等等。<br/>
+这里我们举了一个<a href="https://en.wikipedia.org/wiki/Race_condition#Software">竞态条件</a>的例子:<br/>
+<img src="media/14872918920673/14872931592764.jpg" alt=""/><br/>
+这个时候我们需要保证线程B必须等线程A访问完该共享资源才会开始访问共享资源.这时候我们需要一种互斥机制:</p>
 
-<p>定义一个函数,以<code>func</code>为前缀，定义了一个输入参数一个叫<code>person</code>的<code>String</code>值，用<code>-&gt;</code>来指定函数返回类型一个<code>String</code>类型返回值</p>
+<h4 id="toc_1">2.互斥锁</h4>
 
-<blockquote>
-<p><code>print(_:separator:terminator:)</code>这个函数第一个参数为<code>_</code>即并没有设置标签,其他参数设置了标签并且有默认值因此是可选的 </p>
-</blockquote>
+<p><strong>互斥访问的意思就是同一时刻，只允许一个线程访问某个特定资源</strong><br/>
+首先需要获得一个共享资源的互斥锁，一旦某个线程对资源完成了操作，就释放掉这个互斥锁，这样别的线程就有机会访问该共享资源<br/>
+<img src="media/14872918920673/14872933923493.jpg" alt=""/><br/>
+因为现代 CPU 为了优化目的，往往会改变向内存读写数据的顺序（<a href="https://en.wikipedia.org/wiki/Out-of-order_execution">乱序执行</a>）因此还需要解决代码无序执行所带来的问题。如果不能确保 CPU 访问内存的顺序跟编程时的代码指令一样，那么仅仅依靠互斥访问是不够的。为了解决由 CPU 的优化策略引起的副作用，还需要引入<a href="https://en.wikipedia.org/wiki/Memory_barrier">内存屏障</a>。通过设置内存屏障，来确保没有无序执行的指令能跨过屏障而执行。</p>
 
-<h2 id="toc_1">函数参数与返回值</h2>
+<p>(<a href="https://en.wikipedia.org/wiki/Lock_%28computer_science%29#Granularity">锁的竞争</a>是这样产生的：当一个或者多个线程尝试获取一个已经被别的线程获取过了的锁)<br/>
+获取和释放锁所是要带来开销的，因此你需要确保你不会频繁地进入和退出临界区段（比如获取和释放锁）。同时，如果你获取锁之后要执行一大段代码，这将带来锁竞争的风险：其它线程可能必须等待获取资源锁而无法工作。</p>
 
-<p>在函数参数名称为<code>_</code>即不设置名称 </p>
+<p>对于你的代码会如何在多核上运行的预测往往十分重要，你可以使用 Instrument 的 CPU strategy view 来检查是否有效的利用了 CPU 的可用核数，进而得出更好的想法，以此来优化代码。</p>
 
-<h3 id="toc_2">无参函数</h3>
+<h4 id="toc_2">3.死锁</h4>
 
-<pre><code class="language-swift">func sayHelloWorld() -&gt; String {
-    return &quot;hello, world&quot;
-}
-print(sayHelloWorld())
-// 打印 &quot;hello, world&quot;
-</code></pre>
+<p>互斥锁解决了竞态条件的问题，但很不幸同时这也引入了一些其他问题，其中一个就是死锁。当多个线程在相互等待着对方的结束时，就会发生死锁，这时程序可能会被卡住。<br/>
+<img src="media/14872918920673/14872940417124.jpg" alt=""/><br/>
+你在线程之间共享的资源越多，你使用的锁也就越多，同时程序被死锁的概率也会变大。这也是为什么我们需要尽量减少线程间资源共享，并确保共享的资源尽量简单的原因之一。建议阅读一下底层<a href="https://objccn.io/issue-2-3/">并发编程 API</a> 中的全部使用异步分发一节。</p>
 
-<p><strong>注意:</strong><br/>
-即使这个函数没有参数,但是定义中在函数名后还是<strong>需要一对圆括号</strong>。当被调用时，也需要<strong>在函数名后写一对圆括号</strong>与C语言函数相同</p>
+<h4 id="toc_3">4.资源饥饿（Starvation）</h4>
 
-<h3 id="toc_3">多参函数</h3>
+<p>锁定的共享资源会引起<a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writers_problem">读写问题</a>，大多数情况下，限制资源一次只能有一个线程进行读取访问其实是非常浪费的。因此，在资源上没有写入锁的时候，持有一个读取锁是被允许的。这种情况下，如果一个持有读取锁的线程在等待获取写入锁的时候，其他希望读取资源的线程则因为无法获得这个读取锁而导致<a href="https://en.wikipedia.org/wiki/Starvation_(computer_science)">资源饥饿</a>的发生。</p>
 
-<pre><code class="language-swift">func greet(person: String, alreadyGreeted: Bool) -&gt; String {
-    if alreadyGreeted {
-        return greetAgain(person: person)
-    } else {
-        return greet(person: person)
-    }
-}
-print(greet(person: &quot;Tim&quot;, alreadyGreeted: true))
-// 打印 &quot;Hello again, Tim!&quot;
-</code></pre>
+<p>为了解决这个问题，我们需要使用一个比简单的读/写锁更聪明的方法，例如给定一个 <a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writer_lock">writer preference</a>，或者使用 <a href="https://en.wikipedia.org/wiki/Read-copy-update">read-copy-update</a> 算法。Daniel 在底层并发编程 API 中有介绍了如何用 GCD 实现一个多读取单写入的模式，这样就不会被写入资源饥饿的问题困扰了。</p>
 
-<p>传递多个参数,之前用<code>,</code>隔开,这个函数与前面函数虽然名称相同 但是参数不同因此是不同的两个函数</p>
+<h4 id="toc_4">5.优先级反转</h4>
+
+<p><code>优先级反转</code>是指程序在运行时低优先级的任务阻塞了高优先级的任务，有效的反转了任务的优先级。由于 GCD 提供了拥有不同优先级的后台队列，甚至包括一个 I/O 队列，所以我们最好了解一下优先级反转的可能性。</p>
 
 <blockquote>
-<p>重载:指两个函数的函数名相同,函数的参数列表不同(包括参数个数和参数类型)，至于返回类型可同可不同<br/>
-OC不完全支持重载,即OC支持参数个数不同的函数重载,Swift是完全支持重载的</p>
+<p>高优先级和低优先级的任务之间共享资源时，就可能发生优先级反转。当低优先级的任务获得了共享资源的锁时，该任务应该迅速完成，并释放掉锁，这样高优先级的任务就可以在没有明显延时的情况下继续执行。然而高优先级任务会在低优先级的任务持有锁的期间被阻塞。如果这时候有一个中优先级的任务(该任务不需要那个共享资源)，那么它就有可能会抢占低优先级任务而被执行，因为此时高优先级任务是被阻塞的，所以中优先级任务是目前所有可运行任务中优先级最高的。此时，中优先级任务就会阻塞着低优先级任务，导致低优先级任务不能释放掉锁，这也就会引起高优先级任务一直在等待锁的释放。</p>
+
+<p>解决这个问题的方法，通常就是不要使用不同的优先级。通常最后你都会以让高优先级的代码等待低优先级的代码来解决问题。当你使用 GCD 时，总是使用默认的优先级队列（直接使用，或者作为目标队列）。如果你使用不同的优先级，很可能实际情况会让事情变得更糟糕。</p>
 </blockquote>
 
-<h3 id="toc_4">无返回值函数</h3>
+<p><img src="media/14872918920673/14872951554551.jpg" alt=""/></p>
 
-<pre><code class="language-swift">func greet(person: String) {
-    print(&quot;Hello, \(person)!&quot;)
-}
-greet(person: &quot;Dave&quot;)
-// 打印 &quot;Hello, Dave!&quot;
-</code></pre>
+<h3 id="toc_5">总结:</h3>
 
-<blockquote>
-<p>虽然没有定义返回值,其实返回了一个特殊的<code>Void</code>值,这是<strong>一个空的元组</strong>，没有任何元素,可以写为()</p>
-</blockquote>
+<p>我们希望通过本文你能够了解到并发编程带来的复杂性和相关问题。并发编程中，无论是看起来多么简单的 API ，它们所能产生的问题会变得非常的难以观测，而且要想调试这类问题往往也都是非常困难的。</p>
 
-<h3 id="toc_5">多重返回值函数</h3>
+<p>但另一方面，并发实际上是一个非常棒的工具。它充分利用了现代多核 CPU 的强大计算能力。在开发中，关键的一点就是尽量让并发模型保持简单，这样可以限制所需要的锁的数量。</p>
 
-<p>我们可以用元组让多个值作为一个复合值从函数中返回</p>
-
-<pre><code class="language-swift">func minMax(array: [Int]) -&gt; (min: Int, max: Int) {
-    var currentMin = array[0]
-    var currentMax = array[0]
-    for value in array[1..&lt;array.count] {
-        if value &lt; currentMin {
-            currentMin = value
-        } else if value &gt; currentMax {
-            currentMax = value
-        }
-    }
-    return (currentMin, currentMax)
-}
-
-let bounds = minMax(array: [8, -6, 2, 109, 3, 71])
-print(&quot;min is \(bounds.min) and max is \(bounds.max)&quot;)
-// 打印 &quot;min is -6 and max is 109&quot;
-</code></pre>
-
-<blockquote>
-<p>我们在返回元组时不需要给元组命名，因为它们的名字在函数返回类型中就已经确定了</p>
-</blockquote>
-
-<h3 id="toc_6">可选元组返回值</h3>
-
-<p>如果函数返回的元组类型有可能整个元组都“没有值”,可以使用可选元组返回类型来说明元组可能为<code>nil</code></p>
-
-<blockquote>
-<p>注意 可选元组类型如 (Int, Int)? 与元组包含可选类型如 (Int?, Int?) 是不同的.可选的元组类型，整个元组是可选的，而不只是元组中的每个元素值。</p>
-</blockquote>
-
-<p>对于上面的数组我们添加一个空数组检查,当传入的数组为空时返回<code>nil</code>:</p>
-
-<pre><code class="language-swift">func minMax(array: [Int]) -&gt; (min: Int, max: Int)? {
-    if array.isEmpty { return nil }
-    var currentMin = array[0]
-    var currentMax = array[0]
-    for value in array[1..&lt;array.count] {
-        if value &lt; currentMin {
-            currentMin = value
-        } else if value &gt; currentMax {
-            currentMax = value
-        }
-    }
-    return (currentMin, currentMax)
-}
-
-//用可选类型绑定来检查函数返回的是一个存在的元组还是一个nil
-if let bounds = minMax(array: [8, -6, 2, 109, 3, 71]) {
-    print(&quot;min is \(bounds.min) and max is \(bounds.max)&quot;)
-}
-// 打印 &quot;min is -6 and max is 109&quot;
-
-</code></pre>
-
-<h2 id="toc_7">函数参数标签和参数名称</h2>
-
-<p>每个函数参数都有一个<code>参数标签</code>以及一个<code>参数名称</code>.<br/>
-<code>参数标签</code>在调用函数的时候使用:调用时需要将函数的参数标签写在对应参数前<br/>
-<code>参数名称</code>在函数的实现中使用。默认,函数参数使用参数名称来作为参数标签</p>
-
-<h3 id="toc_8">指定参数标签</h3>
-
-<p>在参数名称前指定它的参数标签，中间以空格分隔:</p>
-
-<pre><code class="language-swift">//参数标签使函数在调用时更有表达力,保持可读性
-//argumentLabel参数标签  parameterName参数名称
-func someFunction(argumentLabel parameterName: Int) {
-    // 在函数体内，parameterName 代表参数值
-}
-func greet(person: String, from hometown: String) -&gt; String {
-    return &quot;Hello \(person)! Glad you could visit from \(hometown).&quot;
-}
-print(greet(person: &quot;Bill&quot;, from: &quot;Cupertino&quot;))
-</code></pre>
-
-<h3 id="toc_9">忽略参数标签</h3>
-
-<p>我们用下划线来忽略 不设置参数标签</p>
-
-<pre><code class="language-swift">func someFunction(_ firstParameterName: Int, secondParameterName: Int) {
-    // 在函数体内，firstParameterName 和 secondParameterName 代表参数中的第一个和第二个参数值
-}
-someFunction(1, secondParameterName: 2)
-</code></pre>
-
-<blockquote>
-<p>如果一个参数有标签,那么在调用时必须使用标签来标记这个参数</p>
-</blockquote>
-
-<h3 id="toc_10">默认参数值</h3>
-
-<p>可以在函数体重通过给参数赋值来为任意一个参数定义默认值. 如果定义了默认值，可以在调用这个函数时忽略这个参数:</p>
-
-<pre><code class="language-swift">func someFunction(parameterWithoutDefault: Int, parameterWithDefault: Int = 12) {
-    // 如果你在调用时候不传第二个参数，parameterWithDefault 会值为 12 传入到函数体中。
-}
-someFunction(parameterWithoutDefault: 3, parameterWithDefault: 6) // parameterWithDefault = 6
-someFunction(parameterWithoutDefault: 4) // parameterWithDefault = 12
-</code></pre>
-
-<p>我们通常将不带默认值的参数放在函数参数列表最前。因为一般没有默认值参数更重要，将不带默认值的参<br/>
-数放在最前保证在函数调用时，非默认参数的顺序是一致的，同时也使得相同的函数在不同情况下调用时显得更<br/>
-为清晰。</p>
-
-<h3 id="toc_11">可变参数</h3>
-
-<p>通过在变量类型名后加上<code>...</code>的方式来定义可变参数<br/>
-可变参数可以接受零个或多个值,我们用其来指定函数传入不确定数量的输入值</p>
-
-<p>我们在函数体中将可变参数传入值变为数组来使用</p>
-
-<pre><code class="language-swift">func arithmeticMean(_ numbers: Double...) -&gt; Double {
-    var total: Double = 0
-    for number in numbers {
-        total += number
-    }
-    return total / Double(numbers.count)
-}
-arithmeticMean(1, 2, 3, 4, 5)
-// 返回 3.0, 是这 5 个数的平均数。
-arithmeticMean(3, 8.25, 18.75)
-// 返回 10.0, 是这 3 个数的平均数。
-</code></pre>
-
-<blockquote>
-<p>一个函数最多只能有一个可变参数</p>
-</blockquote>
-
-<h3 id="toc_12">输入输出参数</h3>
-
-<p>参考<a href="http://www.csdn.net/article/2015-01-20/2823635-swift-pointer">Swift中的指针操作及使用</a></p>
-
-<p>函数参数默认为常量,因此在函数体中修改会导致编译错误。如果想要在函数中修改某个参数值,并且这些修改在函数调用后仍然有效，那么需要把这个参数定义为输入输出参数</p>
-
-<p>在参数定义前加上<code>inout</code>关键字来定以输入输出参数，这个值被函数修改然后被传出函数替换原来的值.</p>
-
-<p>只能传递变量给输入输出参数,不能传入常量或字面量，调用时当传入的参数作为输入输出参数时,需要在参数名前加<code>&amp;</code>表示这个值可被修改</p>
-
-<blockquote>
-<p>输入输出参数不能有默认值，而且可变参数不能用<code>inout</code>标记</p>
-</blockquote>
-
-<pre><code class="language-swift">func swapTwoInts(_ a: inout Int, _ b: inout Int) {
-    let temporaryA = a
-    a = b
-    b = temporaryA
-}
-var someInt = 3
-var anotherInt = 107
-swapTwoInts(&amp;someInt, &amp;anotherInt)
-print(&quot;someInt is now \(someInt), and anotherInt is now \(anotherInt)&quot;)
-// 打印 &quot;someInt is now 107, and anotherInt is now 3&quot;
-</code></pre>
-
-<p><strong>可以参考C语言中函数的 指针参数</strong></p>
-
-<h2 id="toc_13">函数类型</h2>
-
-<p>每个函数都有 由<code>函数的参数类型</code>和<code>返回类型</code> 组成<code>函数类型</code></p>
-
-<pre><code class="language-swift">func addTwoInts(_ a: Int, _ b: Int) -&gt; Int {
-    return a + b
-}
-</code></pre>
-
-<p>函数类型为<code>(Int, Int) -&gt; Int</code></p>
-
-<pre><code class="language-swift">func printHelloWorld() {
-    print(&quot;hello, world&quot;)
-}
-</code></pre>
-
-<p>函数类型为<code>() -&gt; Void</code></p>
-
-<h3 id="toc_14">函数类型的使用</h3>
-
-<p>在<code>Swift</code>中使用函数类型和使用其他类型一样。</p>
-
-<pre><code class="language-swift">var mathFunction: (Int, Int) -&gt; Int = addTwoInts
-</code></pre>
-
-<p>定义一个类型是‘一个有两个Int型的参数并返回一个Int型的值的<code>mathFunction</code>变量，指向<code>addTwoInts</code>函数</p>
-
-<p>函数类型与其他类型一样可以通过赋值让<code>Swift</code>推断其函数类型</p>
-
-<h3 id="toc_15">函数类型作为参数类型</h3>
-
-<pre><code class="language-swift">func printMathResult(_ mathFunction: (Int, Int) -&gt; Int, _ a: Int, _ b: Int) {
-    print(&quot;Result: \(mathFunction(a, b))&quot;)
-}
-
-//调用
-printMathResult({ (a, b) -&gt; Int in
-    return a*b
-}, 10, 20)
-</code></pre>
-
-<p><code>printMathResult(_:_:_:)</code>函数的作用就是输出另一个适当类型的数学函数的调用结果。它不关心传入函数是如何实现的，只关心传入的函数是不是一个正确的类型。这使得<code>printMathResult(_:_:_:)</code>能以一种类型安全（type-safe）的方式将一部分功能转给调用者实现。</p>
-
-<h3 id="toc_16">函数类型作为返回类型</h3>
-
-<p>我们可以将函数类型作为另一个函数的返回类型</p>
-
-<pre><code class="language-swift">func stepForward(_ input: Int) -&gt; Int {
-    return input + 1
-}
-func stepBackward(_ input: Int) -&gt; Int {
-    return input - 1
-}
-
-func chooseStepFunction(backward: Bool) -&gt; (Int) -&gt; Int {
-    return backward ? stepBackward : stepForward
-}
-
-//执行
-var currentValue = 3
-let moveNearerToZero = chooseStepFunction(backward: currentValue &gt; 0)
-// moveNearerToZero 现在指向 stepBackward() 函数。
-</code></pre>
-
-<p>上面例子获取一个整形接近0应该用的函数</p>
-
-<pre><code class="language-swift">print(&quot;Counting to zero:&quot;)
-// Counting to zero:
-while currentValue != 0 {
-    print(&quot;\(currentValue)... &quot;)
-    currentValue = moveNearerToZero(currentValue)
-}
-print(&quot;zero!&quot;)
-// 3...
-// 2...
-// 1...
-// zero!
-</code></pre>
-
-<h2 id="toc_17">嵌套函数</h2>
-
-<p>前面定义的所有函数都为<code>全局函数</code><br/>
-我们可以把函数定义在其他函数中,这就是<code>嵌套函数</code><br/>
-默认情况下，嵌套函数是对外界不可见的，但是可以被它们的外围函数（enclosing function）调用。一个外围函数也可以返回它的某一个嵌套函数，使得这个函数可以在其他域中被使用。</p>
-
-<blockquote>
-<p>OC中是不支持在一个函数中定义另外一个函数</p>
-</blockquote>
-
-<p>我们用返回嵌套方式重写<code>chooseStepFunction(backward:)</code>函数</p>
-
-<pre><code class="language-swift">func chooseStepFunction(backward: Bool) -&gt; (Int) -&gt; Int {
-    //我们在函数中定义另外函数
-    func stepForward(input: Int) -&gt; Int { return input + 1 }
-    func stepBackward(input: Int) -&gt; Int { return input - 1 }
-    //返回嵌套函数
-    return backward ? stepBackward : stepForward
-}
-var currentValue = -4
-let moveNearerToZero = chooseStepFunction(backward: currentValue &gt; 0)
-while currentValue != 0 {
-print(&quot;\(currentValue)... &quot;)
-currentValue = moveNearerToZero(currentValue)
-}
-print(&quot;zero!&quot;)
-// -4...
-// -3...
-// -2...
-// -1...
-// zero!
-</code></pre>
+<p>我们建议采纳的安全模式是这样的：<br/>
+<strong>从主线程中提取出要使用到的数据，并利用一个操作队列在后台处理相关的数据，最后回到主队列中来发送你在后台队列中得到的结果。使用这种方式，你不需要自己做任何锁操作，这也就大大减少了犯错误的几率。</strong></p>
 
                         
                       </div>
@@ -465,10 +183,10 @@ print(&quot;zero!&quot;)
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/6/28</span>
+                    <span class="date">2017/2/17</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
+          					    <span class="posted-in"><a href='Concurrent-Programming.html'>多线程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -533,6 +251,8 @@ print(&quot;zero!&quot;)
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -562,31 +282,31 @@ print(&quot;zero!&quot;)
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,154 +114,146 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14901598468257.html">
+                <a class="clearlink" href="14873831706932.html">
                 
-                  <h1>隐式动画</h1>
+                  <h1>OCMock</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>我们在前面介绍了图层的相关知识,现在我们开始学本次的重点<strong>动画</strong><br/>
-<strong>注意</strong><br/>
-<code>CALayer</code>呈现图层&lt;--&gt;模型图层<br/>
-我们在创建<code>CALayer</code>对象存储了我们设置的属性值（只是存值所以是模型图层）,但是模型图层显示或者说是呈现时就会基于模型图层创建一个呈现图层,然后我们所能看到的都是基于这个呈现图层的.</p>
+                        	<h3 id="toc_0">Mock介绍</h3>
 
-<h3 id="toc_0">事务</h3>
+<p>对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。</p>
 
-<p><code>Core Animation</code>基于一个假设，说屏幕上的任何东西都可以（或者可能）做动画。动画并不需要你在<code>Core Animation</code>中手动打开，相反需要明确地关闭，否则他会一直存在。</p>
+<h3 id="toc_1">OCMock介绍</h3>
 
-<p>当我们改变了<code>CALayer</code>的一个可做动画的属性时,但是他并不会立刻在屏幕上显示出来。它默认会从先前的值平滑过渡到新值,不需要做额外操作。这就是<code>隐式动画</code>,之所以叫<strong><code>隐式</code>是因为我们并没有指定任何动画的类型</strong>.我们改变属性之后是<code>Core Animation</code>来决定如何并且何时去做动画（这是隐式当然也可以显式动画）.</p>
+<p><a href="http://ocmock.org/features/">官方网站</a><br/>
+根据要mock的对象的class来创建一个对应的对象，并且设置好该对象的属性和调用预定方法后的动作（例如返回一个值，调用代码块，发送消息等等），然后将其记录到一个数组中，接下来开发者主动调用该方法，最后做一个verify（验证），从而判断该方法是否被调用，或者调用过程中是否抛出异常等。</p>
 
-<p>隐式动画的动画执行的时间取决于当前<code>事务</code>的设置，动画类型取决于图层行为。</p>
-
-<p><code>事务</code>是<strong><code>Core Animation</code>用来包含一系列属性动画集合的机制</strong>，当用事务去改变可以做动画的图层属性都不会立刻变化,而是等到这个事务提交之后,才开始图层属性过渡到新值的动画.</p>
-
-<p>我们用<code>CATransaction</code>类来管理<code>事务</code>,这个类管理的事务并不能访问,也没有属性或者实例方法，并且也不能用<code>+alloc</code> 和<code>-init</code>方法创建它。但是可以用 <code>+begin</code> 和 <code>+commit</code> 分别来入栈或者出栈。</p>
-
-<p>任何可以做动画的图层属性的改变都会被添加到目前<code>栈顶</code>的<code>事务</code>中.我们可以用<code>+setAnimationDuration:</code>设置 或者<code>+animationDuration</code>获取当前的栈顶事务的动画时间(默认0.25秒)</p>
-
-<p><code>Core Animation</code>会在每个<code>run loop</code>周期中自动开始一次新的事务,，即使你不显式的用<code>[CATransaction begin]</code> 开始一次事务，任何在一次<code>run loop</code>循环中属性的改变都会被集中起来，然后做一次0.25秒的动画。  </p>
-
-<pre><code class="language-objectivec">/*我们在设置某个属性动画的事务属性（比如时间）时,我们通常会自己创建一个新的事务,
-否则会有可能影响到事务中其他属性动画*/
-[CATransaction begin];
-//set the animation duration to 1 second
-[CATransaction setAnimationDuration:1.0];
-
-self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
-//commit the transaction
-[CATransaction commit];
-</code></pre>
-
-<p><strong>补充</strong><br/>
-<code>UIView</code>有两个方法，<code>+beginAnimations:context:</code>和<code>+commitAnimations</code>，就是通过设置 <code>CATransaction</code>实现的,至于UIView的另外一个<code>+animateWithDuration:animations:</code>，只是将这些属性动画做成了一个block以避免开发者由于对<code>+begin</code> 和<code>+commit</code> 匹配的失误.</p>
-
-<h3 id="toc_1">完成块</h3>
-
-<p>我们在做基于<code>UIView</code>的<code>block</code>动画时可以在动画结束时提供一个完成动作. <br/>
-<code>CATranscation</code>接口提供的<code>+setCompletionBlock:</code>方法也有同样的功能。</p>
-
-<pre><code class="language-objectivec">[CATransaction begin];
-[CATransaction setAnimationDuration:1.0];
-[CATransaction setCompletionBlock:^{
-//rotate the layer 90 degrees
-CGAffineTransform transform = self.colorLayer.affineTransform;
-transform = CGAffineTransformRotate(transform, M_PI_2);
-self.colorLayer.affineTransform = transform;
-}];
-self.colorLayer.backgroundColor = [UIColor redColor];
-[CATransaction commit];
-/**
-注意旋转动画要比颜色渐变快得多，这是因为完成块是在颜色渐变的事务提交并出
-栈之后才被执行，于是，用默认的事务做变换，默认的时间也就变成了0.25秒。
-*/
-</code></pre>
-
-<h3 id="toc_2">图层行为</h3>
-
-<p><code>UIKit</code>默认禁用了隐式动画.即UIView把它关联的图层属性改编动画特性关闭了</p>
-
-<p>我们先来看一下<code>隐式动画</code>是怎么实现的:<br/>
-<strong>我们把改变属性时<code>CALayer</code>自动应用的动画称作<code>行为</code>.</strong><br/>
-当我们改变了<code>CALayer</code>的属性时，会调用<code>-actionForKey:</code>方法，传递属性的名称。然后</p>
-
-<ul>
-<li>图层首先检测它是否有委托，并且是否实现 CALayerDelegate 协议指定的 <code>-actionForLayer:forKey</code> 方法。如果有，直接调用并返回结果。</li>
-<li>如果没有委托，或者委托没有实现<code>-actionForLayer:forKey</code>方法，图层接着检查包含属性名称对应行为映射的<code>actions</code>字典。</li>
-<li>如果<code>actions</code>字典 没有包含对应的属性，那么图层接着在它的<code>style</code>字典接着搜索属性名。</li>
-<li>最后，如果在 <code>style</code> 里面也找不到对应的行为，那么图层将会直接调用定义了每个属性的标准行为的<code>-defaultActionForKey:</code>方法。</li>
-</ul>
-
-<p><code>-actionForKey:</code>是用来找这个属性对应的动画(action),要么返回空（这种情况下将不会有动画发生），要么是<code>CAAction</code>协议对应的对象，最后<code>CALayer</code>拿这个结果去对先前和当前的值做动画。</p>
-
-<p>UIKit禁用隐式动画的方法就是,：每个<code>UIView</code> 对它关联的图层都扮演了一个委托，并且提供了<code>-actionForLayer:forKey</code> 的实现方法。当不在一个动画块的实现中，<code>UIView</code> 对所有图层行为返回 <code>nil</code>，但是在动画<code>block</code>范围之内，它就返回了一个非空值。</p>
-
-<p><strong>注意</strong></p>
+<h4 id="toc_2">1.OCMock中简单使用</h4>
 
 <ol>
-<li>这里所说的关联是指UIView关联的图层即宿主图层,而对于其他add的图层并不是关联的图层所以是没有禁用隐式动画的</li>
+<li><p>class mock一个对象</p>
+<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
+//创建mock object当做类的实例
+</code></pre></li>
+<li><p>Stubbing methods that return objects</p>
+<pre><code class="language-object-c">/**
+意的就是有参数的方法，参数是可以具体指定的，也就是说只有满足你指定的具体参数的调用才会被mock指定的返回值。例子中的[OCMArg any]是指任意参数。<br/>
+*/<br/>
+//没有参数的方法<br/>
+OCMStub([mockClass someMethod]).andReturn(anObject);<br/>
+//有参数的方法<br/>
+OCMStub([mockClass someMethod:[OCMArg any]]).andReturn(anObject);
+</code></pre>
+<p>注意:<br/>
+<strong>OCMock会在mock实例上没有找到相同名字的实例方法的时候去找同名的类方法。</strong></p></li>
+<li><p>Verify-after-running<br/>
+有些时候需要验证我们执行的代码流程是否调用了某个外部的方法，这个时候用OCMock就比较简单来实现。如果没有调用过这个方法的话，会立即抛一个异常出来。</p>
+<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
+//...<br/>
+//some code<br/>
+//...<br/>
+OCMVerify([mockClass someMethod]);
+</code></pre></li>
+<li><p>验证mock方法没有被调用<br/>
+验证代码没有调用某个方法<br/>
+如果方法被调用了，就将isCalled设置为YES，这样最后assert的时候就会报错。</p>
+<pre><code class="language-object-c">static BOOL isCalled = false;
+id mockClass = OCMClassMock([SomeClass class]);<br/>
+OCMStub([mockClass someMethod]).andDo(^(NSInvocation *invocation){<br/>
+isCalled = YES;<br/>
+});<br/>
+//...<br/>
+//some code<br/>
+//...<br/>
+XCTAssertFalse(isCalled);
+</code></pre></li>
+<li><p>验证mock方法传入的参数<br/>
+验证传递给外部调用的参数是否符合预期</p>
+<pre><code class="language-objec-c">id mockClass = OCMClassMock([SomeClass class]);
+OCMStub([mockClass someMethod:[OCMArg checkWithBlock:^BOOL(id obj) {<br/>
+//...<br/>
+//some code<br/>
+//...<br/>
+return YES;<br/>
+]]);
+</code></pre></li>
+<li><p>mock单例</p>
+<p>如果我们mock的类是个单例的话，那么使用之前的方法进行mock是不会生效的。不过OCMock提供了一个很简单的解决方法，那就是调用单例返回mock</p>
+<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
+OCMStub([mockClass instanceMethod]).andReturn(mockClass);
+</code></pre></li>
+<li><p>The any constraint</p>
+<pre><code class="language-object-c">OCMStub([mock someMethodWithAnArgument:[OCMArg any]])
+OCMStub([mock someMethodWithPointerArgument:[OCMArg anyPointer]])<br/>
+OCMStub([mock someMethodWithSelectorArgument:[OCMArg anySelector]])
+</code></pre></li>
+<li><p>处理block参数<br/>
+OCMock也可以处理block回调参数。block回调通常用于网络代码，数据库代码，或者在任何异步操作中。在这个例子中，思考下下面的方法：<br/>
+<code>- (void)downloadWeatherDataForZip:(NSString *)zip callback:(void (^)(NSDictionary *response))callback;</code></p></li>
 </ol>
 
-<p>当然对于<code>CATransacition</code>我们可以用<code>+setDisableActions:</code>来选择关闭/打开隐式动画<br/>
-<code>[CATransaction setDisableActions:YES]; //关闭隐式动画</code></p>
+<p>在这个例子中，我们有一个下载天气压缩数据的方法，并且把下载下来的dictionary代理到一个block的回调中。在测试中，我们通过预定义的天气数据来测试回调处理。这也是明智的测试失败场景。你永远不会知道网络上会返回你什么东西！</p>
 
-<ul>
-<li>UIView 关联的图层禁用了隐式动画，对这种图层做动画的办法就是使用 <code>UIView</code> 的动画函数（而不是依赖 <code>CATransaction</code> ），或者继承 <code>UIView</code> ，并覆盖<code>-actionForLayer:forKey:</code>方法，或者直接创建一个显式动画（具体细节见第八章）。</li>
-<li>对于单独存在的图层，我们可以通过实现图层的<code>-actionForLayer:forKey:</code>委托方法，或者提供一个<code>actions</code> 字典来控制隐式动画(actions 字典可以写更少的代码)。</li>
-</ul>
-
-<p><code>行为</code>通常是一个被Core Animation隐式调用的显式动画对象。<br/>
-我们来改变一个图层属性的行为:</p>
-
-<pre><code class="language-objectivec">/**
-我们使用的是一个实现了 CATransaction 的实例，叫做推进过渡
-改变了CALayer的背景颜色属性行为.改变背景颜色，新的色块都是从左侧滑入，
-而不是默认的渐变效果
-*/
-CATransition *transition = [CATransition animation];
-transition.type = kCATransitionPush;
-transition.subtype = kCATransitionFromLeft;
-self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
-//add it to our view
-[self.layerView.layer addSublayer:self.colorLayer];
+<pre><code class="language-object">OCMStub([groupModelMock downloadWeatherDataForZip:@&quot;80304&quot; callback:[OCMArg any]]]).andDo(^(NSInvocation *invocation){
+        //2. declare a block with same signature
+        void (^weatherStubResponse)(NSDictionary *dict);
+        //3. link argument 3 with with our block callback
+        [invoke getArgument:&amp;weatherStubResponse atIndex:3];
+        //4. invoke block with pre-defined input
+        NSDictionary *testResponse = @{@&quot;high&quot;: 43 , @&quot;low&quot;: 12};
+        weatherStubResponse(groupMemberMock);
+    });
+    /**
+        1.这个mock对象使用带NSInvocation参数的“andDo”方法。一个NSInvocation对象代表一
+        个‘objectivetified’（实在不知道这个什么鬼）表现的方法调用。通过这个NSinvocation对
+        象，使得拦截传递给我们的方法的block参数变得可能。
+        2.用与我们测试的方法中相同的方法签名声明一个block参数。
+        3.NSInvocation实例方法&quot;getArgument:atIndex:&quot;将赋值后的块函数传递都原始函数中定义
+        的块函数中。注意：在Objective-C中，传递给任意方法的前两个参数都是“self”和“_cmd”.这是
+        一个运行时的小功能以及用下标来获取NSInvocation参数时我们需要考虑的东西。
+        4.最后，传递这个回调的预定义字典。
+    */
 </code></pre>
 
-<h3 id="toc_3">呈现与模型</h3>
+<h4 id="toc_3">2.OCMock简单示例</h4>
 
-<p>我们在改变一个<code>CALayer</code>的属性时，属性值确实会立即更新(这个属性值在设置时就会立刻生效)但是苹果并没有立即呈现出来。</p>
+<p><img src="media/14873831706932/14873839517952.png" alt=""/></p>
 
-<p>当设置<code>CALayer</code>的属性，实际上是在定义当前事务结束之后图层如何显示的<code>模型</code>。而<code>Core Animation</code>则负责根据图层<code>行为</code>和<code>事务设置</code>去更新视图的这些属性在屏幕上的状态.</p>
+<p>示例2：</p>
 
-<p>我们的手机屏幕是每60秒重绘一次,如果我们要做的动画时长大于1/60,就需要在新值之前对屏幕重绘,即知道当前属性值.<strong>每个图层属性的显示值都被存储在一个叫做呈现图层的独立图层当中</strong>,可以通过<code>-presentationLayer</code>方法来访问.</p>
+<pre><code class="language-object-c">- (void)testStrictMock3{
 
-<p>图层树(模型图层树)&lt;---&gt;呈现树:呈现树通过图层树中所有图层的呈现图层所形成。只有在图层首次在屏幕上呈现时候才会被创建,在之前获取呈现图层时会返回nil的.</p>
+    id classMock = OCMClassMock([TweetView class]);
 
-<p>在模型图层上调用<code>- presentationLayer</code>能获取呈现图层,同样的调用<code>–modelLayer</code>是会获取模型图层(通常是self).</p>
+    //设置期望或预设，这个classMock需要执行addTweet方法且参数不为nil。  不然的话会抛出异常
+    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
+    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
 
-<p><img src="media/14901598468257/14903368056823.jpg" alt=""/></p>
+    /* 如果不执行以下代码的话会抛出异常 */
+    Tweet *testTweet = [[Tweet alloc] init];
+    testTweet.userName = @&quot;齐滇大圣&quot;;
+    [classMock addTweet:testTweet];
 
-<p>通常我们只需要和模型图层交互即可让<code>Core Animation</code>更新显示.<br/>
-但是以下两种情况下呈现图层会很有效：  </p>
+    OCMVerifyAll(classMock);
+}
+</code></pre>
 
-<ul>
-<li>实现一个基于定时器的动画,而不仅仅是基于事务的动画，这个时候准确地知道在某一时刻图层显示在什么位置就会对正确摆放图层很有用了。</li>
-<li>如果你想让你做动画的图层响应用户输入，你可以使用<code>-hitTest:</code>方法来判断指定图层是否被触摸，这时候对呈现图层而不是模型图层调用 <code>-hitTest:</code> 会显得更有意义</li>
-</ul>
+<p>这表示一种友好的mock，不会在没有OCMExpect或OCMStub设置类的所有方法时抛出异常。以上代码把OCMExpect和OCMStub注释掉时不会报错。</p>
 
-<pre><code class="language-objectivec">- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
-{
-    //get the touch point
-    CGPoint point = [[touches anyObject] locationInView:self.view];
-    //check if we&#39;ve tapped the moving layer
-    if ([self.colorLayer.presentationLayer hitTest:point]) {
-        self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
-    } else {
-        //otherwise (slowly) move the layer to new position
-        [CATransaction begin];
-        [CATransaction setAnimationDuration:4.0];
-        self.colorLayer.position = point;
-        [CATransaction commit];
-    }
+<p>还有一种表示严格的mock：OCMStrictClassMock，如果把OCMExpect和OCMStub注释掉时会报错，它要求你执行类中的所有方法，所以比较适合用来测试必须实现的方法，代码如下：</p>
+
+<pre><code class="language-object-c">- (void)testStrictMock3{
+    id classMock = OCMStrictClassMock([TweetView class]);
+    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
+    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
+
+    Tweet *testTweet = [[Tweet alloc] init];
+    testTweet.userName = @&quot;齐滇大圣&quot;;
+    [classMock addTweet:testTweet]; 
+
+    OCMVerifyAll(classMock);
 }
 </code></pre>
 
@@ -270,10 +264,10 @@ self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/22</span>
+                    <span class="date">2017/2/18</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
+          					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -338,6 +332,8 @@ self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -367,31 +363,31 @@ self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

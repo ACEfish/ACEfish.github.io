@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,224 +114,51 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15052932669633.html">
+                <a class="clearlink" href="15312926184354.html">
                 
-                  <h1>泛型</h1>
+                  <h1>Stack Navigation</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><strong>泛型:</strong>根据自定义的需求，编写适用于任意类型，灵活可用的函数和类型</p>
+                        	<h3 id="toc_0">navigationOptions</h3>
 
-<h2 id="toc_0">泛型函数</h2>
+<p>title: 导航栏的标题</p>
 
-<p>泛型函数适用与任何类型</p>
+<p>header: 导航栏设置对象</p>
 
-<pre><code class="language-swift">func swapTwoValues&lt;T&gt;(_ a: inout T, _ b: inout T) {
-    let temporaryA = a
-    a = b
-    b = temporaryA
-}
-</code></pre>
+<p>headerTitle: 导航栏的标题, 可以是字符串也可以是个组件<br/>
+headerBackTitle: 左上角的返回键文字, 默认是上一个页面的title，设置这个属性会覆盖掉title的值<br/>
+headerRight: 导航栏右按钮<br/>
+headerLeft: 导航栏左按钮<br/>
+headerStyle: 导航栏的style<br/>
+headerTitleStyle: 导航栏的title的style<br/>
+headerTintColor: 返回按钮的颜色<br/>
+headerPressColorAndroid ：按压返回按钮显示的颜色 安卓系统 &gt;= 5.0才有效。<br/>
+gesturesEnabled ：是否允许右滑返回，在iOS上默认为true，在Android上默认为false</p>
 
-<p>函数的泛型版本:<br/>
-1）使用占位类型名来代替实际类型名(这里用字母<code>T</code>表示),这里并没有指明T必须是什么类型,而是a与b类型相同,在实际调用时才根据传入类型决定<code>T</code>所代表的类型<br/>
-2）在函数名后有<code>&lt;T&gt;</code>，声明了<code>T</code>是函数内定义的占位类型名<br/>
-因此，函数<code>swapTwoInts(_:_:)</code>可以接受任意相同类型的参数</p>
+<h3 id="toc_1">StackNavigatorConfig</h3>
 
-<h2 id="toc_1">类型参数</h2>
-
-<p>类型参数指定并命名一个占位类型,紧随在函数名后,用尖括号括起来(如:<code>&lt;T&gt;</code>),也可以提供多个参数用逗号隔开</p>
-
-<p>可以用指定的类型参数作为函数的参数类型或返回类型，</p>
-
-<h2 id="toc_2">命名类型参数</h2>
-
-<p>我们可以使用有意义的单词来表明类型参数和泛型函数关系,当没有联系时,通常使用单个字母来命名</p>
-
-<p><strong>使用大写字母开头的驼峰命名法来为类型参数命名</strong></p>
-
-<h2 id="toc_3">泛型类型</h2>
-
-<p><strong>泛型类型：</strong>除了泛型函数，Swift 还允许你定义泛型类型。这些自定义类、结构体和枚举可以适用于任何类型,类型于<code>Array</code>和<code>Dictionary</code></p>
-
-<pre><code class="language-swift">//泛型 Stack（栈型） 结构体
-struct Stack&lt;Element&gt; {
-    var items = [Element]()
-    mutating func push(item: Element) {
-        items.append(item)
-    }
-    mutating func pop() -&gt; Element {
-        return items.removeLast()
-    }
-}
-</code></pre>
-
-<p>使用占位类型<code>Element</code>，这个类型参数包裹在紧随结构体名的一对尖括号里（<code>&lt;Element&gt;</code>）,类型参数用来初始化数组,用来作为<code>push</code><code>pop</code>方法的参数</p>
-
-<p><code>Stack</code>是泛型类型,可以创建任意有效类型栈<br/>
-可以通过在尖括号写出栈中需要存储的数据类型来创建并初始化一个<code>Stack</code>实例</p>
-
-<pre><code class="language-swift">var stackOfStrings = Stack&lt;String&gt;()
-stackOfStrings.push(&quot;uno&quot;)
-stackOfStrings.push(&quot;dos&quot;)
-let fromTheTop = stackOfStrings.pop()
-</code></pre>
-
-<h2 id="toc_4">扩展泛型类型</h2>
-
-<p>在扩展泛型类型时，不需要在扩展的定义中提供类型参数列表。可以在扩展中直接使用原始类型参数列表,并且这些来自原始类型中的参数名称会被用作原始定义中类型参数的引用。</p>
-
-<pre><code class="language-swift">//扩展泛型类型增加只读的计算属性
-extension Stack {
-    var topItem: Element? {
-        return items.isEmpty ? nil : items[items.count - 1]
-    }
-}
-</code></pre>
-
-<p>返回`<code>item</code>数组的最后一个元素</p>
-
-<p>扩展中直接使用了已有的类型参数<code>Element</code></p>
-
-<h2 id="toc_5">类型约束</h2>
-
-<p>给泛型函数和泛型类型添加一个特定的约束，可以指定一个类型参数必须继承自指定类，或者符合协议或协议组合</p>
-
-<p>例如:<code>Dictionary</code>类型约束了字典中的键必须是可哈希的（符合<code>Hashable协议</code>），也就是必须有唯一的方法表示她，才能根据键进行判断</p>
-
-<h3 id="toc_6">类型约束语法</h3>
-
-<p>在类型参数名后放置类型或协议名用冒号隔开来进行约束，</p>
-
-<pre><code class="language-swift">//类型约束的泛型函数
-func someFunction&lt;T: SomeClass, U: SomeProtocol&gt;(someT: T, someU: U) {
-    // 这里是泛型函数的函数体部分
-}
-</code></pre>
-
-<p>约束T必须是SomeClass的子类，要求U必须遵循SomeProtocol的</p>
-
-<h3 id="toc_7">类型约束实践</h3>
-
-<p>我们新建一个泛型函数来从实现从数组中查找特定元素的功能;</p>
-
-<pre><code class="language-swift">//从数组中查找特定自字符串的非泛型函数
-func findIndex(ofString valueToFind: String, in array: [String]) -&gt; Int? {
-    for (index, value) in array.enumerated() {
-        if value == valueToFind {
-            return index
-        }
-    }
-    return nil
-}
-
-
-//泛型类型
-func findIndex&lt;T&gt;(of valueToFind: T, in array:[T]) -&gt; Int? {
-    for (index, value) in array.enumerated() {
-        if value == valueToFind {
-        return index
-        }
-    }
-    return nil
-}
-</code></pre>
-
-<p>上面的泛型函数，是无法通过编译的，因为不是任何类型都可以用<code>==</code>进行比较<br/>
-Swift定义了一个<code>Equatable</code>协议,所有遵守改协议的类型都必须实现<code>==或!=</code>，从而对该类型任意值进行比较</p>
-
-<pre><code class="language-swift">//此时泛型函数可以成功编译了
-func findIndex&lt;T: Equatable&gt;(array: [T], _ valueToFind: T) -&gt; Int? {
-    for (index, value) in array.enumerate() {
-        if value == valueToFind {
-            return index
-        }
-    }
-    return nil
-}
-</code></pre>
-
-<h2 id="toc_8">关联类型</h2>
-
-<p>定义协议时，声明一个或者多个<strong>关联类型</strong>作为协议的一部分</p>
-
-<p><strong>关联类型</strong>为协议中的的某个类型提供占位名(别名)，而其实际类型在协议被采纳时才会被指定</p>
-
-<p>用<code>associatedtype</code>关键字指定<strong>关联类型</strong></p>
-
-<pre><code class="language-swift">protocol Container {
-    associatedtype ItemType
-    mutating func append(item: ItemType)
-    var count: Int { get }
-    subscript(i: Int) -&gt; ItemType { get }
-}
-</code></pre>
-
-<p>在协议中声明了一个关联类型<code>ItemType</code>,来保证在不知道容器中元素的具体类型情况下行为能够正确执行</p>
-
-<pre><code class="language-swift">//定义类型遵循Contain协议
-Struct IntStack: Container {
-    // IntStack 的原始实现部分
-    var items = [Int]()
-    mutating func push(item: Int) {
-        items.append(item)
-    }
-    mutating func pop() -&gt; Int {
-        return items.removeLast()
-    }
-    // Container 协议的实现部分
-    typealias ItemType = Int//可以省略，swift会根据协议的实现推断出类型
-        mutating func append(item: Int) {
-        self.push(item)
-    }
-    var count: Int {
-        return items.count
-    }
-    subscript(i: Int) -&gt; Int {
-        return items[i]
-    }
-}
-
-</code></pre>
-
-<p>在实现协议时需要用<code>typealias ItemType = Int</code>来转换协议中的关联类型<br/>
-当然，这个是可以省略的，Swift可以根据方法推断出<code>ItemType</code>类型</p>
-
-<h3 id="toc_9">扩展存在的类型来指定关联类型</h3>
-
-<p>对于Contain协议，Swift中的Array已经默认提供了协议中要求，因此我们只需要声明Array遵循该协议就可以扩展<code>Array</code></p>
-
-<pre><code class="language-swift">//我们只需要扩展Array来使其遵循该协议即可
-extension Array: Container {}
-</code></pre>
-
-<h2 id="toc_10">泛型Where语句</h2>
-
-<p><strong>泛型Where语句</strong>用于为关联类型定义约束，比如要求其必须遵循特定协议，以及特定类型参数和关联类型必须相同</p>
-
-<p>在函数体或者类型的大括号前添加<code>Where</code>子句</p>
-
-<pre><code class="language-swift">func allItemsMatch&lt;C1: Container, C2: Container&gt;
-(_ someContainer: C1, _ anotherContainer: C2) -&gt; Bool
-    where C1.ItemType == C2.ItemType, C1.ItemType: Equatable {
-        // 检查两个容器含有相同数量的元素
-        if someContainer.count != anotherContainer.count {
-            return false
-        }
-        // 检查每一对元素是否相等
-        for i in 0..&lt;someContainer.count {
-            if someContainer[i] != anotherContainer[i] {
-            return false
-        }
-    }
-    // 所有元素都匹配，返回 true
-    return true
-}
-</code></pre>
-
-<p>用<code>类型约束</code>约束类型参数:C1、C2必须符合<code>Contain</code>协议<br/>
-用<code>泛型Where语句</code>约束关联类型:C1和C2必须类型相同,并且C1符合<code>Equatable</code></p>
+<ul>
+<li>initialRouteName: 设置默认的页面组件，必须是上面已注册的页面组件</li>
+<li>initialRouteParams: 初始路由的参数</li>
+<li>navigationOptions: 屏幕导航的默认选项</li>
+<li>paths: RouteConfigs里面路径设置的映射</li>
+<li>mode: 页面切换模式:
+<ul>
+<li>card: 普通app常用的左右切换</li>
+<li>modal: 上下切换</li>
+</ul></li>
+<li>headerMode: 导航栏的显示模式:
+<ul>
+<li>float: 无透明效果, 默认</li>
+<li>screen: 有渐变透明效果, 如微信QQ的一样</li>
+<li>none: 隐藏导航栏</li>
+</ul></li>
+<li>cardStyle: 样式</li>
+<li>onTransitionStart: 页面切换开始时的回调函数</li>
+<li>onTransitionEnd: 页面切换结束时的回调函数</li>
+</ul>
 
                         
                       </div>
@@ -338,10 +167,10 @@ extension Array: Container {}
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/9/13</span>
+                    <span class="date">2018/7/11</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
+          					    <span class="posted-in"><a href='React-Native.html'>React-Native</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -406,6 +235,8 @@ extension Array: Container {}
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -435,31 +266,31 @@ extension Array: Container {}
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

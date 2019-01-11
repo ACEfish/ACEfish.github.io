@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,238 +114,139 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15082286345415.html">
+                <a class="clearlink" href="15319012648780.html">
                 
-                  <h1>ARKit框架API简介</h1>
+                  <h1>高级特性</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">ARAnchor</h2>
+                        	<h2 id="toc_0">切片</h2>
 
-<p>物体的3D锚点,表示物体在3D空间的位置和方向</p>
+<p>list的切片</p>
 
-<pre><code class="language-objectivec">/**
- 标识符
- */
-@property (nonatomic, readonly) NSUUID *identifier;
+<pre><code class="language-python">listTest = list(range(100))
 
-/**
- 锚点的旋转变换矩阵，定义了锚点的旋转、位置、缩放。是一个4x4的矩阵（读者可以自行科普什么叫4x4矩阵）
- */
-@property (nonatomic, readonly) matrix_float4x4 transform;
-
-/**
- 构造方法,一般我们无需构造。因为添加一个3D物体时ARKit会有代理告知我们物体的锚点
- */
-- (instancetype)initWithTransform:(matrix_float4x4)transform;
+listTest[:10]  # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+listTest[:10:2] #[0, 2, 4, 6, 8]
+listTest[-10:] # [90, 91, 92, 93, 94, 95, 96, 97, 98, 99]
+listTest[:] # 拷贝一个新的list 相当于深拷贝
 </code></pre>
 
-<h2 id="toc_1">ARFrame</h2>
+<p>元组:<br/>
+元组的切片结果 仍为不可变的元组</p>
 
-<p>主要用于追踪相机的当前状态,包括位置、图像帧以及时间等参数</p>
-
-<pre><code class="language-objectivec">/**
-时间戳.
- */
-@property (nonatomic, readonly) NSTimeInterval timestamp;
-
-/**
- 缓冲区图像帧
- */
-@property (nonatomic, readonly) CVPixelBufferRef capturedImage;
-
-/**
-相机（表示这个ARFrame是哪一个相机的，iPhone7plus有两个摄像机）
- */
-@property (nonatomic, copy, readonly) ARCamera *camera;
-
-/**
- 返回当前相机捕捉到的锚点数据（当一个3D虚拟模型加入到ARKit中时，锚点值得就是这个模型在AR中的位置）
- */
-@property (nonatomic, copy, readonly) NSArray&lt;ARAnchor *&gt; *anchors;
-
-/**
-灯光（指的是灯光强度 一般是0-2000，系统默认1000）
- */
-@property (nonatomic, copy, nullable, readonly) ARLightEstimate *lightEstimate;
-
-/**
-特征点（捕捉平地或者人脸的，比较苹果有自带的人脸识别功能）
- */
-@property (nonatomic, nullable, readonly) ARPointCloud *rawFeaturePoints;
-
-/**
-根据2D坐标点搜索3D模型，这个方法通常用于，当我们在手机屏幕点击某一个点的时候，可以捕捉到这一个点所在的3D模型的位置，至于为什么是一个数组非常好理解。手机屏幕一个是长方形，这是一个二维空间。而相机捕捉到的是一个由这个二维空间射出去的长方体，我们点击屏幕一个点可以理解为在这个长方体的边缘射出一条线，这一条线上可能会有多个3D物体模型
-point：2D坐标点（手机屏幕某一点）
-ARHitTestResultType：捕捉类型  点还是面
-(NSArray&lt;ARHitTestResult *&gt; *)：追踪结果数组  详情见本章节ARHitTestResult类介绍
-
- */
-- (NSArray&lt;ARHitTestResult *&gt; *)hitTest:(CGPoint)point types:(ARHitTestResultType)types;
-
-/**
-相机窗口的的坐标变换（可用于相机横竖屏的旋转适配）
- */
-- (CGAffineTransform)displayTransformWithViewportSize:(CGSize)viewportSize orientation:(UIInterfaceOrientation)orientation;
+<pre><code class="language-python">(0, 1, 2, 3, 4, 5)[:3] #(0, 1, 2)
 </code></pre>
 
-<h2 id="toc_2">ARHitTestResult</h2>
+<p>字符串也可看做一种list，可执行切片</p>
 
-<p>点击的回调结果,通常用于获取ARKit的捕捉结果，获取物体到相机的距离/位置、方向等</p>
-
-<pre><code class="language-swift">//捕捉类型枚举
-typedef NS_OPTIONS(NSUInteger, ARHitTestResultType) {
-    /** 点. */
-    ARHitTestResultTypeFeaturePoint              = (1 &lt;&lt; 0),
-
-    /** 水平面 y为0. */
-    ARHitTestResultTypeEstimatedHorizontalPlane  = (1 &lt;&lt; 1),
-
-    /** 已结存在的平面. */
-    ARHitTestResultTypeExistingPlane             = (1 &lt;&lt; 3),
-
-    /** 已结存在的锚点和平面. */
-    ARHitTestResultTypeExistingPlaneUsingExtent  = (1 &lt;&lt; 4),
-} NS_SWIFT_NAME(ARHitTestResult.ResultType);
-
-/**
-捕捉类型
- */
-@property (nonatomic, readonly) ARHitTestResultType type;
-
-/**
- 3D虚拟物体与相机的距离（单位：米）
- */
-@property (nonatomic, readonly) CGFloat distance;
-
-/**
-本地坐标矩阵（世界坐标指的是相机为场景原点的坐标，而每一个3D物体自身有一个场景，本地坐标就是相对于这个场景的坐标）类似于frame和bounds的区别
- */
-@property (nonatomic, readonly) matrix_float4x4 localTransform;
-
-/**
-世界坐标矩阵
- */
-@property (nonatomic, readonly) matrix_float4x4 worldTransform;
-
-/**
- 锚点（3D虚拟物体，在虚拟世界有一个位置，这个位置参数是SceneKit中的SCNVector3：三维矢量），而锚点anchor是这个物体在AR现实场景中的位置，是一个4x4的矩阵
- */
-@property (nonatomic, strong, nullable, readonly) ARAnchor *anchor;
-
+<pre><code class="language-python">&#39;ABCDEFG&#39;[:3] #&#39;ABC&#39;
+&#39;ABCDEFG&#39;[::2] #&#39;ACEG&#39;
 </code></pre>
 
-<h2 id="toc_3">ARLightEstimate</h2>
+<h2 id="toc_1">迭代</h2>
 
-<p>灯光效果</p>
-
-<pre><code class="language-swift">/**
-灯光强度  范围0-2000 默认1000
- */
-@property (nonatomic, readonly) CGFloat ambientIntensity;
-
+<pre><code class="language-python">#遍历dict
+for key in dict2: #遍历所有键
+for key in dict2.values(): #遍历所有值
+for key in dict2.items(): #遍历所有键值对，返回为元组
+    print(key)
 </code></pre>
 
-<h2 id="toc_4">ARPlaneAnchor</h2>
+<p>当遍历时需要下标时,用enumerate()方法可以获取索引</p>
 
-<p>平面锚点,是<code>ARAnchor</code>的子类,<code>ARKit</code>可以自动识别平面并且添加一个锚点到场景中</p>
-
-<p>所有被检测到的表面都会关联到一个<code>ARPlaneAnchor</code>对象，并可进一步使用提供物体到镜头的距离、位置和方向的<code>ARHitTestResult</code>进行描述。<code>ARPlaneAnchor</code>是<code>ARAnchor</code>的一个子类实例，可添加到AR场景中，实现在场景中放置虚拟物体。</p>
-
-<pre><code class="language-swift">/**
-平面类型，目前只有一个，就是水平面
- */
-@property (nonatomic, readonly) ARPlaneAnchorAlignment alignment;
-
-/**
-3轴矢量结构体，表示平地的中心点  x/y/z
- */
-@property (nonatomic, readonly) vector_float3 center;
-
-/**
-3轴矢量结构体，表示平地的大小（宽度和高度）  x/y/z
- */
-@property (nonatomic, readonly) vector_float3 extent;
+<pre><code class="language-python">for x, value in enumerate(dict2):
+    print(x, value)
 </code></pre>
 
-<h2 id="toc_5">ARPointCloud</h2>
+<h2 id="toc_2">列表生成器</h2>
 
-<p>点状渲染云 主要用于渲染场景</p>
-
-<pre><code class="language-objectivec">/**
- 点的数量
- */
-@property (nonatomic, readonly) NSUInteger count;
-
-/**
-每一个点的位置的集合（结构体带*表示的是结构体数组）
- */
-@property (nonatomic, readonly) const vector_float3 *points;
+<pre><code class="language-python">L1=list(range(1,11))
+print(L1) #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+L2=[x*x for x in L1]
+print(L2) #[1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
+L3=[x*x for x in L1 if x%2 == 0]
+print(L3) # [4, 16, 36, 64, 100]
+L4=[str(x1)+str(x2) for x1 in list(range(3)) for x2 in list(range(3,6))]
+print(L4) # [&#39;03&#39;, &#39;04&#39;, &#39;05&#39;, &#39;13&#39;, &#39;14&#39;, &#39;15&#39;, &#39;23&#39;, &#39;24&#39;, &#39;25&#39;]
 </code></pre>
 
-<h2 id="toc_6">ARConfiguration</h2>
+<h2 id="toc_3">生成器 generator</h2>
 
-<p>会话追踪配置，主要就是追踪相机的位置</p>
+<p>在列表中一遍循环一边计算的机制,称为生成器：<code>generator</code></p>
+
+<p>创建生成器:</p>
+
+<ol>
+<li><p>方法一: 通过将列表生成器的<code>[]</code>改为<code>()</code></p>
+<pre><code class="language-python"> LI1=list(range(1,5))
+LI2=(x*x for x in LI1)<br/>
+#通过next()方法来获取生成器中的下一个值 直到最后一个元素抛出错误<br/>
+print(next(LI2))<br/>
+print(next(LI2))<br/>
+print(next(LI2))<br/>
+print(next(LI2))<br/>
+print(next(LI2)) # 抛出 StopIteration错误<br/>
+# 通过next()方法太麻烦,我们应该用 for 循环 不用关心StopIteration错误<br/>
+for x in LI2:<br/>
+    print(x)<br/>
+# 1<br/>
+# 4<br/>
+# 9<br/>
+# 16
+</code></pre></li>
+<li><p>方法二: 函数中包含<code>yield</code>关键字,为一个generator函数<br/>
+generator函数在遇到yield关键字时会中断，返回yeild后的值,next之后会继续执行,直到没有yeild就会报错<br/>
+当然也可以通过<code>for</code>循环来获取</p>
+<pre><code class="language-python">def my_generatorFuc():
+    print(&quot;step1&quot;)<br/>
+    yield (1)<br/>
+    print(&quot;step2&quot;)<br/>
+    yield (5)<br/>
+    print(&quot;step3&quot;)<br/>
+    yield(10)<br/>
+    return 100
+</code></pre></li>
+</ol>
 
 <blockquote>
-<p>子类ARWorldTrackingConfiguration</p>
+<p>采用<code>next()</code>可以当遇到<code>StopIteration</code>错误可以获取到<code>generator</code>函数的<code>return</code>值,返回值包含在<code>StopIteration</code>的<code>value</code>中<br/>
+采用<code>for</code>循环获取不到函数的返回值,因此需要捕获<code>StopIteration</code>错误</p>
 </blockquote>
 
-<pre><code class="language-objectivec">/**
-当前设备是否支持，一般A9芯片以下设备不支持
- */
-@property(class, nonatomic, readonly) BOOL isSupported;
+<h2 id="toc_4">迭代器</h2>
 
-/**
-会话的对齐方式，这里的对其指的是3D世界的坐标。枚举值见下方
- */
-@property (nonatomic, readwrite) ARWorldAlignment worldAlignment;
+<p> 对于可以用for循环的对象称为可迭代对象:<code>Iterable</code><br/>
+ 目前常用的可迭代对象有:<br/>
+ 1. list、tuple、dict、set、str<br/>
+ 2. generator:生成器和带<code>yield</code>的generator函数<br/>
+ <br/>
+ 可以被next()函数调用并不断返回下一个值的对象称为迭代器：<code>Iterator</code><br/>
+ 生成器都是迭代器,但是list、tuple、dict、set、str等是可迭代对象但不是迭代器<br/>
+ </p>
 
-typedef NS_ENUM(NSInteger, ARWorldAlignment) {
-    ARWorldAlignmentGravity,//相机位置
-    ARWorldAlignmentGravityAndHeading,//相机位置及方向
-    ARWorldAlignmentCamera//相机方向
-} 
+<blockquote>
+<p><code>Iterator</code>对象表示的是一个数据流，是一个惰性序列,不能事先知道序列长度，只能通过需要是<code>next()</code>计算下一个序列值</p>
 
-/**
-是否需要自适应灯光效果，默认是YES
- */
-@property (nonatomic, readwrite, getter=isLightEstimationEnabled) BOOL lightEstimationEnabled;
+<p><code>for</code>循环本质上是通过不停调用<code>next()</code>来实现的</p>
 
-@end
+<p>list、tuple、dict、set、str等可迭代对象可以通过<code>iter()</code>函数获得一个<code>Iterator</code>对象</p>
+</blockquote>
 
-
-//世界会话追踪配置，苹果建议我们使用这个类，这个子类只有一个属性，也就是可以帮助我们追踪相机捕捉到的平地
-@interface ARWorldTrackingSessionConfiguration : ARSessionConfiguration
-
-/**
-侦查类型。枚举值见下方（默认侦查平地）
- */
-@property (nonatomic, readwrite) ARPlaneDetection planeDetection;
+<pre><code class="language-python">it = iter([1, 2, 3, 4, 5])
+# 循环:
+while True:
+    try:
+        # 获得下一个值:
+        x = next(it)
+    except StopIteration:
+        # 遇到StopIteration就退出循环
+        break
 </code></pre>
 
-<h2 id="toc_7">ARError</h2>
-
-<p>描述ARKit中的错误信息</p>
-
-<pre><code class="language-swift">//作用域，一般会表示是哪一个类出现问题
-NSString *const ARErrorDomain;
-typedef NS_ERROR_ENUM(ARErrorDomain, ARErrorCode) {
-    /** Unsupported session configuration. */
-    ARErrorCodeUnsupportedConfiguration   = 100,//不支持会话追踪配置，由于A9芯片以下的机型会报错
-
-    /** A sensor required to run the session is not available. */
-    ARErrorCodeSensorUnavailable          = 101,//失活状态
-
-    /** A sensor failed to provide the required input. */
-    ARErrorCodeSensorFailed               = 102,//传感器故障
-
-    /** World tracking has encountered a fatal error. */
-    ARErrorCodeWorldTrackingFailed        = 200,//追踪失败
-};
-
-</code></pre>
+<p> <br/>
+ </p>
 
                         
                       </div>
@@ -352,10 +255,10 @@ typedef NS_ERROR_ENUM(ARErrorDomain, ARErrorCode) {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/10/17</span>
+                    <span class="date">2018/7/18</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='ARKit.html'>ARKit</a></span>
+          					    <span class="posted-in"><a href='Python.html'>Python</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -420,6 +323,8 @@ typedef NS_ERROR_ENUM(ARErrorDomain, ARErrorCode) {
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -449,31 +354,31 @@ typedef NS_ERROR_ENUM(ARErrorDomain, ARErrorCode) {
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

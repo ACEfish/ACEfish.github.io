@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,30 +114,202 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15266103811219.html">
+                <a class="clearlink" href="15331955872244.html">
                 
-                  <h1>JavaScript 与 ECMAScript 区别</h1>
+                  <h1>常用第三方模块</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">基础名词</h2>
+                        	<h2 id="toc_0">Pillow</h2>
 
-<p>ECMA 为科学技术制定标准的组织</p>
+<pre><code class="language-python">from PIL import Image, ImageFilter
 
-<p>ECMA-262 目前脚本语言的规范</p>
+image1=Image.open(&quot;/Users/fish/Desktop/pyTestImage.jpg&quot;)
+print(image1)
+print(image1.size)
+print(&quot;图像尺寸为宽%s 高%s&quot; % image1.size)
+(w, h)=image1.size
+image1.thumbnail((w//2, h//2))
+print(&quot;调整后的图片大小%s %s&quot; % image1.size)
+image1.save(&quot;/Users/fish/Desktop/thumbnail.jpg&quot;, &quot;jpeg&quot;)
 
-<p>ECMAScript是定义在ECMA-262中定义的标准,用于创建通用目的脚本语言</p>
 
-<p>JavaScript 通用目的的脚本语言，遵循ECMAScript规范</p>
+image2=Image.open(&quot;/Users/fish/Desktop/pyTestImage.jpg&quot;)
+image2=image2.filter(ImageFilter.BLUR)
+image2.save(&quot;/Users/fish/Desktop/blur.jpg&quot;, &quot;jpeg&quot;)
 
-<p>JavaScript引擎 能够理解和执行JavaScript代码的程序或解释器</p>
 
-<p>JavaScript运行时 js代码运行所在环境,为js引擎所解释。运行时提供js可以运行和操作的宿主对象，js代码被引擎传递,被解析和理解之后,运行时的实体或系统将执行解释行为。例如：浏览器的宿主环境提供的对象视窗或文档等WebAPIs 服务器的宿主环境Node.js，即文件系统、处理和请求等</p>
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
+import random
 
-<p>ECMAScript 6  是ECMA的第6个版本,对规范有显著改变(同名的ES2015)</p>
+#获取随机字母
+def randomChar():
+    return chr(random.randint(65,90))  #获取随机整数
 
-<p>Babel 将ES6代码转换为ES5的转译器(目前主流js引擎都支持ES6 但不一定支持ES6)</p>
+#随机颜色
+def randomColor1():
+    return (random.randint(64,255), random.randint(64,255), random.randint(64,255))
+
+def randomColor2():
+    return (random.randint(32,127), random.randint(32,127), random.randint(32,127))
+
+width=60*4
+height=60
+image=Image.new(&quot;RGB&quot;, (width, height), (255, 255, 255))
+#创建font对象
+font=ImageFont.truetype(&#39;Arial.ttf&#39;, 36,  layout_engine=&quot;LAYOUT_RAQM&quot;)
+#创建Draw对象
+draw=ImageDraw.Draw(image)
+#填充每个像素
+for x in range(width):
+    for y in range(height):
+        draw.point((x,y), fill=randomColor1())
+#输出文字
+
+for t in range(4):
+    draw.text((60*t+10, 10), randomChar(), font=font, fill=randomColor2())
+
+image.save(&quot;/Users/fish/Desktop/randomChar.jpg&quot;, &quot;jpeg&quot;)
+</code></pre>
+
+<h2 id="toc_1">requests</h2>
+
+<pre><code class="language-python">import requests
+r1=requests.get(&quot;http://www.uidt.net/&quot;)
+r1.encoding = &#39;utf-8&#39; 
+print(r1.status_code)
+print(r1.encoding)
+print(r1.headers)
+# 获取网页内容
+with open(&quot;./douban.html&quot;, &quot;w&quot;) as f1:
+    f1.write(r1.text)
+
+
+r2 = requests.get(&#39;https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20weather.forecast%20where%20woeid%20%3D%202151330&amp;format=json&#39;)
+# 获取请求的相应内容
+print(r2.json())
+
+</code></pre>
+
+<h2 id="toc_2">chardet</h2>
+
+<p>用来检测编码 </p>
+
+<pre><code class="language-python">import chardet
+# 当获得bytes时 可以推测其所用的编码
+
+data = &#39;离离原上草，一岁一枯荣&#39;.encode(&#39;gbk&#39;)
+result=chardet.detect(data)
+print(result)
+# {&#39;encoding&#39;: &#39;GB2312&#39;, &#39;confidence&#39;: 0.7407407407407407, &#39;language&#39;: &#39;Chinese&#39;}
+
+</code></pre>
+
+<h2 id="toc_3">psutil</h2>
+
+<p>这个模块可以跨平台使用<br/>
+获取当前系统的CPU信息，内存信息、磁盘信息、网络信息、进程信息</p>
+
+<pre><code class="language-text">#!/usr/bin/env python3
+
+import psutil
+print(psutil.cpu_count())  #CPU逻辑数量
+
+print(psutil.cpu_count(logical=False))  #CPU物理核心数量
+
+print(psutil.cpu_times())  #cpu的用户/系统/空闲时间
+# scputimes(user=7590.65, nice=0.0, system=5399.27, idle=265297.75)
+
+# 内存信息
+
+vm=psutil.virtual_memory() #获取物理内存
+print(vm)
+# svmem(total=17179869184, available=2889986048, percent=83.2, used=12674203648, free=1946497024, active=8977154048, inactive=943489024, wired=2753560576)
+
+swapm=psutil.swap_memory() # 交换内存
+print(swapm)
+# sswap(total=1073741824, used=176685056, free=897056768, percent=16.5, sin=10144088064, sout=4096)
+
+
+# 磁盘信息
+
+disk_part=psutil.disk_partitions() # 磁盘分区信息
+print(disk_part)
+# [sdiskpart(device=&#39;/dev/disk1s1&#39;, mountpoint=&#39;/&#39;, fstype=&#39;apfs&#39;, opts=&#39;rw,local,rootfs,dovolfs,journaled,multilabel&#39;), sdiskpart(device=&#39;/dev/disk1s4&#39;, mountpoint=&#39;/private/var/vm&#39;, fstype=&#39;apfs&#39;, opts=&#39;rw,noexec,local,dovolfs,dontbrowse,journaled,multilabel,noatime&#39;)]
+
+# &quot;/&quot;代表磁盘
+disk_usage=psutil.disk_usage(&quot;/&quot;) # 磁盘使用情况 
+print(disk_usage)
+# sdiskusage(total=499963170816, used=175103643648, free=322010931200, percent=35.2)
+
+disk_io=psutil.disk_io_counters() # 磁盘IO
+print(disk_io)
+# sdiskio(read_count=569221, write_count=820812, read_bytes=17523716096, write_bytes=19005095936, read_time=262887, write_time=473538)
+
+
+net_io=psutil.net_io_counters() # 获取网络读写字节／包的个数
+print(net_io)
+# snetio(bytes_sent=111684608, bytes_recv=2494911488, packets_sent=1122158, packets_recv=1953957, errin=0, errout=0, dropin=0, dropout=0)
+ 
+net_address=psutil.net_if_addrs() # 获取网络接口信息
+print(net_address)
+
+net_status=psutil.net_if_stats() # 获取网络接口状态
+print(&quot;所有网络接口状态:&quot;)
+print(net_status)
+
+
+# net_connectinfo=psutil.net_connections() # 需要root权限 sudo执行python
+# print(&quot;当前网络连接信息:&quot;)
+# print(net_connectinfo)
+
+
+all_pid=psutil.pids() #获取所有进程id
+print(all_pid)
+
+process=psutil.Process(11377) # 获取id对应进程
+print(process.name()) # 获取对应进程名字 
+# Python
+
+print(process.exe()) #进程exe路径
+# /usr/local/Cellar/python/3.6.5/Frameworks/Python.framework/Versions/3.6/Resources/Python.app/Contents/MacOS/Python
+
+print(process.cwd()) #进程工作目录
+
+print(process.cmdline()) # 进程启动的命令行
+
+print(process.ppid()) # 父进程的pid
+
+print(process.parent()) # 父进程
+
+print(process.children()) # 子进程列表
+
+print(process.status()) # 进程状态
+
+print(process.username()) # 进程用户名
+
+print(process.create_time()) # 进程创建时间
+
+print(process.terminal()) # 进程终端
+
+print(process.cpu_times()) # 进程使用的cpu时间
+
+print(process.memory_info()) # 进程使用内存
+
+print(process.open_files()) # 进程打开的文件
+
+print(process.connections()) # 进程相关网络连接
+
+print(process.num_threads()) # 进程的线程数量
+
+# print(process.threads()) # 所有线程
+
+print(process.environ()) # 进程环境变量
+
+print(process.terminate()) # 结束进程
+
+</code></pre>
 
                         
                       </div>
@@ -144,10 +318,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/5/18</span>
+                    <span class="date">2018/8/2</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html'>知识普及</a></span>
+          					    <span class="posted-in"><a href='Python.html'>Python</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -212,6 +386,8 @@
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -241,31 +417,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

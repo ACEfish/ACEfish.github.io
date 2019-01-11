@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,184 +114,138 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14882730004281.html">
+                <a class="clearlink" href="14871449062159.html">
                 
-                  <h1>拾遗</h1>
+                  <h1>XCTest单元测试</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">super</h2>
+                        	<h3 id="toc_0">1.基础知识</h3>
 
-<p>在Objective-C中，如果我们需要在类的方法中调用父类的方法时，通常都会用到<code>super</code></p>
+<p>什么是单元测试:<br/>
+<strong>单元测试是开发者编写的一小段代码，用于检验被测代码中的一个很明确的功能是否正确。通常而言，一个单元测试是用于判断某个特定条件（或者场景）下某个特定函数的行为。</strong><br/>
+单元测试在程序里面可以理解一个模块一个方法，在每个可能存在的模块都进行测试，确保每个模块都没有问题，从而提高整体程序的质量。</p>
 
-<p>首先我们需要知道的是super与self不同。<code>self</code>是类的一个隐藏参数，每个方法的实现的第一个参数即为self。而<code>super</code>并不是隐藏参数，它实际上只是一个”编译器标示符”，它负责告诉编译器，当调用<code>viewDidLoad</code>方法时，去调用父类的方法，而不是本类中的方法。而它实际上与self指向的是相同的消息接收者。</p>
+<h3 id="toc_1">XCTest使用方法</h3>
 
-<pre><code class="language-objectivec">struct objc_super { id receiver; Class superClass; };
+<ol>
+<li><p><strong>测试用例被分到继承 <code>XCTestCase</code> 的不同子类中去</strong>。<br/>
+每个以 test 为开头的方法都是一个测试用例。<br/>
+自定义类</p></li>
+<li><p>命名<br/><br/>
+我们可以用比如<code>testThatIt</code>将重点转移到期望的结果上的测试用例<br/>
+<code>test + 要测试的方法和类名</code>，比如像 testHTTPRequest来测试一些特定类型的<br/>
+我们还可以采用category 来将它们按主题分类</p></li>
+<li><p>Given / When / Then<br/>
+根据 <code>Given-When-Then</code> 模式来组织我们的测试用例<br/>
+这三部分分别指:Given:通过创建模型对象或将被测试的系统设置到指定的状态，来设定测试环境<br/>
+When:包含了我们要测试的代码<br/>
+Then:检查我们行为的结果，这里通常为一些断言</p></li>
+<li><p>可重用代码<br/>
+整理所有有用的代码片段，并将它们加入到一个<code>公共类</code>中，为所有的测试用例服务,这个公共类非常实用。这个测试基础类能够运行自己的 -setUp 和 -tearDown 方法来配置环境。我们大部分情况用它来初始化测试用的 Core Data 栈，来重新设置我们的具有确定性的 NSUUID (这是那些可以让调试简单得多的一些东西中的一个)，并且设置一些后台的魔法来简化异步测试。</p></li>
+<li><p>Mock<br/>
+我们使用的Mock框架是OCMock，mock 是一个在方法调用时返回标准答案的对象</p></li>
+<li></li>
+</ol>
+
+<h4 id="toc_2">XCTest使用范畴</h4>
+
+<p>Apple在Xcode 6中新增了UnitTest<br/>
+XCTest测试范畴：<br/>
+基本逻辑测试处理测试<br/>
+异步加载数据测试<br/>
+数据mock测试</p>
+
+<p>XCTest常用基本测试工具<br/>
+XCTest常用的一些判断工具都是以XCT开头的</p>
+
+<p><strong>补充:</strong><code>代码覆盖率：</code>代码覆盖率 ＝ 实际执行的代码行数 / 整个工程总代码行数，直白来讲就是这样一个数值；  Xcode7以后Apple推出了更为人性化的<a href="http://www.cocoachina.com/ios/20150915/13163.html">工具</a>来统计代码覆盖率，<a href="http://www.jianshu.com/p/c9f8100a96e6">使用简介传送门</a></p>
+
+<h3 id="toc_3">用XCTest完成的最简单的测试Demo</h3>
+
+<ol>
+<li><p>创建项目时勾选</p>
+<p><img src="media/14871449062159/unitTest.png" alt="新建项目时勾选"/></p></li>
+<li><p>进入项目</p>
+<p><img src="media/14871449062159/unitTest2.png" alt="注意路径"/></p>
+<p>进入到这个类，<code>setUp</code>是每个测试方法调用前执行，<code>tearDown</code>是每个测试方法调用后执行。<code>testExample</code>是测试方法，和我们新建的没有差别。不过测试方法必须<code>testXXX</code>的格式，且不能有参数，不然不会识别为测试方法。测试方法的执行顺序是字典序排序。<br/>
+<img src="media/14871449062159/uinitTest5.png" alt="uinitTest5"/></p></li>
+<li><p>测试用例<br/><br/>
+点击上图箭头的开始图标即可测试这个文件中测试方法<br/>
+在测试方法前也有开始图标,点击即可测试这个方法<br/>
+<img src="media/14871449062159/uinitTest4.png" alt="开始测试" style="width:303px;"/></p>
+<p><strong>按快捷键Command + U进行单元测试，这个快捷键是全部测试</strong></p>
+<p><img src="media/14871449062159/uinitTest3.png" alt="测试方法出错"/><br/>
+这里我们<code>断言a=0</code>是错误的所以没有通过</p></li>
+<li><p>XCTest常见的断言</p>
+<pre><code class="language-object-c">XCTFail(format…) 生成一个失败的测试；
+XCTAssertNil(a1, format...)为空判断，a1为空时通过，反之不通过；<br/>
+XCTAssertNotNil(a1, format…)不为空判断，a1不为空时通过，反之不通过；<br/>
+XCTAssert(expression, format...)当expression求值为TRUE时通过；<br/>
+XCTAssertTrue(expression, format...)当expression求值为TRUE时通过；<br/>
+XCTAssertFalse(expression, format...)当expression求值为False时通过；<br/>
+XCTAssertEqualObjects(a1, a2, format...)判断相等，[a1 isEqual:a2]值为TRUE时通过，其中一个不为空时，不通过；<br/>
+XCTAssertNotEqualObjects(a1, a2, format...)判断不等，[a1 isEqual:a2]值为False时通过；<br/>
+XCTAssertEqual(a1, a2, format...)判断相等（当a1和a2是 C语言标量、结构体或联合体时使用,实际测试发现NSString也可以）；<br/>
+XCTAssertNotEqual(a1, a2, format...)判断不等（当a1和a2是 C语言标量、结构体或联合体时使用）；<br/>
+XCTAssertEqualWithAccuracy(a1, a2, accuracy, format...)判断相等，（double或float类型）提供一个误差范围，当在误差范围（+/-accuracy）以内相等时通过测试；<br/>
+XCTAssertNotEqualWithAccuracy(a1, a2, accuracy, format...) 判断不等，（double或float类型）提供一个误差范围，当在误差范围以内不等时通过测试；<br/>
+XCTAssertThrows(expression, format...)异常测试，当expression发生异常时通过；反之不通过；（很变态） XCTAssertThrowsSpecific(expression, specificException, format...) 异常测试，当expression发生specificException异常时通过；反之发生其他异常或不发生异常均不通过；<br/>
+XCTAssertThrowsSpecificNamed(expression, specificException, exception_name, format...)异常测试，当expression发生具体异常、具体异常名称的异常时通过测试，反之不通过；<br/>
+XCTAssertNoThrow(expression, format…)异常测试，当expression没有发生异常时通过测试；<br/>
+XCTAssertNoThrowSpecific(expression, specificException, format...)异常测试，当expression没有发生具体异常、具体异常名称的异常时通过测试，反之不通过；<br/>
+XCTAssertNoThrowSpecificNamed(expression, specificException, exception_name, format...)异常测试，当expression没有发生具体异常、具体异常名称的异常时通过测试，反之不通过
+</code></pre>
+<p><strong>注意:</strong> 特别注意下XCTAssertEqualObjects和XCTAssertEqual。<br/>
+XCTAssertEqualObjects(a1, a2, format...)的判断条件是[a1 isEqual:a2]是否返回一个YES。XCTAssertEqual(a1, a2, format...)的判断条件是a1 == a2是否返回一个YES。对于后者，如果a1和a2都是基本数据类型变量，那么只有a1 == a2才会返回YES<br/>
+XCAssertEqual(a1, a2, format...)当a1和a2是 C语言标量、结构体或联合体时使用,实际测试发现NSString也可以</p></li>
+<li><p>性能测试用例的实现<br/>
+<img src="media/14871449062159/14872135691276.jpg" alt=""/></p></li>
+<li></li>
+</ol>
+
+<h4 id="toc_4">1. XCTest异步测试</h4>
+
+<p>XCTestExpression类带入了<strong>异步测试</strong>,我们可以可以等待指定长度的时间，一直到某些条件符合的时候在开始测试。而不用再写很多的GCD代码控制<br/>
+我们可以定义这样的宏</p>
+
+<pre><code class="language-object-c">#define WAIT do {\
+[self expectationForNotification:@&quot;RSBaseTest&quot; object:nil handler:nil];\
+[self waitForExpectationsWithTimeout:30 handler:nil];\
+} while (0);
+
+#define NOTIFY \
+[[NSNotificationCenter defaultCenter]postNotificationName:@&quot;RSBaseTest&quot; object:nil];
 </code></pre>
 
-<p><code>receiver</code>：即消息的实际接收者<br/>
-<code>superClass</code>：指针当前类的父类</p>
+<p>异步网络测试用例</p>
 
-<p>当我们使用super来接收消息时，编译器会生成一个<code>objc_super</code>结构体。就上面的例子而言，这个结构体的<code>receiver</code>就是<code>MyViewController</code>对象，与<code>self</code>相同；<code>superClass</code>指向<code>MyViewController的父类UIViewController</code>。</p>
-
-<p>接下来，发送消息时，不是调用<code>objc_msgSend</code>函数，而是调用<code>objc_msgSendSuper</code>函数，其声明如下：</p>
-
-<pre><code class="language-objectivec">id objc_msgSendSuper ( struct objc_super *super, SEL op, ... );
-</code></pre>
-
-<p>该函数实际的操作是：从objc_super结构体指向的superClass的方法列表开始查找viewDidLoad的selector，找到后以objc-&gt;receiver去调用这个selector：</p>
-
-<pre><code class="language-objectivec">objc_msgSend(objc_super-&gt;receiver, @selector(viewDidLoad))
-</code></pre>
-
-<p>由于<code>objc_super-&gt;receiver</code>就是<code>self</code>本身，所以该方法实际与下面这个调用是相同的：</p>
-
-<p><code>objc_msgSend(self, @selector(viewDidLoad))</code></p>
-
-<pre><code class="language-text">![](media/14882730004281/14883295157748.jpg)
-</code></pre>
-
-<h2 id="toc_1">库相关操作</h2>
-
-<p>库相关的操作主要是用于获取由系统提供的库相关的信息，主要包含以下函数</p>
-
-<pre><code class="language-objectivec">// 获取所有加载的Objective-C框架和动态库的名称
-const char ** objc_copyImageNames ( unsigned int *outCount );
-// 获取指定类所在动态库
-const char * class_getImageName ( Class cls );
-// 获取指定库或框架中所有类的类名
-const char ** objc_copyClassNamesForImage ( const char *image, unsigned int *outCount );
-</code></pre>
-
-<p>通过这几个函数，我们可以了解到某个类所有的库，以及某个库中包含哪些类。</p>
-
-<pre><code class="language-objectivec">NSLog(@&quot;获取指定类所在动态库&quot;);
-NSLog(@&quot;UIView&#39;s Framework: %s&quot;, class_getImageName(NSClassFromString(@&quot;UIView&quot;)));
-NSLog(@&quot;获取指定库或框架中所有类的类名&quot;);
-const char ** classes = objc_copyClassNamesForImage(class_getImageName(NSClassFromString(@&quot;UIView&quot;)), &amp;outCount);
-for (int i = 0; i &lt; outCount; i++) {
-    NSLog(@&quot;class name: %s&quot;, classes[i]);
+<pre><code class="language-object-c">-(void)testRequest{
+    // 1.获得请求管理者
+    AFHTTPRequestOperationManager *mgr = [AFHTTPRequestOperationManager manager];
+    mgr.responseSerializer.acceptableContentTypes = [NSSet setWithObjects:@&quot;text/html&quot;,nil];
+    // 2.发送GET请求
+    [mgr GET:@&quot;http://www.weather.com.cn/adat/sk/101110101.html&quot; parameters:nil success:^(AFHTTPRequestOperation *operation, id responseObject) {
+        NSLog(@&quot;responseObject:%@&quot;,responseObject);
+        XCTAssertNotNil(responseObject, @&quot;返回出错&quot;);
+        self.stAlertView = [[STAlertView alloc]initWithTitle:@&quot;验证码&quot; message:nil textFieldHint:@&quot;请输入手机验证码&quot; textFieldValue:nil cancelButtonTitle:@&quot;取消&quot; otherButtonTitle:@&quot;确定&quot; cancelButtonBlock:^{
+            //点击取消返回后执行
+            [self testAlertViewCancel];
+            NOTIFY //继续执行
+        } otherButtonBlock:^(NSString *b) {
+            //点击确定后执行
+            [self alertViewComfirm:b];
+            NOTIFY //继续执行
+        }];
+        [self.stAlertView show];
+    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+        NSLog(@&quot;error:%@&quot;,error);
+        XCTAssertNil(error, @&quot;请求出错&quot;);
+        NOTIFY //继续执行
+    }];
+    WAIT  //暂停
 }
-//输出结果
-2014-11-08 12:57:32.689 [747:184013] 获取指定类所在动态库
-2014-11-08 12:57:32.690 [747:184013] UIView&#39;s Framework: /System/Library/Frameworks/UIKit.framework/UIKit
-2014-11-08 12:57:32.690 [747:184013] 获取指定库或框架中所有类的类名
-2014-11-08 12:57:32.691 [747:184013] class name: UIKeyboardPredictiveSettings
-2014-11-08 12:57:32.691 [747:184013] class name: _UIPickerViewTopFrame
-2014-11-08 12:57:32.691 [747:184013] class name: _UIOnePartImageView
-2014-11-08 12:57:32.692 [747:184013] class name: _UIPickerViewSelectionBar
-2014-11-08 12:57:32.692 [747:184013] class name: _UIPickerWheelView
-2014-11-08 12:57:32.692 [747:184013] class name: _UIPickerViewTestParameters
-......
-</code></pre>
-
-<h2 id="toc_2">块操作</h2>
-
-<p>block给我们带到极大的方便，苹果也不断提供一些使用block的新的API。同时，苹果在runtime中也提供了一些函数来支持针对block的操作，这些函数包括：</p>
-
-<pre><code class="language-objectivec">// 创建一个指针函数的指针，该函数调用时会调用特定的block
-IMP imp_implementationWithBlock ( id block );
-// 返回与IMP(使用imp_implementationWithBlock创建的)相关的block
-id imp_getBlock ( IMP anImp );
-// 解除block与IMP(使用imp_implementationWithBlock创建的)的关联关系，并释放block的拷贝
-BOOL imp_removeBlock ( IMP anImp );
-</code></pre>
-
-<p><code>imp_implementationWithBlock</code>函数：参数block的签名必须是<code>method_return_type ^(id self, method_args …)</code>形式的。该方法能让我们使用block作为IMP。如下代码所示：</p>
-
-<p>举个栗子：</p>
-
-<pre><code class="language-objectivec">@interface MyRuntimeBlock : NSObject
-@end    
-@implementation MyRuntimeBlock
-@end
-// 测试代码
-IMP imp = imp_implementationWithBlock(^(id obj, NSString *str) {
-    NSLog(@&quot;%@&quot;, str);
-});
-class_addMethod(MyRuntimeBlock.class, @selector(testBlock:), imp, &quot;v@:@&quot;);
-MyRuntimeBlock *runtime = [[MyRuntimeBlock alloc] init];
-[runtime performSelector:@selector(testBlock:) withObject:@&quot;hello world!&quot;];
-
-//输出结果
-2014-11-09 14:03:19.779 [1172:395446] hello world!
-</code></pre>
-
-<h2 id="toc_3">弱引用操作</h2>
-
-<pre><code class="language-objectivec">// 加载弱引用指针引用的对象并返回
-id objc_loadWeak ( id *location );
-// 存储__weak变量的新值
-id objc_storeWeak ( id *location, id obj );
-</code></pre>
-
-<p><code>objc_loadWeak</code>函数：该函数加载一个弱指针引用的对象，并在对其做retain和autoreleasing操作后返回它。这样，对象就可以在调用者使用它时保持足够长的生命周期。该函数典型的用法是在任何有使用<code>__weak</code>变量的表达式中使用。</p>
-
-<p><code>objc_storeWeak</code>函数：该函数的典型用法是用于<code>__weak</code>变量做为赋值对象时。</p>
-
-<h2 id="toc_4">宏定义</h2>
-
-<p>在runtime中，还定义了一些宏定义供我们使用，有些值我们会经常用到，如表示<code>BOOL</code>值的<code>YES/NO</code>；而有些值不常用，如<code>OBJC_ROOT_CLASS</code>。在此我们做一个简单的介绍。</p>
-
-<h3 id="toc_5">布尔值</h3>
-
-<pre><code class="language-objectivec">#define YES  (BOOL)1
-#define NO   (BOOL)0
-</code></pre>
-
-<p>这两个宏定义定义了表示布尔值的常量，需要注意的是YES的值是1，而不是非0值。</p>
-
-<h3 id="toc_6">空值</h3>
-
-<pre><code class="language-objectivec">#define nil  __DARWIN_NULL
-#define Nil  __DARWIN_NULL
-</code></pre>
-
-<p>其中nil用于空的实例对象，而Nil用于空类对象。</p>
-
-<h3 id="toc_7">分发函数原型</h3>
-
-<pre><code class="language-objectivec">#define OBJC_OLD_DISPATCH_PROTOTYPES  1
-</code></pre>
-
-<p>该宏指明分发函数是否必须转换为合适的函数指针类型。当值为0时，必须进行转换</p>
-
-<h3 id="toc_8">Objective-C根类</h3>
-
-<pre><code class="language-objectivec">#define OBJC_ROOT_CLASS
-</code></pre>
-
-<p>如果我们定义了一个Objective-C根类，则编译器会报错，指明我们定义的类没有指定一个基类。这种情况下，我们就可以使用这个宏定义来避过这个编译错误。该宏在iOS 7.0后可用。</p>
-
-<p>其实在NSObject的声明中，我们就可以看到这个宏的身影，如下所示：</p>
-
-<pre><code class="language-objectivec">__OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0)
-OBJC_ROOT_CLASS
-OBJC_EXPORT
-@interface NSObject &lt;NSObject&gt; {
-    Class isa  OBJC_ISA_AVAILABILITY;
-}
-</code></pre>
-
-<h3 id="toc_9">局部变量存储时长</h3>
-
-<pre><code class="language-objectivec">#define NS_VALID_UNTIL_END_OF_SCOPE
-</code></pre>
-
-<p>该宏表明存储在某些局部变量中的值在优化时不应该被编译器强制释放。</p>
-
-<p>我们将局部变量标记为id类型或者是指向ObjC对象类型的指针，以便存储在这些局部变量中的值在优化时不会被编译器强制释放。相反，这些值会在变量再次被赋值之前或者局部变量的作用域结束之前都会被保存。</p>
-
-<h3 id="toc_10">关联对象行为</h3>
-
-<pre><code class="language-objectivec">enum {
-   OBJC_ASSOCIATION_ASSIGN  = 0,
-   OBJC_ASSOCIATION_RETAIN_NONATOMIC  = 1,
-   OBJC_ASSOCIATION_COPY_NONATOMIC  = 3,
-   OBJC_ASSOCIATION_RETAIN  = 01401,
-   OBJC_ASSOCIATION_COPY  = 01403
-};
 </code></pre>
 
                         
@@ -299,10 +255,10 @@ OBJC_EXPORT
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/28</span>
+                    <span class="date">2017/2/15</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='RunTime.html'>运行时</a></span>
+          					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -367,6 +323,8 @@ OBJC_EXPORT
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -396,31 +354,31 @@ OBJC_EXPORT
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

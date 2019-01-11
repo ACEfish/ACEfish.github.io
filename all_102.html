@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,242 +114,67 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14892022301750.html">
+                <a class="clearlink" href="14872918920673.html">
                 
-                  <h1>图层几何学、视觉效果</h1>
+                  <h1>并发编程中的问题</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>遗忘点:</p>
+                        	<p>使用并发编程会带来许多陷阱<br/>
+优先级反转:也就是说低优先级的线程一直阻塞着高优先级的线程</p>
 
-<ol>
-<li>用作mask的layer不一定非要静态的,只要有layer的都可以作为蒙版</li>
-</ol>
+<h4 id="toc_0">1.资源共享</h4>
 
-<p>2.<code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；我们常用这个方法获取点击位置的视图（判断点击在了哪个视图）</p>
+<p>并发编程中许多问题的根源就是在多线程中访问共享资源。资源可以是一个属性、一个对象，通用的内存、网络设备或者一个文件等等。<br/>
+这里我们举了一个<a href="https://en.wikipedia.org/wiki/Race_condition#Software">竞态条件</a>的例子:<br/>
+<img src="media/14872918920673/14872931592764.jpg" alt=""/><br/>
+这个时候我们需要保证线程B必须等线程A访问完该共享资源才会开始访问共享资源.这时候我们需要一种互斥机制:</p>
 
-<pre><code class="language-text">CALayer *layer = [self.layerView.layer hitTest:point];
-</code></pre>
+<h4 id="toc_1">2.互斥锁</h4>
 
-<h2 id="toc_0">图层几何学</h2>
+<p><strong>互斥访问的意思就是同一时刻，只允许一个线程访问某个特定资源</strong><br/>
+首先需要获得一个共享资源的互斥锁，一旦某个线程对资源完成了操作，就释放掉这个互斥锁，这样别的线程就有机会访问该共享资源<br/>
+<img src="media/14872918920673/14872933923493.jpg" alt=""/><br/>
+因为现代 CPU 为了优化目的，往往会改变向内存读写数据的顺序（<a href="https://en.wikipedia.org/wiki/Out-of-order_execution">乱序执行</a>）因此还需要解决代码无序执行所带来的问题。如果不能确保 CPU 访问内存的顺序跟编程时的代码指令一样，那么仅仅依靠互斥访问是不够的。为了解决由 CPU 的优化策略引起的副作用，还需要引入<a href="https://en.wikipedia.org/wiki/Memory_barrier">内存屏障</a>。通过设置内存屏障，来确保没有无序执行的指令能跨过屏障而执行。</p>
 
-<h3 id="toc_1">布局</h3>
+<p>(<a href="https://en.wikipedia.org/wiki/Lock_%28computer_science%29#Granularity">锁的竞争</a>是这样产生的：当一个或者多个线程尝试获取一个已经被别的线程获取过了的锁)<br/>
+获取和释放锁所是要带来开销的，因此你需要确保你不会频繁地进入和退出临界区段（比如获取和释放锁）。同时，如果你获取锁之后要执行一大段代码，这将带来锁竞争的风险：其它线程可能必须等待获取资源锁而无法工作。</p>
 
-<p>UIView布局属性:<code>frame</code> <code>bounds</code> <code>center</code><br/><br/>
-与之对应<br/>
-CALayer布局属性:<code>frame</code> <code>bounds</code> <code>position</code><br/>
-center和postion是一样的值，都代表了相对于父图层 <code>anchorPoint</code> 所在的位置</p>
+<p>对于你的代码会如何在多核上运行的预测往往十分重要，你可以使用 Instrument 的 CPU strategy view 来检查是否有效的利用了 CPU 的可用核数，进而得出更好的想法，以此来优化代码。</p>
 
-<p>视图的布局属性仅仅是存取方法，对其进行改变其实是改变视图下方CALayer的frame  </p>
+<h4 id="toc_2">3.死锁</h4>
 
-<p>视图或者图层的frame是根据其bounds，position和transform计算而来的，其中任意一值发生改变都会导致其frame改变  </p>
+<p>互斥锁解决了竞态条件的问题，但很不幸同时这也引入了一些其他问题，其中一个就是死锁。当多个线程在相互等待着对方的结束时，就会发生死锁，这时程序可能会被卡住。<br/>
+<img src="media/14872918920673/14872940417124.jpg" alt=""/><br/>
+你在线程之间共享的资源越多，你使用的锁也就越多，同时程序被死锁的概率也会变大。这也是为什么我们需要尽量减少线程间资源共享，并确保共享的资源尽量简单的原因之一。建议阅读一下底层<a href="https://objccn.io/issue-2-3/">并发编程 API</a> 中的全部使用异步分发一节。</p>
 
-<p><img src="media/14892022301750/14892031426669.jpg" alt=""/></p>
+<h4 id="toc_3">4.资源饥饿（Starvation）</h4>
 
-<h3 id="toc_2">锚点</h3>
+<p>锁定的共享资源会引起<a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writers_problem">读写问题</a>，大多数情况下，限制资源一次只能有一个线程进行读取访问其实是非常浪费的。因此，在资源上没有写入锁的时候，持有一个读取锁是被允许的。这种情况下，如果一个持有读取锁的线程在等待获取写入锁的时候，其他希望读取资源的线程则因为无法获得这个读取锁而导致<a href="https://en.wikipedia.org/wiki/Starvation_(computer_science)">资源饥饿</a>的发生。</p>
 
-<p>视图的<code>center</code>属性和图层的<code>position</code>属性都指定了<code>anchorPoint</code>相对于父图层的位置。</p>
+<p>为了解决这个问题，我们需要使用一个比简单的读/写锁更聪明的方法，例如给定一个 <a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writer_lock">writer preference</a>，或者使用 <a href="https://en.wikipedia.org/wiki/Read-copy-update">read-copy-update</a> 算法。Daniel 在底层并发编程 API 中有介绍了如何用 GCD 实现一个多读取单写入的模式，这样就不会被写入资源饥饿的问题困扰了。</p>
 
-<p><code>anchorPoint</code>是用来移动图层的把柄</p>
+<h4 id="toc_4">5.优先级反转</h4>
 
-<p>默认<code>anchorPoint</code>是在图层的中心,这个属性UIView并没有暴露出来,这也是视图的<code>position</code>属性被叫做“center”的原因。但是图层的锚点可以移动，锚点的移动会导致frame的改变即位置改变</p>
+<p><code>优先级反转</code>是指程序在运行时低优先级的任务阻塞了高优先级的任务，有效的反转了任务的优先级。由于 GCD 提供了拥有不同优先级的后台队列，甚至包括一个 I/O 队列，所以我们最好了解一下优先级反转的可能性。</p>
 
-<p><img src="media/14892022301750/14893741880682.jpg" alt=""/></p>
+<blockquote>
+<p>高优先级和低优先级的任务之间共享资源时，就可能发生优先级反转。当低优先级的任务获得了共享资源的锁时，该任务应该迅速完成，并释放掉锁，这样高优先级的任务就可以在没有明显延时的情况下继续执行。然而高优先级任务会在低优先级的任务持有锁的期间被阻塞。如果这时候有一个中优先级的任务(该任务不需要那个共享资源)，那么它就有可能会抢占低优先级任务而被执行，因为此时高优先级任务是被阻塞的，所以中优先级任务是目前所有可运行任务中优先级最高的。此时，中优先级任务就会阻塞着低优先级任务，导致低优先级任务不能释放掉锁，这也就会引起高优先级任务一直在等待锁的释放。</p>
 
-<p>anchorPoint也是单位坐标，默认是{0.5，0.5}，可以通过指定大于或者小于1，使其在图层范围之外</p>
+<p>解决这个问题的方法，通常就是不要使用不同的优先级。通常最后你都会以让高优先级的代码等待低优先级的代码来解决问题。当你使用 GCD 时，总是使用默认的优先级队列（直接使用，或者作为目标队列）。如果你使用不同的优先级，很可能实际情况会让事情变得更糟糕。</p>
+</blockquote>
 
-<p>改变<code>anchorPoint</code>常用于做不随着中心点做动画的动画使用,比如 时钟的表针旋转</p>
+<p><img src="media/14872918920673/14872951554551.jpg" alt=""/></p>
 
-<p><strong>注意</strong><br/>
-中心和锚点（即position或者center和anchorPoint没有任何关系），锚点的改变不会影响中心点位置，只会影响frame</p>
+<h3 id="toc_5">总结:</h3>
 
-<pre><code class="language-objectivec">position.x = frame.origin.x + anchorPoint.x * bounds.size.width；  
-position.y = frame.origin.y + anchorPoint.y * bounds.size.height；
+<p>我们希望通过本文你能够了解到并发编程带来的复杂性和相关问题。并发编程中，无论是看起来多么简单的 API ，它们所能产生的问题会变得非常的难以观测，而且要想调试这类问题往往也都是非常困难的。</p>
 
-frame.origin.x = position.x - anchorPoint.x * bounds.size.width；  
-frame.origin.y = position.y - anchorPoint.y * bounds.size.height；
-</code></pre>
+<p>但另一方面，并发实际上是一个非常棒的工具。它充分利用了现代多核 CPU 的强大计算能力。在开发中，关键的一点就是尽量让并发模型保持简单，这样可以限制所需要的锁的数量。</p>
 
-<h3 id="toc_3">坐标系转换</h3>
-
-<p>CALayer提供了转换坐标系的方法（视图也有）</p>
-
-<pre><code class="language-objectivec">- (CGPoint)convertPoint:(CGPoint)point fromLayer:(CALayer *)layer;
-- (CGPoint)convertPoint:(CGPoint)point toLayer:(CALayer *)layer;
-- (CGRect)convertRect:(CGRect)rect fromLayer:(CALayer *)layer;
-- (CGRect)convertRect:(CGRect)rect toLayer:(CALayer *)layer;
-</code></pre>
-
-<h3 id="toc_4">Z坐标</h3>
-
-<p>UIView是二维坐标 而CALayer则是三维的<br/><br/>
-因此CALayer还有两个属性:<code>zPosition</code> <code>anchorPointZ</code> 在Z轴上描述图层位置的浮点类型<br/>
-<code>zPosition</code>最实用的功能就是改变图层的显示顺序了，一般给图层增加<code>1.f</code>就可以控制显示顺序了</p>
-
-<h3 id="toc_5">HIT Testing</h3>
-
-<p><code>CALayer</code>并不关心任何响应链事件，所以不能直接处理触摸事件或者手势。但是它有一系列的方法帮你处理事件：<code>-containsPoint:</code>和<code>-hitTest:</code>。    </p>
-
-<p><code>-containsPoint:</code> 接受一个在本图层坐标系吓得一个CGPoint，如果这个点在图层frame内就返回YES。注意必须将这个点转为每个图层坐标系下的坐标</p>
-
-<p><code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；</p>
-
-<pre><code class="language-objectivec">//举个栗子
-- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
-{
-    //get touch position
-    CGPoint point = [[touches anyObject] locationInView:self.view];
-    //get touched layer
-    //获取这个点击的layer
-    CALayer *layer = [self.layerView.layer hitTest:point];
-    //get layer using hitTest
-    if (layer == self.blueLayer) {
-        [[[UIAlertView alloc] initWithTitle:@&quot;Inside Blue Layer&quot; message:nil delegate:nil cancelButtonTitle:@&quot;OK&quot; otherButtonTitles:nil] show];
-    } else if (layer == self.layerView.layer) {
-        [[[UIAlertView alloc] initWithTitle:@&quot;Inside White Layer&quot;
-        message:nil
-        delegate:nil
-        cancelButtonTitle:@&quot;OK&quot;
-        otherButtonTitles:nil] show];
-    }
-}
-
-</code></pre>
-
-<p><strong>注意</strong></p>
-
-<ol>
-<li>当调用图层的<code>-hitTest:</code>方法时，测算的顺序严格依赖于图层树当中的图层顺序（和<code>UIView</code>处理事件类似）。之前提到的<code>zPosition</code>属性可以明显改变屏幕上图层的顺序，但不能改变事件传递的顺序。<br/></li>
-<li>这两个方法是layer的实例方法 我们可以直接用layer调用而不需要作为系统判断方法</li>
-</ol>
-
-<h3 id="toc_6">自动布局</h3>
-
-<p>对于UIView如果想要自动布局我们可以使用<code>UIViewAutoresizingMask</code>  和<code>NSLayoutConstraint</code>API<br/><br/>
-CALayer没有自动布局办法<br/>
-如果想要随意控制CALayer的布局，我们可以用CALayerDelegate方法:  </p>
-
-<pre><code class="language-objectivec">- (void)layoutSublayersOfLayer:(CALayer *)layer;
-/**当图层的 bounds 发生改变，或者图层的 -setNeedsLayout 方法被调用的时候，这个函数将会被执
-行。（但是也没法做大自适应屏幕等自动布局,这也是为什么我们用UIView来布局）*/
-</code></pre>
-
-<h2 id="toc_7">视觉效果</h2>
-
-<h3 id="toc_8">圆角</h3>
-
-<p>CALayer有一个叫做<code>conrnerRadius</code>的属性控制着图层角的曲率。它是一个浮点数，默认为0（为0的时候就是直角）,默认这个值不影响背景图片或者子图层,但是如果设置<code>maskToBounds</code>为<code>YES</code>,图层中东西都会被截取.</p>
-
-<h3 id="toc_9">图层边框</h3>
-
-<p><code>borderWidth</code>和<code>borderColor</code>，这条线（stroke）沿着图层的bounds绘制,同时也包含图层的角.<br/>
-<code>borderWith</code>以点为单位的浮点数<br/><br/>
-<code>borderColor</code>边框的颜色默认黑色,<code>CGColorRef</code>类型，不是UIColor所以不是<code>Cocoa</code>内置对象  </p>
-
-<pre><code class="language-objectivec">// CGColorRef 属性即便是强引用也只能通过assign关键字来声明
-@property(nullable) CGColorRef borderColor;
-</code></pre>
-
-<p><strong>注意</strong></p>
-
-<ol>
-<li>边框是绘制在图层边界里面的，而且在所有子内容之前，也在子图层之前。（这个之前是显示最前而不是在最前绘制被遮盖）</li>
-<li>边框是跟随图层的边界变化的，而不是图层里面的内容</li>
-<li>
-<img src="media/14892022301750/14893838391060.jpg" alt=""/></li>
-</ol>
-
-<h3 id="toc_10">阴影</h3>
-
-<p><code>shadowOpacity</code>默认0。他是一个必须在<code>0.0</code>（不可见）和<code>1.0</code>（完全不透明）之间的浮点数。  </p>
-
-<p>阴影的另外三个属性:<br/><br/>
-<code>shadowColor</code>控制阴影的颜色，和 borderColor 和 backgroundColor 一样，它的类型也是 CGColorRef，默认黑色<br/><br/>
-<code>shadowOffset</code>阴影的方向和距离 CGSize类型，宽度为阴影横向位移，高度为纵向位移，默认{0,-3},即相对Y轴有3个点的向上位移<br/><br/>
-<code>shadowRadius</code>控制着阴影的模糊度，当它的值是0的时候，阴影就和视图一样有一个非常确定的边界线。我们推荐为大于0的值,值越大阴影越模糊,图层层次更明显.</p>
-
-<p><img src="media/14892022301750/14893848191222.jpg" alt=""/></p>
-
-<h4 id="toc_11">阴影裁剪</h4>
-
-<p>与边框不同,图层的阴影继承自内容的外形，CoreAnimation会将寄宿图（包括子视图）来结合图层形状创建一个阴影。<br/><br/>
-但是由于他们的不同,我们在包括子图层创建阴影后,如果按照边框进行裁剪就会导致部分阴影没有了，这时候我们只能额外创建一个裁剪后的图层形状的阴影图层（可以作为最外层的父图层）来实现效果。</p>
-
-<h3 id="toc_12">shadowPath属性</h3>
-
-<p>因为实时计算阴影是非常消耗资源的,我们可以通过事先指定<code>shadowPath</code>来提高性能.<code>shadowPath</code>是一个<code>CGPathRef</code>类型（一个指向<code>CGPath</code>的指针）。<code>CGPath</code> 是一个<code>Core Graphics</code>对象，用来指定任意的一个矢量图形。我们可以用这个属性在图层形状之外指定阴影形状.  </p>
-
-<p>举个栗子:</p>
-
-<pre><code class="language-objectivec">
-CGMutablePathRef squarePath = CGPathCreateMutable();
-CGPathAddRect(squarePath, NULL, self.layerView1.bounds);
-self.layerView1.layer.shadowPath = squarePath;
-//需要我们手动释放
-CGPathRelease(squarePath);
-//create a circular shadow
-CGMutablePathRef circlePath = CGPathCreateMutable();
-CGPathAddEllipseInRect(circlePath, NULL, self.layerView2.bounds);
-self.layerView2.layer.shadowPath = circlePath; 
-CGPathRelease(circlePath);
-</code></pre>
-
-<p><code>CGPath</code>适合搭建比较简单的形状,比如举行或者圆,但是如果是复杂的图形推荐<strong>使用<code>UIBezierPath</code></strong>，它是一个由UIKit提供的在<code>CGPath</code>基础上的<code>Objective-C</code>包装类</p>
-
-<h3 id="toc_13">图层蒙版</h3>
-
-<p>CALayer的<code>mask</code>属性是一个CALayer类型,它类似于一个自图层，mask图层定义了父图层的可见区域。  </p>
-
-<p>mask图层的color没用,轮廓才是重要的。对于mask图层中的部分会保留下来,其他部分会被抛弃（对于视图View其实你可以看做其他部分还在只不过颜色为透明色,但是这部分还会拦截点击事件）  </p>
-
-<p>这个<code>Mask</code><strong>不仅仅局限于静态图</strong>，任何有图层的构成都可以作为Mask，因此我们甚至可以用一个动画的layer作为蒙版.</p>
-
-<h3 id="toc_14">拉伸过滤</h3>
-
-<p>这里牵涉到<code>minificationFilter</code>和<code>magnificationFilter</code>属性。  </p>
-
-<p>当图片需要显示不同大小的时候,这种拉伸算法就起到作用。它作用于原图的像素上并根据需要生成新的像素显示在屏幕上。</p>
-
-<p><code>CALayer</code>提供给我们三种拉伸过滤方法:</p>
-
-<ul>
-<li>kCAFilterLinear </li>
-<li>kCAFilterNearest</li>
-<li>kCAFilterTrilinear</li>
-</ul>
-
-<p><code>minification</code>（缩小图片）和<code>magnification</code>（放大图片）默认的过滤器都是<code>kCAFilterLinear</code></p>
-
-<p><code>kCAFilterLinear</code>双线性滤波，大多数情况下表现良好，但是当放大倍数较大时会比较模糊不清  </p>
-
-<p><code>kCAFilterTrilinear</code>和<code>kCAFilterLinear</code>很相似，是三线性滤波<br/>
-<img src="media/14892022301750/14893953542514.jpg" alt=""/></p>
-
-<p><code>kCAFilterNearest</code> 最近过滤 ，就是取样最近的单像素点而不管其他的颜色。总的来说，对于比较小的图或者是差异特别明显，极少斜线的大图，最近过滤算法会保留这种差异明显的特质以呈现更好的结果。但是对于大多数的图尤其是有很多斜线或是曲线轮廓的图片来说，最近过滤算法会导致更差的结果。换句话说，线性过滤保留了形状，最近过滤则保留了像素的差异。<br/>
-<img src="media/14892022301750/14893958244715.jpg" alt=""/></p>
-
-<h3 id="toc_15">组透明</h3>
-
-<p>UIView用<code>alpha</code>属性设置透明度<br/>
-CALayy用<code>opacity</code>设置图层透明度<br/>
-这两个属性都是影响子层级的，比如我们设置一个图层透明度为50%，图层的每个像素都会一半显示自己的颜色，另一半显示图层下面的颜色。。但是如果图层包含一个同样显示50%透明的子图层时，你所看到的视图，50%来自子视图，25%来了图层本身的颜色，另外的25%则来自背景色。因此经常导致我们我们视图颜色的不协调。</p>
-
-<p>这时候我们可以<br/><br/>
-方法一：<br/><br/>
-通过设置<code>Info.plist</code>文件中的 <code>UIViewGroupOpacity</code>为<code>YES</code>来达到这个效果，但是这个设置会影响到这个应用，整个app可能会受到不良影响。</p>
-
-<p>方法二：（推荐）<br/><br/>
-设置CALayer的一个叫做<code>shouldRasterize</code>属性来实现组透明的效果，如果它被设置为YES，在应用透明度之前，图层及其子图层都会被整合成一个整体的图片，这样就没有透明度混合的问题了</p>
-
-<p>为了启用<code>shouldRasterize</code>属性，我们设置了图层的<code>rasterizationScale</code>属性。默认情况下，所有图层拉伸都是1.0， 所以如果你使用了<code>shouldRasterize</code>属性，你就要确保你设置了 <code>rasterizationScale</code> 属性去匹配屏幕，以防止出现Retina屏幕像素化的问题。</p>
-
-<pre><code class="language-objectivec">button2.layer.shouldRasterize = YES;
-button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
-</code></pre>
-
-<p><strong>注意</strong><br/>
-当<code>shouldRasterize</code>和<code>UIViewGroupOpacity</code>一起的时候，会出现性能问题（但是好像影响不大）</p>
+<p>我们建议采纳的安全模式是这样的：<br/>
+<strong>从主线程中提取出要使用到的数据，并利用一个操作队列在后台处理相关的数据，最后回到主队列中来发送你在后台队列中得到的结果。使用这种方式，你不需要自己做任何锁操作，这也就大大减少了犯错误的几率。</strong></p>
 
                         
                       </div>
@@ -356,10 +183,10 @@ button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/11</span>
+                    <span class="date">2017/2/17</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%9B%BE%E5%B1%82.html'>图层</a></span>
+          					    <span class="posted-in"><a href='Concurrent-Programming.html'>多线程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -424,6 +251,8 @@ button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -453,31 +282,31 @@ button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

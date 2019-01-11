@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,97 +114,162 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15082385455420.html">
+                <a class="clearlink" href="15324145349319.html">
                 
-                  <h1>ARCamera</h1>
+                  <h1>面对对象编程</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><code>ARCamera</code>是一个相机,连接虚拟场景与现实场景的枢纽</p>
+                        	<h2 id="toc_0">类和实例</h2>
 
-<p>它的API大致只需要了解即可,ARKit会默认帮我们进行配置好</p>
+<p><code>class</code>关键字定义类<br/>
+类名通常首字母大写</p>
 
-<h2 id="toc_0">API</h2>
+<pre><code class="language-python">class My_Class_Student(object):
+    &quot;&quot;&quot;docstring for My_Class_Student&quot;&quot;&quot;
+    def __init__(self, name):
+        super(My_Class_Student, self).__init__()
+        self.name = name
+        
+lyy=My_Class_Student(&quot;liyuyuan&quot;)
 
-<pre><code class="language-objectivec">/**
- 4x4矩阵表示相机位置，同ARAnchor
- */
-@property (nonatomic, readonly) matrix_float4x4 transform;
+print(lyy)
+print(lyy.name) # liyuyuan
+</code></pre>
 
-/**
-相机方向（旋转）的矢量欧拉角
-分别是x/y/z
- */
-@property (nonatomic, readonly) vector_float3 eulerAngles;
+<p><code>__init__</code>方法定义初始化对象时必须要传入的参数,比如上面student初始化时必须传入name</p>
 
-/**
- 相机追踪状态（在下方会有枚举值介绍）
- */
-@property (nonatomic, readonly) ARTrackingState trackingState NS_REFINED_FOR_SWIFT;
+<p>在类中定义的函数，第一个参数永远是实例变量<code>self</code>，调用时不用传递该参数</p>
 
-/**
-追踪运动类型
- */
-@property (nonatomic, readonly) ARTrackingStateReason trackingStateReason NS_REFINED_FOR_SWIFT;
+<h3 id="toc_1">数据封装</h3>
 
-/**
-相机内参矩阵
-3x3矩阵
- fx 0   px
- 0  fy  py
- 0  0   1
- */
-@property (nonatomic, readonly) matrix_float3x3 intrinsics;
+<p>使用类中定义的方法来实现数据封装</p>
 
-/**
-摄像头分辨率
- */
-@property (nonatomic, readonly) CGSize imageResolution;
+<pre><code class="language-python">class My_Class_Student(object):
+    &quot;&quot;&quot;docstring for My_Class_Student&quot;&quot;&quot;
+    def __init__(self, name):
+        super(My_Class_Student, self).__init__()
+        self.name = name
+    def print_name(self):
+        print(self.name)
+        
+lyy=My_Class_Student(&quot;liyuyuan&quot;)
 
-/**
-投影矩阵
-*/
-@property (nonatomic, readonly) matrix_float4x4 projectionMatrix;
+print(lyy)
+print(lyy.name) # liyuyuan
+lyy.print_name() #liyuyuan
 
-/**
-创建相机投影矩阵
- */
-- (matrix_float4x4)projectionMatrixWithViewportSize:(CGSize)viewportSize orientation:(UIInterfaceOrientation)orientation zNear:(CGFloat)zNear zFar:(CGFloat)zFar;
+</code></pre>
 
-@end
+<h2 id="toc_2">访问限制</h2>
 
-//相机追踪状态枚举
-typedef NS_ENUM(NSInteger, ARTrackingState) {
+<p>让内部属性不被外部访问，可以再属性名称前加双下划线<code>__</code>，在python中，以<code>__</code>开头的变量名就为私有变量,外部不能访问（只能为<code>__</code>不能<code>_</code>）</p>
 
-    /** 不被允许 */
-    ARTrackingStateNotAvailable,
+<pre><code class="language-python">class My_Class_Student(object):
+    &quot;&quot;&quot;docstring for My_Class_Student&quot;&quot;&quot;
+    def __init__(self, name):
+        super(My_Class_Student, self).__init__()
+        self.__name = name
+    def print_name(self):
+        print(self.__name)
+        
+lyy=My_Class_Student(&quot;liyuyuan&quot;)
 
-    /** 被限制 限值原因ARTrackingStateReason */
-    ARTrackingStateLimited,
+print(lyy.__name) # AttributeError:&#39;My_Class_Student&#39; object has no attribute &#39;__name&#39;
+lyy.print_name() #liyuyuan
+</code></pre>
 
-    /** 正常. */
-    ARTrackingStateNormal,
-} NS_REFINED_FOR_SWIFT;
+<blockquote>
+<p>变量名为<code>__xxx__</code>是特殊变量，外部可以直接访问的</p>
 
-/**
- 追踪运动类型
- */
-API_AVAILABLE(ios(11.0)) API_UNAVAILABLE(macos, watchos, tvos)
-typedef NS_ENUM(NSInteger, ARTrackingStateReason) {
-    /** 无. */
-    ARTrackingStateReasonNone,
+<p>对于单下划线开头的变量,虽然可以访问,但是约定俗成不要访问,当做私有变量</p>
+
+<p>对于<code>__</code>开头的变量，其实python是将其改名为<code>_classname__变量名</code>，我们也可以通过其进行访问，不建议</p>
+</blockquote>
+
+<h2 id="toc_3">继承和多态</h2>
+
+<h3 id="toc_4">继承</h3>
+
+<pre><code class="language-python">class Animal(object):
+    def run(self):
+        print(&#39;Animal is running...&#39;)
+
+#继承了Animal 就自带了run方法
+class Dog(Animal):
+    pass
+
+#重写父类继承的方法
+class Cat(Animal):
+    def run(self):
+        print(&#39;Cat is running...&#39;)
     
-    /** 初始化追踪 */
-    ARTrackingStateReasonInitializing,
+</code></pre>
 
-    /** 过度运动. */
-    ARTrackingStateReasonExcessiveMotion,
+<h3 id="toc_5">多态</h3>
 
-    /** 未找到可见特征 缺少纹理 */
-    ARTrackingStateReasonInsufficientFeatures,
-} NS_REFINED_FOR_SWIFT;
+<p>判断一个变量是否是某个类型可以用<code>isinstance()</code>判断：</p>
 
+<pre><code class="language-python">b = Animal() # b是Animal类型
+isinstance(b, Animal)  #True
+</code></pre>
+
+<blockquote>
+<p>对于静态语言(java等),需要传入的必须是Animal类型或者其子类,否则无法调用其方法</p>
+
+<p>对于python等动态语言,没有类型检查,只需要保证其有执行的方法就行了，就可以执行<br/>
+这就是鸭子类型</p>
+</blockquote>
+
+<h2 id="toc_6">获取对象信息</h2>
+
+<h3 id="toc_7">type()</h3>
+
+<p>用<code>type()</code>来获取对象类型</p>
+
+<pre><code class="language-python">if type(&quot;name&quot;) == type(&quot;dd&quot;):
+    print(&quot;类型相同+&quot;,type(&quot;name&quot;)) # 类型相同+ &lt;class &#39;str&#39;&gt;
+</code></pre>
+
+<h3 id="toc_8">isinstance()</h3>
+
+<p>对于继承关系来说,<code>type()</code>并不好用,我们可以使用<code>isinstance()</code>函数来判断<code>class</code>类型<br/>
+<code>isinstance()</code>对于该类型以及父类继承链 均返回<code>True</code></p>
+
+<pre><code class="language-python">#用type() 判断的基本类型 也可以用isinstance判断
+isinstance(123, int) # True
+
+
+# 判断是否为某些类型的一种
+ isinstance([1, 2, 3], (list, tuple))  #True
+
+</code></pre>
+
+<h3 id="toc_9">dir() getattr() setattr() hasattr()</h3>
+
+<p>用<code>dir()</code>来获得对象的所有属性和方法</p>
+
+<p><code>hasattr()</code>判断该对象是否有此属性<br/>
+<code>setattr()</code>设置一个属性<br/>
+<code>getattr()</code>获取该属性的值 ，当试图获取不存在的属性，会抛出<code>AttributeError</code>错误</p>
+
+<h2 id="toc_10">实例属性和类属性</h2>
+
+<p>对于类属性,直接在<code>class</code>定义</p>
+
+<pre><code class="language-python">class My_Student_Class(object):
+    &quot;&quot;&quot;docstring for My_Student_Class&quot;&quot;&quot;
+    name=&quot;My_Student_Class&quot; #在类中直接定义的类属性
+
+stu1=My_Student_Class()
+# 因为对象没有name属性,因此继续查找class的name属性
+print(stu1.name) # My_Student_Class
+print(My_Student_Class.name) #My_Student_Class
+stu1.name=&quot;liyuyuan&quot;
+print(stu1.name,&quot;  &quot;,My_Student_Class.name) #  liyuyuan    My_Student_Class
+del stu1.name #删除实例的name属性
+print(stu1.name) # My_Student_Class
 </code></pre>
 
                         
@@ -212,10 +279,10 @@ typedef NS_ENUM(NSInteger, ARTrackingStateReason) {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/10/17</span>
+                    <span class="date">2018/7/24</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='ARKit.html'>ARKit</a></span>
+          					    <span class="posted-in"><a href='Python.html'>Python</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -280,6 +347,8 @@ typedef NS_ENUM(NSInteger, ARTrackingStateReason) {
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -309,31 +378,31 @@ typedef NS_ENUM(NSInteger, ARTrackingStateReason) {
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

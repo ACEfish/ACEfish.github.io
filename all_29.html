@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,63 +114,71 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15266103180287.html">
+                <a class="clearlink" href="15331933928026.html">
                 
-                  <h1># iOS编译过程</h1>
+                  <h1>正则表达式</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">大致过程</h2>
+                        	<h2 id="toc_0">re模块</h2>
+
+<h3 id="toc_1">匹配</h3>
+
+<p><code>Python</code>中提供了<code>re</code>模块，包含了所有正则表达式的功能</p>
 
 <blockquote>
-<p>如果有工程依赖的第三方依赖库,会首先build依赖库target,然后build主target</p>
+<p>由于python字符串和正则表达式都使用<code>\</code>作为转义符，为了避免麻烦,我们推荐用<code>r</code>前缀来写<code>python</code>字符串就不用考虑转义问题</p>
 </blockquote>
 
-<p>大致流程:</p>
+<pre><code class="language-python">
+import re
+result1=re.match(r&#39;^\d{3}\-\d{3,8}$&#39;, &#39;010-12345&#39;)
+# 匹配成功返回 Match对象 否则返回None
+print(result1) # &lt;_sre.SRE_Match object; span=(0, 9), match=&#39;010-12345&#39;&gt;
 
-<ul>
-<li><p>compile各个.m文件<br/>
-<code>/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x objective-c -arch x86_64 -W -c path/main.m -o path/main.o</code></p>
-<ul>
-<li>-x 表示编译语言</li>
-<li>-arch 表示编译的架构</li>
-<li>-W表示各种编译警告</li>
-<li>-c 表示进行预处理，编译，汇编过程</li>
-<li>-o 输出结果</li>
-</ul></li>
-<li><p>Copy静态资源(包括img, string, font等)<br/>
-//copy图片到app<br/>
-<code>/Applications/Xcode.app/Contents/Developer/usr/bin/copypng <br/>
--compress -strip-PNG-text path/MaskView/MaskView/en.lproj/icons.png path/MaskView.app/en.lproj/icons.png</code></p></li>
-<li><p>compile xib文件<br/>
-编译xib，生成nib文件<br/>
- <code>/Applications/Xcode.app/Contents/Developer/usr/bin/ibtool</code></p></li>
-<li><p>compile storyboard文件<br/>
-编译storyBoard,生成.storyBoard，其包内容为nib+plist<br/>
-<code>/Applications/Xcode.app/Contents/Developer/usr/bin/ibtool</code></p></li>
-<li><p>compile asset catalogs<br/>
-生成Asset.car文件<br/>
-<code>/Applications/Xcode.app/Contents/Developer/usr/bin/actool</code></p></li>
-<li><p>process info.plist<br/>
-处理info.plist<br/>
-<code>builtin-infoPlistUtility</code></p></li>
-<li><p>link storyboards<br/>
-链接storyboard<br/>
-<code>/Applications/Xcode.app/Contents/Developer/usr/bin/ibtool</code></p></li>
-<li><p>run custom script<br/>
-执行脚本<br/>
-<code>/bin/sh</code></p></li>
-<li><p>touch app</p>
-<p><code>/usr/bin/touch</code></p></li>
-<li><p>sign app<br/>
-对app进行签名<br/>
-<code>/usr/bin/codesign</code></p></li>
-<li><p>validate app<br/>
-校验app<br/>
-<code>builtin-validationUtility</code></p></li>
-<li></li>
-</ul>
+result2=re.match(r&#39;^\d{3}\-\d{3,8}$&#39;, &#39;0qq10-12345&#39;)
+print(result2) #None
+if result2:
+    print(&quot;匹配成功&quot;)
+else: 
+    print(&quot;匹配失败&quot;)
+</code></pre>
+
+<h3 id="toc_2">切分字符串</h3>
+
+<pre><code class="language-python"># 用任意多个空格切分字符串
+re.split(r&#39;\s+&#39;, &#39;a b   c&#39;) # [&#39;a&#39;, &#39;b&#39;, &#39;c&#39;]
+
+# 用空格或者空格加逗号分隔字符串
+re.split(r&#39;[\s\,]+&#39;, &#39;a,b, c  d&#39;) # [&#39;a&#39;, &#39;b&#39;, &#39;c&#39;, &#39;d&#39;]
+</code></pre>
+
+<h3 id="toc_3">分组</h3>
+
+<p>正则表达式的分组功能，其表达式中的<code>()</code>就是要提取的分组</p>
+
+<pre><code class="language-python">m = re.match(r&#39;^(\d{3})-(\d{3,8})$&#39;, &#39;010-12345&#39;)
+
+m.group(0) #&#39;010-12345&#39;
+ m.group(1) # &#39;010&#39;
+ m.group(2) # &#39;12345&#39;
+</code></pre>
+
+<p><code>group(0)</code>永远是原始字符串</p>
+
+<h3 id="toc_4">贪婪匹配</h3>
+
+<p>正则表达式默认是贪婪匹配,匹配尽可能多的字符创</p>
+
+<pre><code class="language-python">re.match(r&#39;^(\d+)(0*)$&#39;, &#39;102300&#39;).groups()
+# (&#39;102300&#39;, &#39;&#39;)
+# 因为\d+ 贪婪匹配导致0*匹配到空字符串
+
+re.match(r&#39;^(\d+?)(0*)$&#39;, &#39;102300&#39;).groups() # (&#39;1023&#39;, &#39;00&#39;)
+# 添加了？让\d+处于非贪婪匹配
+
+</code></pre>
 
                         
                       </div>
@@ -177,10 +187,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/5/18</span>
+                    <span class="date">2018/8/2</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='compile.html'>编译</a></span>
+          					    <span class="posted-in"><a href='Python.html'>Python</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -245,6 +255,8 @@
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -274,31 +286,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,141 +114,140 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14861704124969.html">
+                <a class="clearlink" href="15018175799489.html">
                 
-                  <h1>iOS 滤镜</h1>
+                  <h1>继承</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<hr/>
+                        	<p>类可以继承父类的方法、属性和其他特征</p>
 
-<h3 id="toc_0">CIFilter实现滤镜效果</h3>
+<p>类可以调用和访问超类的方法，属性和下标，并且可以重写这些方法，属性和下标来优化或修改它们的行为。</p>
 
-<p>参考网址:<a href="http://www.jianshu.com/p/98ba256b034a" title="CoreImage滤镜学习 - 简书">CoreImage滤镜学习</a> </p>
+<p>可以为类中继承的属性添加属性观察器</p>
 
-<h5 id="toc_1">CoreImage框架介绍</h5>
+<h2 id="toc_0">定义一个基类</h2>
 
-<p>1.是一个图片框架 基于<code>OpenGL</code>顶层创建，底层用着色器来处理图像<br/><br/>
-2.利用GPU基于硬件加速来处理图像<br/><br/>
-3.CoreImage中有很多滤镜<br/><br/>
-4.它们能够一次给予一张图像或者视频帧多种视觉效果 -&gt; 滤镜链<br/><br/>
-5.滤镜可以连接起来组成一个滤镜链 把滤镜效果叠加起来处理图像</p>
+<p>不继承于其它类的类,称之为基类</p>
 
-<h5 id="toc_2">CIFilter使用介绍</h5>
+<p>注意:</p>
+
+<blockquote>
+<p><code>Swift</code>中类并不是从一个通用类继承而来.如果没有为定义的类制定一个超类的话,这个类自动成为一个基类</p>
+</blockquote>
+
+<p>创建一个<code>Vehicle</code>的基类，来描述通用车辆</p>
+
+<pre><code class="language-swift">class Vehicle {
+    var currentSpeed = 0.0
+    var description: String {
+        return &quot;traveling at \(currentSpeed) miles per hour&quot;
+    }
+    func makeNoise() {
+        // 什么也不做-因为车辆不一定会有噪音
+    }
+}
+</code></pre>
+
+<h2 id="toc_1">子类生成</h2>
+
+<pre><code class="language-swift">//定义一个自行车Bicycle继承自Vehicle
+class Bicycle: Vehicle {
+    var hasBasket = false
+}
+</code></pre>
+
+<p>除了继承自父类的方法、属性外，还定义了一个默认值为<code>false</code>的存储属性<code>hasBasket</code></p>
+
+<pre><code class="language-swift">let bicycle = Bicycle()
+bicycle.hasBasket = true
+//修改继承的属性
+bicycle.currentSpeed = 15.0
+print(&quot;Bicycle: \(bicycle.description)&quot;)
+// 打印 &quot;Bicycle: traveling at 15.0 miles per hour&quot;
+</code></pre>
+
+<h2 id="toc_2">重写</h2>
+
+<p>为继承来的实例方法、类方法、实例属性、下标提供自己的实现,即为<strong>重写</strong></p>
+
+<p>需要在重写的定义前加上 <code>override</code>关键字表明重写,否则即为错误的提供了相同的定义</p>
+
+<h3 id="toc_3">访问父类的方法、属性和下标</h3>
+
+<p>通过<code>super</code>前缀来访问父类版本中的方法、属性或下标</p>
+
+<ul>
+<li>在方法 someMethod() 的重写实现中，可以通过 super.someMethod() 来调用超类版本的 someMethod() 方法</li>
+<li>在属性 someProperty 的 getter 或 setter 的重写实现中，可以通过 super.someProperty 来访问超类版本的someProperty 属性</li>
+<li>在下标的重写实现中，可以通过 super[someIndex] 来访问超类版本中的相同下标</li>
+</ul>
+
+<h3 id="toc_4">重写方法</h3>
+
+<pre><code class="language-swift">class Train: Vehicle {
+    override func makeNoise() {
+        print(&quot;Choo Choo&quot;)
+    }
+}
+</code></pre>
+
+<h3 id="toc_5">重写属性</h3>
+
+<p>重写继承来的实例或者类型属性来提供自己定制的<code>getter</code>或者<code>setter</code>或添加属性观察器来观察属性值的改变</p>
+
+<h4 id="toc_6">重写属性的setter和getter</h4>
+
+<p>子类并不知道继承来的属性是存储型还是计算型,重写时要提供属性名称和类型来让编译器去查找父类同名同类型的属性</p>
+
+<p>可以把继承的只读属性重写为可读写,但是没有办法把可读写的重写为只读属性</p>
+
+<blockquote>
+<p>如果你在重写属性中提供了<code>setter</code>，那么你也一定要提供<code>getter</code>。如果你不想在重写版本中的<br/>
+<code>getter</code>里修改继承来的属性值，你可以直接通过<code>super.someProperty</code>来返回继承来的值</p>
+</blockquote>
+
+<pre><code class="language-swift">class Car: Vehicle {
+    var gear = 1
+    //重写description属性
+    override var description: String {
+        return super.description + &quot; in gear \(gear)&quot;
+    }
+}
+
+let car = Car()
+car.currentSpeed = 25.0
+car.gear = 3
+print(&quot;Car: \(car.description)&quot;)//返回自定义描述
+// 打印 &quot;Car: traveling at 25.0 miles per hour in gear 3&quot;
+</code></pre>
+
+<h4 id="toc_7">重写属性观察器</h4>
+
+<p>注意:</p>
 
 <ol>
-<li><p><code>CIFilter</code>滤镜类中有很多的滤镜效果 这里不一一列举，可以按住command 点击CIFilter 进入接口文件 找到第128行-148行全部都是 效果分类  </p></li>
-<li><p>常用效果<br/><br/>
-我们使用时需要先找到需要的效果类型 比如我们使用<code>kCICategoryDistortionEffect</code>失真的效果类型，有了效果类型我们需要找到里面我们需要的效果.<br/><br/>
-<code>NSLog -&gt; [CIFilter filterNamesInCategory:刚才拷贝的分类];</code><br/><br/>
-比如<code>CIColorMonochrome </code>,然后就可以使用这个滤镜效果<br/><br/>
-<code>CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome”];</code><br/><br/>
-然后打印这个效果中包含了那些属性:<br/><br/>
-<code>NSLog(@&quot;%@&quot;,filter.attributes);</code><br/><br/>
-在里面我们可以看到好多属性，里面是多个字典的形式，找到我们想要修改的属性(key值) 然后在他对应的value里面查看一下他的属性类型，比如我们打印的CIColorMonochrome里面有一个inputColor，他是一个CIColor类型的，有默认值，这里我们写了一个CIColor来给他进行赋值.<br/><br/>
-赋值时需要用kvc的方式:<br/><br/>
-<code>[filter setValue:colorforKey:kCIInputColorKey];</code><br/><br/>
-<img src="media/14861704124969/DraggedImage.png" alt="DraggedImage"/></p></li>
-<li><p>实现滤镜效果代码<br/><br/>
-首先我们创建一个全局变量的UIImageView，然后让他初始化出来,这个就是我们要处理的图片 一般我们从手机相册中取出来:<br/><br/>
- @interface ViewController ()&lt;UINavigationControllerDelegate,UIImagePickerControllerDelegate&gt;<br/>
-    {<br/>
-         UIImageView *imageView;<br/>
-    }<br/>
-    @end<br/>
-    然后我们需要从相册中取出一张图片,保存起来:<br/>
-    //跳转相册的触发方法<br/>
-    - (void)doit{<br/>
-    UIImagePickerController *vc = [[UIImagePickerController alloc]init];<br/>
-    vc.delegate = self;<br/>
-    [self presentViewController:vc animated:YES completion:nil];</p>
-<pre><code class="language-text">}
-//让图片显示在VC上面的方法<br/>
-- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary&lt;NSString *,id&gt; *)info<br/>
-{<br/>
-NSLog(@&quot;%@&quot;,info);<br/>
-//获得选中的图像<br/>
-UIImage *chooseImage = info[UIImagePickerControllerOriginalImage];<br/>
-//先是在试图空间上<br/>
-imageView.image = chooseImage;<br/>
-[self dismissViewControllerAnimated:YES completion:nil];<br/>
-}
-</code></pre>
-<p><strong>接下来就是对图片进行滤镜处理:</strong><br/>
-    - (void)addColorFilter{<br/>
-    //CIImage 保存图像数据的类<br/>
-    CIImage <em>inputImage = [CIImage imageWithCGImage:imageView.image.CGImage];<br/>
-    //先打印NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);进去找到需要设置的属性(查询效果分类中都有什么效果)  可以设置什么效果<br/>
-    //然后通过[CIFilter filterWithName:@&quot;&quot;];找到属性   具体效果的属性<br/>
-    //然后通过KVC的方式设置属性<br/>
-    NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);<br/>
-    /</em><br/>
-     1.查询 效果分类中 包含什么效果：filterNamesInCategory:<br/>
-     2.查询 使用的效果中 可以设置什么属性（KVC） attributes</p>
-<pre><code class="language-text"> 使用步骤
- 1.需要添加滤镜的源图<br/>
- 2.初始化一个滤镜 设置滤镜（根据查询到的属性来设置）<br/>
- 3.把滤镜 输出的图像 和滤镜  合并 CIContext -&gt; 得到一个合成之后的图像<br/>
- 4.展示<br/>
- */<br/>
-//CIFilter 滤镜类  图片属性进行细节处理的类<br/>
-CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome&quot;];<br/>
-NSLog(@&quot;%@&quot;,filter.attributes);<br/>
-//这个属性是必须赋值的，假如你处理的是图片的话<br/>
-[filter setValue:inputImage forKey:kCIInputImageKey];<br/>
-CIColor *color = [CIColor colorWithRed:1.000 green:0.759 blue:0.592 alpha:1];<br/>
-[filter setValue:color forKey:kCIInputColorKey];<br/>
-//CIContext 上下文是实现对图像处理的具体对象 用来把滤镜和图片合成成为一张图片 滤镜对象输出的图像并不是合成之后的图像，需要使用图片处理的上下文 合并输出图像<br/>
-    CIContext *context = [CIContext contextWithOptions:nil];<br/>
-CIImage *outPutImage = filter.outputImage;<br/>
-//CGImageRef-&gt;图像中的数据<br/>
-    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
-    imageView.image = [UIImage imageWithCGImage:image];<br/>
- }
-</code></pre>
-<p>注意：<br/><br/>
-对滤镜进行赋值之后图片就有了，但是我们这个时候拿出这个图片的时候发现他并没有发生变化，因为它只是单一进行了滤镜处理，还没有和原图片进行一个糅合。使用CIContext找到上下文对他进行糅合：<br/><br/>
-//extent得到图像的尺寸    合并一个包含源图   滤镜效果的图片<br/>
-    //1 滤镜输出的图像    2.合成之后图像的尺寸   图像.extent<br/>
-    CGImageRef imageRef = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
-注意:<br/><br/>
-假如你的图片消失了，请检查一下，第一步获取图片的时候一定要获得图片的CGImage再来来获取，不要直接使用imageView.image.CGImage。</p></li>
-<li><p>滤镜链:<br/><br/>
-在给一张图片添加多种滤镜效果的时候，我们把它称为<code>滤镜链</code>，我们再添加滤镜链的时候，就是把图片添加一层滤镜，然后，和原图片糅合处理，然后在处理之后的图片上再添加一层滤镜，并不是直接给一张图片添加了两层路径，所以称为滤镜链。<br/><br/>
-我们继续使用这个图片，在它添加第一层滤镜的时候做一些修改:  </p>
-<pre><code class="language-text">//上接给效果属性赋值
-//把下面注释的给注释掉，然后添加一个方法<br/>
-    //CIContext<br/>
-//    CIContext *context = [CIContext contextWithOptions:nil];<br/>
-CIImage *outPutImage = filter.outputImage;<br/>
-[self addFilterLinkerWithImage:outPutImage];<br/>
-//    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
-//    imageView.image = [UIImage imageWithCGImage:image];<br/>
-//再次添加滤镜  -&gt;  形成滤镜链<br/>
-- (void)addFilterLinkerWithImage:(CIImage *)image<br/>
-{<br/>
-CIFilter *filter = [CIFilter filterWithName:@&quot;CISepiaTone&quot;];<br/>
-[filter setValue:image forKey:kCIInputImageKey];<br/>
-CIContext *context = [CIContext contextWithOptions:nil];<br/>
-CGImageRef resultImage = [context createCGImage:filter.outputImage fromRect:filter.outputImage.extent];<br/>
-imageView.image = [UIImage imageWithCGImage:resultImage];<br/>
-//把添加好滤镜效果的图片   保存到相册<br/>
-//不可以直接保存 outputImage  -&gt;  这是一个没有吧滤镜效果和源图合成的图像<br/>
-UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishSavingWithError:contextInfo:), nil);<br/>
- }<br/>
-//保存图片回调<br/>
-- (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo<br/>
-{<br/>
-    NSLog(@&quot;保存成功&quot;);<br/>
-}
-</code></pre>
-<p>这样就是一个双重的滤镜效果,同时保存到了相册.</p></li>
+<li>不能为继承来的常量存储型属性或继承来的只读计算型属性添加属性观察器,因为它们不能被设置</li>
+<li>不能同时提供重写的<code>setter</code>和重写的属性观察器。因为此时我们可以直接在setter中观察值的变化</li>
 </ol>
 
-<hr/>
+<pre><code class="language-swift">class AutomaticCar: Car {
+    override var currentSpeed: Double {
+        didSet {
+            gear = Int(currentSpeed / 10.0) + 1(后向下取得最接近的整数值在加1)
+        }
+    }
+}
+</code></pre>
 
-<h3 id="toc_3">系统自带简单的滤镜效果</h3>
+<p>为属性<code>currentSpeed</code>添加观察器，设置速度时就会自动选择合适的档位</p>
+
+<h2 id="toc_8">防止重写</h2>
+
+<p>通过把方法、属性或下标 前加关键字<code>final</code>来防止被重写,例如:<code>final var</code> ， <code>final func</code> ， <code>final class func</code> ，以及 <code>final subscript</code></p>
+
+<p>通过在<code>class</code>前添加关键字<code>final</code>表示这个类是不可被继承的</p>
 
                         
                       </div>
@@ -255,10 +256,10 @@ UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishS
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/4</span>
+                    <span class="date">2017/8/4</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
+          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -323,6 +324,8 @@ UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishS
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -352,31 +355,31 @@ UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishS
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

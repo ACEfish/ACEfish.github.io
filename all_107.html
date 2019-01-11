@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,88 +114,93 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14879278087290.html">
+                <a class="clearlink" href="14867842994268.html">
                 
-                  <h1>协议与分类</h1>
+                  <h1>容易忘记的易错点</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>Objective-C中的分类允许我们通过给一个类添加方法来扩充它（但是通过<code>category</code>不能添加新的实例变量），并且我们不需要访问类中的代码就可以做到。</p>
+                        	<h3 id="toc_0">1. @property属性中如果是copy属性要记得：</h3>
 
-<p>@protocol声明了可以呗其他任何方法类实现的方法，协议仅仅是定义一个接口，而由其他的类去负责实现。</p>
+<pre><code class="language-text">**注意：**
+在重写setter方法时要记得加上 
 
-<h2 id="toc_0">基础数据类型</h2>
+``` Object-c
+_name = [name copy]
+```
+在内部的init方法中 也要记得加copy，即在内部直接给属性变量赋值时记得加copy
 
-<h3 id="toc_1">Category</h3>
-
-<p>Category是表示一个指向分类的结构体的指针</p>
-
-<pre><code class="language-objectivec">ypedef struct objc_category *Category;
-struct objc_category {
-    char *category_name                          OBJC2_UNAVAILABLE; // 分类名
-    char *class_name                             OBJC2_UNAVAILABLE; // 分类所属的类名
-    struct objc_method_list *instance_methods    OBJC2_UNAVAILABLE; // 实例方法列表
-    struct objc_method_list *class_methods       OBJC2_UNAVAILABLE; // 类方法列表
-    struct objc_protocol_list *protocols         OBJC2_UNAVAILABLE; // 分类所实现的协议列表
+```Object-c
+//这里尽量不要用self.实例变量 而用 _实例变量
 </code></pre>
 
-<p>这个结构体主要包含了分类定义的实例方法与类方法，<code>instance_methods</code>列表是<code>objc_class</code>中方法列表的一个子集，而<code>class_methods</code>列表是元类方法列表的一个子集。</p>
+<ul>
+<li><p>initWithSpId:(SInt32)spId spName:(NSString *)spName type:(SInt32)spType spPinyin:(NSString *)spPinyin spLetter:(NSString *)spLetter {<br/>
+if (self = [super init]) {<br/>
+    _spId = spId;<br/>
+    _spName = [spName copy];<br/>
+    _type = spType;<br/>
+}<br/>
+return self;<br/>
+}</p>
+<pre><code class="language-text">### 2. 注意在修改navigation时是只修改了navigationItem还是修改了NavigationBar
+如果是仅仅修改了navigationItem那就只对本控制器有效 push或者pop了都不影响，一般有以下几种情况:<br/>
+1. 修改了navigationItem的元素<br/>
+    ```Object-c<br/>
+    self.navigationItem.title = @&quot;title&quot;;<br/>
+    self.navigationItem.titleView = [[UIView alloc] init];<br/>
+    ```<br/>
+2. 修改了navigationItem的BarButtonItem<br/>
+    ```Object-c<br/>
+    self.navigationItem.leftBarButtonItem = [UIBarButtonItem itemWithTarget:self action:@selector(popViewController) image:@&quot;general_arrow_back_white&quot; highImage:@&quot;general_arrow_back_orange&quot;];<br/>
+    ```<br/>
+    **一般我们可以通过这种方法拦截返回点击事件，比如全局控制器的返回按键已经写好，而我们想要拦截点击事件就可以用这种方法,写一个同一样式的按键触发不同的事件**<br/>
+这些修改是不影响的整个navigationBar的仅此不需要在视图控制器消失时做额外的操作<br/>
+而如果是修改了navigationBar 那就对全局有影响了,需要在控制器消失时做额外还原处理,一般情况如下:<br/>
+```Object-c<br/>
+//修改背景图片<br/>
+[self.navigationController.navigationBar setShadowImage:[UIImage new]];<br/>
+//修改背景颜色<br/>
+[self.navigationController.navigationBar lt_setBackgroundColor:[UIColor clearColor]];<br/>
+//修改navigationBar的整体字体颜色<br/>
+[self.navigationController.navigationBar setTitleTextAttributes:<br/>
+ [NSDictionary dictionaryWithObjectsAndKeys:[UIColor whiteColor],NSForegroundColorAttributeName,nil]];<br/>
+ //隐藏navigationBar<br/>
+self.navigationController.navigationBar.hidden = YES;
+</code></pre>
+<p>此时我们需要在退出时做一下还原操作</p>
+<pre><code class="language-object-c">[super viewWillDisappear:animated];
+[self.navigationController.navigationBar lt_reset];<br/>
+[self.navigationController.navigationBar setTitleTextAttributes:<br/>
+[NSDictionary dictionaryWithObjectsAndKeys:[UIColor blackColor],NSForegroundColorAttributeName,nil]];<br/>
+self.navigationController.navigationBar.hidden = NO;
+</code></pre>
+<h3 id="toc_1">3. 隐藏tabbar</h3>
+<p>我们在某些界面需要隐藏Tabbar的时候，会出现原区域无法响应点击事件的问题。系统的Tabbar已经被我们hidden了，但是仍然无法响应事件，此时我们只要将系统的Tabbar的frame设置为CGRectZero即可。</p>
+<pre><code class="language-objectivec">[UIApplication sharedApplication].keyWindow.rootViewController).tabBar.frame 
+= CGRectZero;
+</code></pre></li>
+</ul>
 
-<h3 id="toc_2">Protocol</h3>
+<h3 id="toc_2">4. 自动布局的动画</h3>
 
-<pre><code class="language-objectivec">typedef struct objc_object Protocol;
+<pre><code class="language-text">用`xib`拉的视图或者`masonry`布局的视图在`[UIView animation...]`动画方法中都是可以直接改变`frame`或者`transform`来进行动画的
+我们可以直接改变`frame`包括宽、高、中心等 直接进行各种动画,而不用担心因为`autolayout`问题,毕竟masony或者xib拉约束都只是布局问题,在运行时还是会转成`frame`的.
+
+而通常我们拖约束线出去是为了:
+1. 在视图还没加载时用代码设置某个约束值  
+2. 真的是要改变某个约束值做动画（通常某个视图也和这个约束有关系）
 </code></pre>
 
-<p><code>Protocol</code>其中实就是一个对象结构体。</p>
+<h3 id="toc_3">让UIButton的title对齐方式</h3>
 
-<h2 id="toc_3">操作函数</h2>
+<p>有些时候我们想让UIButton的title居左对齐</p>
 
-<p>Runtime并没有在<code>&lt;objc/runtime.h&gt;</code>头文件中提供针对分类的操作函数。因为这些分类中的信息都包含在<code>objc_class</code>中，我们可以通过针对<code>objc_class</code>的操作函数来获取分类的信息。</p>
+<p>button.textLabel.textAlignment = UITextAlignmentLeft  //是没有作用的，我们需要设置</p>
 
-<p>而对于Protocol，runtime提供了一系列函数来对其进行操作，这些函数包括：</p>
-
-<pre><code class="language-objectivec">// 返回指定的协议
-Protocol * objc_getProtocol ( const char *name );
-// 获取运行时所知道的所有协议的数组
-Protocol ** objc_copyProtocolList ( unsigned int *outCount );
-// 创建新的协议实例
-Protocol * objc_allocateProtocol ( const char *name );
-// 在运行时中注册新创建的协议
-void objc_registerProtocol ( Protocol *proto );
-// 为协议添加方法
-void protocol_addMethodDescription ( Protocol *proto, SEL name, const char *types, BOOL isRequiredMethod, BOOL isInstanceMethod );
-// 添加一个已注册的协议到协议中
-void protocol_addProtocol ( Protocol *proto, Protocol *addition );
-// 为协议添加属性
-void protocol_addProperty ( Protocol *proto, const char *name, const objc_property_attribute_t *attributes, unsigned int attributeCount, BOOL isRequiredProperty, BOOL isInstanceProperty );
-// 返回协议名
-const char * protocol_getName ( Protocol *p );
-// 测试两个协议是否相等
-BOOL protocol_isEqual ( Protocol *proto, Protocol *other );
-// 获取协议中指定条件的方法的方法描述数组
-struct objc_method_description * protocol_copyMethodDescriptionList ( Protocol *p, BOOL isRequiredMethod, BOOL isInstanceMethod, unsigned int *outCount );
-// 获取协议中指定方法的方法描述
-struct objc_method_description protocol_getMethodDescription ( Protocol *p, SEL aSel, BOOL isRequiredMethod, BOOL isInstanceMethod );
-// 获取协议中的属性列表
-objc_property_t * protocol_copyPropertyList ( Protocol *proto, unsigned int *outCount );
-// 获取协议的指定属性
-objc_property_t protocol_getProperty ( Protocol *proto, const char *name, BOOL isRequiredProperty, BOOL isInstanceProperty );
-// 获取协议采用的协议
-Protocol ** protocol_copyProtocolList ( Protocol *proto, unsigned int *outCount );
-// 查看协议是否采用了另一个协议
-BOOL protocol_conformsToProtocol ( Protocol *proto, Protocol *other );
-</code></pre>
-
-<p><code>objc_getProtocol</code>函数，需要注意的是如果仅仅是声明了一个协议，而未在任何类中实现这个协议，则该函数返回的是nil。</p>
-
-<p><code>objc_copyProtocolList</code>函数，获取到的数组需要使用free来释放</p>
-
-<p><code>objc_allocateProtocol</code>函数，如果同名的协议已经存在，则返回nil</p>
-
-<p><code>objc_registerProtocol</code>函数，创建一个新的协议后，必须调用该函数以在运行时中注册新的协议。协议注册后便可以使用，但不能再做修改，即注册完后不能再向协议添加方法或协议</p>
-
-<p>需要强调的是，协议一旦注册后就不可再修改，即无法再通过调用<code>protocol_addMethodDescription</code>、<code>protocol_addProtocol</code>和p<code>rotocol_addProperty</code>往协议中添加方法等。</p>
+<p>button.contentHorizontalAlignment = UIControlContentHorizonAlignmentLeft; //显示居左<br/>
+**除了水平 还有垂直方向的对齐方式</p>
 
                         
                       </div>
@@ -202,10 +209,10 @@ BOOL protocol_conformsToProtocol ( Protocol *proto, Protocol *other );
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/24</span>
+                    <span class="date">2017/2/11</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='RunTime.html'>运行时</a></span>
+          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -270,6 +277,8 @@ BOOL protocol_conformsToProtocol ( Protocol *proto, Protocol *other );
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -299,31 +308,31 @@ BOOL protocol_conformsToProtocol ( Protocol *proto, Protocol *other );
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

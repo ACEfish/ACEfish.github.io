@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,65 +114,195 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15077240642559.html">
+                <a class="clearlink" href="15318121291068.html">
                 
-                  <h1>SceneKit</h1>
+                  <h1>函数</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>我们通过<code>ARKit</code>的相机(<code>ARCamera</code>)捕获现实世界图像,利用<code>SceneKit</code>来在图像中展示3D模型</p>
+                        	<h2 id="toc_0">常用函数</h2>
 
-<h2 id="toc_0">SceneKit中常用类及作用</h2>
+<h3 id="toc_1">类型转换</h3>
 
-<ul>
-<li><strong>ARCamera</strong>:用于捕获摄像头画面</li>
-<li><strong>ARSCNView</strong>:视图类用于展示由摄像头捕捉到的现实世界3D场景,继承自<code>SceneKit</code>中的<code>SCNView</code>用于展示3D场景,<code>SCNView</code>继承自<code>UIView</code>视图</li>
-<li><strong>ARSession</strong>: 会话,搭建3D场景</li>
-<li><strong>ARKit</strong>:用于将现实世界转为3D场景</li>
-<li><strong>SceneKit</strong>:用于将虚拟物体构建在3D场景中</li>
-<li><strong>SCNNode</strong>:每个虚拟物体都是一个节点,其作为主节点构成了<code>SCNScene</code>场景,无数个场景构成3D世界</li>
-</ul>
+<pre><code class="language-python">int(&#39;123&#39;)
+123
+&gt;&gt;&gt; int(12.34)
+12
+&gt;&gt;&gt; float(&#39;12.34&#39;)
+12.34
+&gt;&gt;&gt; str(1.23)
+&#39;1.23&#39;
+&gt;&gt;&gt; str(100)
+&#39;100&#39;
+&gt;&gt;&gt; bool(1)
+True
+&gt;&gt;&gt; bool(&#39;&#39;)
+False
+</code></pre>
 
-<h3 id="toc_1">ARSession</h3>
+<h2 id="toc_2">定义函数</h2>
 
-<p>通过<code>ARSession</code>来沟通<code>ARSCNView</code>和<code>ARCamera</code></p>
+<pre><code class="language-python">def my_abs(x):
+    # 检查参数类型 
+    if not isinstance(x, (int, float)):
+       # 当参数类型错误时  抛出错误
+        raise TypeError(&quot;bad operate Params type&quot;)
 
-<p>我们需要给ARSession会话指定一个<code>会话追踪设置</code>(<code>ARConfiguration</code>),用其来追踪相机在3D世界的位置特征和场景</p>
+    if x&gt;0:
+        return x
+    else:
+        return -x
 
-<p>苹果建议使用<code>ARWorldTrackingConfiguration</code>，该类只支持A9之后芯片</p>
+print(my_abs(&quot;-333&quot;)) #TypeError: bad operate Params type
+</code></pre>
 
-<h4 id="toc_2">ARWorldTrackingConfiguration与ARFrame</h4>
+<p>定义一个空函数</p>
 
-<p><code>ARWorldTrackingConfiguration</code>得到手机在世界中的位置数据交给<code>ARSession</code>，而相机在的位置数据即<strong>ARFrame</strong></p>
+<pre><code class="language-python">def nop():
+    pass
+# pass用作占位符 
+</code></pre>
+
+<p>返回多个返回值<br/>
+返回的其实为单一一个值，一个<code>元组</code>,我们通过多个变量接收一个元组,按位置赋值</p>
+
+<pre><code class="language-python">import math
+
+def move(x, y, step, angle=0):
+    nx = x + step * math.cos(angle)
+    ny = y - step * math.sin(angle)
+    return nx, ny
+
+x, y = move(100, 100, 60, math.pi / 6)
+print(x, y)
+151.96152422706632 70.0
+</code></pre>
 
 <blockquote>
-<p>用ARSession的currentFrame属性来获取当前位置信息</p>
+<p>若函数结束时没有<code>return</code>语句，就自动添加 <code>return None</code></p>
 </blockquote>
 
-<p><img src="media/15077240642559/15078865839013.png" alt=""/></p>
+<h2 id="toc_3">函数参数</h2>
 
-<p><code>ARConfiguration</code>捕捉相机3D位置的意义就在于能够在添加3D物体模型的时候计算出3D物体模型相对于相机的真实的矩阵位置</p>
+<p>python的函数定义简单,灵活度很大.除了正常的必选参数外,还能使用默认参数、可变参数、关键字参数。</p>
 
-<p><code>ARKit API</code>支持两种主配置，即只追踪设备定位的<code>ARConfiguration</code>，以及进一步追踪设备位置并检测真实世界表面<code>ARWorldTrackingConfiguration</code>。</p>
-
-<h2 id="toc_3">ARKit实战</h2>
-
-<p>完整的ARKit环境必须需要:<br/>
-ARSCNView、ARSession、ARSessionConfiguration</p>
-
-<p>1.初始化 搭建AR环境</p>
-
-<p>2.开启AR扫描</p>
+<p><strong>参数组合</strong></p>
 
 <blockquote>
-<p>苹果推荐将开启的代码写到<code>viewWillAppear</code>而不是<code>viewDidLoad</code></p>
+<p>在Python中，可以使用必选参数、默认参数、可变参数、关键字参数和命名关键字参数，但是参数的定义顺序必须是:<code>必选参数、默认参数、可变参数、命名关键字参数和关键字参数</code></p>
 </blockquote>
 
-<p>3.进行自定制操作</p>
+<pre><code class="language-python">def f1(a, b, c=0, *args, **kw):
+    print(&#39;a =&#39;, a, &#39;b =&#39;, b, &#39;c =&#39;, c, &#39;args =&#39;, args, &#39;kw =&#39;, kw)
+
+def f2(a, b, c=0, *, d, **kw):
+    print(&#39;a =&#39;, a, &#39;b =&#39;, b, &#39;c =&#39;, c, &#39;d =&#39;, d, &#39;kw =&#39;, kw)
+</code></pre>
+
+<h3 id="toc_4">默认参数</h3>
+
+<p>必选参数在前,默认参数在后</p>
+
+<pre><code class="language-python">def my_power(x, n=2):
+    total = 1
+    for s in range(1,n+1):
+        total = total*x
+    return total
+
+print(my_power(2))  # 4
+</code></pre>
+
+<p><strong>定义默认参数时: 默认参数必须指向不变对象,否则可变对象会成为函数内静态变量会在多次调用时变化，影响函数调用结果</strong></p>
 
 <blockquote>
-<p>默认情况下，节点<code>SCNNode</code>的x/y/z位置是(0,0,0),也就是摄像头所在的位置，每一个<code>ARSession</code>在启动时，摄像头的位置就是3D世界的原点，而且这个原点不再随着摄像头的移动而改变，是第一次就永久固定的</p>
+<p>使用默认参数即可省略参数，降低调用难度</p>
+</blockquote>
+
+<h3 id="toc_5">可变参数</h3>
+
+<p>当不确定参数的个数时,可以使用可变参数，可以传入任意个参数,包括0个参数</p>
+
+<pre><code class="language-python">def my_sum(*numbers):
+    sum=0
+    for x in numbers:
+        sum += x
+
+    return sum
+
+print(my_sum(1,2,3,4)) # 10
+numbers = [1,2,3,4,5]
+#通过给list 或者 tuple前加*  将其元素变为可变参数
+print(my_sum(*numbers)) #15 
+</code></pre>
+
+<p>传入的可变参数在函数内部封装为一个元组</p>
+
+<h3 id="toc_6">关键字参数</h3>
+
+<p>可以传入0个或任意个含参数名的参数,这些关键字参数在函数内部自动封装为dict</p>
+
+<pre><code class="language-python">def my_personFuc(name, age, **kw):
+    print(&quot;name:&quot;, name, &quot;age:&quot;, age, kw)
+
+my_personFuc(&quot;lyy&quot;, 24, city=&quot;luoyang&quot;) #name: lyy age: 24 {&#39;city&#39;: &#39;luoyang&#39;}
+my_personFuc(&quot;wt&quot;, 20) # name: wt age: 20 {}
+
+kwDict={&quot;city&quot;:&quot;beijing&quot;}
+# 解构字典
+my_personFuc(&quot;yt&quot;, &quot;25&quot;, **kwDict) # name: yt age: 25 {&#39;city&#39;: &#39;beijing&#39;}
+</code></pre>
+
+<blockquote>
+<p>对于关键字参数，对于直接传入的参数，采用<code>=</code>而且<code>key</code>不能为str类似的字符串</p>
+</blockquote>
+
+<h3 id="toc_7">命名关键字参数</h3>
+
+<pre><code class="language-python">#命名需要关键字 * ，在 * 之后的为命名关键字参数，
+def my_keyPerson(name, age, *, city, job):
+    print(name, age, city, job)
+
+#命名关键字必须传入参数名 否则会报错 
+my_keyPerson(&quot;lyy&quot;, 24, city=&quot;luoyang&quot;, job=&quot;iOS&quot;) # lyy 24 luoyang iOS
+
+# 可以为可变参数隔开
+def my_keyPerson1(name, age, *args, city, job):
+    print(name, age, args, city, job)
+
+# 明明关键字可以有缺省值,这样调用时候可以不传入city参数
+def my_keyPerson2(name, age, *, city=&#39;Beijing&#39;, job):
+    print(name, age, city, job)
+
+</code></pre>
+
+<h2 id="toc_8">递归函数</h2>
+
+<p>解决递归调用栈溢出的方法是通过<code>尾递归优化</code>，事实上尾递归和循环的效果是一样的，所以，把循环看成是一种特殊的尾递归函数也是可以的。<br/>
+<code>尾递归是指，在函数返回的时候，调用自身本身，并且，return语句不能包含表达式</code>。这样，编译器或者解释器就可以把尾递归做优化，使递归本身无论调用多少次，都只占用一个栈帧，不会出现栈溢出的情况</p>
+
+<pre><code class="language-python"># 递归函数
+def fact(n):
+    if n==1:
+        return 1
+    return n + fact(n - 1)
+
+print(fact(10))  # 55
+# 栈溢出
+print(fact(1000))  #RecursionError: maximum recursion depth exceeded in comparison
+
+#尾递归优化后
+def fact(n):
+    return fact_iter(n, 1)
+
+def fact_iter(num, product):
+    if num == 1:
+        return product
+    return fact_iter(num - 1, num * product)
+</code></pre>
+
+<blockquote>
+<p>目前包括Python在内的编程语言都没有做尾递归优化,因此类似上面的尾递归优化之后仍会导致栈溢出</p>
 </blockquote>
 
                         
@@ -180,10 +312,10 @@ ARSCNView、ARSession、ARSessionConfiguration</p>
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/10/11</span>
+                    <span class="date">2018/7/17</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='ARKit.html'>ARKit</a></span>
+          					    <span class="posted-in"><a href='Python.html'>Python</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -248,6 +380,8 @@ ARSCNView、ARSession、ARSessionConfiguration</p>
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -277,31 +411,31 @@ ARSCNView、ARSession、ARSessionConfiguration</p>
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

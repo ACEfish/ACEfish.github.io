@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,156 +114,135 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14901598468257.html">
+                <a class="clearlink" href="14939015823586.html">
                 
-                  <h1>隐式动画</h1>
+                  <h1>高效绘图</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>我们在前面介绍了图层的相关知识,现在我们开始学本次的重点<strong>动画</strong><br/>
-<strong>注意</strong><br/>
-<code>CALayer</code>呈现图层&lt;--&gt;模型图层<br/>
-我们在创建<code>CALayer</code>对象存储了我们设置的属性值（只是存值所以是模型图层）,但是模型图层显示或者说是呈现时就会基于模型图层创建一个呈现图层,然后我们所能看到的都是基于这个呈现图层的.</p>
+                        	<p>如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</p>
 
-<h3 id="toc_0">事务</h3>
+<p>关于绘制的性能<br/>
+提高绘制性能或者减少需要绘制的数量</p>
 
-<p><code>Core Animation</code>基于一个假设，说屏幕上的任何东西都可以（或者可能）做动画。动画并不需要你在<code>Core Animation</code>中手动打开，相反需要明确地关闭，否则他会一直存在。</p>
+<h3 id="toc_0">软件绘图</h3>
 
-<p>当我们改变了<code>CALayer</code>的一个可做动画的属性时,但是他并不会立刻在屏幕上显示出来。它默认会从先前的值平滑过渡到新值,不需要做额外操作。这就是<code>隐式动画</code>,之所以叫<strong><code>隐式</code>是因为我们并没有指定任何动画的类型</strong>.我们改变属性之后是<code>Core Animation</code>来决定如何并且何时去做动画（这是隐式当然也可以显式动画）.</p>
+<p>在<code>Core Animation</code>中的绘图通常是指<strong>软件绘图</strong><br/>
+在iOS中，软件绘图通常是由<code>Core Graphics</code>框架完成来完成。但是，在一些必要的情况下，相比<code>Core Animation</code>和<code>OpenGL</code>，<code>Core Graphics</code>要慢了不少。</p>
 
-<p>隐式动画的动画执行的时间取决于当前<code>事务</code>的设置，动画类型取决于图层行为。</p>
+<p>软件绘图不仅效率很低 而且很耗内存.CALayer只需要和自己相关的内存,只有他的寄宿图会消耗一点内存控件，即使直接赋给<code>contents</code>属性一张图片,也不需要增加额外的照片存储大小,如果相同的一张图片被多个图层作为<code>contents</code>属性，那么他们将会共用同一块内存，而不是复制内存块。</p>
 
-<p><code>事务</code>是<strong><code>Core Animation</code>用来包含一系列属性动画集合的机制</strong>，当用事务去改变可以做动画的图层属性都不会立刻变化,而是等到这个事务提交之后,才开始图层属性过渡到新值的动画.</p>
+<p><strong>但是如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</strong></p>
 
-<p>我们用<code>CATransaction</code>类来管理<code>事务</code>,这个类管理的事务并不能访问,也没有属性或者实例方法，并且也不能用<code>+alloc</code> 和<code>-init</code>方法创建它。但是可以用 <code>+begin</code> 和 <code>+commit</code> 分别来入栈或者出栈。</p>
+<p><strong>绘图代价很大，尽量避免重绘你的视图</strong></p>
 
-<p>任何可以做动画的图层属性的改变都会被添加到目前<code>栈顶</code>的<code>事务</code>中.我们可以用<code>+setAnimationDuration:</code>设置 或者<code>+animationDuration</code>获取当前的栈顶事务的动画时间(默认0.25秒)</p>
+<h3 id="toc_1">矢量图形</h3>
 
-<p><code>Core Animation</code>会在每个<code>run loop</code>周期中自动开始一次新的事务,，即使你不显式的用<code>[CATransaction begin]</code> 开始一次事务，任何在一次<code>run loop</code>循环中属性的改变都会被集中起来，然后做一次0.25秒的动画。  </p>
-
-<pre><code class="language-objectivec">/*我们在设置某个属性动画的事务属性（比如时间）时,我们通常会自己创建一个新的事务,
-否则会有可能影响到事务中其他属性动画*/
-[CATransaction begin];
-//set the animation duration to 1 second
-[CATransaction setAnimationDuration:1.0];
-
-self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
-//commit the transaction
-[CATransaction commit];
-</code></pre>
-
-<p><strong>补充</strong><br/>
-<code>UIView</code>有两个方法，<code>+beginAnimations:context:</code>和<code>+commitAnimations</code>，就是通过设置 <code>CATransaction</code>实现的,至于UIView的另外一个<code>+animateWithDuration:animations:</code>，只是将这些属性动画做成了一个block以避免开发者由于对<code>+begin</code> 和<code>+commit</code> 匹配的失误.</p>
-
-<h3 id="toc_1">完成块</h3>
-
-<p>我们在做基于<code>UIView</code>的<code>block</code>动画时可以在动画结束时提供一个完成动作. <br/>
-<code>CATranscation</code>接口提供的<code>+setCompletionBlock:</code>方法也有同样的功能。</p>
-
-<pre><code class="language-objectivec">[CATransaction begin];
-[CATransaction setAnimationDuration:1.0];
-[CATransaction setCompletionBlock:^{
-//rotate the layer 90 degrees
-CGAffineTransform transform = self.colorLayer.affineTransform;
-transform = CGAffineTransformRotate(transform, M_PI_2);
-self.colorLayer.affineTransform = transform;
-}];
-self.colorLayer.backgroundColor = [UIColor redColor];
-[CATransaction commit];
-/**
-注意旋转动画要比颜色渐变快得多，这是因为完成块是在颜色渐变的事务提交并出
-栈之后才被执行，于是，用默认的事务做变换，默认的时间也就变成了0.25秒。
-*/
-</code></pre>
-
-<h3 id="toc_2">图层行为</h3>
-
-<p><code>UIKit</code>默认禁用了隐式动画.即UIView把它关联的图层属性改编动画特性关闭了</p>
-
-<p>我们先来看一下<code>隐式动画</code>是怎么实现的:<br/>
-<strong>我们把改变属性时<code>CALayer</code>自动应用的动画称作<code>行为</code>.</strong><br/>
-当我们改变了<code>CALayer</code>的属性时，会调用<code>-actionForKey:</code>方法，传递属性的名称。然后</p>
+<p>我们用的矢量绘图包含:</p>
 
 <ul>
-<li>图层首先检测它是否有委托，并且是否实现 CALayerDelegate 协议指定的 <code>-actionForLayer:forKey</code> 方法。如果有，直接调用并返回结果。</li>
-<li>如果没有委托，或者委托没有实现<code>-actionForLayer:forKey</code>方法，图层接着检查包含属性名称对应行为映射的<code>actions</code>字典。</li>
-<li>如果<code>actions</code>字典 没有包含对应的属性，那么图层接着在它的<code>style</code>字典接着搜索属性名。</li>
-<li>最后，如果在 <code>style</code> 里面也找不到对应的行为，那么图层将会直接调用定义了每个属性的标准行为的<code>-defaultActionForKey:</code>方法。</li>
+<li>任意多边形</li>
+<li>斜线或曲线</li>
+<li>文本</li>
+<li>渐变</li>
 </ul>
 
-<p><code>-actionForKey:</code>是用来找这个属性对应的动画(action),要么返回空（这种情况下将不会有动画发生），要么是<code>CAAction</code>协议对应的对象，最后<code>CALayer</code>拿这个结果去对先前和当前的值做动画。</p>
+<p>实现一个划线应用:将用户的触摸手势转换成一个 UIBezierPath 上的点，然后绘制成视图。</p>
 
-<p>UIKit禁用隐式动画的方法就是,：每个<code>UIView</code> 对它关联的图层都扮演了一个委托，并且提供了<code>-actionForLayer:forKey</code> 的实现方法。当不在一个动画块的实现中，<code>UIView</code> 对所有图层行为返回 <code>nil</code>，但是在动画<code>block</code>范围之内，它就返回了一个非空值。</p>
+<p>1.用<code>Core Graphic</code>基于<code>drawRect</code>绘制</p>
 
-<p><strong>注意</strong></p>
-
-<ol>
-<li>这里所说的关联是指UIView关联的图层即宿主图层,而对于其他add的图层并不是关联的图层所以是没有禁用隐式动画的</li>
-</ol>
-
-<p>当然对于<code>CATransacition</code>我们可以用<code>+setDisableActions:</code>来选择关闭/打开隐式动画<br/>
-<code>[CATransaction setDisableActions:YES]; //关闭隐式动画</code></p>
-
-<ul>
-<li>UIView 关联的图层禁用了隐式动画，对这种图层做动画的办法就是使用 <code>UIView</code> 的动画函数（而不是依赖 <code>CATransaction</code> ），或者继承 <code>UIView</code> ，并覆盖<code>-actionForLayer:forKey:</code>方法，或者直接创建一个显式动画（具体细节见第八章）。</li>
-<li>对于单独存在的图层，我们可以通过实现图层的<code>-actionForLayer:forKey:</code>委托方法，或者提供一个<code>actions</code> 字典来控制隐式动画(actions 字典可以写更少的代码)。</li>
-</ul>
-
-<p><code>行为</code>通常是一个被Core Animation隐式调用的显式动画对象。<br/>
-我们来改变一个图层属性的行为:</p>
-
-<pre><code class="language-objectivec">/**
-我们使用的是一个实现了 CATransaction 的实例，叫做推进过渡
-改变了CALayer的背景颜色属性行为.改变背景颜色，新的色块都是从左侧滑入，
-而不是默认的渐变效果
-*/
-CATransition *transition = [CATransition animation];
-transition.type = kCATransitionPush;
-transition.subtype = kCATransitionFromLeft;
-self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
-//add it to our view
-[self.layerView.layer addSublayer:self.colorLayer];
-</code></pre>
-
-<h3 id="toc_3">呈现与模型</h3>
-
-<p>我们在改变一个<code>CALayer</code>的属性时，属性值确实会立即更新(这个属性值在设置时就会立刻生效)但是苹果并没有立即呈现出来。</p>
-
-<p>当设置<code>CALayer</code>的属性，实际上是在定义当前事务结束之后图层如何显示的<code>模型</code>。而<code>Core Animation</code>则负责根据图层<code>行为</code>和<code>事务设置</code>去更新视图的这些属性在屏幕上的状态.</p>
-
-<p>我们的手机屏幕是每60秒重绘一次,如果我们要做的动画时长大于1/60,就需要在新值之前对屏幕重绘,即知道当前属性值.<strong>每个图层属性的显示值都被存储在一个叫做呈现图层的独立图层当中</strong>,可以通过<code>-presentationLayer</code>方法来访问.</p>
-
-<p>图层树(模型图层树)&lt;---&gt;呈现树:呈现树通过图层树中所有图层的呈现图层所形成。只有在图层首次在屏幕上呈现时候才会被创建,在之前获取呈现图层时会返回nil的.</p>
-
-<p>在模型图层上调用<code>- presentationLayer</code>能获取呈现图层,同样的调用<code>–modelLayer</code>是会获取模型图层(通常是self).</p>
-
-<p><img src="media/14901598468257/14903368056823.jpg" alt=""/></p>
-
-<p>通常我们只需要和模型图层交互即可让<code>Core Animation</code>更新显示.<br/>
-但是以下两种情况下呈现图层会很有效：  </p>
-
-<ul>
-<li>实现一个基于定时器的动画,而不仅仅是基于事务的动画，这个时候准确地知道在某一时刻图层显示在什么位置就会对正确摆放图层很有用了。</li>
-<li>如果你想让你做动画的图层响应用户输入，你可以使用<code>-hitTest:</code>方法来判断指定图层是否被触摸，这时候对呈现图层而不是模型图层调用 <code>-hitTest:</code> 会显得更有意义</li>
-</ul>
-
-<pre><code class="language-objectivec">- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+<pre><code class="language-objectivec">- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
 {
-    //get the touch point
-    CGPoint point = [[touches anyObject] locationInView:self.view];
-    //check if we&#39;ve tapped the moving layer
-    if ([self.colorLayer.presentationLayer hitTest:point]) {
-        self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
-    } else {
-        //otherwise (slowly) move the layer to new position
-        [CATransaction begin];
-        [CATransaction setAnimationDuration:4.0];
-        self.colorLayer.position = point;
-        [CATransaction commit];
+    CGPoint point = [[touches anyObject] locationInView:self];
+    [self.path addLineToPoint:point];
+    [self setNeedsDisplay];
+}
+- (void)drawRect:(CGRect)rect
+{
+    [[UIColor clearColor] setFill];
+    [[UIColor redColor] setStroke];
+    [self.path stroke];
+}
+</code></pre>
+
+<p><code>[self setNeedsDisplay];</code>可以重绘视图,再次走<code>drawRect</code>方法,但是如果一直重绘而且绘制工作量增大就会导致帧数下降.</p>
+
+<p>2.用<code>CAShaperLayer</code>绘制</p>
+
+<pre><code class="language-objectivec">+ (Class)layerClass
+{
+    return [CAShapeLayer class];
+}
+</code></pre>
+
+<p><code>Core Animation</code>为这些图层类型提供了专门的类，并提供了硬件支持,比如<code>CAShapeLayer</code>可以绘制多边形，直线和曲线。 <code>CATextLayer</code>可以绘制文本。<code>CAGradientLayer</code>用来绘制渐变。这些总体上都比<code>Core Graphics</code>更快，同时他们也避免了创造一个寄宿图。(<strong>这些图层是CA提供的,而我们的绘图用的是CG</strong>)</p>
+
+<p>因此对于绘制矢量图层我们可以重写<code>UIView</code>的<code>layer</code>然后只需要将绘制的<code>path</code>赋值<code>CAShapeLayer</code>的<code>path</code>即可绘制，虽然性能依然下降但不明显几乎感觉不到帧率差异</p>
+
+<h3 id="toc_2">脏矩形</h3>
+
+<p>有时候我们没办法用<code>CAShapeLayer</code>等图层来代替<code>Core Graphics</code>，对于上面的例子,我们为了进一步提高性能,我们用一个“线刷”图片粘贴到用户手指触碰的地方</p>
+
+<p>我们如果在用户手指移动就重绘视图将图片粘贴到用户手指移动过的所有点,这样绘制越多就越慢,仍会引起性能问题</p>
+
+<p>为了减少不必要的绘制,Mac OS和iOS设备将会把屏幕区分为需要重绘的区域和不需要重绘的区域。<strong>那些需要重绘的部分被称作『脏区域』。</strong>为了方便我们通常指出包含需要重绘的视图的矩形位置,就是<strong>脏矩形</strong></p>
+
+<p>只改变了视图的部分区域的,重绘整个整个寄宿图就太浪费了,我们可以通过提供重绘区域.</p>
+
+<p>当检测到需要重绘的区域时通过<code>setNeedsDisplayInRect:</code>标记,这样就会在一次试图刷新时调用调用视图的<code>- drawRect:</code>（或图层代理的<code>- drawLayer:inContext:</code>方法）</p>
+
+<p>传入<code>- drawLayer:inContext:</code>的<code>CGContext</code>参数会自动被裁切以适应对应的矩形。为了确定矩形的尺寸大小，你可以用<code>CGContextGetClipBoundingBox()</code>方法来从上下文获得大小。调用<code>- drawRect()</code>会更简单，因为<code>CGRect</code>会作为参数直接传入。</p>
+
+<p>当然如果你的裁剪逻辑相当复杂,那还是是让<code>Core Graphics</code>来为你重绘吧，</p>
+
+<pre><code class="language-objectivec">- (void)addBrushStrokeAtPoint:(CGPoint)point
+{
+    //add brush stroke to array
+    [self.strokes addObject:[NSValue valueWithCGPoint:point]];
+    //set dirty rect
+    [self setNeedsDisplayInRect:[self brushRectForPoint:point]];
+}
+- (CGRect)brushRectForPoint:(CGPoint)point
+{
+    return CGRectMake(point.x - BRUSH_SIZE/2, point.y - BRUSH_SIZE/2, BRUSH_SIZE, BRUSH_SIZE);
+}
+- (void)drawRect:(CGRect)rect
+{
+    //redraw strokes
+    for (NSValue *value in self.strokes) {
+        //get point
+        CGPoint point = [value CGPointValue];
+        //get brush rect
+        CGRect brushRect = [self brushRectForPoint:point];
+        //only draw brush stroke if it intersects dirty rect
+        if (CGRectIntersectsRect(rect, brushRect)) {
+        //draw brush stroke
+        [[UIImage imageNamed:@&quot;Chalk.png&quot;] drawInRect:brushRect];
+        }
     }
 }
 </code></pre>
+
+<h3 id="toc_3">异步绘制</h3>
+
+<p><code>UIKit</code>的单线程天性意味着寄宿图通畅要在主线程上更新，这意味着绘制会打断用户交互，甚至让整个<code>app</code>看起来处于无响应状态。</p>
+
+<p>为了可以避免用户等待绘制：</p>
+
+<h4 id="toc_4">CATiledLayer</h4>
+
+<p><code>CATiledLayer</code>除了将图层再次分割成独立更新的小块外<br/>
+<code>CATiledLayer</code>还有一个有趣的特性：在多个线程中为每个小块同时调用<code>- drawLayer:inContext:</code>方法。<br/>
+这就避免了阻塞用户交互而且能够利用多核心新片来更快地绘制。只有一个小块的<code>CATiledLayer</code>是实现异步更新图片视图的简单方法。</p>
+
+<h4 id="toc_5">drawsAsynchronously</h4>
+
+<p>苹果为<code>CALayer</code>引入了这个令人好奇的属性，<code>drawsAsynchronously</code>属性对传入<code>-drawLayer:inContext:</code>的<code>CGContext</code>进行改动，允许<code>CGContext</code>延缓绘制命令的执行以至于不阻塞用户交互。</p>
+
+<p>它与<code>CATiledLayer</code>使用的异步绘制并不相同。它自己的 <code>- drawLayer:inContext:</code>方法只会在主线程调用，但是<code>CGContext</code>并不等待每个绘制命令的结束。相反地，它会将命令加入队列，当方法返回时，在后台线程逐个执行真正的绘制。</p>
+
+<p>根据苹果的说法。这个特性在需要频繁重绘的视图上效果最好（比如我们的绘图应用，或者诸如UITableViewCell 之类的），对那些只绘制一次或很少重绘的图层内容来说没什么太大的帮助。</p>
 
                         
                       </div>
@@ -270,10 +251,10 @@ self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/22</span>
+                    <span class="date">2017/5/4</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
+          					    <span class="posted-in"><a href='%E6%80%A7%E8%83%BD.html'>性能</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -338,6 +319,8 @@ self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -367,31 +350,31 @@ self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

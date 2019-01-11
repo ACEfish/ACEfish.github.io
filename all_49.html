@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,179 +114,133 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15031302948355.html">
+                <a class="clearlink" href="15288713693530.html">
                 
-                  <h1>可选链式调用</h1>
+                  <h1>状态机</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><strong>可选链式调用</strong>是在当前值可能为<code>nil</code>的可选值上请求和调用属性、方法以及下标的方法。如果可选值不为空,调用成功,否则如果可选值为<code>nil</code>，那么调用将返回<code>nil</code>。多个调用可以结合为一个调用链,若任何一个节点为<code>nil</code>。整个调用链都会失败</p>
-
-<h2 id="toc_0">可选链式调用代替强制展开</h2>
-
-<p>在想调用的属性、方法、下标的可选值后加上<code>?</code>来定义一个可选链。</p>
+                        	<p>ReactNative 将UI视作一个状态机,每个UI场景就是状态机的一个状态</p>
 
 <blockquote>
-<p>很像在可选值后面放一个叹号（<code>!</code>）来强制展开它的值。它们的主要区别在于当可选值为空时可选链式调用只会调用失败，然而强制展开将会触发运行时错误</p>
+<p>不要在状态机变量中存放于显示无关的变量,会导致务必要渲染UI</p>
 </blockquote>
 
-<p>可选链式调用,不论调用的属性、方法及下标返回值的类型,返回结果都是具有相同类型的可选值,可以利用这个可选返回值来判断链式调用是否成功,有值则返回成功，<code>nil</code>表示调用失败</p>
-
-<pre><code class="language-swift">class Person {
-    var residence: Residence?
-}
-class Residence {
-    var numberOfRooms = 1
-}
-let john = Person()
-</code></pre>
-
-<p>我们直接<code>let roomCount = john.residence!.numberOfRooms</code>因为<code>residence</code>为<code>nil</code>强制展开的话是会触发运行时错误的</p>
-
-<p>这时我们可以采用可选链式调用来访问<code>numberOfRooms</code>用<code>?</code>代替<code>!</code></p>
-
-<pre><code class="language-swift">if let roomCount = john.residence?.numberOfRooms {
-    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
-} else {
-    print(&quot;Unable to retrieve the number of rooms.&quot;)
-}
-</code></pre>
-
-<p><strong>添加问号之后，Swift 就会在<code>residence</code>不为<code>nil</code>的情况下访问<code>numberOfRooms</code></strong></p>
-
-<p>即使<code>numberOfRooms</code>是非可选类型<code>Int</code>，只要使用可选链式调用就意味着<code>numberOfRooms</code>会返回<code>Int?</code>而不是<code>Int</code></p>
-
-<h2 id="toc_1">为可选链式调用定义模型类</h2>
-
-<h2 id="toc_2">通过可选链式调用访问属性</h2>
-
-<p>通过可选链式调用<strong>访问可能不存在实例的属性</strong>:</p>
-
-<pre><code class="language-swift">//john.residence实例可能为nil
-let john = Person()
-if let roomCount = john.residence?.numberOfRooms {
-    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
-} else {
-    print(&quot;Unable to retrieve the number of rooms.&quot;)
-}
-</code></pre>
-
-<p>通过可选链式调用<strong>设置属性值</strong></p>
-
-<pre><code class="language-swift">//john.residence实例可能为nil
-let someAddress = Address()
-john.residence?.address = someAddress
-</code></pre>
-
-<p>对于这种可选链式调用的赋值,如果<code>john.residence</code>为<code>nil</code>，获取<code>address</code>属性失败，那么右侧的代码是不会被执行的</p>
-
-<h2 id="toc_3">通过可选链式调用调用方法</h2>
-
-<p>对于<code>Residence</code>类中定义的方法</p>
-
-<pre><code class="language-swift">func printNumberOfRooms() {
-    print(&quot;The number of rooms is \(numberOfRooms)&quot;)
-}
-</code></pre>
-
-<p>这个方法没有返回值,那就是具有隐式的返回值<code>Void</code><br/>
-那么如果用可选链式调用这个方法，返回值就为<code>Void?</code></p>
-
-<pre><code class="language-swift">//john.residence 为Residence类 可能为nil的实例
-if john.residence?.printNumberOfRooms() != nil {
-    print(&quot;It was possible to print the number of rooms.&quot;)
-} else {
-    print(&quot;It was not possible to print the number of rooms.&quot;)
-}
-//可以根据返回值是否为nil 判断调用是否成功
-</code></pre>
-
-<p>对实例中的属性赋值 也会返回一个可选类型</p>
-
-<pre><code class="language-swift">if (john.residence?.address = someAddress) != nil {
-print(&quot;It was possible to set the address.&quot;)
-} else {
-print(&quot;It was not possible to set the address.&quot;)
-}
-</code></pre>
-
-<h2 id="toc_4">通过可选链式调用访问下标</h2>
-
-<p>可以在一个可选值上访问下标,判断下标是否成功</p>
-
-<pre><code class="language-swift">//john.residence可能为nil
-if let firstRoomName = john.residence?[0].name {
-    print(&quot;The first room name is \(firstRoomName).&quot;)
-} else {
-    print(&quot;Unable to retrieve the first room name.&quot;)
-}
-</code></pre>
+<h2 id="toc_0">State</h2>
 
 <blockquote>
-<p>注意:下标调用的时候将问号放在下标方括号的前面而不是后面</p>
+<p>尽可能让自定义的组件成为无状态组件<br/>
+好的reactnative设计思路:创建多个只负责渲染数据的无状态组件，将他们封装在一个有状态的reactnative组件中,有状态的组件封装了UI交互的逻辑，而无状态的组件负责渲染UI界面。</p>
 </blockquote>
 
-<pre><code class="language-swift">john.residence?[0] = Room(name: &quot;Bathroom&quot;)
-</code></pre>
-
-<p><code>john.residence</code>为nil时，赋值仍然会失败</p>
-
-<h3 id="toc_5">访问可选类型的下标</h3>
-
-<p>如果下标返回可选类型值,可以在下标的结尾括号后面放一个问号来在其可选返回值上进行可选链式调用</p>
-
-<pre><code class="language-swift">var testScores = [&quot;Dave&quot;: [86, 82, 84], &quot;Bev&quot;: [79, 94, 81]]
-testScores[&quot;Dave&quot;]?[0] = 91
-testScores[&quot;Bev&quot;]?[0] += 1
-testScores[&quot;Brian&quot;]?[0] = 72
-</code></pre>
-
-<p>定义一个字典,包含两个键值对，因为字典下标返回的是可选类型值,对于<code>testScores[&quot;Brian&quot;]</code>因为字典中没有这个键，所以返回为<code>nil</code>，调用失败</p>
-
-<h2 id="toc_6">连接多层可选链式调用</h2>
-
-<p>可以连接多个可选链式调用在更深模型层级中访问属性、方法、下标，但是是不会增加返回值的可选层级的</p>
-
-<ul>
-<li>通过可选链式调用访问一个 Int 值，将会返回 Int? ，无论使用了多少层可选链式调用</li>
-<li>通过可选链式调用访问 Int? 值，依旧会返回 Int? 值，并不会返回 Int??</li>
-</ul>
-
-<pre><code class="language-swift">if let johnsStreet = john.residence?.address?.street {
-    print(&quot;John&#39;s street name is \(johnsStreet).&quot;)
-} else {
-    print(&quot;Unable to retrieve the address.&quot;)
-}
-</code></pre>
-
-<p><code>john.residence.address</code>为<code>nil</code>因此调用失败<br/>
-尽管<code>street</code>属性为<code>String？</code>  返回值仍然为<code>String?</code></p>
-
-<h2 id="toc_7">在方法的可选返回值上进行可选链式调用</h2>
-
-<pre><code class="language-swift">if let buildingIdentifier = john.residence?.address?.buildingIdentifier() {
-    print(&quot;John&#39;s building identifier is \(buildingIdentifier).&quot;)
-}
-</code></pre>
-
-<p>在可选值的基础上调用<code>buildingIdentifier()</code>方法  返回<code>String?</code>类型值</p>
-
-<pre><code class="language-swift">if let beginsWithThe =
-john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
-    if beginsWithThe {
-        print(&quot;John&#39;s building identifier begins with \&quot;The\&quot;.&quot;)
-    } else {
-        print(&quot;John&#39;s building identifier does not begin with \&quot;The\&quot;.&quot;)
+<pre><code class="language-javascrip">constructor(props) {
+        super(props)
+        this.state = {
+            input: &#39;&#39;,
+            inputPWD: &#39;&#39;,
+        }
     }
-}
+    updateNum(newText) {
+        this.setState((state) =&gt; {
+            return {input: newText}
+        });
+    }
+
+    updatePWD(newText) {
+        this.setState(() =&gt; {
+            return {
+                inputPWD : newText
+            }
+        })
+    }
 </code></pre>
 
-<p>在方法的返回值基础上进行可选链式调用 </p>
+<p>通过this.state.状态机变量名 访问状态机变量</p>
+
+<p>我们需要将状态机变量看做 <strong>不可变常量</strong>，不能直接改变状态机变量，只能通过<strong>setState</strong>函数</p>
+
+<h2 id="toc_1">渲染</h2>
+
+<p>setState函数原型：<code>setState(oldState, callback)</code> 第二个参数为回调函数,会在setState完成并且重新渲染完成(如果需要的话)后被调用</p>
+
+<p>如果setState函数将传入函数的返回值与当前状态机相比没有任何修改或增加,将不会进行渲染</p>
+
+<p>改变状态机变量后 所有与状态机变量值有关系的组件都会被刷新。</p>
 
 <blockquote>
-<p>在方法的圆括号后面加上问号即可</p>
+<p>当修改组件的状态机变量值后，ReactNative会在考虑清楚如何高效的渲染UI后,执行SetState的箭头函数来渲染组件,因此setState是异步执行的函数</p>
+
+<p>当子组件需要渲染时,那么该子组件的各个生命周期的函数都会按声明周期调用 这就是渲染高效的原因</p>
 </blockquote>
+
+<h3 id="toc_2">判断是否渲染</h3>
+
+<pre><code class="language-javascript">//判断是否渲染，实现这个函数后,会在重新渲染组件前，调用这个函数，返回false就放弃渲染组件
+shouldComponentUpdate() {
+        if (this.state.input.length &lt; 3) {
+            return true;
+        }
+        return false;
+    }
+</code></pre>
+
+<h3 id="toc_3">强制渲染</h3>
+
+<p><code>forceUpdate(callback)</code> <br/>
+当UI的可变数据来源为属性和状态之外获取时,可以使用这个函数要求重新渲染，这会导致所有级别的UI都重新读取、计算、渲染。</p>
+
+<blockquote>
+<p>这个渲染过程不会调用<code>shouldComponentUpdate</code><br/>
+可以通过回调函数,在执行结束后调用<br/>
+尽量避免使用</p>
+</blockquote>
+
+<h3 id="toc_4">render渲染过程</h3>
+
+<p>RN通过<code>render</code>实现重新渲染。原型为<code>ReactComponent render()</code><br/>
+任何组件都必须有这个函数 也必须只能返回一个可渲染组件<br/>
+通过修改属性或者状态机变量来触发render的重新渲染，而不是直接调用这个函数</p>
+
+<h3 id="toc_5">简洁写法</h3>
+
+<pre><code class="language-javascript">    //简洁写法1（通过指定参数名称与状态机变量名称相同 省略）
+    updateNum(input) {
+        this.setState(() =&gt; {
+            return {input}
+        })
+    }
+    
+    //简洁写法2（省略箭头函数）
+    updateNum(input) {
+        this.setState( {input})
+    }
+ ```
+
+## 成员变量
+
+```javascript
+    constructor(props) {
+        super(props)
+        this.myProperty1 = &quot;test&quot;
+        this.myProperty2 = true
+        this.state = {
+            input: &#39;&#39;,
+            inputPWD: &#39;&#39;,
+        }
+    }
+    //就可以在组件中使用myProperty1  myProperty2 这两个成员变量
+</code></pre>
+
+<p>组件可以有静态变量、静态成员函数，直接用<code>类名.</code>调用</p>
+
+<h3 id="toc_6">回调函数绑定</h3>
+
+<pre><code class="language-javascript">//在constuctor函数中
+this.updateNum = this.updateNum.bind(this)
+</code></pre>
+
+<p>绑定操作是为了让回调函数能正确解析出this，否则this.updateNum函数被执行时,指向另外对象而不是该组建类的实例</p>
 
                         
                       </div>
@@ -293,10 +249,10 @@ john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/19</span>
+                    <span class="date">2018/6/13</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
+          					    <span class="posted-in"><a href='React-Native.html'>React-Native</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -361,6 +317,8 @@ john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -390,31 +348,31 @@ john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

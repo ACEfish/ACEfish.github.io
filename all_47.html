@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,119 +114,42 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15037348375137.html">
+                <a class="clearlink" href="15289781671435.html">
                 
-                  <h1>类型转换</h1>
+                  <h1>对象</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>在<code>Swift</code>中通过<code>is</code>和<code>as</code>操作符来实现<strong>类型转换</strong>，可以来检查值的类型或者转换类型<br/>
-可以用它检查一个类型是否实现了某个协议</p>
+                        	<h2 id="toc_0">JS创建对象以及对象属性的几种方式</h2>
 
-<h2 id="toc_0">定义一个类层次作为例子</h2>
+<h3 id="toc_1">1.创建直接的对象</h3>
 
-<p>在数组中存了一个父类的两个子类的实例</p>
+<pre><code class="language-javascript">person=new Object();
+person.firstname=&quot;Bill&quot;;
+person.lastname=&quot;Gates&quot;;
+person.age=56;
+person.eyecolor=&quot;blue&quot;;
+</code></pre>
 
-<blockquote>
-<p>在数组中存在两种子类类型,会推断这个数组为共同的父类类型<br/>
-此时虽然数组中存的是子类类型实例,但是迭代的话取出的实例会为父类类型，此时我们需要判断和转换类型</p>
-</blockquote>
+<h3 id="toc_2">2.替代语法(使用对象 literals)</h3>
 
-<h2 id="toc_1">检查类型</h2>
+<pre><code class="language-javascript">person={firstname:&quot;John&quot;,lastname:&quot;Doe&quot;,age:50,eyecolor:&quot;blue&quot;};
 
-<p>用类型检查操作符<code>is</code> 检查实例是否属于特定子类型，返回<code>bool</code>值</p>
+</code></pre>
 
-<pre><code class="language-swift">for item in library {
-    if item is Movie { //判断实例是否为 Movie类型
-        movieCount += 1
-    } else if item is Song { //判断实例是否为 Song类型
-        songCount += 1
-    }
+<h3 id="toc_3">3.函数对象构造器</h3>
+
+<pre><code class="language-javascript">function person(firstname,lastname,age,eyecolor)
+{
+this.firstname=firstname;
+this.lastname=lastname;
+this.age=age;
+this.eyecolor=eyecolor;
 }
 </code></pre>
 
-<h2 id="toc_2">向下转型</h2>
-
-<p>当某类型的实例属于一个子类,可以用<code>as?</code>或者<code>as!</code>将其向下转换位子类类型</p>
-
-<p>因为向下转型可能失败，因此提供<code>as?</code>和<code>as!</code>(带上强制解包)，当不确定是否成功时用<code>as?</code> 确定一定成功时<code>as!</code></p>
-
-<pre><code class="language-swift">for item in library {
-    if let movie = item as? Movie {
-        print(&quot;Movie: &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
-    } else if let song = item as? Song {
-        print(&quot;Song: &#39;\(song.name)&#39;, by \(song.artist)&quot;)
-    }
-}
-</code></pre>
-
-<p><code>if let movie = item as? Movie</code>尝试将<code>item</code>转为<code>Movie</code>类型。若成功，设置一个新的临时常量<code>movie</code>来存储返回的可选<code>Movie</code>中的值</p>
-
-<h2 id="toc_3">Any和AnyObject的类型转换</h2>
-
-<p>不确定类型的表达方式:<br/>
-<code>Any</code>可以表示任何类型，包括函数类型。<br/>
-<code>AnyObject</code>可以表示任何类类型的实例</p>
-
-<p>建议只在确定需要使用时才使用<code>Any</code>和<code>AnyObject</code></p>
-
-<pre><code class="language-swift">var things = [Any]()
-
-things.append(0)
-things.append(0.0)
-things.append(42)
-things.append(3.14159)
-things.append(&quot;hello&quot;)
-things.append((3.0, 5.0))
-things.append(Movie(name: &quot;Ghostbusters&quot;, director: &quot;Ivan Reitman&quot;))
-things.append({ (name: String) -&gt; String in &quot;Hello, \(name)&quot; })
-</code></pre>
-
-<p>然后我们可以在<code>switch</code>表达式的</p>
-
-<pre><code class="language-swift">for thing in things {
-    switch thing {
-    case 0 as Int:
-        print(&quot;zero as an Int&quot;)
-    case 0 as Double:
-        print(&quot;zero as a Double&quot;)
-    case let someInt as Int:
-        print(&quot;an integer value of \(someInt)&quot;)
-    case let someDouble as Double where someDouble &gt; 0:
-        print(&quot;a positive double value of \(someDouble)&quot;)
-    case is Double:
-        print(&quot;some other double value that I don&#39;t want to print&quot;)
-    case let someString as String:
-        print(&quot;a string value of \&quot;\(someString)\&quot;&quot;)
-    case let (x, y) as (Double, Double):
-        print(&quot;an (x, y) point at \(x), \(y)&quot;)
-    case let movie as Movie:
-        print(&quot;a movie called &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
-    case let stringConverter as String -&gt; String:
-        print(stringConverter(&quot;Michael&quot;))
-    default:
-        print(&quot;something else&quot;)
-    }
-}
-// zero as an Int
-// zero as a Double
-// an integer value of 42
-// a positive double value of 3.14159
-// a string value of &quot;hello&quot;
-// an (x, y) point at 3.0, 5.0
-// a movie called &#39;Ghostbusters&#39;, dir. Ivan Reitman
-// Hello, Michael
-</code></pre>
-
-<blockquote>
-<p><code>Any</code>是可以表示所有类型的值,包括可选类型,当你在用<code>Any</code>类型来表示一个可选值时,会给出警告，此时可以用<code>as</code>操作符显示转换为<code>Any</code></p>
-</blockquote>
-
-<pre><code class="language-text">let optionalNumber: Int? = 3
-things.append(optionalNumber) // 会有警告
-things.append(optionalNumber as Any) // 没有警告
-</code></pre>
+<h3 id="toc_4">4.使用class</h3>
 
                         
                       </div>
@@ -233,10 +158,10 @@ things.append(optionalNumber as Any) // 没有警告
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/26</span>
+                    <span class="date">2018/6/14</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
+          					    <span class="posted-in"><a href='%E5%9F%BA%E7%A1%80.html'>基础</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -301,6 +226,8 @@ things.append(optionalNumber as Any) // 没有警告
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -330,31 +257,31 @@ things.append(optionalNumber as Any) // 没有警告
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

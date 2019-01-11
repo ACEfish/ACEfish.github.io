@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,29 +114,35 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14900564888280.html">
+                <a class="clearlink" href="14873195104181.html">
                 
-                  <h1>蓝牙连接</h1>
+                  <h1>NSRunLoop</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h4 id="toc_0">1. 获取蓝牙信号强度</h4>
+                        	<p>实际上，Run loop并不像 GCD 或者操作队列那样是一种并发机制，因为它并不能并行执行任务。不过在<code>主 dispatch/operation</code>队列中， <code>run loop</code> 将直接配合任务的执行，它提供了一种异步执行代码的机制。</p>
 
-<p><img src="media/14900564888280/14900565184282.jpg" alt=""/></p>
+<p><strong>一个 run loop 总是绑定到某个特定的线程中。main run loop 是与主线程相关的</strong><br/>
+在每一个 Cocoa 和 CocoaTouch 程序中，这个 main run loop 都扮演了一个核心角色，它负责处理 UI 事件、计时器，以及其它内核相关事件。无论你什么时候设置<code>计时器</code>、使用<code>NSURLConnection</code>或者调用 <code>performSelector:withObject:afterDelay:</code>，其实背后都是 run loop 在处理这些异步任务。</p>
 
-<h4 id="toc_1">2. 后台读取蓝牙信号强度</h4>
+<p>run loop 可以运行在不同的模式中，每种模式都定义了一组事件，供 run loop 做出响应。这在对应 main run loop 中暂时性的将某个任务优先执行的一种聪明的做法。</p>
 
-<p>如果程序在后台还需要获取蓝牙蓝牙信号强度，那么肯定是需要支持后台的，要设置后台模式，设置<code>use bluetooth LE accessories</code>这样我们在后台就可以继续读取<code>RSSI</code>和回调了<br/>
-<img src="media/14900564888280/14900567067529.jpg" alt=""/></p>
+<ul>
+<li>NSDefalutRunLoopMode : 默认Mode, 通常主线程在这个模式下运行</li>
+<li>UITrackingRunLoopMode : 滑动ScrollView是会切换到这个模式</li>
+<li>NSRunLoopCommonModes: 包括上面两个模式</li>
+</ul>
 
-<p>在实际使用的过程当中，发现设置了后台模式后，读取<code>RSSI</code>的值持续时间不够长，读取一会就不继续读取了，后来各种测试发现，自己使用一个定时器持续读取蓝牙设备的<code>battery</code>，之所以读取<code>battery</code>，是因为设备的<code>service</code>中存在读取<code>battery</code>的<code>serviceID</code>。试验中，发现如果不定时读取该值，在后台运行的时候读取<code>RSSI</code>值就会中断</p>
+<p>例1:滑动ScrollView后系统把RunLoop切换为UITrackingRunLoopMode,因此加载默认模式中的定时器并不会执行,只有滚动停止回到默认模式才会继续执行。我们可以把定时器设为 <code>NSRunLoopCommonModes</code>的模式，并添加到 run loop 中；<br/>
+<code>[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];</code></p>
 
-<h4 id="toc_2">3.RSSI和距离关系</h4>
+<p>例2:当tableview的cell从网络异步加载图片, 加载完成后在主线程刷新显示图片, 这时滑动tableview会造成卡顿. 通常的思路是tableview滑动的时候延迟加载图片, 等停止滑动时再显示图片. 这里我们可以通过RunLoop来实现.<br/>
+<code>[self.cellImageView performSelector:@sector(setImage:) withObject:downloadedImage afterDelay:0 inModes:@[NSDefaultRunLoopMode]];</code></p>
 
-<p>根据RSSI值，得到设备与手机之间的距离公式大概如下:<br/>
-<code>powe(10, (abs(rssi) - 59) / (10 * 2.0))</code>; <br/>
-大概有这么一个关系，不是很准确。</p>
+<p>主线程一般来说都已经配置好了 main run loop。然而其他线程默认情况下都没有设置 run loop。你也可以自行为其他线程设置 run loop ，但是一般来说我们很少需要这么做。大多数时间使用 main run loop 会容易得多。如果你需要处理一些很重的工作，但是又不想在主线程里做，你仍然可以在你的代码在 main run loop 中被调用后将工作分配给其他队列。Chris 在他关于<a href="https://objccn.io/issue-2-2/">常见的后台实践</a>的文章里阐述了一些关于这种模式的很好的例子。</p>
+
+<p>如果你真需要在别的线程中添加一个 run loop ，那么不要忘记在 run loop 中至少添加一个 input source 。如果 run loop 中没有设置好的 input source，那么每次运行这个 run loop ，它都会立即退出。</p>
 
                         
                       </div>
@@ -143,10 +151,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/21</span>
+                    <span class="date">2017/2/17</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html'>iOS开发知识</a></span>
+          					    <span class="posted-in"><a href='Concurrent-Programming.html'>多线程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -211,6 +219,8 @@
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -240,31 +250,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

@@ -4,7 +4,7 @@
   <title><![CDATA[ACEfish-Blog]]></title>
   <link href="https://acefish.github.io/atom.xml" rel="self"/>
   <link href="https://acefish.github.io/"/>
-  <updated>2018-08-07T14:58:54+08:00</updated>
+  <updated>2018-08-24T15:47:20+08:00</updated>
   <id>https://acefish.github.io/</id>
   <author>
     <name><![CDATA[]]></name>
@@ -13,238 +13,98 @@
   <generator uri="http://www.mweb.im/">MWeb</generator>
   
   <entry>
-    <title type="html"><![CDATA[CGColor]]></title>
-    <link href="https://acefish.github.io/15350923380421.html"/>
-    <updated>2018-08-24T14:32:18+08:00</updated>
-    <id>https://acefish.github.io/15350923380421.html</id>
+    <title type="html"><![CDATA[Promise]]></title>
+    <link href="https://acefish.github.io/15471197068949.html"/>
+    <updated>2019-01-10T19:28:26+08:00</updated>
+    <id>https://acefish.github.io/15471197068949.html</id>
     <content type="html"><![CDATA[
-<p>定义颜色的组件，通过颜色空间来解释其颜色</p>
+<h2 id="toc_0">Promise 写法</h2>
 
-<p><code>CGColorRef</code></p>
-
-<h2 id="toc_0">获取常用颜色</h2>
-
-<pre><code class="language-objectivec">CGColorRef CGColorGetConstantColor(CFStringRef colorName);
+<pre><code class="language-javascript">//构造一个Promise
+const promise = new Promise((resolve, reject) =&gt; {
+    // resolve 或者  reject只返回一个 一次 然后就会停止监听了
+    // setTimeout(() =&gt; {
+    //     resolve(&quot;这是返回的结果&quot;)
+        
+    // }, 2000);
+    setTimeout(() =&gt; {
+     reject(Error(&quot;这是错误的信息结果&quot;))
+    }, 3000);
+})
+//监听这个promise返回结果
+promise.then(result =&gt; {
+    console.log(result)
+}).catch(err =&gt; {
+    console.log(err)
+})
 </code></pre>
-
-<p>colorName:  可以取值有</p>
-
-<pre><code class="language-objectivec">kCGColorWhite
-kCGColorBlack
-kCGColorClear
-</code></pre>
-
-<blockquote>
-<p>因为此函数不是<code>Copy</code>或者<code>Creat</code>的，因此不需要主动释放</p>
-</blockquote>
-
-<h2 id="toc_1">CGColor的Release和Retain</h2>
-
-<pre><code class="language-objectivec">void CGColorRelease(CGColorRef color);
-
-CGColorRef CGColorRetain(CGColorRef color);
-</code></pre>
-
-<h2 id="toc_2">创建颜色</h2>
-
-<ol>
-<li><p>使用颜色空间和强度值列表(包括Alpha)创建颜色</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreate(CGColorSpaceRef space, const CGFloat *components);
-space: 颜色空间<br/>
-components: 描述颜色强度值的n+1个值的数组,n个值对应颜色空间的n歌颜色分量，后加alpha分量
-</code></pre>
-<blockquote>
-<p>需要调用CGColorRelease进行释放</p>
-</blockquote></li>
-<li><p>Copy已有颜色副本</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreateCopy(CGColorRef color);
-</code></pre>
-<blockquote>
-<p>需要调用CGColorRelease进行释放</p>
-</blockquote></li>
-<li><p>创建通用灰度颜色空间颜色</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreateGenericGray(CGFloat gray, CGFloat alpha);
-gray:  A grayscale value (0.0 - 1.0).<br/>
-alpha:An alpha value (0.0 - 1.0).
-</code></pre></li>
-<li><p>创建通用RGB颜色空间颜色</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreateGenericRGB(CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha);
-red: A red component value (0.0 - 1.0).<br/>
-green: A green component value (0.0 - 1.0).<br/>
-blue: A blue component value (0.0 - 1.0).<br/>
-alpha: An alpha value (0.0 - 1.0)
-</code></pre></li>
-<li><p>创建通用CMYK颜色</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreateGenericCMYK(CGFloat cyan, CGFloat magenta, CGFloat yellow, CGFloat black, CGFloat alpha);
-cyan： 0.0=1.0<br/>
-magenta： 0.0=1.0<br/>
-yellow： 0.0=1.0<br/>
-black： 0.0=1.0<br/>
-alpha： 0.0=1.0
-</code></pre></li>
-<li><p>创建与现有颜色相同，alpha不同的颜色副本</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreateCopyWithAlpha(CGColorRef color, CGFloat alpha);
-</code></pre>
-<blockquote>
-<p>需要调用CGColorRelease释放</p>
-</blockquote></li>
-<li><p>使用图案颜色空间、图案和强度值列表(包括alpha)创建颜色</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreateWithPattern(CGColorSpaceRef space, CGPatternRef pattern, const CGFloat *components);
-</code></pre>
-<blockquote>
-<p>需要调用CGColorRelease释放</p>
-</blockquote></li>
-<li><p>在不同颜色空间创建与颜色匹配的新颜色</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreateCopyByMatchingToColorSpace(CGColorSpaceRef, CGColorRenderingIntent intent, CGColorRef color, CFDictionaryRef options);
-CGColorSpaceRef: 目标颜色空间<br/>
-intent: 当颜色在新颜色色域之外时采用的模式<br/>
-color: 要转换的颜色<br/>
-options: NULL
-</code></pre></li>
-</ol>
-
-<h2 id="toc_3">其他方法</h2>
-
-<ol>
-<li><p>判断两个颜色是否相同<br/>
-当两个颜色的颜色空间以及各个分量值相同时，相同</p>
-<pre><code class="language-objectivec">bool CGColorEqualToColor(CGColorRef color1, CGColorRef color2);
-</code></pre></li>
-<li><p>获取颜色的alpha</p>
-<pre><code class="language-objectivec">CGFloat CGColorGetAlpha(CGColorRef color);
-</code></pre></li>
-<li><p>获取颜色的颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorGetColorSpace(CGColorRef color);
-</code></pre></li>
-<li><p>获取与颜色相关的n+1个分量值（包括alpha）</p>
-<pre><code class="language-objectivec">const CGFloat * CGColorGetComponents(CGColorRef color);
-</code></pre></li>
-<li><p>获取指定颜色的分享个数(包括alpha)</p>
-<pre><code class="language-objectivec">size_t CGColorGetNumberOfComponents(CGColorRef color);
-</code></pre></li>
-<li><p>获取与颜色图案空间相关的颜色图案</p>
-<pre><code class="language-objectivec">CGPatternRef CGColorGetPattern(CGColorRef color);
-</code></pre></li>
-</ol>
 
 ]]></content>
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[CGColorSpace]]></title>
-    <link href="https://acefish.github.io/15350771796806.html"/>
-    <updated>2018-08-24T10:19:39+08:00</updated>
-    <id>https://acefish.github.io/15350771796806.html</id>
+    <title type="html"><![CDATA[对象]]></title>
+    <link href="https://acefish.github.io/15471147696850.html"/>
+    <updated>2019-01-10T18:06:09+08:00</updated>
+    <id>https://acefish.github.io/15471147696850.html</id>
     <content type="html"><![CDATA[
-<p>表示指定的颜色值</p>
+<p>JS对象可以通过<code>[ ]</code>来取值和赋值属性或者方法</p>
 
-<pre><code class="language-objectivec">CGColorSpaceRef
-//一个配置文件，指定如何解释显示的颜色值。
+<h2 id="toc_0">ES6对象写法改变</h2>
+
+<h3 id="toc_1">简写对象属性</h3>
+
+<p>当属性名和变量名相同时 可以省写,只写一个属性名即可</p>
+
+<pre><code class="language-javascript">    const name = &quot;lyy&quot;
+    const age = 25
+    const birthday = &quot;1994-10&quot;
+    
+      
+    const lyy = {
+        name: name, //旧版写法
+        age, //es6简写形式
+        birthday,
+    }
 </code></pre>
 
-<h2 id="toc_0">概述</h2>
+<h3 id="toc_2">简写对象方法</h3>
 
-<p>颜色空间是多维的，每个维度表示特定的颜色分量。例如，RGB颜色空间的颜色有R,G,B三个三个维度.颜色空间的的每个维度强度由浮点值表示，其范围和含义取决于所讨论的颜色空间</p>
+<p>对象方法可以简写省略: 和 function 关键字</p>
 
-<p>我们通过正确指定的颜色空间可以确保图像具有一致的外观</p>
+<pre><code class="language-javascript">const lyy = {       
+    showName() { //es6简写
 
-<p><code>Core Graphics</code>支持多种颜色空间：</p>
+    },
+    showAge: function() { //旧版写法
 
-<ol>
-<li>与设备无关的颜色空间: 校准的色彩空间。 确保在不同设备上现实的颜色相同,</li>
-<li>与设备相关的颜色空间: 依赖于设备的颜色空间与特定设备的颜色表示系统相关联。</li>
-<li>特殊的颜色空间: 使用索引和对应的基色空间 索引颜色空间包含了最多256个颜色表以及每个颜色表的条目都制定基色空间的一种颜色</li>
-</ol>
+    }
+}
+</code></pre>
 
-<h3 id="toc_1">创建与设备无关的颜色空间</h3>
+<h3 id="toc_3">对象计算属性</h3>
 
-<p>为了创建与设备无关的颜色空间，我们需要提供白色参考点，黑色参考点以及特殊设备的gamma值</p>
+<p><code>[ ]</code>方括号属性 -- 计算属性</p>
 
-<ol>
-<li><p>创建标准的灰度色彩空间</p>
-<p><code>CGColorSpaceCreateCalibratedGray</code></p>
-<p>创建与设备无关的灰度颜色空间，表示相对于参考白点的颜色</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateCalibratedGray(const CGFloat *whitePoint, const CGFloat *blackPoint, CGFloat gamma);
-whitePoint :   3个数字的数组,制定了在CIE 1931 XYZ-space颜色系统中漫反射白点的3刺激值 (对色彩学不熟悉)<br/>
-blackPoint :   3个数字的数组,制定了在CIE 1931 XYZ-space颜色系统中漫反射黑点的3刺激值 <br/>
-gamma ： 适合于成像设备的伽马值。<br/>
-返回一个新的灰色色彩空间,需要主动调用`CGColorSpaceRelease`来释放
-</code></pre></li>
-<li><p>创建校准的RGB颜色空间<br/>
-<code>CGColorSpaceCreateCalibratedRGB</code></p>
-<p>创建与设备无关的RGB颜色空间，表示相对于参考白点的颜色。 此白点基于输出设备可以生成的最白光。 与设备无关的颜色空间中的颜色在不同设备上显示时应该相同，只要设备的功能允许。<br/>
-对于需要详细伽玛的色彩空间，例如sRGB或ITU-R BT.709中使用的分段传递函数，可以使用函数<code>CGColorSpaceCreateICCBased</code>，因为它可以准确地表示这些伽玛曲线。</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateCalibratedRGB(const CGFloat *whitePoint, const CGFloat *blackPoint, const CGFloat *gamma, const CGFloat *matrix);
-whitePoint：<br/>
-blackPoint<br/>
-gamma: 一个由3个数字组成的数组，用于指定颜色空间的红色，绿色和蓝色分量的伽玛值。<br/>
-matrix： 9个数字的数组，指定相对于最终XYZ表示的颜色空间的伽马修改的RGB值的线性解释。<br/>
-返回一个新的RGB色彩空间,需要主动调用`CGColorSpaceRelease`来释放
-</code></pre></li>
-<li><p>创建根绝ICC颜色配置文件的规范<br/>
-<code>CGColorSpaceCreateICCBased</code></p>
-<p>根据ICC颜色配置文件创建基于ICC的色彩空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateICCBased(size_t nComponents, const CGFloat *range, CGDataProviderRef profile, CGColorSpaceRef alternate);
-</code></pre></li>
-<li><p>创建根据 CIE L<em>a</em>b标准与人类感知相关颜色</p>
-<p><code>CGColorSpaceCreateLab</code><br/>
-<code>CIE L * a * b</code>*空间是Munsell颜色表示系统（一种通过色调，值和饱和度或“色度”值指定颜色的系统）的非线性变换，旨在将感知色差与定量距离相匹配 在色彩空间。 L *分量表示亮度值，a *分量表示从绿色到红色的值，b *分量表示从蓝色到黄色的值。 这大致对应于人脑被认为解码颜色的方式。 与设备无关的颜色空间中的颜色在不同设备上显示时应该相同，只要设备的功能允许。</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateLab(const CGFloat *whitePoint, const CGFloat *blackPoint, const CGFloat *range);
-whitePoint:<br/>
-blackPoint:<br/>
-range:一个由4个数字组成的数组，用于指定颜色空间的a *和b *组件的有效值范围。 a *组件表示从绿色到红色的值，b *组件表示从蓝色到黄色的值。
-</code></pre></li>
-</ol>
+<pre><code class="language-javascript">let id = 1;
 
-<h2 id="toc_2">创建通用或者与设备相关的颜色空间</h2>
+const userId  = {
+    [`userId-${++id}`] : id,
+    [`userId-${++id}`] : id,
+    [`userId-${++id}`] : id,
+}
+//{userId-2: 2, userId-3: 3, userId-4: 4}
 
-<p>当在不同的输出设备上显示时，设备颜色空间中的颜色经常显得不同。 因此，在保持颜色很重要时，不建议使用设备颜色空间</p>
 
-<ol>
-<li><p>CMYK颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateDeviceCMYK(void);
-使用完后需要主动调用CGColorSpaceRelease进行释放
-</code></pre></li>
-<li><p>灰度颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateDeviceGray(void);
-</code></pre></li>
-<li><p>RGB颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateDeviceRGB(void);
-</code></pre></li>
-<li><p>特定平台的颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateWithPlatformColorSpace(const void *ref);
-platformColorSpace：指向特定于平台的颜色空间的通用指针。 在macOS中，传递CMProfileRef-a ColorSync配置文件。 Quartz仅在函数调用期间使用此指针（和基础信息）
-</code></pre></li>
-</ol>
+const keyArr = [&quot;name&quot;, &quot;age&quot;, &quot;birthday&quot;]
+const valueArr = [&quot;lyy&quot;, 27, &quot;1993-12&quot;]
 
-<h2 id="toc_3">创建特殊颜色空间</h2>
-
-<ol>
-<li><p>创建索引颜色空间，由颜色查找表指定的颜色组成。</p>
-<p>索引颜色空间包含最多255个条目的颜色表，以及颜色表条目映射到的基色空间。 颜色表中的每个条目都指定基色空间中的一种颜色。 索引颜色空间中的值被视为颜色空间的颜色表的索引。 表中的数据采用网格格式。 （例如，对于RGB颜色空间，值为R，G，B，R，G，B等。）</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateIndexed(CGColorSpaceRef baseSpace, size_t lastIndex, const unsigned char *colorTable);
-baseSpace:颜色索引表基于的 基色颜色空间<br/>
-lastIndex: 索引表的最大下标值 必须&lt;=255<br/>
-colorTable: m *（lastIndex + 1）个字节的数组，其中m是基色空间中的颜色分量数。 每个字节是0到255范围内的无符号整数，它被缩放到基色空间中相应颜色分量的范围。
-</code></pre></li>
-<li><p>创建图案颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreatePattern(CGColorSpaceRef baseSpace);
-baseSpace:对于蒙版图案，底层颜色空间指定要通过蒙版绘制的颜色。 对于彩色图案，您应该传递NULL。
-</code></pre></li>
-<li><p>创建指定类型的Quartz颜色空间</p>
-<p>我们可以使用此函数创建通用的颜色空间等,查看<a href="https://developer.apple.com/documentation/coregraphics/cgcolorspace/color_space_names?language=objc">Color Space Name</a></p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateWithName(CFStringRef name);
-name：颜色空间名称
-</code></pre></li>
-</ol>
-
-<h2 id="toc_4">颜色空间的引用和释放</h2>
-
-<pre><code class="language-objectivec">//减少颜色空间的引用计数
-void CGColorSpaceRelease(CGColorSpaceRef space);
-
-//增加颜色空间的引用计数
-CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space);
+const poeple = {
+    [keyArr.shift()] : valueArr.shift(),
+    [keyArr.shift()] : valueArr.shift(),
+    [keyArr.shift()] : valueArr.shift()
+}
+console.log(poeple) //{name: &quot;lyy&quot;, age: 27, birthday: &quot;1993-12&quot;}
 
 </code></pre>
 
@@ -252,2879 +112,1678 @@ CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space);
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[CGBlendMode]]></title>
-    <link href="https://acefish.github.io/15350068830702.html"/>
-    <updated>2018-08-23T14:48:03+08:00</updated>
-    <id>https://acefish.github.io/15350068830702.html</id>
+    <title type="html"><![CDATA[数组]]></title>
+    <link href="https://acefish.github.io/15471038798384.html"/>
+    <updated>2019-01-10T15:04:39+08:00</updated>
+    <id>https://acefish.github.io/15471038798384.html</id>
     <content type="html"><![CDATA[
-<p>用于图像的合成操作</p>
+<h2 id="toc_0">Array.from()</h2>
 
-<p>不同的混合模式常量表示不同的混合模式,这些混合模式的等式中的符号表示:<br/>
-<code>R</code>:表示混合结果 <code>S</code>:是源颜色 包括alpha通道  <code>D</code>:是目标颜色 包括alpha通道 <br/>
-<code>Ra</code>,<code>Sa</code>,<code>Da</code>是R,S,D的alpha分量</p>
+<p><code>Array.from()</code>用于将可迭代对象(有Sysmbol.iterator接口对象)和类数组对象(有lengths属性对象)装换为真正的数组Array对象</p>
 
-<p>因此例如: <br/>
-<code>kCGBlendModeDestinationIn</code> <code>R = D*Sa</code>  表示 结果=目标颜色和原色的透明度加成</p>
+<p><code>Array.from(obj, func)</code><br/>
+将类数组或者遍历对象转换为数组对象，再将每个数组元素调用func方法处理(类似map)</p>
 
-<p>所有枚举:</p>
+<pre><code class="language-javascript">//lis是个类数组对象
+const lis = document.querySelectorAll(&quot;li&quot;)
 
-<pre><code class="language-objectivec">switch (blendMode) {  
-        case kCGBlendModeNormal: {  
-            strMsg = @&quot;kCGBlendModeNormal: 正常；也是默认的模式。前景图会覆盖背景图&quot;;  
-            break;  
-        }  
-        case kCGBlendModeMultiply: {  
-            strMsg = @&quot;kCGBlendModeMultiply: 正片叠底；混合了前景和背景的颜色，最终颜色比原先的都暗&quot;;  
-            break;  
-        }  
-        case kCGBlendModeScreen: {  
-            strMsg = @&quot;kCGBlendModeScreen: 滤色；把前景和背景图的颜色先反过来，然后混合&quot;;  
-            break;  
-        }  
-        case kCGBlendModeOverlay: {  
-            strMsg = @&quot;kCGBlendModeOverlay: 覆盖；能保留灰度信息，结合kCGBlendModeSaturation能保留透明度信息，在imageWithBlendMode方法中两次执行drawInRect方法实现我们基本需求&quot;;  
-            break;  
-        }  
-        case kCGBlendModeDarken: {  
-            strMsg = @&quot;kCGBlendModeDarken: 变暗&quot;;   //将线条色变为黑色，背景色设置为目的色
-            break;  
-        }  
-        case kCGBlendModeLighten: {  
-            strMsg = @&quot;kCGBlendModeLighten: 变亮&quot;;  
-            break;  
-        }  
-        case kCGBlendModeColorDodge: {  
-            strMsg = @&quot;kCGBlendModeColorDodge: 颜色变淡&quot;;  
-            break;  
-        }  
-        case kCGBlendModeColorBurn: {  
-            strMsg = @&quot;kCGBlendModeColorBurn: 颜色加深&quot;;  //线条颜色（原本）加深，背景色设置为目的色
-            break;  
-        }  
-        case kCGBlendModeSoftLight: {  
-            strMsg = @&quot;kCGBlendModeSoftLight: 柔光&quot;;  
-            break;  
-        }  
-        case kCGBlendModeHardLight: {  
-            strMsg = @&quot;kCGBlendModeHardLight: 强光&quot;;  //全为目的色
-            break;  
-        }  
-        case kCGBlendModeDifference: {  
-            strMsg = @&quot;kCGBlendModeDifference: 插值&quot;;  
-            break;  
-        }  
-        case kCGBlendModeExclusion: {  
-            strMsg = @&quot;kCGBlendModeExclusion: 排除&quot;;  
-            break;  
-        }  
-        case kCGBlendModeHue: {  
-            strMsg = @&quot;kCGBlendModeHue: 色调&quot;;  
-            break;  
-        }  
-        case kCGBlendModeSaturation: {  
-            strMsg = @&quot;kCGBlendModeSaturation: 饱和度&quot;;  
-            break;  
-        }  
-        case kCGBlendModeColor: {  
-            strMsg = @&quot;kCGBlendModeColor: 颜色&quot;;   //感觉将图片线条色设置为白色，背景色设置为目的色，之后再再图片上加一个有透明度的目的色
-            break;  
-        }  
-        case kCGBlendModeLuminosity: {  
-            strMsg = @&quot;kCGBlendModeLuminosity: 亮度&quot;;  
-            break;  
-        }  
-            //Apple额外定义的枚举  
-            //R: premultiplied result, 表示混合结果  
-            //S: Source, 表示源颜色(Sa对应透明度值: 0.0-1.0)  
-            //D: destination colors with alpha, 表示带透明度的目标颜色(Da对应透明度值: 0.0-1.0)  
-        case kCGBlendModeClear: {  
-            strMsg = @&quot;kCGBlendModeClear: R = 0&quot;; //1.清空（如果图标背景色为白色则为全白） 
-            break;  
-        }  
-        case kCGBlendModeCopy: {  
-            strMsg = @&quot;kCGBlendModeCopy: R = S&quot;;  //2全色覆盖整个图片
-            break;  
-        }  
-        case kCGBlendModeSourceIn: {  
-            strMsg = @&quot;kCGBlendModeSourceIn: R = S*Da&quot;;  //3.线条变色
-            break;  
-        }  
-        case kCGBlendModeSourceOut: {  
-            strMsg = @&quot;kCGBlendModeSourceOut: R = S*(1 - Da)&quot;;  //4.背景变为目的色,线条自动变为白色（比如图标线条原为蓝色，会自动变为白色）
-            break;  
-        }  
-        case kCGBlendModeSourceAtop: {  
-            strMsg = @&quot;kCGBlendModeSourceAtop: R = S*Da + D*(1 - Sa)&quot;;   //5.线条变色，目前感觉和SourceIn效果一致
-            break;  
-        }  
-        case kCGBlendModeDestinationOver: {  
-            strMsg = @&quot;kCGBlendModeDestinationOver: R = S*(1 - Da) + D&quot;;  //6.背景色变为目的色，线条色不变
-            break;  
-        }  
-        case kCGBlendModeDestinationIn: {  
-            strMsg = @&quot;kCGBlendModeDestinationIn: R = D*Sa；能保留透明度信息&quot;;  //7.只看到线条色（本色），无其他颜色
-            break;  
-        }  
-        case kCGBlendModeDestinationOut: {  
-            strMsg = @&quot;kCGBlendModeDestinationOut: R = D*(1 - Sa)&quot;;     //8.空白什么都没哟
-            break;  
-        }  
-        case kCGBlendModeDestinationAtop: {  
-            strMsg = @&quot;kCGBlendModeDestinationAtop: R = S*(1 - Da) + D*Sa&quot;;  //9.会把整个矩形的背景填充目的色（如图9系列）原色保留
-            break;  
-        }  
-        case kCGBlendModeXOR: {  
-            strMsg = @&quot;kCGBlendModeXOR: R = S*(1 - Da) + D*(1 - Sa)&quot;;  //10.线条变白，背景色变为目的色
-            break;  
-        }  
-        case kCGBlendModePlusDarker: {  
-            strMsg = @&quot;kCGBlendModePlusDarker: R = MAX(0, (1 - D) + (1 - S))&quot;;  //11.线条变为黑色， 背景色变为目的色
-            break;  
-        }  
-        case kCGBlendModePlusLighter: {  
-            strMsg = @&quot;kCGBlendModePlusLighter: R = MIN(1, S + D)（最后一种混合模式）&quot;;  //12.线条变为白色（混合色：如color为红色，就是偏粉色的白，有一定透明度的感觉）
-            break;  
-        }  
-        default: {  
-            break;  
-        }  
+const liName = Array.from(lis, li =&gt; li.textContent)
+console.log(liName)
 
+
+function sum() {
+    //arguments是类数组对象
+    return Array.from(arguments).reduce((pre, curr) =&gt; pre+curr, 0)
+}
+</code></pre>
+
+<h2 id="toc_1">Array.of()</h2>
+
+<p>Array.of()是为了弥补 Array(count)方法的歧义</p>
+
+<pre><code class="language-javascript">Array(2) //[undefined, undefined]
+Array(2,7) //[2, 7]
+
+Array.of(2) //[2]
+Array.of(2, 7) //[2, 7]
+</code></pre>
+
+<h2 id="toc_2">数组ES6新方法</h2>
+
+<ol>
+<li><p>find()</p>
+<p>find(func) 参数为一个函数 返回bool 返回第一个函数返回为true的元素 找到符合条件的即会停止遍历</p>
+<pre><code class="language-javascript">const numbers = [11, 32, 24, 12]
+const result = numbers.find((element, index, array) =&gt; element == 11)<br/>
+console.log(result) // 11
+</code></pre></li>
+<li><p>findIndex()</p>
+<p>findIndex(func) 参数为一个函数 返回bool 返回第一个函数返回为true的元素的下标值 找到符合条件的即会停止遍历</p>
+<pre><code class="language-javascript">const numbers = [11, 32, 24, 12]
+const result = numbers.find((element, index, array) =&gt; element == 11)<br/>
+console.log(result) // 0
+</code></pre></li>
+<li><p>some()</p>
+<p>some(func) 返回bool 判断数组中是否至少有一个符合func条件 遇到符合条件的停止遍历</p></li>
+<li><p>every()</p>
+<p>every(func) 返回bool 判断数组中是否全部符合func条件 会遍历全部</p></li>
+</ol>
+
+<h2 id="toc_3">Array常用方法</h2>
+
+<ol>
+<li><p>slice<br/>
+<code>arr.slice(fromIndex, toIndex)</code><br/>
+获取数组从开始索引到结束索引切片后的子数组</p>
+<blockquote>
+<p>如果结束索引大于数组长度,就获取到数组结尾停止</p>
+</blockquote></li>
+<li></li>
+</ol>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[遍历]]></title>
+    <link href="https://acefish.github.io/15470891496440.html"/>
+    <updated>2019-01-10T10:59:09+08:00</updated>
+    <id>https://acefish.github.io/15470891496440.html</id>
+    <content type="html"><![CDATA[
+<p>ES有新的遍历方式 <code>for of</code></p>
+
+<pre><code class="language-javascript">const fruits = [&quot;apple&quot;, &quot;banana&quot;, &quot;orange&quot;, &quot;mango&quot;]
+fruits.describe = &quot;this is all describe&quot;
+
+Array.prototype.firstName = function() {
+    return this[0]
+}
+</code></pre>
+
+<h2 id="toc_0">常用遍历方式</h2>
+
+<ol>
+<li><p>for循环<br/>
+写法比较繁琐</p>
+<pre><code class="language-javascript">for (let index = 0; index &lt; fruits.length; index++) {
+    if(fruits[index] == &quot;banana&quot;) {<br/>
+        continue;<br/>
+    }<br/>
+    console.log(&quot;for循环&quot; + fruits[index])                <br/>
+}<br/>
+/*<br/>
+for循环apple<br/>
+for循环banana<br/>
+for循环orange<br/>
+for循环mango<br/>
+*/
+</code></pre></li>
+<li><p>for each</p>
+<p>可以使用箭头函数 写法便捷 但是不能使用continue 和 break</p>
+<pre><code class="language-javascript">fruits.forEach(fruit =&gt; {
+// if(fruit == &quot;banana&quot;) {<br/>
+//     continue;<br/>
+// }<br/>
+console.log(&quot;for each &quot;+fruit)<br/>
+});<br/>
+/*<br/>
+for each apple<br/>
+for each banana<br/>
+for each orange<br/>
+for each mango<br/>
+*/
+</code></pre></li>
+<li><p>for in</p>
+<p>forin 遍历获取的是key 需要额外取值value<br/>
+forin不仅仅可以遍历可迭代对象<br/>
+<strong>forin遍历可以获取对象的原型方法和对象方法、属性</strong></p>
+<pre><code class="language-javascript">for (const key in fruits) {
+    if(fruits[key] == &quot;banana&quot;) {<br/>
+        continue;<br/>
+    }<br/>
+    console.log(&quot;for in key &quot;+ key+ &quot; value &quot; + fruits[key])<br/>
+}<br/>
+/*<br/>
+for in key 0 value apple<br/>
+for in key 2 value orange<br/>
+for in key 3 value mango<br/>
+for in key describe value this is all describe<br/>
+for in key firstName value function() {<br/>
+    return this[0]<br/>
+}<br/>
+*/
+</code></pre>
+<p>forin遍历不可迭代对象</p>
+<pre><code class="language-javascript">const fankai = {
+    name: &quot;fankai&quot;,<br/>
+    age: 26<br/>
+}<br/>
+for (const value in fankai) {<br/>
+    console.log(value)<br/>
+}
+</code></pre></li>
+<li><p>for of</p>
+<p>遍历可迭代对象</p>
+<pre><code class="language-objectivec">for (const fruit of fruits) {
+    if(fruit == &quot;banana&quot;) {<br/>
+        continue;<br/>
+    }<br/>
+    console.log(&quot;for of &quot;+ fruit)<br/>
+}<br/>
+/**<br/>
+* for of apple<br/>
+* for of orange<br/>
+* for of mango<br/>
+*/
+</code></pre></li>
+</ol>
+
+<h3 id="toc_1">for of</h3>
+
+<p>只能遍历可迭代对象<br/>
+可迭代对象就是部署了<code>iterable</code>接口 或者定义了<code>Symbol.iterator</code>方法的数据结构。<br/>
+<code>js</code>内置了一些带遍历器接口的数据结构,例如Array、map</p>
+
+<p>iterable接口 内置了<code>next</code>方法,调用该方法返回对象,该对象包含值<code>value</code>，以及是否遍历结束的标识<code>done</code>，value中包含了当前的索引以及索引对应的值</p>
+
+<p><img src="media/15470891496440/15471018365126.jpg" alt="" style="width:544px;"/></p>
+
+<p><code>entries()</code>可以获取包含数组的键值对</p>
+
+<pre><code class="language-javascript">//entries() 获取数组的可迭代对象 该对象包含数组的键值对(key/value)
+for (let [index, fruit] of fruits.entries()) {
+    console.log(index, fruit)
+}
+</code></pre>
+
+<h4 id="toc_2">for of 常用实例</h4>
+
+<p>for of循环遍历除了可以遍历数组外 还经常用于其他地方:</p>
+
+<ol>
+<li><p>遍历方法参数<code>arguments</code></p>
+<pre><code class="language-javascript">function sum() {
+    for (const variable of arguments) {<br/>
+        console.log(variable)<br/>
+    }<br/>
+}
+</code></pre></li>
+<li><p>遍历字符串</p>
+<pre><code class="language-javascript">for (const char of &quot;object&quot;) {
+    console.log(char)<br/>
+}
+</code></pre></li>
+<li><p>遍历DOM元素</p>
+<pre><code class="language-javascript">const lis = document.querySelectorAll(&quot;li&quot;)
+for (const li of lis) {<br/>
+}
+</code></pre></li>
+</ol>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[解构]]></title>
+    <link href="https://acefish.github.io/15470311819265.html"/>
+    <updated>2019-01-09T18:53:01+08:00</updated>
+    <id>https://acefish.github.io/15470311819265.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">对象解构</h2>
+
+<p>为了方便一次性取出对象中的多个值,而不需要一一的取值赋值</p>
+
+<pre><code class="language-javascript">const fk = {
+    name: &quot;fankai&quot;,
+    age: 26,
+    family: {
+        farther: &quot;fkfarther&quot;,
+        mother: &quot;fkmother&quot;,
+        brother: &quot;lyy&quot;
+    }
+}
+</code></pre>
+
+<p>常用的对象解构</p>
+
+<pre><code class="language-javascript">const {name, age} = fk
+console.log(name) //fankai
+console.log(name) //26
+
+//当变量已经被声明过
+let name
+//使用括号括起来 否则js会认为是语句
+({name, age} = fk)
+</code></pre>
+
+<p>使用与属性名不同的变量名</p>
+
+<pre><code class="language-javascript">const {farther: far, mother: mon, brother} = fk.family
+console.log(far)
+</code></pre>
+
+<p>当变量对应属性不存在时(即必须为undefined),使用默认值</p>
+
+<pre><code class="language-javascript">const {farther, sister = &quot;hava no sisiter&quot;} = fk.family
+console.log(sister) //hava no sisiter
+</code></pre>
+
+<h3 id="toc_1">数组解构</h3>
+
+<p>可以一次性从数组中取出多个值</p>
+
+<pre><code class="language-javascript">const numbers = [&quot;one&quot;, &quot;two&quot;, &quot;three&quot;, &quot;four&quot;]
+
+//数组解构
+const [a, b] = numbers
+console.log(a) //one
+console.log(b) //two
+
+//如果有可以用空,来越过数组中变量
+const [m, ,n] = numbers
+console.log(m) //one
+console.log(n) //three
+
+//...onthers 来获取剩下所有值
+const [c, ...others] = numbers
+console.log(c) //one
+console.log(others) //[&quot;two&quot;, &quot;three&quot;, &quot;four&quot;]
+
+//当不存在该值 即 该值为undefined时 使用默认值
+const [d, g, , ,f=&quot;five&quot;] = numbers
+console.log(f) //five
 </code></pre>
 
 ]]></content>
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[常见内置模块]]></title>
-    <link href="https://acefish.github.io/15332875866545.html"/>
-    <updated>2018-08-03T17:13:06+08:00</updated>
-    <id>https://acefish.github.io/15332875866545.html</id>
+    <title type="html"><![CDATA[字符串]]></title>
+    <link href="https://acefish.github.io/15470129072619.html"/>
+    <updated>2019-01-09T13:48:27+08:00</updated>
+    <id>https://acefish.github.io/15470129072619.html</id>
     <content type="html"><![CDATA[
-<p>datetime是Python处理日期和时间的标准库。</p>
+<h2 id="toc_0">字符串函数ES6</h2>
 
-<p><code>datetime</code>是模块，<code>datetime</code>模块还包含一个<code>datetime</code>类，通过<code>from datetime import datetime</code>导入的才是<code>datetime</code>这个类</p>
+<ol>
+<li><p>startWith(str, index)<br/>
+返回boolean<br/>
+判断字符串是否从指定位置开始<br/>
+index可以省略表示 字符串是否从头开始</p>
+<pre><code class="language-javascript">const myName = &quot;zheshi shenme?&quot;
+myName.startsWith(&quot;zhe&quot;) //true<br/>
+myName.startsWith(&quot;shi&quot;, 3) //true
+</code></pre></li>
+<li><p>endWith(str, index)<br/>
+返回boolean<br/>
+判断字符串是否结束在指定位置</p>
+<pre><code class="language-javascript">const myName = &quot;zheshi shenme?&quot;
+myName.endsWith(&quot;?&quot;) //true<br/>
+myName.endsWith(&quot;shi&quot;, 6) //true
+</code></pre></li>
+<li><p>includes(str, index)<br/>
+返回boolean<br/>
+判断字符串从index往后的字符串中是否包含子字符串</p>
+<pre><code class="language-javascript">const myName = &quot;zheshi shenme?&quot;
+myName.endsWith(&quot;?&quot;) //true<br/>
+myName.endsWith(&quot;shi&quot;, 6) //true
+</code></pre></li>
+<li><p>repeat(count)<br/>
+<code>str.repeat(count)</code>返回一个str重复coun次的字符串</p>
+<pre><code class="language-javascript">const str = &quot;哈&quot;
+let result = str.repeat(5) //哈哈哈哈哈
+</code></pre>
+<p>可以使用<code>repeat</code>来实现对齐功能</p></li>
+</ol>
 
-<h2 id="toc_0">datetime</h2>
+<h2 id="toc_1">模板字符串/字符</h2>
 
-<pre><code class="language-text">from datetime import datetime 
+<p>ES6中引入模板字符串</p>
 
-now=datetime.now() # 获取当前时间
-print(now)  # 2018-08-03 15:06:09.944095
-print(type(now)) # &lt;class &#39;datetime.datetime&#39;&gt;
+<p>使用反引号括起来字符串  用<code>${}</code>括起来变量或表达式</p>
 
-date1=datetime(2015, 10, 8, 1, 11)  # 创建指定日期时间
-print(date1)  # 2015-10-08 01:11:00
-
-# 在计算机中 时间使用数字(时间戳)表示的
-
-timestamp=date1.timestamp() #将datetime转为时间戳
-print(timestamp) # 1444237860.0
-
-date2=datetime.fromtimestamp(timestamp) # 将时间戳转为本地时间
-date3=datetime.utcfromtimestamp(timestamp) #将时间转为UTC时间
-print(date2)  # 2015-10-08 01:11:00
-print(date3) # 2015-10-07 17:11:00
-
-# str转date
-date4=datetime.strptime(&quot;2015-6-1 18:19:59&quot;, &quot;%Y-%m-%d %H:%M:%S&quot;) 
-print(date4) # 2015-06-01 18:19:59
-
-# date转str
-str1=date4.strftime(&quot;%a, %b %d %H:%M&quot;)
-print(str1)  # Mon, Jun 01 18:19
-
-
-# 时间增减
-from datetime import datetime, timedelta
-
-now1=datetime.now()
-newdate1=now1+timedelta(hours=12)  # 增加12小时的时间
-newdate2=now1-timedelta(days=2, minutes=50)
-print(newdate1) # 2018-08-04 04:09:26.450345
-print(newdate2) # 2018-08-01 16:25:14.299462
-
-
-
-# datetime 有一个时区属性tzinfo 但是默认为 None 因此无法区分时间的时区 我们可以给其设置一个时区，帮助区分是哪个时区的时间
-
-from datetime import datetime, timedelta, timezone
-
-tz_utc_8=timezone(timedelta(hours=8))
-print(tz_utc_8)  # UTC+08:00
-
-print(now) # 2018-08-03 17:26:29.846861
-date_utc_8=now.replace(tzinfo=tz_utc_8)
-
-print(date_utc_8)  # 2018-08-03 17:26:29.846861+08:00
-
-# 获取当前的utc时间 并且加上utc时区信息
-utc_dt=datetime.utcnow().replace(tzinfo=timezone.utc)
-print(utc_dt) # 2018-08-03 09:30:57.959514+00:00
-print(datetime.utcnow()) # 2018-08-03 09:30:57.959525
-print(timezone.utc) # UTC
-
-# 将utc时间转为北京时区时间
-bj_dt=utc_dt.astimezone(timezone(timedelta(hours=8)))
-print(bj_dt) # 2018-08-03 17:39:22.703278+08:00
+<pre><code class="language-javascript">const myName = &quot;lyy&quot;
+const logStr1 = &quot;my name is &quot; + myName
+const logStr = `my name is ${myName}`
+console.log(logStr1)
 </code></pre>
 
 <blockquote>
-<p><code>datetime</code>有一个时区属性<code>tzinfo</code> 但是默认为 <code>None</code> 因此无法区分时间的时区 我们可以给其设置一个时区，帮助区分是哪个时区的时间</p>
-
-<p>任何带时区新的<code>date</code> 都可以转换时间</p>
-
-<p>要存储<code>datetime</code>，最佳方法是将其转换为<code>timestamp</code>再存储，因为<code>timestamp</code>的值与时区完全无关</p>
+<p>特点:模板字符串会保留字符串中所有的空白符号 比如:空格、回车等</p>
 </blockquote>
 
-<h2 id="toc_1">collections</h2>
-
-<p>内置的一个集合模块 提供了许多有用的集合类</p>
-
-<h3 id="toc_2">namedtuple</h3>
-
-<p>是一个用来创建自定义的<code>tuple</code>对象，规定了元素个数,可以用属性而不是索引来引用<code>tuple</code>中的元素</p>
-
-<pre><code class="language-python">
-from collections import namedtuple
-Point=namedtuple(&quot;point&quot;, [&quot;x&quot;, &quot;y&quot;])
-p1=Point(2, 3)
-
-print(&quot;坐标为 %s %s&quot; % (p1.x, p1.y)) # 坐标为 2 3
-
-isinstance(p1, Point) #True
-</code></pre>
-
-<h3 id="toc_3">deque</h3>
-
-<p>为了弥补<code>list</code>线性存储插入和删除元素慢,<code>deque</code>是双向列表，适合于队列和栈，除了实现了list的<code>append()</code>和<code>pop()</code>外，还支持<code>appendleft()</code>和<code>popleft()</code>，可以方便的向头部添加或删除数据</p>
-
-<pre><code class="language-python">from collections import deque
-q1=deque([&quot;1&quot;, &quot;2&quot;, &quot;3&quot;])
-q1.append(&quot;x&quot;)
-q1.appendleft(&quot;y&quot;)
-print(q1)  # deque([&#39;y&#39;, &#39;1&#39;, &#39;2&#39;, &#39;3&#39;, &#39;x&#39;])
-</code></pre>
-
-<h3 id="toc_4">defaultdict</h3>
-
-<p>当<code>dict</code>中引用的key不存在时,返回默认值<br/>
-<strong>默认值</strong>是调用函数返回的，而函数在创建defaultdict对象时传入。</p>
-
-<pre><code class="language-python">from collections import defaultdict
-dd1=defaultdict(lambda:&quot;defaultValue&quot;)
-dd1[&quot;key1&quot;]=&quot;abc&quot;
-print(dd1[&quot;key1&quot;]) # abc
-print(dd1[&quot;key2&quot;]) # defaultValue
-</code></pre>
-
-<h3 id="toc_5">OrderedDict</h3>
-
-<p><code>dict</code>是无序的 如果要保持<code>key</code>顺序 可以使用<code>OrderedDict</code>,<code>OrderedDict</code>会按照插入的顺序排除</p>
-
-<h3 id="toc_6">Counter</h3>
-
-<p>简单的计数器，也是<code>dict</code>的一个子类</p>
-
-<pre><code class="language-python">from collections import Counter
-c1=OrderedDict()
-for char in &quot;programming&quot;:
-    c1[char]=c1[char]+1
-print(c1)
-# Counter({&#39;r&#39;: 2, &#39;g&#39;: 2, &#39;m&#39;: 2, &#39;p&#39;: 1, &#39;o&#39;: 1, &#39;a&#39;: 1, &#39;i&#39;: 1, &#39;n&#39;: 1})
-</code></pre>
-
-<h2 id="toc_7">base64</h2>
-
-<p><code>base64</code>将3字节的数据编码为4字节,长度增加了33%,如果不足的话会用<code>0x00</code>在末尾补全，然后在末尾加同样数量的<code>=</code>标识，这样解码的时候会自动去掉</p>
-
-<p><code>Python</code>内置的有<code>base64</code>编码方法<br/>
-由于标准的base64编码后可能出现字符+和/ 不能在url中作为参数，因此可以受用<code>url safe</code>的base64，将+和/换位-和_</p>
-
-<pre><code class="language-python">import base64
-b64encodestr1=base64.b64encode(b&quot;binary\x00string&quot;)
-print(b64encodestr1) # b&#39;YmluYXJ5AHN0cmluZw==&#39;
-b64decodestr2=base64.b64decode(b64encodestr1)
-print(b64decodestr2) # b&#39;binary\x00string&#39;
-
-#urlsafe_b64encode
-base64encodestr2=base64.b64encode(b&quot;i\xb7\x1d\xfb\xef\xff&quot;)
-print(base64encodestr2) # b&#39;abcd++//&#39;
-base64urlsafeencode=base64.urlsafe_b64encode(b&quot;i\xb7\x1d\xfb\xef\xff&quot;)
-print(base64urlsafeencode) # b&#39;abcd--__&#39;
-</code></pre>
-
-<h2 id="toc_8">struct</h2>
-
-<p>python内置了<code>struct</code>模块来解决<code>bytes</code>和其它二进制数据类型的转换</p>
-
-<pre><code class="language-python">import struct
-struct1=struct.pack(&quot;&gt;I&quot;, 10240099)
-print(struct1) # b&#39;\x00\x9c@c&#39;
-
-struct2=struct.unpack(&quot;&gt;IH&quot;, b&quot;\xf0\xf0\xf0\xf0\x80\x80&quot;)
-print(struct2) # (4042322160, 32896)
-</code></pre>
-
-<p>参数中<code>&gt;</code>表示网络序的大端， I：4字节无符号整数  H：2字节无符号整数</p>
-
-<h2 id="toc_9">hashlib</h2>
-
-<p>python提供摘要算法,包括MD5 SHA1等</p>
-
-<p>MD5摘要</p>
-
-<pre><code class="language-python">import hashlib
-#md5()可以不加参数 然后update()内容 如果内容过多也可以多次 update
-md5=hashlib.md5(&quot;到付奥佛八奥保护管安排表佛八&quot;.encode(&quot;utf-8&quot;))
-md5.update(&quot;dddd&quot;.encode(&quot;utf-8&quot;))
-print(md5.hexdigest()) # a459918710ca186970b2ed69cedee466
-</code></pre>
-
-<p>SHA1摘要</p>
-
-<pre><code class="language-python">import hashlib
-
-sha1 = hashlib.sha1()
-sha1.update(&#39;how to use sha1 in &#39;.encode(&#39;utf-8&#39;))
-sha1.update(&#39;python hashlib?&#39;.encode(&#39;utf-8&#39;))
-print(sha1.hexdigest())
-</code></pre>
-
-<h2 id="toc_10">hmac</h2>
-
-<p>只是简单的摘要哈希的话，有被黑客破译的风险,这时候我们经常需要做加盐处理</p>
-
-<pre><code class="language-python">import hmac
-message=b&quot;Hello, world&quot;
-key=b&quot;secert&quot;
-h=hmac.new(key, message, digestmod=&quot;MD5&quot;)
-print(h.hexdigest())  # 4f05d03996e3c5c96ccde51100246253
-</code></pre>
-
-<h2 id="toc_11">itertools</h2>
-
-<p><code>itertools</code>提供了有用于操作迭代对象的函数</p>
-
-<pre><code class="language-python">import itertools
-# 创建几个 无限重复序列
-
-
-natuals=itertools.count(1) # 1 2 3 4 ....
-cs=itertools.cycle(&quot;ABc&quot;) # A B C A B C ...
-ns=itertools.repeat(&quot;A&quot;) # A A A A A A ...
-# 可以加第二个参数 指定重复次数
-ns=itertools.repeat(&quot;A&quot;, 3) # A A A
-
-</code></pre>
-
-<h3 id="toc_12">takewhile()</h3>
-
-<p>对于itertools无限序列,通常用<code>takewhile()</code>截取有用序列</p>
-
-<pre><code class="language-python">natuals1=itertools.count(1)
-result1=itertools.takewhile(lambda x : x&lt;4, natuals1)
-print(list(result1)) # [1, 2, 3]
-</code></pre>
-
-<h3 id="toc_13">chain()</h3>
-
-<p>chain()可以把一组迭代对象串联起来，形成一个更大的迭代器</p>
-
-<pre><code class="language-python">for c in itertools.chain(&#39;ABC&#39;, &#39;XYZ&#39;):
-     print(c)
-# 迭代效果：&#39;A&#39; &#39;B&#39; &#39;C&#39; &#39;X&#39; &#39;Y&#39; &#39;Z&#39;
-</code></pre>
-
-<h3 id="toc_14">groupby()</h3>
-
-<p>groupby()把迭代器中相邻的重复元素挑出来放在一起：</p>
-
-<pre><code class="language-python">for key, group in itertools.groupby(&#39;AAABBBCCAAA&#39;):
-     print(key, list(group))
-
-A [&#39;A&#39;, &#39;A&#39;, &#39;A&#39;]
-B [&#39;B&#39;, &#39;B&#39;, &#39;B&#39;]
-C [&#39;C&#39;, &#39;C&#39;]
-A [&#39;A&#39;, &#39;A&#39;, &#39;A&#39;]
-
-# 挑选规则实际上是通过函数完成的
-for key, group in itertools.groupby(&#39;AaaBBbcCAAa&#39;, lambda c: c.upper()):
-     print(key, list(group))
-
-A [&#39;A&#39;, &#39;a&#39;, &#39;a&#39;]
-B [&#39;B&#39;, &#39;B&#39;, &#39;b&#39;]
-C [&#39;c&#39;, &#39;C&#39;]
-A [&#39;A&#39;, &#39;A&#39;, &#39;a&#39;]
-</code></pre>
-
-<h2 id="toc_15">contextlib</h2>
-
-<p>对于读写文件我们已经使用过<code>with()</code>语句 其实只要实现了上下文管理都可以使用with语句</p>
-
-<h2 id="toc_16">urllib</h2>
-
-<p><code>urllib</code>内建模块提供了操作url功能</p>
-
-<h3 id="toc_17">get</h3>
-
-<h3 id="toc_18">POST</h3>
-
-<h2 id="toc_19">XML</h2>
-
-<p>操作XML通常有两种方法:DOM和SAX<br/><br/>
-DOM会把整个XML读入内存，可以解析遍历树的任何节点，缺点是占用内存大，解析慢<br/>
-SAX是流模式，边读边解析,占用内存小，解析快，缺点是需要自己处理事件<br/>
-通常选择SAX 因为DOM太耗内存</p>
-
-<pre><code class="language-python">from xml.parsers.expat import ParserCreate
-
-class DefaultSaxHandler(object):
-    def start_element(self, name, attrs):
-        print(&#39;sax:start_element: %s, attrs: %s&#39; % (name, str(attrs)))
-
-    def end_element(self, name):
-        print(&#39;sax:end_element: %s&#39; % name)
-
-    def char_data(self, text):
-        print(&#39;sax:char_data: %s&#39; % text)
-
-xml = r&#39;&#39;&#39;&lt;?xml version=&quot;1.0&quot;?&gt;
-&lt;ol&gt;
-    &lt;li&gt;&lt;a href=&quot;/python&quot;&gt;Python&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href=&quot;/ruby&quot;&gt;Ruby&lt;/a&gt;&lt;/li&gt;
-&lt;/ol&gt;
-&#39;&#39;&#39;
-
-handler = DefaultSaxHandler()
-parser = ParserCreate()
-parser.StartElementHandler = handler.start_element
-parser.EndElementHandler = handler.end_element
-parser.CharacterDataHandler = handler.char_data
-parser.Parse(xml)
-</code></pre>
+<p>示例程序:<br/>
+使用拼接html的字符串，可以直观的使用标签以及格式来书写html</p>
 
 <blockquote>
-<p>需要注意的是读取一大段字符串时，CharacterDataHandler可能被多次调用，所以需要自己保存起来，在EndElementHandler里面再合并。</p>
-
-<p>因为XML解析太复杂 建议你改用JSON</p>
+<p>特点:模板字符串是可以嵌套的</p>
 </blockquote>
 
-<h2 id="toc_20">HTMLParser</h2>
+<pre><code class="language-javascript">const todoArr = [
+    {name: &quot;go to home&quot;, completed: true},
+    {name: &quot;open book&quot;, completed: true},
+    {name: &quot;write book&quot;, completed: false}
+]
 
-<p>当需要解析HTML内容时，因为HTML的语法没有XML那么严格,所以不能用标准的<code>DOM</code>或<code>SAX</code>解析，python提供了<code>HTMLParser</code>来解析HTML</p>
-
-<pre><code class="language-python">from html.parser import HTMLParser
-from html.entities import name2codepoint
-
-class MyHTMLParser(HTMLParser):
-
-    def handle_starttag(self, tag, attrs):
-        print(&#39;&lt;%s&gt;&#39; % tag)
-
-    def handle_endtag(self, tag):
-        print(&#39;&lt;/%s&gt;&#39; % tag)
-
-    def handle_startendtag(self, tag, attrs):
-        print(&#39;&lt;%s/&gt;&#39; % tag)
-
-    def handle_data(self, data):
-        print(data)
-
-    def handle_comment(self, data):
-        print(&#39;&lt;!--&#39;, data, &#39;--&gt;&#39;)
-
-    def handle_entityref(self, name):
-        print(&#39;&amp;%s;&#39; % name)
-
-    def handle_charref(self, name):
-        print(&#39;&amp;#%s;&#39; % name)
-
-parser = MyHTMLParser()
-parser.feed(&#39;&#39;&#39;&lt;html&gt;
-&lt;head&gt;&lt;/head&gt;
-&lt;body&gt;
-&lt;!-- test html parser --&gt;
-    &lt;p&gt;Some &lt;a href=\&quot;#\&quot;&gt;html&lt;/a&gt; HTML&amp;nbsp;tutorial...&lt;br&gt;END&lt;/p&gt;
-&lt;/body&gt;&lt;/html&gt;&#39;&#39;&#39;)
+const template = `
+    &lt;ul&gt;
+     ${todoArr.map(todo =&gt; `
+        &lt;li&gt; 
+        ${todo.name} completed: ${todo.completed ? `yes` : `no`} 
+        &lt;/li&gt;`).join(&quot;&quot;)} 
+    &lt;/ul&gt;
+`
+document.write(template)
 </code></pre>
 
-<blockquote>
-<p><code>feed()</code>方法可以多次调用，也就是不一定一次把整个HTML字符串都塞进去，可以一部分一部分塞进去。</p>
+<h3 id="toc_2">标签模板字符串</h3>
 
-<p>特殊字符有两种，一种是英文表示的<code>&amp;nbsp</code>;，一种是数字表示的<code>&amp;#1234</code>;，这两种字符都可以通过Parser解析出来。</p>
-</blockquote>
+<p>标签模板字符串<br/>
+用模板字符串作为函数的参数</p>
+
+<pre><code class="language-javascript"> &lt;script&gt;
+        function highlight(string, ...args) {
+            //string 为 [&quot;&quot;, &quot; will to do &quot;, &quot;&quot;]
+            //args 为 变量数组  [&quot;Mary&quot;, &quot;go to home&quot;]
+            const highlighted = args.map(value =&gt; `&lt;span class = &quot;highlight&quot;&gt; ${value} &lt;/span&gt;`)
+            const str = string.reduce((preValue, currentValue, i) =&gt; `${preValue}${currentValue}${highlighted[i] || &quot;&quot;}`, &quot;&quot;)
+            return str
+        }
+
+        const userName = &quot;Mary&quot;
+
+        const userTodo = &quot;go to home&quot;
+        //``模板字符串作为函数参数 第一个参数为字符串被变量分割的字符串数组 
+        // 当以变量靠头或者结尾时 前后会有空字符串
+        // 第二个参数为所有的变量数组
+        const template = highlight`${userName} will to do ${userTodo}`
+
+        console.log(template)
+        document.body.innerHTML = template
+    
+    &lt;/script&gt;
+</code></pre>
+
+<h4 id="toc_3">用标签模板字符串预防xss攻击</h4>
+
+<p>xss攻击是指跨站脚本攻击，恶意将html或者js等web代码植入用户页面中进行攻击</p>
+
+<p>可以使用<code>DOMPurify.sanitize</code>第三方框架来净化用户输入代码</p>
 
 ]]></content>
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[常用第三方模块]]></title>
-    <link href="https://acefish.github.io/15331955872244.html"/>
-    <updated>2018-08-02T15:39:47+08:00</updated>
-    <id>https://acefish.github.io/15331955872244.html</id>
+    <title type="html"><![CDATA[函数参数]]></title>
+    <link href="https://acefish.github.io/15469449620960.html"/>
+    <updated>2019-01-08T18:56:02+08:00</updated>
+    <id>https://acefish.github.io/15469449620960.html</id>
     <content type="html"><![CDATA[
-<h2 id="toc_0">Pillow</h2>
+<h2 id="toc_0">默认参数</h2>
 
-<pre><code class="language-python">from PIL import Image, ImageFilter
+<p>ES6提供了更方便的写默认参数方式</p>
 
-image1=Image.open(&quot;/Users/fish/Desktop/pyTestImage.jpg&quot;)
-print(image1)
-print(image1.size)
-print(&quot;图像尺寸为宽%s 高%s&quot; % image1.size)
-(w, h)=image1.size
-image1.thumbnail((w//2, h//2))
-print(&quot;调整后的图片大小%s %s&quot; % image1.size)
-image1.save(&quot;/Users/fish/Desktop/thumbnail.jpg&quot;, &quot;jpeg&quot;)
+<pre><code class="language-javascript">function getSum(a=10, b=2) {
+    return a+b
+}
 
-
-image2=Image.open(&quot;/Users/fish/Desktop/pyTestImage.jpg&quot;)
-image2=image2.filter(ImageFilter.BLUR)
-image2.save(&quot;/Users/fish/Desktop/blur.jpg&quot;, &quot;jpeg&quot;)
-
-
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
-import random
-
-#获取随机字母
-def randomChar():
-    return chr(random.randint(65,90))  #获取随机整数
-
-#随机颜色
-def randomColor1():
-    return (random.randint(64,255), random.randint(64,255), random.randint(64,255))
-
-def randomColor2():
-    return (random.randint(32,127), random.randint(32,127), random.randint(32,127))
-
-width=60*4
-height=60
-image=Image.new(&quot;RGB&quot;, (width, height), (255, 255, 255))
-#创建font对象
-font=ImageFont.truetype(&#39;Arial.ttf&#39;, 36,  layout_engine=&quot;LAYOUT_RAQM&quot;)
-#创建Draw对象
-draw=ImageDraw.Draw(image)
-#填充每个像素
-for x in range(width):
-    for y in range(height):
-        draw.point((x,y), fill=randomColor1())
-#输出文字
-
-for t in range(4):
-    draw.text((60*t+10, 10), randomChar(), font=font, fill=randomColor2())
-
-image.save(&quot;/Users/fish/Desktop/randomChar.jpg&quot;, &quot;jpeg&quot;)
+getSum() //12
+getSum(1, 3) //4
+getSum(1) //3
+getSum(undefined, 10) //20  当要省略不是最后的参数时 需要使用也只能使用undefined
 </code></pre>
 
-<h2 id="toc_1">requests</h2>
+<h2 id="toc_1">剩余参数</h2>
 
-<pre><code class="language-python">import requests
-r1=requests.get(&quot;http://www.uidt.net/&quot;)
-r1.encoding = &#39;utf-8&#39; 
-print(r1.status_code)
-print(r1.encoding)
-print(r1.headers)
-# 获取网页内容
-with open(&quot;./douban.html&quot;, &quot;w&quot;) as f1:
-    f1.write(r1.text)
+<p>用于当参数不止一个时，方便我们一次获取多个参数</p>
 
+<pre><code class="language-javascript">function sum(...args) {
+    return args.reduce((prev, current) =&gt; prev+current, 0)
+}
+sum(1,2,3,4) //10
 
-r2 = requests.get(&#39;https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20weather.forecast%20where%20woeid%20%3D%202151330&amp;format=json&#39;)
-# 获取请求的相应内容
-print(r2.json())
+const numbers = [11, 32, 24, 12]
+//数组需要扩展运算符
+sum(...numbers) //79
+
+function userScoreSum(name, ...score) {
+    const sum = score.reduce((pre, curr) =&gt; pre+curr, 0)
+    console.log(`${name}得分为${sum}`)
+}
+userScoreSum(&quot;lyy&quot;, 100, 99, 99) //lyy得分为298
+</code></pre>
+
+<h2 id="toc_2">扩展运算符</h2>
+
+<p>将可迭代(遍历)对象每个元素扩展为一个参数序列</p>
+
+<pre><code class="language-javascript">const numbersArr1 = [1, 3, 6]
+const numbersArr2 = [2, 4, 6]
+
+//[1, 3, 6, 2, 4 ,6]
+const totalNums = numbersArr1.concat(numbersArr2) 
+
+//[1, 3, 6, 55, 2, 4 ,6]
+const totalNums2 = [...numbersArr1, 55,...numbersArr2]
 
 </code></pre>
 
-<h2 id="toc_2">chardet</h2>
+<h3 id="toc_3">扩展运算符 运用</h3>
 
-<p>用来检测编码 </p>
+<ol>
+<li><p>获取数组副本</p>
+<p>我们经常使用其来实现获取可遍历对象的副本，而避免其引用</p>
+<pre><code class="language-javascript">//避免使用引用类型 而操作num3时 影响num2数组
+const totalNums3 = [...totalNums2]
+</code></pre></li>
+<li><p>替代Array.from() 获取每个字符 将可遍历或者类数组对象变为数组对象</p>
+<pre><code class="language-javascript">const lis = [...document.querySelectorAll(&quot;li&quot;)]
+</code></pre></li>
+<li><p>扩展数组元素拼接</p></li>
+<li><p>将数组元素扩展为函数参数</p>
+<pre><code class="language-javascript">const numbersArr1 = [1, 3, 6]
+const numbersArr2 = [2, 4, 6]<br/>
+numbersArr1.push(numbersArr2)<br/>
+console.log(numbersArr1) //[1, 3, 6, [2, 4, 6]]]<br/>
+numbersArr1.push(...numbersArr2) //[1, 3, 6, 2, 4, 6]
+</code></pre></li>
+</ol>
 
-<pre><code class="language-python">import chardet
-# 当获得bytes时 可以推测其所用的编码
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[箭头函数]]></title>
+    <link href="https://acefish.github.io/15469392062682.html"/>
+    <updated>2019-01-08T17:20:06+08:00</updated>
+    <id>https://acefish.github.io/15469392062682.html</id>
+    <content type="html"><![CDATA[
+<p>箭头函数即 省略function关键字 添加 =&gt; 符号</p>
 
-data = &#39;离离原上草，一岁一枯荣&#39;.encode(&#39;gbk&#39;)
-result=chardet.detect(data)
-print(result)
-# {&#39;encoding&#39;: &#39;GB2312&#39;, &#39;confidence&#39;: 0.7407407407407407, &#39;language&#39;: &#39;Chinese&#39;}
+<pre><code class="language-javascript">    const numArr = [1, 2, 3, 4]
+    
+    //function函数
+    const num2 = numArr.map(function(num) {
+        return  num*num
+    })
+    //箭头函数
+    const numArr2 = numArr.map((num) =&gt; {
+        return num*num
+    })
+</code></pre>
+
+<h2 id="toc_0">特点</h2>
+
+<h3 id="toc_1">参数</h3>
+
+<p>当只有一个参数时,箭头函数中的()可省略,多个参数在括号中用,分割</p>
+
+<pre><code class="language-javascript">    //箭头函数 
+    const numArr2 = numArr.map(num =&gt; {
+        return num*num
+    })
+</code></pre>
+
+<h3 id="toc_2">隐式返回</h3>
+
+<p>箭头函数可以隐式返回<br/>
+此时可以省略大括号和return关键字</p>
+
+<pre><code class="language-javascript">    //大括号 和 return关键字必须同时省略
+    const numArr2 = numArr.map((num) =&gt; num*num)
+</code></pre>
+
+<h3 id="toc_3">匿名函数</h3>
+
+<p>箭头函数是匿名函数</p>
+
+<blockquote>
+<p>当要使用匿名函数时  我们可以将函数赋值给其他变量 然后使用</p>
+</blockquote>
+
+<h3 id="toc_4">箭头函数的this继承父作用域</h3>
+
+<p><strong>箭头函数没有自己的this值, 它的this值继承自父作用域</strong></p>
+
+<p>普通函数的this值是在运行时动态绑定的</p>
+
+<p>因此当我们需要执行函数绑定this为当前运行对象时 可以使用箭头函数</p>
+
+<pre><code class="language-javascript">   const people = {
+       ownname: &quot;fk&quot;,
+       names: [&quot;lyy&quot;, &quot;tt&quot;],
+       showName: function() {
+            this.names.map(function(name){
+                //此时函数未回调的独立函数 this为window
+                console.log(this) //window
+                 //因为this此时为window 因此获取不到执行对象
+                console.log(this.ownname+&quot;名字&quot;+name)
+            })
+       },
+       showName2: function() {
+            this.names.map(name =&gt; {
+                //此时箭头函数的this继承了showname函数为people对象 
+                //可以获取到对象
+                console.log(this.ownname+&quot;名字&quot;+name)
+            })
+       }
+   }
+   people.showName()
+   people.showName2()
+</code></pre>
+
+<blockquote>
+<p>当一个函数是独立函数时(常出现在回调函数中),即独立运行 而不是作为对象的方法执行时，该方法中的<code>this</code>会指向window对象，此时我们可以使用 <code>call</code> <code>apply</code> <code>by</code>等绑定执行对象 或者 使用箭头函数</p>
+</blockquote>
+
+<h2 id="toc_5">不使用箭头函数的情况</h2>
+
+<h3 id="toc_6">作为构造函数、为原型或对象增加方法</h3>
+
+<p>当作为构造函数或者为原型对象添加方法时 不能使用箭头函数,因为此时获取不到this对象,需要使用传统的function函数</p>
+
+<h3 id="toc_7">当函数没有父级作用域时而我们需要this时</h3>
+
+<p>当箭头函数作为对象方法的调用时,此时不能用箭头函数,因为此时箭头函数的this为window而不是该对象，此时使用传统function函数,作为对象方法执行可以将this绑定为当前对象</p>
+
+<h3 id="toc_8">当需要arguments对象时</h3>
+
+<p>箭头函数中没有<code>arguments</code>对象<br/>
+我们可以使用ES6新增的 <code>...arg</code></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[变量声明]]></title>
+    <link href="https://acefish.github.io/15469354561176.html"/>
+    <updated>2019-01-08T16:17:36+08:00</updated>
+    <id>https://acefish.github.io/15469354561176.html</id>
+    <content type="html"><![CDATA[
+<p>使用建议：</p>
+
+<ol>
+<li>默认使用const</li>
+<li>当需要修改时改为let</li>
+<li>尽量不在使用var</li>
+</ol>
+
+<h2 id="toc_0">let var const</h2>
+
+<ol>
+<li><p>var 是函数级别作用域，可以再同一作用域重复声明同一变量</p>
+<p>var的问题:</p>
+<ul>
+<li>函数级作用域,表示在block外（例如if语句、for语句等）外访问内部声明的变量，会经常声明出全局变量</li>
+<li>var声明的变量可重复声明 会导致难以定位的bug</li>
+</ul>
+<p>因此推荐使用<code>let</code></p></li>
+<li><p>let 是block级别函数作用域</p></li>
+<li><p>const 声明常量 不能修改值类型 但是可以修改引用类型</p></li>
+</ol>
+
+<h3 id="toc_1">代替立即执行函数</h3>
+
+<pre><code class="language-javascript">//用var声明私有变量时 只能用立即执行函数
+(function () {
+    var name = &quot;fk&quot;
+})()
+
+//用let或者const时 只需要一个块即可
+{
+    let name = &quot;lyy&quot;
+}
 
 </code></pre>
 
-<h2 id="toc_3">psutil</h2>
+<h3 id="toc_2">变量提示</h3>
 
-<p>这个模块可以跨平台使用<br/>
-获取当前系统的CPU信息，内存信息、磁盘信息、网络信息、进程信息</p>
+<p>var存在变量提升 可以在变量为声明之前访问和使用变量</p>
 
-<pre><code class="language-text">#!/usr/bin/env python3
-
-import psutil
-print(psutil.cpu_count())  #CPU逻辑数量
-
-print(psutil.cpu_count(logical=False))  #CPU物理核心数量
-
-print(psutil.cpu_times())  #cpu的用户/系统/空闲时间
-# scputimes(user=7590.65, nice=0.0, system=5399.27, idle=265297.75)
-
-# 内存信息
-
-vm=psutil.virtual_memory() #获取物理内存
-print(vm)
-# svmem(total=17179869184, available=2889986048, percent=83.2, used=12674203648, free=1946497024, active=8977154048, inactive=943489024, wired=2753560576)
-
-swapm=psutil.swap_memory() # 交换内存
-print(swapm)
-# sswap(total=1073741824, used=176685056, free=897056768, percent=16.5, sin=10144088064, sout=4096)
-
-
-# 磁盘信息
-
-disk_part=psutil.disk_partitions() # 磁盘分区信息
-print(disk_part)
-# [sdiskpart(device=&#39;/dev/disk1s1&#39;, mountpoint=&#39;/&#39;, fstype=&#39;apfs&#39;, opts=&#39;rw,local,rootfs,dovolfs,journaled,multilabel&#39;), sdiskpart(device=&#39;/dev/disk1s4&#39;, mountpoint=&#39;/private/var/vm&#39;, fstype=&#39;apfs&#39;, opts=&#39;rw,noexec,local,dovolfs,dontbrowse,journaled,multilabel,noatime&#39;)]
-
-# &quot;/&quot;代表磁盘
-disk_usage=psutil.disk_usage(&quot;/&quot;) # 磁盘使用情况 
-print(disk_usage)
-# sdiskusage(total=499963170816, used=175103643648, free=322010931200, percent=35.2)
-
-disk_io=psutil.disk_io_counters() # 磁盘IO
-print(disk_io)
-# sdiskio(read_count=569221, write_count=820812, read_bytes=17523716096, write_bytes=19005095936, read_time=262887, write_time=473538)
-
-
-net_io=psutil.net_io_counters() # 获取网络读写字节／包的个数
-print(net_io)
-# snetio(bytes_sent=111684608, bytes_recv=2494911488, packets_sent=1122158, packets_recv=1953957, errin=0, errout=0, dropin=0, dropout=0)
- 
-net_address=psutil.net_if_addrs() # 获取网络接口信息
-print(net_address)
-
-net_status=psutil.net_if_stats() # 获取网络接口状态
-print(&quot;所有网络接口状态:&quot;)
-print(net_status)
-
-
-# net_connectinfo=psutil.net_connections() # 需要root权限 sudo执行python
-# print(&quot;当前网络连接信息:&quot;)
-# print(net_connectinfo)
-
-
-all_pid=psutil.pids() #获取所有进程id
-print(all_pid)
-
-process=psutil.Process(11377) # 获取id对应进程
-print(process.name()) # 获取对应进程名字 
-# Python
-
-print(process.exe()) #进程exe路径
-# /usr/local/Cellar/python/3.6.5/Frameworks/Python.framework/Versions/3.6/Resources/Python.app/Contents/MacOS/Python
-
-print(process.cwd()) #进程工作目录
-
-print(process.cmdline()) # 进程启动的命令行
-
-print(process.ppid()) # 父进程的pid
-
-print(process.parent()) # 父进程
-
-print(process.children()) # 子进程列表
-
-print(process.status()) # 进程状态
-
-print(process.username()) # 进程用户名
-
-print(process.create_time()) # 进程创建时间
-
-print(process.terminal()) # 进程终端
-
-print(process.cpu_times()) # 进程使用的cpu时间
-
-print(process.memory_info()) # 进程使用内存
-
-print(process.open_files()) # 进程打开的文件
-
-print(process.connections()) # 进程相关网络连接
-
-print(process.num_threads()) # 进程的线程数量
-
-# print(process.threads()) # 所有线程
-
-print(process.environ()) # 进程环境变量
-
-print(process.terminate()) # 结束进程
-
-</code></pre>
+<p>let虽然也存在变量提升 但是在变量在声明之前是处于临时性死区 在声明之前使用会报错</p>
 
 ]]></content>
   </entry>
   
   <entry>
     <title type="html"><![CDATA[正则表达式]]></title>
-    <link href="https://acefish.github.io/15331933928026.html"/>
-    <updated>2018-08-02T15:03:12+08:00</updated>
-    <id>https://acefish.github.io/15331933928026.html</id>
+    <link href="https://acefish.github.io/15469181321574.html"/>
+    <updated>2019-01-08T11:28:52+08:00</updated>
+    <id>https://acefish.github.io/15469181321574.html</id>
     <content type="html"><![CDATA[
-<h2 id="toc_0">re模块</h2>
+<h2 id="toc_0">正则写法</h2>
 
-<h3 id="toc_1">匹配</h3>
+<p>有两种写法</p>
 
-<p><code>Python</code>中提供了<code>re</code>模块，包含了所有正则表达式的功能</p>
-
-<blockquote>
-<p>由于python字符串和正则表达式都使用<code>\</code>作为转义符，为了避免麻烦,我们推荐用<code>r</code>前缀来写<code>python</code>字符串就不用考虑转义问题</p>
-</blockquote>
-
-<pre><code class="language-python">
-import re
-result1=re.match(r&#39;^\d{3}\-\d{3,8}$&#39;, &#39;010-12345&#39;)
-# 匹配成功返回 Match对象 否则返回None
-print(result1) # &lt;_sre.SRE_Match object; span=(0, 9), match=&#39;010-12345&#39;&gt;
-
-result2=re.match(r&#39;^\d{3}\-\d{3,8}$&#39;, &#39;0qq10-12345&#39;)
-print(result2) #None
-if result2:
-    print(&quot;匹配成功&quot;)
-else: 
-    print(&quot;匹配失败&quot;)
+<pre><code class="language-javascript">//js风格写法
+// i ignore 忽略大小写
+// g global 全局匹配找到所有符合条件
+var re = new RegExp(&#39;a&#39;, &quot;i&quot;)
+//perl风格写法
+var re1 = /a/
 </code></pre>
 
-<h3 id="toc_2">切分字符串</h3>
+<h2 id="toc_1">常用字符串操作</h2>
 
-<pre><code class="language-python"># 用任意多个空格切分字符串
-re.split(r&#39;\s+&#39;, &#39;a b   c&#39;) # [&#39;a&#39;, &#39;b&#39;, &#39;c&#39;]
+<p>以下语法可以用字符串操作 也可以用正则表达式增加作用</p>
 
-# 用空格或者空格加逗号分隔字符串
-re.split(r&#39;[\s\,]+&#39;, &#39;a,b, c  d&#39;) # [&#39;a&#39;, &#39;b&#39;, &#39;c&#39;, &#39;d&#39;]
+<ol>
+<li><p>search<br/>
+获取字符出现的位置，存在返回字符串出现位置,否则返回-1</p>
+<pre><code class="language-javascript">var str = &quot;abcde&quot;
+var index = str.search(&quot;a&quot;)
+</code></pre></li>
+<li><p>substring<br/>
+获取字符串的子串</p>
+<pre><code class="language-javascript">var str = &quot;abcde&quot;
+//开始位置和结束位置 左闭右开<br/>
+var subStr = str.substring(1, 2) //b<br/>
+//只传入开始位置 从开始位置一直到结束<br/>
+var subStr1 = str.substring(1) 
+</code></pre></li>
+<li><p>charAt()<br/>
+获取该位置的字符</p>
+<pre><code class="language-javascript">var str = &quot;abcde&quot;
+var char = str.charAt(3) //d
+</code></pre></li>
+<li><p>split() <br/>
+将字符串按特定字符切分为数组</p>
+<pre><code class="language-javascript">var str = &quot;ab-cd-e&quot;
+var arr = str.split(&quot;-&quot;) //[ab, cd, e]
+</code></pre></li>
+<li><p>match</p>
+<p>获取符合条件的结果</p>
+<pre><code class="language-javascript">var re = new RegExp(&quot;\\d+&quot;, &quot;g&quot;)
+// var re = /\d+/g<br/>
+var str = &quot;1AbBc33Cd3DeE2rRtT&quot;<br/>
+str.match(re) //[1, 33, 3, 2]
+</code></pre></li>
+<li><p>replace </p>
+<p>替换所有符合条件的字符</p>
+<pre><code class="language-javascript">var re = new RegExp(&quot;\\d+&quot;, &quot;g&quot;)
+// var re = /\d+/g<br/>
+var str = &quot;1AbBc33Cd3DeE2rRtT&quot;<br/>
+str.replace(re, &quot;dog&quot;) //dogAbBcdogCddogDeEdogrRtT
+</code></pre></li>
+<li><p>test<br/>
+检测字符串中是否有符合规则的部分 返回boolean</p></li>
+</ol>
+
+<h2 id="toc_2">正则写法</h2>
+
+<h3 id="toc_3">匹配</h3>
+
+<pre><code class="language-javascript">\d  数字 [0-9]
+\D  除了数字[^0-9]
+
+\w  英文、数字、下划线 [a-z0-9_]
+\W  非英文、数字、下划线 [^a-z0-9_]
+
+\s  空白字符
+\S  非空白字符 
+
+.   表示为任意字符
 </code></pre>
 
-<h3 id="toc_3">分组</h3>
+<h3 id="toc_4">元字符</h3>
 
-<p>正则表达式的分组功能，其表达式中的<code>()</code>就是要提取的分组</p>
+<p>由<code>[]</code>括起来</p>
 
-<pre><code class="language-python">m = re.match(r&#39;^(\d{3})-(\d{3,8})$&#39;, &#39;010-12345&#39;)
-
-m.group(0) #&#39;010-12345&#39;
- m.group(1) # &#39;010&#39;
- m.group(2) # &#39;12345&#39;
+<pre><code class="language-javascript">//表示范围
+[0-9] 表示0-9中任意字符
+//表示任意字符
+[abc] 表示出现的a、b、c出现哪个都行
+//用来排除
+[^0-9] 表示出现非数字
 </code></pre>
 
-<p><code>group(0)</code>永远是原始字符串</p>
+<h3 id="toc_5">量词</h3>
 
-<h3 id="toc_4">贪婪匹配</h3>
+<p>表示出现的个数<br/>
+由<code>{}</code>括起来</p>
 
-<p>正则表达式默认是贪婪匹配,匹配尽可能多的字符创</p>
+<pre><code class="language-javascript">{n} 表示出现n次
+{n,m} 表示最少n次 最多m次
+{n,}    最少n次 最多不限
++  等效于 {1,} 最少1次 做多不限
+? 等效于 {0,1} 最少0次 最多1次  可有可无
+* 等效于 {0,}  表示可以没有 也可以有无数次
+</code></pre>
 
-<pre><code class="language-python">re.match(r&#39;^(\d+)(0*)$&#39;, &#39;102300&#39;).groups()
-# (&#39;102300&#39;, &#39;&#39;)
-# 因为\d+ 贪婪匹配导致0*匹配到空字符串
+<h3 id="toc_6">行首 行尾</h3>
 
-re.match(r&#39;^(\d+?)(0*)$&#39;, &#39;102300&#39;).groups() # (&#39;1023&#39;, &#39;00&#39;)
-# 添加了？让\d+处于非贪婪匹配
-
+<pre><code class="language-javascript">^  当此字符不在元字符中时 表示行首
+$   表示行尾
 </code></pre>
 
 ]]></content>
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[NetworkExtension]]></title>
-    <link href="https://acefish.github.io/15331791133617.html"/>
-    <updated>2018-08-02T11:05:13+08:00</updated>
-    <id>https://acefish.github.io/15331791133617.html</id>
+    <title type="html"><![CDATA[Cookie]]></title>
+    <link href="https://acefish.github.io/15468536285872.html"/>
+    <updated>2019-01-07T17:33:48+08:00</updated>
+    <id>https://acefish.github.io/15468536285872.html</id>
     <content type="html"><![CDATA[
-<p>Network Extension框架包含可用于定制和扩展iOS和macOS核心网络功能的API。</p>
-
-<h2 id="toc_0">常用功能:</h2>
+<h2 id="toc_0">特性</h2>
 
 <ol>
-<li><p>Network Extension Hotspot Entitlements<br/>
-当需要使用<code>NEHotspotHelper</code>这个类时,这个就是必须的 需要向apple申请，也是这边文章重点</p></li>
-<li><p>Personal VPN<br/>
-<code>NEVPNManager</code>API 帮助app创建个人VPN，通常用于向用户提供服务,保护其因特网浏览活动。</p></li>
-<li><p>About Always-on VPN<br/>
-Always-on VPN </p></li>
-<li><p>Network Tunneling Protocol Client<br/>
-<code>NETunnelProvider</code>系列API将iOS和macOS设备连接到使用非标准网络隧道协议的VPN服务器，例如SSL-VPN服务器。<br/>
-帮助app自定义vpn服务</p></li>
-<li><p>Wi-Fi Hotspot Authentication and Configuration<br/>
-<code>NEFilterProvider</code>API帮助过滤网络服务内容</p></li>
-<li><p>Wi-Fi Hotspot Authentication and Configuration<br/>
-<code>NEHotspotHelper</code>API使您的应用能够为Wi-Fi热点执行自定义身份验证<br/>
-<code>NEHotspotConfiguration</code>API可让您的应用配置这些热点。</p></li>
+<li><p>同一网站(域名)的所有页面共享一套cookie</p></li>
+<li><p>cookie的数量和大小是有限的</p></li>
+<li><p>cookie是有过期时间的<br/>
+如果不主动设置过期时间,cookie会在浏览器关闭就清除</p></li>
 </ol>
+
+<h2 id="toc_1">使用</h2>
+
+<p><code>document.cookie</code><br/>
+通过赋值和取值来实现cookie操作</p>
+
+<ol>
+<li><p>设置cookie</p>
+<pre><code class="language-javascript">//此时cookie中会有两天记录 而不会被覆盖
+document.cookie = &quot;username=lyy&quot;<br/>
+document.cookie = &quot;password=123456&quot;<br/>
+//设置有效期限的cookie<br/>
+var currentDate = new Date()<br/>
+var expiresDate =  currentDate.setDate(currentDate.getDate+100)<br/>
+//使用这种格式设置时间 <br/>
+document.cookie = &quot;name=fk;expires=&quot;+expiresDate
+</code></pre></li>
+<li><p>读取cookie<br/>
+cookie是用分号空格进行分离的</p></li>
+<li><p>删除cookie<br/>
+当cookie过期时 删除cookie<br/>
+我们通过将cookie的过期时间设置为-1天 即将其设置为已过期 来删除cookie</p></li>
+</ol>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[BOM]]></title>
+    <link href="https://acefish.github.io/15468326596010.html"/>
+    <updated>2019-01-07T11:44:19+08:00</updated>
+    <id>https://acefish.github.io/15468326596010.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">常用windows</h2>
+
+<ul>
+<li><p>window.open<br/>
+打开新的窗口</p>
+<pre><code class="language-javascript">var newWindow = window.open(&#39;about:blank&#39;, &#39;_blank&#39;)
+newWindow.document.write(textarea1.value)
+</code></pre></li>
+<li><p>window.close</p>
+<pre><code class="language-javascript">////关闭当前窗口，但是在不同浏览器有一些不同
+window.close() 
+</code></pre></li>
+<li><p>window.navigator<br/>
+获取一些浏览器的属性</p>
+<pre><code class="language-javascript">//获取浏览器的属性
+window.navigator.userAgent
+</code></pre></li>
+<li><p>window.location</p>
+<pre><code class="language-javscript">//获取网页网址 可以通过赋值这个属性来打开新的网页
+window.location
+</code></pre></li>
+<li><p>window.onload</p></li>
+<li><p>window.onscroll</p></li>
+<li><p>window.onresize <br/>
+当窗口尺寸发生变化时</p></li>
+</ul>
+
+<h3 id="toc_1">尺寸</h3>
+
+<ol>
+<li><p>可视区尺寸<br/>
+可视区域尺寸 会随着窗口大小变化而变化</p>
+<pre><code class="language-javascript">//高
+document.documentElement.clientHeight<br/>
+//宽<br/>
+document.documentElement.clientWidth
+</code></pre></li>
+<li><p>滚动高度</p>
+<pre><code class="language-javascript">//只支持IE
+document.documentElement.scrollTop<br/>
+//火狐等浏览器<br/>
+document.body.scrollTop<br/>
+//兼容版本<br/>
+document.documentElement.scrollTop || document.body.scrollTop
+</code></pre></li>
+<li><p>当前对象尺寸</p>
+<pre><code class="language-javascript">//当前对象高度
+offsetHeight<br/>
+//当前对象宽度<br/>
+offsetWidth
+</code></pre></li>
+</ol>
+
+<h2 id="toc_2">弹框</h2>
+
+<pre><code class="language-javascript">//警告弹框
+alert(&quot;&quot;)
+//确认弹框 返回boolean
+confirm(&quot;&quot;)
+//输入框 返回字符串或者null
+prompt(&quot;提示&quot;, &quot;默认填充内容&quot;)
+</code></pre>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[JS中系统对象]]></title>
+    <link href="https://acefish.github.io/15468310700235.html"/>
+    <updated>2019-01-07T11:17:50+08:00</updated>
+    <id>https://acefish.github.io/15468310700235.html</id>
+    <content type="html"><![CDATA[
+<ol>
+<li><p>本地对象<br/>
+本地对象常指那些我们平常 常用对象<br/>
+<code>Object、Function、Array、String、Boolean、Number、Date、RegExp、Error</code>等</p></li>
+<li><p>内置对象<br/>
+内置对象指那些系统中内置的对象，即一些概念中的对象例如:<code>Global</code><br/><br/>
+内置库中不需要我们实例化对象可以直接使用的:<code>Math</code>等</p></li>
+<li><p>宿主对象<br/>
+指JS运行环境(常指浏览器)中提供的对象: DOM BOM </p></li>
+</ol>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[ReactiveObjC]]></title>
+    <link href="https://acefish.github.io/15459662586152.html"/>
+    <updated>2018-12-28T11:04:18+08:00</updated>
+    <id>https://acefish.github.io/15459662586152.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">基础知识</h2>
+
+<p>常用的 <code>RACSignal</code>为冷信号  <code>RACSubject</code>为热信号<br/>
+冷信号 即为订阅之后才开始执行的消息，订阅几次 就执行几次<br/>
+热信号 为创建信号就开始执行的消息 无需订阅</p>
 
 <h2 id="toc_1">常用类</h2>
 
-<p>本文只介绍和<code>NEHotspotHelper</code>相关类</p>
+<h3 id="toc_2">RCASignal信号</h3>
+
+<pre><code class="language-objectivec">//1.创建信号 
+
+//可以在创建信号中立即发送信号 但是不能在block结束返回前销毁该信号
+RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+        [subscriber sendNext:@&quot;发送的消息内容&quot;];
+        return nil;
+}];
+//立即发送给定的错误信息
+NSError *error = [[NSError alloc] init];
+[RACSignal error:error];
+//返回一个信号 该信号立即发送给定值 然后 complete
+[RACSignal return:@&quot;value&quot;];
+//返回信号 该信号直接 complete
+[RACSignal empty];
+
+//2.信号处理
+
+//2.1 concat 返回一个信号signal3 当signal1 complete时订阅信号就signal2信号变化 我们可以通过订阅 signal3 来收到信号两个信号的值变化
+RACSignal *signal3 = [signal1 concat:signal2]
+
+//2.2  flattenMap 串联信号 当收到第一个消息的值变化时 开始执行第二个信号 此时我们订阅信号2  只会收到信号2值改变信号
+RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(10 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [subscriber sendNext:@&quot;发送的消息内容&quot;];
+        });
+        return nil;
+    }];
+RACSignal *signal2 = [signal flattenMap:^__kindof RACSignal * _Nullable(id  _Nullable value) {
+    return  [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+        [subscriber sendNext:@&quot;signal2 发送的消息内容&quot;];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [subscriber sendNext:@&quot;signal2 3秒后发送的消息内容&quot;];
+        });
+        return nil;
+    }];
+}];
+
+//2.2 map 对信号1中收到的值进行处理返回信号2 
+RACSignal *signal2 = [signal map:^id _Nullable(NSString *  _Nullable value) {
+    return [value substringFromIndex:2];
+}];
+
+//2.3 filter 过滤信号值
+RACSignal *signal2 = [signal filter:^BOOL(NSString *  _Nullable value) {
+    return YES;
+}];
+
+//2.4 ignore 忽略特定值的信号
+RACSignal *signal2 = [signal ignore:@&quot;发送的消&quot;];
+
+//2.5 startwith: 将这个值 拼接到信号值开头 返回新的信号 
+RACSignal *signal2 = [signal startWith:@&quot;start with发送的消息内容&quot;];
+
+//2.6 skip: 忽略开始的count个信号值改变
+RACSignal *signal2 = [signal skip:1];
+
+//2.7 take: 返回一个只接收前count个信号的信号值改变  其后发送的信号会失败
+RACSignal *signal2 = [signal take:2];
+
+//2.8  scanWithStart: reduce: 遍历信号1值变化 block中next即为信号1的信号值  
+//      running为累计值 初始为start值 
+RACSignal *signal2 = [signal scanWithStart:@&quot;1&quot; reduce:^NSString * _Nullable(NSString *  _Nullable running, NSString *  _Nullable next) {
+    running = [[NSMutableString stringWithFormat:@&quot;%@%@&quot;, running, next] copy];
+    return running;
+}];
+
+//2.9 takeUntilBlock: 忽略这符合条件的信号以及之后的信号
+//     takeWhileBlock: 返回符合条件的信号值
+//      skipUntilBlock: 只返回符合条件以及之后的信号
+//      skipWhileBlock: 忽略符合条件的信号
+RACSignal *signal2 = [signal takeUntilBlock:^BOOL(NSString *  _Nullable x) {
+    return [x hasPrefix:@&quot;3秒&quot;];
+}];
+
+//2.10 distinctUntilChanged 只返回值不一样的信号
+RACSignal *signal2 = [signal distinctUntilChanged];
+
+
+//3. 订阅
+
+//subscribeNext： 订阅信号值改变  error 订阅错误信号 completed 订阅完成信号 
+RACDisposable *disposable = [signal3 subscribeNext:^(NSString *  _Nullable x) {
+    NSLog(@&quot;signal3收到订阅值:%@&quot;, x);
+} error:^(NSError * _Nullable error) {
+    NSLog(@&quot;signal3收到错误订阅:%@,&quot; error);
+} completed:^{
+    NSLog(@&quot;signal3收到成功订阅;&quot;);
+}];
+
+//取消订阅
+[disposable dispose];
+
+
+</code></pre>
+
+<h3 id="toc_3">RACSubject信号</h3>
+
+<pre><code class="language-objectivec">//RACSubject 继承于 RACSignal 使用这个对象 可以直接发送和接收信号值改变  而不需要关心 创建信号和注销订阅问题
+RACSubject *subject = [RACSubject subject];
+
+[subject subscribeNext:^(NSString *x) {
+    NSLog(@&quot;接受新值%@&quot;, x);
+} completed:^{
+    NSLog(@&quot;接受完成情况&quot;);
+}];
+
+[subject sendNext:@&quot;新的值1&quot;];
+
+</code></pre>
+
+<h3 id="toc_4">RACTuple 元组</h3>
+
+<p>元组功能</p>
+
+<h3 id="toc_5">NSArray NSDictionary 集合操作</h3>
+
+<p>RAC扩展了NSArray 和  NSDictionary 拥有 <code>rac_sequence</code>(<code>RACSequence</code>类)属性</p>
+
+<h3 id="toc_6">RACSequence</h3>
+
+<pre><code class="language-objectivec">    //1. 获取一个 发送集合中值改变的信号
+    arr.rac_sequence.signal
+    //2. 用信号来遍历集合
+    [arr.rac_sequence.signal subscribeNext:^(id  _Nullable x) {
+        NSLog(@&quot;%@&quot;, x);
+    }];
+    //3. head
+    NSLog(@&quot;第一个元素%@&quot;, arr.rac_sequence.head);
+    //4. tail
+    NSLog(@&quot;除了第一个元素外的所有元素集合%@&quot;, arr.rac_sequence.tail);
+    
+    //5. 从左侧开始遍历 start: 累计的初始值 accumulator: 累计值 value:当前值 count: 最终值
+    NSNumber *count = [intArr.rac_sequence foldLeftWithStart:@(10) reduce:^NSNumber* (NSNumber *accumulator, NSNumber *value) {
+        NSLog(@&quot;%@--- %@&quot;, accumulator, value);
+
+        return @(accumulator.integerValue + value.integerValue);
+    }];
+    NSLog(@&quot;%@&quot;, count);
+    
+    //6. 同样可以从右边开始遍历
+    
+    //7. 遍历集合 判断是否存在符合条件 当遇到block返回YES 返回YES不再执行
+    BOOL exist = [intArr.rac_sequence any:^BOOL(NSNumber *value) {
+        return value.integerValue == 2;
+    }];
+    NSLog(@&quot;%@&quot;, exist ? @&quot;存在&quot; : @&quot;不存在&quot;); //存在
+    //8. 遍历集合 判断是否所有元素都满足条件
+    BOOL pass = [intArr.rac_sequence all:^BOOL(id  _Nullable value) {
+        return [value isKindOfClass:[NSNumber class]];
+    }];
+    NSLog(@&quot;%@&quot;, pass ? @&quot;通过&quot; : @&quot;不通过&quot;); //存在
+    //9. 遍历集合找到第一个符合条件的元素
+    id obj = [intArr.rac_sequence objectPassingTest:^BOOL(id  _Nullable value) {
+        if ([value isKindOfClass:[NSNumber class]]) {
+            NSNumber *value1 = (NSNumber *)value;
+            if (value1.integerValue % 3 == 0) {
+                return YES;
+            }
+        }
+        return NO;
+    }];
+    NSLog(@&quot;第一个通过测试的是%@&quot;, obj); //9
+    
+    //10. 用户动态生成sequenceh headblock和tailblock只会执行一次
+    //是惰性加载生成的
+    //必须保证headblock和tailblock是线程安全的
+    RACSequence *sequence = [RACSequence sequenceWithHeadBlock:^id _Nullable{
+        return @(11);
+    } tailBlock:^RACSequence * _Nonnull{
+        return [RACSequence sequenceWithHeadBlock:^id _Nullable{
+            return @(11);
+        } tailBlock:^RACSequence * _Nonnull{
+            return [RACSequence sequenceWithHeadBlock:^id _Nullable{
+                return @(22);
+            } tailBlock:^RACSequence * _Nonnull{
+                return @[@(33)].rac_sequence;
+            }];
+        }];
+    }];
+    
+    [sequence.signal subscribeNext:^(id  _Nullable x) {
+        NSLog(@&quot;%@&quot;, x);
+    }];
+</code></pre>
+
+<h3 id="toc_7">UI操作</h3>
+
+<h4 id="toc_8">UIControl</h4>
+
+<pre><code class="language-objectivec"> RACSignal *signal = [self.btn rac_signalForControlEvents:UIControlEventTouchUpInside];
+[signal subscribeNext:^(UIButton *  _Nullable x) {
+    NSLog(@&quot;&quot;);
+}];
+</code></pre>
+
+<h4 id="toc_9">UIButton</h4>
+
+<pre><code class="language-objectivec">//当 按钮被点击时 执行 command中的block
+self.btn.rac_command 
+</code></pre>
+
+<h4 id="toc_10">RACCommand</h4>
+
+<pre><code class="language-objectivec">//初始化command 用一个信号
+self.btn.rac_command = [[RACCommand alloc] initWithSignalBlock:^RACSignal * _Nonnull(id  _Nullable input) {
+        return [RACSignal empty];
+    }];
+    
+//executionSignals  属性为 command执行时的信号
+[self.btn.rac_command.executionSignals subscribeNext:^(RACSignal&lt;id&gt; * _Nullable x) {
+    NSLog(@&quot;信号值执行了&quot;);
+}];
+    
+</code></pre>
+
+<h4 id="toc_11">UITextfield</h4>
+
+<pre><code class="language-objectivec">//rac_textSignal 获取textfield内容改变信号
+[self.textfield.rac_textSignal subscribeNext:^(NSString * _Nullable x) {
+    NSLog(@&quot;输出内容%@&quot;, x);
+}];
+</code></pre>
+
+<h3 id="toc_12">NSNotification</h3>
+
+<pre><code class="language-objectivec">//通知事件 无需主动移除通知
+[[[NSNotificationCenter defaultCenter] rac_addObserverForName:@&quot;&quot; object:nil] subscribeNext:^(NSNotification * _Nullable x) {
+    
+}];
+</code></pre>
+
+<h3 id="toc_13">Delegate</h3>
+
+<pre><code class="language-objectivec">[[self.view rac_signalForSelector:@selector(nameBtnDidClick:)] subscribeNext:^(RACTuple * _Nullable x) {
+    
+}];
+</code></pre>
+
+<h3 id="toc_14">KVO</h3>
+
+<pre><code class="language-objectivec">//这样设置KVO 无需主动移除
+//监听btn frame变化 
+[[self.btn rac_valuesForKeyPath:@&quot;frame&quot; observer:self] subscribeNext:^(id  _Nullable x) {
+        
+}];
+
+//使用宏定义快捷设置KVO （推荐）
+[RACObserve(self.btn, frame) subscribeNext:^(id  _Nullable x) {
+    
+}];
+
+</code></pre>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[ReactiveObjC]]></title>
+    <link href="https://acefish.github.io/15450317285396.html"/>
+    <updated>2018-12-17T15:28:48+08:00</updated>
+    <id>https://acefish.github.io/15450317285396.html</id>
+    <content type="html"><![CDATA[
+<blockquote>
+<p>本文内容来自github <a href="https://github.com/ReactiveCocoa/ReactiveObjC">ReactiveObjC的官方文档</a></p>
+</blockquote>
+
+<h2 id="toc_0">介绍</h2>
+
+<p>ReactiveObjC 是一个函数相应式编程的OC框架，为我们提供了组合、转换流的api</p>
+
+<p>RAC没有使用可修改或可替换的变量，而是提供了信号(<code>RACSignal</code>)来捕获当前或者未来的信号，我们通过串联、绑定、响应信号，就可以无需持续的观察和更新值来检测变化</p>
+
+<p>例如: 为了检测一个textField的text的最新内容,我们不需要每秒钟就去获取其值的变化,使用RAC更像KVO可以实时获取到其内容变化,与KVO不同的时 我们使用<code>block</code>而不是使用<code>-observeValueForKeyPath:ofObject:change:context:</code></p>
+
+<p>信号也可以帮助我们进行异步操作,就像对未来结果的许诺,极大的帮助我们简化网络请求等异步操作代码</p>
+
+<p><strong>RAC主要提供了一个统一的方法 来处理异步行为，包括delegate、kvo、target-action、notification、block</strong></p>
 
 <ol>
-<li><p>NEHotspotHelper<br/>
-注册本app为网络助手应用</p></li>
-<li><p>NEHotspotHelperCommand<br/>
-app要处理的命令类</p></li>
-<li><p>NEHotspotHelperResponse<br/>
-对<code>NEHotspotHelperCommand</code>命令的响应</p></li>
-<li><p>NEHotspotNetwork<br/>
-NEHotspotNetwork将有关网络的信息传达给Hotspot Helper应用程序。</p></li>
+<li><p>监测属性值变化</p>
+<pre><code class="language-objectivec">类似kvo
+//检测self.username属性变化<br/>
+//RACObserve(TARGET, KEYPATH)是一个创建检测值变化的信号<br/>
+//subscribeNext 当检测的信号变化时 就会执行这个信号<br/>
+[RACObserve(self, username) subscribeNext:^(NSString *newName) {<br/>
+       NSLog(@&quot;%@&quot;, newName);<br/>
+}];
+</code></pre></li>
+<li><p>监测过滤出来的部分信号值<br/>
+与kvo不同的是，我们可以串联、操作这些信号</p>
+<pre><code class="language-objectivec">//过滤 信号中以&quot;j&quot;开头的信号值的变化
+[[RACObserve(self, username)<br/>
+filter:^(NSString *newName) {<br/>
+    return [newName hasPrefix:@&quot;j&quot;];<br/>
+}]<br/>
+subscribeNext:^(NSString *newName) {<br/>
+    NSLog(@&quot;%@&quot;, newName);<br/>
+}];
+</code></pre></li>
+<li><p>通过RAC我们可以很方便的通过信号监测变化,而不需要通过观察和设置其它属性</p>
+<pre><code class="language-objectivec">//combineLatest: reduce:方法 合并一组信号,当其中任意一个信号的最新值变化时,会执行该block 并返回新的值
+RAC(self, createEnabled) = [RACSignal<br/>
+combineLatest:@[ RACObserve(self, password), RACObserve(self, passwordConfirmation) ]<br/>
+reduce:^(NSString *password, NSString *passwordConfirm) {<br/>
+    return @([passwordConfirm isEqualToString:password]);<br/>
+}];
+</code></pre></li>
+<li><p>信号不止类似kvo可以监测属性，还可以监测其它任何随时间变化的值或者流</p>
+<pre><code class="language-objectivec">//RACCommand 创建一个与UI有关的信号 此处是按钮点击信号,当按钮被点击时执行该block
+//rac_command是按钮类别的属性，当按钮被点击自动发送<br/>
+self.button.rac_command = [[RACCommand alloc] initWithSignalBlock:^(id _) {<br/>
+NSLog(@&quot;button was pressed!&quot;);<br/>
+return [RACSignal empty];<br/>
+}];
+</code></pre></li>
+<li><p>RAC表示网络操作</p>
+<pre><code class="language-objectivec">//创建一个信号 当self.loginCommand执行其block
+self.loginCommand = [[RACCommand alloc] initWithSignalBlock:^(id sender) {<br/>
+    return [client logIn];<br/>
+}];<br/>
+//executionSignals 返回上面RACComond中block返回的信号的信号,即当上面block返回时 会触发该信号 并可以监测block返回的信号的变化<br/>
+[self.loginCommand.executionSignals subscribeNext:^(RACSignal *loginSignal) {<br/>
+    // Log a message whenever we log in successfully.<br/>
+    [loginSignal subscribeCompleted:^{<br/>
+        NSLog(@&quot;Logged in successfully!&quot;);<br/>
+    }];<br/>
+}];<br/>
+//当按钮点击时 执行该self.loginCommand<br/>
+self.loginButton.rac_command = self.loginCommand;
+</code></pre></li>
+<li><p>表示异步操作的信号间可以链接来表示更加复杂的行为(在一组操作完成后开始另外一个操作)</p>
+<pre><code class="language-objectivec">//merge: 合并两个信号 返回一个新的信号
+//subscribeCompleted: 订阅返回完成的信号<br/>
+[[RACSignal merge:@[ [client fetchUserRepos], [client fetchOrgRepos] ]]<br/>
+subscribeCompleted:^{<br/>
+    NSLog(@&quot;They&#39;re both done!&quot;);<br/>
+}];
+</code></pre></li>
+<li><p>信号可以串联起来 避免使用block嵌套来表示依赖</p>
+<pre><code class="language-objectivec">//
+[[[[client<br/>
+    logInUser]<br/>
+    flattenMap:^(User *user) {<br/>
+        // Return a signal that loads cached messages for the user.<br/>
+        return [client loadCachedMessagesForUser:user];<br/>
+    }]<br/>
+    flattenMap:^(NSArray *messages) {<br/>
+        // Return a signal that fetches any remaining messages.<br/>
+        return [client fetchMessagesAfterMessage:messages.lastObject];<br/>
+    }]<br/>
+    subscribeNext:^(NSArray *newMessages) {<br/>
+        NSLog(@&quot;New messages: %@&quot;, newMessages);<br/>
+    } completed:^{<br/>
+        NSLog(@&quot;Fetched all messages.&quot;);<br/>
+    }];
+</code></pre></li>
+<li><p>获取异步操作的结果 </p>
+<pre><code class="language-objectivec">//当异步图片下载完成后赋值到图片上
+//deliverOn: 创建信号并执行在其他队列线程  [RACScheduler scheduler] background线程  RACScheduler.mainThreadScheduler]主线程<br/>
+RAC(self.imageView, image) = [[[[client<br/>
+fetchUserWithUsername:@&quot;joshaber&quot;]<br/>
+deliverOn:[RACScheduler scheduler]]<br/>
+map:^(User *user) {<br/>
+    // Download the avatar (this is done on a background queue).<br/>
+    return [[NSImage alloc] initWithContentsOfURL:user.avatarURL];<br/>
+}]<br/>
+// Now the assignment will be done on the main thread.<br/>
+deliverOn:RACScheduler.mainThreadScheduler];
+</code></pre></li>
 </ol>
 
-<h2 id="toc_2">NEHotspotHelper</h2>
-
-<p>帮助app参与wifi热点过程成为热点帮助程序,<code>Hotspot Helper</code>要在后台接收命令，参与wifi状态变化处理,参考<a href="https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/Hotspot_Network_Subsystem_Guide/Contents/Introduction.html#//apple_ref/doc/uid/TP40016639">Hotspot Network Subsystem Programming Guide.</a></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[进程&&线程]]></title>
-    <link href="https://acefish.github.io/15331071952550.html"/>
-    <updated>2018-08-01T15:06:35+08:00</updated>
-    <id>https://acefish.github.io/15331071952550.html</id>
-    <content type="html"><![CDATA[
-<pre><code class="language-python">print(&#39;Process (%s) start...&#39; % os.getpid())
-# Only works on Unix/Linux/Mac:
-pid = os.fork()
-if pid == 0:
-    #子进程
-    print(&#39;I am child process (%s) and my parent is %s.&#39; % (os.getpid(), os.getppid()))
-else:
-    print(&#39;I (%s) just created a child process (%s).&#39; % (os.getpid(), pid))
-    
-# Process (28301) start...
-# I (28301) just created a child process (28302).
-# I am child process (28302) and my parent is 28301.
-</code></pre>
-
-<h2 id="toc_0">multiprocessing（多进程）</h2>
-
-<p>因为在windows是没有<code>fork</code>调用的，所以为了跨平台支持,可以使用<code>multiprocessing</code>跨平台的多进程模块<br/>
-<code>multiprocessing</code>模块提供了一个<code>Process</code>类来代表一个进程对象</p>
-
-<pre><code class="language-python">
-from multiprocessing import Process
-import os
-
-def run_proc(name):
-    print(&#39;Run child process %s (%s)...&#39; % (name, os.getpid()))
-
-print(&quot;parent process %s&quot; % os.getpid())
-p=Process(target=run_proc, args=(&quot;test&quot;,)) #创建子进程
-print(&quot;child process will start&quot;)  
-p.start()# 启动子进程
-p.join() # 等待子进程结束后继续运行
-print(&quot;child process end&quot;)
-
-# parent process 28492
-# child process will start
-# Run child process test (28493)...
-# child process end
-
-</code></pre>
-
-<blockquote>
-<p><code>join()</code>方法可以等待子进程结束后再继续往下运行，通常用于进程间的同步。</p>
-</blockquote>
-
-<h3 id="toc_1">Pool（进程池）</h3>
-
-<pre><code class="language-python">from multiprocessing import Pool
-import os, time, random
-
-def long_time_task(name):
-    print(&#39;Run task %s (%s)...&#39; % (name, os.getpid()))
-    start = time.time()
-    time.sleep(random.random() * 3)
-    end = time.time()
-    print(&#39;Task %s runs %0.2f seconds.&#39; % (name, (end - start)))
-
-if __name__==&#39;__main__&#39;:
-    print(&#39;Parent process %s.&#39; % os.getpid())
-    p = Pool(4) #设置同事可以执行4个进程
-    for i in range(5):
-        p.apply_async(long_time_task, args=(i,))
-    print(&#39;Waiting for all subprocesses done...&#39;)
-    p.close() # 调用close()之后就不能继续添加新的Process了
-    p.join()  # 对Pool对象调用join()会等待所有子进程执行完毕，在
-    print(&#39;All subprocesses done.&#39;)
-</code></pre>
-
-<h3 id="toc_2">subprocess 子进程</h3>
-
-<p><code>subprocess</code>模块 允许我们创建子进程,连接其输入、输出、错误通道</p>
-
-<pre><code class="language-python">import subprocess
-
-print(&#39;$ nslookup www.python.org&#39;)
-r = subprocess.call([&#39;nslookup&#39;, &#39;www.python.org&#39;])
-# 相当于在命令行执行  nslookup www.python.org
-print(&#39;Exit code:&#39;, r)
-
-
-# 子进程还需要输入，则可以通过communicate()方法输入：
-import subprocess
-
-print(&#39;$ nslookup&#39;)
-p = subprocess.Popen([&#39;nslookup&#39;], stdin=·, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-output, err = p.communicate(b&#39;set q=mx\npython.org\nexit\n&#39;)
-print(output.decode(&#39;utf-8&#39;))
-print(&#39;Exit code:&#39;, p.returncode)
-
-</code></pre>
-
-<h3 id="toc_3">进程间通信</h3>
-
-<p>进程间通信，可以通过<code>mutiprocessing</code>提供的<code>Queue</code>和<code>pipes</code>等方式交换数据</p>
-
-<pre><code class="language-python"># 一个queue 可以往里 读写数据 实现数据交换共享
-
-from multiprocessing import Process, Queue
-import os, time, random
-
-# 写数据进程执行的代码:
-def write(q):
-    print(&#39;Process to write: %s&#39; % os.getpid())
-    for value in [&#39;A&#39;, &#39;B&#39;, &#39;C&#39;]:
-        print(&#39;Put %s to queue...&#39; % value)
-        q.put(value)
-        time.sleep(random.random())
-
-# 读数据进程执行的代码:
-def read(q):
-    print(&#39;Process to read: %s&#39; % os.getpid())
-    while True:
-        value = q.get(True)
-        print(&#39;Get %s from queue.&#39; % value)
-
-if __name__==&#39;__main__&#39;:
-    # 父进程创建Queue，并传给各个子进程：
-    q = Queue()
-    pw = Process(target=write, args=(q,))
-    pr = Process(target=read, args=(q,))
-    # 启动子进程pw，写入:
-    pw.start()
-    # 启动子进程pr，读取:
-    pr.start()
-    # 等待pw结束:
-    pw.join()
-    # pr进程里是死循环，无法等待其结束，只能强行终止:
-    pr.terminate()
-</code></pre>
-
-<blockquote>
-<p>父进程所有Python对象都必须通过pickle序列化再传到子进程去</p>
-</blockquote>
-
-<h2 id="toc_4">多线程</h2>
-
-<p>我们通常使用<code>threading</code>模块操作线程</p>
-
-<p>启动线程: 就是将要执行的任务任务函数传入创建<code>Thread</code>实例，然后<code>start()</code>开始执行</p>
-
-<pre><code class="language-python">import time, threading
-
-# 新线程执行的代码:
-def loop():
-    print(&#39;thread %s is running...&#39; % threading.current_thread().name)
-    n = 0
-    while n &lt; 5:
-        n = n + 1
-        print(&#39;thread %s &gt;&gt;&gt; %s&#39; % (threading.current_thread().name, n))
-        time.sleep(1)
-    print(&#39;thread %s ended.&#39; % threading.current_thread().name)
-
-print(&#39;thread %s is running...&#39; % threading.current_thread().name)
-#
-t = threading.Thread(target=loop, name=&#39;LoopThread&#39;)
-t.start()
-t.join()
-print(&#39;thread %s ended.&#39; % threading.current_thread().name)
-</code></pre>
-
-<blockquote>
-<p><code>Python</code>的<code>threading</code>模块有个<code>current_thread()</code>函数，它永远返回当前线程的实例。主线程实例的名字叫<code>MainThread</code>，子线程的名字在创建时指定，我们用<code>LoopThread</code>命名子线程。名字仅仅在打印时用来显示，完全没有其他意义，如果不起名字Python就自动给线程命名为Thread-1，Thread-2</p>
-</blockquote>
-
-<h3 id="toc_5">Lock</h3>
-
-<p>避免多线程对数据读写的冲突，需要lock</p>
-
-<pre><code class="language-python">balance = 0
-lock = threading.Lock()
-
-def run_thread(n):
-    for i in range(100000):
-        # 先要获取锁:
-        lock.acquire() #当有多个线程执行时，只有一个县城能成功获取锁
-        try:
-            # 放心地改吧:
-            change_it(n)
-        finally:
-            # 改完了一定要释放锁:
-            lock.release()
-</code></pre>
-
-<h3 id="toc_6">多核问题</h3>
-
-<p>Python由于历史遗留问题,同一进程的不同线程其实只能用到一个cpu核,即使启动了多个线程</p>
-
-<blockquote>
-<p>Python的线程虽然是真正的线程，但解释器执行代码时，有一个GIL锁：Global Interpreter Lock，任何Python线程执行前，必须先获得GIL锁，然后，每执行100条字节码，解释器就自动释放GIL锁，让别的线程有机会执行。这个GIL全局锁实际上把所有线程的执行代码都给上了锁，所以，多线程在Python中只能交替执行，即使100个线程跑在100核CPU上，也只能用到1个核。</p>
-
-<p>Python虽然不能利用多线程实现多核任务，但可以通过多进程实现多核任务。多个Python进程有各自独立的GIL锁，互不影响。</p>
-</blockquote>
-
-<h2 id="toc_7">ThreadLocal</h2>
-
-<p>多线程中，为不同线程绑定不同数据时,可以使用<code>ThreadLocal</code></p>
-
-<pre><code class="language-python">import threading
-
-# 创建全局ThreadLocal对象:
-local_school = threading.local()
-
-def process_student():
-    # 获取当前线程关联的student:
-    std = local_school.student
-    print(&#39;Hello, %s (in %s)&#39; % (std, threading.current_thread().name))
-
-def process_thread(name):
-    # 绑定ThreadLocal的student:
-    local_school.student = name
-    process_student()
-
-t1 = threading.Thread(target= process_thread, args=(&#39;Alice&#39;,), name=&#39;Thread-A&#39;)
-t2 = threading.Thread(target= process_thread, args=(&#39;Bob&#39;,), name=&#39;Thread-B&#39;)
-t1.start()
-t2.start()
-t1.join()
-t2.join()
-</code></pre>
-
-<p>每个线程可以读写<code>ThreadLocal</code>对象的属性,但是互不影响，只操作自己线程对应值，互不干扰，也不用管理锁的问题</p>
-
-<blockquote>
-<p>一个ThreadLocal变量虽然是全局变量，但每个线程都只能读写自己线程的独立副本，互不干扰。ThreadLocal解决了参数在一个线程中各个函数之间互相传递的问题。</p>
-</blockquote>
-
-<h3 id="toc_8">分布式进程</h3>
-
-<p>在<code>Thread</code>和<code>Process</code>中应该优先选择<code>Process</code>，因为其更稳定，而且可以分布到多台机器上，而<code>Thread</code>只能分不到同一台机器的多个CPU上</p>
-
-<p>在<code>mutiprocessing</code>的子模块<code>manager</code>支持把多进程分布到多台机器</p>
-
-<p>一个服务进程可以作为调度者，将任务分布到其他多个进程中，依靠网络通信。由于managers模块封装很好，不必了解网络通信的细节，就可以很容易地编写分布式多进程程序。</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[IO编程]]></title>
-    <link href="https://acefish.github.io/15329386758024.html"/>
-    <updated>2018-07-30T16:17:55+08:00</updated>
-    <id>https://acefish.github.io/15329386758024.html</id>
-    <content type="html"><![CDATA[
-<pre><code class="language-python">f = open(&#39;/Users/fish/Desktop/readme.txt&#39;, &#39;r&#39;)
-content=f.read() 
-print(content)
-f.close()
-</code></pre>
-
-<p>文件使用完必须关闭，文件对象会占用系统资源，操作系统同时能打开文件数量也是有限的<br/>
-为了保证每次不论是否文件读碟出现<code>IOError</code>出错 都能正确关闭文件，通常这么写:</p>
-
-<pre><code class="language-python">try:
-    f = open(&#39;/path/to/file&#39;, &#39;r&#39;)
-    print(f.read())
-finally:
-    if f:
-        f.close()
-
-# 使用 python的with语句来自动帮我们调用close()方法
-#与try...finall..效果相同代码更简洁
-
-with open(&#39;/path/to/file&#39;, &#39;r&#39;) as f:
-    print(f.read())
-</code></pre>
-
-<p><code>read()</code>方法会一次性读取全部内容,如果文件过大会挑战内存<br/>
-<code>read(size)</code>每次最多读取size字节的内容<br/>
-<code>readline()</code>每次读取一行内容<br/>
-<code>readlines()</code>一次性读取所有行,返回一个<code>list</code></p>
-
-<blockquote>
-<p>类似文件这种 open()函数返回可以read()的对象，均称为 file-like Object，除此之外还有内存的字节流、网络流、自定义流</p>
-</blockquote>
-
-<h3 id="toc_0">二进制文件</h3>
-
-<p>默认读取的为UTF-8编码的文本文件,如果为二进制文件,需要用<code>rb</code>模式打开</p>
-
-<pre><code class="language-python">&gt;&gt;&gt; f = open(&#39;/Users/michael/test.jpg&#39;, &#39;rb&#39;)
-&gt;&gt;&gt; f.read()
-# b&#39;\xff\xd8\xff\xe1\x00\x18Exif\x00\x00...&#39; # 十六进制表示的字节
-</code></pre>
-
-<h3 id="toc_1">其它编码格式</h3>
-
-<p>对于非<code>UTF-8</code>编码的文本文件,需要<code>open()</code>函数需要传入<code>encoding</code>参数</p>
-
-<pre><code class="language-python">f = open(&#39;/Users/michael/gbk.txt&#39;, &#39;r&#39;, encoding=&#39;gbk&#39;)
-</code></pre>
-
-<p>当编码不规范，文本中夹杂着非法编码字符时，会发生转码错误(<code>UnicodeDecodeError</code>)，此时可以通过加入参数<code>errors</code>来指定处理方式，常用的为直接忽略</p>
-
-<pre><code class="language-python">f = open(&#39;/Users/michael/gbk.txt&#39;, &#39;r&#39;, encoding=&#39;gbk&#39;, errors=&#39;ignore&#39;)
-</code></pre>
-
-<h3 id="toc_2">写文件</h3>
-
-<p>写文件也是调用<code>open()</code>函数 只是传入的标识符为<code>w</code>或者<code>wb</code>表示写文本文件或写二进制文件</p>
-
-<pre><code class="language-python">f3 = open(&#39;/Users/fish/Desktop/readme.txt&#39;, &#39;wb&#39;)
-f3.write(b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;)
-f3.close()
-</code></pre>
-
-<blockquote>
-<p>与读文件相同要记得调用<code>close()</code>方法,否则可能有部分未写入</p>
-</blockquote>
-
-<p>与读文件相同,可以通过<code>with</code>语句 确保自动调用close()方法</p>
-
-<pre><code class="language-python">with open(&#39;/Users/michael/test.txt&#39;, &#39;w&#39;) as f:
-    f.write(&#39;Hello, world!&#39;)
-</code></pre>
-
-<blockquote>
-<p>通过<code>encoding</code>参数将字符转为指定编码<br/>
-<code>w</code>默认为覆盖模式 <code>a</code>是append模式</p>
-</blockquote>
-
-<h2 id="toc_3">StringIO 和 BytesIO</h2>
-
-<p>内存中进行读写</p>
-
-<pre><code class="language-python">from io import StringIO
-
-f4=StringIO(&quot;初始\n 字符串&quot;)
-f4.write(&quot;hello,&quot;)
-f4.write(&quot; &quot;)
-f4.write(&quot;world!&quot;)
-
-print(f4.getvalue())  # getvalue()方法用于获得写入后的内容
-#hello, world!
-
-from io import BytesIO
-f5=BytesIO()
-f5.write(&quot;中文&quot;.encode(&quot;utf-8&quot;))
-print(f5.getvalue())
-# b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;
-</code></pre>
-
-<p>要读取StringIO，可以用一个str初始化StringIO，然后，像读文件一样读取：<br/>
-和StringIO类似，可以用一个bytes初始化BytesIO，然后，像读文件一样读取：</p>
-
-<pre><code class="language-python">from io import StringIO
-f = StringIO(&#39;Hello!\nHi!\nGoodbye!&#39;)
-while True:
-     s = f.readline()
-     if s == &#39;&#39;:
-         break
-     print(s.strip())
-
-# Hello!
-# Hi!
-# Goodbye!
-
-from io import BytesIO
-f = BytesIO(b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;)
-f.read()
-# b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;
-
-</code></pre>
-
-<h2 id="toc_4">操作文件和目录</h2>
-
-<p>操作文件和目录<br/>
-通过<code>os</code>模块提供的功能</p>
-
-<pre><code class="language-python">import os
-os.name # posix 操作系统类型(posix表示是Linux、Unix、Mac OS，nt表示是Windows)
-
-os.uname() #查看详细的系统信息
-#posix.uname_result(sysname=&#39;Darwin&#39;, nodename=&#39;fishdeMacBook-Pro.local&#39;, release=&#39;17.5.0&#39;, version=&#39;Darwin Kernel Version 17.5.0: Fri Apr 13 19:32:32 PDT 2018; root:xnu-4570.51.2~1/RELEASE_X86_64&#39;, machine=&#39;x86_64&#39;)
-</code></pre>
-
-<h3 id="toc_5">环境变量</h3>
-
-<pre><code class="language-python">os.environ #操作系统定义的全部环境变量
-os.environ.get(&quot;PATH&quot;) # 获取某个环境变量值
-os.environ.get(&#39;x&#39;, &#39;default&#39;) # 
-</code></pre>
-
-<h3 id="toc_6">操作文件和目录</h3>
-
-<p>操作文件和目录的函数 在<code>os</code>和<code>os.path</code>中</p>
-
-<pre><code class="language-python">import os
-
-currentPath=os.path.abspath(&quot;.&quot;)  # .表示当前路径
-print(currentPath) # /Users/fish/Desktop/LYY/Python
-
-joinDir=os.path.join(&quot;/Users/fish/Desktop&quot;, &quot;testDir&quot;) #在目录下新建目录 获取新目录路径
-print(joinDir) # /Users/fish/Desktop/testDir
-
-splitDir=os.path.split(&quot;/Users/fish/Desktop/testDir&quot;)
-print(splitDir) #(&#39;/Users/fish/Desktop&#39;, &#39;testDir&#39;)  获取最后一部分文件或目录
-splitext=os.path.splitext(&quot;/Users/fish/Desktop/testDir&quot;) #获取扩展名 如果最后一部分为目录 则为空
-print(splitext) # (&#39;/Users/fish/Desktop/testDir/readme&#39;, &#39;.txt&#39;)
-
-os.mkdir(&quot;/Users/fish/Desktop/testDir2&quot;) #新建目录
-os.rmdir(&quot;/Users/fish/Desktop/testDir2&quot;) #删除目录
-
-os.path.join(&quot;/Users/fish/Desktop&quot;, &quot;readme.txt&quot;)
-os.rename(&#39;/Users/fish/Desktop/readme.txt&#39;, &#39;/Users/fish/Desktop/readme.py&#39;)  # 重命名文件
-os.remove(&#39;/Users/fish/Desktop/readme.py&#39;) # 删除文件
-
-dirlist=os.listdir(&quot;.&quot;) #获取当前目录下的所有文件夹列表
-os.path.isdir(&quot;.&quot;) # 判断是否为文件夹目录
-
-</code></pre>
-
-<p>当合并路径时,不要直接拼接字符串，通过<code>os.path.join()</code>函数可以正确处理不用操作系统的路径分隔符.<br/>
-同理，拆分字符串时通过<code>os.path.split()</code>函数，可以把路径拆分为两部分，后一部分总是最后级别的目录或文件名<br/>
-<code>os.path.splitext()</code>可以直接让你得到文件扩展名</p>
-
-<blockquote>
-<p>在<code>os</code>模块中并没有复制文件函数,可以再<code>shutil</code>模块中提供了<code>copyfile()</code>函数等使用的文件操作函数</p>
-</blockquote>
-
-<h2 id="toc_7">序列化</h2>
-
-<p>Python通过<code>pickle</code>模块实现序列化</p>
-
-<pre><code class="language-python">import pickle
-#序列化
-dict1=dict(name=&quot;Bob&quot;, age=24, score=88)
-data=pickle.dumps(dict1)
-print(data) #b&#39;\x80\x03}q\...\x04KXu.&#39;
-
-#直接将序列化的内容写入文件
-file1=open(&quot;/Users/fish/Desktop/readme.txt&quot;, &quot;wb&quot;)
-pickle.dump(dict1, file1)
-file1.close()
-
-#  将文件从磁盘读到内存后使用pickle.loads()方法反序列化出对象， 
-#  也可以直接用pickle.load()方法从一个file-like Object中直接反序列化出对象
-file2=open(&quot;/Users/fish/Desktop/readme.txt&quot;, &quot;rb&quot;)
-dict2=pickle.load(file2)
-file2.close()
-print(dict2) #{&#39;name&#39;: &#39;Bob&#39;, &#39;age&#39;: 24, &#39;score&#39;: 88}
-
-
-</code></pre>
-
-<h3 id="toc_8">JSON</h3>
-
-<p>dict可以转为json序列化</p>
-
-<pre><code class="language-python">import json
-print(json.dumps(dict1)) # {&quot;name&quot;: &quot;Bob&quot;, &quot;age&quot;: 24, &quot;score&quot;: 88}
-
-file1=open(&quot;/Users/fish/Desktop/readme.txt&quot;, &quot;w&quot;)
-json.dump(dict1, file1)
-file1.close()  # 文件内容为 {&quot;name&quot;: &quot;Bob&quot;, &quot;age&quot;: 24, &quot;score&quot;: 88}
-</code></pre>
-
-<p>将class 序列化为 json</p>
-
-<pre><code class="language-python">import json
-
-#序列化  原理是先将class转为dict 然后将dict序列化json
-
-class Student(object):
-    def __init__(self, name, age, score):
-        self.name = name
-        self.age = age
-        self.score = score
-
-s = Student(&#39;Bob&#39;, 20, 88)
-
-#专门写一个转换函数 将 class 转为json
-def student2dict(std):
-    return {
-        &#39;name&#39;: std.name,
-        &#39;age&#39;: std.age,
-        &#39;score&#39;: std.score
+<h2 id="toc_1">示例</h2>
+
+<h3 id="toc_2">1. 处理多来源的异步操作或事件状态</h3>
+
+<p>不使用RAC的情况</p>
+
+<p>页面中的登录按钮 只有在<code>usernameTextField</code> <code>passwordTextField</code> 不为空 并且当前不在登录状态 才可以点击</p>
+
+<pre><code class="language-objectivec">static void *ObservationContext = &amp;ObservationContext;
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+
+    [LoginManager.sharedManager addObserver:self forKeyPath:@&quot;loggingIn&quot; options:NSKeyValueObservingOptionInitial context:&amp;ObservationContext];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(loggedOut:) name:UserDidLogOutNotification object:LoginManager.sharedManager];
+
+    [self.usernameTextField addTarget:self action:@selector(updateLogInButton) forControlEvents:UIControlEventEditingChanged];
+    [self.passwordTextField addTarget:self action:@selector(updateLogInButton) forControlEvents:UIControlEventEditingChanged];
+    [self.logInButton addTarget:self action:@selector(logInPressed:) forControlEvents:UIControlEventTouchUpInside];
+}
+
+- (void)dealloc {
+    [LoginManager.sharedManager removeObserver:self forKeyPath:@&quot;loggingIn&quot; context:ObservationContext];
+    [NSNotificationCenter.defaultCenter removeObserver:self];
+}
+
+- (void)updateLogInButton {
+    BOOL textFieldsNonEmpty = self.usernameTextField.text.length &gt; 0 &amp;&amp; self.passwordTextField.text.length &gt; 0;
+    BOOL readyToLogIn = !LoginManager.sharedManager.isLoggingIn &amp;&amp; !self.loggedIn;
+    self.logInButton.enabled = textFieldsNonEmpty &amp;&amp; readyToLogIn;
+}
+
+- (IBAction)logInPressed:(UIButton *)sender {
+    [[LoginManager sharedManager]
+        logInWithUsername:self.usernameTextField.text
+        p**assword:self.passwordTextField.text
+        success:^{
+            self.loggedIn = YES;
+        } failure:^(NSError *error) {
+            [self presentError:error];
+        }];
+}
+
+- (void)loggedOut:(NSNotification *)notification {
+    self.loggedIn = NO;
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
+    if (context == ObservationContext) {
+        [self updateLogInButton];
+    } else {
+        [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
     }
-# 传入更多参数来 指定序列化规则
-print(json.dumps(s, default=student2dict))  #{&quot;age&quot;: 20, &quot;name&quot;: &quot;Bob&quot;, &quot;score&quot;: 88}
+}
+</code></pre>
 
-# 可以这么写 对大多数class都有__dict__属性来存储实例变量(__slots__除外)
-print(json.dumps(s, default=lambda obj: obj.__dict__))
+<p>使用RAC来写的话</p>
 
-# 反序列化  原理为将json反序列化为dict 然后转为 class实例
+<pre><code class="language-objectivec">- (void)viewDidLoad {
+    [super viewDidLoad];
 
-def dict2student(d):
-    return Student(d[&#39;name&#39;], d[&#39;age&#39;], d[&#39;score&#39;])
-json_str = &#39;{&quot;age&quot;: 20, &quot;score&quot;: 88, &quot;name&quot;: &quot;Bob&quot;}&#39;
-print(json.loads(json_str, object_hook=dict2student))
+    @weakify(self);
 
+    RAC(self.logInButton, enabled) = [RACSignal
+        combineLatest:@[
+            self.usernameTextField.rac_textSignal,
+            self.passwordTextField.rac_textSignal,
+            RACObserve(LoginManager.sharedManager, loggingIn),
+            RACObserve(self, loggedIn)
+        ] reduce:^(NSString *username, NSString *password, NSNumber *loggingIn, NSNumber *loggedIn) {
+            return @(username.length &gt; 0 &amp;&amp; password.length &gt; 0 &amp;&amp; !loggingIn.boolValue &amp;&amp; !loggedIn.boolValue);
+        }];
+
+    [[self.logInButton rac_signalForControlEvents:UIControlEventTouchUpInside] subscribeNext:^(UIButton *sender) {
+        @strongify(self);
+
+        RACSignal *loginSignal = [LoginManager.sharedManager
+            logInWithUsername:self.usernameTextField.text
+            password:self.passwordTextField.text];
+
+            [loginSignal subscribeError:^(NSError *error) {
+                @strongify(self);
+                [self presentError:error];
+            } completed:^{
+                @strongify(self);
+                self.loggedIn = YES;
+            }];
+    }];
+
+    RAC(self, loggedIn) = [[NSNotificationCenter.defaultCenter
+        rac_addObserverForName:UserDidLogOutNotification object:nil]
+        mapReplace:@NO];
+}
+</code></pre>
+
+<h3 id="toc_3">2.串联异步操作的依赖</h3>
+
+<pre><code class="language-objectivec">//logInWithSuccess 登录成功 -&gt; loadCachedMessagesWithSuccess 加载本地数据   -&gt;  fetchMessagesAfterMessage 请求本地为缓存的最新的数据
+
+//不使用色RAC 使用block嵌套
+[client logInWithSuccess:^{
+    [client loadCachedMessagesWithSuccess:^(NSArray *messages) {
+        [client fetchMessagesAfterMessage:messages.lastObject success:^(NSArray *nextMessages) {
+            NSLog(@&quot;Fetched all messages.&quot;);
+        } failure:^(NSError *error) {
+            [self presentError:error];
+        }];
+    } failure:^(NSError *error) {
+        [self presentError:error];
+    }];
+} failure:^(NSError *error) {
+    [self presentError:error];
+}];
+
+//RAC版本
+[[[[client logIn]
+    then:^{
+        return [client loadCachedMessages];
+    }]
+    flattenMap:^(NSArray *messages) {
+        return [client fetchMessagesAfterMessage:messages.lastObject];
+    }]
+    subscribeError:^(NSError *error) {
+        [self presentError:error];
+    } completed:^{
+        NSLog(@&quot;Fetched all messages.&quot;);
+    }];
+</code></pre>
+
+<h3 id="toc_4">3.用RAC实现 OC中 集合没有的 map、filter、fold/reduce等方法</h3>
+
+<pre><code class="language-objectivec">//获取数组中字符串长度大于2并且拼接字符串`foobar`
+NSMutableArray *results = [NSMutableArray array];
+for (NSString *str in strings) {
+    if (str.length &lt; 2) {
+        continue;
+    }
+
+    NSString *newString = [str stringByAppendingString:@&quot;foobar&quot;];
+    [results addObject:newString];
+}
+
+
+RACSequence *results = [[strings.rac_sequence
+    filter:^ BOOL (NSString *str) {
+        return str.length &gt;= 2;
+    }]
+    map:^(NSString *str) {
+        return [str stringByAppendingString:@&quot;foobar&quot;];
+    }];
 </code></pre>
 
 ]]></content>
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[错误、调试、测试]]></title>
-    <link href="https://acefish.github.io/15325716345284.html"/>
-    <updated>2018-07-26T10:20:34+08:00</updated>
-    <id>https://acefish.github.io/15325716345284.html</id>
+    <title type="html"><![CDATA[ReactiveCocoa 版本]]></title>
+    <link href="https://acefish.github.io/15446921413334.html"/>
+    <updated>2018-12-13T17:09:01+08:00</updated>
+    <id>https://acefish.github.io/15446921413334.html</id>
     <content type="html"><![CDATA[
-<h2 id="toc_0">错误处理</h2>
-
-<h3 id="toc_1">try</h3>
-
-<pre><code class="language-python">try:
-    print(&quot;try...&quot;)
-    result=10/0
-    print(&quot;result 10/0=&quot;, result)
-except Exception as e:  #捕获所有的异常
-    # raise  #raise 语句不带参数 就会把错误原样抛出
-    print(&quot;error+&quot;, e)
-else:
-    print(&quot;no erro&quot;) #没有错误发生时 执行
-finally:
-    print(&quot;finally...&quot;)
-
-print(&quot;end...&quot;)
-
-# try...
-# error+ division by zero
-# finally...
-# end...
-
-</code></pre>
-
-<p>根据捕捉不用类型的错误</p>
-
-<pre><code class="language-python">try:
-    print(&#39;try...&#39;)
-    r = 10 / int(&#39;a&#39;)
-    print(&#39;result:&#39;, r)
-except ValueError as e:   #如果int()函数发生错误
-    print(&#39;ValueError:&#39;, e)
-except ZeroDivisionError as e:  # 发现除数为0错误
-    print(&#39;ZeroDivisionError:&#39;, e)
-finally:
-    print(&#39;finally...&#39;)
-print(&#39;END&#39;)
-</code></pre>
-
-<p>Python的错误也是class,所有错误继承自<code>BaseException</code>，所以使用<code>exception</code>时可以捕获所有其子类错误</p>
-
-<blockquote>
-<p>捕获错误可以跨越多层调用,</p>
-
-<p>如果错误没有被捕获,就会一级一级往上抛出,最后被Python解释器捕获,打印错误信息并退出程序的执行</p>
-
-<p>发生错误时可以通过分析错误的调用异常栈，定位错误的位置信息</p>
-</blockquote>
-
-<h3 id="toc_2">抛出错误</h3>
-
-<p>自定义错误类，抛出错误，尽量使用内置的错误类型,只有在必要时才需要定义自己的错误类型</p>
-
-<h2 id="toc_3">调试</h2>
-
-<h3 id="toc_4">断言</h3>
-
-<p>断言使用<code>assert</code>关键字</p>
-
-<pre><code class="language-python">def my_func_div(s):
-    n=int(s)
-    assert n!=0, &quot;n is zero&quot;
-    return 10/n
-
-my_func_div(&quot;0&quot;)
-
-# AssertionError: n is zero
-</code></pre>
-
-<p>断言失败,<code>assert</code>语句会抛出<code>AssertionError</code><br/>
-Python解释器可以通过 添加参数<code>- O</code> 参数关闭所有assert 这时<code>assert</code>就可看做pass</p>
-
-<h3 id="toc_5">logging</h3>
-
-<p>logging不会抛出错误，而且可以输出到文件<br/>
-logging的另一个好处是通过简单的配置，一条语句可以同时输出到不同的地方，比如console和文件。</p>
-
-<pre><code class="language-python">import logging
-logging.basicConfig(level=logging.INFO)
-
-s = &#39;0&#39;
-n = int(s)
-logging.info(&#39;n = %d&#39; % n)
-print(10 / n)
-</code></pre>
-
-<blockquote>
-<p>logging语句允许指定记录信息的级别,共有<code>debug</code> <code>info</code> <code>warning</code> <code>error</code>这几个级别,当我们指定level=INFO时，logging.debug就不起作用了。同理，指定level=WARNING后，debug和info就不起作用了。这样一来，你可以放心地输出不同级别的信息，也不用删除，最后统一控制输出哪个级别的信息。</p>
-</blockquote>
-
-<h3 id="toc_6">pdb 单步调试</h3>
-
-<p><code>pdb</code>是python解释器的调试器,可以让程序但不执行，可以随时查看运行的状态</p>
-
-<pre><code class="language-python">s = &#39;0&#39;
-n = int(s)
-print(10 / n)
-</code></pre>
-
-<p><code>python -m pdb xxx.py</code></p>
-
-<p><img src="media/15325716345284/15329379992787.jpg" alt="" style="width:803px;"/><br/>
-<img src="media/15325716345284/15329380931674.jpg" alt="" style="width:806px;"/><br/>
-输入 <code>l</code>  查看diamante<br/>
-<code>n</code> 单步执行代码<br/>
-<code>p 变量名</code> 查看变量当前值<br/>
-<code>q</code> 结束调试</p>
-
-<h3 id="toc_7">pdb.set_trace() 断点</h3>
-
-<p><code>import pdb</code> 在可能出错的地方放<code>pdb.set_trace()</code>就设置了一个断点,程序会在断点处进入pdb调试环境  可以用<code>c</code>继续执行</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[面对对象高级编程]]></title>
-    <link href="https://acefish.github.io/15324890369623.html"/>
-    <updated>2018-07-25T11:23:56+08:00</updated>
-    <id>https://acefish.github.io/15324890369623.html</id>
-    <content type="html"><![CDATA[
-<p>对于python这种动态语言,我们可以在创建了class实例之后，给其绑定属性甚至绑定方法</p>
-
-<pre><code class="language-python">class My_TestClass(object):
-    &quot;&quot;&quot;docstring for My_TestClass&quot;&quot;&quot;
-    pass
-
-test1=My_TestClass()
-test1.name=&quot;liyuyuan&quot; # 给实例绑定对象
-
-def set_name(self, name):
-    self.name=name
-
-from types import MethodType
-test1.set_name=MethodType(set_name, test1) #实例对象绑定方法
-test1.set_name(&quot;lyy&quot;)
-print(test1.name)  # lyy
-</code></pre>
-
-<blockquote>
-<p>给一个实例对象绑定的方法，对另外的实例对象是不起作用的，应该给<code>class</code>绑定方法<br/>
-动态语言允许我们在程序运行过程中动态给<code>class</code>增加功能</p>
-</blockquote>
-
-<pre><code class="language-python">My_TestClass.set_name=set_name
-test2=My_TestClass()
-test2.set_name(&quot;wtt&quot;)
-print(test2.name) # wtt
-</code></pre>
-
-<h2 id="toc_0"><strong>slots</strong></h2>
-
-<p>通过<code>__slots__</code>来对实例的属性进行限制能添加的属性</p>
-
-<pre><code class="language-python">class My_Slots_Class(object):
-    &quot;&quot;&quot;docstring for My_Slots_Class&quot;&quot;&quot;
-    __slots__=(&quot;name&quot;, &quot;score&quot;)
-    # def __init__(self, age): #不能有 name、score外的其他属性
-    #   self.age=age
-    pass
-        
-
-slot1=My_Slots_Class()
-slot1.age=10 #AttributeError: &#39;My_Slots_Class&#39; object has no attribute &#39;age&#39;
-</code></pre>
-
-<blockquote>
-<p><code>__slots__</code>定义属性仅对当前类实例起作用,对继承的子类是不起作用的，可以在子类中也定义<code>__slots__</code>，这样，子类实例允许定义的属性就是自身的<code>__slots__</code>加上父类的<code>__slots__</code>。</p>
-</blockquote>
-
-<pre><code class="language-python">class My_Slots_Subclass(My_Slots_Class):
-    &quot;&quot;&quot;docstring for My_Slots_Subclass&quot;&quot;&quot;
-    __slots__=(&quot;age&quot;)
-    pass
-#此时允许的属性为子类的__slots__加上父类的__slots__
-slot2=My_Slots_Subclass()
-slot2.age=22
-slot2.ttt=10  #AttributeError: &#39;My_Slots_Subclass&#39; object has no attribute &#39;ttt&#39;
-</code></pre>
-
-<h2 id="toc_1">@property</h2>
-
-<p>python内置的<code>@property</code>装饰器就负责把一个方法变为属性调用</p>
-
-<pre><code class="language-python">class My_Property_Class(object):
-    @property
-    def age(self):
-        print(&quot;获取age&quot;,self._age)
-        return self._age
-
-    @age.setter
-    def age(self, age):
-       #可以在此处检查传入参数处理
-        print(&quot;设置age&quot;,age)
-        self._age=age
-
-property1=My_Property_Class()
-property1.age=10 #设置age 10
-property1.age # 获取age 10
-</code></pre>
-
-<p>如果我们只定义<code>@property</code>那么该属性就是只读的</p>
-
-<h2 id="toc_2">多继承</h2>
-
-<p>python中支持多继承,一个子类可以同时获得多个父类的所有功能</p>
-
-<h3 id="toc_3">MixIn</h3>
-
-<p>一般设计为单继承,但是当需要额外功能时可以用过多继承实现,这就是<br/>
-<code>MixIn</code></p>
-
-<h2 id="toc_4">定制类</h2>
-
-<p>类似<code>__slots__</code>限制类的属性<br/>
-<code>__len__()</code>方法让class能作用域<code>len()</code>函数</p>
-
-<h3 id="toc_5"><strong>str</strong></h3>
-
-<p><code>__str__()</code> 对于打印出来的对象信息修改<br/>
-<code>__repr__()</code>对程序员看到的对象信息修改</p>
-
-<pre><code class="language-python">class Student(object):
-...     def __init__(self, name):
-...         self.name = name
-...     def __str__(self):
-...         return &#39;Student object (name: %s)&#39; % self.name
-            __repr__ = __str__ #经常把两个写作相同
-...
-print(Student(&#39;Michael&#39;)) #Student object (name: Michael)
-#当开发者在命令行直接输入对象 会打印对象信息，这是调用的是__repr__()
-</code></pre>
-
-<h3 id="toc_6"><strong>iter</strong></h3>
-
-<p>如果类需要被<code>for...in</code>循环,必须实现<code>__iter__()</code>方法,返回一个可迭代对象，然后调用对象的<code>__next__()</code>方法获取循环下一个值,直到遇到<code>StopIteration</code>错误退出循环</p>
-
-<blockquote>
-<p>学习迭代器一章知道,调用iter()方法转为迭代器,然后调用next方法获取下一个值,其内部实现就是<code>__iter__()</code>和<code>__next__()</code></p>
-</blockquote>
-
-<pre><code class="language-python">
-class My_Iter_Class(object):
-    &quot;&quot;&quot;docstring for My_Iter_Class&quot;&quot;&quot;
-    def __init__(self):
-        self.a=0
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        self.a+=1
-        while self.a&gt;10:
-            raise StopIteration()
-        print(self.a)
-
-
-for x in My_Iter_Class():
-    pass
-
-
-</code></pre>
-
-<h3 id="toc_7"><strong>getitem</strong></h3>
-
-<p>对于实现了<code>__iter__()</code>和<code>__next__()</code>可以用for遍历,但是并不能像list一样取某个下标或者进行切片操作,这时需要实现<code>__getitem__()</code>方法</p>
-
-<pre><code class="language-python">class Fib(object):
-    def __getitem__(self, n):
-        if isinstance(n, int): # n是索引
-            a, b = 1, 1
-            for x in range(n):
-                a, b = b, a + b
-            return a
-        #判断是否为切片对象
-        if isinstance(n, slice): # n是切片  
-            start = n.start
-            stop = n.stop
-            if start is None:
-                start = 0
-            a, b = 1, 1
-            L = []
-            for x in range(stop):
-                if x &gt;= start:
-                    L.append(a)
-                a, b = b, a + b
-            return L
-</code></pre>
-
-<blockquote>
-<p>在<code>__getitem__()</code>方法中，需要判断是取下标索引传入参数为<code>int</code>，还是传入的为切片<code>slice</code>进行切片操作<br/>
-上面对切片操作并不完善，比如对于负数的处理</p>
-</blockquote>
-
-<p><strong>对应于__getitem__()还有__setitem__()来对类进行赋值 <strong>delitem</strong>()删除某个元素</strong></p>
-
-<h3 id="toc_8"><strong>getattr</strong></h3>
-
-<p>当我们调用类中不存在的属性或方法时时，Python解释器会试图调用<code>__getattr__(self, &#39;attr&#39;)</code>来获得属性或方法，我们就可以通过这个方法来返回对应不存在属性值或方法</p>
-
-<blockquote>
-<p>如果我们实现了这个方法,默认返回是<code>None</code>无法提示用户该属性不存在,我们可以返回一个<code>raise AttributeError</code>错误</p>
-</blockquote>
-
-<h3 id="toc_9"><strong>call</strong></h3>
-
-<p>当我们在类内部实现<code>__call__()</code>方法后,我们就可以直接对实例进行调用</p>
-
-<pre><code class="language-python">class My_Call_Class(object):
-    def __call__(self):
-        print(&quot;调用自身call&quot;)
-
-obj1=My_Call_Class()
-obj1() # 调用自身call
-
-#判断一个对象是否可调用
-if callable(obj1): #True
-    print(&quot;可调用&quot;)  #可调用
-
-</code></pre>
-
-<blockquote>
-<p>对于可直接调用对象，可以将其看做函数,可以传参数</p>
-</blockquote>
-
-<h2 id="toc_10">枚举类</h2>
-
-<p>Python为定义大量常量的枚举 提供了<code>Enum</code>类</p>
-
-<p>使用Enum实现一个简单的枚举</p>
-
-<pre><code class="language-python">Month = Enum(&quot;Month&quot;, (&quot;Jan&quot;, &quot;Feb&quot;, &quot;Mar&quot;, &quot;Apr&quot;))
-print(Month.Jan) # Month.Jan
-print(Month.Mar.value) # 3
-
-# __members__返回所有成员的name-&gt;value的map
-for name, member in Month.__members__.items():
-    print(name, &#39;=&gt;&#39;, member, &#39;,&#39;, member.value)
-</code></pre>
-
-<p>对于某些情况我们可能需要自定义枚举,可以从<code>Enum</code>派生出自定义类</p>
-
-<pre><code class="language-python">class WeekDay(Enum):
-    Sun=7
-    Mon=1
-    Tue=2
-    Wed=3
-    Thu=4
-    Fri=5
-    Sat=6
-
-print(WeekDay.Sun) #WeekDay.Sun
-print(WeekDay.Fri.value) #5
-
-for name, member in WeekDay.__members__.items():
-    print(name, &#39;=&gt;&#39;, member, &#39;,&#39;, member.value)
-</code></pre>
-
-<p><code>Enum</code>可以把相关常量定义在一个不可变<code>class</code>中,成员之间可以直接比较</p>
-
-<h2 id="toc_11">元类</h2>
-
-<p><strong>动态语言和静态语言最大的不同就是,函数和类的定义不是编译时定义的而是运行时动态创建的</strong></p>
-
-<p>当python解释器载入模块时，就会依次执行该模块中的所有语句</p>
-
-<p><code>class</code>的定义是在运行时动态创建的，创建<code>class</code>的方法就是使用<code>type()</code>函数</p>
-
-<p>利用<code>type</code>函数创建一个class</p>
-
-<pre><code class="language-python">def hello_func(self, name=&quot;world&quot;):
-    print(&quot;hello, &quot;, name)
-
-#用type创建Hello class
-Hello_Class=type(&quot;Hello&quot;, (object,), dict(hello=hello_func))
-
-h1= Hello_Class()
-h1.hello() # hello,  world
-</code></pre>
-
-<p>用type定义的类与class定义的完全相同,python解释器遇到class定义类也是仅仅扫描一下后调用<code>type()</code>方法来定义类</p>
-
-<blockquote>
-<p>当前执行的模块名字为__main__</p>
-</blockquote>
-
-<h3 id="toc_12">metaclass</h3>
-
-<p><code>metaclass</code>允许我们创建或者修改类</p>
-
-<p><code>metaclass</code>是类的模板，所以必须从<code>type</code>类型派生</p>
-
-<p>该节不常用,自行参考<a href="https://www.liaoxuefeng.com/wiki/0014316089557264a6b348958f449949df42a6d3a2e542c000/0014319106919344c4ef8b1e04c48778bb45796e0335839000">廖雪峰的python学习元类</a></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[面对对象编程]]></title>
-    <link href="https://acefish.github.io/15324145349319.html"/>
-    <updated>2018-07-24T14:42:14+08:00</updated>
-    <id>https://acefish.github.io/15324145349319.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">类和实例</h2>
-
-<p><code>class</code>关键字定义类<br/>
-类名通常首字母大写</p>
-
-<pre><code class="language-python">class My_Class_Student(object):
-    &quot;&quot;&quot;docstring for My_Class_Student&quot;&quot;&quot;
-    def __init__(self, name):
-        super(My_Class_Student, self).__init__()
-        self.name = name
-        
-lyy=My_Class_Student(&quot;liyuyuan&quot;)
-
-print(lyy)
-print(lyy.name) # liyuyuan
-</code></pre>
-
-<p><code>__init__</code>方法定义初始化对象时必须要传入的参数,比如上面student初始化时必须传入name</p>
-
-<p>在类中定义的函数，第一个参数永远是实例变量<code>self</code>，调用时不用传递该参数</p>
-
-<h3 id="toc_1">数据封装</h3>
-
-<p>使用类中定义的方法来实现数据封装</p>
-
-<pre><code class="language-python">class My_Class_Student(object):
-    &quot;&quot;&quot;docstring for My_Class_Student&quot;&quot;&quot;
-    def __init__(self, name):
-        super(My_Class_Student, self).__init__()
-        self.name = name
-    def print_name(self):
-        print(self.name)
-        
-lyy=My_Class_Student(&quot;liyuyuan&quot;)
-
-print(lyy)
-print(lyy.name) # liyuyuan
-lyy.print_name() #liyuyuan
-
-</code></pre>
-
-<h2 id="toc_2">访问限制</h2>
-
-<p>让内部属性不被外部访问，可以再属性名称前加双下划线<code>__</code>，在python中，以<code>__</code>开头的变量名就为私有变量,外部不能访问（只能为<code>__</code>不能<code>_</code>）</p>
-
-<pre><code class="language-python">class My_Class_Student(object):
-    &quot;&quot;&quot;docstring for My_Class_Student&quot;&quot;&quot;
-    def __init__(self, name):
-        super(My_Class_Student, self).__init__()
-        self.__name = name
-    def print_name(self):
-        print(self.__name)
-        
-lyy=My_Class_Student(&quot;liyuyuan&quot;)
-
-print(lyy.__name) # AttributeError:&#39;My_Class_Student&#39; object has no attribute &#39;__name&#39;
-lyy.print_name() #liyuyuan
-</code></pre>
-
-<blockquote>
-<p>变量名为<code>__xxx__</code>是特殊变量，外部可以直接访问的</p>
-
-<p>对于单下划线开头的变量,虽然可以访问,但是约定俗成不要访问,当做私有变量</p>
-
-<p>对于<code>__</code>开头的变量，其实python是将其改名为<code>_classname__变量名</code>，我们也可以通过其进行访问，不建议</p>
-</blockquote>
-
-<h2 id="toc_3">继承和多态</h2>
-
-<h3 id="toc_4">继承</h3>
-
-<pre><code class="language-python">class Animal(object):
-    def run(self):
-        print(&#39;Animal is running...&#39;)
-
-#继承了Animal 就自带了run方法
-class Dog(Animal):
-    pass
-
-#重写父类继承的方法
-class Cat(Animal):
-    def run(self):
-        print(&#39;Cat is running...&#39;)
-    
-</code></pre>
-
-<h3 id="toc_5">多态</h3>
-
-<p>判断一个变量是否是某个类型可以用<code>isinstance()</code>判断：</p>
-
-<pre><code class="language-python">b = Animal() # b是Animal类型
-isinstance(b, Animal)  #True
-</code></pre>
-
-<blockquote>
-<p>对于静态语言(java等),需要传入的必须是Animal类型或者其子类,否则无法调用其方法</p>
-
-<p>对于python等动态语言,没有类型检查,只需要保证其有执行的方法就行了，就可以执行<br/>
-这就是鸭子类型</p>
-</blockquote>
-
-<h2 id="toc_6">获取对象信息</h2>
-
-<h3 id="toc_7">type()</h3>
-
-<p>用<code>type()</code>来获取对象类型</p>
-
-<pre><code class="language-python">if type(&quot;name&quot;) == type(&quot;dd&quot;):
-    print(&quot;类型相同+&quot;,type(&quot;name&quot;)) # 类型相同+ &lt;class &#39;str&#39;&gt;
-</code></pre>
-
-<h3 id="toc_8">isinstance()</h3>
-
-<p>对于继承关系来说,<code>type()</code>并不好用,我们可以使用<code>isinstance()</code>函数来判断<code>class</code>类型<br/>
-<code>isinstance()</code>对于该类型以及父类继承链 均返回<code>True</code></p>
-
-<pre><code class="language-python">#用type() 判断的基本类型 也可以用isinstance判断
-isinstance(123, int) # True
-
-
-# 判断是否为某些类型的一种
- isinstance([1, 2, 3], (list, tuple))  #True
-
-</code></pre>
-
-<h3 id="toc_9">dir() getattr() setattr() hasattr()</h3>
-
-<p>用<code>dir()</code>来获得对象的所有属性和方法</p>
-
-<p><code>hasattr()</code>判断该对象是否有此属性<br/>
-<code>setattr()</code>设置一个属性<br/>
-<code>getattr()</code>获取该属性的值 ，当试图获取不存在的属性，会抛出<code>AttributeError</code>错误</p>
-
-<h2 id="toc_10">实例属性和类属性</h2>
-
-<p>对于类属性,直接在<code>class</code>定义</p>
-
-<pre><code class="language-python">class My_Student_Class(object):
-    &quot;&quot;&quot;docstring for My_Student_Class&quot;&quot;&quot;
-    name=&quot;My_Student_Class&quot; #在类中直接定义的类属性
-
-stu1=My_Student_Class()
-# 因为对象没有name属性,因此继续查找class的name属性
-print(stu1.name) # My_Student_Class
-print(My_Student_Class.name) #My_Student_Class
-stu1.name=&quot;liyuyuan&quot;
-print(stu1.name,&quot;  &quot;,My_Student_Class.name) #  liyuyuan    My_Student_Class
-del stu1.name #删除实例的name属性
-print(stu1.name) # My_Student_Class
-</code></pre>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[模块]]></title>
-    <link href="https://acefish.github.io/15324005146874.html"/>
-    <updated>2018-07-24T10:48:34+08:00</updated>
-    <id>https://acefish.github.io/15324005146874.html</id>
-    <content type="html"><![CDATA[
-<p>在python中一个.py文件就称为一个模块</p>
-
-<p>使用模块不仅可以增加代码的维护性和复用性,还可以避免函数名和变量名冲突,相同名字的函数和变量可以存在不同模块中</p>
-
-<p>为了避免模块名冲突,<code>Python</code>引入了按照目录组织模块的方法:<strong>包</strong>,只要我们的报名不与别人冲突,那么所有模块就不会冲突</p>
-
-<blockquote>
-<p>每一个包目录下面都会有一个<code>__init__.py</code>的文件，这个文件是必须存在的，否则，Python就把这个目录当成普通目录，而不是一个包。<code>__init__.py</code>可以是空文件，也可以有Python代码，因为<code>__init__.py</code>本身就是一个模块，而它的模块名就是mycompany。</p>
-</blockquote>
-
-<p><img src="media/15324005146874/15324024289634.jpg" alt="" style="width:587px;"/></p>
+<p>reactiveCocoa 分为两个版本 </p>
 
 <ol>
-<li>文件www.py的模块名就是mycompany.web.www，两个文件utils.py的模块名分别是mycompany.utils和mycompany.web.utils。</li>
-<li>mycompany.web也是一个模块</li>
-</ol>
-
-<h2 id="toc_0">使用模块</h2>
-
-<pre><code class="language-python">#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-&quot;这是一个测试模块&quot; #任何模块的第一个字符串都会被视为模块的注释
-
-__author__=&quot;ACEfish&quot;
-
-
-import sys #导入模块
-
-def test():
-    args = sys.argv #sys模块有一个argv变量，用list存储了命令行的所有参数
-    if len(args)==1:
-        print(&quot;只有一个参数&quot;,args[0])
-    elif len(args)==2:
-        print(&quot;两个参数&quot;,args[0],args[1])
-    else :
-        print(&quot;too many params!&quot;)
-
-
-if __name__ == &quot;__main__&quot;: #当我们在命令行执行该文件时，会把一个特殊变量__name__置为__main__,而如果在其他地方导入该hello模块时，if判断将失败因此，这种if测试可以让一个模块通过命令行运行时执行一些额外的代码，最常见的就是运行测试。
-    test()
-else:
-    print(&quot;不执行测试模块&quot;)
-</code></pre>
-
-<blockquote>
-<p>当我们在命令行执行该文件时，会把一个特殊变量__name__置为__main__,而如果在其他地方导入该hello模块时，if判断将失败因此，这种if测试可以让一个模块通过命令行运行时执行一些额外的代码，最常见的就是运行测试。</p>
-</blockquote>
-
-<h3 id="toc_1">作用域</h3>
-
-<p><code>python</code>中并没有绝对的限制<code>private</code>函数或变量,因此：</p>
-
-<ol>
-<li>正常的函数和变量名是公开的</li>
-<li>类似<code>__xxx__</code>是特殊变量，可以被直接引用，但是有特殊用途,例如: <code>__author__</code> <code>__name__</code></li>
-<li>类似<code>_xxx</code>或者<code>__xxx</code>是非公开的，不应该被引用</li>
-</ol>
-
-<h2 id="toc_2">第三方模块</h2>
-
-<h3 id="toc_3">模块搜索路径</h3>
-
-<p>当我们试图加载一个模块时，Python会在指定的路径下搜索对应的.py文件，如果找不到，就会报错</p>
-
-<p><strong>默认情况下，<code>Python解释器</code>会搜索当前目录、所有已安装的内置模块和第三方模块，搜索路径存放在sys模块的path变量中：</strong></p>
-
-<pre><code class="language-python">import sys
-sys.path
-</code></pre>
-
-<p>如果我们要添加自己的搜索目录，有两种方法：</p>
-
-<ol>
-<li>直接修改<code>sys.path</code>，添加要搜索的目录</li>
-<li>设置环境变量<code>PYTHONPATH</code>，该环境变量的内容会被自动添加到模块搜索路径中。设置方式与设置<code>Path</code>环境变量类似。注意只需要添加你自己的搜索路径，Python自己本身的搜索路径不受影响</li>
+<li>OC版本的 <strong>ReactiveObjC</strong></li>
+<li>swift版本的 <strong>ReactiveSwift</strong></li>
 </ol>
 
 ]]></content>
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[函数式编程]]></title>
-    <link href="https://acefish.github.io/15320795459657.html"/>
-    <updated>2018-07-20T17:39:05+08:00</updated>
-    <id>https://acefish.github.io/15320795459657.html</id>
+    <title type="html"><![CDATA[基础]]></title>
+    <link href="https://acefish.github.io/15446723749030.html"/>
+    <updated>2018-12-13T11:39:34+08:00</updated>
+    <id>https://acefish.github.io/15446723749030.html</id>
     <content type="html"><![CDATA[
-<h2 id="toc_0">高阶函数</h2>
+<h2 id="toc_0">常见编程风格</h2>
+
+<p>目前已知常用的编程风格:</p>
 
 <ol>
-<li><p>变量可以指向函数</p>
-<pre><code class="language-python">print(abs(-10)) # 10
-abs_func=abs<br/>
-print(abs_func(-10)) # 10
+<li><p>面向过程</p></li>
+<li><p>面向对象</p></li>
+<li><p>链式编程<br/>
+将多个操作通过 . 连接起来 增加代码的可读性<br/>
+例如: masonry框架</p></li>
+<li><p>响应式编程<br/>
+不考虑事件发生顺序 只考虑结果 发生的事件像流一样传播出去，我们关注数据流和变化传播<br/>
+例如: KVO运用</p></li>
+<li><p>函数式编程<br/>
+将操作写成一系列嵌套的函数或者方法调用，将其他函数作为参数</p>
+<p>其在OC中实质即:向方法中传入block，方法中嵌套block调用，对代码进行聚合管理</p></li>
+</ol>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Ajax]]></title>
+    <link href="https://acefish.github.io/15444371982559.html"/>
+    <updated>2018-12-10T18:19:58+08:00</updated>
+    <id>https://acefish.github.io/15444371982559.html</id>
+    <content type="html"><![CDATA[
+<pre><code class="language-javascript">    &lt;script&gt;
+            var oAjax = new XMLHttpRequest()
+            //1. 请求方式
+            //2. 目标资源位置
+            //3. 是否异步
+            oAjax.open(&quot;GET&quot;, &quot;https://www.baidu.com/&quot;, true)
+            oAjax.send()
+            //
+            oAjax.onreadystatechange = function () {
+                /**
+                * readyState
+                *   0：未初始化 还没调用open()方法
+                *   1：载入 已调用send()方法 正在发送请求
+                *   2：载入完成  已经调用send()方法 已收到全部相应内容
+                *   3：解析 正在解析响应内容
+                *   4：完成 响应内容解析完成 可以在客户端使用
+                */
+                if (oAjax.readyState == 4) {
+                    if (oAjax.status == 200) {
+                        alert(&quot;success&quot;)
+                        alert(oAjax.responseText)
+                    } else {
+                        alert(&quot;fail&quot;)
+                    }
+                }
+            }
+        &lt;/script&gt;
+</code></pre>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[JS补充]]></title>
+    <link href="https://acefish.github.io/15442641358694.html"/>
+    <updated>2018-12-08T18:15:35+08:00</updated>
+    <id>https://acefish.github.io/15442641358694.html</id>
+    <content type="html"><![CDATA[
+<ol>
+<li><strong>全局变量 &amp;&amp; window属性</strong><br/>
+js中的全局变量 其实是<code>window</code>的属性<br/>
+在js中用没有定义的变量 会报错<br/>
+在js中用没有定义的属性 会undefine</li>
+<li><strong>面对对象的特点</strong>
+<ol>
+<li>抽象: 只注重我们需要的方面 忽略我们不需要的对象的特性</li>
+<li>封装: 封装为api 外部只能通过定义的接口 访问数据</li>
+<li>继承: 子类继承父类特性 解决重用性问题 （多重继承）</li>
+<li>多态: 对强语言较为有用,允许不同类对同一消息作出不同响应</li>
+</ol></li>
+</ol>
+
+<h2 id="toc_0">原型 prototype</h2>
+
+<p>类似css中的class  用于给一类对象设置通用的属性或者方法</p>
+
+<p>在js 我们经常在构造方法中实现属性 而在原型中实现方法</p>
+
+<h2 id="toc_1">创建对象方式</h2>
+
+<ol>
+<li><p>用<code>new Object()</code></p>
+<pre><code class="language-javascript">var obj = new Object()
+obj1.name = &quot;lyy&quot;
 </code></pre></li>
-<li><p>函数名也是变量<br/>
-例如 <code>abs</code>就是一个指向获取绝对值的函数，我们可以试着将<code>abs</code>指向其它对象,这时<code>abs</code>也就无法完成获取绝对值</p></li>
-<li><p>传入参数<br/>
-函数可以接收另外一个函数作为参数</p>
-<pre><code class="language-python">def my_funcparam_func(x, y, f):
-   return f(x)+f(y)<br/>
-print(my_funcparam_func(10,-10,abs))  #20
+<li><p>用json对象</p>
+<pre><code class="language-javascript">var person = {
+    firstName:&quot;John&quot;,<br/>
+    lastName:&quot;Doe&quot;,<br/>
+    age:50,<br/>
+    eyeColor:&quot;blue&quot;<br/>
+};
 </code></pre></li>
+<li></li>
 </ol>
 
-<h3 id="toc_1">map/reduce</h3>
+<h2 id="toc_2">call</h2>
+
+<pre><code class="language-javascript">//js中调用函数
+show()
+//等效于
+show.call()
+</code></pre>
+
+<p><code>call</code>可以改变函数调用中的<code>this</code>,对于call调用函数 第一个参数即为<code>this</code></p>
+
+<p>可以通过<code>call</code>来调用父级的方法<br/>
+可以通过赋值原型来继承父级的其它方法，因为原型直接赋值是引用类型的 因此需要遍历赋值</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[DOM]]></title>
+    <link href="https://acefish.github.io/15442514838005.html"/>
+    <updated>2018-12-08T14:44:43+08:00</updated>
+    <id>https://acefish.github.io/15442514838005.html</id>
+    <content type="html"><![CDATA[
+<blockquote>
+<p>像素是计算机能接受的最小单位 因此对于带有小数的像素值，会舍去小数</p>
+</blockquote>
+
+<h2 id="toc_0">操作元素属性方式</h2>
 
 <ol>
-<li><p>map用法<br/>
-map将传入的参数依次作用域每个元素，将结果作为<code>Iterator</code>返回</p>
-<pre><code class="language-python">r1=map(my_func_xx,[1,2,3,4,5])
-list1=list(r1) #因为返回的时Iterator惰性序列,使用list将整个序列计算返回list<br/>
-print(list1)  # [1, 4, 9, 16, 25]
-</code></pre></li>
-<li><p>reduce用法<br/>
-<code>reduce</code>把一个函数作用在一个序列上,这个函数接收两个参数，将结果继续和下一个元素做累计运算</p>
-<pre><code class="language-python">from functools import reduce
-def my_func_add(x, y):<br/>
-    return x+y<br/>
-list2=reduce(my_func_add,[1,2,3,4])<br/>
-print(list2) #10
-</code></pre>
-<h3 id="toc_2">filter</h3></li>
-</ol>
-
-<p><code>filter</code>将传入函数依次作用于每个元素,然后根据返回值为<code>True</code>或者<code>False</code>，决定保留或者丢弃该元素</p>
-
-<pre><code class="language-python">    def my_is_odd(x):
-        return x%2==0
-    #返回的还是Iterator的惰性序列
-    list3=list(filter(my_is_odd, [1,2,4,5,6]))
-    print(list3)  #[2, 4, 6]
-</code></pre>
-
-<h3 id="toc_3">排序</h3>
-
-<p><code>sorted</code>函数</p>
-
-<pre><code class="language-python">list4=[1, 2,-4,0,-3]
-#直接用sorted函数排序
-sorted(list4) # [-4, -3, 0, 1, 2]
-sorted([&#39;bob&#39;, &#39;about&#39;, &#39;Zoo&#39;, &#39;Credit&#39;]) #[&#39;Credit&#39;, &#39;Zoo&#39;, &#39;about&#39;, &#39;bob&#39;]
-#用关键字排序
-sorted(list4, key=abs) #[0, 1, 2, -3, -4]
-#反向排序 
-sorted([&#39;bob&#39;, &#39;about&#39;, &#39;Zoo&#39;, &#39;Credit&#39;], key=str.lower, reverse=True)
-
-</code></pre>
-
-<p>默认对字符串的排序,按照ASCII码大小比较,<br/>
-<code>key</code>指定的函数作用域list的每个元素.并根据返回结果进行排序</p>
-
-<h2 id="toc_4">返回函数</h2>
-
-<p>函数作为结果值进行返回</p>
-
-<pre><code class="language-python">def my_lazy_sum(*args):
-    def my_sum():
-        sum=0
-        for x in args:
-            sum+=x
-        return sum
-    return my_sum
-
-my_f=my_lazy_sum(1,2,3,4)
-my_f() #10
-
-</code></pre>
-
-<p>在函数内部又定义了函数,内部函数可以引用外部函数的参数和局部变量,当外部函数返回内部函数时,参数和变量都保存在返回的函数中，这就是<code>闭包</code></p>
-
-<h3 id="toc_5">闭包</h3>
-
-<p>注意:返回的函数并不会立即执行，而是直到调用才执行,因此函数内用到的变量是执行时的变量值,为了避免:<strong>返回函数时，不要饮用任何循环变量或后续会变化的变量</strong></p>
-
-<h2 id="toc_6">匿名函数</h2>
-
-<p><code>lambda</code>关键字表示匿名函数，冒号前为函数参数<br/>
-匿名函数也可以作为返回值</p>
-
-<pre><code class="language-python">my_f2=lambda x: x*x
-print(my_f2(2)) #4
-</code></pre>
-
-<h2 id="toc_7">装饰器</h2>
-
-<p>函数有<code>__name__</code>属性，可以拿到函数的名字</p>
-
-<pre><code class="language-python">def my_func_now(x):
-    return x*3
-
-name=my_func_now.__name__
-print(name) #my_func_now
-</code></pre>
-
-<p>定义一个装饰器decorator</p>
-
-<pre><code class="language-python">def my_custom_decorator(func):
-    def my_wrapper(*args, **kw):
-        print(&quot;call %s()&quot;%func.__name__)
-        return func(*args, **kw)
-    return my_wrapper
-</code></pre>
-
-<p>用装饰器装饰一个函数</p>
-
-<pre><code class="language-python">@my_custom_decorator #相当于执行了my_log=my_custom_decorator(my_log)
-def my_log():
-    print(&quot;my_log_func&quot;)
-
-my_log() 
-#call my_log()
-# my_log_func
-</code></pre>
-
-<p>在执行<code>my_log</code>函数不仅会执行函数本身，还会运行装饰器的<code>my_wrapper</code>函数</p>
-
-<p><code>decorator</code>还可以传入参数，就需要更复杂的3层嵌套</p>
-
-<pre><code class="language-python">def log(text):
-    def decorator(func):
-        def wrapper(*args, **kw):
-            print(&#39;%s %s():&#39; % (text, func.__name__))
-            return func(*args, **kw)
-        return wrapper
-    return decorator
-    
-@log(&#39;execute&#39;) #3层嵌套相当于:  now = log(&#39;execute&#39;)(now)
-def now():
-    print(&#39;2015-3-25&#39;)
-#execute now():
-#2015-3-25
-</code></pre>
-
-<blockquote>
-<p>当需要在装饰器中获取到真正执行的函数名称时,我们可以使用<code>Python</code>内置的<code>functools.wraps</code></p>
-</blockquote>
-
-<pre><code class="language-python">import functools
-
-def log(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kw):
-        print(&#39;call %s():&#39; % func.__name__) #此时获取到的name为装饰的函数名称，而不是wrapper
-        return func(*args, **kw)
-    return wrapper
-</code></pre>
-
-<h2 id="toc_8">偏函数</h2>
-
-<p>使用<code>functools.partial</code>将函数的某些参数固定住（设置默认值）,返回一个新的函数</p>
-
-<pre><code class="language-python">import functools
-
-int2=functools.partial(int, base=2)
-print(int2(&quot;100&quot;))  #4
-</code></pre>
-
-<p>实际<code>functools.partial</code>接受三个参数:函数对象、<code>*args</code>、<code>**kw</code>,会将<code>*args</code>参数部分自动加到函数对象的左边,而将<code>**kw</code>一部分自动加到右边</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOS CPU 和 Xcode Architectures]]></title>
-    <link href="https://acefish.github.io/15318113047968.html"/>
-    <updated>2018-07-20T14:33:10+08:00</updated>
-    <id>https://acefish.github.io/15318113047968.html</id>
-    <content type="html"><![CDATA[
-<p>arm64：iPhone6s | iphone6s plus｜iPhone6｜ iPhone6 plus｜iPhone5S | iPad Air｜ iPad mini2(iPad mini with Retina Display)<br/>
-armv7s：iPhone5｜iPhone5C｜iPad4(iPad with Retina Display)<br/>
-armv7：iPhone4｜iPhone4S｜iPad｜iPad2｜iPad3(The New iPad)｜iPad mini｜iPod Touch 3G｜iPod Touch4</p>
-
-<p>i386是针对intel通用微处理器32位处理器<br/>
-x86_64是针对x86架构的64位处理器</p>
-
-<p>模拟器32位处理器测试需要i386架构，<br/>
-模拟器64位处理器测试需要x86_64架构，<br/>
-真机32位处理器需要armv7,或者armv7s架构，<br/>
-真机64位处理器需要arm64架构。</p>
-
-<p>Xcode中指令集相关选项（Build Setting中）</p>
-
-<p>Architectures<br/>
-指定工程被编译成可支持哪些指令集类型，而支持的指令集越多，就会编译出包含多个指令集代码的数据包，对应生成二进制包就越大，也就是ipa包会变大。</p>
-
-<p>Valid Architectures<br/>
-限制可能被支持的指令集的范围，也就是Xcode编译出来的二进制包类型最终从这些类型产生，而编译出哪种指令集的包，将由Architectures与Valid Architectures（因此这个不能为空）的交集来确定</p>
-
-<p>Build Active Architecture Only<br/>
-指定是否只对当前连接设备所支持的指令集编译<br/>
-当其值设置为YES，这个属性设置为yes，是为了debug的时候编译速度更快，它只编译当前的architecture版本，而设置为no时，会编译所有的版本。 所以，一般debug的时候可以选择设置为yes，release的时候要改为no，以适应不同设备。</p>
-
-<p>Valid Architectures 设置里， 默认为 Standard architectures(armv7,arm64),如果你想改的话，自己在other中更改</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[高级特性]]></title>
-    <link href="https://acefish.github.io/15319012648780.html"/>
-    <updated>2018-07-18T16:07:44+08:00</updated>
-    <id>https://acefish.github.io/15319012648780.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">切片</h2>
-
-<p>list的切片</p>
-
-<pre><code class="language-python">listTest = list(range(100))
-
-listTest[:10]  # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-listTest[:10:2] #[0, 2, 4, 6, 8]
-listTest[-10:] # [90, 91, 92, 93, 94, 95, 96, 97, 98, 99]
-listTest[:] # 拷贝一个新的list 相当于深拷贝
-</code></pre>
-
-<p>元组:<br/>
-元组的切片结果 仍为不可变的元组</p>
-
-<pre><code class="language-python">(0, 1, 2, 3, 4, 5)[:3] #(0, 1, 2)
-</code></pre>
-
-<p>字符串也可看做一种list，可执行切片</p>
-
-<pre><code class="language-python">&#39;ABCDEFG&#39;[:3] #&#39;ABC&#39;
-&#39;ABCDEFG&#39;[::2] #&#39;ACEG&#39;
-</code></pre>
-
-<h2 id="toc_1">迭代</h2>
-
-<pre><code class="language-python">#遍历dict
-for key in dict2: #遍历所有键
-for key in dict2.values(): #遍历所有值
-for key in dict2.items(): #遍历所有键值对，返回为元组
-    print(key)
-</code></pre>
-
-<p>当遍历时需要下标时,用enumerate()方法可以获取索引</p>
-
-<pre><code class="language-python">for x, value in enumerate(dict2):
-    print(x, value)
-</code></pre>
-
-<h2 id="toc_2">列表生成器</h2>
-
-<pre><code class="language-python">L1=list(range(1,11))
-print(L1) #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-L2=[x*x for x in L1]
-print(L2) #[1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
-L3=[x*x for x in L1 if x%2 == 0]
-print(L3) # [4, 16, 36, 64, 100]
-L4=[str(x1)+str(x2) for x1 in list(range(3)) for x2 in list(range(3,6))]
-print(L4) # [&#39;03&#39;, &#39;04&#39;, &#39;05&#39;, &#39;13&#39;, &#39;14&#39;, &#39;15&#39;, &#39;23&#39;, &#39;24&#39;, &#39;25&#39;]
-</code></pre>
-
-<h2 id="toc_3">生成器 generator</h2>
-
-<p>在列表中一遍循环一边计算的机制,称为生成器：<code>generator</code></p>
-
-<p>创建生成器:</p>
-
-<ol>
-<li><p>方法一: 通过将列表生成器的<code>[]</code>改为<code>()</code></p>
-<pre><code class="language-python"> LI1=list(range(1,5))
-LI2=(x*x for x in LI1)<br/>
-#通过next()方法来获取生成器中的下一个值 直到最后一个元素抛出错误<br/>
-print(next(LI2))<br/>
-print(next(LI2))<br/>
-print(next(LI2))<br/>
-print(next(LI2))<br/>
-print(next(LI2)) # 抛出 StopIteration错误<br/>
-# 通过next()方法太麻烦,我们应该用 for 循环 不用关心StopIteration错误<br/>
-for x in LI2:<br/>
-    print(x)<br/>
-# 1<br/>
-# 4<br/>
-# 9<br/>
-# 16
-</code></pre></li>
-<li><p>方法二: 函数中包含<code>yield</code>关键字,为一个generator函数<br/>
-generator函数在遇到yield关键字时会中断，返回yeild后的值,next之后会继续执行,直到没有yeild就会报错<br/>
-当然也可以通过<code>for</code>循环来获取</p>
-<pre><code class="language-python">def my_generatorFuc():
-    print(&quot;step1&quot;)<br/>
-    yield (1)<br/>
-    print(&quot;step2&quot;)<br/>
-    yield (5)<br/>
-    print(&quot;step3&quot;)<br/>
-    yield(10)<br/>
-    return 100
-</code></pre></li>
-</ol>
-
-<blockquote>
-<p>采用<code>next()</code>可以当遇到<code>StopIteration</code>错误可以获取到<code>generator</code>函数的<code>return</code>值,返回值包含在<code>StopIteration</code>的<code>value</code>中<br/>
-采用<code>for</code>循环获取不到函数的返回值,因此需要捕获<code>StopIteration</code>错误</p>
-</blockquote>
-
-<h2 id="toc_4">迭代器</h2>
-
-<p> 对于可以用for循环的对象称为可迭代对象:<code>Iterable</code><br/>
- 目前常用的可迭代对象有:<br/>
- 1. list、tuple、dict、set、str<br/>
- 2. generator:生成器和带<code>yield</code>的generator函数<br/>
- <br/>
- 可以被next()函数调用并不断返回下一个值的对象称为迭代器：<code>Iterator</code><br/>
- 生成器都是迭代器,但是list、tuple、dict、set、str等是可迭代对象但不是迭代器<br/>
- </p>
-
-<blockquote>
-<p><code>Iterator</code>对象表示的是一个数据流，是一个惰性序列,不能事先知道序列长度，只能通过需要是<code>next()</code>计算下一个序列值</p>
-
-<p><code>for</code>循环本质上是通过不停调用<code>next()</code>来实现的</p>
-
-<p>list、tuple、dict、set、str等可迭代对象可以通过<code>iter()</code>函数获得一个<code>Iterator</code>对象</p>
-</blockquote>
-
-<pre><code class="language-python">it = iter([1, 2, 3, 4, 5])
-# 循环:
-while True:
-    try:
-        # 获得下一个值:
-        x = next(it)
-    except StopIteration:
-        # 遇到StopIteration就退出循环
-        break
-</code></pre>
-
-<p> <br/>
- </p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[函数]]></title>
-    <link href="https://acefish.github.io/15318121291068.html"/>
-    <updated>2018-07-17T15:22:09+08:00</updated>
-    <id>https://acefish.github.io/15318121291068.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">常用函数</h2>
-
-<h3 id="toc_1">类型转换</h3>
-
-<pre><code class="language-python">int(&#39;123&#39;)
-123
-&gt;&gt;&gt; int(12.34)
-12
-&gt;&gt;&gt; float(&#39;12.34&#39;)
-12.34
-&gt;&gt;&gt; str(1.23)
-&#39;1.23&#39;
-&gt;&gt;&gt; str(100)
-&#39;100&#39;
-&gt;&gt;&gt; bool(1)
-True
-&gt;&gt;&gt; bool(&#39;&#39;)
-False
-</code></pre>
-
-<h2 id="toc_2">定义函数</h2>
-
-<pre><code class="language-python">def my_abs(x):
-    # 检查参数类型 
-    if not isinstance(x, (int, float)):
-       # 当参数类型错误时  抛出错误
-        raise TypeError(&quot;bad operate Params type&quot;)
-
-    if x&gt;0:
-        return x
-    else:
-        return -x
-
-print(my_abs(&quot;-333&quot;)) #TypeError: bad operate Params type
-</code></pre>
-
-<p>定义一个空函数</p>
-
-<pre><code class="language-python">def nop():
-    pass
-# pass用作占位符 
-</code></pre>
-
-<p>返回多个返回值<br/>
-返回的其实为单一一个值，一个<code>元组</code>,我们通过多个变量接收一个元组,按位置赋值</p>
-
-<pre><code class="language-python">import math
-
-def move(x, y, step, angle=0):
-    nx = x + step * math.cos(angle)
-    ny = y - step * math.sin(angle)
-    return nx, ny
-
-x, y = move(100, 100, 60, math.pi / 6)
-print(x, y)
-151.96152422706632 70.0
-</code></pre>
-
-<blockquote>
-<p>若函数结束时没有<code>return</code>语句，就自动添加 <code>return None</code></p>
-</blockquote>
-
-<h2 id="toc_3">函数参数</h2>
-
-<p>python的函数定义简单,灵活度很大.除了正常的必选参数外,还能使用默认参数、可变参数、关键字参数。</p>
-
-<p><strong>参数组合</strong></p>
-
-<blockquote>
-<p>在Python中，可以使用必选参数、默认参数、可变参数、关键字参数和命名关键字参数，但是参数的定义顺序必须是:<code>必选参数、默认参数、可变参数、命名关键字参数和关键字参数</code></p>
-</blockquote>
-
-<pre><code class="language-python">def f1(a, b, c=0, *args, **kw):
-    print(&#39;a =&#39;, a, &#39;b =&#39;, b, &#39;c =&#39;, c, &#39;args =&#39;, args, &#39;kw =&#39;, kw)
-
-def f2(a, b, c=0, *, d, **kw):
-    print(&#39;a =&#39;, a, &#39;b =&#39;, b, &#39;c =&#39;, c, &#39;d =&#39;, d, &#39;kw =&#39;, kw)
-</code></pre>
-
-<h3 id="toc_4">默认参数</h3>
-
-<p>必选参数在前,默认参数在后</p>
-
-<pre><code class="language-python">def my_power(x, n=2):
-    total = 1
-    for s in range(1,n+1):
-        total = total*x
-    return total
-
-print(my_power(2))  # 4
-</code></pre>
-
-<p><strong>定义默认参数时: 默认参数必须指向不变对象,否则可变对象会成为函数内静态变量会在多次调用时变化，影响函数调用结果</strong></p>
-
-<blockquote>
-<p>使用默认参数即可省略参数，降低调用难度</p>
-</blockquote>
-
-<h3 id="toc_5">可变参数</h3>
-
-<p>当不确定参数的个数时,可以使用可变参数，可以传入任意个参数,包括0个参数</p>
-
-<pre><code class="language-python">def my_sum(*numbers):
-    sum=0
-    for x in numbers:
-        sum += x
-
-    return sum
-
-print(my_sum(1,2,3,4)) # 10
-numbers = [1,2,3,4,5]
-#通过给list 或者 tuple前加*  将其元素变为可变参数
-print(my_sum(*numbers)) #15 
-</code></pre>
-
-<p>传入的可变参数在函数内部封装为一个元组</p>
-
-<h3 id="toc_6">关键字参数</h3>
-
-<p>可以传入0个或任意个含参数名的参数,这些关键字参数在函数内部自动封装为dict</p>
-
-<pre><code class="language-python">def my_personFuc(name, age, **kw):
-    print(&quot;name:&quot;, name, &quot;age:&quot;, age, kw)
-
-my_personFuc(&quot;lyy&quot;, 24, city=&quot;luoyang&quot;) #name: lyy age: 24 {&#39;city&#39;: &#39;luoyang&#39;}
-my_personFuc(&quot;wt&quot;, 20) # name: wt age: 20 {}
-
-kwDict={&quot;city&quot;:&quot;beijing&quot;}
-# 解构字典
-my_personFuc(&quot;yt&quot;, &quot;25&quot;, **kwDict) # name: yt age: 25 {&#39;city&#39;: &#39;beijing&#39;}
-</code></pre>
-
-<blockquote>
-<p>对于关键字参数，对于直接传入的参数，采用<code>=</code>而且<code>key</code>不能为str类似的字符串</p>
-</blockquote>
-
-<h3 id="toc_7">命名关键字参数</h3>
-
-<pre><code class="language-python">#命名需要关键字 * ，在 * 之后的为命名关键字参数，
-def my_keyPerson(name, age, *, city, job):
-    print(name, age, city, job)
-
-#命名关键字必须传入参数名 否则会报错 
-my_keyPerson(&quot;lyy&quot;, 24, city=&quot;luoyang&quot;, job=&quot;iOS&quot;) # lyy 24 luoyang iOS
-
-# 可以为可变参数隔开
-def my_keyPerson1(name, age, *args, city, job):
-    print(name, age, args, city, job)
-
-# 明明关键字可以有缺省值,这样调用时候可以不传入city参数
-def my_keyPerson2(name, age, *, city=&#39;Beijing&#39;, job):
-    print(name, age, city, job)
-
-</code></pre>
-
-<h2 id="toc_8">递归函数</h2>
-
-<p>解决递归调用栈溢出的方法是通过<code>尾递归优化</code>，事实上尾递归和循环的效果是一样的，所以，把循环看成是一种特殊的尾递归函数也是可以的。<br/>
-<code>尾递归是指，在函数返回的时候，调用自身本身，并且，return语句不能包含表达式</code>。这样，编译器或者解释器就可以把尾递归做优化，使递归本身无论调用多少次，都只占用一个栈帧，不会出现栈溢出的情况</p>
-
-<pre><code class="language-python"># 递归函数
-def fact(n):
-    if n==1:
-        return 1
-    return n + fact(n - 1)
-
-print(fact(10))  # 55
-# 栈溢出
-print(fact(1000))  #RecursionError: maximum recursion depth exceeded in comparison
-
-#尾递归优化后
-def fact(n):
-    return fact_iter(n, 1)
-
-def fact_iter(num, product):
-    if num == 1:
-        return product
-    return fact_iter(num - 1, num * product)
-</code></pre>
-
-<blockquote>
-<p>目前包括Python在内的编程语言都没有做尾递归优化,因此类似上面的尾递归优化之后仍会导致栈溢出</p>
-</blockquote>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[语句]]></title>
-    <link href="https://acefish.github.io/15317414032911.html"/>
-    <updated>2018-07-16T19:43:23+08:00</updated>
-    <id>https://acefish.github.io/15317414032911.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">list</h2>
-
-<pre><code class="language-python">
-list1=[1, 2, 3]
-
-print(len(list1)) #长度 3
-print(&quot;第一个元素:%s&quot; % (list1[0])) #从0开始获取第一个元素 1
-print(&quot;最后一个元素:%s&quot; % (list1[-1])) #从-1开始获取最后一个元素 3
-
-list1.append(4) #追加元素到末尾
-print(&quot;m末尾追加元素：%s&quot;%(list1[-1]))  # 4
-
-list1.insert(1, 1) #向索引1插入1
-print(list1)  # [1, 1, 2, 3, 4]
-
-list1.pop() #删除末尾元素
-print(list1)  # [1, 1, 2, 3]
-
-list1.pop(1) #删除指定索引位置元素
-print(list1)  # [1, 2, 3]
-
-list1[1] = 1 #替换元素
-print(list1)  # [1, 1, 3]
-
-list1[2] = &quot;第3个元素&quot;  #list中的数据类型可以不同
-list1.append(False)
-list1.append([5,6])
-print(list1)  # [1, 1, &#39;第3个元素&#39;, False, [5, 6]]
-</code></pre>
-
-<h2 id="toc_1">tuple</h2>
-
-<pre><code class="language-python">tuple1=(1,) #定义只有一个元素的元组 不能使用 tuple1=(1)这样定义为1这个数
-print(tuple1) # (1,)
-#tuple一经定义便不能修改，不过不变的是每个元素的指向,而可以修改器内指针元素指向的对象
-tuple2=() # 定义一个空元组
-</code></pre>
-
-<blockquote>
-<p>因为tuple与list相比不能修改,所以更安全，尽量使用元组</p>
-</blockquote>
-
-<h2 id="toc_2">条件语句</h2>
-
-<pre><code class="language-python">if len(tuple2)==0:
-    print(&quot;空元组&quot;)
-elif len(tuple2)&gt;0:   # else if的缩写
-    print(&quot;非空数组&quot;)
-else:
-    print(&quot;无效&quot;)
-</code></pre>
-
-<blockquote>
-<p>对于判断条件中的非零数值、非空字符串、非空list等，就判断为<code>True</code>，否则为<code>False</code></p>
-</blockquote>
-
-<h2 id="toc_3">input</h2>
-
-<pre><code class="language-python">birth=input(&quot;birth:&quot;)
-birth=int(birth)
-if birth &gt; 25:
-    print(&quot;人到中年，身不由己&quot;)
-else:
-    print(&quot;你还年轻&quot;)
-</code></pre>
-
-<blockquote>
-<p>input默认导入的为一个字符串 因此需要转换类型为int才能进行与数字进行比较</p>
-</blockquote>
-
-<h2 id="toc_4">for循环</h2>
-
-<pre><code class="language-python">for x in list1: #遍历列表
-    print(x)
-
-for x in range(1,10): 
-    print(x)
-</code></pre>
-
-<h2 id="toc_5">break continue</h2>
-
-<p><code>break</code>用于提前退出循环<br/>
-<code>continue</code>用于跳过当前这次循环</p>
-
-<pre><code class="language-python">for x in range(1,10):
-    if x==5:
-        break
-    print(x)
-    
-    for x in range(1,10):
-    if x==5:
-        continue
-    print(x)
-</code></pre>
-
-<blockquote>
-<p>不要滥用break和continue，容易逻辑分差太多而出错</p>
-</blockquote>
-
-<h2 id="toc_6">dict</h2>
-
-<pre><code class="language-python">dict1={&quot;lyy&quot;:25, &quot;wtt&quot;:20}
-dict1[None] = 10
-dict1[&#39;Adam&#39;] = 67
-print(dict1[None]) # 10
-print(dict1) #{&#39;lyy&#39;: 25, &#39;wtt&#39;: 20, None: 10, &#39;Adam&#39;: 67}
-
-#判断key是否存在  key in dict
-if &quot;lyy&quot; in dict1:
-    print(dict1[&quot;lyy&quot;])   #25
-
-print(dict1.get(&quot;eee&quot;, &quot;placehoder&quot;)) #placehoder  获取key如果没有就返回None或自指定的value
-
-dict1.pop(&quot;lyy&quot;)  #pop删除指定键
-if &quot;lyy&quot; in dict1:
-    print(dict1[&quot;lyy&quot;])
-else:
-    print(&quot;lyy不存在&quot;)  #不存在
-    
-
-dict1[(1,)] = &quot;name&quot;  #用元组作为key
-print(dict1[(1,)])  #name
-#虽然元组也是不可变对象 但是元素不能为list等可变对象
-dict1[(1,[1,2])] = &quot;name&quot;  #报错  unhashable type: &#39;list&#39;
-</code></pre>
-
-<p><code>dict</code>的<code>key</code>必须为不可变对象,例如字符串，整数等，而list是可变的不能作为key</p>
-
-<blockquote>
-<p>和list比较，dict有以下几个特点：<br/>
-查找和插入的速度极快，不会随着key的增加而变慢；<br/>
-需要占用大量的内存，内存浪费多。<br/>
-而list相反：<br/>
-查找和插入的时间随着元素的增加而增加；<br/>
-占用空间小，浪费内存很少。</p>
-</blockquote>
-
-<p>补充知识:</p>
-
-<p><strong>dict()</strong>函数 用于创建一个字典,返回一个字典</p>
-
-<pre><code class="language-python">class dict(**kwarg)  # **kwargs -- 关键字
-class dict(mapping, **kwarg)  # mapping -- 元素的容器
-class dict(iterable, **kwarg) # iterable -- 可迭代对象
-
-
-dict()                        # 创建空字典
-{}
-dict(a=&#39;a&#39;, b=&#39;b&#39;, t=&#39;t&#39;)     # 传入关键字
-{&#39;a&#39;: &#39;a&#39;, &#39;b&#39;: &#39;b&#39;, &#39;t&#39;: &#39;t&#39;}
-dict(zip([&#39;one&#39;, &#39;two&#39;, &#39;three&#39;], [1, 2, 3]))   # 映射函数方式来构造字典
-{&#39;three&#39;: 3, &#39;two&#39;: 2, &#39;one&#39;: 1} 
-dict([(&#39;one&#39;, 1), (&#39;two&#39;, 2), (&#39;three&#39;, 3)])    # 可迭代对象方式来构造字典
-{&#39;three&#39;: 3, &#39;two&#39;: 2, &#39;one&#39;: 1}
-</code></pre>
-
-<h2 id="toc_7">Set</h2>
-
-<p><code>set</code>中不能元素不能重复,因此只能为不可变对象</p>
-
-<p>要创建<code>set</code>需要用<code>list</code>作为输入集合</p>
-
-<pre><code class="language-python">set1 = set([1, &quot;name&quot;, 1])
-print(set1)  # {1, &#39;name&#39;}
-set1.add(&quot;1&quot;)
-set1.add(1)
-print(set1)  # {1, &#39;1&#39;, &#39;name&#39;}
-set1.remove(1)
-print(set1)  # {&#39;1&#39;, &#39;name&#39;}
-</code></pre>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Python基础]]></title>
-    <link href="https://acefish.github.io/15317258769792.html"/>
-    <updated>2018-07-16T15:24:36+08:00</updated>
-    <id>https://acefish.github.io/15317258769792.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">数据类型</h2>
-
-<h3 id="toc_1">字符串</h3>
-
-<p><strong>字符串是不可变的</strong></p>
-
-<ol>
-<li>用<code>&#39;</code>或者<code>&quot;</code>括起来的文本</li>
-<li>可以通过 <code>\</code>转义字符来在文本中转义,进行<code>\n</code>换行 <code>\t</code>制表</li>
-<li>可以通过在文本前加<code>r</code>表示文本不转义</li>
-<li>用三个单引号<code>&#39;&#39;&#39;...&#39;&#39;&#39;</code>的文本可以在内部直接换行而不需要<code>\n</code></li>
-</ol>
-
-<pre><code class="language-python">print(&quot;hello, world&quot;)
-print(&quot;I\&#39;m OK!&quot;)
-print(&quot;\t文本&quot;)
-print(r&#39;&#39;&#39;\\line1
-line2
-line3aaaa&#39;&#39;&#39;)
-</code></pre>
-
-<blockquote>
-<p>python中的单引号和双引号的用法都是一样的，只是如果字符串中有相同字符时需要转义</p>
-</blockquote>
-
-<h3 id="toc_2">布尔</h3>
-
-<p><code>True</code>  真<br/>
-<code>False</code> 假</p>
-
-<p>布尔运算<br/>
-<code>and</code>  与<br/>
-<code>or</code>   或<br/>
-<code>not</code>  非</p>
-
-<h3 id="toc_3">空值</h3>
-
-<p><code>None</code>表示空值</p>
-
-<h2 id="toc_4">变量</h2>
-
-<p>定义变量<br/>
-<code>a=1</code></p>
-
-<blockquote>
-<p>python是动态语言 因此可以将不同类型的变量赋值给同一变量</p>
-</blockquote>
-
-<pre><code class="language-python">a=False
-a=&quot;aa&quot;
-print(a)
-</code></pre>
-
-<h2 id="toc_5">常量</h2>
-
-<p>在python中常用全大写的变量名来表示常量</p>
-
-<blockquote>
-<p>python中除法<code>/</code>的结果为浮点数(即使整除),  <code>//</code>为地板除，两个除法的结果仍为整数</p>
-</blockquote>
-
-<pre><code class="language-python">print(10/3)   3.3333333333333335
-print(10//3)   3
-print(9/3)    3.0
-print(9//3)   3
-print(12.7//5.1)   2.0
-print(1.2/3)    0.39999999999999997
-</code></pre>
-
-<h2 id="toc_6">编码</h2>
-
-<p>在python3中字符串以Unicode编码，</p>
-
-<p>可以通过<code>ord()</code>函数获取字符的整数表示<br/>
-可以通过<code>chr()</code>函数将编码转为对应字符</p>
-
-<pre><code class="language-python">print(ord(&quot;😱&quot;)) //128561
-print(chr(128561)) //😱
-//当知道字符的整数编码,可以用16进制来写str
-print(&#39;\u4e2d\u6587&#39;) //中文
-</code></pre>
-
-<p>Python对bytes类型的数据用带<code>b</code>前缀的单引号或双引号表示:</p>
-
-<pre><code class="language-python">x = b&#39;ABC&#39;
-</code></pre>
-
-<blockquote>
-<p>python的字符串<code>str</code>在内存中以Unicode表示,当在网上传输或者保存磁盘时,需要将其转为以字节为单位的<code>bytes</code>使用<code>encode()</code>,而当从网络或磁盘读取数据读到的是<code>bytes</code>,将butes转为str，使用<code>decode()</code>方法</p>
-</blockquote>
-
-<p>可以通过<code>encode()</code>方法将<code>str</code>编码为指定的<code>bytes</code></p>
-
-<pre><code class="language-python">print(&quot;中文&quot;.encode(&quot;utf-8&quot;))  # b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;
-print(b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;.decode(&#39;utf-8&#39;))  #中文
-
-#如果bytes中存在一小部分无效字节,可以添加errors=&#39;ignore&#39;来忽略错误的字节
-b&#39;\xe4\xb8\xad\xff&#39;.decode(&#39;utf-8&#39;, errors=&#39;ignore&#39;)  #中
-</code></pre>
-
-<p><code>len()</code>函数用来计算<code>str</code>字符串的字符数,对于<code>bytes</code>则计算其字节数:</p>
-
-<pre><code class="language-python">&gt;&gt;&gt; len(b&#39;ABC&#39;)
-3
-&gt;&gt;&gt; len(b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;)
-6
-&gt;&gt;&gt; len(&#39;中文&#39;.encode(&#39;utf-8&#39;))
-6
-</code></pre>
-
-<blockquote>
-<p>为避免乱码,请坚持使用UTF-8编码进行转换,因此对于python的源码文件,指定其为UTF-8编码保存,并通过<code># -*- coding: utf-8 -*-</code>告诉编译器按照UTF-8读取源码</p>
-</blockquote>
-
-<p><strong><code># -*- coding: utf-8 -*-</code></strong></p>
-
-<h2 id="toc_7">格式化</h2>
-
-<pre><code class="language-python"># 格式化
-print(&quot;这是字符串的%s格式化&quot; % (&quot;栗豫塬&quot;))
-print(&quot;my name is %s age is %d height %.2f&quot; % (&quot;栗豫塬&quot;, 24, 17.0))
-</code></pre>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Stack Navigation]]></title>
-    <link href="https://acefish.github.io/15312926184354.html"/>
-    <updated>2018-07-11T15:03:38+08:00</updated>
-    <id>https://acefish.github.io/15312926184354.html</id>
-    <content type="html"><![CDATA[
-<h3 id="toc_0">navigationOptions</h3>
-
-<p>title: 导航栏的标题</p>
-
-<p>header: 导航栏设置对象</p>
-
-<p>headerTitle: 导航栏的标题, 可以是字符串也可以是个组件<br/>
-headerBackTitle: 左上角的返回键文字, 默认是上一个页面的title，设置这个属性会覆盖掉title的值<br/>
-headerRight: 导航栏右按钮<br/>
-headerLeft: 导航栏左按钮<br/>
-headerStyle: 导航栏的style<br/>
-headerTitleStyle: 导航栏的title的style<br/>
-headerTintColor: 返回按钮的颜色<br/>
-headerPressColorAndroid ：按压返回按钮显示的颜色 安卓系统 &gt;= 5.0才有效。<br/>
-gesturesEnabled ：是否允许右滑返回，在iOS上默认为true，在Android上默认为false</p>
-
-<h3 id="toc_1">StackNavigatorConfig</h3>
-
+<li>oDiv.style.display = &quot;none&quot;</li>
+<li>oDiv.style[&quot;display&quot;] = &quot;none&quot;</li>
+<li><p>DOM方式</p>
 <ul>
-<li>initialRouteName: 设置默认的页面组件，必须是上面已注册的页面组件</li>
-<li>initialRouteParams: 初始路由的参数</li>
-<li>navigationOptions: 屏幕导航的默认选项</li>
-<li>paths: RouteConfigs里面路径设置的映射</li>
-<li>mode: 页面切换模式:
-<ul>
-<li>card: 普通app常用的左右切换</li>
-<li>modal: 上下切换</li>
-</ul></li>
-<li>headerMode: 导航栏的显示模式:
-<ul>
-<li>float: 无透明效果, 默认</li>
-<li>screen: 有渐变透明效果, 如微信QQ的一样</li>
-<li>none: 隐藏导航栏</li>
-</ul></li>
-<li>cardStyle: 样式</li>
-<li>onTransitionStart: 页面切换开始时的回调函数</li>
-<li>onTransitionEnd: 页面切换结束时的回调函数</li>
+<li>获取: getAttribute</li>
+<li>设置: setAttribute</li>
+<li>删除: removeAttribute</li>
 </ul>
+<pre><code class="language-javascript">oText.setAttribute(&quot;value&quot;, &quot;text&quot;)
+</code></pre></li>
+</ol>
+
+<h2 id="toc_1">用class获取元素</h2>
+
+<pre><code class="language-javascript">oParent.className //获取className
+</code></pre>
+
+<h2 id="toc_2">获取节点</h2>
+
+<h3 id="toc_3">子节点</h3>
+
+<pre><code class="language-javascript">//获取所有自己点
+var oUl = document.getElementById(&quot;ul1&quot;)
+oUl.childNodes // 属性 获取到所有 包括文本节点和元素节点
+oUl.children //属性 获取所有的元素节点
+oUl.nodeType  // 获取节点的节点类型  
+</code></pre>
+
+<p>子节点 只算自己下一层的所有元素个数</p>
+
+<ol>
+<li><p>文本节点<br/>
+<code>nodetype</code>为 3</p></li>
+<li><p>元素节点<br/>
+<code>nodetype</code>为 1</p></li>
+</ol>
+
+<h3 id="toc_4">父节点</h3>
+
+<pre><code class="language-javascript">oUl.parentNode
+</code></pre>
+
+<h3 id="toc_5">首尾节点</h3>
+
+<pre><code class="language-javascript">firstChild  //获取第一个子节点
+firstElementChild //获取第一个元素子节点
+
+lastChild  // 
+lastElementChild //
+</code></pre>
+
+<h3 id="toc_6">兄弟节点</h3>
+
+<pre><code class="language-javascript">nextSibling
+nextElementSibling
+
+previsionSibling
+nextElementSibling
+</code></pre>
+
+<h2 id="toc_7">操作节点</h2>
+
+<h3 id="toc_8">创建元素节点</h3>
+
+<p><code>creatElement(标签名)</code> 创建一个节点<br/>
+<code>appendChild(节点)</code> 追加一个节点 (追加的节点如果已有其它父节点 会先从父节点删除)</p>
+
+<h3 id="toc_9">插入元素</h3>
+
+<p><code>insertBefore(原有节点)</code> 在原有节点前插入节点 </p>
+
+<h3 id="toc_10">删除元素</h3>
+
+<p><code>removeChild(节点)</code>  删除一个节点</p>
+
+<h2 id="toc_11">文档碎片</h2>
+
+<p>避免多次操作元素 导致页面多次渲染造成的性能问题，将多次操作元素的操作合并，进行一次渲染即可</p>
+
+<pre><code class="language-javascript">var oUl = document.getElementById(&quot;ul1&quot;)
+var oFrag = document.createDocumentFragment()
+Frag.appendChild(subLiElement)
+oUl.appendChild(oFrag)
+</code></pre>
+
+<blockquote>
+<p>问题不大，理论上，只有在很多次的元素操作才会出现问题,并且低级浏览器几乎没有任何影响</p>
+</blockquote>
+
+<h2 id="toc_12">document.write</h2>
+
+<p>会先清空 再写</p>
+
+<h2 id="toc_13">document是属于浏览器的</h2>
+
+<p>我们常使用的<code>document.write(&#39;&#39;)</code>其实是<code>window.document.write(&#39;&#39;)</code>的简写</p>
 
 ]]></content>
   </entry>

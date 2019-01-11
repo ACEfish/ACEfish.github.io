@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,133 +114,124 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15288713693530.html">
+                <a class="clearlink" href="15350771796806.html">
                 
-                  <h1>状态机</h1>
+                  <h1>CGColorSpace</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>ReactNative 将UI视作一个状态机,每个UI场景就是状态机的一个状态</p>
+                        	<p>表示指定的颜色值</p>
 
-<blockquote>
-<p>不要在状态机变量中存放于显示无关的变量,会导致务必要渲染UI</p>
-</blockquote>
-
-<h2 id="toc_0">State</h2>
-
-<blockquote>
-<p>尽可能让自定义的组件成为无状态组件<br/>
-好的reactnative设计思路:创建多个只负责渲染数据的无状态组件，将他们封装在一个有状态的reactnative组件中,有状态的组件封装了UI交互的逻辑，而无状态的组件负责渲染UI界面。</p>
-</blockquote>
-
-<pre><code class="language-javascrip">constructor(props) {
-        super(props)
-        this.state = {
-            input: &#39;&#39;,
-            inputPWD: &#39;&#39;,
-        }
-    }
-    updateNum(newText) {
-        this.setState((state) =&gt; {
-            return {input: newText}
-        });
-    }
-
-    updatePWD(newText) {
-        this.setState(() =&gt; {
-            return {
-                inputPWD : newText
-            }
-        })
-    }
+<pre><code class="language-objectivec">CGColorSpaceRef
+//一个配置文件，指定如何解释显示的颜色值。
 </code></pre>
 
-<p>通过this.state.状态机变量名 访问状态机变量</p>
+<h2 id="toc_0">概述</h2>
 
-<p>我们需要将状态机变量看做 <strong>不可变常量</strong>，不能直接改变状态机变量，只能通过<strong>setState</strong>函数</p>
+<p>颜色空间是多维的，每个维度表示特定的颜色分量。例如，RGB颜色空间的颜色有R,G,B三个三个维度.颜色空间的的每个维度强度由浮点值表示，其范围和含义取决于所讨论的颜色空间</p>
 
-<h2 id="toc_1">渲染</h2>
+<p>我们通过正确指定的颜色空间可以确保图像具有一致的外观</p>
 
-<p>setState函数原型：<code>setState(oldState, callback)</code> 第二个参数为回调函数,会在setState完成并且重新渲染完成(如果需要的话)后被调用</p>
+<p><code>Core Graphics</code>支持多种颜色空间：</p>
 
-<p>如果setState函数将传入函数的返回值与当前状态机相比没有任何修改或增加,将不会进行渲染</p>
+<ol>
+<li>与设备无关的颜色空间: 校准的色彩空间。 确保在不同设备上现实的颜色相同,</li>
+<li>与设备相关的颜色空间: 依赖于设备的颜色空间与特定设备的颜色表示系统相关联。</li>
+<li>特殊的颜色空间: 使用索引和对应的基色空间 索引颜色空间包含了最多256个颜色表以及每个颜色表的条目都制定基色空间的一种颜色</li>
+</ol>
 
-<p>改变状态机变量后 所有与状态机变量值有关系的组件都会被刷新。</p>
+<h3 id="toc_1">创建与设备无关的颜色空间</h3>
 
-<blockquote>
-<p>当修改组件的状态机变量值后，ReactNative会在考虑清楚如何高效的渲染UI后,执行SetState的箭头函数来渲染组件,因此setState是异步执行的函数</p>
+<p>为了创建与设备无关的颜色空间，我们需要提供白色参考点，黑色参考点以及特殊设备的gamma值</p>
 
-<p>当子组件需要渲染时,那么该子组件的各个生命周期的函数都会按声明周期调用 这就是渲染高效的原因</p>
-</blockquote>
+<ol>
+<li><p>创建标准的灰度色彩空间</p>
+<p><code>CGColorSpaceCreateCalibratedGray</code></p>
+<p>创建与设备无关的灰度颜色空间，表示相对于参考白点的颜色</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateCalibratedGray(const CGFloat *whitePoint, const CGFloat *blackPoint, CGFloat gamma);
+whitePoint :   3个数字的数组,制定了在CIE 1931 XYZ-space颜色系统中漫反射白点的3刺激值 (对色彩学不熟悉)<br/>
+blackPoint :   3个数字的数组,制定了在CIE 1931 XYZ-space颜色系统中漫反射黑点的3刺激值 <br/>
+gamma ： 适合于成像设备的伽马值。<br/>
+返回一个新的灰色色彩空间,需要主动调用`CGColorSpaceRelease`来释放
+</code></pre></li>
+<li><p>创建校准的RGB颜色空间<br/>
+<code>CGColorSpaceCreateCalibratedRGB</code></p>
+<p>创建与设备无关的RGB颜色空间，表示相对于参考白点的颜色。 此白点基于输出设备可以生成的最白光。 与设备无关的颜色空间中的颜色在不同设备上显示时应该相同，只要设备的功能允许。<br/>
+对于需要详细伽玛的色彩空间，例如sRGB或ITU-R BT.709中使用的分段传递函数，可以使用函数<code>CGColorSpaceCreateICCBased</code>，因为它可以准确地表示这些伽玛曲线。</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateCalibratedRGB(const CGFloat *whitePoint, const CGFloat *blackPoint, const CGFloat *gamma, const CGFloat *matrix);
+whitePoint：<br/>
+blackPoint<br/>
+gamma: 一个由3个数字组成的数组，用于指定颜色空间的红色，绿色和蓝色分量的伽玛值。<br/>
+matrix： 9个数字的数组，指定相对于最终XYZ表示的颜色空间的伽马修改的RGB值的线性解释。<br/>
+返回一个新的RGB色彩空间,需要主动调用`CGColorSpaceRelease`来释放
+</code></pre></li>
+<li><p>创建根绝ICC颜色配置文件的规范<br/>
+<code>CGColorSpaceCreateICCBased</code></p>
+<p>根据ICC颜色配置文件创建基于ICC的色彩空间</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateICCBased(size_t nComponents, const CGFloat *range, CGDataProviderRef profile, CGColorSpaceRef alternate);
+</code></pre></li>
+<li><p>创建根据 CIE L<em>a</em>b标准与人类感知相关颜色</p>
+<p><code>CGColorSpaceCreateLab</code><br/>
+<code>CIE L * a * b</code>*空间是Munsell颜色表示系统（一种通过色调，值和饱和度或“色度”值指定颜色的系统）的非线性变换，旨在将感知色差与定量距离相匹配 在色彩空间。 L *分量表示亮度值，a *分量表示从绿色到红色的值，b *分量表示从蓝色到黄色的值。 这大致对应于人脑被认为解码颜色的方式。 与设备无关的颜色空间中的颜色在不同设备上显示时应该相同，只要设备的功能允许。</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateLab(const CGFloat *whitePoint, const CGFloat *blackPoint, const CGFloat *range);
+whitePoint:<br/>
+blackPoint:<br/>
+range:一个由4个数字组成的数组，用于指定颜色空间的a *和b *组件的有效值范围。 a *组件表示从绿色到红色的值，b *组件表示从蓝色到黄色的值。
+</code></pre></li>
+</ol>
 
-<h3 id="toc_2">判断是否渲染</h3>
+<h2 id="toc_2">创建通用或者与设备相关的颜色空间</h2>
 
-<pre><code class="language-javascript">//判断是否渲染，实现这个函数后,会在重新渲染组件前，调用这个函数，返回false就放弃渲染组件
-shouldComponentUpdate() {
-        if (this.state.input.length &lt; 3) {
-            return true;
-        }
-        return false;
-    }
+<p>当在不同的输出设备上显示时，设备颜色空间中的颜色经常显得不同。 因此，在保持颜色很重要时，不建议使用设备颜色空间</p>
+
+<ol>
+<li><p>CMYK颜色空间</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateDeviceCMYK(void);
+使用完后需要主动调用CGColorSpaceRelease进行释放
+</code></pre></li>
+<li><p>灰度颜色空间</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateDeviceGray(void);
+</code></pre></li>
+<li><p>RGB颜色空间</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateDeviceRGB(void);
+</code></pre></li>
+<li><p>特定平台的颜色空间</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateWithPlatformColorSpace(const void *ref);
+platformColorSpace：指向特定于平台的颜色空间的通用指针。 在macOS中，传递CMProfileRef-a ColorSync配置文件。 Quartz仅在函数调用期间使用此指针（和基础信息）
+</code></pre></li>
+</ol>
+
+<h2 id="toc_3">创建特殊颜色空间</h2>
+
+<ol>
+<li><p>创建索引颜色空间，由颜色查找表指定的颜色组成。</p>
+<p>索引颜色空间包含最多255个条目的颜色表，以及颜色表条目映射到的基色空间。 颜色表中的每个条目都指定基色空间中的一种颜色。 索引颜色空间中的值被视为颜色空间的颜色表的索引。 表中的数据采用网格格式。 （例如，对于RGB颜色空间，值为R，G，B，R，G，B等。）</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateIndexed(CGColorSpaceRef baseSpace, size_t lastIndex, const unsigned char *colorTable);
+baseSpace:颜色索引表基于的 基色颜色空间<br/>
+lastIndex: 索引表的最大下标值 必须&lt;=255<br/>
+colorTable: m *（lastIndex + 1）个字节的数组，其中m是基色空间中的颜色分量数。 每个字节是0到255范围内的无符号整数，它被缩放到基色空间中相应颜色分量的范围。
+</code></pre></li>
+<li><p>创建图案颜色空间</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreatePattern(CGColorSpaceRef baseSpace);
+baseSpace:对于蒙版图案，底层颜色空间指定要通过蒙版绘制的颜色。 对于彩色图案，您应该传递NULL。
+</code></pre></li>
+<li><p>创建指定类型的Quartz颜色空间</p>
+<p>我们可以使用此函数创建通用的颜色空间等,查看<a href="https://developer.apple.com/documentation/coregraphics/cgcolorspace/color_space_names?language=objc">Color Space Name</a></p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateWithName(CFStringRef name);
+name：颜色空间名称
+</code></pre></li>
+</ol>
+
+<h2 id="toc_4">颜色空间的引用和释放</h2>
+
+<pre><code class="language-objectivec">//减少颜色空间的引用计数
+void CGColorSpaceRelease(CGColorSpaceRef space);
+
+//增加颜色空间的引用计数
+CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space);
+
 </code></pre>
-
-<h3 id="toc_3">强制渲染</h3>
-
-<p><code>forceUpdate(callback)</code> <br/>
-当UI的可变数据来源为属性和状态之外获取时,可以使用这个函数要求重新渲染，这会导致所有级别的UI都重新读取、计算、渲染。</p>
-
-<blockquote>
-<p>这个渲染过程不会调用<code>shouldComponentUpdate</code><br/>
-可以通过回调函数,在执行结束后调用<br/>
-尽量避免使用</p>
-</blockquote>
-
-<h3 id="toc_4">render渲染过程</h3>
-
-<p>RN通过<code>render</code>实现重新渲染。原型为<code>ReactComponent render()</code><br/>
-任何组件都必须有这个函数 也必须只能返回一个可渲染组件<br/>
-通过修改属性或者状态机变量来触发render的重新渲染，而不是直接调用这个函数</p>
-
-<h3 id="toc_5">简洁写法</h3>
-
-<pre><code class="language-javascript">    //简洁写法1（通过指定参数名称与状态机变量名称相同 省略）
-    updateNum(input) {
-        this.setState(() =&gt; {
-            return {input}
-        })
-    }
-    
-    //简洁写法2（省略箭头函数）
-    updateNum(input) {
-        this.setState( {input})
-    }
- ```
-
-## 成员变量
-
-```javascript
-    constructor(props) {
-        super(props)
-        this.myProperty1 = &quot;test&quot;
-        this.myProperty2 = true
-        this.state = {
-            input: &#39;&#39;,
-            inputPWD: &#39;&#39;,
-        }
-    }
-    //就可以在组件中使用myProperty1  myProperty2 这两个成员变量
-</code></pre>
-
-<p>组件可以有静态变量、静态成员函数，直接用<code>类名.</code>调用</p>
-
-<h3 id="toc_6">回调函数绑定</h3>
-
-<pre><code class="language-javascript">//在constuctor函数中
-this.updateNum = this.updateNum.bind(this)
-</code></pre>
-
-<p>绑定操作是为了让回调函数能正确解析出this，否则this.updateNum函数被执行时,指向另外对象而不是该组建类的实例</p>
 
                         
                       </div>
@@ -247,10 +240,10 @@ this.updateNum = this.updateNum.bind(this)
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/6/13</span>
+                    <span class="date">2018/8/24</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='React-Native.html'>React-Native</a></span>
+          					    <span class="posted-in"><a href='CoreGraphic.html'>CoreGraphic</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -315,6 +308,8 @@ this.updateNum = this.updateNum.bind(this)
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -344,31 +339,31 @@ this.updateNum = this.updateNum.bind(this)
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

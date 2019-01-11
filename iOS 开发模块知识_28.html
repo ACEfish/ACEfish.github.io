@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,211 +114,405 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15003778819226.html">
+                <a class="clearlink" href="14873146865194.html">
                 
-                  <h1>枚举</h1>
+                  <h1>NSOperation</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<ol>
-<li><p>与C语言不同，<code>Swift</code>中的枚举更加灵活，不必给每一个枚举成员提供一个值。如果给枚举成员提供一个值（称为“原始”值），则该值的类型可以是字符串，字符，或是一个整型值或浮点数。</p></li>
-<li><p>枚举成员可以指定任意类型的关联值存储到枚举成员中</p></li>
-<li><p>在 Swift 中，<strong>枚举类型</strong>是一等（first-class）类型。采用了很多在传统上只被类（class）所支持的特性，例如计算属性（computed properties），用于提供枚举值的附加信息，实例方法（instance methods），用于提供和枚举值相关联的功能。枚举也可以定义构造函数（initializers）来提供一个初始值；可以在原始实现的基础上扩展它们的功能；还可以遵循协议（protocols）来提供标准的功能。</p></li>
-</ol>
-
-<h2 id="toc_0">枚举语法</h2>
-
-<p>用<code>enum</code>关键字来创建枚举</p>
-
-<pre><code class="language-swift">enum CompassPoint {
-    case north
-    case south
-    case east
-    case west
-}
-
-//多个成员可以在同一行 用 , 隔开
-enum Planet {
-    case mercury, venus, earth, mars, jupiter, saturn, uranus, neptune
-}
-</code></pre>
-
-<p>我们使用<code>case</code>来定义一个新的枚举成员值</p>
-
-<blockquote>
-<p>与OC不同,Swift枚举成员不会再创建时被赋予一个默认的整型值。这些枚举成员本身就是完备的值，这些值的类型是已经明确定义好的<code>CompassPoint</code>类型</p>
-</blockquote>
-
-<p>在<code>Swift</code>中每个枚举定义了一个全新的类型，与Swift中的其他类型一样,名字以大写字母开头</p>
-
-<pre><code class="language-swift">var directionToHead = CompassPoint.west
-//此时directionToHead类型可以被推断出来,我们可以直接使用 . 语法将其设置为另一个枚举值
-directionToHead = .east
-</code></pre>
-
-<p>当 directionToHead 的类型已知时，再次为其赋值可以省略枚举类型名。</p>
-
-<h2 id="toc_1">用switch语句匹配枚举值</h2>
-
-<p>在判断一个枚举类型值时,<code>switch</code>必须穷举所有情况，如果不需要匹配每个成员可以使用<code>default</code>分支</p>
-
-<pre><code class="language-swift">let somePlanet = Planet.earth
-switch somePlanet {
-case .earth:
-    print(&quot;Mostly harmless&quot;)
-default:
-    print(&quot;Not a safe place for humans&quot;)
-}
-// 打印 &quot;Mostly harmless”
-</code></pre>
-
-<h2 id="toc_2">关联值</h2>
-
-<p>可以使用<code>Swift</code>的枚举来<strong>存储任意类型的关联值</strong>,枚举成员的关联值类型可以不同(关联值)</p>
-
-<pre><code class="language-swift">enum Barcode {
-    case upc(Int, Int, Int, Int)
-    case qrCode(String)
-}
-</code></pre>
-
-<p>定义一个枚举类型,一个成员值是具有 <code>(Int，Int，Int，Int)</code>类型关联值的 upc，另一个是<code>String</code>类型关联值的qrcode</p>
-
-<pre><code class="language-swift">//给其赋值关联的元组值
-var productBarcode = Barcode.upc(8, 85909, 51226, 3)
-//赋值新的枚举关联字符串
-productBarcode = .qrCode(&quot;ABCDEFGHIJKLMNOP&quot;)
-//productBarcode同一时间只能存储这两个值中的一个
-</code></pre>
-
-<pre><code class="language-swift">switch productBarcode {
-case .upc(let numberSystem, let manufacturer, let product, let check):
-    print(&quot;UPC: \(numberSystem), \(manufacturer), \(product), \(check).&quot;)
-case .qrCode(let productCode):
-    print(&quot;QR code: \(productCode).&quot;)
-}
-// 打印 &quot;QR code: ABCDEFGHIJKLMNOP.&quot;
-</code></pre>
-
-<p>我们可以提取出来关联值作为常量或变量</p>
-
-<p>如果一个枚举成员的所有关联值都被提取为常量，或者都被提取为变量，为了简洁，你可以只在成员名称前标注一个<code>let</code>或者<code>var</code>：</p>
-
-<pre><code class="language-swift">switch productBarcode {
-case let .upc(numberSystem, manufacturer, product, check):
-    print(&quot;UPC: \(numberSystem), \(manufacturer), \(product), \(check).&quot;)
-case let .qrCode(productCode):
-    print(&quot;QR code: \(productCode).&quot;)
-}
-// 输出 &quot;QR code: ABCDEFGHIJKLMNOP.&quot;
-</code></pre>
-
-<h2 id="toc_3">原始值</h2>
-
-<p>枚举成员可以被<strong>默认值（称为原始值）预填充</strong>，这些原始值的类型必须相同。</p>
-
-<pre><code class="language-swift">enum ASCIIControlCharacter: Character {
-    case tab = &quot;\t&quot;
-    case lineFeed = &quot;\n&quot;
-    case carriageReturn = &quot;\r&quot;
-}
-</code></pre>
-
-<p>枚举类型<code>ASCIIControlCharacter</code>的原始值类型被定义为<code>Character</code><br/>
-每个原始值在枚举声明中必须是唯一的。</p>
-
-<blockquote>
-<p>注意原始值与关联值的不同，原始值是在定义枚举是预先填充的值，对于特定的枚举成员其原始值不变<br/>
-关联值是创建一个基于枚举成员的常量或变量时才设置的值,枚举成员的关联值可以变化</p>
-</blockquote>
-
-<h3 id="toc_4">原始值的隐式赋值</h3>
-
-<p>当原始值为整数或者字符串类型的枚举时,Swift会自动为每个枚举成员设置原始值;</p>
+                        	<p><a href="http://www.jianshu.com/p/4b1d77054b35">NSOperation</a><br/>
+与GCD相比好处:</p>
 
 <ol>
-<li><p>原始值为整形枚举</p>
-<pre><code class="language-swift">enum Planet: Int {
-    case mercury = 1, venus, earth, mars, jupiter, saturn, uranus, neptune<br/>
-}
-</code></pre>
-<p>当使用整数作为原始值时，隐式赋值的值依次递增1。如果第一个枚举成员没有设置原始值，其原始值将为0</p></li>
-<li><p>原始值为字符串类型</p>
-<pre><code class="language-swift">enum CompassPoint: String {
-    case north, south, east, west<br/>
-}<br/>
-//CompassPoint.south 拥有隐式原始值 south
-</code></pre>
-<p>使用字符串作为枚举类型的原始值时，每个枚举成员的隐式原始值为该枚举成员的名称</p></li>
+<li>NSOperation是基于GCD之上的更高一层封装, 拥有更多的API(e.g. suspend, resume, cancel等等).</li>
+<li>在NSOperationQueue中, 可以指定各个NSOperation之间的依赖关系</li>
+<li>用KVO可以方便的监测NSOperation的状态(isExecuted, isFinished, isCancelled).</li>
+<li>更高的可定制能力, 你可以继承NSOperation实现可复用的逻辑模块.</li>
 </ol>
 
-<p>使用枚举成员的<code>rawValue</code>属性可以访问枚举成员初始值</p>
+<h2 id="toc_0">NSOperation和NSOperationQueue</h2>
 
-<pre><code class="language-swift">let earthsOrder = Planet.earth.rawValue
-    // earthsOrder 值为 3
-let sunsetDirection = CompassPoint.west.rawValue
-    // sunsetDirection 值为 &quot;west&quot;
+<p>NSOpration是苹果公司对GCD的封装，NSOperation和MSOprationQueue分别对应GCD中的任务和队列<br/><br/>
+因此操作步骤如下：  </p>
+
+<ol>
+<li>将要执行的任务封装到NSOperation对象中</li>
+<li>将任务添加到一个NSOprationQueue对象中<br/>
+###添加任务
+<code>NSOperation</code>是一个抽象类，所以不能封装任务。但他有两个子类可以封装任务。分别为：NSInvocationOperation和NSBlockOperation。创建之后需要start启动，默认<strong>在当前队列同步执行</strong>当然也可以用<code>cancle</code>在中途取消任务</li>
+</ol>
+
+<p>在不使用NSOperationQueue，单独使用NSOperation的情况下系统同步执行操作:</p>
+
+<pre><code class="language-text">//1.创建NSInvocationOperation对象
+  NSInvocationOperation *operation = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(run) object:nil];
+
+  //2.开始执行
+  [operation start];   
 </code></pre>
 
-<h3 id="toc_5">原始值初始化枚举实例</h3>
+<pre><code class="language-object-c">/**[]()
+    在没有使用NSOperationQueue、单独使用NSInvocationOperation的情况下，
+    NSInvocationOperation在主线程执行操作，并没有开启新线程。
+*/
+</code></pre>
 
-<p>定义枚举时使用原始值,会获得一个初始化方法,有一个<code>rawValue</code>类型为原始值类型的参数，返回一个枚举类型或为<code>nil</code></p>
+<pre><code class="language-text">   在swift中这种方法是不是类型安全的（推荐第二种）
 
-<pre><code class="language-swift">let possiblePlanet = Planet(rawValue: 7)
-// possiblePlanet 类型为 Planet? 值为 Planet.uranus
-//因为不一定都能找到匹配的行星  返回的是可选类型
-let positionToFind = 11
-if let somePlanet = Planet(rawValue: positionToFind) {
-    switch somePlanet {
-    case .earth:
-        print(&quot;Mostly harmless&quot;)
-    default:
-        print(&quot;Not a safe place for humans&quot;)
+
+//1.创建NSBlockOperation对象
+  NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
+      NSLog(@&quot;%@&quot;, [NSThread currentThread]);
+  }];
+
+  //2.开始任务
+  [operation start];
+</code></pre>
+
+<p>默认会在当前线程中执行。但是<code>NSBlockOperation</code>还有一个方法<code>addExecutionBlock:</code>，通过这个方法会给Operation添加多个执行Block。这样的话Operation中的任务会并发执行，他会在主线程和其他多个线程执行这些任务</p>
+
+<pre><code class="language-objectivec"> //1.创建NSBlockOperation对象
+  NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
+      NSLog(@&quot;%@&quot;, [NSThread currentThread]);
+  }];
+
+  //添加多个Block
+  for (NSInteger i = 0; i &lt; 5; i++) {
+      [operation addExecutionBlock:^{
+          NSLog(@&quot;第%ld次：%@&quot;, i, [NSThread currentThread]);
+      }];
+  }
+
+  //2.开始任务
+  [operation start];
+  /**
+    可以看出，blockOperationWithBlock:方法中的操作是在主线程中执行的，而
+    addExecutionBlock:方法中的操作是在其他线程中执行的。
+  */
+</code></pre>
+
+<hr/>
+
+<h2 id="toc_1">自定义Operation</h2>
+
+<p>除了上面的两种 Operation 以外，我们还可以自定义 Operation。自定义 Operation 需要继承 NSOperation 类，并实现其 main() 方法，因为在调用 start() 方法的时候，内部会调用 main() 方法完成相关逻辑。<br/>
+在没有使用NSOperationQueue、单独使用自定义子类的情况下，是在主线程执行操作，并没有开启新线程。</p>
+
+<p>注意:<br/>
+<code>NSOperation</code>可以自己独立执行(直接调用<code>[operation start]</code>), 也可以放到<code>NSOperationQueue</code>里面执行, 这两种情况下是否并发执行是不同的.</p>
+
+<h5 id="toc_2">1. non-concurrent</h5>
+
+<p>NSOperation默认是非并发的(non-concurrent),果你把operation放到某个线程执行, 它会一直block住该线程, 直到<code>operation finished</code>.<br/>
+对于非并发的operation你只需要继承NSOperation, 然后重写main()方法即可<br/>
+示例:下载一张:</p>
+
+<pre><code class="language-object-c">/**
+    由于NSOperation是可以cancel的, 所以你需要在operation程序内部执行过程中判断当前
+    operation是否已经被cancel了(isCancelled). 如果已经被cancel那就不往下执行了. 当你在外面
+    调用[operation cancel]后, isCancelled会被置为YES.
+*/
+
+@implementation YourOperation 
+
+- (void)main 
+{
+    @autoreleasepool {
+
+        if (self.isCancelled) return;
+
+        NSData *imageData = [[NSData alloc] initWithContentsOfURL:imageURL];
+
+        if (self.isCancelled) { imageData = nil; return; }
+
+        if (imageData) {
+            UIImage *downloadedImage = [UIImage imageWithData:imageData];
+        }
+
+        imageData = nil;
+
+        if (self.isCancelled) return;
+
+        [self.delegate performSelectorOnMainThread:@selector(imageDownloaderDidFinish:)                                                                  
+                                        withObject:downloadedImage
+                                     waitUntilDone:NO];
     }
-} else {
-    print(&quot;There isn&#39;t a planet at position \(positionToFind)&quot;)
 }
-//找不到11代表的行星
+
+@end
 </code></pre>
 
-<h2 id="toc_6">递归枚举</h2>
+<h5 id="toc_3">1. Concurrent</h5>
 
-<p>是一种枚举类型  有一个或多个成员使用该枚举类型实例作为关联值</p>
+<p>NSOperation有三个状态量isCancelled, isExecuting和isFinished. isCancelled上面解释过. main函数执行完成后, isExecuting会被置为NO, 而isFinished则被置为YES.</p>
 
-<p>可以在枚举成员前加<code>indirect</code>表示该成员可递归, 或者在枚举类型开头加上<code>indirect</code>关键字来表明它的所有成员都是可递归</p>
+<p>那肿么实现并发(concurrent)的NSOperation呢? 也很简单:<br/>
+1). 重写isConcurrent函数, 返回YES, 这个告诉系统各单位注意了我这个operation是要并发的.<br/>
+2). 重写start()函数.<br/>
+3). 重写isExecuting和isFinished函数<br/>
+4). 有必要时需要重写isCanceled函数</p>
 
-<pre><code class="language-swift">enum ArithmeticExpression {
-    case number(Int)
-    indirect case addition(ArithmeticExpression, ArithmeticExpression)
-    indirect case multiplication(ArithmeticExpression, ArithmeticExpression)
+<blockquote>
+<p>为什么在并发情况下需要自己来设定isExecuting和isFinished这两个状态量呢? 因为在并发情况下系统不知道operation什么时候finished, operation里面的task一般来说是异步执行的, 也就是start函数返回了operation不一定就是finish了, 这个你自己来控制, 你什么时候将isFinished置为YES(发送相应的KVO消息), operation就什么时候完成了.</p>
+</blockquote>
+
+<pre><code class="language-object-c">- (BOOL)isConcurrent {
+    return YES;
 }
 
-indirect enum ArithmeticExpression {
-    case number(Int)
-    case addition(ArithmeticExpression, ArithmeticExpression)
-    case multiplication(ArithmeticExpression, ArithmeticExpression)
+- (void)start 
+{
+    [self willChangeValueForKey:@&quot;isExecuting&quot;];
+    _isExecuting = YES;
+    [self didChangeValueForKey:@&quot;isExecuting&quot;];
+
+    NSURLRequest * request = [NSURLRequest requestWithURL:imageURL];
+    _connection = [[NSURLConnection alloc] initWithRequest:request
+                                                  delegate:self];
+    if (_connection == nil) [self finish];
 }
 
-//递归枚举使用
-let five = ArithmeticExpression.number(5)
-let four = ArithmeticExpression.number(4)
-let sum = ArithmeticExpression.addition(five, four)
-let product = ArithmeticExpression.multiplication(sum, ArithmeticExpression.number(2))
+- (void)finish
+{
+    self.connection = nil;
 
-//递归函数中使用递归枚举
-func evaluate(_ expression: ArithmeticExpression) -&gt; Int {
-    switch expression {
-    case let .number(value):
-        return value
-    case let .addition(left, right):
-        return evaluate(left) + evaluate(right)
-    case let .multiplication(left, right):
-        return evaluate(left) * evaluate(right)
+    [self willChangeValueForKey:@&quot;isExecuting&quot;];
+    [self willChangeValueForKey:@&quot;isFinished&quot;];
+
+    _isExecuting = NO;
+    _isFinished = YES;
+
+    [self didChangeValueForKey:@&quot;isExecuting&quot;];
+    [self didChangeValueForKey:@&quot;isFinished&quot;];
+}
+
+#pragma mark - NSURLConnection delegate
+- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
+    // to do something...
+}
+
+- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
+    // to do something...
+}
+
+- (void)connectionDidFinishLoading:(NSURLConnection *)connection {
+    [self finish];
+}
+
+- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
+    [self finish];
+}
+
+@end
+</code></pre>
+
+<p>还有以下几点需要注意:</p>
+
+<ul>
+<li> operation的executing和finished状态量需要用willChangeValueForKey/didChangeValueForKey来触发KVO消息.</li>
+<li> 在调用完NSURLConnection之后start函数就返回了, 后面就坐等connection的回调了</li>
+<li> 在connection的didFinish或didFail回调里面设置operation的finish状态, 告诉系统operation执行完毕了.</li>
+</ul>
+
+<p><strong>注意:</strong><br/>
+如果你是在主线程调用的这个并发的operation, 那一切都是非常的perfect, 就算你当前在操作UI也不影响operation的下载操作. BUT, 如果你是在子线程调用的, 或者把operation加到了非main queue, 那么问题来了, 你会发现这货的NSURLConnection delegate不走了.</p>
+
+<blockquote>
+<p>这是runLoop的原因，主线程会自动创建一个RunLoop来保证程序一直运行. 但子线程默认不创建NSRunLoop, 所以子线程的任务一旦返回, 线程就over了.上面的并发operation当start函数返回后子线程就退出了, 当NSURLConnection的delegate回调时, 线程已经木有了, 所以你也就收不到回调了. 为了保证子线程持续live(等待connection回调), 你需要在子线程中加入RunLoop, 来保证它不会被kill掉.<br/>
+详细关于RunLoop的知识可以查看 <a href="%5B%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B%E3%80%81NSThread&amp;GCD&amp;NSOpration&amp;runLoop%5D(14871584203378.html)">并发编程Runloop</a></p>
+</blockquote>
+
+<p>对于这个问题:我们解决办法</p>
+
+<ol>
+<li><p>让start函数在主线程运行(即使[operation start]是在子线程调用的).</p>
+<pre><code class="language-object-c">- (void)start 
+{<br/>
+    if (![NSThread isMainThread]) {<br/>
+        [self performSelectorOnMainThread:@selector(start)<br/>
+                           withObject:nil<br/>
+                        waitUntilDone:NO];<br/>
+        return;<br/>
+ }<br/>
+    // set up NSURLConnection...<br/>
+}<br/>
+或者<br/>
+   - (void)start<br/>
+   {<br/>
+       [[NSOperationQueue mainQueue] addOperationWithBlock:^{<br/>
+       self.connection = [NSURLConnection connectionWithRequest:self.request delegate:self];<br/>
+       }];<br/>
+   }
+</code></pre></li>
+<li><p>方法二是:让<code>operation</code>的start函数在子线程运行, 但是我们为它创建一个RunLoop. 然后把<code>URL connection schedule</code>到上面去. （这种方法不推荐）</p>
+<pre><code class="language-object-c">    //参考AFNetWorking的做法
+    + (void)networkRequestThreadEntryPoint:(id)__unused object <br/>
+    {<br/>
+        @autoreleasepool {<br/>
+            [[NSThread currentThread] setName:@&quot;AFNetworking&quot;];<br/>
+            NSRunLoop *runLoop = [NSRunLoop currentRunLoop];<br/>
+            [runLoop addPort:[NSMachPort port] forMode:NSDefaultRunLoopMode];<br/>
+            [runLoop run];<br/>
+        }<br/>
+    }<br/>
+    + (NSThread *)networkRequestThread <br/>
+    {<br/>
+        static NSThread *_networkRequestThread = nil;<br/>
+        static dispatch_once_t oncePredicate;<br/>
+        dispatch_once(&amp;oncePredicate, ^{<br/>
+            _networkRequestThread = [[NSThread alloc] initWithTarget:self selector:@selector(networkRequestThreadEntryPoint:) object:nil];<br/>
+            [_networkRequestThread start];<br/>
+        });<br/>
+        return _networkRequestThread;<br/>
+    }<br/>
+    - (void)start <br/>
+    {<br/>
+        [self.lock lock];<br/>
+        if ([self isCancelled]) {<br/>
+            [self performSelector:@selector(cancelConnection) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];<br/>
+        } else if ([self isReady]) {<br/>
+            self.state = AFOperationExecutingState;<br/>
+            [self performSelector:@selector(operationDidStart) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];<br/>
+        }<br/>
+        [self.lock unlock];<br/>
     }
-}
-print(evaluate(product))//18
 </code></pre>
+<p>AFNetworking创建了一个新的子线程(在子线程中调用NSRunLoop *runloop = [NSRunLoop currentRunLoop]; 获取RunLoop对象的时候, 就会创建RunLoop), 然后把它加到RunLoop里面来保证它一直运行.</p>
+<blockquote>
+<p>这边我们可以简单的判断下当前start()的线程是子线程还是主线程, 如果是子线程则调用[NSRunLoop currentRunLoop]创新RunLoop, 否则就直接调用[NSRunLoop mainRunLoop], 当然在主线程下就没必要调用[runLoop run]了, 因为它本来就是一直run的.<br/>
+我们还可以使用CFRunLoop来启动和停止RunLoop<br/>
+<code>[self.connection scheduleInRunLoop:[NSRunLoop currentRunLoop]<br/>
+                       forMode:NSRunLoopCommonModes];<br/>
+CFRunLoopRun();<br/>
+</code><br/>
+等到该Operation结束的时候, 一定要记得调用<strong>CFRunLoopStop()</strong>停止当前线程的RunLoop, 让当前线程在operation finished之后可以退出.</p>
+</blockquote></li>
+</ol>
+
+<hr/>
+
+<h2 id="toc_4">NSOperationQueue</h2>
+
+<p>看过上面的内容就知道，我们可以调用一个 NSOperation 对象的 <code>start()</code> 方法来启动这个任务，但是这样做他们默认是 同步执行 的。就算是 <code>addExecutionBlock</code> 方法，也会在 当前线程和其他线程 中执行，也就是说还是会占用当前线程。这是就要用到队列 <code>NSOperationQueue</code> 了。而且，按类型来说的话一共有两种类型：主队列、其他队列。只要添加到队列，会自动调用任务的 <code>start()</code> 方法</p>
+
+<p>一旦NSOperation被add到Queue里面那么我们就不care它自身是不是并发设计的了, 因为被add到Queue里面的operation必定是并发的. 而且我们可以设置Queue的maxConcurrentOperationCount来指定最大的并发数(也就是几个operation可以同时被执行, <strong>如果这个值设为1, 那这个Queue就是串行队列了</strong>).<br/>
+ Queue会为每一个add到队列里面的operation创建一个线程来运行其start函数, 这样每个start都分布在不同的线程里面来实现operation们的并发执行.<br/>
+注意:<br/>
+** 我们这边所说的并发都是指NSOperation之间的并发(多个operation同时执行), 如果maxConcurrentOperationCount设置为1或者把operation放到[NSOperationQueue mainQueue]里面执行, 那它们只会顺序(Serial)执行, 当然就不可能并发了.**</p>
+
+<h5 id="toc_5">* 主队列</h5>
+
+<p>细心同学会发现，每套多线程方案都会有一个主线程。这是一个特殊的线程必须串行。凡是添加到主队列中的任务（NSOperation），都会放到主线程中执行<br/><br/>
+    //OBJECTIVE-C<br/>
+    NSOperationQueue *queue = [NSOperationQueue mainQueue];</p>
+
+<pre><code class="language-text">//SWIFT
+let queue = NSOperationQueue.mainQueue()
+</code></pre>
+
+<h5 id="toc_6">* 其他队列</h5>
+
+<p>通过初始化产生的队列就是其他队列了，其他队列不需要名字<br/>
+<strong>注意：</strong>其他队列会在其他线程中并行执行</p>
+
+<pre><code class="language-object-c">    //1.创建一个其他队列    
+    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+    
+    //2.创建NSBlockOperation对象
+    NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@&quot;%@&quot;, [NSThread currentThread]);
+    }];
+    
+    //3.添加多个Block
+    for (NSInteger i = 0; i &lt; 5; i++) {
+        [operation addExecutionBlock:^{
+            NSLog(@&quot;第%ld次：%@&quot;, i, [NSThread currentThread]);
+        }];
+    }
+
+    //4.队列添加任务
+    [queue addOperation:operation];
+    /**
+       NSInvocationOperation和NSOperationQueue结合后能够开启新线程，进行并发执行
+       NSBlockOperation和NSOperationQueue也能够开启新线程，进行并发执行
+    */
+</code></pre>
+
+<p><code>- (void)addOperationWithBlock:(void (^)(void))block;</code><br/>
+无需先创建任务，在block中添加任务，直接将任务block加入到队列中,能够开启新线程，进行并发执行。</p>
+
+<hr/>
+
+<p>这时如果我们想要任务在其他线程串行执行<br/><br/>
+<code>NSOperationQueue</code>有个参数<code>maxConcurrentOperationCount</code>最大并发数，设置为1时就是串行了<br/><br/>
+<code>maxConcurrentOperationCount</code>默认情况下为-1，表示不进行限制，默认为并发执行。<br/>
+<code>maxConcurrentOperationCount</code>大于1时，进行并发执行，当然这个值不应超过系统限制，即使自己设置一个很大的值，系统也会自动调整</p>
+
+<h3 id="toc_7">操作依赖</h3>
+
+<p><code>NSOperation</code>还有个实用功能添加依赖。比如有 3 个任务：A: 从服务器上下载一张图片，B：给这张图片加个水印，C：把图片返回给服务器。这时就可以用到依赖了:</p>
+
+<pre><code class="language-object-c">    //1.任务一：下载图片
+    NSBlockOperation *operation1 = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@&quot;下载图片 - %@&quot;, [NSThread currentThread]);
+        [NSThread sleepForTimeInterval:1.0];
+    }];
+    
+    //2.任务二：打水印
+    NSBlockOperation *operation2 = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@&quot;打水印   - %@&quot;, [NSThread currentThread]);
+        [NSThread sleepForTimeInterval:1.0];
+    }];
+    
+    //3.任务三：上传图片
+    NSBlockOperation *operation3 = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@&quot;上传图片 - %@&quot;, [NSThread currentThread]);
+        [NSThread sleepForTimeInterval:1.0];
+    }];
+    
+    //4.设置依赖
+    [operation2 addDependency:operation1];      //任务二依赖任务一
+    [operation3 addDependency:operation2];      //任务三依赖任务二
+    
+    //5.创建队列并加入任务
+    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+    [queue addOperations:@[operation3, operation2, operation1] waitUntilFinished:NO];
+</code></pre>
+
+<p>注意不能添加互相依赖否则会锁死<br/><br/>
+可以用<code>removeDependency</code>来解除依赖</p>
+
+<p><strong>注意:</strong><br/>
+如果我在子线程调用[operation start]函数, 或者把operation放到非MainQueue里面执行, 但是在operation的内部把start抛到主线程来执行(利用主线程的main run loop), 那多个operation其实不都是要在主线程执行的么, 这样还能并发? Luckily, 仍然是并发执行的,当然这个并发指的是狭义并发也就是主线程进行伪并行<br/>
+<img src="media/14873146865194/14873217004353.jpg" alt=""/></p>
+
+<hr/>
+
+<h3 id="toc_8">其他方法</h3>
+
+<ul>
+<li><h5 id="toc_9">NSOperation</h5>
+<pre><code class="language-text">BOOL executing; //判断任务是否正在执行
+BOOL finished; //判断任务是否完成<br/>
+void (^completionBlock)(void); //用来设置完成后需要执行的操作<br/>
+- (void)cancel; //取消任务 `NSOperation`提供的方法，可取消单个操作<br/>
+- (void)waitUntilFinished; //阻塞当前线程直到此任务执行完毕
+</code></pre></li>
+<li><h5 id="toc_10">NSOperationQueue</h5>
+<pre><code class="language-text">NSUInteger operationCount; //获取队列的任务数
+- (void)cancelAllOperations; //取消队列中所有的任务<br/>
+- (void)waitUntilAllOperationsAreFinished; //阻塞当前线程直到此队列中的所有任务执行完毕<br/>
+[queue setSuspended:YES]; // 暂停queue<br/>
+[queue setSuspended:NO]; // 继续queue
+</code></pre></li>
+</ul>
+
+<hr/>
+
+<h3 id="toc_11">与君共勉</h3>
+
+<p><img src="media/14873146865194/14876658479087.jpg" alt=""/></p>
 
                         
                       </div>
@@ -325,10 +521,10 @@ print(evaluate(product))//18
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/7/18</span>
+                    <span class="date">2017/2/17</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
+          					    <span class="posted-in"><a href='Concurrent-Programming.html'>多线程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -393,6 +589,8 @@ print(evaluate(product))//18
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -422,31 +620,31 @@ print(evaluate(product))//18
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

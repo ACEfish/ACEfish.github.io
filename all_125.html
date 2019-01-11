@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,93 +114,179 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14867842994268.html">
+                <a class="clearlink" href="15031302948355.html">
                 
-                  <h1>容易忘记的易错点</h1>
+                  <h1>可选链式调用</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h3 id="toc_0">1. @property属性中如果是copy属性要记得：</h3>
+                        	<p><strong>可选链式调用</strong>是在当前值可能为<code>nil</code>的可选值上请求和调用属性、方法以及下标的方法。如果可选值不为空,调用成功,否则如果可选值为<code>nil</code>，那么调用将返回<code>nil</code>。多个调用可以结合为一个调用链,若任何一个节点为<code>nil</code>。整个调用链都会失败</p>
 
-<pre><code class="language-text">**注意：**
-在重写setter方法时要记得加上 
+<h2 id="toc_0">可选链式调用代替强制展开</h2>
 
-``` Object-c
-_name = [name copy]
-```
-在内部的init方法中 也要记得加copy，即在内部直接给属性变量赋值时记得加copy
+<p>在想调用的属性、方法、下标的可选值后加上<code>?</code>来定义一个可选链。</p>
 
-```Object-c
-//这里尽量不要用self.实例变量 而用 _实例变量
+<blockquote>
+<p>很像在可选值后面放一个叹号（<code>!</code>）来强制展开它的值。它们的主要区别在于当可选值为空时可选链式调用只会调用失败，然而强制展开将会触发运行时错误</p>
+</blockquote>
+
+<p>可选链式调用,不论调用的属性、方法及下标返回值的类型,返回结果都是具有相同类型的可选值,可以利用这个可选返回值来判断链式调用是否成功,有值则返回成功，<code>nil</code>表示调用失败</p>
+
+<pre><code class="language-swift">class Person {
+    var residence: Residence?
+}
+class Residence {
+    var numberOfRooms = 1
+}
+let john = Person()
 </code></pre>
+
+<p>我们直接<code>let roomCount = john.residence!.numberOfRooms</code>因为<code>residence</code>为<code>nil</code>强制展开的话是会触发运行时错误的</p>
+
+<p>这时我们可以采用可选链式调用来访问<code>numberOfRooms</code>用<code>?</code>代替<code>!</code></p>
+
+<pre><code class="language-swift">if let roomCount = john.residence?.numberOfRooms {
+    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
+} else {
+    print(&quot;Unable to retrieve the number of rooms.&quot;)
+}
+</code></pre>
+
+<p><strong>添加问号之后，Swift 就会在<code>residence</code>不为<code>nil</code>的情况下访问<code>numberOfRooms</code></strong></p>
+
+<p>即使<code>numberOfRooms</code>是非可选类型<code>Int</code>，只要使用可选链式调用就意味着<code>numberOfRooms</code>会返回<code>Int?</code>而不是<code>Int</code></p>
+
+<h2 id="toc_1">为可选链式调用定义模型类</h2>
+
+<h2 id="toc_2">通过可选链式调用访问属性</h2>
+
+<p>通过可选链式调用<strong>访问可能不存在实例的属性</strong>:</p>
+
+<pre><code class="language-swift">//john.residence实例可能为nil
+let john = Person()
+if let roomCount = john.residence?.numberOfRooms {
+    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
+} else {
+    print(&quot;Unable to retrieve the number of rooms.&quot;)
+}
+</code></pre>
+
+<p>通过可选链式调用<strong>设置属性值</strong></p>
+
+<pre><code class="language-swift">//john.residence实例可能为nil
+let someAddress = Address()
+john.residence?.address = someAddress
+</code></pre>
+
+<p>对于这种可选链式调用的赋值,如果<code>john.residence</code>为<code>nil</code>，获取<code>address</code>属性失败，那么右侧的代码是不会被执行的</p>
+
+<h2 id="toc_3">通过可选链式调用调用方法</h2>
+
+<p>对于<code>Residence</code>类中定义的方法</p>
+
+<pre><code class="language-swift">func printNumberOfRooms() {
+    print(&quot;The number of rooms is \(numberOfRooms)&quot;)
+}
+</code></pre>
+
+<p>这个方法没有返回值,那就是具有隐式的返回值<code>Void</code><br/>
+那么如果用可选链式调用这个方法，返回值就为<code>Void?</code></p>
+
+<pre><code class="language-swift">//john.residence 为Residence类 可能为nil的实例
+if john.residence?.printNumberOfRooms() != nil {
+    print(&quot;It was possible to print the number of rooms.&quot;)
+} else {
+    print(&quot;It was not possible to print the number of rooms.&quot;)
+}
+//可以根据返回值是否为nil 判断调用是否成功
+</code></pre>
+
+<p>对实例中的属性赋值 也会返回一个可选类型</p>
+
+<pre><code class="language-swift">if (john.residence?.address = someAddress) != nil {
+print(&quot;It was possible to set the address.&quot;)
+} else {
+print(&quot;It was not possible to set the address.&quot;)
+}
+</code></pre>
+
+<h2 id="toc_4">通过可选链式调用访问下标</h2>
+
+<p>可以在一个可选值上访问下标,判断下标是否成功</p>
+
+<pre><code class="language-swift">//john.residence可能为nil
+if let firstRoomName = john.residence?[0].name {
+    print(&quot;The first room name is \(firstRoomName).&quot;)
+} else {
+    print(&quot;Unable to retrieve the first room name.&quot;)
+}
+</code></pre>
+
+<blockquote>
+<p>注意:下标调用的时候将问号放在下标方括号的前面而不是后面</p>
+</blockquote>
+
+<pre><code class="language-swift">john.residence?[0] = Room(name: &quot;Bathroom&quot;)
+</code></pre>
+
+<p><code>john.residence</code>为nil时，赋值仍然会失败</p>
+
+<h3 id="toc_5">访问可选类型的下标</h3>
+
+<p>如果下标返回可选类型值,可以在下标的结尾括号后面放一个问号来在其可选返回值上进行可选链式调用</p>
+
+<pre><code class="language-swift">var testScores = [&quot;Dave&quot;: [86, 82, 84], &quot;Bev&quot;: [79, 94, 81]]
+testScores[&quot;Dave&quot;]?[0] = 91
+testScores[&quot;Bev&quot;]?[0] += 1
+testScores[&quot;Brian&quot;]?[0] = 72
+</code></pre>
+
+<p>定义一个字典,包含两个键值对，因为字典下标返回的是可选类型值,对于<code>testScores[&quot;Brian&quot;]</code>因为字典中没有这个键，所以返回为<code>nil</code>，调用失败</p>
+
+<h2 id="toc_6">连接多层可选链式调用</h2>
+
+<p>可以连接多个可选链式调用在更深模型层级中访问属性、方法、下标，但是是不会增加返回值的可选层级的</p>
 
 <ul>
-<li><p>initWithSpId:(SInt32)spId spName:(NSString *)spName type:(SInt32)spType spPinyin:(NSString *)spPinyin spLetter:(NSString *)spLetter {<br/>
-if (self = [super init]) {<br/>
-    _spId = spId;<br/>
-    _spName = [spName copy];<br/>
-    _type = spType;<br/>
-}<br/>
-return self;<br/>
-}</p>
-<pre><code class="language-text">### 2. 注意在修改navigation时是只修改了navigationItem还是修改了NavigationBar
-如果是仅仅修改了navigationItem那就只对本控制器有效 push或者pop了都不影响，一般有以下几种情况:<br/>
-1. 修改了navigationItem的元素<br/>
-    ```Object-c<br/>
-    self.navigationItem.title = @&quot;title&quot;;<br/>
-    self.navigationItem.titleView = [[UIView alloc] init];<br/>
-    ```<br/>
-2. 修改了navigationItem的BarButtonItem<br/>
-    ```Object-c<br/>
-    self.navigationItem.leftBarButtonItem = [UIBarButtonItem itemWithTarget:self action:@selector(popViewController) image:@&quot;general_arrow_back_white&quot; highImage:@&quot;general_arrow_back_orange&quot;];<br/>
-    ```<br/>
-    **一般我们可以通过这种方法拦截返回点击事件，比如全局控制器的返回按键已经写好，而我们想要拦截点击事件就可以用这种方法,写一个同一样式的按键触发不同的事件**<br/>
-这些修改是不影响的整个navigationBar的仅此不需要在视图控制器消失时做额外的操作<br/>
-而如果是修改了navigationBar 那就对全局有影响了,需要在控制器消失时做额外还原处理,一般情况如下:<br/>
-```Object-c<br/>
-//修改背景图片<br/>
-[self.navigationController.navigationBar setShadowImage:[UIImage new]];<br/>
-//修改背景颜色<br/>
-[self.navigationController.navigationBar lt_setBackgroundColor:[UIColor clearColor]];<br/>
-//修改navigationBar的整体字体颜色<br/>
-[self.navigationController.navigationBar setTitleTextAttributes:<br/>
- [NSDictionary dictionaryWithObjectsAndKeys:[UIColor whiteColor],NSForegroundColorAttributeName,nil]];<br/>
- //隐藏navigationBar<br/>
-self.navigationController.navigationBar.hidden = YES;
-</code></pre>
-<p>此时我们需要在退出时做一下还原操作</p>
-<pre><code class="language-object-c">[super viewWillDisappear:animated];
-[self.navigationController.navigationBar lt_reset];<br/>
-[self.navigationController.navigationBar setTitleTextAttributes:<br/>
-[NSDictionary dictionaryWithObjectsAndKeys:[UIColor blackColor],NSForegroundColorAttributeName,nil]];<br/>
-self.navigationController.navigationBar.hidden = NO;
-</code></pre>
-<h3 id="toc_1">3. 隐藏tabbar</h3>
-<p>我们在某些界面需要隐藏Tabbar的时候，会出现原区域无法响应点击事件的问题。系统的Tabbar已经被我们hidden了，但是仍然无法响应事件，此时我们只要将系统的Tabbar的frame设置为CGRectZero即可。</p>
-<pre><code class="language-objectivec">[UIApplication sharedApplication].keyWindow.rootViewController).tabBar.frame 
-= CGRectZero;
-</code></pre></li>
+<li>通过可选链式调用访问一个 Int 值，将会返回 Int? ，无论使用了多少层可选链式调用</li>
+<li>通过可选链式调用访问 Int? 值，依旧会返回 Int? 值，并不会返回 Int??</li>
 </ul>
 
-<h3 id="toc_2">4. 自动布局的动画</h3>
-
-<pre><code class="language-text">用`xib`拉的视图或者`masonry`布局的视图在`[UIView animation...]`动画方法中都是可以直接改变`frame`或者`transform`来进行动画的
-我们可以直接改变`frame`包括宽、高、中心等 直接进行各种动画,而不用担心因为`autolayout`问题,毕竟masony或者xib拉约束都只是布局问题,在运行时还是会转成`frame`的.
-
-而通常我们拖约束线出去是为了:
-1. 在视图还没加载时用代码设置某个约束值  
-2. 真的是要改变某个约束值做动画（通常某个视图也和这个约束有关系）
+<pre><code class="language-swift">if let johnsStreet = john.residence?.address?.street {
+    print(&quot;John&#39;s street name is \(johnsStreet).&quot;)
+} else {
+    print(&quot;Unable to retrieve the address.&quot;)
+}
 </code></pre>
 
-<h3 id="toc_3">让UIButton的title对齐方式</h3>
+<p><code>john.residence.address</code>为<code>nil</code>因此调用失败<br/>
+尽管<code>street</code>属性为<code>String？</code>  返回值仍然为<code>String?</code></p>
 
-<p>有些时候我们想让UIButton的title居左对齐</p>
+<h2 id="toc_7">在方法的可选返回值上进行可选链式调用</h2>
 
-<p>button.textLabel.textAlignment = UITextAlignmentLeft  //是没有作用的，我们需要设置</p>
+<pre><code class="language-swift">if let buildingIdentifier = john.residence?.address?.buildingIdentifier() {
+    print(&quot;John&#39;s building identifier is \(buildingIdentifier).&quot;)
+}
+</code></pre>
 
-<p>button.contentHorizontalAlignment = UIControlContentHorizonAlignmentLeft; //显示居左<br/>
-**除了水平 还有垂直方向的对齐方式</p>
+<p>在可选值的基础上调用<code>buildingIdentifier()</code>方法  返回<code>String?</code>类型值</p>
+
+<pre><code class="language-swift">if let beginsWithThe =
+john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
+    if beginsWithThe {
+        print(&quot;John&#39;s building identifier begins with \&quot;The\&quot;.&quot;)
+    } else {
+        print(&quot;John&#39;s building identifier does not begin with \&quot;The\&quot;.&quot;)
+    }
+}
+</code></pre>
+
+<p>在方法的返回值基础上进行可选链式调用 </p>
+
+<blockquote>
+<p>在方法的圆括号后面加上问号即可</p>
+</blockquote>
 
                         
                       </div>
@@ -207,10 +295,10 @@ self.navigationController.navigationBar.hidden = NO;
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/11</span>
+                    <span class="date">2017/8/19</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html'>iOS 小知识</a></span>
+          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -275,6 +363,8 @@ self.navigationController.navigationBar.hidden = NO;
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -304,31 +394,31 @@ self.navigationController.navigationBar.hidden = NO;
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  

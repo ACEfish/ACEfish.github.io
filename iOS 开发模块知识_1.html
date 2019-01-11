@@ -77,6 +77,8 @@
     <li><label>Categories</label></li>
 
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
@@ -112,123 +114,272 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15350771796806.html">
+                <a class="clearlink" href="15450317285396.html">
                 
-                  <h1>CGColorSpace</h1>
+                  <h1>ReactiveObjC</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>表示指定的颜色值</p>
+                        	<blockquote>
+<p>本文内容来自github <a href="https://github.com/ReactiveCocoa/ReactiveObjC">ReactiveObjC的官方文档</a></p>
+</blockquote>
 
-<pre><code class="language-objectivec">CGColorSpaceRef
-//一个配置文件，指定如何解释显示的颜色值。
+<h2 id="toc_0">介绍</h2>
+
+<p>ReactiveObjC 是一个函数相应式编程的OC框架，为我们提供了组合、转换流的api</p>
+
+<p>RAC没有使用可修改或可替换的变量，而是提供了信号(<code>RACSignal</code>)来捕获当前或者未来的信号，我们通过串联、绑定、响应信号，就可以无需持续的观察和更新值来检测变化</p>
+
+<p>例如: 为了检测一个textField的text的最新内容,我们不需要每秒钟就去获取其值的变化,使用RAC更像KVO可以实时获取到其内容变化,与KVO不同的时 我们使用<code>block</code>而不是使用<code>-observeValueForKeyPath:ofObject:change:context:</code></p>
+
+<p>信号也可以帮助我们进行异步操作,就像对未来结果的许诺,极大的帮助我们简化网络请求等异步操作代码</p>
+
+<p><strong>RAC主要提供了一个统一的方法 来处理异步行为，包括delegate、kvo、target-action、notification、block</strong></p>
+
+<ol>
+<li><p>监测属性值变化</p>
+<pre><code class="language-objectivec">类似kvo
+//检测self.username属性变化<br/>
+//RACObserve(TARGET, KEYPATH)是一个创建检测值变化的信号<br/>
+//subscribeNext 当检测的信号变化时 就会执行这个信号<br/>
+[RACObserve(self, username) subscribeNext:^(NSString *newName) {<br/>
+       NSLog(@&quot;%@&quot;, newName);<br/>
+}];
+</code></pre></li>
+<li><p>监测过滤出来的部分信号值<br/>
+与kvo不同的是，我们可以串联、操作这些信号</p>
+<pre><code class="language-objectivec">//过滤 信号中以&quot;j&quot;开头的信号值的变化
+[[RACObserve(self, username)<br/>
+filter:^(NSString *newName) {<br/>
+    return [newName hasPrefix:@&quot;j&quot;];<br/>
+}]<br/>
+subscribeNext:^(NSString *newName) {<br/>
+    NSLog(@&quot;%@&quot;, newName);<br/>
+}];
+</code></pre></li>
+<li><p>通过RAC我们可以很方便的通过信号监测变化,而不需要通过观察和设置其它属性</p>
+<pre><code class="language-objectivec">//combineLatest: reduce:方法 合并一组信号,当其中任意一个信号的最新值变化时,会执行该block 并返回新的值
+RAC(self, createEnabled) = [RACSignal<br/>
+combineLatest:@[ RACObserve(self, password), RACObserve(self, passwordConfirmation) ]<br/>
+reduce:^(NSString *password, NSString *passwordConfirm) {<br/>
+    return @([passwordConfirm isEqualToString:password]);<br/>
+}];
+</code></pre></li>
+<li><p>信号不止类似kvo可以监测属性，还可以监测其它任何随时间变化的值或者流</p>
+<pre><code class="language-objectivec">//RACCommand 创建一个与UI有关的信号 此处是按钮点击信号,当按钮被点击时执行该block
+//rac_command是按钮类别的属性，当按钮被点击自动发送<br/>
+self.button.rac_command = [[RACCommand alloc] initWithSignalBlock:^(id _) {<br/>
+NSLog(@&quot;button was pressed!&quot;);<br/>
+return [RACSignal empty];<br/>
+}];
+</code></pre></li>
+<li><p>RAC表示网络操作</p>
+<pre><code class="language-objectivec">//创建一个信号 当self.loginCommand执行其block
+self.loginCommand = [[RACCommand alloc] initWithSignalBlock:^(id sender) {<br/>
+    return [client logIn];<br/>
+}];<br/>
+//executionSignals 返回上面RACComond中block返回的信号的信号,即当上面block返回时 会触发该信号 并可以监测block返回的信号的变化<br/>
+[self.loginCommand.executionSignals subscribeNext:^(RACSignal *loginSignal) {<br/>
+    // Log a message whenever we log in successfully.<br/>
+    [loginSignal subscribeCompleted:^{<br/>
+        NSLog(@&quot;Logged in successfully!&quot;);<br/>
+    }];<br/>
+}];<br/>
+//当按钮点击时 执行该self.loginCommand<br/>
+self.loginButton.rac_command = self.loginCommand;
+</code></pre></li>
+<li><p>表示异步操作的信号间可以链接来表示更加复杂的行为(在一组操作完成后开始另外一个操作)</p>
+<pre><code class="language-objectivec">//merge: 合并两个信号 返回一个新的信号
+//subscribeCompleted: 订阅返回完成的信号<br/>
+[[RACSignal merge:@[ [client fetchUserRepos], [client fetchOrgRepos] ]]<br/>
+subscribeCompleted:^{<br/>
+    NSLog(@&quot;They&#39;re both done!&quot;);<br/>
+}];
+</code></pre></li>
+<li><p>信号可以串联起来 避免使用block嵌套来表示依赖</p>
+<pre><code class="language-objectivec">//
+[[[[client<br/>
+    logInUser]<br/>
+    flattenMap:^(User *user) {<br/>
+        // Return a signal that loads cached messages for the user.<br/>
+        return [client loadCachedMessagesForUser:user];<br/>
+    }]<br/>
+    flattenMap:^(NSArray *messages) {<br/>
+        // Return a signal that fetches any remaining messages.<br/>
+        return [client fetchMessagesAfterMessage:messages.lastObject];<br/>
+    }]<br/>
+    subscribeNext:^(NSArray *newMessages) {<br/>
+        NSLog(@&quot;New messages: %@&quot;, newMessages);<br/>
+    } completed:^{<br/>
+        NSLog(@&quot;Fetched all messages.&quot;);<br/>
+    }];
+</code></pre></li>
+<li><p>获取异步操作的结果 </p>
+<pre><code class="language-objectivec">//当异步图片下载完成后赋值到图片上
+//deliverOn: 创建信号并执行在其他队列线程  [RACScheduler scheduler] background线程  RACScheduler.mainThreadScheduler]主线程<br/>
+RAC(self.imageView, image) = [[[[client<br/>
+fetchUserWithUsername:@&quot;joshaber&quot;]<br/>
+deliverOn:[RACScheduler scheduler]]<br/>
+map:^(User *user) {<br/>
+    // Download the avatar (this is done on a background queue).<br/>
+    return [[NSImage alloc] initWithContentsOfURL:user.avatarURL];<br/>
+}]<br/>
+// Now the assignment will be done on the main thread.<br/>
+deliverOn:RACScheduler.mainThreadScheduler];
+</code></pre></li>
+</ol>
+
+<h2 id="toc_1">示例</h2>
+
+<h3 id="toc_2">1. 处理多来源的异步操作或事件状态</h3>
+
+<p>不使用RAC的情况</p>
+
+<p>页面中的登录按钮 只有在<code>usernameTextField</code> <code>passwordTextField</code> 不为空 并且当前不在登录状态 才可以点击</p>
+
+<pre><code class="language-objectivec">static void *ObservationContext = &amp;ObservationContext;
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+
+    [LoginManager.sharedManager addObserver:self forKeyPath:@&quot;loggingIn&quot; options:NSKeyValueObservingOptionInitial context:&amp;ObservationContext];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(loggedOut:) name:UserDidLogOutNotification object:LoginManager.sharedManager];
+
+    [self.usernameTextField addTarget:self action:@selector(updateLogInButton) forControlEvents:UIControlEventEditingChanged];
+    [self.passwordTextField addTarget:self action:@selector(updateLogInButton) forControlEvents:UIControlEventEditingChanged];
+    [self.logInButton addTarget:self action:@selector(logInPressed:) forControlEvents:UIControlEventTouchUpInside];
+}
+
+- (void)dealloc {
+    [LoginManager.sharedManager removeObserver:self forKeyPath:@&quot;loggingIn&quot; context:ObservationContext];
+    [NSNotificationCenter.defaultCenter removeObserver:self];
+}
+
+- (void)updateLogInButton {
+    BOOL textFieldsNonEmpty = self.usernameTextField.text.length &gt; 0 &amp;&amp; self.passwordTextField.text.length &gt; 0;
+    BOOL readyToLogIn = !LoginManager.sharedManager.isLoggingIn &amp;&amp; !self.loggedIn;
+    self.logInButton.enabled = textFieldsNonEmpty &amp;&amp; readyToLogIn;
+}
+
+- (IBAction)logInPressed:(UIButton *)sender {
+    [[LoginManager sharedManager]
+        logInWithUsername:self.usernameTextField.text
+        p**assword:self.passwordTextField.text
+        success:^{
+            self.loggedIn = YES;
+        } failure:^(NSError *error) {
+            [self presentError:error];
+        }];
+}
+
+- (void)loggedOut:(NSNotification *)notification {
+    self.loggedIn = NO;
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
+    if (context == ObservationContext) {
+        [self updateLogInButton];
+    } else {
+        [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+    }
+}
 </code></pre>
 
-<h2 id="toc_0">概述</h2>
+<p>使用RAC来写的话</p>
 
-<p>颜色空间是多维的，每个维度表示特定的颜色分量。例如，RGB颜色空间的颜色有R,G,B三个三个维度.颜色空间的的每个维度强度由浮点值表示，其范围和含义取决于所讨论的颜色空间</p>
+<pre><code class="language-objectivec">- (void)viewDidLoad {
+    [super viewDidLoad];
 
-<p>我们通过正确指定的颜色空间可以确保图像具有一致的外观</p>
+    @weakify(self);
 
-<p><code>Core Graphics</code>支持多种颜色空间：</p>
+    RAC(self.logInButton, enabled) = [RACSignal
+        combineLatest:@[
+            self.usernameTextField.rac_textSignal,
+            self.passwordTextField.rac_textSignal,
+            RACObserve(LoginManager.sharedManager, loggingIn),
+            RACObserve(self, loggedIn)
+        ] reduce:^(NSString *username, NSString *password, NSNumber *loggingIn, NSNumber *loggedIn) {
+            return @(username.length &gt; 0 &amp;&amp; password.length &gt; 0 &amp;&amp; !loggingIn.boolValue &amp;&amp; !loggedIn.boolValue);
+        }];
 
-<ol>
-<li>与设备无关的颜色空间: 校准的色彩空间。 确保在不同设备上现实的颜色相同,</li>
-<li>与设备相关的颜色空间: 依赖于设备的颜色空间与特定设备的颜色表示系统相关联。</li>
-<li>特殊的颜色空间: 使用索引和对应的基色空间 索引颜色空间包含了最多256个颜色表以及每个颜色表的条目都制定基色空间的一种颜色</li>
-</ol>
+    [[self.logInButton rac_signalForControlEvents:UIControlEventTouchUpInside] subscribeNext:^(UIButton *sender) {
+        @strongify(self);
 
-<h3 id="toc_1">创建与设备无关的颜色空间</h3>
+        RACSignal *loginSignal = [LoginManager.sharedManager
+            logInWithUsername:self.usernameTextField.text
+            password:self.passwordTextField.text];
 
-<p>为了创建与设备无关的颜色空间，我们需要提供白色参考点，黑色参考点以及特殊设备的gamma值</p>
+            [loginSignal subscribeError:^(NSError *error) {
+                @strongify(self);
+                [self presentError:error];
+            } completed:^{
+                @strongify(self);
+                self.loggedIn = YES;
+            }];
+    }];
 
-<ol>
-<li><p>创建标准的灰度色彩空间</p>
-<p><code>CGColorSpaceCreateCalibratedGray</code></p>
-<p>创建与设备无关的灰度颜色空间，表示相对于参考白点的颜色</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateCalibratedGray(const CGFloat *whitePoint, const CGFloat *blackPoint, CGFloat gamma);
-whitePoint :   3个数字的数组,制定了在CIE 1931 XYZ-space颜色系统中漫反射白点的3刺激值 (对色彩学不熟悉)<br/>
-blackPoint :   3个数字的数组,制定了在CIE 1931 XYZ-space颜色系统中漫反射黑点的3刺激值 <br/>
-gamma ： 适合于成像设备的伽马值。<br/>
-返回一个新的灰色色彩空间,需要主动调用`CGColorSpaceRelease`来释放
-</code></pre></li>
-<li><p>创建校准的RGB颜色空间<br/>
-<code>CGColorSpaceCreateCalibratedRGB</code></p>
-<p>创建与设备无关的RGB颜色空间，表示相对于参考白点的颜色。 此白点基于输出设备可以生成的最白光。 与设备无关的颜色空间中的颜色在不同设备上显示时应该相同，只要设备的功能允许。<br/>
-对于需要详细伽玛的色彩空间，例如sRGB或ITU-R BT.709中使用的分段传递函数，可以使用函数<code>CGColorSpaceCreateICCBased</code>，因为它可以准确地表示这些伽玛曲线。</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateCalibratedRGB(const CGFloat *whitePoint, const CGFloat *blackPoint, const CGFloat *gamma, const CGFloat *matrix);
-whitePoint：<br/>
-blackPoint<br/>
-gamma: 一个由3个数字组成的数组，用于指定颜色空间的红色，绿色和蓝色分量的伽玛值。<br/>
-matrix： 9个数字的数组，指定相对于最终XYZ表示的颜色空间的伽马修改的RGB值的线性解释。<br/>
-返回一个新的RGB色彩空间,需要主动调用`CGColorSpaceRelease`来释放
-</code></pre></li>
-<li><p>创建根绝ICC颜色配置文件的规范<br/>
-<code>CGColorSpaceCreateICCBased</code></p>
-<p>根据ICC颜色配置文件创建基于ICC的色彩空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateICCBased(size_t nComponents, const CGFloat *range, CGDataProviderRef profile, CGColorSpaceRef alternate);
-</code></pre></li>
-<li><p>创建根据 CIE L<em>a</em>b标准与人类感知相关颜色</p>
-<p><code>CGColorSpaceCreateLab</code><br/>
-<code>CIE L * a * b</code>*空间是Munsell颜色表示系统（一种通过色调，值和饱和度或“色度”值指定颜色的系统）的非线性变换，旨在将感知色差与定量距离相匹配 在色彩空间。 L *分量表示亮度值，a *分量表示从绿色到红色的值，b *分量表示从蓝色到黄色的值。 这大致对应于人脑被认为解码颜色的方式。 与设备无关的颜色空间中的颜色在不同设备上显示时应该相同，只要设备的功能允许。</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateLab(const CGFloat *whitePoint, const CGFloat *blackPoint, const CGFloat *range);
-whitePoint:<br/>
-blackPoint:<br/>
-range:一个由4个数字组成的数组，用于指定颜色空间的a *和b *组件的有效值范围。 a *组件表示从绿色到红色的值，b *组件表示从蓝色到黄色的值。
-</code></pre></li>
-</ol>
+    RAC(self, loggedIn) = [[NSNotificationCenter.defaultCenter
+        rac_addObserverForName:UserDidLogOutNotification object:nil]
+        mapReplace:@NO];
+}
+</code></pre>
 
-<h2 id="toc_2">创建通用或者与设备相关的颜色空间</h2>
+<h3 id="toc_3">2.串联异步操作的依赖</h3>
 
-<p>当在不同的输出设备上显示时，设备颜色空间中的颜色经常显得不同。 因此，在保持颜色很重要时，不建议使用设备颜色空间</p>
+<pre><code class="language-objectivec">//logInWithSuccess 登录成功 -&gt; loadCachedMessagesWithSuccess 加载本地数据   -&gt;  fetchMessagesAfterMessage 请求本地为缓存的最新的数据
 
-<ol>
-<li><p>CMYK颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateDeviceCMYK(void);
-使用完后需要主动调用CGColorSpaceRelease进行释放
-</code></pre></li>
-<li><p>灰度颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateDeviceGray(void);
-</code></pre></li>
-<li><p>RGB颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateDeviceRGB(void);
-</code></pre></li>
-<li><p>特定平台的颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateWithPlatformColorSpace(const void *ref);
-platformColorSpace：指向特定于平台的颜色空间的通用指针。 在macOS中，传递CMProfileRef-a ColorSync配置文件。 Quartz仅在函数调用期间使用此指针（和基础信息）
-</code></pre></li>
-</ol>
+//不使用色RAC 使用block嵌套
+[client logInWithSuccess:^{
+    [client loadCachedMessagesWithSuccess:^(NSArray *messages) {
+        [client fetchMessagesAfterMessage:messages.lastObject success:^(NSArray *nextMessages) {
+            NSLog(@&quot;Fetched all messages.&quot;);
+        } failure:^(NSError *error) {
+            [self presentError:error];
+        }];
+    } failure:^(NSError *error) {
+        [self presentError:error];
+    }];
+} failure:^(NSError *error) {
+    [self presentError:error];
+}];
 
-<h2 id="toc_3">创建特殊颜色空间</h2>
+//RAC版本
+[[[[client logIn]
+    then:^{
+        return [client loadCachedMessages];
+    }]
+    flattenMap:^(NSArray *messages) {
+        return [client fetchMessagesAfterMessage:messages.lastObject];
+    }]
+    subscribeError:^(NSError *error) {
+        [self presentError:error];
+    } completed:^{
+        NSLog(@&quot;Fetched all messages.&quot;);
+    }];
+</code></pre>
 
-<ol>
-<li><p>创建索引颜色空间，由颜色查找表指定的颜色组成。</p>
-<p>索引颜色空间包含最多255个条目的颜色表，以及颜色表条目映射到的基色空间。 颜色表中的每个条目都指定基色空间中的一种颜色。 索引颜色空间中的值被视为颜色空间的颜色表的索引。 表中的数据采用网格格式。 （例如，对于RGB颜色空间，值为R，G，B，R，G，B等。）</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateIndexed(CGColorSpaceRef baseSpace, size_t lastIndex, const unsigned char *colorTable);
-baseSpace:颜色索引表基于的 基色颜色空间<br/>
-lastIndex: 索引表的最大下标值 必须&lt;=255<br/>
-colorTable: m *（lastIndex + 1）个字节的数组，其中m是基色空间中的颜色分量数。 每个字节是0到255范围内的无符号整数，它被缩放到基色空间中相应颜色分量的范围。
-</code></pre></li>
-<li><p>创建图案颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreatePattern(CGColorSpaceRef baseSpace);
-baseSpace:对于蒙版图案，底层颜色空间指定要通过蒙版绘制的颜色。 对于彩色图案，您应该传递NULL。
-</code></pre></li>
-<li><p>创建指定类型的Quartz颜色空间</p>
-<p>我们可以使用此函数创建通用的颜色空间等,查看<a href="https://developer.apple.com/documentation/coregraphics/cgcolorspace/color_space_names?language=objc">Color Space Name</a></p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateWithName(CFStringRef name);
-name：颜色空间名称
-</code></pre></li>
-</ol>
+<h3 id="toc_4">3.用RAC实现 OC中 集合没有的 map、filter、fold/reduce等方法</h3>
 
-<h2 id="toc_4">颜色空间的引用和释放</h2>
+<pre><code class="language-objectivec">//获取数组中字符串长度大于2并且拼接字符串`foobar`
+NSMutableArray *results = [NSMutableArray array];
+for (NSString *str in strings) {
+    if (str.length &lt; 2) {
+        continue;
+    }
 
-<pre><code class="language-objectivec">//减少颜色空间的引用计数
-void CGColorSpaceRelease(CGColorSpaceRef space);
+    NSString *newString = [str stringByAppendingString:@&quot;foobar&quot;];
+    [results addObject:newString];
+}
 
-//增加颜色空间的引用计数
-CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space);
 
+RACSequence *results = [[strings.rac_sequence
+    filter:^ BOOL (NSString *str) {
+        return str.length &gt;= 2;
+    }]
+    map:^(NSString *str) {
+        return [str stringByAppendingString:@&quot;foobar&quot;];
+    }];
 </code></pre>
 
                         
@@ -238,10 +389,10 @@ CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space);
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/8/24</span>
+                    <span class="date">2018/12/17</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='CoreGraphic.html'>CoreGraphic</a></span>
+          					    <span class="posted-in"><a href='ReactnativeCocoa.html'>ReactnativeCocoa</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -306,6 +457,8 @@ CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space);
 
       	<p class="cat-list">
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
@@ -335,31 +488,31 @@ CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space);
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15471197068949.html">Promise</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15471147696850.html">对象</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15471038798384.html">数组</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15470891496440.html">遍历</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15470311819265.html">解构</a>
 			      </li>
 		     
 		  
