@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
     
-  Python - ACEfish-Blog
+  ES6 - ACEfish-Blog
   
   </title>
   
@@ -114,163 +114,142 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15324145349319.html">
+                <a class="clearlink" href="15470891496440.html">
                 
-                  <h1>面对对象编程</h1>
+                  <h1>遍历</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">类和实例</h2>
+                        	<p>ES有新的遍历方式 <code>for of</code></p>
 
-<p><code>class</code>关键字定义类<br/>
-类名通常首字母大写</p>
+<pre><code class="language-javascript">const fruits = [&quot;apple&quot;, &quot;banana&quot;, &quot;orange&quot;, &quot;mango&quot;]
+fruits.describe = &quot;this is all describe&quot;
 
-<pre><code class="language-python">class My_Class_Student(object):
-    &quot;&quot;&quot;docstring for My_Class_Student&quot;&quot;&quot;
-    def __init__(self, name):
-        super(My_Class_Student, self).__init__()
-        self.name = name
-        
-lyy=My_Class_Student(&quot;liyuyuan&quot;)
-
-print(lyy)
-print(lyy.name) # liyuyuan
+Array.prototype.firstName = function() {
+    return this[0]
+}
 </code></pre>
 
-<p><code>__init__</code>方法定义初始化对象时必须要传入的参数,比如上面student初始化时必须传入name</p>
+<h2 id="toc_0">常用遍历方式</h2>
 
-<p>在类中定义的函数，第一个参数永远是实例变量<code>self</code>，调用时不用传递该参数</p>
+<ol>
+<li><p>for循环<br/>
+写法比较繁琐</p>
+<pre><code class="language-javascript">for (let index = 0; index &lt; fruits.length; index++) {
+    if(fruits[index] == &quot;banana&quot;) {<br/>
+        continue;<br/>
+    }<br/>
+    console.log(&quot;for循环&quot; + fruits[index])                <br/>
+}<br/>
+/*<br/>
+for循环apple<br/>
+for循环banana<br/>
+for循环orange<br/>
+for循环mango<br/>
+*/
+</code></pre></li>
+<li><p>for each</p>
+<p>可以使用箭头函数 写法便捷 但是不能使用continue 和 break</p>
+<pre><code class="language-javascript">fruits.forEach(fruit =&gt; {
+// if(fruit == &quot;banana&quot;) {<br/>
+//     continue;<br/>
+// }<br/>
+console.log(&quot;for each &quot;+fruit)<br/>
+});<br/>
+/*<br/>
+for each apple<br/>
+for each banana<br/>
+for each orange<br/>
+for each mango<br/>
+*/
+</code></pre></li>
+<li><p>for in</p>
+<p>forin 遍历获取的是key 需要额外取值value<br/>
+forin不仅仅可以遍历可迭代对象<br/>
+<strong>forin遍历可以获取对象的原型方法和对象方法、属性</strong></p>
+<pre><code class="language-javascript">for (const key in fruits) {
+    if(fruits[key] == &quot;banana&quot;) {<br/>
+        continue;<br/>
+    }<br/>
+    console.log(&quot;for in key &quot;+ key+ &quot; value &quot; + fruits[key])<br/>
+}<br/>
+/*<br/>
+for in key 0 value apple<br/>
+for in key 2 value orange<br/>
+for in key 3 value mango<br/>
+for in key describe value this is all describe<br/>
+for in key firstName value function() {<br/>
+    return this[0]<br/>
+}<br/>
+*/
+</code></pre>
+<p>forin遍历不可迭代对象</p>
+<pre><code class="language-javascript">const fankai = {
+    name: &quot;fankai&quot;,<br/>
+    age: 26<br/>
+}<br/>
+for (const value in fankai) {<br/>
+    console.log(value)<br/>
+}
+</code></pre></li>
+<li><p>for of</p>
+<p>遍历可迭代对象</p>
+<pre><code class="language-objectivec">for (const fruit of fruits) {
+    if(fruit == &quot;banana&quot;) {<br/>
+        continue;<br/>
+    }<br/>
+    console.log(&quot;for of &quot;+ fruit)<br/>
+}<br/>
+/**<br/>
+* for of apple<br/>
+* for of orange<br/>
+* for of mango<br/>
+*/
+</code></pre></li>
+</ol>
 
-<h3 id="toc_1">数据封装</h3>
+<h3 id="toc_1">for of</h3>
 
-<p>使用类中定义的方法来实现数据封装</p>
+<p>只能遍历可迭代对象<br/>
+可迭代对象就是部署了<code>iterable</code>接口 或者定义了<code>Symbol.iterator</code>方法的数据结构。<br/>
+<code>js</code>内置了一些带遍历器接口的数据结构,例如Array、map</p>
 
-<pre><code class="language-python">class My_Class_Student(object):
-    &quot;&quot;&quot;docstring for My_Class_Student&quot;&quot;&quot;
-    def __init__(self, name):
-        super(My_Class_Student, self).__init__()
-        self.name = name
-    def print_name(self):
-        print(self.name)
-        
-lyy=My_Class_Student(&quot;liyuyuan&quot;)
+<p>iterable接口 内置了<code>next</code>方法,调用该方法返回对象,该对象包含值<code>value</code>，以及是否遍历结束的标识<code>done</code>，value中包含了当前的索引以及索引对应的值</p>
 
-print(lyy)
-print(lyy.name) # liyuyuan
-lyy.print_name() #liyuyuan
+<p><img src="media/15470891496440/15471018365126.jpg" alt="" style="width:544px;"/></p>
 
+<p><code>entries()</code>可以获取包含数组的键值对</p>
+
+<pre><code class="language-javascript">//entries() 获取数组的可迭代对象 该对象包含数组的键值对(key/value)
+for (let [index, fruit] of fruits.entries()) {
+    console.log(index, fruit)
+}
 </code></pre>
 
-<h2 id="toc_2">访问限制</h2>
+<h4 id="toc_2">for of 常用实例</h4>
 
-<p>让内部属性不被外部访问，可以再属性名称前加双下划线<code>__</code>，在python中，以<code>__</code>开头的变量名就为私有变量,外部不能访问（只能为<code>__</code>不能<code>_</code>）</p>
+<p>for of循环遍历除了可以遍历数组外 还经常用于其他地方:</p>
 
-<pre><code class="language-python">class My_Class_Student(object):
-    &quot;&quot;&quot;docstring for My_Class_Student&quot;&quot;&quot;
-    def __init__(self, name):
-        super(My_Class_Student, self).__init__()
-        self.__name = name
-    def print_name(self):
-        print(self.__name)
-        
-lyy=My_Class_Student(&quot;liyuyuan&quot;)
-
-print(lyy.__name) # AttributeError:&#39;My_Class_Student&#39; object has no attribute &#39;__name&#39;
-lyy.print_name() #liyuyuan
-</code></pre>
-
-<blockquote>
-<p>变量名为<code>__xxx__</code>是特殊变量，外部可以直接访问的</p>
-
-<p>对于单下划线开头的变量,虽然可以访问,但是约定俗成不要访问,当做私有变量</p>
-
-<p>对于<code>__</code>开头的变量，其实python是将其改名为<code>_classname__变量名</code>，我们也可以通过其进行访问，不建议</p>
-</blockquote>
-
-<h2 id="toc_3">继承和多态</h2>
-
-<h3 id="toc_4">继承</h3>
-
-<pre><code class="language-python">class Animal(object):
-    def run(self):
-        print(&#39;Animal is running...&#39;)
-
-#继承了Animal 就自带了run方法
-class Dog(Animal):
-    pass
-
-#重写父类继承的方法
-class Cat(Animal):
-    def run(self):
-        print(&#39;Cat is running...&#39;)
-    
-</code></pre>
-
-<h3 id="toc_5">多态</h3>
-
-<p>判断一个变量是否是某个类型可以用<code>isinstance()</code>判断：</p>
-
-<pre><code class="language-python">b = Animal() # b是Animal类型
-isinstance(b, Animal)  #True
-</code></pre>
-
-<blockquote>
-<p>对于静态语言(java等),需要传入的必须是Animal类型或者其子类,否则无法调用其方法</p>
-
-<p>对于python等动态语言,没有类型检查,只需要保证其有执行的方法就行了，就可以执行<br/>
-这就是鸭子类型</p>
-</blockquote>
-
-<h2 id="toc_6">获取对象信息</h2>
-
-<h3 id="toc_7">type()</h3>
-
-<p>用<code>type()</code>来获取对象类型</p>
-
-<pre><code class="language-python">if type(&quot;name&quot;) == type(&quot;dd&quot;):
-    print(&quot;类型相同+&quot;,type(&quot;name&quot;)) # 类型相同+ &lt;class &#39;str&#39;&gt;
-</code></pre>
-
-<h3 id="toc_8">isinstance()</h3>
-
-<p>对于继承关系来说,<code>type()</code>并不好用,我们可以使用<code>isinstance()</code>函数来判断<code>class</code>类型<br/>
-<code>isinstance()</code>对于该类型以及父类继承链 均返回<code>True</code></p>
-
-<pre><code class="language-python">#用type() 判断的基本类型 也可以用isinstance判断
-isinstance(123, int) # True
-
-
-# 判断是否为某些类型的一种
- isinstance([1, 2, 3], (list, tuple))  #True
-
-</code></pre>
-
-<h3 id="toc_9">dir() getattr() setattr() hasattr()</h3>
-
-<p>用<code>dir()</code>来获得对象的所有属性和方法</p>
-
-<p><code>hasattr()</code>判断该对象是否有此属性<br/>
-<code>setattr()</code>设置一个属性<br/>
-<code>getattr()</code>获取该属性的值 ，当试图获取不存在的属性，会抛出<code>AttributeError</code>错误</p>
-
-<h2 id="toc_10">实例属性和类属性</h2>
-
-<p>对于类属性,直接在<code>class</code>定义</p>
-
-<pre><code class="language-python">class My_Student_Class(object):
-    &quot;&quot;&quot;docstring for My_Student_Class&quot;&quot;&quot;
-    name=&quot;My_Student_Class&quot; #在类中直接定义的类属性
-
-stu1=My_Student_Class()
-# 因为对象没有name属性,因此继续查找class的name属性
-print(stu1.name) # My_Student_Class
-print(My_Student_Class.name) #My_Student_Class
-stu1.name=&quot;liyuyuan&quot;
-print(stu1.name,&quot;  &quot;,My_Student_Class.name) #  liyuyuan    My_Student_Class
-del stu1.name #删除实例的name属性
-print(stu1.name) # My_Student_Class
-</code></pre>
+<ol>
+<li><p>遍历方法参数<code>arguments</code></p>
+<pre><code class="language-javascript">function sum() {
+    for (const variable of arguments) {<br/>
+        console.log(variable)<br/>
+    }<br/>
+}
+</code></pre></li>
+<li><p>遍历字符串</p>
+<pre><code class="language-javascript">for (const char of &quot;object&quot;) {
+    console.log(char)<br/>
+}
+</code></pre></li>
+<li><p>遍历DOM元素</p>
+<pre><code class="language-javascript">const lis = document.querySelectorAll(&quot;li&quot;)
+for (const li of lis) {<br/>
+}
+</code></pre></li>
+</ol>
 
                         
                       </div>
@@ -279,10 +258,10 @@ print(stu1.name) # My_Student_Class
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/7/24</span>
+                    <span class="date">2019/1/10</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Python.html'>Python</a></span>
+          					    <span class="posted-in"><a href='ES6.html'>ES6</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -301,12 +280,12 @@ print(stu1.name) # My_Student_Class
 			<div class="row">
 			  <div class="large-6 columns">
 			  <p class="text-left" style="padding-top:25px;">
-			   <a href="Python_6.html">&laquo; Prev Page</a>  
+			   <a href="ES6_2.html">&laquo; Prev Page</a>  
 			  </p>
 			  </div>
 			  <div class="large-6 columns">
 			<p class="text-right" style="padding-top:25px;">
-			 <a href="Python_8.html">&raquo; Next Page</a> 
+			 <a href="ES6_4.html">&raquo; Next Page</a> 
 			</p>
 			  </div>
 			</div>
