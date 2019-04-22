@@ -77,15 +77,13 @@
     <li><label>Categories</label></li>
 
         
-            <li><a href="Swift.html">Swift初学笔记</a></li>
-        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -114,142 +112,58 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15082349866219.html">
+                <a class="clearlink" href="15471899651568.html">
                 
-                  <h1>ARSession</h1>
+                  <h1>Symbol</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><code>ARSession</code>是连接底层与AR视图的桥梁，<code>ARCNView</code>内部所有的代理方法都是ARSession提供的</p>
+                        	<p>是js中继<code>Number</code> <code>String</code> <code>Boolean</code> <code>Undefined</code> <code>Object</code> <code>Function</code>之后推出的第七种数据类型 <code>Symbol</code></p>
 
-<p><img src="media/15082349866219/15082365566677.png" alt=""/></p>
+<p>Symbol生成唯一的值 为了防止命名冲突</p>
 
-<h2 id="toc_0">获取相机位置的方法</h2>
+<h2 id="toc_0">构造</h2>
 
-<ol>
-<li>实时不断的获取相机位置,然后由<code>ARSession</code>告知用户</li>
-</ol>
+<p><code>Symbol(str)</code> str为了标识我们生成唯一值 可以省略</p>
 
-<p>//获取相机位置<br/>
-<code>- (void)session:(ARSession *)session didUpdateFrame:(ARFrame *)frame</code></p>
+<pre><code class="language-javascript">const students = {
+    wx : &quot;钻一&quot;,
+    //利用计算属性 生成属性名 防止冲突
+    [Symbol(&quot;lyy&quot;)] : &quot;最强王者&quot;,
+    [Symbol(&quot;fk&quot;)] : &quot;白金&quot;,
+    [Symbol(&quot;tt&quot;)] : &quot;黑铁&quot;,
+}
+</code></pre>
 
-<ol>
-<li>用户想要时主动去获取,通过其<code>currentFrame</code>属性获取</li>
-</ol>
+<h2 id="toc_1">特点</h2>
 
-<h2 id="toc_1">API</h2>
+<h3 id="toc_2">对象属性遍历</h3>
 
-<pre><code class="language-objectivec">/**
- 代理
- */
-@property (nonatomic, weak) id &lt;ARSessionDelegate&gt; delegate;
+<p>用symbol生成的对象属性 ，使用<code>for in</code>、 <code>Object.getOwnPropertyNames()</code> 、 <code>Object.keys()</code>无法遍历获取,只能使用<code>Object.getOwnPropertySymbols()</code>获取属性</p>
 
-/**
-指定代理执行的线程（主线程不会有延迟，子线程会有延迟），不指定的话默认主线程
- */
-@property (nonatomic, strong, nullable) dispatch_queue_t delegateQueue;
+<pre><code class="language-javascript">for (const key in students) {
+    console.log(key)
+}
+//wx
 
-/**
-相机当前的位置（是由会话追踪配置计算出来的）
- */
-@property (nonatomic, copy, nullable, readonly) ARFrame *currentFrame;
+console.log(Object.keys(students)) //[&quot;wx&quot;]
 
-/**
- 会话追踪配置
- */
-@property (nonatomic, copy, nullable, readonly) ARSessionConfiguration *configuration;
+console.log(Object.getOwnPropertyNames(students)) //[&quot;wx&quot;]
 
-/**
-运行会话（这行代码就是开启AR的关键所在）
- */
-- (void)runWithConfiguration:(ARSessionConfiguration *)configuration NS_SWIFT_UNAVAILABLE(&quot;Use run(_:options:)&quot;);
+console.log(Object.getOwnPropertySymbols(students)) // [Symbol(lyy), Symbol(fk), Symbol(tt)]
 
-/**
-运行会话，只是多了一个参数ARSessionRunOptions：作用就是会话断开重连时的行为。
-ARSessionRunOptionResetTracking：表示重置追踪  
-ARSessionRunOptionRemoveExistingAnchors：移除现有锚点
- */
-- (void)runWithConfiguration:(ARSessionConfiguration *)configuration options:(ARSessionRunOptions)options NS_SWIFT_NAME(run(_:options:));
+</code></pre>
 
-/**
-暂停会话
- */
-- (void)pause;
+<h2 id="toc_3">Symbol.for()</h2>
 
-/**
-添加锚点
- */
-- (void)addAnchor:(ARAnchor *)anchor NS_SWIFT_NAME(add(anchor:));
+<p>Symbol.for(str)查找其它用Symbol.for(str)生成的唯一值,如果存在就用返回已存在的唯一值，不存在就生成新的唯一值</p>
 
-/**
-移除锚点
- */
-- (void)removeAnchor:(ARAnchor *)anchor NS_SWIFT_NAME(remove(anchor:));
+<pre><code class="language-javascript">const students = {
+    [Symbol.for(&quot;lyy&quot;)] : &quot;最强王者&quot;,
+}
 
-@end
-
-//session代理分类两部分，一个是观察者（KVO） 一个是委托者（代理）
-#pragma mark - ARSessionObserver
-
-
-//session KVO观察者
-@protocol ARSessionObserver &lt;NSObject&gt;
-
-@optional
-
-/**
- session失败
- */
-- (void)session:(ARSession *)session didFailWithError:(NSError *)error;
-
-/**
-相机改变追踪状态
- */
-- (void)session:(ARSession *)session cameraDidChangeTrackingState:(ARCamera *)camera;
-
-/**
- session意外断开（如果开启ARSession之后，APP退到后台就有可能导致会话断开）
- */
-- (void)sessionWasInterrupted:(ARSession *)session;
-
-/**
-session会话断开恢复（短时间退到后台再进入APP会自动恢复）
- */
-- (void)sessionInterruptionEnded:(ARSession *)session;
-
-@end
-
-#pragma mark - ARSessionDelegate
-
-
-
-@protocol ARSessionDelegate &lt;ARSessionObserver&gt;
-
-@optional
-
-/**
- 更新相机位置
- */
-- (void)session:(ARSession *)session didUpdateFrame:(ARFrame *)frame;
-
-/**
-添加锚点
- */
-- (void)session:(ARSession *)session didAddAnchors:(NSArray&lt;ARAnchor*&gt;*)anchors;
-
-/**
-刷新锚点
- */
-- (void)session:(ARSession *)session didUpdateAnchors:(NSArray&lt;ARAnchor*&gt;*)anchors;
-
-/**
-移除锚点
- */
-- (void)session:(ARSession *)session didRemoveAnchors:(NSArray&lt;ARAnchor*&gt;*)anchors;
-
-@end
-
+console.log(students[Symbol.for(&quot;lyy&quot;)]) //最强王者
 </code></pre>
 
                         
@@ -259,10 +173,10 @@ session会话断开恢复（短时间退到后台再进入APP会自动恢复）
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/10/17</span>
+                    <span class="date">2019/1/11</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='ARKit.html'>ARKit</a></span>
+          					    <span class="posted-in"><a href='ES6.html'>ES6</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -327,15 +241,13 @@ session会话断开恢复（短时间退到后台再进入APP会自动恢复）
 
       	<p class="cat-list">
         
-            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
-        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -358,31 +270,31 @@ session会话断开恢复（短时间退到后台再进入APP会自动恢复）
 	      
 		      
 			      <li class="post">
-			        <a href="15471197068949.html">Promise</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471147696850.html">对象</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471038798384.html">数组</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470891496440.html">遍历</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470311819265.html">解构</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

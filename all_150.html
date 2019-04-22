@@ -77,15 +77,13 @@
     <li><label>Categories</label></li>
 
         
-            <li><a href="Swift.html">Swift初学笔记</a></li>
-        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -114,161 +112,365 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14924196525709.html">
+                <a class="clearlink" href="14878317569666.html">
                 
-                  <h1>性能调优</h1>
+                  <h1>方法与消息</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h3 id="toc_0">CPU &amp;&amp; GPU</h3>
+                        	<p>运行时中的<strong>消息处理机制</strong>消息的发送及消息的转发</p>
 
-<p>绘图和动画处理方式:<code>CPU</code>(中央处理器)和<code>GPU</code>(图形处理器).<code>CPU</code>所做的工作都在软件层面，而<code>GPU</code>在硬件层面。</p>
+<p>补充:类的方法链表中存储的是Method链表 而一个Method也是一个结构体指针,这个指针包含<br/>
+一个方法 Method，其包含一个方法选标 SEL – 表示该方法的名称，一个types – 表示该方法参数的类型，一个 IMP  - 指向该方法的具体实现的函数指针。</p>
 
-<p>我们可以用<code>CPU</code>做任何事情，但是对于图像处理，使用硬件更快，因为<code>GPU</code>使用图像对高度并行浮点运算做了优化。但是<code>GPU</code>也不是无限制使用的,一旦资源用完的性能就下降了(即使CPU没有完全占用)</p>
+<h2 id="toc_0">基础数据类型</h2>
 
-<p>我们的优化就是智能使用<code>GPU</code>和<code>CPU</code>使他们都不会超过负荷,我们需要先了解这两个处理器分配工作的逻辑</p>
+<h3 id="toc_1">SEL</h3>
 
-<h4 id="toc_1">动画的舞台</h4>
+<p>SEL又叫选择器，是表示一个方法的<code>selector</code>的指针,为一个指针</p>
 
-<p><strong>动画和屏幕上组合的图层实际上被一个单独的进程管理，而不是你的应用程序。这个进程就是所谓的渲染服务。</strong>在iOS6之后的版本中叫做<code>BackBoard</code>。</p>
+<p><code>typedef struct objc_selector *SEL;</code></p>
 
-<p>当运行一段动画时,整个过程会分为4个阶段：</p>
+<p><code>objc_selector</code>结构体的详细定义没有在<objc/runtime.h>头文件中找到。方法的selector用于表示运行时方法的名字。Objective-C在编译时，会依据每一个方法的名字、参数序列，生成一个唯一的整型标识(Int类型的地址)，这个标识就是SEL。如下代码所示：</p>
+
+<pre><code class="language-objectivec">SEL sel1 = @selector(method1);
+NSLog(@&quot;sel : %p&quot;, sel1);
+//输出
+2014-10-30 18:40:07.518 RuntimeTest[52734:466626] sel : 0x100002d72
+</code></pre>
+
+<p>两个类之间不管有没有关系,只要方法名相同，那么方法的SEL就是一样的.每一个方法都对应着一个<code>SEL</code>。</p>
+
+<p>所以在Objective-C同一个类(及类的继承体系)中，不能存在2个同名的方法，即使参数类型不同也不行。相同的方法只能对应一个SEL。这也就导致Objective-C在处理相同方法名且参数个数相同但类型不同的方法方面的能力很差。<br/>
+例如:</p>
+
+<pre><code class="language-objectivec">    - (void)setWidth:(int)width;
+    - (void)setWidth:(double)width;
+    //上面的写法 这样的定义被认为是一种编译错误 饿哦们需要这样申明
+    -(void)setWidthIntValue:(int)width;
+    -(void)setWidthDoubleValue:(double)width;
+</code></pre>
+
+<p>当然不同的类就算是select相同也没关系 .不同类的实例对象执行相同的selector时，会在各自的方法列表中去根据selector去寻找自己对应的IMP。</p>
+
+<p>工程中的所有的SEL组成一个Set集合，Set的特点就是唯一，因此SEL是唯一的。因此，如果我们想到这个方法集合中查找某个方法时，只需要去找到这个方法对应的SEL就行了，SEL实际上就是根据方法名hash化了的一个字符串，而对于字符串的比较仅仅需要比较他们的地址就可以了，可以说速度上无语伦比！<br/>
+但是，有一个问题，就是数量增多会增大hash冲突而导致的性能下降（或是没有冲突，因为也可能用的是<code>perfect hash</code>）。但是不管使用什么样的方法加速，如果能够将总量减少（多个方法可能对应同一个SEL），那将是最犀利的方法。那么，我们就不难理解，为什么SEL仅仅是函数名了。</p>
+
+<p><em>本质上，<code>SEL</code>只是一个指向方法的指针（准确的说，只是一个根据方法名hash化了的KEY值，能唯一代表一个方法），它的存在只是为了加快方法的查询速度。</em></p>
+
+<pre><code class="language-objectivec">/**
+我们可以在运行时添加新的selector，也可以在运行时获取已存在的selector，我们可以通过下面三种方法来获取SEL:
+*/
+sel_registerName函数
+Objective-C编译器提供的@selector()
+NSSelectorFromString()方法
+</code></pre>
+
+<h3 id="toc_2">IMP</h3>
+
+<p><code>IMP</code>实际上是一个函数指针，指向方法实现的首地址。是函数指针而不是指针函数<br/>
+IMP 是消息最终调用的执行代码，是方法真正的实现代码</p>
+
+<p><code>id (*IMP)(id, SEL, ...)</code><br/>
+第一个参数是指向self的指针(如果是实例方法，则是类实例的内存地址；如果是类方法，则是指向元类的指针)，第二个参数是方法选择器(selector)，接下来是方法的实际参数列表。</p>
+
+<p>前面介绍过的<code>SEL</code>就是为了查找方法的最终实现<code>IMP</code>的。由于每个方法对应唯一的<code>SEL</code>，因此我们可以通过SEL方便快速准确地获得它所对应的IMP.取得IMP后，我们就获得了执行这个方法代码的入口点，此时，我们就可以像调用普通的C语言函数一样来使用这个函数指针了。</p>
+
+<p>通过取得<code>IMP</code>，我们可以跳过<code>Runtime</code>的消息传递机制，直接执行IMP指向的函数实现，这样省去了Runtime消息传递过程中所做的一系列查找操作，会比直接向对象发送消息高效一些。</p>
+
+<h3 id="toc_3">Method</h3>
+
+<p>介绍完<code>SEL</code>和<code>IMP</code>，我们就可以来讲讲<code>Method</code>了。Method用于表示类定义中的方法，则定义如下：</p>
+
+<pre><code class="language-objectivec">typedef struct objc_method *Method;
+struct objc_method {
+    SEL method_name                 OBJC2_UNAVAILABLE;  // 方法名
+    char *method_types                  OBJC2_UNAVAILABLE;
+    IMP method_imp                      OBJC2_UNAVAILABLE;  // 方法实现
+}
+/**
+一个方法 Method，其包含一个方法选标 SEL – 表示该方法的名称，一个types – 表示该方法参数的类
+型，一个 IMP  - 指向该方法的具体实现的函数指针。
+*/
+</code></pre>
+
+<p>我们可以看到该结构体中包含一个SEL和IMP，实际上相当于在SEL和IMP之间作了一个映射。有了SEL，我们便可以找到对应的IMP，从而调用方法的实现代码。</p>
+
+<p>查找IMP 时<br/>
+1，首先去该类的方法 cache 中查找，如果找到了就返回它；<br/>
+2，如果没有找到，就去该类的方法列表中查找。如果在该类的方法列表中找到了，则将 IMP 返回，并将它加入cache中缓存起来。根据最近使用原则，这个方法再次调用的可能性很大，缓存起来可以节省下次调用再次查找的开销。<br/>
+3，如果在该类的方法列表中没找到对应的 IMP，在通过该类结构中的 super_class指针在其父类结构的方法列表中去查找，直到在某个父类的方法列表中找到对应的IMP，返回它，并加入cache中。</p>
+
+<p>4，如果在自身以及所有父类的方法列表中都没有找到对应的 IMP，则进入下文中要讲的消息转发流程。<br/>
+是没有找到实现进入消息转发流程</p>
+
+<h4 id="toc_4">objc_method_description</h4>
+
+<p><code>objc_method_description</code>定义了一个Objective-C方法</p>
+
+<pre><code class="language-objectivec">struct objc_method_description { SEL name; char *types; };
+</code></pre>
+
+<h2 id="toc_5">方法相关操作函数</h2>
+
+<p>Runtime提供了一系列的方法来处理与方法相关的操作。包括方法本身及SEL。</p>
+
+<h3 id="toc_6">方法</h3>
+
+<pre><code class="language-objectivec">// 调用指定方法的实现
+id method_invoke ( id receiver, Method m, ... );
+// 调用返回一个数据结构的方法的实现
+void method_invoke_stret ( id receiver, Method m, ... );
+// 获取方法名
+SEL method_getName ( Method m );
+// 返回方法的实现
+IMP method_getImplementation ( Method m );
+// 获取描述方法参数和返回值类型的字符串
+const char * method_getTypeEncoding ( Method m );
+// 获取方法的返回值类型的字符串
+char * method_copyReturnType ( Method m );
+// 获取方法的指定位置参数的类型字符串
+char * method_copyArgumentType ( Method m, unsigned int index );
+// 通过引用返回方法的返回值类型字符串
+void method_getReturnType ( Method m, char *dst, size_t dst_len );
+// 返回方法的参数的个数
+unsigned int method_getNumberOfArguments ( Method m );
+// 通过引用返回方法指定位置参数的类型字符串
+void method_getArgumentType ( Method m, unsigned int index, char *dst, size_t dst_len );
+// 返回指定方法的方法描述结构体
+struct objc_method_description * method_getDescription ( Method m );
+// 设置方法的实现
+IMP method_setImplementation ( Method m, IMP imp );
+
+// 交换两个方法的实现
+void method_exchangeImplementations ( Method m1, Method m2 );
+
+//注意:这里的dst只是一个引用  用来获取我们需要的值 类似返回类变量列表时的个数
+</code></pre>
 
 <ul>
-<li>布局 - 这是准备你的视图/图层的层级关系，以及设置图层属性（位置，背景色，边框等等）的阶段。</li>
-<li>显示 - 这是图层的寄宿图片被绘制的阶段。绘制有可能涉及你的<code>- drawRect:</code>和<code>-drawLayer:inContext:</code>方法的调用路径。</li>
-<li>准备 - 这是<code>Core Animation</code>准备发送动画数据到渲染服务的阶段。这同时也是<code>Core Animation</code>将要执行一些别的事务例如解码动画过程中将要显示的图片的时间点。</li>
-<li>提交 - 这是最后的阶段，<code>Core Animation</code>打包所有图层和动画属性，然后通过<code>IPC</code>（内部处理通信）发送到渲染服务进行显示。</li>
+<li><code>method_invoke</code>函数，返回的是实际实现的返回值。参数<code>receiver</code>不能为空。这个方法的效率会比<code>method_getImplementation</code>和<code>method_getName</code>更快。</li>
+<li><code>method_getName</code>函数，返回的是一个SEL。如果想获取方法名的C字符串，可以使用<code>sel_getName(method_getName(method))</code>。</li>
+<li><code>method_getReturnType</code>函数，类型字符串会被拷贝到<code>dst</code>中</li>
+<li><code>method_setImplementation</code>函数，注意该函数返回值是方法之前的实现。</li>
 </ul>
 
-<p>这些仅仅只是发生在应用程序内内,在动画在屏幕上显示之前仍然有其他工作，一旦打包的图层和动画到了渲染服务进程，他们会被<em>反序列化</em>形成一个叫做<strong>渲染树</strong>的图层树,使用这个树状结构，渲染服务对动画的每一帧做出如下工作：</p>
+<h3 id="toc_7">方法选择器</h3>
 
-<ul>
-<li>对所有的图层属性计算中间值，设置<code>OpenGL</code>几何形状（纹理化的三角形）来执行渲染</li>
-<li>在屏幕上渲染可见的三角形</li>
-</ul>
+<pre><code class="language-objectivec">// 返回给定选择器指定的方法的名称
+const char * sel_getName ( SEL sel );
+// 在Objective-C Runtime系统中注册一个方法，将方法名映射到一个选择器，并返回这个选择器
+SEL sel_registerName ( const char *str );
+// 在Objective-C Runtime系统中注册一个方法
+SEL sel_getUid ( const char *str );
+// 比较两个选择器
+BOOL sel_isEqual ( SEL lhs, SEL rhs );
+</code></pre>
 
-<p>所以一共有六个阶段；最后两个阶段在动画过程中不停地重复。前五个阶段都在软件层面处理（通过CPU），只有最后一个被GPU执行。而且，你真正只能控制前两个阶段：布局和显示。Core Animation框架在内部处理剩下的事务，你也控制不了它。</p>
+<p><code>sel_registerName</code>函数：在我们将一个方法添加到类定义时，我们必须在Objective-C Runtime系统中注册一个方法名以获取方法的选择器。</p>
 
-<p>我们<br/>
-<strong>在布局和显示阶段，可以决定哪些由CPU执行，哪些交给GPU去做。</strong></p>
+<h2 id="toc_8">方法调用流程</h2>
 
-<h4 id="toc_2">GPU相关操作</h4>
+<p>在Objective-C中，<strong>消息</strong>直到运行时才绑定到<strong>方法实现</strong>上。编译器会将消息表达式<code>[receiver message]</code>转化为一个消息函数的调用，即<code>objc_msgSend</code>。这个函数将消息接收者和方法名作为其基础参数:</p>
 
-<p>GPU为一个具体的任务做了优化：它用来采集图片和形状（三角形），运行变换，应用纹理和混合然后把它们输送到屏幕上。现代iOS设备上可编程的GPU在这些操作的执行上又很大的灵活性，但是<code>Core Animation</code>并没有暴露出直接的接口。除非你想绕开<code>Core Animation</code>并编写你自己的<code>OpenGL着色器</code>，从根本上解决硬件加速的问题，那么剩下的所有都还是需要在<code>CPU</code>的软件层面上完成。</p>
+<pre><code class="language-objectivec">objc_msgSend(receiver, selector)
+//如果方法中还有其他参数
+objc_msgSend(receiver, selector, arg1, arg2, ...)
+</code></pre>
 
-<p>宽泛的说，<strong>大多数<code>CALayer</code>的属性都是用<code>GPU</code>来绘制</strong>。<br/>
-比如如果你设置图层背景或者边框的颜色，那么这些可以通过着色的三角板实时绘制出来。如果对一个<code>contents</code> 属性设置一张图片，然后裁剪它 - 它就会被纹理的三角形绘制出来，而不需要软件层面做任何绘制。</p>
+<p><code>这个函数</code>完成了动态绑定的所有事情:</p>
 
-<p>但是有一些事情会降低（基于GPU）图层绘制:</p>
+<pre><code class="language-text">1. **首先它找到selector对应的方法实现。因为同一个方法可能在不同的类中有不同的实现，所以我们需要依赖于接收者的类来找到的确切的实现。**
+    注意:是找到方法对应的 。。。实现。。。
+2. 它调用方法实现，并将接收者对象及方法的所有参数传给它。
+3. 最后，它将实现返回的值作为它自己的返回值。
+</code></pre>
 
-<ul>
-<li>太多的几何结构<br/>
-太多的几何结构就需要太多的三角板来做变换,并不是GPU处理不了这么多几何结构,而是显示之前通过IPC发送到渲染服务器(图层实际上是由很多小物体组成的特别重量级的对象)时，会引起CPU的瓶颈，这就限制了一次展示的图层个数</li>
-<li><p>重绘</p>
-<p>主要由重叠的半透明图层引起。GPU的填充比率（用颜色填充像素的比率）是有限的，所以需要避免重（每一帧用相同的像素填充多次）的发生。</p></li>
-<li><p>离屏绘制<br/>
-发生在当不能直接在屏幕上绘制，并且必须绘制到离屏图片的上下文中的时候。离屏绘制发生在基于CPU或者是GPU的渲染，或者是为离屏图片分配额外内存，以及切换绘制上下文，这些都会降低<code>GPU</code>性能。对于特定图层效果的使用，比如圆角，图层遮罩，阴影或者是图层光栅化都会强制<code>Core Animation</code>提前渲染图层的离屏绘制。但这不意味着你需要避免使用这些效果，只是要明白这会带来性能的负面影响。</p></li>
-<li><p>过大的图片<br/>
-如果视图绘制超出GPU支持的<code>2048x2048</code>或者<code>4096x4096</code>尺寸的纹理，就必须要用CPU在图层每次显示之前对图片预处理，同样也会降低性能。</p></li>
-</ul>
-
-<h4 id="toc_3">CPU相关的操作</h4>
-
-<p>CPU的工作对于<code>Core Animation</code>发生在动画开始前。所以不会影响到帧率,但是会延时动画开始时间，让界面看起来比较迟钝</p>
-
-<p>延迟动画的开始时间的CPU操作:</p>
-
-<ul>
-<li><p>布局计算:<br/>
-视图层级过于复杂,视图修改或者呈现时计算图层帧率会消耗一部分时间</p></li>
-<li><p>视图懒加载<br/>
-iOS只会当视图控制器的视图显示到屏幕上时才会加载它。这对内存使用和程序启动时间很有好处，但是当呈现到屏幕上之前，按下按钮导致的许多工作都会不能被及时响应。比如控制器从数据库中获取数据，或者视图从一个nib文件中加载，或者涉及IO的图片显示（见后续“IO相关操作”），都会比CPU正常操作慢得多。</p></li>
-<li><p>Core Graphics绘制</p>
-<p>如果对视图实现了 -drawRect: 方法，或者 CALayerDelegate 的 -drawLayer:inContext: 方法，那么在绘制任何东西之前都会产生一个巨大的性能开销。为了支持对图层内容的任意绘制，Core Animation必须创建一个内存中等大小的寄宿图片。然后一旦绘制结束之后，必须把图片数据通过IPC传到渲染服务器。在此基础上，Core Graphics绘制就会变得十分缓慢，所以在一个对性能十分挑剔的场景下这样做十分不好。</p></li>
-<li><p>解压图片<br/>
-PNG或者JPEG压缩之后的图片文件会比同质量的位图小得多。为了节省内存，iOS通常直到真正绘制的时候才去解码图片，根据你加载图片的方式，第一次对图层内容赋值的时候，或者把它绘制<code>Core Graphics</code>中,需要解压,这样对于比较大的图片会占用时间</p></li>
-</ul>
-
-<p>当图层被成功打包，发送到渲染服务器之后，CPU仍然要做如下工作:<br/>
-为了显示屏幕上的图层，<code>Core Animation</code>必须对渲染树种的每个可见图层通过<code>OpenGL</code>循环转换成纹理三角板。由于GPU并不知晓<code>Core Animation</code>图层的任何结构，所以必须要由<code>CPU</code>做这些事情。CPU涉及的工作和图层个数成正比，所以如果在你的层级关系中有太多的图层，就会导致CPU每一帧的渲染，</p>
-
-<h4 id="toc_4">IO相关操作</h4>
-
-<p>上下文中的IO（输入/输出）指的是例如闪存或者网络接口的硬件访问。一些动画可能需要从闪存（甚至是远程URL）来加载。一个典型的例子就是两个视图控制器之间的过渡效果，这就需要从一个nib文件或者是它的内容中懒加载，或者一个旋转的图片，可能在内存中尺寸太大，需要动态滚动来加载。</p>
-
-<p>IO比内存访问更慢，所以如果动画涉及到IO，就是一个大问题。总的来说，这就需要使用聪敏但尴尬的技术，也就是多线程，缓存和投机加载（提前加载当前不需要的资源，但是之后可能需要用到）。</p>
-
-<h3 id="toc_5">测量，而不是猜测</h3>
-
-<p>有很多种诡计来优化动画，但如果盲目使用的话，可能会造成更多性能上的问题，而不是修复。<br/>
-我们需要正确测量性能</p>
-
-<h4 id="toc_6">真机测试，而不是模拟器</h4>
+<p>消息的关键在于我们前面章节讨论过的结构体objc_class，这个结构体有两个字段是我们在分发消息的关注的：</p>
 
 <ol>
-<li>真机</li>
-<li>性能测试一定要用发布配置，而不是调试模式。因为当用发布环境打包的时候，编译器会引入一系列提高性能的优化，例如去掉调试符号或者移除并重新组织代码。你也可以自己做到这些，例如在发布环境禁用NSLog语句。你只关心发布性能，那才是你需要测试的点。</li>
-<li>最好在你支持的设备中性能最差的设备上测试.可能的话，测试不同的设备和iOS版本，因为苹果在不同的iOS版本和设备中做了一些改变，这也可能影响到一些性能。</li>
+<li>指向父类的指针</li>
+<li>一个类的方法分发表，即<code>methodLists</code></li>
 </ol>
 
-<h4 id="toc_7">保持一致的帧率</h4>
+<p>当我们创建一个新对象时，先为其分配内存，并初始化其成员变量。其中isa指针也会被初始化，让对象可以访问类及类的继承体系。<br/>
+<img src="media/14878317569666/14879130604804.jpg" alt=""/></p>
 
-<p>我们可以在程序中用<code>CADisplayLink</code>来测量帧率,在屏幕上显示出来,但是应用内的FPS并不能完全真实的测量出<code>Core Animation</code>性能,它仅仅测出应用内的帧率.但是我们知道很多动画都在应用外发生(在渲染服务器进程中处理),当然应用内的<code>FPS</code>可以对一些性能问题提供参考,发现问题后,我们可以通过<strong><code>Instruments</code>工具集</strong>获取更多数据.</p>
+<p>我们通过找类的方法链表找到Method，上图中selector 就是指 Method的 SEL,  address就是指Method的 IMP,因此对于一个实例对象的实例方法我们可以通过这样找到唯一的对应实现</p>
 
-<h3 id="toc_8">Instruments</h3>
+<p><strong>当消息发送给一个对象时，objc_msgSend通过对象的isa指针获取到类的结构体，然后在方法分发表里面查找方法的selector。如果没有找到selector，则通过objc_msgSend结构体中的指向父类的指针找到其父类，并在父类的分发表里面查找方法的selector。依此，会一直沿着类的继承体系到达NSObject类。一旦定位到selector，函数会就获取到了实现的入口点，并传入相应的参数来执行方法的具体实现。如果最后没有定位到selector，则会走消息转发流程，</strong></p>
 
-<p><code>Instruments</code>中的<code>Leaks</code>工具来检测循环引用,</p>
+<p>为了加速消息的处理，运行时系统缓存使用过的selector及对应的方法的地址。</p>
 
-<p>应该始终将程序设置成发布选项。幸运的是，配置文件默认就是发布选项，所以你不需要在分析的时候调整编译策略。</p>
+<h3 id="toc_9">隐藏参数</h3>
 
-<p>工具:<br/>
-1.时间分析器(timer profile)-用来测量被方法/函数打断的CPU使用情况<br/>
-2.Core Animation - 用来调试各种Core Animation性能问题。<br/>
-3.OpenGL ES驱动 - 用来调试GPU性能问题,这个工具在编写<code>Open GL</code>代码的时候很有用，但有时也用来处理<code>Core Animation</code>的工作。</p>
+<p><code>objc_msgSend</code>有两个隐藏参数：<br/>
+    1.消息的接收对象<br/>
+    2.方法的selector</p>
 
-<h4 id="toc_9">时间分析器</h4>
+<p>这两个参数为方法的实现提供了调用者的信息。之所以说是隐藏的，是因为它们在定义方法的源代码中没有声明。<em>它们是在编译期被插入实现代码的。</em></p>
 
-<p>检测CPU使用情况,告诉我们程序中那个方法消耗大量CPU时间.查看CPU时间对于判断性能是不是和CPU相关，以及定位到函数都很有帮助</p>
+<p>虽然这些参数没有显示声明，但在代码中仍然可以引用它们。我们可以使用self来引用接收者对象，使用_cmd来引用选择器。</p>
 
-<p>我们可以通过选择一些选项来定位到我们关心的方法:</p>
+<pre><code class="language-objectivec">- strange
+{
+    id  target = getTheReceiver();//此方法已不可用
+    SEL method = getTheMethod();
+    if ( target == self || method == _cmd )
+        return nil;
+    return [target performSelector:method];
+}
+</code></pre>
 
-<ul>
-<li>通过线程分离 - 这可以通过执行的线程进行分组。如果代码被多线程分离的话，那么就可以判断到底是哪个线程造成了问题。</li>
-<li>隐藏系统库 - 可以隐藏所有苹果的框架代码，来帮助我们寻找哪一段代码造成了性能瓶颈。</li>
-<li>只显示Obj-C代码 - - 隐藏除了<code>Objective-C</code>之外的所有代码。大多数内部的<code>Core Animation</code>代码都是用<code>C</code>或者<code>C++</code>函数，所以这对我们集中精力到我们代码中显式调用的方法就很有用。</li>
-</ul>
+<p>当然，这两个参数我们用得比较多的是self，_cmd在实际中用得比较少。</p>
 
-<h4 id="toc_10">Core Animation</h4>
+<h3 id="toc_10">获取方法地址</h3>
 
-<p>这个工具用来检测<code>Core Animation</code>性能。给我们提供了周期性FPS，并考虑到了发生在程序之外的动画</p>
+<p>Runtime中方法的动态绑定让我们写代码时更具灵活性，如我们可以把消息转发给我们想要的对象，或者随意交换一个方法的实现等。不过灵活性的提升也带来了性能上的一些损耗。毕竟我们需要去查找方法的实现，而不像函数调用来得那么直接。当然，方法的缓存一定程度上解决了这一问题。<br/>
+如果想要避开这种动态绑定方式，我们可以获取方法实现的地址，然后像调用函数一样来直接调用它。特别是当我们需要在一个循环内频繁地调用一个特定的方法时，通过这种方式可以提高程序的性能。</p>
 
-<p>提供的调试选项:</p>
+<p>NSObject类提供了<code>methodForSelector:</code>方法，让我们可以获取到方法的指针，然后通过这个指针来调用实现代码。我们需要将<code>methodForSelector:</code>返回的指针转换为合适的函数类型，函数参数和返回值都需要匹配上。<br/>
+通过下面代码看看<code>methodForSelector</code>的使用:</p>
 
-<ul>
-<li>Color Blended Layers - 这个选项基于渲染程度对屏幕中的混合区域进行绿到红的高亮（也就是多个半透明图层的叠加）。由于重绘的原因，混合对GPU性能会有影响，同时也是滑动或者动画帧率下降的罪魁祸首之一。</li>
-<li>ColorHitsGreenandMissesRed - 当使用<code>shouldRasterizep</code>属性的时候，耗时图层会被缓存,然后当做扁平化的图片呈现.当缓存再生时，这个选项用红色对栅格化图层进行了高亮。如果频繁再生就意味着栅格化可能会有负面的性能影响</li>
-<li>Color Copied Images - 有时候寄宿图片的生成意味着Core Animation被强制生成一些图片，然后发送到渲染服务器，而不是简单的指向原始指针。这个选项把这些图片渲染成蓝色。复制图片对内存和CPU使用来说都是一项非常昂贵的操作，所以应该尽可能的避免</li>
-<li>Color Immediately - 通常<code>Core Animation</code> <code>Instruments</code>以每毫秒10次的频率更新图层调试颜色，我们可以通过勾选这个选项来设置每帧都更新（可能影响性能）</li>
-<li>Color Misaligned Images - 会高亮那些被缩放或者拉伸以及没有正确对齐到像素边界的图片</li>
-<li>Color Offscreen-Rendered Yellow - 会把那些需要离屏渲染的图层高亮成黄色。这些图层很可能需要用<code>shadowPath</code>或者<code>shouldRasterize</code>来优化。</li>
-<li>Color OpenGL Fast Path Blue - 会对任何直接使用<code>OpenGL</code>绘制的图层进行高亮。</li>
-<li>Flash Updated Regions - 这个选项会对重绘的内容高亮成黄色（也就是任何在软件层面使用Core Graphics绘制的图层）。这种绘图速度很慢,频繁发生的话说明有个隐藏bug或者通过增加缓存或者使用替代方案会有提升性能的空间。</li>
-</ul>
+<pre><code class="language-objectivec">void (*setter)(id, SEL, BOOL);
+int i;
+setter = (void (*)(id, SEL, BOOL))[target methodForSelector:@selector(setFilled:)];
+for (i = 0 ; i &lt; 1000 ; i++)
+    setter(targetList[i], @selector(setFilled:), YES);
+//注意：这里需要注意的就是函数指针的前两个参数必须是id和SEL。
 
-<h4 id="toc_11">OpenGL ES驱动</h4>
+</code></pre>
 
-<p><code>OpenGL ES</code>驱动工具可以帮你测量GPU的利用率，是一个很好的判断和GPU相关动画性能的指示器.它类似<code>Core Animation</code>也提供显示<code>FPS</code>的工具</p>
+<p>当然这种方式只适合于在类似于for循环这种情况下频繁调用同一方法，以提高性能的情况。另外，<code>methodForSelector:</code>是由<code>Cocoa</code>运行时提供的；它不是<code>Objective-C</code>语言的特性。</p>
 
-<p>其侧边栏选项卡中和性能相关的有:</p>
+<h2 id="toc_11">消息转发</h2>
 
-<ul>
-<li>Renderer Utilization - 如果这个值超过了~50%，就意味着你的动画可能对帧率有所限制，很可能因为离屏渲染或者是重绘导致的过度混合。</li>
-<li>Tiler Utilization - 如果这个值超过了~50%，就意味着你的动画可能限制于几何结构方面，也就是在屏幕上有太多的图层占用了。</li>
-</ul>
+<p>当一个对象能接收一个消息时，就会走正常的方法调用流程。但如果一个对象无法接收指定消息时，又会发生什么事呢？默认情况下，如果是以<code>[object message]</code>的方式调用方法，如果object无法响应<code>message</code>消息时，编译器会报错。但如果是以<code>perform...</code>的形式来调用，则需要等到运行时才能确定object是否能接收message消息。如果不能，则程序崩溃。</p>
 
-<h4 id="toc_12">一个找到性能瓶颈的实例</h4>
+<p>通常，当我们不能确定一个对象是否能接收某个消息时，会先调用<code>respondsToSelector:</code>来判断一下。</p>
+
+<pre><code class="language-objectivec">if ([self respondsToSelector:@selector(method)]) {
+    [self performSelector:@selector(method)];
+}
+</code></pre>
+
+<p>不过，我们这边想讨论下不使用respondsToSelector:判断的情况。这才是我们这一节的重点。</p>
+
+<p>当一个对象无法接收某一消息时，就会启动所谓”<strong>消息转发(message forwarding)</strong>“机制，<br/>
+默认情况下，对象接收到未知的消息，会导致程序崩溃，通过控制台，我们可以看到以下异常信息：</p>
+
+<pre><code class="language-objectivec">-[SUTRuntimeMethod method]: unrecognized selector sent to instance 0x100111940
+*** Terminating app due to uncaught exception &#39;NSInvalidArgumentException&#39;, reason: &#39;-[SUTRuntimeMethod method]: unrecognized selector sent to instance 0x100111940&#39;
+</code></pre>
+
+<p>这段异常信息实际上是由NSObject的”<code>doesNotRecognizeSelector</code>“方法抛出的。不过，我们可以采取一些措施，让我们的程序执行特定的逻辑，而避免程序的崩溃。</p>
+
+<p><strong>消息转发机制分为3部分:</strong></p>
+
+<ol>
+<li><strong>动态方法解析</strong></li>
+<li><strong>备用接收者</strong></li>
+<li><strong>完整转发</strong></li>
+</ol>
+
+<h3 id="toc_12">动态方法解析</h3>
+
+<p>对象在接收到未知的消息时，首先会调用所属类的类方法<code>+resolveInstanceMethod:</code>(实例方法)或者<code>+resolveClassMethod:</code>(类方法)。<br/>
+在这个方法中，我们有机会为该未知消息新增一个”处理方法””。不过使用该方法的前提是我们已经实现了该”处理方法”，只需要在运行时通过class_addMethod函数动态添加到类里面就可以了。<br/>
+举个栗子:</p>
+
+<pre><code class="language-objectivec">void functionForMethod1(id self, SEL _cmd) {
+   NSLog(@&quot;%@, %p&quot;, self, _cmd);
+}
+    
++ (BOOL)resolveInstanceMethod:(SEL)sel {
+    NSString *selectorString = NSStringFromSelector(sel);
+    if ([selectorString isEqualToString:@&quot;method1&quot;]) {
+        class_addMethod(self.class, @selector(method1), (IMP)functionForMethod1, &quot;@:&quot;);
+    }
+    return [super resolveInstanceMethod:sel];
+}
+</code></pre>
+
+<p><strong>不过这种方案更多的是为了实现@dynamic属性。</strong></p>
+
+<h3 id="toc_13">备用接受者</h3>
+
+<p>如果在上一步无法处理消息，则Runtime会继续调以下方法：</p>
+
+<pre><code class="language-objectivec">- (id)forwardingTargetForSelector:(SEL)aSelector
+</code></pre>
+
+<p>如果一个对象实现了这个方法，并返回一个非nil的结果，则这个对象会作为消息的新接收者，且消息会被分发到这个对象。当然这个对象不能是self自身，否则就是出现无限循环。当然，如果我们没有指定相应的对象来处理aSelector，则应该调用父类的实现来返回结果。</p>
+
+<p>使用这个方法通常是在对象内部，可能还有一系列其它对象能处理该消息，我们便可借这些对象来处理消息并返回，这样在对象外部看来，还是由该对象亲自处理了这一消息。举个栗子：详见运行时实例</p>
+
+<h3 id="toc_14">完整消息转发</h3>
+
+<p>如果在上一步还不能处理未知消息，则唯一能做的就是启用完整的消息转发机制了。</p>
+
+<pre><code class="language-objectivec">- (void)forwardInvocation:(NSInvocation *)anInvocation
+</code></pre>
+
+<p>运行时系统会在这一步给消息接收者最后一次机会将消息转发给其它对象。对象会创建一个表示消息的<code>NSInvocation</code>对象，把与尚未处理的消息有关的全部细节都封装在<code>anInvocation</code>中，包括<code>selector</code>，目标(<code>target</code>)和参数。我们可以在<code>forwardInvocation</code>方法中选择将消息转发给其它对象。</p>
+
+<p><code>forwardInvocation:</code>方法的实现有两个任务：</p>
+
+<ol>
+<li>定位可以响应封装在<code>anInvocation</code>中的消息的对象。这个对象不需要能处理所有未知消息。</li>
+<li>使用<code>anInvocation</code>作为参数，将消息发送到选中的对象。<code>anInvocation</code>将会保留调用结果，运行时系统会提取这一结果并将其发送到消息的原始发送者。</li>
+</ol>
+
+<p>不过，在这个方法中我们可以实现一些更复杂的功能，我们可以对消息的内容进行修改，比如追回一个参数等，然后再去触发消息。另外，若发现某个消息不应由本类处理，则应调用父类的同名方法，以便继承体系中的每个类都有机会处理此调用请求。</p>
+
+<p>还有一个很重要的问题，我们必须重写以下方法：</p>
+
+<pre><code class="language-objectivec">- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+</code></pre>
+
+<p>消息转发机制使用从这个方法中获取的信息来创建NSInvocation对象。因此我们必须重写这个方法，为给定的selector提供一个合适的方法签名。</p>
+
+<p>完整的示例如下所示：</p>
+
+<pre><code class="language-objectivec">- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+    NSMethodSignature *signature = [super methodSignatureForSelector:aSelector];
+    if (!signature) {
+        if ([SUTRuntimeMethodHelper instancesRespondToSelector:aSelector]) {
+            signature = [SUTRuntimeMethodHelper instanceMethodSignatureForSelector:aSelector];
+        }
+    }
+    return signature;
+}
+- (void)forwardInvocation:(NSInvocation *)anInvocation {
+    if ([SUTRuntimeMethodHelper instancesRespondToSelector:anInvocation.selector]) {
+        [anInvocation invokeWithTarget:_helper];
+    }
+}
+</code></pre>
+
+<p>NSObject的<code>forwardInvocation:</code>方法实现只是简单调用了<code>doesNotRecognizeSelector:</code>方法，它不会转发任何消息。这样，如果不在以上所述的三个步骤中处理未知消息，则会引发一个异常。</p>
+
+<p>从某种意义上来讲，forwardInvocation:就像一个未知消息的分发中心，将这些未知的消息转发给其它对象。或者也可以像一个运输站一样将所有未知消息都发送给同一个接收对象。这取决于具体的实现。</p>
+
+<h3 id="toc_15">消息转发和多重继承</h3>
+
+<p>回过头来看第二和第三步，通过这两个方法我们可以允许一个对象与其它对象建立关系，以处理某些未知消息，而表面上看仍然是该对象在处理消息。通过这种关系，我们可以模拟“多重继承”的某些特性，让对象可以“继承”其它对象的特性来处理一些事情。不过，这两者间有一个重要的区别：多重继承将不同的功能集成到一个对象中，它会让对象变得过大，涉及的东西过多；而消息转发将功能分解到独立的小的对象中，并通过某种方式将这些对象连接起来，并做相应的消息转发。</p>
+
+<p>不过消息转发虽然类似于继承，但NSObject的一些方法还是能区分两者。如respondsToSelector:和isKindOfClass:只能用于继承体系，而不能用于转发链。便如果我们想让这种消息转发看起来像是继承，则可以重写这些方法，如以下代码所示：</p>
+
+<pre><code class="language-objectivec">- (BOOL)respondsToSelector:(SEL)aSelector
+{
+    if ( [super respondsToSelector:aSelector])
+        return YES;
+    else {
+        /* Here, test whether the aSelector message can     *
+         * be forwarded to another object and whether that  *
+         * object can respond to it. Return YES if it can.  */
+    }
+    return NO;  
+}
+</code></pre>
 
                         
                       </div>
@@ -277,10 +479,10 @@ PNG或者JPEG压缩之后的图片文件会比同质量的位图小得多。为�
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/4/17</span>
+                    <span class="date">2017/2/23</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E6%80%A7%E8%83%BD.html'>性能</a></span>
+          					    <span class="posted-in"><a href='RunTime.html'>runtime</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -345,15 +547,13 @@ PNG或者JPEG压缩之后的图片文件会比同质量的位图小得多。为�
 
       	<p class="cat-list">
         
-            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
-        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -376,31 +576,31 @@ PNG或者JPEG压缩之后的图片文件会比同质量的位图小得多。为�
 	      
 		      
 			      <li class="post">
-			        <a href="15471197068949.html">Promise</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471147696850.html">对象</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471038798384.html">数组</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470891496440.html">遍历</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470311819265.html">解构</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

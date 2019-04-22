@@ -77,15 +77,13 @@
     <li><label>Categories</label></li>
 
         
-            <li><a href="Swift.html">Swift初学笔记</a></li>
-        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -114,272 +112,275 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14913623029277.html">
+                <a class="clearlink" href="15459662586152.html">
                 
-                  <h1>基于定时器的动画</h1>
+                  <h1>ReactiveObjC</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>缓冲主要学习<code>CAMediaTimingFunction</code>通过来做加速减速等增强现实感.</p>
+                        	<h2 id="toc_0">基础知识</h2>
 
-<p>本章学习精确地控制一帧一帧展示的基于定时器的动画,来更加真实模拟物理交互或者根据用户输入来改变动画</p>
+<p>常用的 <code>RACSignal</code>为冷信号  <code>RACSubject</code>为热信号<br/>
+冷信号 即为订阅之后才开始执行的消息，订阅几次 就执行几次<br/>
+热信号 为创建信号就开始执行的消息 无需订阅</p>
 
-<h3 id="toc_0">定时帧</h3>
+<h2 id="toc_1">常用类</h2>
 
-<p>iOS按照每秒60次刷新屏幕,<code>CAAnimation</code>计算出需要展示的新的帧。</p>
+<h3 id="toc_2">RCASignal信号</h3>
 
-<h4 id="toc_1">NSTimer</h4>
+<pre><code class="language-objectivec">//1.创建信号 
 
-<p>我们可以用NStimer来一秒钟更新60次，来做动画.</p>
+//可以在创建信号中立即发送信号 但是不能在block结束返回前销毁该信号
+RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+        [subscriber sendNext:@&quot;发送的消息内容&quot;];
+        return nil;
+}];
+//立即发送给定的错误信息
+NSError *error = [[NSError alloc] init];
+[RACSignal error:error];
+//返回一个信号 该信号立即发送给定值 然后 complete
+[RACSignal return:@&quot;value&quot;];
+//返回信号 该信号直接 complete
+[RACSignal empty];
 
-<p>用<code>NSTimer</code>做动画的话需要几个属性来存储动画的<code>fromValue</code> ，<code>toValue</code>，<code>duration</code>和当前的 <code>timeOffset</code>。</p>
+//2.信号处理
 
-<p><code>示例代码省略</code></p>
+//2.1 concat 返回一个信号signal3 当signal1 complete时订阅信号就signal2信号变化 我们可以通过订阅 signal3 来收到信号两个信号的值变化
+RACSignal *signal3 = [signal1 concat:signal2]
 
-<p>但是用<code>NSTimer</code>并不是一个很好的方案</p>
+//2.2  flattenMap 串联信号 当收到第一个消息的值变化时 开始执行第二个信号 此时我们订阅信号2  只会收到信号2值改变信号
+RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(10 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [subscriber sendNext:@&quot;发送的消息内容&quot;];
+        });
+        return nil;
+    }];
+RACSignal *signal2 = [signal flattenMap:^__kindof RACSignal * _Nullable(id  _Nullable value) {
+    return  [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+        [subscriber sendNext:@&quot;signal2 发送的消息内容&quot;];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [subscriber sendNext:@&quot;signal2 3秒后发送的消息内容&quot;];
+        });
+        return nil;
+    }];
+}];
 
-<p>iOS中每个线程都管理了一个<code>NSRunloop</code>，通过循环来完成一些任务列表</p>
+//2.2 map 对信号1中收到的值进行处理返回信号2 
+RACSignal *signal2 = [signal map:^id _Nullable(NSString *  _Nullable value) {
+    return [value substringFromIndex:2];
+}];
 
-<p>但是主线程的任务有:</p>
+//2.3 filter 过滤信号值
+RACSignal *signal2 = [signal filter:^BOOL(NSString *  _Nullable value) {
+    return YES;
+}];
 
-<ul>
-<li>处理触摸事件</li>
-<li>发送和接受网络数据包</li>
-<li>执行使用gcd的代码</li>
-<li>处理定时器行为</li>
-<li>屏幕重绘</li>
-</ul>
+//2.4 ignore 忽略特定值的信号
+RACSignal *signal2 = [signal ignore:@&quot;发送的消&quot;];
 
-<p>当我们设置了一个NSTimer,会被插入到当前任务列表中,指定时间过去后才被执行.但是何时启动定时器并没有一个时间上限，而且它只会在列表中上一个任务完成之后开始执行。这通常会导致有几毫秒的延迟，但是如果上一个任务过了很久才完成就会导致延迟很长一段时间。</p>
+//2.5 startwith: 将这个值 拼接到信号值开头 返回新的信号 
+RACSignal *signal2 = [signal startWith:@&quot;start with发送的消息内容&quot;];
 
-<p>屏幕重绘的频率是一秒钟六十次，但是和定时器行为一样，如果列表中上一个执行了很长时间，它也会延迟。这些延迟都是一个随机值，于是就不能保证定时器精准地一秒钟执行六十次。有时候发生在屏幕重绘之后，这就会使得更新屏幕会有个延迟，看起来就是动画卡壳了。有时候定时器会在屏幕更新的时候执行两次，于是动画看起来就跳动了。</p>
+//2.6 skip: 忽略开始的count个信号值改变
+RACSignal *signal2 = [signal skip:1];
 
-<p>优化方法:</p>
+//2.7 take: 返回一个只接收前count个信号的信号值改变  其后发送的信号会失败
+RACSignal *signal2 = [signal take:2];
 
-<ul>
-<li>我们可以用 CADisplayLink 让更新频率严格控制在每次屏幕刷新之后。</li>
-<li>基于真实帧的持续时间而不是假设的更新频率来做动画。</li>
-<li>调整动画计时器的 <code>run loop</code> 模式，这样就不会被别的事件干扰。</li>
-</ul>
+//2.8  scanWithStart: reduce: 遍历信号1值变化 block中next即为信号1的信号值  
+//      running为累计值 初始为start值 
+RACSignal *signal2 = [signal scanWithStart:@&quot;1&quot; reduce:^NSString * _Nullable(NSString *  _Nullable running, NSString *  _Nullable next) {
+    running = [[NSMutableString stringWithFormat:@&quot;%@%@&quot;, running, next] copy];
+    return running;
+}];
 
-<h4 id="toc_2">CADisplayLink</h4>
+//2.9 takeUntilBlock: 忽略这符合条件的信号以及之后的信号
+//     takeWhileBlock: 返回符合条件的信号值
+//      skipUntilBlock: 只返回符合条件以及之后的信号
+//      skipWhileBlock: 忽略符合条件的信号
+RACSignal *signal2 = [signal takeUntilBlock:^BOOL(NSString *  _Nullable x) {
+    return [x hasPrefix:@&quot;3秒&quot;];
+}];
 
-<p><code>CADisplayLink</code>是<code>CoreAnimation</code>提供的另一个类似<code>NSTimer</code>类,总是在屏幕完成一次更新之前启动,它和<code>NSTimer</code>的内部实现相同,只不过它不是以时间间隔秒为单位,<code>CADisplayLink</code> 有一个整型的<code>frameInterval</code> 属性，指定了间隔多少帧之后才执行。默认值是1，意味着每次屏幕更新之前都会执行一次。(我们可以根据动画的执行时间来确定多少帧执行一次)</p>
+//2.10 distinctUntilChanged 只返回值不一样的信号
+RACSignal *signal2 = [signal distinctUntilChanged];
 
-<p>虽然<code>CADisplayLink</code>也不能保证每帧都按计划执行,出现丢帧情况,但是和<code>NSTimer</code>不同的是<code>NSTimer</code>一有机会就会开启,而<code>CADisplayLink</code>如果丢帧的话会直接忽略它们,在下一次更新时接着运行;</p>
 
-<pre><code class="language-objectivec">self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+//3. 订阅
 
-- (void)step:(CADisplayLink *)timer
-{
-    //calculate time delta
-    CFTimeInterval thisStep = CACurrentMediaTime();
-    CFTimeInterval stepDuration = thisStep - self.lastStep;
-    self.lastStep = thisStep;
+//subscribeNext： 订阅信号值改变  error 订阅错误信号 completed 订阅完成信号 
+RACDisposable *disposable = [signal3 subscribeNext:^(NSString *  _Nullable x) {
+    NSLog(@&quot;signal3收到订阅值:%@&quot;, x);
+} error:^(NSError * _Nullable error) {
+    NSLog(@&quot;signal3收到错误订阅:%@,&quot; error);
+} completed:^{
+    NSLog(@&quot;signal3收到成功订阅;&quot;);
+}];
+
+//取消订阅
+[disposable dispose];
+
+
+</code></pre>
+
+<h3 id="toc_3">RACSubject信号</h3>
+
+<pre><code class="language-objectivec">//RACSubject 继承于 RACSignal 使用这个对象 可以直接发送和接收信号值改变  而不需要关心 创建信号和注销订阅问题
+RACSubject *subject = [RACSubject subject];
+
+[subject subscribeNext:^(NSString *x) {
+    NSLog(@&quot;接受新值%@&quot;, x);
+} completed:^{
+    NSLog(@&quot;接受完成情况&quot;);
+}];
+
+[subject sendNext:@&quot;新的值1&quot;];
+
+</code></pre>
+
+<h3 id="toc_4">RACTuple 元组</h3>
+
+<p>元组功能</p>
+
+<h3 id="toc_5">NSArray NSDictionary 集合操作</h3>
+
+<p>RAC扩展了NSArray 和  NSDictionary 拥有 <code>rac_sequence</code>(<code>RACSequence</code>类)属性</p>
+
+<h3 id="toc_6">RACSequence</h3>
+
+<pre><code class="language-objectivec">    //1. 获取一个 发送集合中值改变的信号
+    arr.rac_sequence.signal
+    //2. 用信号来遍历集合
+    [arr.rac_sequence.signal subscribeNext:^(id  _Nullable x) {
+        NSLog(@&quot;%@&quot;, x);
+    }];
+    //3. head
+    NSLog(@&quot;第一个元素%@&quot;, arr.rac_sequence.head);
+    //4. tail
+    NSLog(@&quot;除了第一个元素外的所有元素集合%@&quot;, arr.rac_sequence.tail);
     
-    self.timeOffset = MIN(self.timeOffset + stepDuration, self.duration);
-    //get normalized time offset (in range 0 - 1)
-    float time = self.timeOffset / self.duration;
-    //apply easing
-    time = bounceEaseOut(time);
-    //interpolate position
-    id position = [self interpolateFromValue:self.fromValue toValue:self.toValue
-    time:time];
-    //move ball view to new position
-    self.ballView.center = [position CGPointValue];
-    //stop the timer if we&#39;ve reached the end of the animation
-    if (self.timeOffset &gt;= self.duration) {
-        [self.timer invalidate];
-        self.timer = nil;
-    }
-}
+    //5. 从左侧开始遍历 start: 累计的初始值 accumulator: 累计值 value:当前值 count: 最终值
+    NSNumber *count = [intArr.rac_sequence foldLeftWithStart:@(10) reduce:^NSNumber* (NSNumber *accumulator, NSNumber *value) {
+        NSLog(@&quot;%@--- %@&quot;, accumulator, value);
+
+        return @(accumulator.integerValue + value.integerValue);
+    }];
+    NSLog(@&quot;%@&quot;, count);
+    
+    //6. 同样可以从右边开始遍历
+    
+    //7. 遍历集合 判断是否存在符合条件 当遇到block返回YES 返回YES不再执行
+    BOOL exist = [intArr.rac_sequence any:^BOOL(NSNumber *value) {
+        return value.integerValue == 2;
+    }];
+    NSLog(@&quot;%@&quot;, exist ? @&quot;存在&quot; : @&quot;不存在&quot;); //存在
+    //8. 遍历集合 判断是否所有元素都满足条件
+    BOOL pass = [intArr.rac_sequence all:^BOOL(id  _Nullable value) {
+        return [value isKindOfClass:[NSNumber class]];
+    }];
+    NSLog(@&quot;%@&quot;, pass ? @&quot;通过&quot; : @&quot;不通过&quot;); //存在
+    //9. 遍历集合找到第一个符合条件的元素
+    id obj = [intArr.rac_sequence objectPassingTest:^BOOL(id  _Nullable value) {
+        if ([value isKindOfClass:[NSNumber class]]) {
+            NSNumber *value1 = (NSNumber *)value;
+            if (value1.integerValue % 3 == 0) {
+                return YES;
+            }
+        }
+        return NO;
+    }];
+    NSLog(@&quot;第一个通过测试的是%@&quot;, obj); //9
+    
+    //10. 用户动态生成sequenceh headblock和tailblock只会执行一次
+    //是惰性加载生成的
+    //必须保证headblock和tailblock是线程安全的
+    RACSequence *sequence = [RACSequence sequenceWithHeadBlock:^id _Nullable{
+        return @(11);
+    } tailBlock:^RACSequence * _Nonnull{
+        return [RACSequence sequenceWithHeadBlock:^id _Nullable{
+            return @(11);
+        } tailBlock:^RACSequence * _Nonnull{
+            return [RACSequence sequenceWithHeadBlock:^id _Nullable{
+                return @(22);
+            } tailBlock:^RACSequence * _Nonnull{
+                return @[@(33)].rac_sequence;
+            }];
+        }];
+    }];
+    
+    [sequence.signal subscribeNext:^(id  _Nullable x) {
+        NSLog(@&quot;%@&quot;, x);
+    }];
 </code></pre>
 
-<h4 id="toc_3">Run Loop 模式</h4>
+<h3 id="toc_7">UI操作</h3>
 
-<p>创建Run Loop时需要指定mode,iOS会根据指定的优先级,，而且当UI很活跃的时候的确会暂停一些别的任务.</p>
+<h4 id="toc_8">UIControl</h4>
 
-<ul>
-<li>NSDefaultRunLoopMode - 标准优先级</li>
-<li>NSRunLoopCommonModes - 高优先级</li>
-<li>UITrackingRunLoopMode - 用于 UIScrollView 和别的控件的动画</li>
-</ul>
-
-<pre><code class="language-objectivec">/*我们可以同时加入 NSDefaultRunLoopMode 和 UITrackingRunLoopMode 
-    来保证它不会被滑动打断，也不会被其他UIKit控件动画影响性能
-**/
-self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:UITrackingRunLoop];
+<pre><code class="language-objectivec"> RACSignal *signal = [self.btn rac_signalForControlEvents:UIControlEventTouchUpInside];
+[signal subscribeNext:^(UIButton *  _Nullable x) {
+    NSLog(@&quot;&quot;);
+}];
 </code></pre>
 
-<h3 id="toc_4">物理模拟</h3>
+<h4 id="toc_9">UIButton</h4>
 
-<p>我们在上面的方法中，关键帧的实现中我们提前加计算了所有帧,这次我们按需要进行计算,这样我们可以根据用户输入实时修改动画的逻辑，或者和别的实时动画系统例如物理引擎进行整合。</p>
-
-<h4 id="toc_5">Chipmunk</h4>
-
-<p>基于物理学创建一个真实的重力模拟效果来取代当前基于缓冲的弹性动画,因为模拟物理效果太复杂了，我们直接使用开源的物理引擎,我这里使用<code>Chipmunk</code>，有很多版本包括和<code>Objective-C</code>绑定的<code>“indie”</code>版本<a href="http://chipmunk-physics.net/">下载地址</a></p>
-
-<p>我们只简单使用这个引擎中的几个类:</p>
-
-<ul>
-<li>cpSpace - 所有的物理结构体的容器。它有一个大小和一个可选的重力矢量</li>
-<li>cpBody - 一个固态无弹力的刚体。它有一个坐标，以及其他物理属性，例如质量，运动和摩擦系数等等。</li>
-<li>cpShape - 一个抽象的几何形状，用来检测碰撞。可以给结构体添加一个多边形，而且<code>cpShape</code>有各种子类来代表不同形状的类型。</li>
-</ul>
-
-<p>因为C语言是不支持引用计数的所以为了准确的创建和释放我们将<code>cpShape</code>和<code>cpBody</code>和<code>Crate</code>（木箱）类进行绑定，在木箱的<code>- init</code>方法中创建,<code>-dealloc</code>中释放。用视图控制器来管理<code>cpSpace</code></p>
-
-<p><code>Chipmunk</code>使用了一个和<code>UIKit</code>颠倒的坐标系（Y轴向上为正方向）。我们可以使用<code>geometryFlipped</code>属性翻转容器视图的集合坐标,这样模型和视图就共享一个坐标系了<br/>
-<strong>geometryFlipped</strong>设置layer的这个属性可以调整坐标系Y轴方向</p>
-
-<p>代码示例:</p>
-
-<pre><code class="language-objectivec">//创建木箱的image对象
-@interface Crate : UIImageView
-@property (nonatomic, assign) cpBody *body;
-@property (nonatomic, assign) cpShape *shape;
-@end
-
-@implementation Crate
-#define MASS 100
-- (id)initWithFrame:(CGRect)frame
-{
-    if ((self = [super initWithFrame:frame])) {
-        //set image
-        self.image = [UIImage imageNamed:@&quot;Crate.png&quot;];
-        self.contentMode = UIViewContentModeScaleAspectFill;
-        //create the body
-        self.body = cpBodyNew(MASS, cpMomentForBox(MASS, frame.size.width, frame.size.height));
-        //create the shape
-        cpVect corners[] = {
-            cpv(0, 0),
-            cpv(0, frame.size.height),
-            cpv(frame.size.width, frame.size.height),
-            cpv(frame.size.width, 0),
-        };
-    self.shape = cpPolyShapeNew(self.body, 4, corners, cpv(-frame.size.width/2, -frame.size.height/2));
-    //set shape friction &amp; elasticity
-    cpShapeSetFriction(self.shape, 0.5);
-    cpShapeSetElasticity(self.shape, 0.8);
-    //link the crate to the shape
-    //so we can refer to crate from callback later on
-    self.shape-&gt;data = (__bridge void *)self;
-    //set the body position to match view
-    cpBodySetPos(self.body, cpv(frame.origin.x + frame.size.width/2, 300 - frame.origin.y - frame.size.height/2));
-    }
-    return self;
-}
-- (void)dealloc
-{
-    //release shape and body
-    cpShapeFree(_shape);
-    cpBodyFree(_body);
-}
-@end
-
-//创建重力空间
-@interface ViewController ()
-@property (nonatomic, weak) IBOutlet UIView *containerView;
-@property (nonatomic, assign) cpSpace *space;
-@property (nonatomic, strong) CADisplayLink *timer;
-@property (nonatomic, assign) CFTimeInterval lastStep;
-@end
-
-@implementation ViewController
-#define GRAVITY 1000
-- (void)viewDidLoad
-{
-    //invert view coordinate system to match physics
-    self.containerView.layer.geometryFlipped = YES;
-    //set up physics space
-    self.space = cpSpaceNew();
-    cpSpaceSetGravity(self.space, cpv(0, -GRAVITY));
-    //add a crate
-    Crate *crate = [[Crate alloc] initWithFrame:CGRectMake(100, 0, 100, 100)];
-    [self.containerView addSubview:crate];
-    cpSpaceAddBody(self.space, crate.body);
-    cpSpaceAddShape(self.space, crate.shape);
-    //start the timer
-    self.lastStep = CACurrentMediaTime();
-    self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-    [self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-}
-
-void updateShape(cpShape *shape, void *unused)
-{
-    //get the crate object associated with the shape
-    Crate *crate = (__bridge Crate *)shape-&gt;data;
-    //update crate view position and angle to match physics shape
-    cpBody *body = shape-&gt;body;
-    crate.center = cpBodyGetPos(body);
-    crate.transform = CGAffineTransformMakeRotation(cpBodyGetAngle(body));
-}
-
-- (void)step:(CADisplayLink *)timer
-{
-    //calculate step duration
-    CFTimeInterval thisStep = CACurrentMediaTime();
-    CFTimeInterval stepDuration = thisStep - self.lastStep;
-    self.lastStep = thisStep;
-    //update physics
-    cpSpaceStep(self.space, stepDuration);
-    //update all the shapes
-    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
-}
-@end
+<pre><code class="language-objectivec">//当 按钮被点击时 执行 command中的block
+self.btn.rac_command 
 </code></pre>
 
-<h4 id="toc_6">添加用户交互</h4>
+<h4 id="toc_10">RACCommand</h4>
 
-<p>为了使木箱不掉落到屏幕外 我们在屏幕周围添加四条线来限制范围;</p>
-
-<p>通过给<code>cpSpace</code>添加四个<code>cpSegmentShape</code>对象（<code>cpSegmentShape</code>代表一条直线，所以四个拼起来就是一个矩形）。然后赋值给空间的<code>staticBody</code>属性(这是不受重力的结构体)，而不是像木箱那样会受重力的<code>cpBody</code>实例，因为我们不想这线画出屏幕或者被木箱击中消失。</p>
-
-<p>通过添加一个加速器,可以通过倾斜手机来调整重力矢量,在横屏模式下，要交换加速计矢量的x和y值，竖屏模式下再换回来.</p>
-
-<pre><code class="language-text">代码省略
+<pre><code class="language-objectivec">//初始化command 用一个信号
+self.btn.rac_command = [[RACCommand alloc] initWithSignalBlock:^RACSignal * _Nonnull(id  _Nullable input) {
+        return [RACSignal empty];
+    }];
+    
+//executionSignals  属性为 command执行时的信号
+[self.btn.rac_command.executionSignals subscribeNext:^(RACSignal&lt;id&gt; * _Nullable x) {
+    NSLog(@&quot;信号值执行了&quot;);
+}];
+    
 </code></pre>
 
-<h4 id="toc_7">模拟时间以及固定的时间步长</h4>
+<h4 id="toc_11">UITextfield</h4>
 
-<p>在上面我们做动画的缓冲效果来说,都是计算每帧的持续时间，这样的话两个时间步长就是可变的,对于模拟物理效果并不理想:</p>
-
-<p>因此我们通过<strong>固定的时间步长</strong>来计算物理效果，还要保证在屏幕发生重绘时能够同步更新视图</p>
-
-<p>因为刚好我们的模型（在这个例子中就是Chipmunk的 cpSpace 中的 cpBody ）被视图（就是屏幕上代表木箱的 UIView 对象）分离，于是就很简单了。我们只需要根据屏幕刷新的时间跟踪时间步长，然后根据每帧去计算一个或者多个模拟出来的效果。</p>
-
-<pre><code class="language-objectivec">
-/**
-    通过每次 CADisplayLink 的启动来通知屏幕将要刷新，然后记录下当前的
-    CACurrentMediaTime() 。
-    在一个小增量中提前重复物理模拟（这里用120分之一秒）直到赶上显示的时间。然后更新我们的视图，
-    在屏幕刷新的时候匹配当前物理结构体的显示位置。
-*/
-
-#define SIMULATION_STEP (1/120.0)
-- (void)step:(CADisplayLink *)timer
-{
-    //calculate frame step duration
-    CFTimeInterval frameTime = CACurrentMediaTime();
-    //update simulation
-    while (self.lastStep &lt; frameTime) {
-        cpSpaceStep(self.space, SIMULATION_STEP);
-        self.lastStep += SIMULATION_STEP;
-    }
-    //update all the shapes
-    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
-}
+<pre><code class="language-objectivec">//rac_textSignal 获取textfield内容改变信号
+[self.textfield.rac_textSignal subscribeNext:^(NSString * _Nullable x) {
+    NSLog(@&quot;输出内容%@&quot;, x);
+}];
 </code></pre>
 
-<h4 id="toc_8">避免死亡螺旋</h4>
+<h3 id="toc_12">NSNotification</h3>
 
-<p>在上面例子中我们随意选择了1/120秒来模拟物理效果,但是我们在场景很复杂，<code>cpSpaceStp()</code>计算也会超出1/120秒,这样就会造成延迟帧率,帧延迟的话，我们需要更多时间来同步真实时间,这样就越来越慢，直到应用程序卡死,这就是所谓的<code>死亡螺旋</code></p>
+<pre><code class="language-objectivec">//通知事件 无需主动移除通知
+[[[NSNotificationCenter defaultCenter] rac_addObserverForName:@&quot;&quot; object:nil] subscribeNext:^(NSNotification * _Nullable x) {
+    
+}];
+</code></pre>
 
-<p>为了避免这种情况 我们需要留下足够的时间容错，如果物理计算超过了模拟时间的50%，就需要考虑增加模拟时间步长（或者简化场景）。如果模拟时间步长增加到超过1/60秒（一个完整的屏幕更新时间），你就需要减少动画帧率到一秒30帧或者增加<code>CADisplayLink</code>的<code>frameInterval</code>来保证不会随机丢帧，不然你的动画将会看起来不平滑。</p>
+<h3 id="toc_13">Delegate</h3>
+
+<pre><code class="language-objectivec">[[self.view rac_signalForSelector:@selector(nameBtnDidClick:)] subscribeNext:^(RACTuple * _Nullable x) {
+    
+}];
+</code></pre>
+
+<h3 id="toc_14">KVO</h3>
+
+<pre><code class="language-objectivec">//这样设置KVO 无需主动移除
+//监听btn frame变化 
+[[self.btn rac_valuesForKeyPath:@&quot;frame&quot; observer:self] subscribeNext:^(id  _Nullable x) {
+        
+}];
+
+//使用宏定义快捷设置KVO （推荐）
+[RACObserve(self.btn, frame) subscribeNext:^(id  _Nullable x) {
+    
+}];
+
+</code></pre>
 
                         
                       </div>
@@ -388,10 +389,10 @@ void updateShape(cpShape *shape, void *unused)
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/4/5</span>
+                    <span class="date">2018/12/28</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
+          					    <span class="posted-in"><a href='ReactnativeCocoa.html'>ReactnativeCocoa</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -456,15 +457,13 @@ void updateShape(cpShape *shape, void *unused)
 
       	<p class="cat-list">
         
-            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
-        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -487,31 +486,31 @@ void updateShape(cpShape *shape, void *unused)
 	      
 		      
 			      <li class="post">
-			        <a href="15471197068949.html">Promise</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471147696850.html">对象</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471038798384.html">数组</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470891496440.html">遍历</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470311819265.html">解构</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

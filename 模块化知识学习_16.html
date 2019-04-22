@@ -1,0 +1,505 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+    
+  模块化知识学习 - ACEfish-Blog
+  
+  </title>
+  
+  
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+    <link rel="stylesheet" href="asset/css/foundation.min.css" />
+    <link rel="stylesheet" href="asset/css/docs.css" />
+    <script src="asset/js/vendor/modernizr.js"></script>
+    <script src="asset/js/vendor/jquery.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/github.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+<script type="text/javascript">
+  function before_search(){
+    var searchVal = 'site:acefish.github.io ' + document.getElementById('search_input').value;
+    document.getElementById('search_q').value = searchVal;
+    return true;
+  }
+</script>
+  </head>
+  <body class="antialiased hide-extras">
+    
+    <div class="marketing off-canvas-wrap" data-offcanvas>
+      <div class="inner-wrap">
+
+
+<nav class="top-bar docs-bar hide-for-small" data-topbar>
+
+
+  <section class="top-bar-section">
+  <div class="row">
+      <div style="position: relative;width:100%;"><div style="position: absolute; width:100%;">
+        <ul id="main-menu" class="left">
+        
+        <li id=""><a target="_self" href="index.html">Home</a></li>
+        
+        <li id=""><a target="_self" href="archives.html">Archives</a></li>
+        
+        </ul>
+
+        <ul class="right" id="search-wrap">
+          <li>
+<form target="_blank" onsubmit="return before_search();" action="http://google.com/search" method="get">
+    <input type="hidden" id="search_q" name="q" value="" />
+    <input tabindex="1" type="search" id="search_input"  placeholder="Search"/>
+</form>
+</li>
+          </ul>
+      </div></div>
+  </div>
+  </section>
+
+</nav>
+
+        <nav class="tab-bar show-for-small">
+  <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
+    <span> &nbsp; ACEfish-Blog</span>
+  </a>
+</nav>
+
+<aside class="left-off-canvas-menu">
+      <ul class="off-canvas-list">
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
+
+    <li><label>Categories</label></li>
+
+        
+            <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
+            <li><a href="Computer-programming.html">计算机编程</a></li>
+        
+            <li><a href="iOSDevelop.html">iOSDevelop</a></li>
+        
+            <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
+        
+            <li><a href="React-Native.html">React-Native</a></li>
+        
+            <li><a href="Python.html">Python</a></li>
+         
+
+      </ul>
+    </aside>
+
+<a class="exit-off-canvas" href="#"></a>
+
+
+        <section id="main-content" role="main" class="scroll-container">
+        
+       
+
+ <script type="text/javascript">
+	$(function(){
+		$('#menu_item_index').addClass('is_active');
+	});
+</script>
+<div class="row">
+	<div class="large-8 medium-8 columns">
+		<div class="markdown-body home-categories">
+		
+			<div class="article">
+                <a class="clearlink" href="14951065647732.html">
+                
+                  <h1>图层性能</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<p>图层树</p>
+
+<p>选择性地选取光栅化或者绘制图层内容在合适的时候重新分配给CPU和GPU</p>
+
+<h3 id="toc_0">隐式绘制</h3>
+
+<p>我们前几章讨论了几个场景下的优化:1.通过Core Graphics直接绘制 2.直接载入一个图片文件并赋值<br/>
+给<code>contents</code>属性 3.事先绘制一个屏幕之外的<code>CGContext</code>上下文</p>
+
+<p>我们可以通过以下方式创建隐式的寄宿图:</p>
+
+<ol>
+<li>使用特定的图层属性</li>
+<li>特定的视图</li>
+<li>特定的图层子类</li>
+</ol>
+
+<h4 id="toc_1">文本</h4>
+
+<p><code>CATextLayer</code>和<code>UILabel</code>都是直接将文本绘制在图层的寄宿图中。</p>
+
+<p>尽可能地避免改变那些包含文本的视图的<code>frame</code>，因为这样做的话文本就需要重绘。例如，如果你想在图层的角落里显示一段静态的文本，但是这个图层经常改动，你就应该把文本放在一个子图层中。</p>
+
+<h4 id="toc_2">光栅化</h4>
+
+<p>启用<code>CALayer</code>的<code>shouldRaterize</code>属性会将图层绘制到一个屏幕之外的图像。然后这个图像会被缓存起来并绘制到实际图层的<code>contents</code>和子图层。如果有很多的子图层或者有复杂的效果应用，这样做就会比重绘所有事务的所有帧划得来得多。但是光栅化原始图像需要时间，而且还会消耗额外的内存。</p>
+
+<p>光栅化使用的当可以提供很大性能优势,但是避免使用在不断变动的图层上。否则缓存没用了。</p>
+
+<p>可以使用<code>Instrument</code>查看一下<code>Color Hits Green</code>和<code>Misses Red</code>项目，是否已光栅化图像被频繁地刷新,可以知道我们是否正确使用了光栅化</p>
+
+<h3 id="toc_3">离屏渲染</h3>
+
+<p>当图层属性的混合体被指定为在未预合成之前不能直接在屏幕中绘制时，屏幕外渲染被唤起。屏幕外渲染并不意味着软件绘制，但是它意味着图层必须在被显示之前在一个屏幕外上下文中被渲染（不论CPU还是GPU）。图层的以下属性将会触发屏幕外绘制：</p>
+
+<ul>
+<li>圆角（当和 maskToBounds 一起使用时）</li>
+<li>图层蒙板</li>
+<li>阴影</li>
+</ul>
+
+<p>屏幕外渲染和我们启用光栅化时相似，除了它并没有像光栅化图层那么消耗大，子图层并没有被影响到，而且结果也没有被缓存，所以不会有长期的内存占用。但是如果太多图层在屏幕外渲染依然会影响性能</p>
+
+<p>如果那些离屏绘制的图层并不会被频繁重绘的话,为这些图层开启光栅化也是一种优化方式</p>
+
+<p>对于那些需要动画而且要在屏幕外渲染的图层来说，你可以用<code>CAShapeLayer</code>，<code>contentsCenter</code>或者<code>shadowPath</code>来获得同样的表现而且较少地影响到性能。</p>
+
+<h4 id="toc_4">CAShaprLayer(圆角)</h4>
+
+<p><code>cornerRadius</code>和<code>maskToBounds</code>独立作用的时候都不会有太大的性能问题，但是当他俩结合在一起，就触发了屏幕外渲染。</p>
+
+<p>为了不引起性能问题,我们可以用现成的<code>UIBezierPath</code>的构造器<code>+ bezierPathWithRoundedRect:cornerRadius:</code>虽然不比直接用<code>cornerRadius</code>更快,但是避免性能问题</p>
+
+<pre><code class="language-objectivec">    - (void)viewDidLoad
+    {
+        [super viewDidLoad];
+        //create shape layer
+        CAShapeLayer *blueLayer = [CAShapeLayer layer];
+        blueLayer.frame = CGRectMake(50, 50, 100, 100);
+        blueLayer.fillColor = [UIColor blueColor].CGColor;
+        blueLayer.path = [UIBezierPath bezierPathWithRoundedRect:
+        CGRectMake(0, 0, 100, 100) cornerRadius:20].CGPath;
+        //add it to our view
+        [self.layerView.layer addSublayer:blueLayer];
+    }
+</code></pre>
+
+<h4 id="toc_5">可伸缩图片(圆角)</h4>
+
+<p>另外一个创建圆角矩形的方法使用一个圆形内容图片,并设置其<code>contentsCenter</code>去创建一个可伸缩图片.<br/>
+理论上来说，这个应该比用<code>CAShapeLayer</code>要快，因为一个可拉伸图片只需要18个三角形（一个图片是由一个3*3网格渲染而成），然而，许多都需要渲染成一个顺滑的曲线。在实际应用上，二者并没有太大的区别。</p>
+
+<pre><code class="language-objectivec">- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    //create layer
+    CALayer *blueLayer = [CALayer layer];
+    blueLayer.frame = CGRectMake(50, 50, 100, 100);
+    blueLayer.contentsCenter = CGRectMake(0.5, 0.5, 0.0, 0.0);
+    blueLayer.contentsScale = [UIScreen mainScreen].scale;
+    blueLayer.contents = (__bridge id)[UIImage imageNamed:@&quot;Circle.png&quot;].CGImage;
+    //add it to our view
+    [self.layerView.layer addSublayer:blueLayer];
+}
+/**
+    使用可伸缩图片的优势在于它可以绘制成任意边框效果而不需要额外的性能消耗。举个例子，可伸缩图片
+    甚至还可以显示出矩形阴影的效果。
+*/
+</code></pre>
+
+<h4 id="toc_6">shadowPath</h4>
+
+<p>对于<code>shadowPath</code>属性，对于简单的几何图形(假设不包含任何透明部分或者子视图),创建阴影路径较容易，<code>Core Animation</code>绘制这个阴影也相当简单,避免了屏幕外图层部分预排版，对性能有好处。</p>
+
+<p>如果是个复杂的图形,那么生成阴影路径就比较困难，可以考虑用绘图软件生成一个阴影背景图</p>
+
+<h3 id="toc_7">混合和过度绘制</h3>
+
+<p>我们知道,<code>GPU</code>每一帧可以绘制的像素有一个最大限制（就是所谓的<code>fill rate</code>），这个情况下可以轻易地绘制整个屏幕的所有像素。但是如果由于重叠图层的关系需要不停地重绘同一区域的话，掉帧就可能发生了。</p>
+
+<p>GPU会放弃绘制那些完全被其他图层遮挡的像素，但是要计算出一个图层是否被遮挡也是相当复杂并且会消耗处理器资源。同样，合并不同图层的透明重叠像素（即混合）消耗的资源也是相当客观的。所以为了加速处理进程，不到必须时刻不要使用透明图层。<br/>
+任何情况下，你应该这样做：</p>
+
+<ul>
+<li>给视图的<code>backgroundColor</code>属性设置一个固定的，不透明的颜色</li>
+<li>设置<code>opaque</code>属性为YES</li>
+</ul>
+
+<p>这样减少了混合行为（因为编译器知道图层后的东西不对最终像素残生影响）计算得到加速，因为<code>Core Animation</code>完全可以舍弃所有被完全遮盖的图层，避免了过度绘制。</p>
+
+<p>如果用到了图像，尽量避免透明除非非常必要。如果图像要显示在一个固定的背景颜色或是固定的背景图之前，你没必要相对前景移动，你只需要预填充背景图片就可以避免运行时混色了。</p>
+
+<p>如果是文本的话，一个不透明颜色背景的<code>UILabel</code>会比透明背景要更高效。</p>
+
+<p>最后，明智地使用<code>shouldRasterize</code>属性，可以将一个固定的图层体系折叠成单张图片，这样就不需要每一帧重新合成了，也就不会有因为子图层之间的混合和过度绘制的性能问题了。</p>
+
+<h3 id="toc_8">减少图层数量</h3>
+
+<p>我们的图层呈现过程:<br/>
+初始化图层，处理图层，打包通过<code>IPC</code>发给渲染引擎，转化成<code>OpenGL</code>几何图形，这些是一个图层的大致资源开销。</p>
+
+<p>事实上，一次性在屏幕上显示的最大图层数量也是有限的。这取决于于iOS设备，图层类型，图层内容和属性等。</p>
+
+<h4 id="toc_9">裁切</h4>
+
+<p>不可见图层：</p>
+
+<ul>
+<li>图层在屏幕边界之外，或是在父图层边界之外。</li>
+<li>完全在一个不透明图层之后。</li>
+<li>完全透明</li>
+</ul>
+
+<p><code>Core Animation</code>非常擅长处理对视觉效果无意义的图层。但是经常性地，你自己的代码会比<code>Core Animation</code>更早地想知道一个图层是否是有用的。理想状况下，在图层对象在创建之前就想知道，以避免创建和配置不必要图层的额外工作。</p>
+
+<p>示例:<br/>
+当我们创建了很多图层,但是这些图层也许在屏幕外也许被遮盖,显示的数量一定，那么我们增加创建图层数量就会导致帧数下降,出现性能问题。</p>
+
+<p>但是如果计算每个图层根据是否最终显示在屏幕上这是一个很难的过程。所以我们可以用另外一种方式优化:<br/>
+随着视图的滚动动态地实例化图层而不是事先都分配好,这样，我们可以在创造它之前计算出是否需要它，接着，我们增加一些代码去计算可视区域这样就可以排除区域之外的图层了。</p>
+
+<p>类似<code>UITableView</code>或者<code>UICollectionView</code>的机制</p>
+
+<h4 id="toc_10">对象回收</h4>
+
+<p>处理巨大数量的相似视图或图层时还有一个技巧就是回收他们。对象回收在<code>iOS</code>颇为常见；<code>UITableView</code>和 <code>UICollectionView</code> 都有用到，<code>MKMapView</code>中的动画<code>pin</code>码也有用到，还有其他很多例子。</p>
+
+<p>做对象回收首先需要一个有一个对象池。进行对象的存取,避免了不断创建和释放对象(相当消耗资源因为涉及到内存的分配和销毁)而且也不必给相似实例重复赋值。</p>
+
+<pre><code class="language-objectivec">@property (nonatomic, strong) NSMutableSet *recyclePool;
+</code></pre>
+
+<p>注意：<br/>
+在本实例中做对象回收需要禁用隐式动画,因为之前图层对象都是在呈现之前改变属性,但是现在是回收的，需要禁用隐式动画,否咋改变属性就触发隐式动画</p>
+
+<h4 id="toc_11">Core Graphics绘制</h4>
+
+<p>在上面我们派出了那些没有显示在屏幕上的图层,对于那些显示的对屏幕有贡献的图层和视图，我们还有减少图层数量的方法</p>
+
+<p>比如多个<code>UILabel</code>或者<code>UIImageView</code>我们可以把他们全部替换为单独视图然后用<code>-drawRect</code>方法绘制出这些复杂的视图层级</p>
+
+<p>这个提议看上去并不合理因为大家都知道软件绘制行为要比<code>GPU</code>合成要慢而且还需要更多的内存空间，但是在因为图层数量而使得性能受限的情况下，软件绘制很可能提高性能呢，因为它避免了图层分配和操作问题。</p>
+
+<p>你可以自己实验一下这个情况，它包含了性能和栅格化的权衡，但是意味着你可以从图层树上去掉子图层（用<code>shouldRasterize</code>，与完全遮挡图层相反）。</p>
+
+<h4 id="toc_12">- renderInContext: 方法</h4>
+
+<p>用<code>Core Graphics</code>去绘制一个静态布局有时候会比用层级的<code>UIView</code>实例来得快，但是使用<code>UIView</code>实例要简单得多而且比用手写代码写出相同效果要可靠得多，更边说<code>Interface Builder</code>来得直接明了。</p>
+
+<p>如果大量的视图或者图层真的关联到了屏幕上将会是一个大问题。没有与图层树相关联的图层不会被送到渲染引擎，也没有性能问题（在他们被创建和配置之后）。</p>
+
+<p>我们可以使用<code>CALayer</code>的<code>- renderInContext:</code>方法，你可以将图层及其子图层快照进一个<code>Core Graphics</code>上下文然后得到一个图片，可以直接显示在<code>UIImageView</code>中或者作为另外一个图层的<code>contents</code>。不同于<code>shouldRasterize</code>(要求图层与图层树相关联)，这个方法没有持续的性能消耗。</p>
+
+<p>当图层内容改变，不同于<code>shouldRasterize</code>的自动地处理缓存和缓存验证，这张图片的刷新时机取决于我们自己，但是一旦图片被生成,相比让<code>Core Animation</code>处理一个复杂的图层树，你节省了相当客观的性能。</p>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/5/18</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='%E6%80%A7%E8%83%BD.html'>性能</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+              
+
+
+			<div class="row">
+			  <div class="large-6 columns">
+			  <p class="text-left" style="padding-top:25px;">
+			   <a href="模块化知识学习_15.html">&laquo; Prev Page</a>  
+			  </p>
+			  </div>
+			  <div class="large-6 columns">
+			<p class="text-right" style="padding-top:25px;">
+			 <a href="模块化知识学习_17.html">&raquo; Next Page</a> 
+			</p>
+			  </div>
+			</div>
+		</div>
+	</div><!-- large 8 -->
+
+ <div class="large-4 medium-4 columns">
+  <div class="hide-for-small">
+    <div id="sidebar" class="sidebar">
+          <div id="site-info" class="site-info">
+            
+                <h1>ACEfish-Blog</h1>
+                <div class="site-des"></div>
+                <div class="social">
+
+
+
+
+
+
+
+
+
+<a target="_blank" class="github" target="_blank" href="https://github.com/ACEfish/ACEfish.github.io" title="GitHub">GitHub</a>
+
+  <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
+                
+              	 </div>
+          	</div>
+
+             
+
+              <div id="site-categories" class="side-item ">
+                <div class="side-header">
+                  <h2>Categories</h2>
+                </div>
+                <div class="side-content">
+
+      	<p class="cat-list">
+        
+            <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
+            <a href="Computer-programming.html"><strong>计算机编程</strong></a>
+        
+            <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
+        
+            <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
+        
+            <a href="React-Native.html"><strong>React-Native</strong></a>
+        
+            <a href="Python.html"><strong>Python</strong></a>
+         
+        </p>
+
+
+                </div>
+              </div>
+
+              <div id="site-categories" class="side-item">
+                <div class="side-header">
+                  <h2>Recent Posts</h2>
+                </div>
+                <div class="side-content">
+                <ul class="posts-list">
+	      
+		      
+			      <li class="post">
+			        <a href="15556625620569.html">pod repo update</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15556594680013.html"></a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15554889031358.html">otool命令</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15554886689884.html">Mach文件</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15553854847636.html">运行时</a>
+			      </li>
+		     
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		   
+		  		</ul>
+                </div>
+              </div>
+        </div><!-- sidebar -->
+      </div><!-- hide for small -->
+</div><!-- large 4 -->
+
+</div><!-- row -->
+
+ <div class="page-bottom clearfix">
+  <div class="row">
+   <p class="copyright">Copyright &copy; 2015
+Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a>,&nbsp; 
+Theme used <a target="_blank" href="http://github.com">GitHub CSS</a>.</p>
+  </div>
+</div>
+
+        </section>
+      </div>
+    </div>
+
+  
+    
+
+    <script src="asset/js/foundation.min.js"></script>
+    <script>
+      $(document).foundation();
+      function fixSidebarHeight(){
+        var w1 = $('.markdown-body').height();
+          var w2 = $('#sidebar').height();
+          if (w1 > w2) { $('#sidebar').height(w1); };
+      }
+      $(function(){
+        fixSidebarHeight();
+      })
+      $(window).load(function(){
+          fixSidebarHeight();
+      });
+     
+    </script>
+
+    
+
+
+
+  </body>
+</html>

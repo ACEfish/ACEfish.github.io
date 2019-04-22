@@ -77,15 +77,13 @@
     <li><label>Categories</label></li>
 
         
-            <li><a href="Swift.html">Swift初学笔记</a></li>
-        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -114,63 +112,146 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15442641358694.html">
+                <a class="clearlink" href="15541740415551.html">
                 
-                  <h1>JS补充</h1>
+                  <h1>LLDB</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<ol>
-<li><strong>全局变量 &amp;&amp; window属性</strong><br/>
-js中的全局变量 其实是<code>window</code>的属性<br/>
-在js中用没有定义的变量 会报错<br/>
-在js中用没有定义的属性 会undefine</li>
-<li><strong>面对对象的特点</strong>
-<ol>
-<li>抽象: 只注重我们需要的方面 忽略我们不需要的对象的特性</li>
-<li>封装: 封装为api 外部只能通过定义的接口 访问数据</li>
-<li>继承: 子类继承父类特性 解决重用性问题 （多重继承）</li>
-<li>多态: 对强语言较为有用,允许不同类对同一消息作出不同响应</li>
-</ol></li>
-</ol>
+                        	<p>学习自 <a href="https://juejin.im/post/5c8ca84ce51d456f43189dbd">LLDB 知多少</a></p>
 
-<h2 id="toc_0">原型 prototype</h2>
+<p>LLDB是一个有着REPL的特性和C++、Python插件的开源调试器<br/>
+LLDB是下一代高性能调试器。 它由一组可重用的组件构建，可以高度利用较大的LLVM项目中的现有库，例如Clang表达式解析器和LLVM反汇编程序。<br/>
+LLDB是Mac OS X上Xcode的默认调试器，支持在桌面和iOS设备和模拟器上调试C，Objective-C和C ++。</p>
 
-<p>类似css中的class  用于给一类对象设置通用的属性或者方法</p>
+<h2 id="toc_0">LLDB命令结构</h2>
 
-<p>在js 我们经常在构造方法中实现属性 而在原型中实现方法</p>
+<p>LLDB命令通用结构:</p>
 
-<h2 id="toc_1">创建对象方式</h2>
-
-<ol>
-<li><p>用<code>new Object()</code></p>
-<pre><code class="language-javascript">var obj = new Object()
-obj1.name = &quot;lyy&quot;
-</code></pre></li>
-<li><p>用json对象</p>
-<pre><code class="language-javascript">var person = {
-    firstName:&quot;John&quot;,<br/>
-    lastName:&quot;Doe&quot;,<br/>
-    age:50,<br/>
-    eyeColor:&quot;blue&quot;<br/>
-};
-</code></pre></li>
-<li></li>
-</ol>
-
-<h2 id="toc_2">call</h2>
-
-<pre><code class="language-javascript">//js中调用函数
-show()
-//等效于
-show.call()
+<pre><code class="language-c">&lt;command&gt;[&lt;subcommand&gt; [&lt;subcommand&gt;...]] &lt;action&gt; [-options [option-value]] [argument [argument...]]
 </code></pre>
 
-<p><code>call</code>可以改变函数调用中的<code>this</code>,对于call调用函数 第一个参数即为<code>this</code></p>
+<ul>
+<li>commond、subcommond：LLDB调试命令的名称。命令和子命令按照层级结构来排列:一个命令对象为跟随其的子命令对象创建一个上下文，子命令又为其子命令创建一个上下文，以此类推</li>
+<li>action：命令操作，想在前面的命令序列的上下文中执行的一些操作</li>
+<li>options：命令选项，行为修改器。通常带有一些值</li>
+<li>argument：命令参数，根据使用的命令的上下文来表示不同的东西</li>
+<li>[]：表示命令可选</li>
+</ul>
 
-<p>可以通过<code>call</code>来调用父级的方法<br/>
-可以通过赋值原型来继承父级的其它方法，因为原型直接赋值是引用类型的 因此需要遍历赋值</p>
+<p>例如:<br/>
+<code>breakpoint set -n main</code> <br/>
+command为breakpoint、action为set、option即为-n表示根据方法name设置断点、argument：main表示方法名main</p>
+
+<h4 id="toc_1">原始命令</h4>
+
+<p>LLDB支持不带命令选项的原始命令，原始命令会将命令后面的所有东西当做参数(arguement)处理。但很多原始命令也可以带命令选项，当你使用命令选项的时候，需要在命令选项<strong>后面</strong>加<code>--</code>区分命令选项和参数。<br/>
+例如： <br/>
+<code>expression</code>(就是<code>p</code>/<code>print</code>/<code>call</code>)、<code>expression -o</code>(就是 <code>po</code>)，我们用这两个命令打印一下一个<code>UIView</code>的地址</p>
+
+<pre><code class="language-objectivec">//调用对象的description方法
+(lldb) po 0x7fe8a201b400
+&lt;UITableView: 0x7fe8a201b400; frame = (0 0; 0 0); clipsToBounds = YES; gestureRecognizers = &lt;NSArray: 0x600001c072a0&gt;; layer = &lt;CALayer: 0x6000012029e0&gt;; contentOffset: {0, 0}; contentSize: {0, 0}; adjustedContentInset: {0, 0, 0, 0}&gt;
+
+//计算地址的值
+(lldb) expression 0x7fa3b981ee00
+(long) $0 = 140341168696832
+
+(lldb) p 0x7fa3b981ee00
+(long) $1 = 140341168696832
+
+//expression即为一个原始命令 为了告诉其 -o为命令选项而不是参数 需要加上 --
+(lldb) expression -o -- 0x7fa3b981ee00
+&lt;UITableView: 0x7fa3b981ee00; frame = (0 0; 0 0); clipsToBounds = YES; gestureRecognizers = &lt;NSArray: 0x600001e19ce0&gt;; layer = &lt;CALayer: 0x600001001420&gt;; contentOffset: {0, 0}; contentSize: {0, 0}; adjustedContentInset: {0, 0, 0, 0}&gt;
+
+(lldb) expression -object -- 0x7fa3b981ee00
+&lt;UITableView: 0x7fa3b981ee00; frame = (0 0; 0 0); clipsToBounds = YES; gestureRecognizers = &lt;NSArray: 0x600001e19ce0&gt;; layer = &lt;CALayer: 0x600001001420&gt;; contentOffset: {0, 0}; contentSize: {0, 0}; adjustedContentInset: {0, 0, 0, 0}&gt;
+</code></pre>
+
+<blockquote>
+<p>假如前n个字母已经能匹配到某个命令，则只写前n个命令等效于写下完整的命令。</p>
+</blockquote>
+
+<h2 id="toc_2">LLDB常用命令</h2>
+
+<h3 id="toc_3">apropos 辅助记忆</h3>
+
+<p>当不能完全记得某个命令时，使用<code>apropos</code>通过命令中的关键字获取相关命令信息</p>
+
+<p><img src="media/15541740415551/15541870365461.jpg" alt=""/></p>
+
+<h3 id="toc_4">断点设置</h3>
+
+<p>使用断点命令，实现图形化界面不好实现的功能</p>
+
+<ol>
+<li>breakpoint list: 查看所有断点列表</li>
+<li>breakpoint delete: 删除所有断点（可以跟上组号，表示删除指定组）</li>
+<li>breakpoint disable/enable: 禁用 启用指定断点</li>
+<li>breakpoint set -r some：遍历项目中包含some这个字符所有方法并设置断点</li>
+<li>breakpoint 支持按文件名、函数名、行数、正则等各种条件筛选设置断点</li>
+<li>watchpoint set expression 0x10cc64d50: 在内存中为地址为0x10cc64d50的对象设置内存断点</li>
+<li>target stop-hook add -o &quot;frame variable&quot;: 添加每次程序stop时都希望执行的命令</li>
+<li>target stop-hook、watchpoint 的增删改查命令与 breakpoint 的基本相同</li>
+<li>等等</li>
+</ol>
+
+<h3 id="toc_5">流程控制</h3>
+
+<ol>
+<li><p>图一<br/>
+<img src="media/15541740415551/15541893007015.jpg" alt=""/></p></li>
+<li><p>图二<br/>
+<img src="media/15541740415551/15541893330198.jpg" alt=""/></p></li>
+</ol>
+
+<ul>
+<li>第一个按钮：continue/c 继续执行</li>
+<li>第二个按钮：
+<ul>
+<li>图一： thread step-over/next/n 当前线程下一步（以一个完整子函数为一步）</li>
+<li>图二： thread step-inst-over/ni 当前线程下一步（以一个汇编函数为一步）</li>
+</ul></li>
+<li>第三个按钮：
+<ul>
+<li>图一： thread step-in/step/s 当前线程下一步（遇到子函数就进入并且继续单步执行）</li>
+<li>图二： thread step-inst-over/si 当前线程下一步（遇到汇编函数就进入并且继续单步执行汇编指令）</li>
+</ul></li>
+<li>第四个按钮：thread step-out/finish 退出当前帧栈</li>
+</ul>
+
+<p><strong>其他命令</strong></p>
+
+<ul>
+<li>thread return: 有一个可选参数，在执行时它会把可选参数加载进返回寄存器里，然后立刻执行返回命令，跳出当前栈帧。这意味这函数剩余的部分不会被执行。这会给 ARC 的引用计数造成一些问题，或者会使函数内的清理部分失效。但是在函数的开头执行这个命令，是个非常好的隔离次函数、伪造返回值的方式。</li>
+</ul>
+
+<h3 id="toc_6">可执行文件&amp;共享库查询命令</h3>
+
+<p>这些命令常用于逆向和定位错误时</p>
+
+<ol>
+<li>image list: 列出主要的可执行文件和所有依赖的共享库。</li>
+<li><p>image lookup --address 0x1ec4：在可执行文件或者任何共享库中查找原始地址信息</p></li>
+<li><p>image lookup -v --address 0x1ec4：查找完整的源代码行信息。</p></li>
+<li><p>image lookup --type NSString：根据名称查找对应（NSString）类型的信息。</p></li>
+</ol>
+
+<h3 id="toc_7">其它常用命令模板</h3>
+
+<ul>
+<li><code>register read</code>：显示当前线程的通用寄存器。</li>
+<li><code>register write rax 123</code>：将一个新的十进制值“123”写入当前线程寄存器“rax”。</li>
+<li><code>memory read --size 4 --format x --count 4 0xbffff3c0</code>：从地址0xbffff3c0读取内存，并显示4个十六进制uint32_t值。</li>
+</ul>
+
+<h2 id="toc_8">插件</h2>
+
+<ol>
+<li>推荐插件一： facebook 开源的 LLDB 插件 <a href="https://github.com/facebook/chisel">chisel</a></li>
+<li>推荐插件二：<a href="https://github.com/DerekSelander/LLDB">DerekSelander/LLDB</a></li>
+</ol>
 
                         
                       </div>
@@ -179,10 +260,10 @@ show.call()
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/12/8</span>
+                    <span class="date">2019/4/2</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%9F%BA%E7%A1%80.html'>基础</a></span>
+          					    <span class="posted-in"><a href='LLDB.html'>LLDB</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -247,15 +328,13 @@ show.call()
 
       	<p class="cat-list">
         
-            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
-        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -278,31 +357,31 @@ show.call()
 	      
 		      
 			      <li class="post">
-			        <a href="15471197068949.html">Promise</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471147696850.html">对象</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471038798384.html">数组</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470891496440.html">遍历</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470311819265.html">解构</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

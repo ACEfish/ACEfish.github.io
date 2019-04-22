@@ -77,15 +77,13 @@
     <li><label>Categories</label></li>
 
         
-            <li><a href="Swift.html">Swift初学笔记</a></li>
-        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -114,41 +112,112 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15444371982559.html">
+                <a class="clearlink" href="15476219190783.html">
                 
-                  <h1>Ajax</h1>
+                  <h1>Generator 生成器</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<pre><code class="language-javascript">    &lt;script&gt;
-            var oAjax = new XMLHttpRequest()
-            //1. 请求方式
-            //2. 目标资源位置
-            //3. 是否异步
-            oAjax.open(&quot;GET&quot;, &quot;https://www.baidu.com/&quot;, true)
-            oAjax.send()
-            //
-            oAjax.onreadystatechange = function () {
-                /**
-                * readyState
-                *   0：未初始化 还没调用open()方法
-                *   1：载入 已调用send()方法 正在发送请求
-                *   2：载入完成  已经调用send()方法 已收到全部相应内容
-                *   3：解析 正在解析响应内容
-                *   4：完成 响应内容解析完成 可以在客户端使用
-                */
-                if (oAjax.readyState == 4) {
-                    if (oAjax.status == 200) {
-                        alert(&quot;success&quot;)
-                        alert(oAjax.responseText)
-                    } else {
-                        alert(&quot;fail&quot;)
-                    }
-                }
-            }
-        &lt;/script&gt;
+                        	<p>生成器方法使用<code>*</code>符号标识<br/>
+在方法内使用<code>yield</code>关键字标识每次返回的值 返回yield后的值<br/>
+yield后的值为执行next()方法的返回值<br/>
+next方法的参数即为上个yeild的赋值</p>
+
+<pre><code class="language-javascript">//使用*方法标识生成器函数
+function *listColors() {
+    yield &quot;red&quot;;
+    yield &quot;green&quot;;
+    yield &quot;blue&quot;;
+}
+const colors = listColors()
+console.log(colors)
 </code></pre>
+
+<p><img src="media/15476219190783/15476229485970.jpg" alt="" style="width:497px;"/></p>
+
+<h2 id="toc_0">特性</h2>
+
+<h3 id="toc_1">yield可以使用计算值</h3>
+
+<p><code>yield</code>使用计算值</p>
+
+<pre><code class="language-javascript">function *listColors() {
+    let i = 0;
+    yield i
+    i++
+    yield i
+    i++
+    yield i
+    i++
+    yield i
+}
+const colors = listColors()
+console.log(colors)
+</code></pre>
+
+<p><img src="media/15476219190783/15476233739670.jpg" alt="" style="width:602px;"/></p>
+
+<blockquote>
+<p>当遍历结束时,colors遍历器方法状态status 从<code>suspended</code>变为<code>closed</code></p>
+</blockquote>
+
+<h3 id="toc_2">遍历数组</h3>
+
+<pre><code class="language-javascript">const dataArray = [&quot;apple&quot;, &quot;banana&quot;, &quot;mango&quot;]
+function *fruitLoop() {
+    for (const value of dataArray) {
+        yield value
+    }
+}
+
+const fruit = fruitLoop()
+</code></pre>
+
+<p><img src="media/15476219190783/15476238330105.jpg" alt="" style="width:404px;"/></p>
+
+<h3 id="toc_3">不调用next方法 不会执行函数内容,调用next()方法只会执行到yield语句结束</h3>
+
+<pre><code class="language-javascript">function *fruitLoop() {
+    console.log(dataArray)
+    for (const value of dataArray) {
+        yield value
+        console.log(&quot;这是&quot;+value)
+    }
+}
+
+const fruit = fruitLoop() //此时并不会log array的信息
+fruit.next() //此时才会执行log array而不会logvalue值 
+fruit.next(） //此时才会logvalue值
+</code></pre>
+
+<h3 id="toc_4">next方法的参数 即为yield的返回值</h3>
+
+<p>yield后的值为执行next()方法的返回值<br/>
+next方法的参数为yeild的语句的赋值</p>
+
+<pre><code class="language-javascript">let userName 
+function* loopFunc() {
+    //并不会把&quot;fk&quot;+&quot;wtt&quot; 返回给userName 
+    //把下一个next方法的参数赋值给 username
+    userName = yield &quot;fk&quot;+&quot;wtt&quot;
+    console.log(&quot;执行结束&quot;)
+}
+
+const loopTest = loopFunc()
+//result 为{value: &quot;fkwtt&quot;, done: false}
+const result = loopTest.next() //此时userName 仍为undefined
+//{value: undefined, done: true}
+const result2 = loopTest.next(&quot;lyy&quot;)//此时userName为&quot;lyy&quot;
+//执行结束
+            
+</code></pre>
+
+<blockquote>
+<p>只有一个yield 但是需要两个next才能使函数执行结束</p>
+</blockquote>
+
+<h2 id="toc_5">例子</h2>
 
                         
                       </div>
@@ -157,10 +226,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/12/10</span>
+                    <span class="date">2019/1/16</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%9F%BA%E7%A1%80.html'>基础</a></span>
+          					    <span class="posted-in"><a href='ES6.html'>ES6</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -225,15 +294,13 @@
 
       	<p class="cat-list">
         
-            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
-        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -256,31 +323,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15471197068949.html">Promise</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471147696850.html">对象</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471038798384.html">数组</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470891496440.html">遍历</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470311819265.html">解构</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

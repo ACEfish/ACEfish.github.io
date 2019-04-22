@@ -77,15 +77,13 @@
     <li><label>Categories</label></li>
 
         
-            <li><a href="Swift.html">Swift初学笔记</a></li>
-        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -114,105 +112,165 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15469392062682.html">
+                <a class="clearlink" href="15481285554094.html">
                 
-                  <h1>箭头函数</h1>
+                  <h1>State和生命周期</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>箭头函数即 省略function关键字 添加 =&gt; 符号</p>
+                        	<h2 id="toc_0">为组件添加State和声明周期</h2>
 
-<pre><code class="language-javascript">    const numArr = [1, 2, 3, 4]
-    
-    //function函数
-    const num2 = numArr.map(function(num) {
-        return  num*num
-    })
-    //箭头函数
-    const numArr2 = numArr.map((num) =&gt; {
-        return num*num
-    })
-</code></pre>
+<p>状态与属性不同 <code>state</code>是完全私有的，完全受控于当前组件</p>
 
-<h2 id="toc_0">特点</h2>
+<p>为组件添加<code>state</code>方法</p>
 
-<h3 id="toc_1">参数</h3>
+<ol>
+<li>在class组件中添加构造方法,在构造方法的state属性中 初始化状态 <code>this.state</code></li>
+<li>React元素展示的使用<code>state</code>属性的date值</li>
+<li><code>class</code>组件中有提供声明周期方法</li>
+</ol>
 
-<p>当只有一个参数时,箭头函数中的()可省略,多个参数在括号中用,分割</p>
+<pre><code class="language-javasript">export default class Clock extends React.Component {
+    constructor(props) {
+        //需要将props属性来调用基础构造属性
+        super(props)
+        this.state = {
+            date : new Date()
+        }
+    }
 
-<pre><code class="language-javascript">    //箭头函数 
-    const numArr2 = numArr.map(num =&gt; {
-        return num*num
-    })
-</code></pre>
+    tick() {
+        this.setState({
+            date: new Date()
+        })
+    }
 
-<h3 id="toc_2">隐式返回</h3>
+    componentDidMount() {
+        //this.timerID 用来存储一些我们需要的值
+        this.timerID = setInterval(() =&gt; {
+            this.tick()
+        }, 1000);
+    }
 
-<p>箭头函数可以隐式返回<br/>
-此时可以省略大括号和return关键字</p>
+    componentWillUnmount() {
+        clearInterval(this.timerID)
+    }
 
-<pre><code class="language-javascript">    //大括号 和 return关键字必须同时省略
-    const numArr2 = numArr.map((num) =&gt; num*num)
-</code></pre>
-
-<h3 id="toc_3">匿名函数</h3>
-
-<p>箭头函数是匿名函数</p>
-
-<blockquote>
-<p>当要使用匿名函数时  我们可以将函数赋值给其他变量 然后使用</p>
-</blockquote>
-
-<h3 id="toc_4">箭头函数的this继承父作用域</h3>
-
-<p><strong>箭头函数没有自己的this值, 它的this值继承自父作用域</strong></p>
-
-<p>普通函数的this值是在运行时动态绑定的</p>
-
-<p>因此当我们需要执行函数绑定this为当前运行对象时 可以使用箭头函数</p>
-
-<pre><code class="language-javascript">   const people = {
-       ownname: &quot;fk&quot;,
-       names: [&quot;lyy&quot;, &quot;tt&quot;],
-       showName: function() {
-            this.names.map(function(name){
-                //此时函数未回调的独立函数 this为window
-                console.log(this) //window
-                 //因为this此时为window 因此获取不到执行对象
-                console.log(this.ownname+&quot;名字&quot;+name)
-            })
-       },
-       showName2: function() {
-            this.names.map(name =&gt; {
-                //此时箭头函数的this继承了showname函数为people对象 
-                //可以获取到对象
-                console.log(this.ownname+&quot;名字&quot;+name)
-            })
-       }
-   }
-   people.showName()
-   people.showName2()
+    render() {
+        return(
+            &lt;h1&gt;
+                Hello, 现在是时间 {this.state.date.toLocaleTimeString()}
+            &lt;/h1&gt;
+        )
+    }
+}
 </code></pre>
 
 <blockquote>
-<p>当一个函数是独立函数时(常出现在回调函数中),即独立运行 而不是作为对象的方法执行时，该方法中的<code>this</code>会指向window对象，此时我们可以使用 <code>call</code> <code>apply</code> <code>by</code>等绑定执行对象 或者 使用箭头函数</p>
+<p><code>this.props</code>属性是React中内置属性 <code>this.state</code>是具有特殊含义的属性,这两个属性与展示有关,其他属性我们可以自行设置存储需要的值</p>
 </blockquote>
 
-<h2 id="toc_5">不使用箭头函数的情况</h2>
+<h2 id="toc_1">State</h2>
 
-<h3 id="toc_6">作为构造函数、为原型或对象增加方法</h3>
+<p>更新状态必须使用<code>setState({ key: value })</code>方法，而不能简单的直接赋值修改state对象，因为直接修改<code>this.state</code>对象 虽然修改组件的内部状态，但是并没有驱动组件进行渲染，并不会反应state的的变化，而调用<code>setState</code>方法，首先改变state值，然后驱动组件进行渲染，才能看到更新变化</p>
 
-<p>当作为构造函数或者为原型对象添加方法时 不能使用箭头函数,因为此时获取不到this对象,需要使用传统的function函数</p>
+<pre><code class="language-javascript">this.setState({comment: &#39;Hello&#39;});
+</code></pre>
 
-<h3 id="toc_7">当函数没有父级作用域时而我们需要this时</h3>
+<p>状态更新机制:</p>
 
-<p>当箭头函数作为对象方法的调用时,此时不能用箭头函数,因为此时箭头函数的this为window而不是该对象，此时使用传统function函数,作为对象方法执行可以将this绑定为当前对象</p>
+<p><code>React</code> 为了提高性能,会将多个状态更新进行合并更新,因此你不能依靠确定现在的<code>state</code>或者<code>props</code>值就是你上次更新的<code>state</code>和<code>props</code>值, <br/>
+如果想要依靠上次的状态或者属性进行更新,需要使用特殊的方法</p>
 
-<h3 id="toc_8">当需要arguments对象时</h3>
+<pre><code class="language-javascript">this.setState(function(prevState, props) {
+  return {
+    counter: prevState.counter + props.increment
+  };
+});
+</code></pre>
 
-<p>箭头函数中没有<code>arguments</code>对象<br/>
-我们可以使用ES6新增的 <code>...arg</code></p>
+<p>组件的数据传递应该是自上向下传递,我们可以将状态作为属性传递给其组件,组件之间也只应该使用属性进行传递(状态是内部拥有的不能传递)</p>
+
+<h3 id="toc_2">Props与state</h3>
+
+<ul>
+<li>props用于定义外部接口，state用于记录内部状态</li>
+<li>props的赋值是在外部使用组件时，而state存在的目的就是让组件改变的</li>
+</ul>
+
+<blockquote>
+<p>组件不应该修改传入的props值</p>
+</blockquote>
+
+<h2 id="toc_3">生命周期</h2>
+
+<p>React的声明周期 经历以下三个过程:</p>
+
+<ol>
+<li>装载过程: 组件第一次在DOM树中渲染的过程</li>
+<li>更新过程: 组件被重新渲染的过程</li>
+<li>卸载过程: 组件从DOM中删除的过程</li>
+</ol>
+
+<h3 id="toc_4">装载过程</h3>
+
+<p>依次调用以下函数:</p>
+
+<ul>
+<li><code>constractor</code></li>
+<li><code>getInitialState</code></li>
+<li><code>getDefaultProps</code></li>
+<li><code>componetWillMount</code></li>
+<li><code>reder</code></li>
+<li><code>componentDidMount</code></li>
+</ul>
+
+<p><strong>constractor</strong> 为构造函数，通常用来</p>
+
+<ol>
+<li>初始化state</li>
+<li>绑定成员函数</li>
+</ol>
+
+<p><strong>getInitialState、getDefaultProps</strong> 是ES6之前使用<code>React.creatClss</code>方法定义组件才会用到，我们现在使用ES6的<code>class</code>在构造函数中初始化state，<br/>
+<code>ClassName.defaultProps</code>设置默认props</p>
+
+<p><strong>reder</strong> 函数是定义组件中最重要的方法,其他方法<code>React.Component</code>都有默认实现，可以不用重写，这个方法必须实现，用来告诉react这个组件要渲染的DOM元素，我们不应该在这个方法中改变state；当然，如果组件想要什么都不渲染 我们可以返回<code>null</code>或者<code>false</code></p>
+
+<p><strong>componetWillMount、componentDidMount</strong>这两个函数发生在render函数的前后<br/>
+我们通常不调用componetWillMount函数，因为此时并没有任何的渲染结果,即使调用<code>setState</code>方法也不会引发任何的重绘，而在这个方法中的实现通常可以放到constractor()方法中<br/>
+<code>componentDidMount</code>在render函数调用完成后调用，但是并不会立即调用，而是在其它组件的render函数也完成后，将返回结果进行综合后，才能知道如何装载，完成装载，然后调用各个组件的componentDidMount函数。我们通常在此函数中进行ajax请求，然后填充组件内容</p>
+
+<h3 id="toc_5">更新过程</h3>
+
+<p>依次调用一下函数:</p>
+
+<ul>
+<li><code>componentWillReceiveProps</code></li>
+<li><code>shouldComponentUpdate</code></li>
+<li><code>componentWillUpdate</code></li>
+<li><code>render</code></li>
+<li><code>componentDidUpdate</code></li>
+</ul>
+
+<p><strong>componentWillReceiveProps(nextProps)</strong><br/>
+当父组件的<code>render</code>函数被调用时,组件内的子组件或者组件的props改变或者都会经历更新过程，然后触发该函数。注意,当组件内的state改变时并不会触发该方法，因为该方法就是为了让我们根据新的props值来决定是否要更新state值，因为不是只有props改变时才调用该方法，我们需要比较该方法的nextProps与this.props比较，只有发生变化时才调用this.setState</p>
+
+<blockquote>
+<p>当组件内调用<code>this.forceUpdate()</code>会强行引发一次重绘</p>
+
+<p>当父组件更新时，顺序是父组件先更新，完成后更新子组件</p>
+</blockquote>
+
+<p><strong>shouldComponentUpdate(nextProps, nextState)</strong>返回一个<code>boolean</code>值，来决定此次渲染是否需要继续，如果返回<code>false</code>，会立即停止更新过程，不进行后续更新.我们可以将<code>nextProps</code>和<code>nextState</code>与当前的<code>this.props</code>和<code>this.state</code>进行对比，来决定是否需要继续此次更新.注意,我们调用<code>this.setState</code>引发更新，并不会立即更新state的值，在执行此函数时，仍是更新之前的值，因此不会影响我们进行判断</p>
+
+<p><strong>componentWillUpdate、componentDidUpdate</strong><br/>
+如果<code>shouldComponentUpdate</code>函数返回true 就会调用这两个函数，分别在<code>render</code>函数前后调用，与装载过程的Did函数不同，更新的Did函数不仅在浏览器端，在服务端也会执行，但是在服务器端的react代码，是不应该执行更新过程的。类似<code>componentDidMount</code>函数，可以再<code>componentDidUpdate</code>函数中执行第三方UI库的代码来更新UI,比如执行<code>jquery</code>代码</p>
+
+<h3 id="toc_6">卸载过程</h3>
+
+<p><strong>componentWillUnmount</strong>卸载过程只会执行这一个函数，当组件将要从DOM树上移除时，适合做一些清理性的工作</p>
 
                         
                       </div>
@@ -221,10 +279,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2019/1/8</span>
+                    <span class="date">2019/1/22</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='ES6.html'>ES6</a></span>
+          					    <span class="posted-in"><a href='React.html'>React</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -289,15 +347,13 @@
 
       	<p class="cat-list">
         
-            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
-        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -320,31 +376,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15471197068949.html">Promise</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471147696850.html">对象</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471038798384.html">数组</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470891496440.html">遍历</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470311819265.html">解构</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

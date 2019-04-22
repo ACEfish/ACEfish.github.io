@@ -77,15 +77,13 @@
     <li><label>Categories</label></li>
 
         
-            <li><a href="Swift.html">Swift初学笔记</a></li>
-        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -114,64 +112,66 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14866309753746.html">
+                <a class="clearlink" href="15537640909732.html">
                 
-                  <h1>iOS中UISearchController</h1>
+                  <h1>MVVM的思考</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h4 id="toc_0">1. 使用方法</h4>
+                        	<p>MVC总结</p>
 
-<pre><code class="language-object-c">SearchResultController *vc = [[SearchResultController alloc] init];
-    self.searchController = [[SearchControllerOfContacts alloc] initWithSearchResultsController:vc];
-    [self.tableView setTableHeaderView:self.searchController.searchBar];
-    [self.searchController setSearchResultsUpdater:vc];
-    [self.searchController.searchBar setPlaceholder:NSLocalizedString(@&quot;昵称、手机号&quot;, nil)];
-    self.resultController = vc;
-</code></pre>
+<p>M应该做的事：</p>
 
-<p>此处是设置searchBar为tableView的头视图<br/>
-<strong>注意</strong><br/>
-此处的searchConroller 和 searchResultcontroller都必须为该控制器的属性(即强引用住）</p>
+<ul>
+<li>给ViewController提供数据</li>
+<li>给ViewController存储数据提供接口</li>
+<li>响应数据请求一般来是ViewController的</li>
+<li>提供经过抽象的业务基本组件，供Controller调度(比如常用的dataModel)</li>
+</ul>
 
-<h4 id="toc_1">2. 自定义的UISearchController</h4>
+<blockquote>
+<p>M不应该这是dataModel 而是整个Model层</p>
+</blockquote>
 
-<p>我们可以继承自UISearchController，重写其<code>initWithSearchResultsController</code>方法即可:</p>
+<p>C应该做的事：</p>
 
-<pre><code class="language-object-c">- (id)initWithSearchResultsController:(UIViewController *)searchResultsController
-{
-    if (self = [super initWithSearchResultsController:searchResultsController]) {
-        self.searchBar.layer.borderWidth = 1;
-        self.searchBar.layer.borderColor = [ITRGBColor(239.0, 239.0, 244.0, 1.0)CGColor];
-        [self.searchBar setBarTintColor:ITRGBColor(239.0, 239.0, 244.0, 1.0)];
-        [self.searchBar setValue:@&quot;取消&quot; forKey:@&quot;_cancelButtonText&quot;];
-        UITextField *tf = [[[self.searchBar.subviews firstObject] subviews] lastObject];
-        [tf.layer setMasksToBounds:YES];
-        [tf.layer setBorderWidth:0.5f];
-        [tf.layer setBorderColor:[UIColor colorWithWhite:0.5 alpha:0.3].CGColor];
-        [tf.layer setCornerRadius:5.0f];
-        
-    }
-    return self;
-}
-</code></pre>
+<ul>
+<li>管理View Container的生命周期</li>
+<li>负责生成所有的View实例，并放入View Container</li>
+<li>监听来自View与业务有关的事件来操作View或者model</li>
+</ul>
 
-<h4 id="toc_2">3.深度解析UISearchController 以及其SearchResultControll原理</h4>
+<p>V应该做的事：</p>
 
-<p>当UISearchController出现时，UISearchController也是一个控制器就相当于模态出来一个控制器<br/>
-<img src="media/14866309753746/UISearchController.png" alt="UISearchControlle的层级表示"/><br/>
-<img src="media/14866309753746/searchController_big.png" alt="searchController_big"/></p>
+<ul>
+<li>响应与业务无关的事件，并因此引发动画效果，点击反馈（如果合适的话，尽量还是放在View去做）等。</li>
+<li>界面元素表达</li>
+</ul>
 
-<p>我们可以看出来 我们首先从原来控制器模态出来我们自己的UISearchController 而UISearchControllView就是这个控制器的View即蓝色部分  而搜索结果的显示即在其上加了一个View这个view即为我们的搜索结果控制器的view<br/>
-因此我们改变这个SearchControllView颜色并不会影响显示 但是如果把其上加上别的视图 就会影响结果的显示的<br/>
-<img src="media/14866309753746/searchController2.png" alt="searchControlle"/><br/>
-可以看到显示结果的View被我们后加的tableView挡住了,这时候我们可以<strong><code>sendSubviewToBack</code></strong>来直接将tableView放置到显示结果的view后面即可了</p>
+<h2 id="toc_0">MVVM要考虑的问题</h2>
 
-<h4 id="toc_3">3.UISearchController 上的searchBar原理</h4>
+<ol>
+<li>MVVM具体应该怎么写 各个部分应该负责那些事儿不 </li>
+<li>View和VM是否不应该持有 </li>
+<li>网络请求应该写在什么地方，请求是否应该放在C中</li>
+<li>MVVM中的数据流应该怎么流动 </li>
+<li>VM应该和M直接交互吗？还是需要通过C调度，VM和M直接交互会不会导致VM和具体业务产生强烈耦合，导致VM的可移植性降低？ </li>
+<li>M中放置对数据的增、删、改、查</li>
+<li>VM是不是只做抽象数据和形象数据的转化，即可能将查到的数据转化为View展示需要的形式（即数据转换），而不应该对后台数据做任何处理 ，因为这是M应该做的事</li>
+<li>VM只处理View需要展示的数据</li>
+</ol>
 
-<p>显示的searchBar是因为searcontroller上有一块searBarContainView 在其上放置了searchBar,还有背景图片 取消按钮等<br/>
-<img src="media/14866309753746/UISearchBar.png" alt="UISearchBa"/></p>
+<h2 id="toc_1">MVVM学习</h2>
+
+<p>本文来自<a href="https://draveness.me/mvx">浅谈 MVC、MVP 和 MVVM 架构模式</a></p>
+
+<p>MVP是MVC变种，采用了Presenter将视图和模型进行了解耦，采用了监督控制器，将视图层和模型层的一些属性进行了绑定</p>
+
+<p>MVVM 采用了PresentModel理念，PM即将视图的所有全部状态和行为抽象为一个模型，为视图层提供了一个接口，PM通过引入展示模型，将模型层中的数据和复杂的业务逻辑封装为简单的数据并暴露给视图，让视图和展示模型中的属性进行同步。<br/>
+展示模型PM中包含所有的视图渲染需要的动态信息，包括视图的内容（text、color）、组件是否启用（enable），除此之外还会将一些方法暴露给视图用于某些事件的响应</p>
+
+<p>在PM模式中，同一个展示模型可以与多个领域对象交互，多个视图可以使用相同的展示模型，但是每一个视图只能持有一个展示模型。</p>
 
                         
                       </div>
@@ -180,10 +180,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/9</span>
+                    <span class="date">2019/3/28</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
+          					    <span class="posted-in"><a href='%E6%9E%B6%E6%9E%84%E8%B0%88.html'>架构谈</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -248,15 +248,13 @@
 
       	<p class="cat-list">
         
-            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
-        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -279,31 +277,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15471197068949.html">Promise</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471147696850.html">对象</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471038798384.html">数组</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470891496440.html">遍历</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470311819265.html">解构</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

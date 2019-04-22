@@ -77,15 +77,13 @@
     <li><label>Categories</label></li>
 
         
-            <li><a href="Swift.html">Swift初学笔记</a></li>
-        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -114,167 +112,261 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14878317610028.html">
+                <a class="clearlink" href="15329386758024.html">
                 
-                  <h1>成员变量与属性</h1>
+                  <h1>IO编程</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">类型编码(Type Encoding)</h2>
-
-<p><strong>作为对Runtime的补充，编译器将每个方法的返回值和参数类型编码为一个字符串，并将其与方法的<code>selector</code>关联在一起。</strong>我们可以使用@encode编译器指令来获取它。当给定一个类型时，<code>@encode</code>返回这个类型的字符串编码。这些类型可以是诸如int、指针这样的基本类型，也可以是结构体、类等类型。任何可以作为<code>sizeof()</code>操作参数的类型都可以用于<code>@encode()</code>。</p>
-
-<p>在<code>Objective-C Runtime Programming Guide</code>中的<a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtTypeEncodings.html#//apple_ref/doc/uid/TP40008048-CH100-SW1">Type Encoding</a>一节中列出了Objective-C中所有的类型编码,需要注意的是这些类型很多是与我们用于存档和分发的编码类型是相同的。但有一些不能在存档时使用。</p>
-
-<p><em>注：Objective-C不支持long double类型。@encode(long double)返回d，与double是一样的。</em><br/>
-举个栗子:</p>
-
-<pre><code class="language-objectivec">float a[] = {1.0, 2.0, 3.0};
-NSLog(@&quot;array encoding type: %s&quot;, @encode(typeof(a)));
-//输出:
-2014-10-28 11:44:54.731 RuntimeTest[942:50791] array encoding type: [3f]
+                        	<pre><code class="language-python">f = open(&#39;/Users/fish/Desktop/readme.txt&#39;, &#39;r&#39;)
+content=f.read() 
+print(content)
+f.close()
 </code></pre>
 
-<p>另外，还有些编码类型，@encode虽然不会直接返回它们，但它们可以作为协议中声明的方法的类型限定符。</p>
+<p>文件使用完必须关闭，文件对象会占用系统资源，操作系统同时能打开文件数量也是有限的<br/>
+为了保证每次不论是否文件读碟出现<code>IOError</code>出错 都能正确关闭文件，通常这么写:</p>
 
-<p>对于属性而言，还会有一些特殊的类型编码，以表明属性是只读、拷贝、retain等等，详情可以参考<a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtPropertyIntrospection.html#//apple_ref/doc/uid/TP40008048-CH101-SW6">Property Type String</a>。</p>
+<pre><code class="language-python">try:
+    f = open(&#39;/path/to/file&#39;, &#39;r&#39;)
+    print(f.read())
+finally:
+    if f:
+        f.close()
 
-<h2 id="toc_1">成员变量、属性</h2>
+# 使用 python的with语句来自动帮我们调用close()方法
+#与try...finall..效果相同代码更简洁
 
-<h3 id="toc_2">基础数据类型</h3>
-
-<h4 id="toc_3">Ivar</h4>
-
-<p>Ivar是表示实例变量的类型，其实际是一个指向objc_ivar结构体的指针</p>
-
-<pre><code class="language-objectivec">typedef struct objc_ivar *Ivar;
-struct objc_ivar {
-    char *ivar_name                 OBJC2_UNAVAILABLE;  // 变量名
-    char *ivar_type                 OBJC2_UNAVAILABLE;  // 变量类型
-    int ivar_offset                 OBJC2_UNAVAILABLE;  // 基地址偏移字节
-#ifdef __LP64__
-    int space                       OBJC2_UNAVAILABLE;
-#endif
-}
+with open(&#39;/path/to/file&#39;, &#39;r&#39;) as f:
+    print(f.read())
 </code></pre>
 
-<h4 id="toc_4">objc_property_t</h4>
+<p><code>read()</code>方法会一次性读取全部内容,如果文件过大会挑战内存<br/>
+<code>read(size)</code>每次最多读取size字节的内容<br/>
+<code>readline()</code>每次读取一行内容<br/>
+<code>readlines()</code>一次性读取所有行,返回一个<code>list</code></p>
 
-<p><code>objc_property_t</code>是表示Objective-C声明的属性的类型，其实际是指向objc_property结构体的指针</p>
+<blockquote>
+<p>类似文件这种 open()函数返回可以read()的对象，均称为 file-like Object，除此之外还有内存的字节流、网络流、自定义流</p>
+</blockquote>
 
-<p><code>typedef struct objc_property *objc_property_t;</code></p>
+<h3 id="toc_0">二进制文件</h3>
 
-<h5 id="toc_5">objc_property_attribute_t</h5>
+<p>默认读取的为UTF-8编码的文本文件,如果为二进制文件,需要用<code>rb</code>模式打开</p>
 
-<p><code>objc_property_attribute_t</code>定义了属性的特性(attribute)，它是一个结构体</p>
-
-<pre><code class="language-objectivec">typedef struct {
-    const char *name;           // 特性名
-    const char *value;          // 特性值
-} objc_property_attribute_t;
+<pre><code class="language-python">&gt;&gt;&gt; f = open(&#39;/Users/michael/test.jpg&#39;, &#39;rb&#39;)
+&gt;&gt;&gt; f.read()
+# b&#39;\xff\xd8\xff\xe1\x00\x18Exif\x00\x00...&#39; # 十六进制表示的字节
 </code></pre>
 
-<h3 id="toc_6">关联对象(Associated Object)</h3>
+<h3 id="toc_1">其它编码格式</h3>
 
-<p>关联对象类似于成员变量，不过是在运行时添加的。我们通常会把成员变量(Ivar)放在类声明的头文件中，或者放在类实现的@implementation后面。但这有一个缺点，我们不能在分类中添加成员变量。如果我们尝试在分类中添加新的成员变量，编译器会报错。</p>
+<p>对于非<code>UTF-8</code>编码的文本文件,需要<code>open()</code>函数需要传入<code>encoding</code>参数</p>
 
-<p>Objective-C针对这一问题，提供了一个解决方案：即关联对象(<code>Associated Object</code>)。</p>
-
-<p>我们可以把关联对象想象成一个Objective-C对象(如字典)，这个对象通过给定的key连接到类的一个实例上。不过由于使用的是C接口，所以key是一个void指针(const void *)。我们还需要指定一个内存管理策略，以告诉Runtime如何管理这个对象的内存。这个内存管理的策略可以由以下值指定：</p>
-
-<pre><code class="language-objectivec">OBJC_ASSOCIATION_ASSIGN
-OBJC_ASSOCIATION_RETAIN_NONATOMIC
-OBJC_ASSOCIATION_COPY_NONATOMIC
-OBJC_ASSOCIATION_RETAIN
-OBJC_ASSOCIATION_COPY
-/**
-    当宿主对象被释放时，会根据指定的内存管理策略来处理关联对象。如果指定的策略是
-    assign，则宿主释放时，关联对象不会被释放；而如果指定的是retain或者是copy，则
-    宿主释放时，关联对象会被释放。我们甚至可以选择是否是自动retain/copy。当我们需
-    要在多个线程中处理访问关联对象的多线程代码时，这就非常有用了。
-*/
+<pre><code class="language-python">f = open(&#39;/Users/michael/gbk.txt&#39;, &#39;r&#39;, encoding=&#39;gbk&#39;)
 </code></pre>
 
-<p>使用方法:</p>
+<p>当编码不规范，文本中夹杂着非法编码字符时，会发生转码错误(<code>UnicodeDecodeError</code>)，此时可以通过加入参数<code>errors</code>来指定处理方式，常用的为直接忽略</p>
 
-<pre><code class="language-objectivec">static char myKey;
-objc_setAssociatedObject(self, &amp;myKey, anObject, OBJC_ASSOCIATION_RETAIN);
-/**
-    Sets an associated value for a given object using a given key and association 
-    policy.
-    
-    object
-        The source object for the association.
-    key
-        The key for the association.
-    value
-        The value to associate with the key key for object. Pass nil to clear an 
-        existing association.
-*/
+<pre><code class="language-python">f = open(&#39;/Users/michael/gbk.txt&#39;, &#39;r&#39;, encoding=&#39;gbk&#39;, errors=&#39;ignore&#39;)
 </code></pre>
 
-<p>在这种情况下，self对象将获取一个新的关联的对象anObject，且内存管理策略是自动retain关联对象，当self对象释放时，会自动release关联对象。另外，如果我们使用同一个key来关联另外一个对象时，也会自动释放之前关联的对象，这种情况下，先前的关联对象会被妥善地处理掉，并且新的对象会使用它的内存。</p>
+<h3 id="toc_2">写文件</h3>
 
-<pre><code class="language-objectivec">id anObject = objc_getAssociatedObject(self, &amp;myKey);
-//Returns the value associated with a given object for a given key.
-/**
-object
-The source object for the association.
-key
-The key for the association.
-*/
+<p>写文件也是调用<code>open()</code>函数 只是传入的标识符为<code>w</code>或者<code>wb</code>表示写文本文件或写二进制文件</p>
+
+<pre><code class="language-python">f3 = open(&#39;/Users/fish/Desktop/readme.txt&#39;, &#39;wb&#39;)
+f3.write(b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;)
+f3.close()
 </code></pre>
 
-<p>我们可以使用<code>objc_removeAssociatedObjects</code>函数来移除一个关联对象，或者使用<code>objc_setAssociatedObject</code>函数将key指定的关联对象设置为nil。</p>
+<blockquote>
+<p>与读文件相同要记得调用<code>close()</code>方法,否则可能有部分未写入</p>
+</blockquote>
 
-<p>关联对象使用起来并不复杂。它让我们可以动态地增强类现有的功能。我们可以在实际编码中灵活地运用这一特性。</p>
+<p>与读文件相同,可以通过<code>with</code>语句 确保自动调用close()方法</p>
 
-<h3 id="toc_7">成员变量、属性的操作方法</h3>
-
-<h4 id="toc_8">成员变量</h4>
-
-<p>成员变量包含以下方法:</p>
-
-<pre><code class="language-objectivec">// 获取成员变量名
-const char * ivar_getName ( Ivar v );
-// 获取成员变量类型编码
-const char * ivar_getTypeEncoding ( Ivar v );
-// 获取成员变量的偏移量
-ptrdiff_t ivar_getOffset ( Ivar v );
+<pre><code class="language-python">with open(&#39;/Users/michael/test.txt&#39;, &#39;w&#39;) as f:
+    f.write(&#39;Hello, world!&#39;)
 </code></pre>
 
-<p><code>ivar_getOffset</code>函数，对于类型id或其它对象类型的实例变量，可以调用<code>object_getIvar</code>和<code>object_setIvar</code>来直接访问成员变量，而不使用偏移量。</p>
+<blockquote>
+<p>通过<code>encoding</code>参数将字符转为指定编码<br/>
+<code>w</code>默认为覆盖模式 <code>a</code>是append模式</p>
+</blockquote>
 
-<h4 id="toc_9">关联对象</h4>
+<h2 id="toc_3">StringIO 和 BytesIO</h2>
 
-<p>关联操作函数</p>
+<p>内存中进行读写</p>
 
-<pre><code class="language-objectivec">// 设置关联对象
-void objc_setAssociatedObject ( id object, const void *key, id value, objc_AssociationPolicy policy );
-// 获取关联对象
-id objc_getAssociatedObject ( id object, const void *key );
-// 移除关联对象
-void objc_removeAssociatedObjects ( id object );
+<pre><code class="language-python">from io import StringIO
+
+f4=StringIO(&quot;初始\n 字符串&quot;)
+f4.write(&quot;hello,&quot;)
+f4.write(&quot; &quot;)
+f4.write(&quot;world!&quot;)
+
+print(f4.getvalue())  # getvalue()方法用于获得写入后的内容
+#hello, world!
+
+from io import BytesIO
+f5=BytesIO()
+f5.write(&quot;中文&quot;.encode(&quot;utf-8&quot;))
+print(f5.getvalue())
+# b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;
 </code></pre>
 
-<h4 id="toc_10">属性</h4>
+<p>要读取StringIO，可以用一个str初始化StringIO，然后，像读文件一样读取：<br/>
+和StringIO类似，可以用一个bytes初始化BytesIO，然后，像读文件一样读取：</p>
 
-<p>属性操作函数:</p>
+<pre><code class="language-python">from io import StringIO
+f = StringIO(&#39;Hello!\nHi!\nGoodbye!&#39;)
+while True:
+     s = f.readline()
+     if s == &#39;&#39;:
+         break
+     print(s.strip())
 
-<pre><code class="language-objectivec">// 获取属性名
-const char * property_getName ( objc_property_t property );
-// 获取属性特性描述字符串
-const char * property_getAttributes ( objc_property_t property );
-// 获取属性中指定的特性
-char * property_copyAttributeValue ( objc_property_t property, const char *attributeName );
-// 获取属性的特性列表
-objc_property_attribute_t * property_copyAttributeList ( objc_property_t property, unsigned int *outCount );
+# Hello!
+# Hi!
+# Goodbye!
+
+from io import BytesIO
+f = BytesIO(b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;)
+f.read()
+# b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;
 
 </code></pre>
 
-<p><code>property_copyAttributeValue</code>函数，返回的char *在使用完后需要调用free()释放.<br/>
-<code>property_copyAttributeList</code>函数，返回值在使用完后需要调用free()释放。</p>
+<h2 id="toc_4">操作文件和目录</h2>
+
+<p>操作文件和目录<br/>
+通过<code>os</code>模块提供的功能</p>
+
+<pre><code class="language-python">import os
+os.name # posix 操作系统类型(posix表示是Linux、Unix、Mac OS，nt表示是Windows)
+
+os.uname() #查看详细的系统信息
+#posix.uname_result(sysname=&#39;Darwin&#39;, nodename=&#39;fishdeMacBook-Pro.local&#39;, release=&#39;17.5.0&#39;, version=&#39;Darwin Kernel Version 17.5.0: Fri Apr 13 19:32:32 PDT 2018; root:xnu-4570.51.2~1/RELEASE_X86_64&#39;, machine=&#39;x86_64&#39;)
+</code></pre>
+
+<h3 id="toc_5">环境变量</h3>
+
+<pre><code class="language-python">os.environ #操作系统定义的全部环境变量
+os.environ.get(&quot;PATH&quot;) # 获取某个环境变量值
+os.environ.get(&#39;x&#39;, &#39;default&#39;) # 
+</code></pre>
+
+<h3 id="toc_6">操作文件和目录</h3>
+
+<p>操作文件和目录的函数 在<code>os</code>和<code>os.path</code>中</p>
+
+<pre><code class="language-python">import os
+
+currentPath=os.path.abspath(&quot;.&quot;)  # .表示当前路径
+print(currentPath) # /Users/fish/Desktop/LYY/Python
+
+joinDir=os.path.join(&quot;/Users/fish/Desktop&quot;, &quot;testDir&quot;) #在目录下新建目录 获取新目录路径
+print(joinDir) # /Users/fish/Desktop/testDir
+
+splitDir=os.path.split(&quot;/Users/fish/Desktop/testDir&quot;)
+print(splitDir) #(&#39;/Users/fish/Desktop&#39;, &#39;testDir&#39;)  获取最后一部分文件或目录
+splitext=os.path.splitext(&quot;/Users/fish/Desktop/testDir&quot;) #获取扩展名 如果最后一部分为目录 则为空
+print(splitext) # (&#39;/Users/fish/Desktop/testDir/readme&#39;, &#39;.txt&#39;)
+
+os.mkdir(&quot;/Users/fish/Desktop/testDir2&quot;) #新建目录
+os.rmdir(&quot;/Users/fish/Desktop/testDir2&quot;) #删除目录
+
+os.path.join(&quot;/Users/fish/Desktop&quot;, &quot;readme.txt&quot;)
+os.rename(&#39;/Users/fish/Desktop/readme.txt&#39;, &#39;/Users/fish/Desktop/readme.py&#39;)  # 重命名文件
+os.remove(&#39;/Users/fish/Desktop/readme.py&#39;) # 删除文件
+
+dirlist=os.listdir(&quot;.&quot;) #获取当前目录下的所有文件夹列表
+os.path.isdir(&quot;.&quot;) # 判断是否为文件夹目录
+
+</code></pre>
+
+<p>当合并路径时,不要直接拼接字符串，通过<code>os.path.join()</code>函数可以正确处理不用操作系统的路径分隔符.<br/>
+同理，拆分字符串时通过<code>os.path.split()</code>函数，可以把路径拆分为两部分，后一部分总是最后级别的目录或文件名<br/>
+<code>os.path.splitext()</code>可以直接让你得到文件扩展名</p>
+
+<blockquote>
+<p>在<code>os</code>模块中并没有复制文件函数,可以再<code>shutil</code>模块中提供了<code>copyfile()</code>函数等使用的文件操作函数</p>
+</blockquote>
+
+<h2 id="toc_7">序列化</h2>
+
+<p>Python通过<code>pickle</code>模块实现序列化</p>
+
+<pre><code class="language-python">import pickle
+#序列化
+dict1=dict(name=&quot;Bob&quot;, age=24, score=88)
+data=pickle.dumps(dict1)
+print(data) #b&#39;\x80\x03}q\...\x04KXu.&#39;
+
+#直接将序列化的内容写入文件
+file1=open(&quot;/Users/fish/Desktop/readme.txt&quot;, &quot;wb&quot;)
+pickle.dump(dict1, file1)
+file1.close()
+
+#  将文件从磁盘读到内存后使用pickle.loads()方法反序列化出对象， 
+#  也可以直接用pickle.load()方法从一个file-like Object中直接反序列化出对象
+file2=open(&quot;/Users/fish/Desktop/readme.txt&quot;, &quot;rb&quot;)
+dict2=pickle.load(file2)
+file2.close()
+print(dict2) #{&#39;name&#39;: &#39;Bob&#39;, &#39;age&#39;: 24, &#39;score&#39;: 88}
+
+
+</code></pre>
+
+<h3 id="toc_8">JSON</h3>
+
+<p>dict可以转为json序列化</p>
+
+<pre><code class="language-python">import json
+print(json.dumps(dict1)) # {&quot;name&quot;: &quot;Bob&quot;, &quot;age&quot;: 24, &quot;score&quot;: 88}
+
+file1=open(&quot;/Users/fish/Desktop/readme.txt&quot;, &quot;w&quot;)
+json.dump(dict1, file1)
+file1.close()  # 文件内容为 {&quot;name&quot;: &quot;Bob&quot;, &quot;age&quot;: 24, &quot;score&quot;: 88}
+</code></pre>
+
+<p>将class 序列化为 json</p>
+
+<pre><code class="language-python">import json
+
+#序列化  原理是先将class转为dict 然后将dict序列化json
+
+class Student(object):
+    def __init__(self, name, age, score):
+        self.name = name
+        self.age = age
+        self.score = score
+
+s = Student(&#39;Bob&#39;, 20, 88)
+
+#专门写一个转换函数 将 class 转为json
+def student2dict(std):
+    return {
+        &#39;name&#39;: std.name,
+        &#39;age&#39;: std.age,
+        &#39;score&#39;: std.score
+    }
+# 传入更多参数来 指定序列化规则
+print(json.dumps(s, default=student2dict))  #{&quot;age&quot;: 20, &quot;name&quot;: &quot;Bob&quot;, &quot;score&quot;: 88}
+
+# 可以这么写 对大多数class都有__dict__属性来存储实例变量(__slots__除外)
+print(json.dumps(s, default=lambda obj: obj.__dict__))
+
+# 反序列化  原理为将json反序列化为dict 然后转为 class实例
+
+def dict2student(d):
+    return Student(d[&#39;name&#39;], d[&#39;age&#39;], d[&#39;score&#39;])
+json_str = &#39;{&quot;age&quot;: 20, &quot;score&quot;: 88, &quot;name&quot;: &quot;Bob&quot;}&#39;
+print(json.loads(json_str, object_hook=dict2student))
+
+</code></pre>
 
                         
                       </div>
@@ -283,10 +375,10 @@ objc_property_attribute_t * property_copyAttributeList ( objc_property_t propert
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/23</span>
+                    <span class="date">2018/7/30</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='RunTime.html'>运行时</a></span>
+          					    <span class="posted-in"><a href='Python.html'>Python</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -351,15 +443,13 @@ objc_property_attribute_t * property_copyAttributeList ( objc_property_t propert
 
       	<p class="cat-list">
         
-            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
-        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -382,31 +472,31 @@ objc_property_attribute_t * property_copyAttributeList ( objc_property_t propert
 	      
 		      
 			      <li class="post">
-			        <a href="15471197068949.html">Promise</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471147696850.html">对象</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471038798384.html">数组</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470891496440.html">遍历</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470311819265.html">解构</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

@@ -77,15 +77,13 @@
     <li><label>Categories</label></li>
 
         
-            <li><a href="Swift.html">Swift初学笔记</a></li>
-        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -114,198 +112,24 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15034731740974.html">
+                <a class="clearlink" href="15077234771115.html">
                 
-                  <h1>错误处理</h1>
+                  <h1>ARKit</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><strong>错误处理</strong>就是响应错误以及从错误中回复的过程</p>
+                        	<p>AR即虚拟现实增强技术</p>
 
-<p><code>Swift</code>提供了运行时对可恢复错误的抛出、捕获、传递和操作等的支持<br/>
-通常用来区分失败情况,让程序解决并处理某些错误，把解决不了的错误报告给用户</p>
+<p><code>ARKit</code>是基于苹果的游戏引擎3D(SceneKit)和2D的(SpriktKit)</p>
 
-<h2 id="toc_0">表示并抛出错误</h2>
+<p>注意:需要A9处理器的的iOS11以上的系统</p>
 
-<p><code>Swift</code>中 错误用符合<code>Error</code>协议的类型值来表示，这个空协议表明该类型可以用于错误处理</p>
+<p>增强现实的目标是往真实世界中的特定点插入虚拟内容，并且在真实世界中移动时还能对此虚拟内容保持追踪。ARKit 的基本流程包括从 iOS 设备摄像头中读取视频帧，对每一帧的图片进行处理并获得特征点。特征有很多很多，但我们需要从图片中找出能在多个帧中都被追踪到的特征。特征可能是物体的某个角，或是有纹理的织物的某条边等等。有很多种方式可以生成这些特征，可以在网上了解更多（例如搜索 SIFT）但目前我们只需知道，每张图片里会产生多个唯一标识的特征就足够了。</p>
 
-<p>通常用枚举类型来构建一组相关的错误状态,枚举的关联值可以提供错误状态的额外信息</p>
+<p>获得某张图片的特征后，就可以从多个帧中追踪这些特征，随着用户在世界中移动，就可以利用相应的特征点来估算 3D 世界信息，例如当前摄像头的位置和特征的位置。用户移动地越多，就会获得越多的特征，并优化这些估算的 3D 世界信息。</p>
 
-<p>使用关键字<code>throw</code>关键字来抛出一个错误，表示有意外发生</p>
-
-<pre><code class="language-swift">enum VendingMachineError: Error {
-    case invalidSelection //选择无效
-    case insufficientFunds(coinsNeeded: Int) //金额不足
-    case outOfStock //缺货
-}
-
-throw VendingMachineError.insufficientFunds(coinsNeeded: 5)
-</code></pre>
-
-<h2 id="toc_1">处理错误</h2>
-
-<p><code>Swift</code>中有<code>4</code>种处理错误的方式<br/>
-1.把函数抛出的错误传递给调用此函数的代码<br/>
-2.用<code>do-catch</code>语句处理错误<br/>
-3.将错误作为可选类型处理<br/>
-4.断言此错误根本不会发生</p>
-
-<p>我们在调用一个能抛出错误的函数、方法或者构造器之前，用<code>try</code>关键字或者<code>try?</code><code>try!</code>这种变体关键字</p>
-
-<blockquote>
-<p>与其他语言的<code>try</code>，<code>catch</code>和<code>throw</code>不同的是<code>swift</code>的错误挫力不涉及解除调用栈,因此其性能特性是可以和<code>return</code>语句相媲美的</p>
-</blockquote>
-
-<h3 id="toc_2">用throwing函数传递错误</h3>
-
-<p>在函数声明的参数列表后加上<code>throws</code>关键字，表明可以抛出错误，这个函数就称为<code>throwing</code>函数<br/>
-如果这个函数指明了返回值类型，<code>throws</code>关键词需要写在箭头（<code>-&gt;</code>）的前面</p>
-
-<pre><code class="language-swift">func canThrowErrors() throws -&gt; String
-func cannotThrowErrors() -&gt; String
-</code></pre>
-
-<p><strong><code>throwing</code>函数可以在其内部抛出错误，并将错误传递到函数被调用时的作用域。</strong></p>
-
-<blockquote>
-<p>对于<code>throwing</code>函数可以传递错误,非<code>throwing</code>函数抛出的错误只能在函数内部处理</p>
-</blockquote>
-
-<pre><code class="language-swift">struct Item {
-    var price: Int
-    var count: Int
-}
-class VendingMachine {
-    var inventory = [
-                     &quot;Candy Bar&quot;: Item(price: 12, count: 7),
-                     &quot;Chips&quot;: Item(price: 10, count: 4),
-                     &quot;Pretzels&quot;: Item(price: 7, count: 11)
-                     ]
-    var coinsDeposited = 0
-    func dispenseSnack(snack: String) {
-        print(&quot;Dispensing \(snack)&quot;)
-    }
-    //throwing函数 会抛出VendingMachineError错误
-    func vend(itemNamed name: String) throws {
-        guard let item = inventory[name] else {
-            throw VendingMachineError.InvalidSelection
-        }
-        guard item.count &gt; 0 else {
-            throw VendingMachineError.OutOfStock
-        }
-        guard item.price &lt;= coinsDeposited else {
-            throw VendingMachineError.InsufficientFunds(coinsNeeded: item.price - coinsDeposited)
-        }
-        coinsDeposited -= item.price
-        var newItem = item
-        newItem.count -= 1
-        inventory[name] = newItem
-        print(&quot;Dispensing \(name)&quot;)
-    }
-}
-</code></pre>
-
-<p>使用了<code>guard</code>语句来提前退出方法，因为<code>throw</code>语句会立即退出方法，保证只有在满足所有条件时才成功卖出商品</p>
-
-<p><code>vend(itemNamed:)</code>会传递它抛出的所有错误,因此在跳用这个方法时，要么直接处理这些错误(<code>do-catch</code>语句,<code>try?</code>或<code>try!</code>)，要么将错误继续传递下去</p>
-
-<pre><code class="language-swift">let favoriteSnacks = [
-    &quot;Alice&quot;: &quot;Chips&quot;,
-    &quot;Bob&quot;: &quot;Licorice&quot;,
-    &quot;Eve&quot;: &quot;Pretzels&quot;,
-]
-func buyFavoriteSnack(person: String, vendingMachine: VendingMachine) throws {
-    let snackName = favoriteSnacks[person] ?? &quot;Candy Bar&quot;
-    try vendingMachine.vend(itemNamed: snackName)
-}
-//传似抛出的错误
-</code></pre>
-
-<p><code>buyFavoriteSnack</code>方法会查找某人最喜欢的零食，并通过调用<code>vend(itemNamed:)</code>方法尝试购买,通过在<code>vend(itemNamed:)</code>方法前加<code>try</code>关键字</p>
-
-<p><code>throwing</code>构造器和<code>throwing</code>一样可以传递错误</p>
-
-<pre><code class="language-swift">struct PurchasedSnack {
-    let name: String
-    init(name: String, vendingMachine: VendingMachine) throws {
-        try vendingMachine.vend(itemNamed: name)
-        self.name = name
-    }
-}
-</code></pre>
-
-<h3 id="toc_3">用Do-Catch处理错误</h3>
-
-<p><strong><code>do-catch</code>语句运行一段<code>闭包</code>代码来处理错误</strong></p>
-
-<p>在<code>do</code>语句抛出一个错误,与<code>catch</code>中的字句匹配</p>
-
-<pre><code class="language-swift">do {
-    try expression
-    statements
-} catch pattern 1 {
-    statements
-} catch pattern 2 where condition {
-    statements
-}
-</code></pre>
-
-<p><code>catch</code>后面写一个匹配模式来表明这个子句能处理什么样的错误.如果<code>catch</code>没有指定错误模式，那就可以匹配任何错误，并且把错误绑定到名字为<code>error</code>的局部变量</p>
-
-<p><code>catch</code>不必处理抛出的所有错误,错误可以传递到周围,但是必须被处理，可以使外围的<code>do-catch</code>语句 或者是一个<code>throwing</code>函数进行处理</p>
-
-<p>注意:<br/>
-在<code>do</code>语句中的<code>try</code>如果有抛出错误就立刻执行<code>catch</code>语句,并判断这个错误是否要被继续传递下去,否则执行<code>do</code>子句中余下的语句</p>
-
-<h3 id="toc_4">将错误转换成可选值</h3>
-
-<p>通过<code>try?</code>将错误转换为一个可选值,如果表达式有错误抛出,那么表达式的值就为<code>nil</code></p>
-
-<pre><code class="language-swift">func someThrowingFunction() throws -&gt; Int {
-    // ...
-}
-
-let x = try? someThrowingFunction()
-//等效于
-let y: Int?
-do {
-    y = try someThrowingFunction()
-} catch {
-    y = nil
-}
-</code></pre>
-
-<p>此时不论<code>someThrowingFunction()</code>返回值是什么类型,x，y就是该返回值类型的可选类型</p>
-
-<h3 id="toc_5">禁用错误传递</h3>
-
-<p>当我们确定知道某个<code>throwing</code>函数在运行时是不会抛出错误的,那么可以用<code>tr<br/>
-y!</code>来禁用错误传递，它会将调用包装在一个不会有错误抛出的运行时断言中</p>
-
-<h2 id="toc_6">指定清理操作</h2>
-
-<p><code>defer</code>语句在即将离开当前代码块时执行一系列语句，来执行一些必要的清理工作，而不管你是由于哪种方式离开代码块</p>
-
-<ul>
-<li><code>defer</code>语句将代码执行延迟到当前作用域退出之前。</li>
-<li>该语句由<code>defer</code>关键字和要延时执行的语句组成(延迟执行的语句不能包含任何控制转移语句，或是抛出一个错误)。</li>
-<li>延时执行的操作会按照他们被指定时的顺序的相反顺序执行(第一条<code>defer</code>语句中的代码会在第二条<code>defer</code>语句中的代码被执行之后才执行)</li>
-</ul>
-
-<pre><code class="language-swift">func processFile(filename: String) throws {
-    if exists(filename) {
-        let file = open(filename)
-        defer {
-            close(file)
-        }
-        while let line = try file.readline() {
-            // 处理文件。
-        }
-        // close(file) 会在这里被调用，即作用域的最后。
-    }
-}
-</code></pre>
+<p>至于平面检测，就是在获得一定数量的 3D 特征点后，尝试在这些点中安装一些平面，然后根据尺度、方向和位置找出最匹配的那个。ARKit 会不断分析 3D 特征点并在代码中报告找到的平面。</p>
 
                         
                       </div>
@@ -314,10 +138,10 @@ y!</code>来禁用错误传递，它会将调用包装在一个不会有错误�
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/8/23</span>
+                    <span class="date">2017/10/11</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
+          					    <span class="posted-in"><a href='ARKit.html'>ARKit</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -382,15 +206,13 @@ y!</code>来禁用错误传递，它会将调用包装在一个不会有错误�
 
       	<p class="cat-list">
         
-            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
-        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -413,31 +235,31 @@ y!</code>来禁用错误传递，它会将调用包装在一个不会有错误�
 	      
 		      
 			      <li class="post">
-			        <a href="15471197068949.html">Promise</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471147696850.html">对象</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471038798384.html">数组</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470891496440.html">遍历</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470311819265.html">解构</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

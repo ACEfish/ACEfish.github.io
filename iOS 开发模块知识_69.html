@@ -79,11 +79,11 @@
         
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -112,46 +112,64 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14872305472033.html">
+                <a class="clearlink" href="14866309753746.html">
                 
-                  <h1>UI测试</h1>
+                  <h1>iOS中UISearchController</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>关于iOS的UI自动化测试，Xcode 7 Apple从新提供了一个新的框架UITest，使用XCTest.framework，Xcode可以自动录制UI测试的动作流，还有就是可以使用<code>XCTest UI testing API</code></p>
+                        	<h4 id="toc_0">1. 使用方法</h4>
 
-<h4 id="toc_0"><a href="http://www.itnose.net/detail/6507467.html">基础知识</a></h4>
+<pre><code class="language-object-c">SearchResultController *vc = [[SearchResultController alloc] init];
+    self.searchController = [[SearchControllerOfContacts alloc] initWithSearchResultsController:vc];
+    [self.tableView setTableHeaderView:self.searchController.searchBar];
+    [self.searchController setSearchResultsUpdater:vc];
+    [self.searchController.searchBar setPlaceholder:NSLocalizedString(@&quot;昵称、手机号&quot;, nil)];
+    self.resultController = vc;
+</code></pre>
 
-<p>核心的三个类:<code>XCUIApplication</code> <code>XCUIElement</code> <code>XCUIElementQuery</code><br/>
-<strong>XCUIApplication类</strong> 是Application的代理，就像我们项目工程中的AppDelegate，这个对象用来启动或者是终止UI测试程序，还可以在启动的时候设置一些启动参数，在获取程序中的UI元素的时候，就是通过这个类的实例。这个类继承自XCUIElement类<br/>
-<strong>XCUIElement类</strong> 是XCTest.framework对应用中的所有UI控件的抽象，在UI测试中，没有UIKit中的UI类型，只是用这个类的实例表示所有的UI控件，以及相应的交互方法，例如：执行手势（tap，press，swipe），滑动控件交互，拾取器交互，这个类采取了XCUIElementAttributes协议（描述UI元素的属性：Identity，Value，Interaction State，Size），XCUIElementTypeQueryProvider协议(为指定类型的子代元素提供ready-made查询，子代元素查询包含button，具体实现是:@property(readonly, copy) XCUIElementQuery *buttons;等一系列对UIKit中元素的映射)<br/>
-<strong>XCUIElementQuery类</strong> 是定位UI元素的查询，这个类使用类似key-value的机制得到XCUIElement的实例，使用Type(XCUIElementType枚举)，Predicate，Identifier创建query，使用elementAtIndex:, elementMatchingPredicate,elementMatchingType: identifier:方法访问匹配到的UI元素，此类采用XCUIElementTypeQueryProvider协议</p>
+<p>此处是设置searchBar为tableView的头视图<br/>
+<strong>注意</strong><br/>
+此处的searchConroller 和 searchResultcontroller都必须为该控制器的属性(即强引用住）</p>
 
-<p>XCTest一共提供了三种UI测试对象<br/>
-    XCUIApplication 当前测试应用target<br/>
-    XCUIElementQuery 定位查询当前UI中xctuielement的一个类<br/>
-    XCUIElement UI测试中任何一个item项都被抽象成一个XCUIElement类型<br/>
-因此:当我们获取了录制生成的代码以后，根据UITest提供的三种对象，我可以在此来对测试代码进行修改，调试,我们同样可以使用断言语句来进行测试</p>
+<h4 id="toc_1">2. 自定义的UISearchController</h4>
 
-<h4 id="toc_1">UI测试Demo</h4>
+<p>我们可以继承自UISearchController，重写其<code>initWithSearchResultsController</code>方法即可:</p>
 
-<ol>
-<li><p>创建项目时勾选UITest</p></li>
-<li><p>打开DemoUiTest.m,创建 - (void)testUI函数,同时将光标留在函数内<br/>
-<img src="media/14872305472033/14872344264789.png" alt=""/><br/>
-点击下面的红色按钮，开始recorder操作，程序运行起来后，点击APP界面进行操作,然后光标处就会生成测试代码</p></li>
-<li><p>进行测试<br/>
-之后我们测试只需要点击test函数前的测试按钮测试这个函数 或者command+u 来进行全部测试<br/>
-此时刚才的一连串动作会一步一步连续执行下来</p></li>
-<li><p>我们此时可以通过修改这段代码来进行我们想要的测试<br/>
-比如：</p>
-<ul>
-<li>通过添加循环语句来测试一直执行是否会出现问题,判断内存问题等</li>
-<li>通过添加断言来判断运行中元素或情况与我们预想是否一致</li>
-</ul></li>
-<li></li>
-</ol>
+<pre><code class="language-object-c">- (id)initWithSearchResultsController:(UIViewController *)searchResultsController
+{
+    if (self = [super initWithSearchResultsController:searchResultsController]) {
+        self.searchBar.layer.borderWidth = 1;
+        self.searchBar.layer.borderColor = [ITRGBColor(239.0, 239.0, 244.0, 1.0)CGColor];
+        [self.searchBar setBarTintColor:ITRGBColor(239.0, 239.0, 244.0, 1.0)];
+        [self.searchBar setValue:@&quot;取消&quot; forKey:@&quot;_cancelButtonText&quot;];
+        UITextField *tf = [[[self.searchBar.subviews firstObject] subviews] lastObject];
+        [tf.layer setMasksToBounds:YES];
+        [tf.layer setBorderWidth:0.5f];
+        [tf.layer setBorderColor:[UIColor colorWithWhite:0.5 alpha:0.3].CGColor];
+        [tf.layer setCornerRadius:5.0f];
+        
+    }
+    return self;
+}
+</code></pre>
+
+<h4 id="toc_2">3.深度解析UISearchController 以及其SearchResultControll原理</h4>
+
+<p>当UISearchController出现时，UISearchController也是一个控制器就相当于模态出来一个控制器<br/>
+<img src="media/14866309753746/UISearchController.png" alt="UISearchControlle的层级表示"/><br/>
+<img src="media/14866309753746/searchController_big.png" alt="searchController_big"/></p>
+
+<p>我们可以看出来 我们首先从原来控制器模态出来我们自己的UISearchController 而UISearchControllView就是这个控制器的View即蓝色部分  而搜索结果的显示即在其上加了一个View这个view即为我们的搜索结果控制器的view<br/>
+因此我们改变这个SearchControllView颜色并不会影响显示 但是如果把其上加上别的视图 就会影响结果的显示的<br/>
+<img src="media/14866309753746/searchController2.png" alt="searchControlle"/><br/>
+可以看到显示结果的View被我们后加的tableView挡住了,这时候我们可以<strong><code>sendSubviewToBack</code></strong>来直接将tableView放置到显示结果的view后面即可了</p>
+
+<h4 id="toc_3">3.UISearchController 上的searchBar原理</h4>
+
+<p>显示的searchBar是因为searcontroller上有一块searBarContainView 在其上放置了searchBar,还有背景图片 取消按钮等<br/>
+<img src="media/14866309753746/UISearchBar.png" alt="UISearchBa"/></p>
 
                         
                       </div>
@@ -160,10 +178,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/16</span>
+                    <span class="date">2017/2/9</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
+          					    <span class="posted-in"><a href='%E8%A1%A5%E5%85%85-1.html'>补充</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -230,11 +248,11 @@
         
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -257,31 +275,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

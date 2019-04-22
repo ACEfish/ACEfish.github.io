@@ -77,15 +77,13 @@
     <li><label>Categories</label></li>
 
         
-            <li><a href="Swift.html">Swift初学笔记</a></li>
-        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -114,128 +112,104 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15293961047296.html">
+                <a class="clearlink" href="15487460996181.html">
                 
-                  <h1>组件属性一</h1>
+                  <h1>Refs</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">View</h2>
+                        	<p>在React中我们的数据流是从上至下，通过传递给子组件<code>props</code>来重新渲染它</p>
 
-<h3 id="toc_1">颜色与边框</h3>
+<p>但是，有时候我们需要获取某些组件或者DOM元素，强制修改,这时我们可以使用<code>Refs</code></p>
 
-<ol>
-<li>backgroundColor: 背景颜色</li>
-<li>opacity: 0~1透明度</li>
-<li><p>borderStyle: 边框风格</p>
+<p>我们应该使用声明式实现，避免使用<code>refs</code>，尽量只在一下几种情况下使用:</p>
+
 <ul>
-<li>solid: default 实线边框</li>
-<li>dotted: 点状边框</li>
-<li>dashed: 虚线边框</li>
-</ul></li>
-<li><p>borderColor: 边框颜色,可以单独定义上下左右</p></li>
-<li><p>borderRadius: 定义圆角边框,可单独定义四个角</p></li>
-</ol>
+<li>处理焦点、文本选择或媒体控制</li>
+<li>触发强制动画</li>
+<li>集成第三方 DOM 库</li>
+</ul>
 
-<blockquote>
-<p>大部分组件继承了View的属性</p>
-</blockquote>
+<h2 id="toc_0">添加Ref</h2>
 
-<h3 id="toc_2">视觉效果</h3>
+<pre><code class="language-javascript">import React from &quot;react&quot;
 
-<h4 id="toc_3">阴影</h4>
+class CustomTextInput extends React.Component {
 
-<ol>
-<li>shadowColor</li>
-<li>shadowOffset</li>
-<li>shadowOpacity</li>
-<li>shadowRadius</li>
-</ol>
-
-<h4 id="toc_4">overflow</h4>
-
-<p>取值为 visible和hidden(默认),定义子组件产出父组件部分的是否显示，当设置为visible时，仅对ios平台有效,显示超出父组件部分</p>
-
-<h4 id="toc_5">elevation</h4>
-
-<p>Android平台特有效果,在组件周围渲染阴影</p>
-
-<h3 id="toc_6">变形</h3>
-
-<p>利用<code>transform</code>设置组件的变形,包括<code>translate</code>平移,<code>scale</code>缩放,<code>rotate</code>旋转,<code>skew</code>倾斜</p>
-
-<pre><code class="language-javascript">const styles = StyleSheet.create({
-    view1Style: {
-        ....
-        transform: [{scale:2}, {rotateZ:&quot;45deg&quot;}]
-    }
-})
-//Xdeg 表示角度 取值0-360
-</code></pre>
-
-<h3 id="toc_7">回调函数</h3>
-
-<p>回调函数命名 onB 即B事件发生的回调函数</p>
-
-<h4 id="toc_8">onLayOut</h4>
-
-<p>当View组件被加载或者改变布局时</p>
-
-<h4 id="toc_9">onTouchStart、onTouchMove、onTouchEnd</h4>
-
-<p>开始触摸事件、触摸点移动事件、触摸结束事件<br/>
-三个回调函数带一个event参数,</p>
-
-<pre><code class="language-javascript">//Event结构有用对象
-{
- timeStamp: aNumber, //时间戳
- nativeEvent: {
-    locationX: aNumber,
-    locationY: aNumber,
- }
-}
-</code></pre>
-
-<pre><code class="language-javascript">//示例 demo
-constructor(props) {
+    constructor(props) {
         super(props)
-        this._onTouchStart = this._onTouchStart.bind(this)
+        this.focus = this.focus.bind(this)
     }
 
-    _onTouchStart(event) {
-        console.log( event.nativeEvent.locationX)
+    focus() {
+        this.textInput.focus()
     }
 
     render() {
         return(
-            &lt;View style={styles.containStyle}&gt;
-                &lt;View style={styles.view1Style} onTouchStart={this._onTouchStart}&gt;
-
-                &lt;/View&gt;
-            &lt;/View&gt;
+            &lt;div&gt;
+                //通过ref设置textInput 为此DOM元素
+                &lt;input type=&quot;text&quot; ref={input =&gt; this.textInput = input} &gt;&lt;/input&gt;
+                &lt;input type=&quot;button&quot; value=&quot;获得焦点&quot; onClick={this.focus} &gt;&lt;/input&gt;
+            &lt;/div&gt;
         )
     }
+
+}
+
+export default  CustomTextInput
 </code></pre>
 
-<h4 id="toc_10">removeClippedSubviews</h4>
+<p><code>ref={input =&gt; this.textInput = input}</code>  ref属性 会在DOM元素加载时将此元素传入ref,卸载时传入null</p>
 
-<p>布尔属性，与性能有关的，属性为true将允许释放不在显示范围内的子组件，需要将overflow设置为hidden才会生效</p>
+<blockquote>
+<p>这种声明方式只对DOM元素和用class声明的组件有效<br/>
+在函数式组件上，因为没有实例，所以不能使用ref属性</p>
+</blockquote>
 
-<h3 id="toc_11">onLayOut</h3>
+<h2 id="toc_1">对父组件暴露DOM节点</h2>
 
-<p>应用通过<code>Dimension</code>获取屏幕宽高，Dimensions.get(&#39;window&#39;).width/height,获取到的宽和高是实时屏幕的宽和高,当横置时宽大于高</p>
+<p>当我们想要向从父组件访问子组件节点时,我们可以将传递给子组件一个特殊的函数属性,然后将这个函数属性作为ref属性传入子节点，可以通过这个函数将子节点赋值给父节点的属性</p>
 
-<h3 id="toc_12">pointEvents</h3>
+<pre><code class="language-javascript">class CustomTextInput extends React.Component {
+    render() {
+        return(
+            &lt;div&gt;
+                &lt;input type=&quot;text&quot; ref={this.props.inputRef} &gt;&lt;/input&gt;
+            &lt;/div&gt;
+        )
+    }
 
-<p>在RN中 触摸事件总是传递给最上层的组件，当被遮盖的组件需要向银行触摸事件，就需要从View继承的<code>pointEvents</code></p>
+}
 
-<p>可以取值为<code>none</code> <code>box-none</code> <code>box-only</code> <code>auto</code></p>
+class ParentCompnent extends React.Component {
+    constructor(props) {
+        super(props)
+        this.focus = this.focus.bind(this)
+    }
 
-<p><strong>none:</strong> 发生在本组件和子组件的触摸事件交给本组件的父组件处理<br/>
-<strong>box-none:</strong> 本组件显示范围内，非子组件显示范围内的时间交给本组件父组件处理,子组件显示范围交给子组件处理<br/>
-<strong>box-only:</strong> 本组件显示范围内的所有触摸事件都交给本组件处理<br/>
-<strong>auto:</strong> 视组件不同而不同 不是所有组件都支持box-none和box-only</p>
+    focus() {
+        this.textInput.focus()
+    }
+    render() {
+        return(
+            &lt;div&gt;
+                &lt;input type=&quot;button&quot; value=&quot;获得焦点&quot; onClick={this.focus} &gt;&lt;/input&gt;
+                &lt;CustomTextInput inputRef={refCom =&gt; this.textInput = refCom}&gt;&lt;/CustomTextInput&gt;
+            &lt;/div&gt;
+        )
+    }
+}
+
+export default  ParentCompnent
+</code></pre>
+
+<p><code>&lt;CustomTextInput inputRef={refCom =&gt; this.textInput = refCom}&gt;&lt;/CustomTextInput&gt;</code>设置子组件的ref属性回调此函数，将子组件设置为父组件的<code>this.textInput</code>属性</p>
+
+<blockquote>
+<p>如果有更深的层级结构 我们只需要一级一级传递即可</p>
+</blockquote>
 
                         
                       </div>
@@ -244,10 +218,10 @@ constructor(props) {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/6/19</span>
+                    <span class="date">2019/1/29</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='React-Native.html'>React-Native</a></span>
+          					    <span class="posted-in"><a href='React.html'>React</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -312,15 +286,13 @@ constructor(props) {
 
       	<p class="cat-list">
         
-            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
-        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -343,31 +315,31 @@ constructor(props) {
 	      
 		      
 			      <li class="post">
-			        <a href="15471197068949.html">Promise</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471147696850.html">对象</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471038798384.html">数组</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470891496440.html">遍历</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470311819265.html">解构</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

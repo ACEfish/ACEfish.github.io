@@ -79,11 +79,11 @@
         
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -112,141 +112,242 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14861704124969.html">
+                <a class="clearlink" href="14892022301750.html">
                 
-                  <h1>iOS 滤镜</h1>
+                  <h1>图层几何学、视觉效果</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<hr/>
-
-<h3 id="toc_0">CIFilter实现滤镜效果</h3>
-
-<p>参考网址:<a href="http://www.jianshu.com/p/98ba256b034a" title="CoreImage滤镜学习 - 简书">CoreImage滤镜学习</a> </p>
-
-<h5 id="toc_1">CoreImage框架介绍</h5>
-
-<p>1.是一个图片框架 基于<code>OpenGL</code>顶层创建，底层用着色器来处理图像<br/><br/>
-2.利用GPU基于硬件加速来处理图像<br/><br/>
-3.CoreImage中有很多滤镜<br/><br/>
-4.它们能够一次给予一张图像或者视频帧多种视觉效果 -&gt; 滤镜链<br/><br/>
-5.滤镜可以连接起来组成一个滤镜链 把滤镜效果叠加起来处理图像</p>
-
-<h5 id="toc_2">CIFilter使用介绍</h5>
+                        	<p>遗忘点:</p>
 
 <ol>
-<li><p><code>CIFilter</code>滤镜类中有很多的滤镜效果 这里不一一列举，可以按住command 点击CIFilter 进入接口文件 找到第128行-148行全部都是 效果分类  </p></li>
-<li><p>常用效果<br/><br/>
-我们使用时需要先找到需要的效果类型 比如我们使用<code>kCICategoryDistortionEffect</code>失真的效果类型，有了效果类型我们需要找到里面我们需要的效果.<br/><br/>
-<code>NSLog -&gt; [CIFilter filterNamesInCategory:刚才拷贝的分类];</code><br/><br/>
-比如<code>CIColorMonochrome </code>,然后就可以使用这个滤镜效果<br/><br/>
-<code>CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome”];</code><br/><br/>
-然后打印这个效果中包含了那些属性:<br/><br/>
-<code>NSLog(@&quot;%@&quot;,filter.attributes);</code><br/><br/>
-在里面我们可以看到好多属性，里面是多个字典的形式，找到我们想要修改的属性(key值) 然后在他对应的value里面查看一下他的属性类型，比如我们打印的CIColorMonochrome里面有一个inputColor，他是一个CIColor类型的，有默认值，这里我们写了一个CIColor来给他进行赋值.<br/><br/>
-赋值时需要用kvc的方式:<br/><br/>
-<code>[filter setValue:colorforKey:kCIInputColorKey];</code><br/><br/>
-<img src="media/14861704124969/DraggedImage.png" alt="DraggedImage"/></p></li>
-<li><p>实现滤镜效果代码<br/><br/>
-首先我们创建一个全局变量的UIImageView，然后让他初始化出来,这个就是我们要处理的图片 一般我们从手机相册中取出来:<br/><br/>
- @interface ViewController ()&lt;UINavigationControllerDelegate,UIImagePickerControllerDelegate&gt;<br/>
-    {<br/>
-         UIImageView *imageView;<br/>
-    }<br/>
-    @end<br/>
-    然后我们需要从相册中取出一张图片,保存起来:<br/>
-    //跳转相册的触发方法<br/>
-    - (void)doit{<br/>
-    UIImagePickerController *vc = [[UIImagePickerController alloc]init];<br/>
-    vc.delegate = self;<br/>
-    [self presentViewController:vc animated:YES completion:nil];</p>
-<pre><code class="language-text">}
-//让图片显示在VC上面的方法<br/>
-- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary&lt;NSString *,id&gt; *)info<br/>
-{<br/>
-NSLog(@&quot;%@&quot;,info);<br/>
-//获得选中的图像<br/>
-UIImage *chooseImage = info[UIImagePickerControllerOriginalImage];<br/>
-//先是在试图空间上<br/>
-imageView.image = chooseImage;<br/>
-[self dismissViewControllerAnimated:YES completion:nil];<br/>
-}
-</code></pre>
-<p><strong>接下来就是对图片进行滤镜处理:</strong><br/>
-    - (void)addColorFilter{<br/>
-    //CIImage 保存图像数据的类<br/>
-    CIImage <em>inputImage = [CIImage imageWithCGImage:imageView.image.CGImage];<br/>
-    //先打印NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);进去找到需要设置的属性(查询效果分类中都有什么效果)  可以设置什么效果<br/>
-    //然后通过[CIFilter filterWithName:@&quot;&quot;];找到属性   具体效果的属性<br/>
-    //然后通过KVC的方式设置属性<br/>
-    NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);<br/>
-    /</em><br/>
-     1.查询 效果分类中 包含什么效果：filterNamesInCategory:<br/>
-     2.查询 使用的效果中 可以设置什么属性（KVC） attributes</p>
-<pre><code class="language-text"> 使用步骤
- 1.需要添加滤镜的源图<br/>
- 2.初始化一个滤镜 设置滤镜（根据查询到的属性来设置）<br/>
- 3.把滤镜 输出的图像 和滤镜  合并 CIContext -&gt; 得到一个合成之后的图像<br/>
- 4.展示<br/>
- */<br/>
-//CIFilter 滤镜类  图片属性进行细节处理的类<br/>
-CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome&quot;];<br/>
-NSLog(@&quot;%@&quot;,filter.attributes);<br/>
-//这个属性是必须赋值的，假如你处理的是图片的话<br/>
-[filter setValue:inputImage forKey:kCIInputImageKey];<br/>
-CIColor *color = [CIColor colorWithRed:1.000 green:0.759 blue:0.592 alpha:1];<br/>
-[filter setValue:color forKey:kCIInputColorKey];<br/>
-//CIContext 上下文是实现对图像处理的具体对象 用来把滤镜和图片合成成为一张图片 滤镜对象输出的图像并不是合成之后的图像，需要使用图片处理的上下文 合并输出图像<br/>
-    CIContext *context = [CIContext contextWithOptions:nil];<br/>
-CIImage *outPutImage = filter.outputImage;<br/>
-//CGImageRef-&gt;图像中的数据<br/>
-    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
-    imageView.image = [UIImage imageWithCGImage:image];<br/>
- }
-</code></pre>
-<p>注意：<br/><br/>
-对滤镜进行赋值之后图片就有了，但是我们这个时候拿出这个图片的时候发现他并没有发生变化，因为它只是单一进行了滤镜处理，还没有和原图片进行一个糅合。使用CIContext找到上下文对他进行糅合：<br/><br/>
-//extent得到图像的尺寸    合并一个包含源图   滤镜效果的图片<br/>
-    //1 滤镜输出的图像    2.合成之后图像的尺寸   图像.extent<br/>
-    CGImageRef imageRef = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
-注意:<br/><br/>
-假如你的图片消失了，请检查一下，第一步获取图片的时候一定要获得图片的CGImage再来来获取，不要直接使用imageView.image.CGImage。</p></li>
-<li><p>滤镜链:<br/><br/>
-在给一张图片添加多种滤镜效果的时候，我们把它称为<code>滤镜链</code>，我们再添加滤镜链的时候，就是把图片添加一层滤镜，然后，和原图片糅合处理，然后在处理之后的图片上再添加一层滤镜，并不是直接给一张图片添加了两层路径，所以称为滤镜链。<br/><br/>
-我们继续使用这个图片，在它添加第一层滤镜的时候做一些修改:  </p>
-<pre><code class="language-text">//上接给效果属性赋值
-//把下面注释的给注释掉，然后添加一个方法<br/>
-    //CIContext<br/>
-//    CIContext *context = [CIContext contextWithOptions:nil];<br/>
-CIImage *outPutImage = filter.outputImage;<br/>
-[self addFilterLinkerWithImage:outPutImage];<br/>
-//    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
-//    imageView.image = [UIImage imageWithCGImage:image];<br/>
-//再次添加滤镜  -&gt;  形成滤镜链<br/>
-- (void)addFilterLinkerWithImage:(CIImage *)image<br/>
-{<br/>
-CIFilter *filter = [CIFilter filterWithName:@&quot;CISepiaTone&quot;];<br/>
-[filter setValue:image forKey:kCIInputImageKey];<br/>
-CIContext *context = [CIContext contextWithOptions:nil];<br/>
-CGImageRef resultImage = [context createCGImage:filter.outputImage fromRect:filter.outputImage.extent];<br/>
-imageView.image = [UIImage imageWithCGImage:resultImage];<br/>
-//把添加好滤镜效果的图片   保存到相册<br/>
-//不可以直接保存 outputImage  -&gt;  这是一个没有吧滤镜效果和源图合成的图像<br/>
-UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishSavingWithError:contextInfo:), nil);<br/>
- }<br/>
-//保存图片回调<br/>
-- (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo<br/>
-{<br/>
-    NSLog(@&quot;保存成功&quot;);<br/>
-}
-</code></pre>
-<p>这样就是一个双重的滤镜效果,同时保存到了相册.</p></li>
+<li>用作mask的layer不一定非要静态的,只要有layer的都可以作为蒙版</li>
 </ol>
 
-<hr/>
+<p>2.<code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；我们常用这个方法获取点击位置的视图（判断点击在了哪个视图）</p>
 
-<h3 id="toc_3">系统自带简单的滤镜效果</h3>
+<pre><code class="language-text">CALayer *layer = [self.layerView.layer hitTest:point];
+</code></pre>
+
+<h2 id="toc_0">图层几何学</h2>
+
+<h3 id="toc_1">布局</h3>
+
+<p>UIView布局属性:<code>frame</code> <code>bounds</code> <code>center</code><br/><br/>
+与之对应<br/>
+CALayer布局属性:<code>frame</code> <code>bounds</code> <code>position</code><br/>
+center和postion是一样的值，都代表了相对于父图层 <code>anchorPoint</code> 所在的位置</p>
+
+<p>视图的布局属性仅仅是存取方法，对其进行改变其实是改变视图下方CALayer的frame  </p>
+
+<p>视图或者图层的frame是根据其bounds，position和transform计算而来的，其中任意一值发生改变都会导致其frame改变  </p>
+
+<p><img src="media/14892022301750/14892031426669.jpg" alt=""/></p>
+
+<h3 id="toc_2">锚点</h3>
+
+<p>视图的<code>center</code>属性和图层的<code>position</code>属性都指定了<code>anchorPoint</code>相对于父图层的位置。</p>
+
+<p><code>anchorPoint</code>是用来移动图层的把柄</p>
+
+<p>默认<code>anchorPoint</code>是在图层的中心,这个属性UIView并没有暴露出来,这也是视图的<code>position</code>属性被叫做“center”的原因。但是图层的锚点可以移动，锚点的移动会导致frame的改变即位置改变</p>
+
+<p><img src="media/14892022301750/14893741880682.jpg" alt=""/></p>
+
+<p>anchorPoint也是单位坐标，默认是{0.5，0.5}，可以通过指定大于或者小于1，使其在图层范围之外</p>
+
+<p>改变<code>anchorPoint</code>常用于做不随着中心点做动画的动画使用,比如 时钟的表针旋转</p>
+
+<p><strong>注意</strong><br/>
+中心和锚点（即position或者center和anchorPoint没有任何关系），锚点的改变不会影响中心点位置，只会影响frame</p>
+
+<pre><code class="language-objectivec">position.x = frame.origin.x + anchorPoint.x * bounds.size.width；  
+position.y = frame.origin.y + anchorPoint.y * bounds.size.height；
+
+frame.origin.x = position.x - anchorPoint.x * bounds.size.width；  
+frame.origin.y = position.y - anchorPoint.y * bounds.size.height；
+</code></pre>
+
+<h3 id="toc_3">坐标系转换</h3>
+
+<p>CALayer提供了转换坐标系的方法（视图也有）</p>
+
+<pre><code class="language-objectivec">- (CGPoint)convertPoint:(CGPoint)point fromLayer:(CALayer *)layer;
+- (CGPoint)convertPoint:(CGPoint)point toLayer:(CALayer *)layer;
+- (CGRect)convertRect:(CGRect)rect fromLayer:(CALayer *)layer;
+- (CGRect)convertRect:(CGRect)rect toLayer:(CALayer *)layer;
+</code></pre>
+
+<h3 id="toc_4">Z坐标</h3>
+
+<p>UIView是二维坐标 而CALayer则是三维的<br/><br/>
+因此CALayer还有两个属性:<code>zPosition</code> <code>anchorPointZ</code> 在Z轴上描述图层位置的浮点类型<br/>
+<code>zPosition</code>最实用的功能就是改变图层的显示顺序了，一般给图层增加<code>1.f</code>就可以控制显示顺序了</p>
+
+<h3 id="toc_5">HIT Testing</h3>
+
+<p><code>CALayer</code>并不关心任何响应链事件，所以不能直接处理触摸事件或者手势。但是它有一系列的方法帮你处理事件：<code>-containsPoint:</code>和<code>-hitTest:</code>。    </p>
+
+<p><code>-containsPoint:</code> 接受一个在本图层坐标系吓得一个CGPoint，如果这个点在图层frame内就返回YES。注意必须将这个点转为每个图层坐标系下的坐标</p>
+
+<p><code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；</p>
+
+<pre><code class="language-objectivec">//举个栗子
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    //get touch position
+    CGPoint point = [[touches anyObject] locationInView:self.view];
+    //get touched layer
+    //获取这个点击的layer
+    CALayer *layer = [self.layerView.layer hitTest:point];
+    //get layer using hitTest
+    if (layer == self.blueLayer) {
+        [[[UIAlertView alloc] initWithTitle:@&quot;Inside Blue Layer&quot; message:nil delegate:nil cancelButtonTitle:@&quot;OK&quot; otherButtonTitles:nil] show];
+    } else if (layer == self.layerView.layer) {
+        [[[UIAlertView alloc] initWithTitle:@&quot;Inside White Layer&quot;
+        message:nil
+        delegate:nil
+        cancelButtonTitle:@&quot;OK&quot;
+        otherButtonTitles:nil] show];
+    }
+}
+
+</code></pre>
+
+<p><strong>注意</strong></p>
+
+<ol>
+<li>当调用图层的<code>-hitTest:</code>方法时，测算的顺序严格依赖于图层树当中的图层顺序（和<code>UIView</code>处理事件类似）。之前提到的<code>zPosition</code>属性可以明显改变屏幕上图层的顺序，但不能改变事件传递的顺序。<br/></li>
+<li>这两个方法是layer的实例方法 我们可以直接用layer调用而不需要作为系统判断方法</li>
+</ol>
+
+<h3 id="toc_6">自动布局</h3>
+
+<p>对于UIView如果想要自动布局我们可以使用<code>UIViewAutoresizingMask</code>  和<code>NSLayoutConstraint</code>API<br/><br/>
+CALayer没有自动布局办法<br/>
+如果想要随意控制CALayer的布局，我们可以用CALayerDelegate方法:  </p>
+
+<pre><code class="language-objectivec">- (void)layoutSublayersOfLayer:(CALayer *)layer;
+/**当图层的 bounds 发生改变，或者图层的 -setNeedsLayout 方法被调用的时候，这个函数将会被执
+行。（但是也没法做大自适应屏幕等自动布局,这也是为什么我们用UIView来布局）*/
+</code></pre>
+
+<h2 id="toc_7">视觉效果</h2>
+
+<h3 id="toc_8">圆角</h3>
+
+<p>CALayer有一个叫做<code>conrnerRadius</code>的属性控制着图层角的曲率。它是一个浮点数，默认为0（为0的时候就是直角）,默认这个值不影响背景图片或者子图层,但是如果设置<code>maskToBounds</code>为<code>YES</code>,图层中东西都会被截取.</p>
+
+<h3 id="toc_9">图层边框</h3>
+
+<p><code>borderWidth</code>和<code>borderColor</code>，这条线（stroke）沿着图层的bounds绘制,同时也包含图层的角.<br/>
+<code>borderWith</code>以点为单位的浮点数<br/><br/>
+<code>borderColor</code>边框的颜色默认黑色,<code>CGColorRef</code>类型，不是UIColor所以不是<code>Cocoa</code>内置对象  </p>
+
+<pre><code class="language-objectivec">// CGColorRef 属性即便是强引用也只能通过assign关键字来声明
+@property(nullable) CGColorRef borderColor;
+</code></pre>
+
+<p><strong>注意</strong></p>
+
+<ol>
+<li>边框是绘制在图层边界里面的，而且在所有子内容之前，也在子图层之前。（这个之前是显示最前而不是在最前绘制被遮盖）</li>
+<li>边框是跟随图层的边界变化的，而不是图层里面的内容</li>
+<li>
+<img src="media/14892022301750/14893838391060.jpg" alt=""/></li>
+</ol>
+
+<h3 id="toc_10">阴影</h3>
+
+<p><code>shadowOpacity</code>默认0。他是一个必须在<code>0.0</code>（不可见）和<code>1.0</code>（完全不透明）之间的浮点数。  </p>
+
+<p>阴影的另外三个属性:<br/><br/>
+<code>shadowColor</code>控制阴影的颜色，和 borderColor 和 backgroundColor 一样，它的类型也是 CGColorRef，默认黑色<br/><br/>
+<code>shadowOffset</code>阴影的方向和距离 CGSize类型，宽度为阴影横向位移，高度为纵向位移，默认{0,-3},即相对Y轴有3个点的向上位移<br/><br/>
+<code>shadowRadius</code>控制着阴影的模糊度，当它的值是0的时候，阴影就和视图一样有一个非常确定的边界线。我们推荐为大于0的值,值越大阴影越模糊,图层层次更明显.</p>
+
+<p><img src="media/14892022301750/14893848191222.jpg" alt=""/></p>
+
+<h4 id="toc_11">阴影裁剪</h4>
+
+<p>与边框不同,图层的阴影继承自内容的外形，CoreAnimation会将寄宿图（包括子视图）来结合图层形状创建一个阴影。<br/><br/>
+但是由于他们的不同,我们在包括子图层创建阴影后,如果按照边框进行裁剪就会导致部分阴影没有了，这时候我们只能额外创建一个裁剪后的图层形状的阴影图层（可以作为最外层的父图层）来实现效果。</p>
+
+<h3 id="toc_12">shadowPath属性</h3>
+
+<p>因为实时计算阴影是非常消耗资源的,我们可以通过事先指定<code>shadowPath</code>来提高性能.<code>shadowPath</code>是一个<code>CGPathRef</code>类型（一个指向<code>CGPath</code>的指针）。<code>CGPath</code> 是一个<code>Core Graphics</code>对象，用来指定任意的一个矢量图形。我们可以用这个属性在图层形状之外指定阴影形状.  </p>
+
+<p>举个栗子:</p>
+
+<pre><code class="language-objectivec">
+CGMutablePathRef squarePath = CGPathCreateMutable();
+CGPathAddRect(squarePath, NULL, self.layerView1.bounds);
+self.layerView1.layer.shadowPath = squarePath;
+//需要我们手动释放
+CGPathRelease(squarePath);
+//create a circular shadow
+CGMutablePathRef circlePath = CGPathCreateMutable();
+CGPathAddEllipseInRect(circlePath, NULL, self.layerView2.bounds);
+self.layerView2.layer.shadowPath = circlePath; 
+CGPathRelease(circlePath);
+</code></pre>
+
+<p><code>CGPath</code>适合搭建比较简单的形状,比如举行或者圆,但是如果是复杂的图形推荐<strong>使用<code>UIBezierPath</code></strong>，它是一个由UIKit提供的在<code>CGPath</code>基础上的<code>Objective-C</code>包装类</p>
+
+<h3 id="toc_13">图层蒙版</h3>
+
+<p>CALayer的<code>mask</code>属性是一个CALayer类型,它类似于一个自图层，mask图层定义了父图层的可见区域。  </p>
+
+<p>mask图层的color没用,轮廓才是重要的。对于mask图层中的部分会保留下来,其他部分会被抛弃（对于视图View其实你可以看做其他部分还在只不过颜色为透明色,但是这部分还会拦截点击事件）  </p>
+
+<p>这个<code>Mask</code><strong>不仅仅局限于静态图</strong>，任何有图层的构成都可以作为Mask，因此我们甚至可以用一个动画的layer作为蒙版.</p>
+
+<h3 id="toc_14">拉伸过滤</h3>
+
+<p>这里牵涉到<code>minificationFilter</code>和<code>magnificationFilter</code>属性。  </p>
+
+<p>当图片需要显示不同大小的时候,这种拉伸算法就起到作用。它作用于原图的像素上并根据需要生成新的像素显示在屏幕上。</p>
+
+<p><code>CALayer</code>提供给我们三种拉伸过滤方法:</p>
+
+<ul>
+<li>kCAFilterLinear </li>
+<li>kCAFilterNearest</li>
+<li>kCAFilterTrilinear</li>
+</ul>
+
+<p><code>minification</code>（缩小图片）和<code>magnification</code>（放大图片）默认的过滤器都是<code>kCAFilterLinear</code></p>
+
+<p><code>kCAFilterLinear</code>双线性滤波，大多数情况下表现良好，但是当放大倍数较大时会比较模糊不清  </p>
+
+<p><code>kCAFilterTrilinear</code>和<code>kCAFilterLinear</code>很相似，是三线性滤波<br/>
+<img src="media/14892022301750/14893953542514.jpg" alt=""/></p>
+
+<p><code>kCAFilterNearest</code> 最近过滤 ，就是取样最近的单像素点而不管其他的颜色。总的来说，对于比较小的图或者是差异特别明显，极少斜线的大图，最近过滤算法会保留这种差异明显的特质以呈现更好的结果。但是对于大多数的图尤其是有很多斜线或是曲线轮廓的图片来说，最近过滤算法会导致更差的结果。换句话说，线性过滤保留了形状，最近过滤则保留了像素的差异。<br/>
+<img src="media/14892022301750/14893958244715.jpg" alt=""/></p>
+
+<h3 id="toc_15">组透明</h3>
+
+<p>UIView用<code>alpha</code>属性设置透明度<br/>
+CALayy用<code>opacity</code>设置图层透明度<br/>
+这两个属性都是影响子层级的，比如我们设置一个图层透明度为50%，图层的每个像素都会一半显示自己的颜色，另一半显示图层下面的颜色。。但是如果图层包含一个同样显示50%透明的子图层时，你所看到的视图，50%来自子视图，25%来了图层本身的颜色，另外的25%则来自背景色。因此经常导致我们我们视图颜色的不协调。</p>
+
+<p>这时候我们可以<br/><br/>
+方法一：<br/><br/>
+通过设置<code>Info.plist</code>文件中的 <code>UIViewGroupOpacity</code>为<code>YES</code>来达到这个效果，但是这个设置会影响到这个应用，整个app可能会受到不良影响。</p>
+
+<p>方法二：（推荐）<br/><br/>
+设置CALayer的一个叫做<code>shouldRasterize</code>属性来实现组透明的效果，如果它被设置为YES，在应用透明度之前，图层及其子图层都会被整合成一个整体的图片，这样就没有透明度混合的问题了</p>
+
+<p>为了启用<code>shouldRasterize</code>属性，我们设置了图层的<code>rasterizationScale</code>属性。默认情况下，所有图层拉伸都是1.0， 所以如果你使用了<code>shouldRasterize</code>属性，你就要确保你设置了 <code>rasterizationScale</code> 属性去匹配屏幕，以防止出现Retina屏幕像素化的问题。</p>
+
+<pre><code class="language-objectivec">button2.layer.shouldRasterize = YES;
+button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
+</code></pre>
+
+<p><strong>注意</strong><br/>
+当<code>shouldRasterize</code>和<code>UIViewGroupOpacity</code>一起的时候，会出现性能问题（但是好像影响不大）</p>
 
                         
                       </div>
@@ -255,10 +356,10 @@ UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishS
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/4</span>
+                    <span class="date">2017/3/11</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html'>iOS 开发模块知识</a></span>
+          					    <span class="posted-in"><a href='%E5%9B%BE%E5%B1%82.html'>图层</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -325,11 +426,11 @@ UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishS
         
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -352,31 +453,31 @@ UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishS
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

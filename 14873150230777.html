@@ -77,15 +77,13 @@
     <li><label>Categories</label></li>
 
         
-            <li><a href="Swift.html">Swift初学笔记</a></li>
-        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -121,7 +119,7 @@
 
           <span>posted in&nbsp;</span> 
           
-              <span class="posted-in"><a href='Concurrent-Programming.html'>多线程</a></span>
+              <span class="posted-in"><a href='%E5%8E%9F%E6%9C%89%E7%AC%94%E8%AE%B0.html'>原有笔记</a></span>
            
          
           <span class="comments">
@@ -205,244 +203,16 @@
 </ul></li>
 </ul>
 
-<h2 id="toc_4">3.GCD</h2>
-
-<p>Grand Central Dispatch,是苹果为多核并行运算提出的解决办法，或自动管理线程生命周期</p>
-
-<h3 id="toc_5">任务和队列</h3>
-
-<p>这是在GCD中此案有的重要概念：<strong>任务</strong>和<strong>队列</strong></p>
+<h3 id="toc_4">从其他线程回到主线程的方法</h3>
 
 <ul>
-<li><p>任务：即即操作，你想要干什么，说白了就是一段代码，在 GCD 中就是一个 Block，所以添加任务十分方便。任务有两种执行方式： <strong>同步执行</strong> 和 <strong>异步执行</strong>，他们之间的区别是<strong><em>是否会创建新的线程</em></strong>。     </p>
-<pre><code class="language-text">同步（sync）和异步（async）的主要区别是在于会不会阻塞当前线程，直到block中任务执行完毕；  
-同步就是阻塞当前线程并等待block中的任务执行完毕，然后线程会继续向下执行，异步操作当前线程会继续向下执行
-</code></pre></li>
-<li><p>队列：用于存放任务。一共有两种队列，串行和并行队列<br/>
-<strong>串行队列</strong>：放在串行队列中的任务，GCD会FIFO的取出来，执行，然后取出下一个  </p></li>
-</ul>
-
-<p><strong>并行队列</strong>：在并行队列中的任务，GCD也会FIFO的取出来，但不同的是，取出来一个后就会放到别的线程，然后取出来再放到另一个线程，取的动作很快，看起来所有是同时执行。注意：GCD会根据系统资源控制并行数量，所以如果任务很多，并不会让人物同时执行  </p>
-
-<h3 id="toc_6">创建队列</h3>
-
-<ul>
-<li><h5 id="toc_7">主队列</h5>
-<p>特殊的 串行队列。它用于刷新 UI，任何需要刷新 UI 的工作都要在主队列执行，所以一般耗时的任务都要放到别的线程执行。</p>
-<pre><code class="language-text">     //OBJECTIVE-C
-    dispatch_queue_t queue = ispatch_get_main_queue();<br/>
-      //SWIFT<br/>
-      let queue = ispatch_get_main_queue()  
-</code></pre></li>
-<li><h5 id="toc_8">自己创建的队列</h5>
-<p>自己可以创建 串行队列, 也可以创建 并行队列。看下面的代码（代码已更新），它有两个参数，第一个上面已经说了，第二个才是最重要的。第二个参数用来表示创建的队列是串行的还是并行的，传入 DISPATCH_QUEUE_SERIAL 或 NULL 表示创建串行队列。传入 DISPATCH_QUEUE_CONCURRENT 表示创建并行队列。</p>
-<p>queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, NULL);<br/>
-  dispatch_queue_t queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, DISPATCH_QUEUE_SERIAL);<br/>
-  //并行队列<br/>
-  dispatch_queue_t queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, DISPATCH_QUEUE_CONCURRENT);</p>
-<p>//SWIFT<br/>
-  //串行队列<br/>
-  let queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, nil);<br/>
-  let queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, DISPATCH_QUEUE_SERIAL)<br/>
-  //并行队列<br/>
-  let queue = dispatch_queue_create(&quot;tk.bourne.testQueue&quot;, DISPATCH_QUEUE_CONCURRENT)</p></li>
-<li><h4 id="toc_9">全局并行队列</h4>
-<p>一般只要是并行任务都加到这个队列<br/>
-  //OBJECTIVE-C<br/>
-  dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);</p>
-<p>//SWIFT<br/>
-  let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)</p></li>
-</ul>
-
-<h3 id="toc_10">创建任务</h3>
-
-<ul>
-<li><h5 id="toc_11">同步任务：会阻塞当前线程</h5>
-<pre><code class="language-text">dispatch_sync(&lt;#queue#&gt;, ^{
-</code></pre>
-<p>//code here<br/>
-  NSLog(@&quot;%@&quot;, [NSThread currentThread]);<br/>
-    });</p></li>
-<li><h5 id="toc_12">异步任务：不会阻塞当前线程</h5>
-<pre><code class="language-text">dispatch_async(&lt;#queue#&gt;, ^{
-    //code here<br/>
-    NSLog(@&quot;%@&quot;, [NSThread currentThread]);<br/>
-});
-</code></pre></li>
-</ul>
-
-<h3 id="toc_13">更好的理解同步异步以及各种队列的使用</h3>
-
-<pre><code class="language-text">同步任务会阻塞当前线程，然后把block块中的任务放到指定队列中执行，等到block任务完成后会让当前线程继续往下执行  
-同步异步的重要区别在于派发方法是否需要等待 block 完成后才能返回.
-</code></pre>
-
-<h3 id="toc_14">队列组的使用</h3>
-
-<p>可以将很多丢列添加到一个组中，这样的话，当这个组中所有任务都执行完了，队列会通过一个方法通知我们  </p>
-
-<pre><code class="language-text">//1.创建队列组
-dispatch_group_t group = dispatch_group_create();
-//2.创建队列
-dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-
-//3.多次使用队列组的方法执行任务, 只有异步方法
-//3.1.执行3次循环
-dispatch_group_async(group, queue, ^{
-    for (NSInteger i = 0; i &lt; 3; i++) {
-        NSLog(@&quot;group-01 - %@&quot;, [NSThread currentThread]);
-    }
-});
-
-//3.2.主队列执行8次循环
-dispatch_group_async(group, dispatch_get_main_queue(), ^{
-    for (NSInteger i = 0; i &lt; 8; i++) {
-        NSLog(@&quot;group-02 - %@&quot;, [NSThread currentThread]);
-    }
-});
-
-//3.3.执行5次循环
-dispatch_group_async(group, queue, ^{
-    for (NSInteger i = 0; i &lt; 5; i++) {
-        NSLog(@&quot;group-03 - %@&quot;, [NSThread currentThread]);
-    }
-});
-
-//4.都完成后会自动通知
-dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-    NSLog(@&quot;完成 - %@&quot;, [NSThread currentThread]);
-});
-SWIFT
-//1.创建队列组
-let group = dispatch_group_create()
-//2.创建队列
-let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
-
-//3.多次使用队列组的方法执行任务, 只有异步方法
-//3.1.执行3次循环
-dispatch_group_async(group, queue) { () -&gt; Void in
-    for _ in 0..&lt;3 {
-        NSLog(&quot;group-01 - %@&quot;, NSThread.currentThread())
-    }
-}
-
-//3.2.主队列执行8次循环
-dispatch_group_async(group, dispatch_get_main_queue()) { () -&gt; Void in
-    for _ in 0..&lt;8 {
-        NSLog(&quot;group-02 - %@&quot;, NSThread.currentThread())
-    }
-}
-
-//3.3.执行5次循环
-dispatch_group_async(group, queue) { () -&gt; Void in
-    for _ in 0..&lt;5 {
-        NSLog(&quot;group-03 - %@&quot;, NSThread.currentThread())
-    }
-}
-
-//4.都完成后会自动通知
-dispatch_group_notify(group, dispatch_get_main_queue()) { () -&gt; Void in
-    NSLog(&quot;完成 - %@&quot;, NSThread.currentThread())
-}
-</code></pre>
-
-<p><strong>关于GCD还有两点要说的</strong>  </p>
-
-<ul>
-<li><code>func dispatch_barrier_async(_ queue: dispatch_queue_t, _ block: dispatch_block_t):</code><br/>
-这个方法重点是传入的queue，当你传入的queue是通过<code>DISPATCH_QUEUE_CONCURRENT</code>参数自己创建的queue时，这个方法会阻塞这个queue（注意是阻塞queue，而不是阻塞当前线程），一直等到这个queue中排在他前面的任务都执行完成后才会开始执行自己，自己执行完毕后，再会取消阻塞，是这个queue中排在他后面的任务继续执行。但是如果你传入的是其他queue，那他和dispatch_async一样了<br/></li>
-<li><code>func dispatch_barrier_sync(_ queue: dispatch_queue_t, _ block: dispatch_block_t):</code><br/>
-这个方法的使用和上一个一样，传入自定义的并发队列（<strong>DISPATCH_QUEUE_CONCURRENT</strong>），会阻塞queue，不同的是这个方法还会阻塞当前线程，，但是如果你传入其他queue就和dispatch_sync一样了<br/></li>
-</ul>
-
-<h3 id="toc_15">线程同步</h3>
-
-<ul>
-<li><h5 id="toc_16">互斥锁：</h5>
-<p>给需要同步的代码加一个互斥锁保证每次只有一个线程访问此代码块</p>
-<pre><code class="language-text">    //OBJECTIVE-C
-    @synchronized(self) {<br/>
-        //需要执行的代码块<br/>
-    }<br/>
-    //SWIFT<br/>
-    objc_sync_enter(self)<br/>
-    //需要执行的代码块<br/>
-    objc_sync_exit(self)
-</code></pre></li>
-<li><h5 id="toc_17">同步执行：</h5>
-<p>我们可以使用多线程的知识，把多个线程都要执行此段代码添加到同一个串行队列，这样就实现了线程同步的概念。当然这里可以使用 <code>GCD</code> 和 <code>NSOperation</code> 两种方案，我都写出来。</p>
-<pre><code class="language-text">//OBJECTIVE-C
-      //GCD<br/>
-      //需要一个全局变量queue，要让所有线程的这个操作都加到一个queue中<br/>
-      dispatch_sync(queue, ^{<br/>
-          NSInteger ticket = lastTicket;<br/>
-          [NSThread sleepForTimeInterval:0.1];<br/>
-          NSLog(@&quot;%ld - %@&quot;,ticket, [NSThread currentThread]);<br/>
-          ticket -= 1;<br/>
-          lastTicket = ticket;<br/>
-      });<br/>
-      //NSOperation &amp; NSOperationQueue<br/>
-      //重点：1. 全局的 NSOperationQueue, 所有的操作添加到同一个queue中<br/>
-      //       2. 设置 queue 的 maxConcurrentOperationCount 为 1<br/>
-      //       3. 如果后续操作需要Block中的结果，就需要调用每个操作的waitUntilFinished，阻塞当前线程，一直等到当前操作完成，才允许执行后面的。waitUntilFinished 要在添加到队列之后！<br/>
-      NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{<br/>
-          NSInteger ticket = lastTicket;<br/>
-          [NSThread sleepForTimeInterval:1];<br/>
-          NSLog(@&quot;%ld - %@&quot;,ticket, [NSThread currentThread]);<br/>
-          ticket -= 1;<br/>
-          lastTicket = ticket;<br/>
-      }];<br/>
-      [queue addOperation:operation];<br/>
-      [operation waitUntilFinished];<br/>
-      //后续要做的事
-</code></pre></li>
-<li><h5 id="toc_18">延迟执行：</h5>
-<pre><code class="language-text">//OBJECTIVE-C（这个方法在swift中去掉了）
-    // 3秒后自动调用self的run:方法，并且传递参数：@&quot;abc&quot;<br/>
-    [self performSelector:@selector(run:) withObject:@&quot;abc&quot; afterDelay:3];<br/>
-    //GCD<br/>
-    // 创建队列<br/>
-    dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);<br/>
-    // 设置延时，单位秒<br/>
-    double delay = 3; <br/>
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), queue, ^{<br/>
-        // 3秒后需要执行的任务<br/>
-    });
-</code></pre></li>
-<li><h5 id="toc_19">单例模式：</h5>
-<pre><code class="language-text">OBJECTIVE-C
-    @interface Tool : NSObject &lt;NSCopying&gt;<br/>
-    + (instancetype)sharedTool;<br/>
-    @end<br/>
-    @implementation Tool<br/>
-    static id _instance;<br/>
-    + (instancetype)sharedTool {<br/>
-        static dispatch_once_t onceToken;<br/>
-        dispatch_once(&amp;onceToken, ^{<br/>
-            _instance = [[Tool alloc] init];<br/>
-        });<br/>
-        return _instance;<br/>
-    }<br/>
-    @end<br/>
-    swift<br/>
-        class Tool: NSObject {<br/>
-        static let sharedTool = Tool()<br/>
-        // 私有化构造方法，阻止其他对象使用这个类的默认的&#39;()&#39;构造方法<br/>
-        private override init() {}<br/>
-        }
-</code></pre></li>
-</ul>
-
-<h3 id="toc_20">从其他线程回到主线程的方法</h3>
-
-<ul>
-<li><h5 id="toc_21">NSThread</h5>
+<li><h5 id="toc_5">NSThread</h5>
 <pre><code class="language-text">//Objective-C
 [self performSelectorOnMainThread:@selector(run) withObject:nil waitUntilDone:NO];<br/>
 //Swift<br/>
 //swift 取消了 performSelector 方法。
 </code></pre></li>
-<li><h5 id="toc_22">GCD</h5>
+<li><h5 id="toc_6">GCD</h5>
 <pre><code class="language-text">//Objective-C
 dispatch_async(dispatch_get_main_queue(), ^{<br/>
 });<br/>
@@ -450,7 +220,7 @@ dispatch_async(dispatch_get_main_queue(), ^{<br/>
 dispatch_async(dispatch_get_main_queue(), { () -&gt; Void in<br/>
 })
 </code></pre></li>
-<li><h5 id="toc_23">NSOperationQueue</h5>
+<li><h5 id="toc_7">NSOperationQueue</h5>
 <pre><code class="language-text">//Objective-C
 [[NSOperationQueue mainQueue] addOperationWithBlock:^{<br/>
 }];<br/>
@@ -459,34 +229,6 @@ NSOperationQueue.mainQueue().addOperationWithBlock { () -&gt; Void in<br/>
 }
 </code></pre></li>
 </ul>
-
-<h2 id="toc_24">评论补充</h2>
-
-<pre><code class="language-text">同步派发(sync)会尽可能地在当前线程派发任务.但如果在其他队列往主队列同步派发,任务会在主线程执行.
-异步派发(async)也不绝对会另开线程.例如在主线程异步派发到主线程,派发依旧是异步的,任务也会在主线程执行.
-我感觉同步异步的重要区别在于派发方法是否需要等待 block 完成后才能返回.
-
-无论串行还是并发队列,任务启动顺序都是按照 FIFO 的,只是并发队列允许同一时间有多个任务执行都在执行.
-
-创建队列
-
-也可以自己创建并发队列.
-dispatch_queue_create(&quot;我是私有串行队列&quot;, DISPATCH_QUEUE_SERIAL);
-dispatch_queue_create(&quot;我是私有并发队列&quot;, DISPATCH_QUEUE_CONCURRENT);
-
-dispatch_async(dispatch_get_main_queue()) {
-// Swift 中用尾闭包写法感觉更美观.
-}
-
-关于同步,还有这么个东西:
-dispatch_barrier_async(privateConcurrentQueue, ^{
-// 写入操作会确保队列前面的操作执行完毕才开始,并会阻塞队列中后来的操作.
-});
-
-dispatch_sync(privateConcurrentQueue, ^{
-// 只要没有写入操作,多个读取操作是相对并行的.
-});
-</code></pre>
 
 
     
@@ -497,16 +239,16 @@ dispatch_sync(privateConcurrentQueue, ^{
         <div class="large-6 columns">
         <p class="text-left" style="padding:15px 0px;">
       
-          <a href="14873195104181.html" 
-          title="Previous Post: NSRunLoop">&laquo; NSRunLoop</a>
+          <a href="15554693626882.html" 
+          title="Previous Post: Foundation、Core Foundation框架对象">&laquo; Foundation、Core Foundation框架对象</a>
       
         </p>
         </div>
         <div class="large-6 columns">
       <p class="text-right" style="padding:15px 0px;">
       
-          <a  href="14873146865194.html" 
-          title="Next Post: NSOperation">NSOperation &raquo;</a>
+          <a  href="14905958336865.html" 
+          title="Next Post: 图层时间">图层时间 &raquo;</a>
       
       </p>
         </div>
@@ -560,15 +302,13 @@ dispatch_sync(privateConcurrentQueue, ^{
 
       	<p class="cat-list">
         
-            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
-        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -591,31 +331,31 @@ dispatch_sync(privateConcurrentQueue, ^{
 	      
 		      
 			      <li class="post">
-			        <a href="15471197068949.html">Promise</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471147696850.html">对象</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471038798384.html">数组</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470891496440.html">遍历</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470311819265.html">解构</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

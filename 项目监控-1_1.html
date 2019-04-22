@@ -1,0 +1,436 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+    
+  项目监控 - ACEfish-Blog
+  
+  </title>
+  
+  
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+    <link rel="stylesheet" href="asset/css/foundation.min.css" />
+    <link rel="stylesheet" href="asset/css/docs.css" />
+    <script src="asset/js/vendor/modernizr.js"></script>
+    <script src="asset/js/vendor/jquery.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/github.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+<script type="text/javascript">
+  function before_search(){
+    var searchVal = 'site:acefish.github.io ' + document.getElementById('search_input').value;
+    document.getElementById('search_q').value = searchVal;
+    return true;
+  }
+</script>
+  </head>
+  <body class="antialiased hide-extras">
+    
+    <div class="marketing off-canvas-wrap" data-offcanvas>
+      <div class="inner-wrap">
+
+
+<nav class="top-bar docs-bar hide-for-small" data-topbar>
+
+
+  <section class="top-bar-section">
+  <div class="row">
+      <div style="position: relative;width:100%;"><div style="position: absolute; width:100%;">
+        <ul id="main-menu" class="left">
+        
+        <li id=""><a target="_self" href="index.html">Home</a></li>
+        
+        <li id=""><a target="_self" href="archives.html">Archives</a></li>
+        
+        </ul>
+
+        <ul class="right" id="search-wrap">
+          <li>
+<form target="_blank" onsubmit="return before_search();" action="http://google.com/search" method="get">
+    <input type="hidden" id="search_q" name="q" value="" />
+    <input tabindex="1" type="search" id="search_input"  placeholder="Search"/>
+</form>
+</li>
+          </ul>
+      </div></div>
+  </div>
+  </section>
+
+</nav>
+
+        <nav class="tab-bar show-for-small">
+  <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
+    <span> &nbsp; ACEfish-Blog</span>
+  </a>
+</nav>
+
+<aside class="left-off-canvas-menu">
+      <ul class="off-canvas-list">
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
+
+    <li><label>Categories</label></li>
+
+        
+            <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
+            <li><a href="Computer-programming.html">计算机编程</a></li>
+        
+            <li><a href="iOSDevelop.html">iOSDevelop</a></li>
+        
+            <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
+        
+            <li><a href="React-Native.html">React-Native</a></li>
+        
+            <li><a href="Python.html">Python</a></li>
+         
+
+      </ul>
+    </aside>
+
+<a class="exit-off-canvas" href="#"></a>
+
+
+        <section id="main-content" role="main" class="scroll-container">
+        
+       
+
+ <script type="text/javascript">
+	$(function(){
+		$('#menu_item_index').addClass('is_active');
+	});
+</script>
+<div class="row">
+	<div class="large-8 medium-8 columns">
+		<div class="markdown-body home-categories">
+		
+			<div class="article">
+                <a class="clearlink" href="15555568072278.html">
+                
+                  <h1>崩溃监控</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<h2 id="toc_0">常见的崩溃问题</h2>
+
+<h3 id="toc_1">信号可捕获崩溃</h3>
+
+<ol>
+<li>KVO问题:</li>
+<li>NSNotification线程问题</li>
+<li><p>数组越界<br/>
+在取数组索引时候，或者给数组赋值nil(字典赋值nil)，App发生崩溃</p></li>
+<li><p>野指针<br/>
+指针指向一个已经删除的对象内存</p></li>
+<li><p>多线程导致问题<br/>
+在子线程更新UI可能导致崩溃<br/>
+多线程对数据存储发生竞态，比如一个线程置空而在另外一个线程读取</p></li>
+</ol>
+
+<h4 id="toc_2">捕获崩溃信号</h4>
+
+<pre><code class="language-objectivec">//通过注册Signal捕获到信号
+void registerSignalHandler(void) {
+    signal(SIGSEGV, handleSignalException);/* segmentation violation 分段违规 */
+    signal(SIGFPE, handleSignalException);/* floating point exception 浮点异常 */
+    signal(SIGBUS, handleSignalException);/* bus error 总线错误 */
+    signal(SIGPIPE, handleSignalException);/* write on a pipe with no one to read it  写在了没有人阅读的管道*/
+    signal(SIGHUP, handleSignalException);/* hangup 挂断 */
+    signal(SIGINT, handleSignalException); /* interrupt 中断 */
+    signal(SIGQUIT, handleSignalException); /* quit 退出 */
+    signal(SIGABRT, handleSignalException); /* abort() */
+    signal(SIGILL, handleSignalException); /* illegal instruction (not reset when caught) 非法指令 */
+}
+
+void handleSignalException(int signal) {
+    NSMutableString *crashString = [NSMutableString string];
+    void *callstack[128];
+    int frames = backtrace(callstack, 128);
+    char** traceChar = backtrace_symbols(callstack, frames);
+    for (int i=0; i&lt;frames; i++) {
+        [crashString appendFormat:@&quot;%s\n&quot;, traceChar[i]];
+    }
+    NSLog(@&quot;%@&quot;, crashString);
+}
+</code></pre>
+
+<p>我们常将捕获到的信号持久化到本地 等下次打开APP后再上传</p>
+
+<h3 id="toc_3">信号不可捕获的崩溃</h3>
+
+<ol>
+<li><p>后台任务超时</p></li>
+<li><p>内存打爆</p></li>
+<li><p>主线程卡顿超阈值<br/>
+如果主线程超过系统规定的时间无响应，就会被<code>Watchdog</code>杀掉,这是崩溃对应的异常编码为<code>0x8badf00d</code></p></li>
+</ol>
+
+<h4 id="toc_4">后台崩溃</h4>
+
+<p>当App退到后台后，即使代码逻辑没有问题，也容易导致崩溃。这是以内系统强杀某些进程导致，而这些情况由于系统原因没有办法捕获到</p>
+
+<p>我们通常在应用进入后台时，通过调用<code>beginBackgroundTaskWithExpirationHandler</code>方法来延长应用存活</p>
+
+<pre><code class="language-objectivec">- (void)applicationDidEnterBackground:(UIApplication *)application {
+    //正常app 退到后台只有几秒时间执行代码，接下来就会被系统挂起
+    
+    //通过backgroud task方法延长后台时间 这个方法必须与endBackgroundTask一一对象
+    self.backgroundTaskIdentifier = [application beginBackgroundTaskWithExpirationHandler:^{
+        //如果在最后时间到了之前仍然没有调用endBackgroundTask方法 就会执行此回调
+        //通常时间为3分钟，如果时间到期之前调用endBackgroundTask方法 就会强制杀掉进程，就会造成崩溃
+        
+        /*
+         * 因此我们可以加一个定时器 在3分钟将要到达时 判断是否后台应用程序还在执行
+         * 如果还在执行的话，就可以认为快要崩溃 进行记录 上报
+         */
+
+        self.backGroundTimer = [NSTimer scheduledTimerWithTimeInterval:2*60 target:self selector:@selector(threeMinuteTimeOut) userInfo:nil repeats:NO];
+        
+        
+    }];
+    
+    NSLog(@&quot;开始执行后台任务&quot;);
+    //此处为执行任务代码 通常用来保存应用程序关键数据数据
+    //当任务执行完成时 调用endBackgroundTask方法 调用后就会将app挂起 
+//    [application endBackgroundTask:self.backgroundTaskIdentifier];
+
+
+}
+</code></pre>
+
+<blockquote>
+<p>可以在应用程序的任何时候 多次调用<code>beginBackgroundTaskWithExpirationHandler</code>方法，此时建议使用<code>beginBackgroundTaskWithName：expirationHandler：</code>方法，来给每个单独指定名称，方便调试。此时，每个任务都需要用返回的标识符，单独结束</p>
+
+<p>假如不支持后台任务 该方法返回<code>UIBackgroundTaskInvalid</code></p>
+
+<p>挂起状态是指:应用处在后台，并且已停止执行代码。当处在此状态时，应用依然驻留内存但不执行任何程序代码。当系统发生低内存告警时，系统将会将处 于Suspended状态的应用清除出内存以为正在前台运行的应用提供足够的内存。</p>
+</blockquote>
+
+<h2 id="toc_5">崩溃信息处理</h2>
+
+<p>我们采集到的崩溃日志，主要包含以下内容:</p>
+
+<ul>
+<li>进程信息: 崩溃进程的相关信息，比如崩溃报告唯一标识符、唯一键值、设备标识</li>
+<li>基本信息: 崩溃发生的日期、iOS版本</li>
+<li>异常信息: 异常类型、异常编码、异常的线程</li>
+<li>线程回溯: 奔溃是的方法调用栈</li>
+</ul>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2019/4/18</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7-1.html'>项目监控</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+              
+
+
+			<div class="row">
+			  <div class="large-6 columns">
+			  <p class="text-left" style="padding-top:25px;">
+			   <a href="项目监控-1.html">&laquo; Prev Page</a>  
+			  </p>
+			  </div>
+			  <div class="large-6 columns">
+			<p class="text-right" style="padding-top:25px;">
+			 <a href="项目监控-1_2.html">&raquo; Next Page</a> 
+			</p>
+			  </div>
+			</div>
+		</div>
+	</div><!-- large 8 -->
+
+ <div class="large-4 medium-4 columns">
+  <div class="hide-for-small">
+    <div id="sidebar" class="sidebar">
+          <div id="site-info" class="site-info">
+            
+                <h1>ACEfish-Blog</h1>
+                <div class="site-des"></div>
+                <div class="social">
+
+
+
+
+
+
+
+
+
+<a target="_blank" class="github" target="_blank" href="https://github.com/ACEfish/ACEfish.github.io" title="GitHub">GitHub</a>
+
+  <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
+                
+              	 </div>
+          	</div>
+
+             
+
+              <div id="site-categories" class="side-item ">
+                <div class="side-header">
+                  <h2>Categories</h2>
+                </div>
+                <div class="side-content">
+
+      	<p class="cat-list">
+        
+            <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
+            <a href="Computer-programming.html"><strong>计算机编程</strong></a>
+        
+            <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
+        
+            <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
+        
+            <a href="React-Native.html"><strong>React-Native</strong></a>
+        
+            <a href="Python.html"><strong>Python</strong></a>
+         
+        </p>
+
+
+                </div>
+              </div>
+
+              <div id="site-categories" class="side-item">
+                <div class="side-header">
+                  <h2>Recent Posts</h2>
+                </div>
+                <div class="side-content">
+                <ul class="posts-list">
+	      
+		      
+			      <li class="post">
+			        <a href="15556625620569.html">pod repo update</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15556594680013.html"></a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15554889031358.html">otool命令</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15554886689884.html">Mach文件</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15553854847636.html">运行时</a>
+			      </li>
+		     
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		   
+		  		</ul>
+                </div>
+              </div>
+        </div><!-- sidebar -->
+      </div><!-- hide for small -->
+</div><!-- large 4 -->
+
+</div><!-- row -->
+
+ <div class="page-bottom clearfix">
+  <div class="row">
+   <p class="copyright">Copyright &copy; 2015
+Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a>,&nbsp; 
+Theme used <a target="_blank" href="http://github.com">GitHub CSS</a>.</p>
+  </div>
+</div>
+
+        </section>
+      </div>
+    </div>
+
+  
+    
+
+    <script src="asset/js/foundation.min.js"></script>
+    <script>
+      $(document).foundation();
+      function fixSidebarHeight(){
+        var w1 = $('.markdown-body').height();
+          var w2 = $('#sidebar').height();
+          if (w1 > w2) { $('#sidebar').height(w1); };
+      }
+      $(function(){
+        fixSidebarHeight();
+      })
+      $(window).load(function(){
+          fixSidebarHeight();
+      });
+     
+    </script>
+
+    
+
+
+
+  </body>
+</html>

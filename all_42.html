@@ -77,15 +77,13 @@
     <li><label>Categories</label></li>
 
         
-            <li><a href="Swift.html">Swift初学笔记</a></li>
-        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -114,137 +112,45 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15317258769792.html">
+                <a class="clearlink" href="15527263519137.html">
                 
-                  <h1>Python基础</h1>
+                  <h1>iOS视图约束</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">数据类型</h2>
-
-<h3 id="toc_1">字符串</h3>
-
-<p><strong>字符串是不可变的</strong></p>
+                        	<h2 id="toc_0">自动约束方法</h2>
 
 <ol>
-<li>用<code>&#39;</code>或者<code>&quot;</code>括起来的文本</li>
-<li>可以通过 <code>\</code>转义字符来在文本中转义,进行<code>\n</code>换行 <code>\t</code>制表</li>
-<li>可以通过在文本前加<code>r</code>表示文本不转义</li>
-<li>用三个单引号<code>&#39;&#39;&#39;...&#39;&#39;&#39;</code>的文本可以在内部直接换行而不需要<code>\n</code></li>
+<li><p>updateConstraintsIfNedded<br/>
+触发开始约束更新<br/>
+当有新的布局时，系统调用此方法确保视图和子视图约束信息的更新，系统会自动调用这方法，我们也可以手动调用此方法，来检查最新的约束条件</p></li>
+<li><p>updateConstraints<br/>
+更新约束<br/>
+我们可以通过重写此方法来设置自己的约束，系统在调用layOut布局之前，回调用这个方法，确认在视图的约束<br/>
+当我们的视图有约束变化或者失效，我们可以改变这些约束然后调用<code>setNeedUpdateConstraints</code>标记约束需要更新<br/>
+需要在此方法最后调用<code>super updateConstraints</code></p></li>
+<li><p>-（BOOL）neddUpdateConstrains<br/>
+调用此方法根据此方法的返回 决定是否需要更新约束</p></li>
+<li><p>setNeedsUpdateConstraints<br/>
+当视图需要更新时 我们可以调用此方法，然后在系统决定更新时机</p></li>
 </ol>
 
-<pre><code class="language-python">print(&quot;hello, world&quot;)
-print(&quot;I\&#39;m OK!&quot;)
-print(&quot;\t文本&quot;)
-print(r&#39;&#39;&#39;\\line1
-line2
-line3aaaa&#39;&#39;&#39;)
-</code></pre>
+<h2 id="toc_1">updateConstranins和layOut方法联系</h2>
 
-<blockquote>
-<p>python中的单引号和双引号的用法都是一样的，只是如果字符串中有相同字符时需要转义</p>
-</blockquote>
+<p>AutoLayout在更新显示view之前，会先调用updateContrains和layingOutView，layout和依赖于Contrains，而view的最终显示依赖于layout</p>
 
-<h3 id="toc_2">布尔</h3>
+<p>第一步：update constrains 进行视图的约束，从俯视图到子视图更新约束信息，可以通过调用<code>setNeedsUpdateConstraints</code>来触发此步骤. 而当我们做出一些改变约束的事情事，可以调用<code>updateConstraintsIfNedded</code>来通知约束改变，可以在<code>updateConstraints</code>方法中重写或者补充一些视图的约束</p>
 
-<p><code>True</code>  真<br/>
-<code>False</code> 假</p>
+<p>第二步: lauout 根据上一步的约束结果，从父视图到子视图来设置视图的bounds frame等 确定试图位置，与constrains类似 有<code>setNeedLayout</code> <code>layoutIfNeeded</code> <code>layoutSubviews</code>方法</p>
 
-<p>布尔运算<br/>
-<code>and</code>  与<br/>
-<code>or</code>   或<br/>
-<code>not</code>  非</p>
+<p>第三步: 此步骤时 把view展示在屏幕上 此步骤可以通过<code>setNeedDisplay</code>来触发</p>
 
-<h3 id="toc_3">空值</h3>
+<p>这三个步骤互相依赖，每一步的触发都依赖于上一步</p>
 
-<p><code>None</code>表示空值</p>
+<h2 id="toc_2">补充</h2>
 
-<h2 id="toc_4">变量</h2>
-
-<p>定义变量<br/>
-<code>a=1</code></p>
-
-<blockquote>
-<p>python是动态语言 因此可以将不同类型的变量赋值给同一变量</p>
-</blockquote>
-
-<pre><code class="language-python">a=False
-a=&quot;aa&quot;
-print(a)
-</code></pre>
-
-<h2 id="toc_5">常量</h2>
-
-<p>在python中常用全大写的变量名来表示常量</p>
-
-<blockquote>
-<p>python中除法<code>/</code>的结果为浮点数(即使整除),  <code>//</code>为地板除，两个除法的结果仍为整数</p>
-</blockquote>
-
-<pre><code class="language-python">print(10/3)   3.3333333333333335
-print(10//3)   3
-print(9/3)    3.0
-print(9//3)   3
-print(12.7//5.1)   2.0
-print(1.2/3)    0.39999999999999997
-</code></pre>
-
-<h2 id="toc_6">编码</h2>
-
-<p><a href="https://www.liaoxuefeng.com/wiki/0014316089557264a6b348958f449949df42a6d3a2e542c000/001431664106267f12e9bef7ee14cf6a8776a479bdec9b9000">https://www.liaoxuefeng.com/wiki/0014316089557264a6b348958f449949df42a6d3a2e542c000/001431664106267f12e9bef7ee14cf6a8776a479bdec9b9000</a></p>
-
-<p>在python3中字符串以Unicode编码，</p>
-
-<p>可以通过<code>ord()</code>函数获取字符的整数表示<br/>
-可以通过<code>chr()</code>函数将编码转为对应字符</p>
-
-<pre><code class="language-python">print(ord(&quot;😱&quot;)) //128561
-print(chr(128561)) //😱
-//当知道字符的整数编码,可以用16进制来写str
-print(&#39;\u4e2d\u6587&#39;) //中文
-</code></pre>
-
-<p>Python对bytes类型的数据用带<code>b</code>前缀的单引号或双引号表示:</p>
-
-<pre><code class="language-python">x = b&#39;ABC&#39;
-</code></pre>
-
-<blockquote>
-<p>python的字符串<code>str</code>在内存中以Unicode表示,当在网上传输或者保存磁盘时,需要将其转为以字节为单位的<code>bytes</code>使用<code>encode()</code>,而当从网络或磁盘读取数据读到的是<code>bytes</code>,将butes转为str，使用<code>decode()</code>方法</p>
-</blockquote>
-
-<p>可以通过<code>encode()</code>方法将<code>str</code>编码为指定的<code>bytes</code></p>
-
-<pre><code class="language-python">print(&quot;中文&quot;.encode(&quot;utf-8&quot;))  # b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;
-print(b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;.decode(&#39;utf-8&#39;))  #中文
-
-#如果bytes中存在一小部分无效字节,可以添加errors=&#39;ignore&#39;来忽略错误的字节
-b&#39;\xe4\xb8\xad\xff&#39;.decode(&#39;utf-8&#39;, errors=&#39;ignore&#39;)  #中
-</code></pre>
-
-<p><code>len()</code>函数用来计算<code>str</code>字符串的字符数,对于<code>bytes</code>则计算其字节数:</p>
-
-<pre><code class="language-python">&gt;&gt;&gt; len(b&#39;ABC&#39;)
-3
-&gt;&gt;&gt; len(b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;)
-6
-&gt;&gt;&gt; len(&#39;中文&#39;.encode(&#39;utf-8&#39;))
-6
-</code></pre>
-
-<blockquote>
-<p>为避免乱码,请坚持使用UTF-8编码进行转换,因此对于python的源码文件,指定其为UTF-8编码保存,并通过<code># -*- coding: utf-8 -*-</code>告诉编译器按照UTF-8读取源码</p>
-</blockquote>
-
-<p><strong><code># -*- coding: utf-8 -*-</code></strong></p>
-
-<h2 id="toc_7">格式化</h2>
-
-<pre><code class="language-python"># 格式化
-print(&quot;这是字符串的%s格式化&quot; % (&quot;栗豫塬&quot;))
-print(&quot;my name is %s age is %d height %.2f&quot; % (&quot;栗豫塬&quot;, 24, 17.0))
-</code></pre>
+<p><code>UIViewController</code>中有<code>- (void)updateViewConstraints</code>默认实现是调用UIView的<code>uodateConstraints</code></p>
 
                         
                       </div>
@@ -253,10 +159,10 @@ print(&quot;my name is %s age is %d height %.2f&quot; % (&quot;栗豫塬&quot;, 
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2018/7/16</span>
+                    <span class="date">2019/3/16</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Python.html'>Python</a></span>
+          					    <span class="posted-in"><a href='%E8%87%AA%E5%8A%A8%E5%B8%83%E5%B1%80.html'>自动布局</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -321,15 +227,13 @@ print(&quot;my name is %s age is %d height %.2f&quot; % (&quot;栗豫塬&quot;, 
 
       	<p class="cat-list">
         
-            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
-        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -352,31 +256,31 @@ print(&quot;my name is %s age is %d height %.2f&quot; % (&quot;栗豫塬&quot;, 
 	      
 		      
 			      <li class="post">
-			        <a href="15471197068949.html">Promise</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471147696850.html">对象</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471038798384.html">数组</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470891496440.html">遍历</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470311819265.html">解构</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

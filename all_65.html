@@ -77,15 +77,13 @@
     <li><label>Categories</label></li>
 
         
-            <li><a href="Swift.html">Swift初学笔记</a></li>
-        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -114,69 +112,77 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14988080333726.html">
+                <a class="clearlink" href="15470311819265.html">
                 
-                  <h1>NSNotification</h1>
+                  <h1>解构</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">notification的使用</h2>
+                        	<h2 id="toc_0">对象解构</h2>
 
-<h3 id="toc_1">注册观察者</h3>
+<p>为了方便一次性取出对象中的多个值,而不需要一一的取值赋值</p>
 
-<p><code>- (void)addObserver:(id)notificationObserver selector:(SEL)notificationSelector name:(NSString *)notificationName object:(id)notificationSender<br/>
-</code><br/>
-注意:</p>
-
-<ol>
-<li><code>notificationObserver</code>不能为nil</li>
-<li><code>notification Selector</code>回调方法有且只有一个参数(<code>NSNotification</code>对象)</li>
-<li>如果<code>notificationName</code>为<code>nil</code>，则会接收所有的通知(如果<code>notificationSender</code>不为空，则接收所有来自于<code>notificationSender</code>的所有通知)</li>
-<li>如果<code>notificationSender</code>为<code>nil</code>，则会接收所有<code>notificationName</code>定义的通知；否则，接收由<code>notificationSender</code>发送的通知</li>
-<li>监听同一条通知的多个观察者，在通知到达时，它们执行回调的顺序是不确定的</li>
-</ol>
-
-<h3 id="toc_2">post通知</h3>
-
-<pre><code class="language-objectivec">[[NSNotificationCenter defaultCenter] postNotificationName:@&quot;First&quot; object:@&quot;博客园-Fly_Elephant&quot;];
--(void)notificationFirst:(NSNotification *)notification{
-    NSString  *name=[notification name];
-    NSString  *object=[notification object];
-    NSLog(@&quot;名称:%@----对象:%@&quot;,name,object);
+<pre><code class="language-javascript">const fk = {
+    name: &quot;fankai&quot;,
+    age: 26,
+    family: {
+        farther: &quot;fkfarther&quot;,
+        mother: &quot;fkmother&quot;,
+        brother: &quot;lyy&quot;
+    }
 }
-//名称:First----对象:博客园-Fly_Elephant
-
-[[NSNotificationCenter defaultCenter] postNotificationName:@&quot;Second&quot; object:@&quot;http://www.cnblogs.com/xiaofeixiang&quot; userInfo:dict];
--(void)notificationSecond:(NSNotification *)notification{
-    NSString  *name=[notification name];
-    NSString  *object=[notification object];
-    NSDictionary  *dict=[notification userInfo];
-    NSLog(@&quot;名称:%@----对象:%@&quot;,name,object);
-    NSLog(@&quot;获取的值:%@&quot;,[dict objectForKey:@&quot;key&quot;]);
-}
-//名称:Second----对象:http://www.cnblogs.com/xiaofeixiang
-//获取的值:keso
 </code></pre>
 
-<h2 id="toc_3">通知原理</h2>
+<p>常用的对象解构</p>
 
-<p>单例的方式创建一个<code>NSNotificationCenter</code>对象<br/>
-对象注册观察者时 将注册的<code>name</code> <code>selector</code> <code>object</code> 作为一个模型 添加到一个数组中</p>
+<pre><code class="language-javascript">const {name, age} = fk
+console.log(name) //fankai
+console.log(name) //26
 
-<p>post时根据名字和object 找到数组中注册的对象 执行通知的方法</p>
+//当变量已经被声明过
+let name
+//使用括号括起来 否则js会认为是语句
+({name, age} = fk)
+</code></pre>
 
-<h2 id="toc_4">多线程</h2>
+<p>使用与属性名不同的变量名</p>
 
-<p>在多线程应用中，<code>Notification</code>在哪个线程中<code>post</code>，就在哪个线程中被转发，而不一定是在注册观察者的那个线程中。<br/>
-也就是说，<code>Notification</code>的发送与接收处理都是在同一个线程中.</p>
+<pre><code class="language-javascript">const {farther: far, mother: mon, brother} = fk.family
+console.log(far)
+</code></pre>
 
-<h2 id="toc_5">通告队列 NSNotificationQueue</h2>
+<p>当变量对应属性不存在时(即必须为undefined),使用默认值</p>
 
-<p><code>NSNotificationQueue</code> 作用是充当通告中心(<code>NSNotificationCenter</code>)的缓冲区,以FIFO的顺序进行维护。当一个通告上升到队列最前时，就将他发送给通告中心，通告中心随后将它派发给所有注册为观察者的对象</p>
+<pre><code class="language-javascript">const {farther, sister = &quot;hava no sisiter&quot;} = fk.family
+console.log(sister) //hava no sisiter
+</code></pre>
 
-<p>参考<a href="http://www.jianshu.com/p/b4835026e8e9">NSNotification&amp;NSNotificationCenter(实现原理,多线程,内存管理角度)</a><br/>
-参考<a href="http://www.cnblogs.com/heyonggang/p/3681689.html">iOS NSNotification的使用</a></p>
+<h3 id="toc_1">数组解构</h3>
+
+<p>可以一次性从数组中取出多个值</p>
+
+<pre><code class="language-javascript">const numbers = [&quot;one&quot;, &quot;two&quot;, &quot;three&quot;, &quot;four&quot;]
+
+//数组解构
+const [a, b] = numbers
+console.log(a) //one
+console.log(b) //two
+
+//如果有可以用空,来越过数组中变量
+const [m, ,n] = numbers
+console.log(m) //one
+console.log(n) //three
+
+//...onthers 来获取剩下所有值
+const [c, ...others] = numbers
+console.log(c) //one
+console.log(others) //[&quot;two&quot;, &quot;three&quot;, &quot;four&quot;]
+
+//当不存在该值 即 该值为undefined时 使用默认值
+const [d, g, , ,f=&quot;five&quot;] = numbers
+console.log(f) //five
+</code></pre>
 
                         
                       </div>
@@ -185,10 +191,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/6/30</span>
+                    <span class="date">2019/1/9</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html'>iOS开发知识</a></span>
+          					    <span class="posted-in"><a href='ES6.html'>ES6</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -253,15 +259,13 @@
 
       	<p class="cat-list">
         
-            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
-        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -284,31 +288,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15471197068949.html">Promise</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471147696850.html">对象</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471038798384.html">数组</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470891496440.html">遍历</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470311819265.html">解构</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

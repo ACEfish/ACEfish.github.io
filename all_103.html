@@ -77,15 +77,13 @@
     <li><label>Categories</label></li>
 
         
-            <li><a href="Swift.html">Swift初学笔记</a></li>
-        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -114,46 +112,202 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14872305472033.html">
+                <a class="clearlink" href="15304988629042.html">
                 
-                  <h1>UI测试</h1>
+                  <h1>混合开发(OC)</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>关于iOS的UI自动化测试，Xcode 7 Apple从新提供了一个新的框架UITest，使用XCTest.framework，Xcode可以自动录制UI测试的动作流，还有就是可以使用<code>XCTest UI testing API</code></p>
+                        	<h2 id="toc_0">声明类 实现协议</h2>
 
-<h4 id="toc_0"><a href="http://www.itnose.net/detail/6507467.html">基础知识</a></h4>
+<p>需要实现了<code>RCTBridgeModule</code>协议类,<br/>
+导入<code>#import &lt;React/RCTBridgeModule.h&gt;</code></p>
 
-<p>核心的三个类:<code>XCUIApplication</code> <code>XCUIElement</code> <code>XCUIElementQuery</code><br/>
-<strong>XCUIApplication类</strong> 是Application的代理，就像我们项目工程中的AppDelegate，这个对象用来启动或者是终止UI测试程序，还可以在启动的时候设置一些启动参数，在获取程序中的UI元素的时候，就是通过这个类的实例。这个类继承自XCUIElement类<br/>
-<strong>XCUIElement类</strong> 是XCTest.framework对应用中的所有UI控件的抽象，在UI测试中，没有UIKit中的UI类型，只是用这个类的实例表示所有的UI控件，以及相应的交互方法，例如：执行手势（tap，press，swipe），滑动控件交互，拾取器交互，这个类采取了XCUIElementAttributes协议（描述UI元素的属性：Identity，Value，Interaction State，Size），XCUIElementTypeQueryProvider协议(为指定类型的子代元素提供ready-made查询，子代元素查询包含button，具体实现是:@property(readonly, copy) XCUIElementQuery *buttons;等一系列对UIKit中元素的映射)<br/>
-<strong>XCUIElementQuery类</strong> 是定位UI元素的查询，这个类使用类似key-value的机制得到XCUIElement的实例，使用Type(XCUIElementType枚举)，Predicate，Identifier创建query，使用elementAtIndex:, elementMatchingPredicate,elementMatchingType: identifier:方法访问匹配到的UI元素，此类采用XCUIElementTypeQueryProvider协议</p>
+<p>实现协议需要包含这个宏，可以添加参数作为访问此模块的名字 通常不指定默认使用类名<br/>
+<code>RCT_EXPORT_MODULE();</code></p>
 
-<p>XCTest一共提供了三种UI测试对象<br/>
-    XCUIApplication 当前测试应用target<br/>
-    XCUIElementQuery 定位查询当前UI中xctuielement的一个类<br/>
-    XCUIElement UI测试中任何一个item项都被抽象成一个XCUIElement类型<br/>
-因此:当我们获取了录制生成的代码以后，根据UITest提供的三种对象，我可以在此来对测试代码进行修改，调试,我们同样可以使用断言语句来进行测试</p>
+<h2 id="toc_1">声明原生方法给js调用</h2>
 
-<h4 id="toc_1">UI测试Demo</h4>
+<p>声明需要提供给<code>React Native</code>组件调用的方法，即导出的方法<br/>
+<code>RCT_EXPORT_METHOD()</code></p>
+
+<pre><code class="language-javascript">//在OC中
+RCT_EXPORT_METHOD(addEvent:(NSString *)name location:(NSString *)location)
+{
+  RCTLogInfo(@&quot;Pretending to create an event %@ at %@&quot;, name, location);
+}
+//在js中这样调用
+import { NativeModules } from &#39;react-native&#39;;
+var CalendarManager = NativeModules.CalendarManager;
+CalendarManager.addEvent(&#39;Birthday Party&#39;, &#39;4 Privet Drive, Surrey&#39;);
+</code></pre>
+
+<p>通常我们将多个参数使用一个字典进行存放</p>
+
+<pre><code class="language-javascript">#import &lt;React/RCTConvert.h&gt;
+
+RCT_EXPORT_METHOD(addEvent:(NSString *)name details:(NSDictionary *)details)
+{
+  NSString *location = [RCTConvert NSString:details[@&quot;location&quot;]];
+  NSDate *time = [RCTConvert NSDate:details[@&quot;time&quot;]];
+  ...
+}
+
+CalendarManager.addEvent(&#39;Birthday Party&#39;, {
+  location: &#39;4 Privet Drive, Surrey&#39;,
+  time: date.toTime(),
+  description: &#39;...&#39;
+})
+</code></pre>
+
+<h3 id="toc_2">声明回调函数</h3>
+
+<pre><code class="language-javascript">
+//原生
+//原生模块通常只应调用回调函数一次。但是，它可以保存callback并在将来调用
+RCT_EXPORT_METHOD(findEvents:(RCTResponseSenderBlock)callback)
+{
+  NSArray *events = ...
+  callback(@[[NSNull null], events]);
+}
+
+//js调用
+CalendarManager.findEvents((error, events) =&gt; {
+  if (error) {
+    console.error(error);
+  } else {
+    this.setState({events: events});
+  }
+})
+
+//采用promise
+
+//原生
+RCT_REMAP_METHOD(findEvents,
+                 resolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+  NSArray *events = ...
+  if (events) {
+    resolve(events);
+  } else {
+    reject(error);
+  }
+}
+//js调用
+async function updateEvents() {
+  try {
+    var events = await CalendarManager.findEvents();
+    this.setState({ events });
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+updateEvents();
+
+</code></pre>
+
+<h2 id="toc_3">多线程</h2>
+
+<p>生模块不应对自己被调用时所处的线程做任何假设。React Native在一个独立的串行GCD队列中调用原生模块的方法，但这属于实现的细节，并且可能会在将来的版本中改变。通过实现方法<code>- (dispatch_queue_t)methodQueue</code>，原生模块可以指定自己想在哪个队列中被执行。</p>
+
+<pre><code class="language-objectivec">- (dispatch_queue_t)methodQueue
+{
+  return dispatch_get_main_queue();
+}
+</code></pre>
+
+<p>如果一个操作需要花费很长时间，原生模块不应该阻塞住，而是应当声明一个用于执行操作的独立队列</p>
+
+<pre><code class="language-objectivec">- (dispatch_queue_t)methodQueue
+{
+  return dispatch_queue_create(&quot;com.facebook.React.AsyncLocalStorageQueue&quot;, DISPATCH_QUEUE_SERIAL);
+}
+</code></pre>
+
+<blockquote>
+<p>在模块之间共享分发队列<br/>
+methodQueue方法会在模块被初始化的时候被执行一次，然后会被React Native的桥接机制保存下来，所以你不需要自己保存队列的引用，除非你希望在模块的其它地方使用它。但是，如果你希望在若干个模块中共享同一个队列，则需要自己保存并返回相同的队列实例；仅仅是返回相同名字的队列是不行的。</p>
+</blockquote>
+
+<h2 id="toc_4">导出常量</h2>
+
+<pre><code class="language-objectivec">- (NSDictionary *)constantsToExport
+{
+  return @{ @&quot;firstDayOfTheWeek&quot;: @&quot;Monday&quot; };
+}
+</code></pre>
+
+<h2 id="toc_5">给JS发送事件</h2>
+
+<p>继承<code>RCTEventEmitter</code>，实现<code>suppportEvents</code>方法并调用<code>self sendEventWithName:</code></p>
+
+<pre><code class="language-objectivec">#import &lt;React/RCTEventEmitter.h&gt;
+
+- (NSArray&lt;NSString *&gt; *)supportedEvents
+{
+  return @[@&quot;EventReminder&quot;];
+}
+
+- (void)calendarEventReminderReceived:(NSNotification *)notification
+{
+  NSString *eventName = notification.userInfo[@&quot;name&quot;];
+  [self sendEventWithName:@&quot;EventReminder&quot; body:@{@&quot;name&quot;: eventName}];
+}
+
+</code></pre>
+
+<p>JavaScript代码可以创建一个包含你的模块的NativeEventEmitter实例来订阅这些事件。</p>
+
+<pre><code class="language-javascript">import { NativeEventEmitter, NativeModules } from &#39;react-native&#39;;
+const { CalendarManager } = NativeModules;
+
+const calendarManagerEmitter = new NativeEventEmitter(CalendarManager);
+
+const subscription = calendarManagerEmitter.addListener(
+  &#39;EventReminder&#39;,
+  (reminder) =&gt; console.log(reminder.name)
+);
+...
+// 别忘了取消订阅，通常在componentWillUnmount生命周期方法中实现。
+subscription.remove();
+</code></pre>
+
+<h2 id="toc_6">原生UI</h2>
+
+<p>原生视图需要被一个RCTViewManager来管理和创建。本质上都是单例 - React Native只会为每个管理器创建一个实例。它们创建原生的视图并提供给<code>RCTUIManager</code>，<code>RCTUIManager</code>则会反过来委托它们在需要的时候去设置和更新视图的属性。RCTViewManager还会代理视图的所有委托，并给JavaScript发回对应的事件</p>
 
 <ol>
-<li><p>创建项目时勾选UITest</p></li>
-<li><p>打开DemoUiTest.m,创建 - (void)testUI函数,同时将光标留在函数内<br/>
-<img src="media/14872305472033/14872344264789.png" alt=""/><br/>
-点击下面的红色按钮，开始recorder操作，程序运行起来后，点击APP界面进行操作,然后光标处就会生成测试代码</p></li>
-<li><p>进行测试<br/>
-之后我们测试只需要点击test函数前的测试按钮测试这个函数 或者command+u 来进行全部测试<br/>
-此时刚才的一连串动作会一步一步连续执行下来</p></li>
-<li><p>我们此时可以通过修改这段代码来进行我们想要的测试<br/>
-比如：</p>
-<ul>
-<li>通过添加循环语句来测试一直执行是否会出现问题,判断内存问题等</li>
-<li>通过添加断言来判断运行中元素或情况与我们预想是否一致</li>
-</ul></li>
-<li></li>
+<li>创建<code>RCTViewManager</code>的子类</li>
+<li>添加<code>RCT_EXPORT_MODULE()</code>标记宏</li>
+<li><p>实现<code>-(UIView *)view</code>方法</p></li>
+<li><p>在js代码中将视图变为可用的React组件</p></li>
 </ol>
+
+<pre><code class="language-javascript">// MapView.js
+var { requireNativeComponent } = require(&#39;react-native&#39;);
+
+// requireNativeComponent 自动把这个组件提供给 &quot;RNTMapManager&quot;
+module.exports = requireNativeComponent(&#39;RNTMap&#39;, null);
+</code></pre>
+
+<h3 id="toc_7">声明属性</h3>
+
+<pre><code class="language-objectivec">//声明属性
+RCT_EXPORT_VIEW_PROPERTY(pitchEnabled, BOOL)
+
+//设置属性之后，在js中可以直接设置
+&lt;MapView pitchEnabled={false} /&gt;
+
+//比较复杂的属性
+RCT_CUSTOM_VIEW_PROPERTY(region, MKCoordinateRegion, RNTMap)
+{
+  [view setRegion:json ? [RCTConvert MKCoordinateRegion:json] : defaultView.region animated:YES];
+}
+
+</code></pre>
 
                         
                       </div>
@@ -162,10 +316,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/16</span>
+                    <span class="date">2018/7/2</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E6%B5%8B%E8%AF%95.html'>测试</a></span>
+          					    <span class="posted-in"><a href='React-Native.html'>React-Native</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -230,15 +384,13 @@
 
       	<p class="cat-list">
         
-            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
-        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -261,31 +413,31 @@
 	      
 		      
 			      <li class="post">
-			        <a href="15471197068949.html">Promise</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471147696850.html">对象</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471038798384.html">数组</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470891496440.html">遍历</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470311819265.html">解构</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

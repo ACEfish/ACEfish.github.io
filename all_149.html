@@ -77,15 +77,13 @@
     <li><label>Categories</label></li>
 
         
-            <li><a href="Swift.html">Swift初学笔记</a></li>
-        
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
         
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -114,156 +112,167 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14901598468257.html">
+                <a class="clearlink" href="14878317610028.html">
                 
-                  <h1>隐式动画</h1>
+                  <h1>成员变量与属性</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>我们在前面介绍了图层的相关知识,现在我们开始学本次的重点<strong>动画</strong><br/>
-<strong>注意</strong><br/>
-<code>CALayer</code>呈现图层&lt;--&gt;模型图层<br/>
-我们在创建<code>CALayer</code>对象存储了我们设置的属性值（只是存值所以是模型图层）,但是模型图层显示或者说是呈现时就会基于模型图层创建一个呈现图层,然后我们所能看到的都是基于这个呈现图层的.</p>
+                        	<h2 id="toc_0">类型编码(Type Encoding)</h2>
 
-<h3 id="toc_0">事务</h3>
+<p><strong>作为对Runtime的补充，编译器将每个方法的返回值和参数类型编码为一个字符串，并将其与方法的<code>selector</code>关联在一起。</strong>我们可以使用@encode编译器指令来获取它。当给定一个类型时，<code>@encode</code>返回这个类型的字符串编码。这些类型可以是诸如int、指针这样的基本类型，也可以是结构体、类等类型。任何可以作为<code>sizeof()</code>操作参数的类型都可以用于<code>@encode()</code>。</p>
 
-<p><code>Core Animation</code>基于一个假设，说屏幕上的任何东西都可以（或者可能）做动画。动画并不需要你在<code>Core Animation</code>中手动打开，相反需要明确地关闭，否则他会一直存在。</p>
+<p>在<code>Objective-C Runtime Programming Guide</code>中的<a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtTypeEncodings.html#//apple_ref/doc/uid/TP40008048-CH100-SW1">Type Encoding</a>一节中列出了Objective-C中所有的类型编码,需要注意的是这些类型很多是与我们用于存档和分发的编码类型是相同的。但有一些不能在存档时使用。</p>
 
-<p>当我们改变了<code>CALayer</code>的一个可做动画的属性时,但是他并不会立刻在屏幕上显示出来。它默认会从先前的值平滑过渡到新值,不需要做额外操作。这就是<code>隐式动画</code>,之所以叫<strong><code>隐式</code>是因为我们并没有指定任何动画的类型</strong>.我们改变属性之后是<code>Core Animation</code>来决定如何并且何时去做动画（这是隐式当然也可以显式动画）.</p>
+<p><em>注：Objective-C不支持long double类型。@encode(long double)返回d，与double是一样的。</em><br/>
+举个栗子:</p>
 
-<p>隐式动画的动画执行的时间取决于当前<code>事务</code>的设置，动画类型取决于图层行为。</p>
-
-<p><code>事务</code>是<strong><code>Core Animation</code>用来包含一系列属性动画集合的机制</strong>，当用事务去改变可以做动画的图层属性都不会立刻变化,而是等到这个事务提交之后,才开始图层属性过渡到新值的动画.</p>
-
-<p>我们用<code>CATransaction</code>类来管理<code>事务</code>,这个类管理的事务并不能访问,也没有属性或者实例方法，并且也不能用<code>+alloc</code> 和<code>-init</code>方法创建它。但是可以用 <code>+begin</code> 和 <code>+commit</code> 分别来入栈或者出栈。</p>
-
-<p>任何可以做动画的图层属性的改变都会被添加到目前<code>栈顶</code>的<code>事务</code>中.我们可以用<code>+setAnimationDuration:</code>设置 或者<code>+animationDuration</code>获取当前的栈顶事务的动画时间(默认0.25秒)</p>
-
-<p><code>Core Animation</code>会在每个<code>run loop</code>周期中自动开始一次新的事务,，即使你不显式的用<code>[CATransaction begin]</code> 开始一次事务，任何在一次<code>run loop</code>循环中属性的改变都会被集中起来，然后做一次0.25秒的动画。  </p>
-
-<pre><code class="language-objectivec">/*我们在设置某个属性动画的事务属性（比如时间）时,我们通常会自己创建一个新的事务,
-否则会有可能影响到事务中其他属性动画*/
-[CATransaction begin];
-//set the animation duration to 1 second
-[CATransaction setAnimationDuration:1.0];
-
-self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
-//commit the transaction
-[CATransaction commit];
+<pre><code class="language-objectivec">float a[] = {1.0, 2.0, 3.0};
+NSLog(@&quot;array encoding type: %s&quot;, @encode(typeof(a)));
+//输出:
+2014-10-28 11:44:54.731 RuntimeTest[942:50791] array encoding type: [3f]
 </code></pre>
 
-<p><strong>补充</strong><br/>
-<code>UIView</code>有两个方法，<code>+beginAnimations:context:</code>和<code>+commitAnimations</code>，就是通过设置 <code>CATransaction</code>实现的,至于UIView的另外一个<code>+animateWithDuration:animations:</code>，只是将这些属性动画做成了一个block以避免开发者由于对<code>+begin</code> 和<code>+commit</code> 匹配的失误.</p>
+<p>另外，还有些编码类型，@encode虽然不会直接返回它们，但它们可以作为协议中声明的方法的类型限定符。</p>
 
-<h3 id="toc_1">完成块</h3>
+<p>对于属性而言，还会有一些特殊的类型编码，以表明属性是只读、拷贝、retain等等，详情可以参考<a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtPropertyIntrospection.html#//apple_ref/doc/uid/TP40008048-CH101-SW6">Property Type String</a>。</p>
 
-<p>我们在做基于<code>UIView</code>的<code>block</code>动画时可以在动画结束时提供一个完成动作. <br/>
-<code>CATranscation</code>接口提供的<code>+setCompletionBlock:</code>方法也有同样的功能。</p>
+<h2 id="toc_1">成员变量、属性</h2>
 
-<pre><code class="language-objectivec">[CATransaction begin];
-[CATransaction setAnimationDuration:1.0];
-[CATransaction setCompletionBlock:^{
-//rotate the layer 90 degrees
-CGAffineTransform transform = self.colorLayer.affineTransform;
-transform = CGAffineTransformRotate(transform, M_PI_2);
-self.colorLayer.affineTransform = transform;
-}];
-self.colorLayer.backgroundColor = [UIColor redColor];
-[CATransaction commit];
-/**
-注意旋转动画要比颜色渐变快得多，这是因为完成块是在颜色渐变的事务提交并出
-栈之后才被执行，于是，用默认的事务做变换，默认的时间也就变成了0.25秒。
-*/
-</code></pre>
+<h3 id="toc_2">基础数据类型</h3>
 
-<h3 id="toc_2">图层行为</h3>
+<h4 id="toc_3">Ivar</h4>
 
-<p><code>UIKit</code>默认禁用了隐式动画.即UIView把它关联的图层属性改编动画特性关闭了</p>
+<p>Ivar是表示实例变量的类型，其实际是一个指向objc_ivar结构体的指针</p>
 
-<p>我们先来看一下<code>隐式动画</code>是怎么实现的:<br/>
-<strong>我们把改变属性时<code>CALayer</code>自动应用的动画称作<code>行为</code>.</strong><br/>
-当我们改变了<code>CALayer</code>的属性时，会调用<code>-actionForKey:</code>方法，传递属性的名称。然后</p>
-
-<ul>
-<li>图层首先检测它是否有委托，并且是否实现 CALayerDelegate 协议指定的 <code>-actionForLayer:forKey</code> 方法。如果有，直接调用并返回结果。</li>
-<li>如果没有委托，或者委托没有实现<code>-actionForLayer:forKey</code>方法，图层接着检查包含属性名称对应行为映射的<code>actions</code>字典。</li>
-<li>如果<code>actions</code>字典 没有包含对应的属性，那么图层接着在它的<code>style</code>字典接着搜索属性名。</li>
-<li>最后，如果在 <code>style</code> 里面也找不到对应的行为，那么图层将会直接调用定义了每个属性的标准行为的<code>-defaultActionForKey:</code>方法。</li>
-</ul>
-
-<p><code>-actionForKey:</code>是用来找这个属性对应的动画(action),要么返回空（这种情况下将不会有动画发生），要么是<code>CAAction</code>协议对应的对象，最后<code>CALayer</code>拿这个结果去对先前和当前的值做动画。</p>
-
-<p>UIKit禁用隐式动画的方法就是,：每个<code>UIView</code> 对它关联的图层都扮演了一个委托，并且提供了<code>-actionForLayer:forKey</code> 的实现方法。当不在一个动画块的实现中，<code>UIView</code> 对所有图层行为返回 <code>nil</code>，但是在动画<code>block</code>范围之内，它就返回了一个非空值。</p>
-
-<p><strong>注意</strong></p>
-
-<ol>
-<li>这里所说的关联是指UIView关联的图层即宿主图层,而对于其他add的图层并不是关联的图层所以是没有禁用隐式动画的</li>
-</ol>
-
-<p>当然对于<code>CATransacition</code>我们可以用<code>+setDisableActions:</code>来选择关闭/打开隐式动画<br/>
-<code>[CATransaction setDisableActions:YES]; //关闭隐式动画</code></p>
-
-<ul>
-<li>UIView 关联的图层禁用了隐式动画，对这种图层做动画的办法就是使用 <code>UIView</code> 的动画函数（而不是依赖 <code>CATransaction</code> ），或者继承 <code>UIView</code> ，并覆盖<code>-actionForLayer:forKey:</code>方法，或者直接创建一个显式动画（具体细节见第八章）。</li>
-<li>对于单独存在的图层，我们可以通过实现图层的<code>-actionForLayer:forKey:</code>委托方法，或者提供一个<code>actions</code> 字典来控制隐式动画(actions 字典可以写更少的代码)。</li>
-</ul>
-
-<p><code>行为</code>通常是一个被Core Animation隐式调用的显式动画对象。<br/>
-我们来改变一个图层属性的行为:</p>
-
-<pre><code class="language-objectivec">/**
-我们使用的是一个实现了 CATransaction 的实例，叫做推进过渡
-改变了CALayer的背景颜色属性行为.改变背景颜色，新的色块都是从左侧滑入，
-而不是默认的渐变效果
-*/
-CATransition *transition = [CATransition animation];
-transition.type = kCATransitionPush;
-transition.subtype = kCATransitionFromLeft;
-self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
-//add it to our view
-[self.layerView.layer addSublayer:self.colorLayer];
-</code></pre>
-
-<h3 id="toc_3">呈现与模型</h3>
-
-<p>我们在改变一个<code>CALayer</code>的属性时，属性值确实会立即更新(这个属性值在设置时就会立刻生效)但是苹果并没有立即呈现出来。</p>
-
-<p>当设置<code>CALayer</code>的属性，实际上是在定义当前事务结束之后图层如何显示的<code>模型</code>。而<code>Core Animation</code>则负责根据图层<code>行为</code>和<code>事务设置</code>去更新视图的这些属性在屏幕上的状态.</p>
-
-<p>我们的手机屏幕是每60秒重绘一次,如果我们要做的动画时长大于1/60,就需要在新值之前对屏幕重绘,即知道当前属性值.<strong>每个图层属性的显示值都被存储在一个叫做呈现图层的独立图层当中</strong>,可以通过<code>-presentationLayer</code>方法来访问.</p>
-
-<p>图层树(模型图层树)&lt;---&gt;呈现树:呈现树通过图层树中所有图层的呈现图层所形成。只有在图层首次在屏幕上呈现时候才会被创建,在之前获取呈现图层时会返回nil的.</p>
-
-<p>在模型图层上调用<code>- presentationLayer</code>能获取呈现图层,同样的调用<code>–modelLayer</code>是会获取模型图层(通常是self).</p>
-
-<p><img src="media/14901598468257/14903368056823.jpg" alt=""/></p>
-
-<p>通常我们只需要和模型图层交互即可让<code>Core Animation</code>更新显示.<br/>
-但是以下两种情况下呈现图层会很有效：  </p>
-
-<ul>
-<li>实现一个基于定时器的动画,而不仅仅是基于事务的动画，这个时候准确地知道在某一时刻图层显示在什么位置就会对正确摆放图层很有用了。</li>
-<li>如果你想让你做动画的图层响应用户输入，你可以使用<code>-hitTest:</code>方法来判断指定图层是否被触摸，这时候对呈现图层而不是模型图层调用 <code>-hitTest:</code> 会显得更有意义</li>
-</ul>
-
-<pre><code class="language-objectivec">- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
-{
-    //get the touch point
-    CGPoint point = [[touches anyObject] locationInView:self.view];
-    //check if we&#39;ve tapped the moving layer
-    if ([self.colorLayer.presentationLayer hitTest:point]) {
-        self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
-    } else {
-        //otherwise (slowly) move the layer to new position
-        [CATransaction begin];
-        [CATransaction setAnimationDuration:4.0];
-        self.colorLayer.position = point;
-        [CATransaction commit];
-    }
+<pre><code class="language-objectivec">typedef struct objc_ivar *Ivar;
+struct objc_ivar {
+    char *ivar_name                 OBJC2_UNAVAILABLE;  // 变量名
+    char *ivar_type                 OBJC2_UNAVAILABLE;  // 变量类型
+    int ivar_offset                 OBJC2_UNAVAILABLE;  // 基地址偏移字节
+#ifdef __LP64__
+    int space                       OBJC2_UNAVAILABLE;
+#endif
 }
 </code></pre>
+
+<h4 id="toc_4">objc_property_t</h4>
+
+<p><code>objc_property_t</code>是表示Objective-C声明的属性的类型，其实际是指向objc_property结构体的指针</p>
+
+<p><code>typedef struct objc_property *objc_property_t;</code></p>
+
+<h5 id="toc_5">objc_property_attribute_t</h5>
+
+<p><code>objc_property_attribute_t</code>定义了属性的特性(attribute)，它是一个结构体</p>
+
+<pre><code class="language-objectivec">typedef struct {
+    const char *name;           // 特性名
+    const char *value;          // 特性值
+} objc_property_attribute_t;
+</code></pre>
+
+<h3 id="toc_6">关联对象(Associated Object)</h3>
+
+<p>关联对象类似于成员变量，不过是在运行时添加的。我们通常会把成员变量(Ivar)放在类声明的头文件中，或者放在类实现的@implementation后面。但这有一个缺点，我们不能在分类中添加成员变量。如果我们尝试在分类中添加新的成员变量，编译器会报错。</p>
+
+<p>Objective-C针对这一问题，提供了一个解决方案：即关联对象(<code>Associated Object</code>)。</p>
+
+<p>我们可以把关联对象想象成一个Objective-C对象(如字典)，这个对象通过给定的key连接到类的一个实例上。不过由于使用的是C接口，所以key是一个void指针(const void *)。我们还需要指定一个内存管理策略，以告诉Runtime如何管理这个对象的内存。这个内存管理的策略可以由以下值指定：</p>
+
+<pre><code class="language-objectivec">OBJC_ASSOCIATION_ASSIGN
+OBJC_ASSOCIATION_RETAIN_NONATOMIC
+OBJC_ASSOCIATION_COPY_NONATOMIC
+OBJC_ASSOCIATION_RETAIN
+OBJC_ASSOCIATION_COPY
+/**
+    当宿主对象被释放时，会根据指定的内存管理策略来处理关联对象。如果指定的策略是
+    assign，则宿主释放时，关联对象不会被释放；而如果指定的是retain或者是copy，则
+    宿主释放时，关联对象会被释放。我们甚至可以选择是否是自动retain/copy。当我们需
+    要在多个线程中处理访问关联对象的多线程代码时，这就非常有用了。
+*/
+</code></pre>
+
+<p>使用方法:</p>
+
+<pre><code class="language-objectivec">static char myKey;
+objc_setAssociatedObject(self, &amp;myKey, anObject, OBJC_ASSOCIATION_RETAIN);
+/**
+    Sets an associated value for a given object using a given key and association 
+    policy.
+    
+    object
+        The source object for the association.
+    key
+        The key for the association.
+    value
+        The value to associate with the key key for object. Pass nil to clear an 
+        existing association.
+*/
+</code></pre>
+
+<p>在这种情况下，self对象将获取一个新的关联的对象anObject，且内存管理策略是自动retain关联对象，当self对象释放时，会自动release关联对象。另外，如果我们使用同一个key来关联另外一个对象时，也会自动释放之前关联的对象，这种情况下，先前的关联对象会被妥善地处理掉，并且新的对象会使用它的内存。</p>
+
+<pre><code class="language-objectivec">id anObject = objc_getAssociatedObject(self, &amp;myKey);
+//Returns the value associated with a given object for a given key.
+/**
+object
+The source object for the association.
+key
+The key for the association.
+*/
+</code></pre>
+
+<p>我们可以使用<code>objc_removeAssociatedObjects</code>函数来移除一个关联对象，或者使用<code>objc_setAssociatedObject</code>函数将key指定的关联对象设置为nil。</p>
+
+<p>关联对象使用起来并不复杂。它让我们可以动态地增强类现有的功能。我们可以在实际编码中灵活地运用这一特性。</p>
+
+<h3 id="toc_7">成员变量、属性的操作方法</h3>
+
+<h4 id="toc_8">成员变量</h4>
+
+<p>成员变量包含以下方法:</p>
+
+<pre><code class="language-objectivec">// 获取成员变量名
+const char * ivar_getName ( Ivar v );
+// 获取成员变量类型编码
+const char * ivar_getTypeEncoding ( Ivar v );
+// 获取成员变量的偏移量
+ptrdiff_t ivar_getOffset ( Ivar v );
+</code></pre>
+
+<p><code>ivar_getOffset</code>函数，对于类型id或其它对象类型的实例变量，可以调用<code>object_getIvar</code>和<code>object_setIvar</code>来直接访问成员变量，而不使用偏移量。</p>
+
+<h4 id="toc_9">关联对象</h4>
+
+<p>关联操作函数</p>
+
+<pre><code class="language-objectivec">// 设置关联对象
+void objc_setAssociatedObject ( id object, const void *key, id value, objc_AssociationPolicy policy );
+// 获取关联对象
+id objc_getAssociatedObject ( id object, const void *key );
+// 移除关联对象
+void objc_removeAssociatedObjects ( id object );
+</code></pre>
+
+<h4 id="toc_10">属性</h4>
+
+<p>属性操作函数:</p>
+
+<pre><code class="language-objectivec">// 获取属性名
+const char * property_getName ( objc_property_t property );
+// 获取属性特性描述字符串
+const char * property_getAttributes ( objc_property_t property );
+// 获取属性中指定的特性
+char * property_copyAttributeValue ( objc_property_t property, const char *attributeName );
+// 获取属性的特性列表
+objc_property_attribute_t * property_copyAttributeList ( objc_property_t property, unsigned int *outCount );
+
+</code></pre>
+
+<p><code>property_copyAttributeValue</code>函数，返回的char *在使用完后需要调用free()释放.<br/>
+<code>property_copyAttributeList</code>函数，返回值在使用完后需要调用free()释放。</p>
 
                         
                       </div>
@@ -272,10 +281,10 @@ self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/22</span>
+                    <span class="date">2017/2/23</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
+          					    <span class="posted-in"><a href='RunTime.html'>runtime</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -340,15 +349,13 @@ self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
 
       	<p class="cat-list">
         
-            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
-        
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
         
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -371,31 +378,31 @@ self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
 	      
 		      
 			      <li class="post">
-			        <a href="15471197068949.html">Promise</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471147696850.html">对象</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15471038798384.html">数组</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470891496440.html">遍历</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15470311819265.html">解构</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  

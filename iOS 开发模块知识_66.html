@@ -79,11 +79,11 @@
         
             <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
         
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
             <li><a href="Computer-programming.html">计算机编程</a></li>
         
             <li><a href="iOSDevelop.html">iOSDevelop</a></li>
-        
-            <li><a href="supplement.html">补充</a></li>
         
             <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
         
@@ -112,406 +112,388 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14873146865194.html">
+                <a class="clearlink" href="14877347224030.html">
                 
-                  <h1>NSOperation</h1>
+                  <h1>运行时实例:</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><a href="http://www.jianshu.com/p/4b1d77054b35">NSOperation</a><br/>
-与GCD相比好处:</p>
+                        	<h2 id="toc_0">类与对象</h2>
 
-<ol>
-<li>NSOperation是基于GCD之上的更高一层封装, 拥有更多的API(e.g. suspend, resume, cancel等等).</li>
-<li>在NSOperationQueue中, 可以指定各个NSOperation之间的依赖关系</li>
-<li>用KVO可以方便的监测NSOperation的状态(isExecuted, isFinished, isCancelled).</li>
-<li>更高的可定制能力, 你可以继承NSOperation实现可复用的逻辑模块.</li>
-</ol>
-
-<h2 id="toc_0">NSOperation和NSOperationQueue</h2>
-
-<p>NSOpration是苹果公司对GCD的封装，NSOperation和MSOprationQueue分别对应GCD中的任务和队列<br/><br/>
-因此操作步骤如下：  </p>
-
-<ol>
-<li>将要执行的任务封装到NSOperation对象中</li>
-<li>将任务添加到一个NSOprationQueue对象中<br/>
-###添加任务
-<code>NSOperation</code>是一个抽象类，所以不能封装任务。但他有两个子类可以封装任务。分别为：NSInvocationOperation和NSBlockOperation。创建之后需要start启动，默认<strong>在当前队列同步执行</strong>当然也可以用<code>cancle</code>在中途取消任务</li>
-</ol>
-
-<p>在不使用NSOperationQueue，单独使用NSOperation的情况下系统同步执行操作:</p>
-
-<pre><code class="language-text">//1.创建NSInvocationOperation对象
-  NSInvocationOperation *operation = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(run) object:nil];
-
-  //2.开始执行
-  [operation start];   
-</code></pre>
-
-<pre><code class="language-object-c">/**[]()
-    在没有使用NSOperationQueue、单独使用NSInvocationOperation的情况下，
-    NSInvocationOperation在主线程执行操作，并没有开启新线程。
-*/
-</code></pre>
-
-<pre><code class="language-text">   在swift中这种方法是不是类型安全的（推荐第二种）
-
-
-//1.创建NSBlockOperation对象
-  NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
-      NSLog(@&quot;%@&quot;, [NSThread currentThread]);
-  }];
-
-  //2.开始任务
-  [operation start];
-</code></pre>
-
-<p>默认会在当前线程中执行。但是<code>NSBlockOperation</code>还有一个方法<code>addExecutionBlock:</code>，通过这个方法会给Operation添加多个执行Block。这样的话Operation中的任务会并发执行，他会在主线程和其他多个线程执行这些任务<br/><br/>
-        ```Object-c<br/>
-     //1.创建NSBlockOperation对象<br/>
-      NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:<sup>{</sup><br/>
-          NSLog(@&quot;%@&quot;, [NSThread currentThread]);<br/>
-      }];</p>
-
-<pre><code class="language-text">  //添加多个Block
-  for (NSInteger i = 0; i &lt; 5; i++) {
-      [operation addExecutionBlock:^{
-          NSLog(@&quot;第%ld次：%@&quot;, i, [NSThread currentThread]);
-      }];
-  }
-
-  //2.开始任务
-  [operation start];
-  /**
-    可以看出，blockOperationWithBlock:方法中的操作是在主线程中执行的，而
-    addExecutionBlock:方法中的操作是在其他线程中执行的。
-  */
-    ```
-</code></pre>
-
-<hr/>
-
-<h2 id="toc_1">自定义Operation</h2>
-
-<p>除了上面的两种 Operation 以外，我们还可以自定义 Operation。自定义 Operation 需要继承 NSOperation 类，并实现其 main() 方法，因为在调用 start() 方法的时候，内部会调用 main() 方法完成相关逻辑。<br/>
-在没有使用NSOperationQueue、单独使用自定义子类的情况下，是在主线程执行操作，并没有开启新线程。</p>
-
-<p>注意:<br/>
-<code>NSOperation</code>可以自己独立执行(直接调用<code>[operation start]</code>), 也可以放到<code>NSOperationQueue</code>里面执行, 这两种情况下是否并发执行是不同的.</p>
-
-<h5 id="toc_2">1. non-concurrent</h5>
-
-<p>NSOperation默认是非并发的(non-concurrent),果你把operation放到某个线程执行, 它会一直block住该线程, 直到<code>operation finished</code>.<br/>
-对于非并发的operation你只需要继承NSOperation, 然后重写main()方法即可<br/>
-示例:下载一张:</p>
-
-<pre><code class="language-object-c">/**
-    由于NSOperation是可以cancel的, 所以你需要在operation程序内部执行过程中判断当前
-    operation是否已经被cancel了(isCancelled). 如果已经被cancel那就不往下执行了. 当你在外面
-    调用[operation cancel]后, isCancelled会被置为YES.
-*/
-
-@implementation YourOperation 
-
-- (void)main 
-{
+<pre><code class="language-objectivec">//-----------------------------------------------------------
+// MyClass.h
+@interface MyClass : NSObject &lt;NSCopying, NSCoding&gt;
+@property (nonatomic, strong) NSArray *array;
+@property (nonatomic, copy) NSString *string;
+- (void)method1;
+- (void)method2;
++ (void)classMethod1;
+@end
+//-----------------------------------------------------------
+// MyClass.m
+#import &quot;MyClass.h&quot;
+@interface MyClass () {
+    NSInteger       _instance1;
+    NSString    *   _instance2;
+}
+@property (nonatomic, assign) NSUInteger integer;
+- (void)method3WithArg1:(NSInteger)arg1 arg2:(NSString *)arg2;
+@end
+@implementation MyClass
++ (void)classMethod1 {
+}
+- (void)method1 {
+    NSLog(@&quot;call method method1&quot;);
+}
+- (void)method2 {
+}
+- (void)method3WithArg1:(NSInteger)arg1 arg2:(NSString *)arg2 {
+    NSLog(@&quot;arg1 : %ld, arg2 : %@&quot;, arg1, arg2);
+}
+@end
+//-----------------------------------------------------------
+// main.h
+#import &quot;MyClass.h&quot;
+#import &quot;MySubClass.h&quot;
+#import &lt;objc/runtime.h&gt;
+int main(int argc, const char * argv[]) {
     @autoreleasepool {
-
-        if (self.isCancelled) return;
-
-        NSData *imageData = [[NSData alloc] initWithContentsOfURL:imageURL];
-
-        if (self.isCancelled) { imageData = nil; return; }
-
-        if (imageData) {
-            UIImage *downloadedImage = [UIImage imageWithData:imageData];
+    
+        MyClass *myClass = [[MyClass alloc] init];
+        unsigned int outCount = 0;
+        Class cls = myClass.class;
+        // 类名
+        NSLog(@&quot;class name: %s&quot;, class_getName(cls));
+        NSLog(@&quot;==========================================================&quot;);
+        // 父类
+        NSLog(@&quot;super class name: %s&quot;, class_getName(class_getSuperclass(cls)));
+        NSLog(@&quot;==========================================================&quot;);
+        // 是否是元类
+        NSLog(@&quot;MyClass is %@ a meta-class&quot;, (class_isMetaClass(cls) ? @&quot;&quot; : @&quot;not&quot;));
+        NSLog(@&quot;==========================================================&quot;);
+        Class meta_class = objc_getMetaClass(class_getName(cls));
+        NSLog(@&quot;%s&#39;s meta-class is %s&quot;, class_getName(cls), class_getName(meta_class));
+        NSLog(@&quot;==========================================================&quot;);
+        // 变量实例大小
+        NSLog(@&quot;instance size: %zu&quot;, class_getInstanceSize(cls));
+        NSLog(@&quot;==========================================================&quot;);
+        // 成员变量
+        Ivar *ivars = class_copyIvarList(cls, &amp;outCount);
+        for (int i = 0; i &lt; outCount; i++) {
+            Ivar ivar = ivars[i];
+            NSLog(@&quot;instance variable&#39;s name: %s at index: %d&quot;, ivar_getName(ivar), i);
         }
-
-        imageData = nil;
-
-        if (self.isCancelled) return;
-
-        [self.delegate performSelectorOnMainThread:@selector(imageDownloaderDidFinish:)                                                                  
-                                        withObject:downloadedImage
-                                     waitUntilDone:NO];
+        free(ivars);
+        Ivar string = class_getInstanceVariable(cls, &quot;_string&quot;);
+        if (string != NULL) {
+            NSLog(@&quot;instace variable %s&quot;, ivar_getName(string));
+        }
+        NSLog(@&quot;==========================================================&quot;);
+        // 属性操作
+        objc_property_t * properties = class_copyPropertyList(cls, &amp;outCount);
+        for (int i = 0; i &lt; outCount; i++) {
+            objc_property_t property = properties[i];
+            NSLog(@&quot;property&#39;s name: %s&quot;, property_getName(property));
+        }
+        free(properties);
+        objc_property_t array = class_getProperty(cls, &quot;array&quot;);
+        if (array != NULL) {
+            NSLog(@&quot;property %s&quot;, property_getName(array));
+        }
+        NSLog(@&quot;==========================================================&quot;);
+        // 方法操作
+        Method *methods = class_copyMethodList(cls, &amp;outCount);
+        for (int i = 0; i &lt; outCount; i++) {
+            Method method = methods[i];
+            NSLog(@&quot;method&#39;s signature: %s&quot;, method_getName(method));
+        }
+        free(methods);
+        Method method1 = class_getInstanceMethod(cls, @selector(method1));
+        if (method1 != NULL) {
+            NSLog(@&quot;method %s&quot;, method_getName(method1));
+        }
+        Method classMethod = class_getClassMethod(cls, @selector(classMethod1));
+        if (classMethod != NULL) {
+            NSLog(@&quot;class method : %s&quot;, method_getName(classMethod));
+        }
+        NSLog(@&quot;MyClass is%@ responsd to selector: method3WithArg1:arg2:&quot;, class_respondsToSelector(cls, @selector(method3WithArg1:arg2:)) ? @&quot;&quot; : @&quot; not&quot;);
+        IMP imp = class_getMethodImplementation(cls, @selector(method1));
+        imp();
+        NSLog(@&quot;==========================================================&quot;);
+        // 协议
+        Protocol * __unsafe_unretained * protocols = class_copyProtocolList(cls, &amp;outCount);
+        Protocol * protocol;
+        for (int i = 0; i &lt; outCount; i++) {
+            protocol = protocols[i];
+            NSLog(@&quot;protocol name: %s&quot;, protocol_getName(protocol));
+        }
+        NSLog(@&quot;MyClass is%@ responsed to protocol %s&quot;, class_conformsToProtocol(cls, protocol) ? @&quot;&quot; : @&quot; not&quot;, protocol_getName(protocol));
+        NSLog(@&quot;==========================================================&quot;);
     }
+    return 0;
 }
 
+//输出结果
+
+
+</code></pre>
+
+<h3 id="toc_1">动态创建类</h3>
+
+<pre><code class="language-objectivec">Class cls = objc_allocateClassPair(MyClass.class, &quot;MySubClass&quot;, 0);
+class_addMethod(cls, @selector(submethod1), (IMP)imp_submethod1, &quot;v@:&quot;);
+class_replaceMethod(cls, @selector(method1), (IMP)imp_submethod1, &quot;v@:&quot;);
+class_addIvar(cls, &quot;_ivar1&quot;, sizeof(NSString *), log(sizeof(NSString *)), &quot;i&quot;);
+objc_property_attribute_t type = {&quot;T&quot;, &quot;@\&quot;NSString\&quot;&quot;};
+objc_property_attribute_t ownership = { &quot;C&quot;, &quot;&quot; };
+objc_property_attribute_t backingivar = { &quot;V&quot;, &quot;_ivar1&quot;};
+objc_property_attribute_t attrs[] = {type, ownership, backingivar};
+class_addProperty(cls, &quot;property2&quot;, attrs, 3);
+objc_registerClassPair(cls);
+id instance = [[cls alloc] init];
+[instance performSelector:@selector(submethod1)];
+[instance performSelector:@selector(method1)];
+//输出
+2014-10-23 11:35:31.006 RuntimeTest[3800:66152] run sub method 1
+2014-10-23 11:35:31.006 RuntimeTest[3800:66152] run sub method 1
+
+</code></pre>
+
+<h3 id="toc_2">动态创建对象</h3>
+
+<pre><code class="language-objectivec">id theObject = class_createInstance(NSString.class, sizeof(unsigned));
+ 
+id str1 = [theObject init];
+NSLog(@&quot;%@&quot;, [str1 class]);
+id str2 = [[NSString alloc] initWithString:@&quot;test&quot;];
+NSLog(@&quot;%@&quot;, [str2 class]);
+//输出
+2014-10-23 12:46:50.781 RuntimeTest[4039:89088] NSString
+2014-10-23 12:46:50.781 RuntimeTest[4039:89088] __NSCFConstantString
+
+</code></pre>
+
+<h3 id="toc_3">实例操作函数</h3>
+
+<h4 id="toc_4">对象拷贝</h4>
+
+<pre><code class="language-objectivec">NSObject *a = [[NSObject alloc] init];
+id newB = object_copy(a, class_getInstanceSize(MyClass.class));
+object_setClass(newB, MyClass.class);
+object_dispose(a);
+</code></pre>
+
+<h4 id="toc_5">获取类定义（获取已注册类）</h4>
+
+<pre><code class="language-objectivec">int numClasses;
+Class * classes = NULL;
+numClasses = objc_getClassList(NULL, 0);
+if (numClasses &gt; 0) {
+    classes = malloc(sizeof(Class) * numClasses);
+    numClasses = objc_getClassList(classes, numClasses);
+    NSLog(@&quot;number of classes: %d&quot;, numClasses);
+    for (int i = 0; i &lt; numClasses; i++) {
+        Class cls = classes[i];
+        NSLog(@&quot;class name: %s&quot;, class_getName(cls));
+    }
+    free(classes);
+}
+</code></pre>
+
+<h2 id="toc_6">成员变量、属性</h2>
+
+<h3 id="toc_7">关联对象</h3>
+
+<p>假定我们想要动态地将一个Tap手势操作连接到任何UIView中，并且根据需要指定点击后的实际操作。这时候我们就可以将一个手势对象及操作的block对象关联到我们的UIView对象中。这项任务分两部分。<br/>
+首先，如果需要，我们要创建一个手势识别对象并将它及block做为关联对象。如下代码所示：</p>
+
+<pre><code class="language-objectivec">- (void)setTapActionWithBlock:(void (^)(void))block
+{
+    UITapGestureRecognizer *gesture = objc_getAssociatedObject(self, &amp;kDTActionHandlerTapGestureKey);
+ 
+    if (!gesture)
+    {
+        gesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(__handleActionForTapGesture:)];
+        [self addGestureRecognizer:gesture];
+        objc_setAssociatedObject(self, &amp;kDTActionHandlerTapGestureKey, gesture, OBJC_ASSOCIATION_RETAIN);
+    }
+    objc_setAssociatedObject(self, &amp;kDTActionHandlerTapBlockKey, block, OBJC_ASSOCIATION_COPY);
+}
+</code></pre>
+
+<p>这段代码检测了手势识别的关联对象。如果没有，则创建并建立关联关系。同时，将传入的块对象连接到指定的key上。注意<code>block</code>对象的关联内存管理策略。<br/>
+手势识别对象需要一个<code>target</code>和<code>action</code>，所以接下来我们定义处理方法：</p>
+
+<pre><code class="language-objectivec">- (void)__handleActionForTapGesture:(UITapGestureRecognizer *)gesture
+{
+    if (gesture.state == UIGestureRecognizerStateRecognized)
+    {
+        void(^action)(void) = objc_getAssociatedObject(self, &amp;kDTActionHandlerTapBlockKey);
+        if (action)
+        {
+            action();
+        }
+    }
+}
+</code></pre>
+
+<h3 id="toc_8">设置属性</h3>
+
+<p>我们从服务端两个不同的接口获取相同的字典数据，但这两个接口是由两个人写的，相同的信息使用了不同的字段表示。我们在接收到数据时，可将这些数据保存在相同的对象中。对象类如下定义：</p>
+
+<pre><code class="language-objectivec">@interface MyObject: NSObject
+@property (nonatomic, copy) NSString    *   name;                  
+@property (nonatomic, copy) NSString    *   status;                 
 @end
 </code></pre>
 
-<h5 id="toc_3">1. Concurrent</h5>
+<p>接口A、B返回的字典数据如下所示：</p>
 
-<p>NSOperation有三个状态量isCancelled, isExecuting和isFinished. isCancelled上面解释过. main函数执行完成后, isExecuting会被置为NO, 而isFinished则被置为YES.</p>
+<pre><code class="language-objectivec">@{@&quot;name1&quot;: &quot;张三&quot;, @&quot;status1&quot;: @&quot;start&quot;}
+@{@&quot;name2&quot;: &quot;张三&quot;, @&quot;status2&quot;: @&quot;end&quot;}
+</code></pre>
 
-<p>那肿么实现并发(concurrent)的NSOperation呢? 也很简单:<br/>
-1). 重写isConcurrent函数, 返回YES, 这个告诉系统各单位注意了我这个operation是要并发的.<br/>
-2). 重写start()函数.<br/>
-3). 重写isExecuting和isFinished函数<br/>
-4). 有必要时需要重写isCanceled函数</p>
+<p>通常的方法是写两个方法分别做转换，不过如果能灵活地运用Runtime的话，可以只实现一个转换方法，为此，我们需要先定义一个映射字典(全局变量)</p>
 
-<blockquote>
-<p>为什么在并发情况下需要自己来设定isExecuting和isFinished这两个状态量呢? 因为在并发情况下系统不知道operation什么时候finished, operation里面的task一般来说是异步执行的, 也就是start函数返回了operation不一定就是finish了, 这个你自己来控制, 你什么时候将isFinished置为YES(发送相应的KVO消息), operation就什么时候完成了.</p>
-</blockquote>
-
-<pre><code class="language-object-c">- (BOOL)isConcurrent {
-    return YES;
-}
-
-- (void)start 
+<pre><code class="language-objectivec">static NSMutableDictionary *map = nil;
+@implementation MyObject    
++ (void)load
 {
-    [self willChangeValueForKey:@&quot;isExecuting&quot;];
-    _isExecuting = YES;
-    [self didChangeValueForKey:@&quot;isExecuting&quot;];
-
-    NSURLRequest * request = [NSURLRequest requestWithURL:imageURL];
-    _connection = [[NSURLConnection alloc] initWithRequest:request
-                                                  delegate:self];
-    if (_connection == nil) [self finish];
+    map = [NSMutableDictionary dictionary];
+    map[@&quot;name1&quot;]                = @&quot;name&quot;;
+    map[@&quot;status1&quot;]              = @&quot;status&quot;;
+    map[@&quot;name2&quot;]                = @&quot;name&quot;;
+    map[@&quot;status2&quot;]              = @&quot;status&quot;;
 }
-
-- (void)finish
-{
-    self.connection = nil;
-
-    [self willChangeValueForKey:@&quot;isExecuting&quot;];
-    [self willChangeValueForKey:@&quot;isFinished&quot;];
-
-    _isExecuting = NO;
-    _isFinished = YES;
-
-    [self didChangeValueForKey:@&quot;isExecuting&quot;];
-    [self didChangeValueForKey:@&quot;isFinished&quot;];
-}
-
-#pragma mark - NSURLConnection delegate
-- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
-    // to do something...
-}
-
-- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
-    // to do something...
-}
-
-- (void)connectionDidFinishLoading:(NSURLConnection *)connection {
-    [self finish];
-}
-
-- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
-    [self finish];
-}
-
 @end
 </code></pre>
 
-<p>还有以下几点需要注意:</p>
+<p>上面的代码将两个字典中不同的字段映射到MyObject中相同的属性上，这样，转换方法可如下处理：</p>
 
-<ul>
-<li> operation的executing和finished状态量需要用willChangeValueForKey/didChangeValueForKey来触发KVO消息.</li>
-<li> 在调用完NSURLConnection之后start函数就返回了, 后面就坐等connection的回调了</li>
-<li> 在connection的didFinish或didFail回调里面设置operation的finish状态, 告诉系统operation执行完毕了.</li>
-</ul>
+<pre><code class="language-objectivec">- (void)setDataWithDic:(NSDictionary *)dic
+{
+    [dic enumerateKeysAndObjectsUsingBlock:^(NSString *key, id obj, BOOL *stop) {
+        NSString *propertyKey = [self propertyForKey:key];
+        if (propertyKey)
+        {
+            objc_property_t property = class_getProperty([self class], [propertyKey UTF8String]);
+            // TODO: 针对特殊数据类型做处理
+            NSString *attributeString = [NSString stringWithCString:property_getAttributes(property) encoding:NSUTF8StringEncoding];
+            ...
+            [self setValue:obj forKey:propertyKey];
+        }
+    }];
+}
+</code></pre>
 
-<p><strong>注意:</strong><br/>
-如果你是在主线程调用的这个并发的operation, 那一切都是非常的perfect, 就算你当前在操作UI也不影响operation的下载操作. BUT, 如果你是在子线程调用的, 或者把operation加到了非main queue, 那么问题来了, 你会发现这货的NSURLConnection delegate不走了.</p>
+<h2 id="toc_9">方法和消息</h2>
 
-<blockquote>
-<p>这是runLoop的原因，主线程会自动创建一个RunLoop来保证程序一直运行. 但子线程默认不创建NSRunLoop, 所以子线程的任务一旦返回, 线程就over了.上面的并发operation当start函数返回后子线程就退出了, 当NSURLConnection的delegate回调时, 线程已经木有了, 所以你也就收不到回调了. 为了保证子线程持续live(等待connection回调), 你需要在子线程中加入RunLoop, 来保证它不会被kill掉.<br/>
-详细关于RunLoop的知识可以查看 <a href="%5B%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B%E3%80%81NSThread&amp;GCD&amp;NSOpration&amp;runLoop%5D(14871584203378.html)">并发编程Runloop</a></p>
-</blockquote>
+<h3 id="toc_10">消息转发 -</h3>
 
-<p>对于这个问题:我们解决办法</p>
+<h4 id="toc_11">备用接收者</h4>
 
-<ol>
-<li><p>让start函数在主线程运行(即使[operation start]是在子线程调用的).</p>
-<pre><code class="language-object-c">- (void)start 
-{<br/>
-    if (![NSThread isMainThread]) {<br/>
-        [self performSelectorOnMainThread:@selector(start)<br/>
-                           withObject:nil<br/>
-                        waitUntilDone:NO];<br/>
-        return;<br/>
- }<br/>
-    // set up NSURLConnection...<br/>
-}<br/>
-或者<br/>
-   - (void)start<br/>
-   {<br/>
-       [[NSOperationQueue mainQueue] addOperationWithBlock:^{<br/>
-       self.connection = [NSURLConnection connectionWithRequest:self.request delegate:self];<br/>
-       }];<br/>
-   }
-</code></pre></li>
-<li><p>方法二是:让<code>operation</code>的start函数在子线程运行, 但是我们为它创建一个RunLoop. 然后把<code>URL connection schedule</code>到上面去. （这种方法不推荐）</p>
-<pre><code class="language-object-c">    //参考AFNetWorking的做法
-    + (void)networkRequestThreadEntryPoint:(id)__unused object <br/>
-    {<br/>
-        @autoreleasepool {<br/>
-            [[NSThread currentThread] setName:@&quot;AFNetworking&quot;];<br/>
-            NSRunLoop *runLoop = [NSRunLoop currentRunLoop];<br/>
-            [runLoop addPort:[NSMachPort port] forMode:NSDefaultRunLoopMode];<br/>
-            [runLoop run];<br/>
-        }<br/>
-    }<br/>
-    + (NSThread *)networkRequestThread <br/>
-    {<br/>
-        static NSThread *_networkRequestThread = nil;<br/>
-        static dispatch_once_t oncePredicate;<br/>
-        dispatch_once(&amp;oncePredicate, ^{<br/>
-            _networkRequestThread = [[NSThread alloc] initWithTarget:self selector:@selector(networkRequestThreadEntryPoint:) object:nil];<br/>
-            [_networkRequestThread start];<br/>
-        });<br/>
-        return _networkRequestThread;<br/>
-    }<br/>
-    - (void)start <br/>
-    {<br/>
-        [self.lock lock];<br/>
-        if ([self isCancelled]) {<br/>
-            [self performSelector:@selector(cancelConnection) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];<br/>
-        } else if ([self isReady]) {<br/>
-            self.state = AFOperationExecutingState;<br/>
-            [self performSelector:@selector(operationDidStart) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];<br/>
-        }<br/>
-        [self.lock unlock];<br/>
+<p>使用这个方法通常是在对象内部，可能还有一系列其它对象能处理该消息，我们便可借这些对象来处理消息并返回，这样在对象外部看来，还是由该对象亲自处理了这一消息。</p>
+
+<pre><code class="language-objectivec">@interface SUTRuntimeMethodHelper : NSObject
+- (void)method2;
+@end
+@implementation SUTRuntimeMethodHelper
+- (void)method2 {
+    NSLog(@&quot;%@, %p&quot;, self, _cmd);
+}
+@end
+#pragma mark -
+@interface SUTRuntimeMethod () {
+    SUTRuntimeMethodHelper *_helper;
+}
+@end
+@implementation SUTRuntimeMethod
++ (instancetype)object {
+    return [[self alloc] init];
+}
+- (instancetype)init {
+    self = [super init];
+    if (self != nil) {
+        _helper = [[SUTRuntimeMethodHelper alloc] init];
     }
-</code></pre>
-<p>AFNetworking创建了一个新的子线程(在子线程中调用NSRunLoop *runloop = [NSRunLoop currentRunLoop]; 获取RunLoop对象的时候, 就会创建RunLoop), 然后把它加到RunLoop里面来保证它一直运行.</p>
-<blockquote>
-<p>这边我们可以简单的判断下当前start()的线程是子线程还是主线程, 如果是子线程则调用[NSRunLoop currentRunLoop]创新RunLoop, 否则就直接调用[NSRunLoop mainRunLoop], 当然在主线程下就没必要调用[runLoop run]了, 因为它本来就是一直run的.<br/>
-我们还可以使用CFRunLoop来启动和停止RunLoop<br/>
-<code>[self.connection scheduleInRunLoop:[NSRunLoop currentRunLoop]<br/>
-                       forMode:NSRunLoopCommonModes];<br/>
-CFRunLoopRun();<br/>
-</code><br/>
-等到该Operation结束的时候, 一定要记得调用<strong>CFRunLoopStop()</strong>停止当前线程的RunLoop, 让当前线程在operation finished之后可以退出.</p>
-</blockquote></li>
-</ol>
-
-<hr/>
-
-<h2 id="toc_4">NSOperationQueue</h2>
-
-<p>看过上面的内容就知道，我们可以调用一个 NSOperation 对象的 <code>start()</code> 方法来启动这个任务，但是这样做他们默认是 同步执行 的。就算是 <code>addExecutionBlock</code> 方法，也会在 当前线程和其他线程 中执行，也就是说还是会占用当前线程。这是就要用到队列 <code>NSOperationQueue</code> 了。而且，按类型来说的话一共有两种类型：主队列、其他队列。只要添加到队列，会自动调用任务的 <code>start()</code> 方法</p>
-
-<p>一旦NSOperation被add到Queue里面那么我们就不care它自身是不是并发设计的了, 因为被add到Queue里面的operation必定是并发的. 而且我们可以设置Queue的maxConcurrentOperationCount来指定最大的并发数(也就是几个operation可以同时被执行, <strong>如果这个值设为1, 那这个Queue就是串行队列了</strong>).<br/>
- Queue会为每一个add到队列里面的operation创建一个线程来运行其start函数, 这样每个start都分布在不同的线程里面来实现operation们的并发执行.<br/>
-注意:<br/>
-** 我们这边所说的并发都是指NSOperation之间的并发(多个operation同时执行), 如果maxConcurrentOperationCount设置为1或者把operation放到[NSOperationQueue mainQueue]里面执行, 那它们只会顺序(Serial)执行, 当然就不可能并发了.**</p>
-
-<h5 id="toc_5">* 主队列</h5>
-
-<p>细心同学会发现，每套多线程方案都会有一个主线程。这是一个特殊的线程必须串行。凡是添加到主队列中的任务（NSOperation），都会放到主线程中执行<br/><br/>
-    //OBJECTIVE-C<br/>
-    NSOperationQueue *queue = [NSOperationQueue mainQueue];</p>
-
-<pre><code class="language-text">//SWIFT
-let queue = NSOperationQueue.mainQueue()
-</code></pre>
-
-<h5 id="toc_6">* 其他队列</h5>
-
-<p>通过初始化产生的队列就是其他队列了，其他队列不需要名字<br/>
-<strong>注意：</strong>其他队列会在其他线程中并行执行</p>
-
-<pre><code class="language-object-c">    //1.创建一个其他队列    
-    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
-    
-    //2.创建NSBlockOperation对象
-    NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
-        NSLog(@&quot;%@&quot;, [NSThread currentThread]);
-    }];
-    
-    //3.添加多个Block
-    for (NSInteger i = 0; i &lt; 5; i++) {
-        [operation addExecutionBlock:^{
-            NSLog(@&quot;第%ld次：%@&quot;, i, [NSThread currentThread]);
-        }];
+    return self;
+}
+- (void)test {
+    [self performSelector:@selector(method2)];
+}
+- (id)forwardingTargetForSelector:(SEL)aSelector {
+    NSLog(@&quot;forwardingTargetForSelector&quot;);
+    NSString *selectorString = NSStringFromSelector(aSelector);
+    // 将消息转发给_helper来处理
+    if ([selectorString isEqualToString:@&quot;method2&quot;]) {
+        return _helper;
     }
-
-    //4.队列添加任务
-    [queue addOperation:operation];
-    /**
-       NSInvocationOperation和NSOperationQueue结合后能够开启新线程，进行并发执行
-       NSBlockOperation和NSOperationQueue也能够开启新线程，进行并发执行
-    */
+    return [super forwardingTargetForSelector:aSelector];
+}
+@end
 </code></pre>
 
-<p><code>- (void)addOperationWithBlock:(void (^)(void))block;</code><br/>
-无需先创建任务，在block中添加任务，直接将任务block加入到队列中,能够开启新线程，进行并发执行。</p>
+<p>这一步合适于我们只想将消息转发到另一个能处理该消息的对象上。但这一步无法对消息进行处理，如操作消息的参数和返回值。</p>
 
-<hr/>
+<h4 id="toc_12">完整消息转发</h4>
 
-<p>这时如果我们想要任务在其他线程串行执行<br/><br/>
-<code>NSOperationQueue</code>有个参数<code>maxConcurrentOperationCount</code>最大并发数，设置为1时就是串行了<br/><br/>
-<code>maxConcurrentOperationCount</code>默认情况下为-1，表示不进行限制，默认为并发执行。<br/>
-<code>maxConcurrentOperationCount</code>大于1时，进行并发执行，当然这个值不应超过系统限制，即使自己设置一个很大的值，系统也会自动调整</p>
-
-<h3 id="toc_7">操作依赖</h3>
-
-<p><code>NSOperation</code>还有个实用功能添加依赖。比如有 3 个任务：A: 从服务器上下载一张图片，B：给这张图片加个水印，C：把图片返回给服务器。这时就可以用到依赖了:</p>
-
-<pre><code class="language-object-c">    //1.任务一：下载图片
-    NSBlockOperation *operation1 = [NSBlockOperation blockOperationWithBlock:^{
-        NSLog(@&quot;下载图片 - %@&quot;, [NSThread currentThread]);
-        [NSThread sleepForTimeInterval:1.0];
-    }];
-    
-    //2.任务二：打水印
-    NSBlockOperation *operation2 = [NSBlockOperation blockOperationWithBlock:^{
-        NSLog(@&quot;打水印   - %@&quot;, [NSThread currentThread]);
-        [NSThread sleepForTimeInterval:1.0];
-    }];
-    
-    //3.任务三：上传图片
-    NSBlockOperation *operation3 = [NSBlockOperation blockOperationWithBlock:^{
-        NSLog(@&quot;上传图片 - %@&quot;, [NSThread currentThread]);
-        [NSThread sleepForTimeInterval:1.0];
-    }];
-    
-    //4.设置依赖
-    [operation2 addDependency:operation1];      //任务二依赖任务一
-    [operation3 addDependency:operation2];      //任务三依赖任务二
-    
-    //5.创建队列并加入任务
-    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
-    [queue addOperations:@[operation3, operation2, operation1] waitUntilFinished:NO];
+<pre><code class="language-objectivec">- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+    NSMethodSignature *signature = [super methodSignatureForSelector:aSelector];
+    if (!signature) {
+        if ([SUTRuntimeMethodHelper instancesRespondToSelector:aSelector]) {
+            signature = [SUTRuntimeMethodHelper instanceMethodSignatureForSelector:aSelector];
+        }
+    }
+    return signature;
+}
+- (void)forwardInvocation:(NSInvocation *)anInvocation {
+    if ([SUTRuntimeMethodHelper instancesRespondToSelector:anInvocation.selector]) {
+        [anInvocation invokeWithTarget:_helper];
+    }
+}
 </code></pre>
 
-<p>注意不能添加互相依赖否则会锁死<br/><br/>
-可以用<code>removeDependency</code>来解除依赖</p>
+<h2 id="toc_13">Method Swizzing</h2>
 
-<p><strong>注意:</strong><br/>
-如果我在子线程调用[operation start]函数, 或者把operation放到非MainQueue里面执行, 但是在operation的内部把start抛到主线程来执行(利用主线程的main run loop), 那多个operation其实不都是要在主线程执行的么, 这样还能并发? Luckily, 仍然是并发执行的,当然这个并发指的是狭义并发也就是主线程进行伪并行<br/>
-<img src="media/14873146865194/14873217004353.jpg" alt=""/></p>
+<p>例如，我们想跟踪在程序中每一个view controller展示给用户的次数：当然，我们可以在每个view controller的viewDidAppear中添加跟踪代码；但是这太过麻烦，需要在每个view controller中写重复的代码。创建一个子类可能是一种实现方式，但需要同时创建UIViewController, UITableViewController, UINavigationController及其它UIKit中view controller的子类，这同样会产生许多重复的代码。</p>
 
-<hr/>
+<pre><code class="language-objectivec">#import &lt;objc/runtime.h&gt;
+@implementation UIViewController (Tracking)
++ (void)load {
+    static dispatch_once_t onceToken;
+    dispatch_once(&amp;onceToken, ^{
+        Class class = [self class];         
+        // When swizzling a class method, use the following:
+        // Class class = object_getClass((id)self);
+        SEL originalSelector = @selector(viewWillAppear:);
+        SEL swizzledSelector = @selector(xxx_viewWillAppear:);
+        Method originalMethod = class_getInstanceMethod(class, originalSelector);
+        Method swizzledMethod = class_getInstanceMethod(class, swizzledSelector);
+        BOOL didAddMethod = class_addMethod(class,
+                originalSelector,
+                method_getImplementation(swizzledMethod),
+                method_getTypeEncoding(swizzledMethod));
+        if (didAddMethod) {
+            class_replaceMethod(class,
+                swizzledSelector,
+                method_getImplementation(originalMethod),
+                method_getTypeEncoding(originalMethod));
+        } else {
+            method_exchangeImplementations(originalMethod, swizzledMethod);
+        }
+    });
+}
+#pragma mark - Method Swizzling
+- (void)xxx_viewWillAppear:(BOOL)animated {
+    [self xxx_viewWillAppear:animated];
+    NSLog(@&quot;viewWillAppear: %@&quot;, self);
+}
+</code></pre>
 
-<h3 id="toc_8">其他方法</h3>
+<p>在这里，我们通过method swizzling修改了UIViewController的@selector(viewWillAppear:)对应的函数指针，使其实现指向了我们自定义的xxx_viewWillAppear的实现。这样，当UIViewController及其子类的对象调用viewWillAppear时，都会打印一条日志信息。</p>
 
-<ul>
-<li><h5 id="toc_9">NSOperation</h5>
-<pre><code class="language-text">BOOL executing; //判断任务是否正在执行
-BOOL finished; //判断任务是否完成<br/>
-void (^completionBlock)(void); //用来设置完成后需要执行的操作<br/>
-- (void)cancel; //取消任务 `NSOperation`提供的方法，可取消单个操作<br/>
-- (void)waitUntilFinished; //阻塞当前线程直到此任务执行完毕
-</code></pre></li>
-<li><h5 id="toc_10">NSOperationQueue</h5>
-<pre><code class="language-text">NSUInteger operationCount; //获取队列的任务数
-- (void)cancelAllOperations; //取消队列中所有的任务<br/>
-- (void)waitUntilAllOperationsAreFinished; //阻塞当前线程直到此队列中的所有任务执行完毕<br/>
-[queue setSuspended:YES]; // 暂停queue<br/>
-[queue setSuspended:NO]; // 继续queue
-</code></pre></li>
-</ul>
-
-<hr/>
-
-<h3 id="toc_11">与君共勉</h3>
-
-<p><img src="media/14873146865194/14876658479087.jpg" alt=""/></p>
+<p>上面的例子很好地展示了使用method swizzling来一个类中注入一些我们新的操作。当然，还有许多场景可以使用method swizzling，在此不多举例。</p>
 
                         
                       </div>
@@ -520,10 +502,10 @@ void (^completionBlock)(void); //用来设置完成后需要执行的操作<br/>
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/17</span>
+                    <span class="date">2017/2/22</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Concurrent-Programming.html'>多线程</a></span>
+          					    <span class="posted-in"><a href='RunTime.html'>runtime</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -590,11 +572,11 @@ void (^completionBlock)(void); //用来设置完成后需要执行的操作<br/>
         
             <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
         
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
             <a href="Computer-programming.html"><strong>计算机编程</strong></a>
         
             <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
-        
-            <a href="supplement.html"><strong>补充</strong></a>
         
             <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
         
@@ -617,31 +599,31 @@ void (^completionBlock)(void); //用来设置完成后需要执行的操作<br/>
 	      
 		      
 			      <li class="post">
-			        <a href="15350923380421.html">CGColor</a>
+			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350771796806.html">CGColorSpace</a>
+			        <a href="15556594680013.html"></a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15350068830702.html">CGBlendMode</a>
+			        <a href="15554889031358.html">otool命令</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15332875866545.html">常见内置模块</a>
+			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15331955872244.html">常用第三方模块</a>
+			        <a href="15553854847636.html">运行时</a>
 			      </li>
 		     
 		  
