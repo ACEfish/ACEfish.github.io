@@ -1,0 +1,475 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+    
+  崩溃日志信息以及符号化 - ACEfish-Blog
+  
+  </title>
+  
+  
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+    <link rel="stylesheet" href="asset/css/foundation.min.css" />
+    <link rel="stylesheet" href="asset/css/docs.css" />
+    <script src="asset/js/vendor/modernizr.js"></script>
+    <script src="asset/js/vendor/jquery.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/github.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+<script type="text/javascript">
+  function before_search(){
+    var searchVal = 'site:acefish.github.io ' + document.getElementById('search_input').value;
+    document.getElementById('search_q').value = searchVal;
+    return true;
+  }
+</script>
+  </head>
+  <body class="antialiased hide-extras">
+    
+    <div class="marketing off-canvas-wrap" data-offcanvas>
+      <div class="inner-wrap">
+
+
+<nav class="top-bar docs-bar hide-for-small" data-topbar>
+
+
+  <section class="top-bar-section">
+  <div class="row">
+      <div style="position: relative;width:100%;"><div style="position: absolute; width:100%;">
+        <ul id="main-menu" class="left">
+        
+        <li id=""><a target="_self" href="index.html">Home</a></li>
+        
+        <li id=""><a target="_self" href="archives.html">Archives</a></li>
+        
+        </ul>
+
+        <ul class="right" id="search-wrap">
+          <li>
+<form target="_blank" onsubmit="return before_search();" action="http://google.com/search" method="get">
+    <input type="hidden" id="search_q" name="q" value="" />
+    <input tabindex="1" type="search" id="search_input"  placeholder="Search"/>
+</form>
+</li>
+          </ul>
+      </div></div>
+  </div>
+  </section>
+
+</nav>
+
+        <nav class="tab-bar show-for-small">
+  <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
+    <span> &nbsp; ACEfish-Blog</span>
+  </a>
+</nav>
+
+<aside class="left-off-canvas-menu">
+      <ul class="off-canvas-list">
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
+
+    <li><label>Categories</label></li>
+
+        
+            <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
+            <li><a href="Computer-programming.html">计算机编程</a></li>
+        
+            <li><a href="iOSDevelop.html">iOSDevelop</a></li>
+        
+            <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
+        
+            <li><a href="React-Native.html">React-Native</a></li>
+        
+            <li><a href="Python.html">Python</a></li>
+         
+
+      </ul>
+    </aside>
+
+<a class="exit-off-canvas" href="#"></a>
+
+
+        <section id="main-content" role="main" class="scroll-container">
+        
+       
+
+ <script type="text/javascript">
+  $(function(){
+    $('#menu_item_index').addClass('is_active');
+  });
+</script>
+<div class="row">
+  <div class="large-8 medium-8 columns">
+      <div class="markdown-body article-wrap">
+       <div class="article">
+          
+          <h1>崩溃日志信息以及符号化</h1>
+     
+        <div class="read-more clearfix">
+          <span class="date">2019/4/23</span>
+
+          <span>posted in&nbsp;</span> 
+          
+              <span class="posted-in"><a href='%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7-1.html'>项目监控</a></span>
+           
+         
+          <span class="comments">
+            
+
+            
+          </span>
+
+        </div>
+      </div><!-- article -->
+
+      <div class="article-content">
+      <p>我们采集到的崩溃日志，主要包含以下内容:</p>
+
+<ul>
+<li>进程信息: 崩溃进程的相关信息，比如崩溃报告唯一标识符、唯一键值、设备标识</li>
+<li>基本信息: 崩溃发生的日期、iOS版本</li>
+<li>异常信息: 异常类型、异常编码、异常的线程</li>
+<li>线程回溯: 奔溃是的方法调用栈</li>
+<li>进程状态: 闪退时寄存器中的值</li>
+<li>二级制映像: 闪退时已经加载的二进制文件</li>
+</ul>
+
+<p>通常我们分析日志信息先看异常信息，分析出问题的线程，然后在回溯中找到对应线程，查看符号化后的方法调用栈，分析问题</p>
+
+<h3 id="toc_0">异常类型</h3>
+
+<p>常用的有:</p>
+
+<p>EXC_CRASH<br/>
+EXC_BAD_ACCESS (SIGSEGV)<br/>
+NSRangeException<br/>
+NSZombie<br/>
+等</p>
+
+<h3 id="toc_1">异常编码</h3>
+
+<p>在App被系统杀掉的情况 可以通过查看异常编码，可以查看完整的<a href="https://en.wikipedia.org/wiki/Hexspeak">异常编码信息</a></p>
+
+<p>常用的就一下几种:</p>
+
+<ul>
+<li>0x8badf00d 表示app长时间无响应被watchdog杀掉</li>
+<li>0xdeadfa11 表示app被用户强制退出</li>
+<li>0xc00010ff 表示app因为运行设备温度过高被杀</li>
+</ul>
+
+<h2 id="toc_2">获取日志</h2>
+
+<p>常用的获取crash日志信息方式有以下几种</p>
+
+<h3 id="toc_3">1. 系统自带</h3>
+
+<p>当一个app崩溃时，iOS系统自带的CrashReporter会创建一份crash日志保存在设备上。如果能拿到Crash的手机，就可以通过Xcode或symbolicatecrash符号化Crash日志。<strong>如果设备上的Crash 日志超过了一定数量，可能保存不了Crash日志</strong></p>
+
+<h4 id="toc_4">使用Xcode导出日志</h4>
+
+<p>在Xcode-&gt;Window菜单-&gt;Devices，弹出的设备面板，选择崩溃的设备 -&gt; 选择右侧的View Device Logs-&gt;选中导出的日志，右击，选中export log, 导出.crash后缀的崩溃日志<br/>
+<img src="media/15560067896432/15560087186815.jpg" alt="" style="width:825px;"/></p>
+
+<h4 id="toc_5">2. 第三方SDK</h4>
+
+<p>例如友盟、bugly等</p>
+
+<h4 id="toc_6">3. 开源框架</h4>
+
+<p>常用的有<code>KSCrash</code></p>
+
+<h4 id="toc_7">4. 自己收集和符号化程序</h4>
+
+<h2 id="toc_8">解析日志</h2>
+
+<h3 id="toc_9">DWARF简介</h3>
+
+<p>DWARF（DebuggingWith Arbitrary Record Formats），是ELF和Mach-O等文件格式中用来存储和处理调试信息的标准格式，.dSYM中真正保存符号表数据的是DWARF文件。</p>
+
+<p>保存在DAWARF中的信息是高度压缩的，可以通过dwarfdump命令从中提取出可读信息</p>
+
+<h3 id="toc_10">什么是符号表</h3>
+
+<p>iOS符号表用来将堆栈信息对应到源码信息，常用来帮助还原crash的堆栈信息，来快速定位出错的代码位置</p>
+
+<p>符号表是debug的产物，使用archive模式打包，符号表会被裁减掉，这也增加了应用安全，提高逆向的难度。我们可以在xcode选项中配置为不裁剪，但是这会让打包的IPA变大:<br/>
+<img src="media/15560067896432/15560199675296.jpg" alt="" style="width:926px;"/></p>
+
+<p><strong>Archive时文件中虽然没有符号表，但是生成了一个dSYM符号文件</strong>，通常名称为<code>xxx.app.dSYM</code><br/>
+Xcode Release编译默认会生成dSYM文件，而debug编译默认不会生成,对应的Xcode配置如下：<br/>
+<code>XCode -&gt; Build Settings -&gt; Code Generation -&gt; Generate Debug Symbols -&gt; Yes</code><br/>
+<code>XCode -&gt; Build Settings -&gt; Build Option -&gt; Debug Information Format -&gt; DWARF with dSYM File</code><br/>
+<img src="media/15560067896432/15560166666589.jpg" alt="" style="width:557px;"/><br/>
+<img src="media/15560067896432/15560215274669.jpg" alt="" style="width:719px;"/></p>
+
+<p>每次构建都会生成不同的符号表，每个符号表都有不同的UUID<br/>
+查看dSYM文件的UUID</p>
+
+<pre><code class="language-linux">xcrun dwarfdump --uuid &lt;dSYM文件&gt;
+</code></pre>
+
+<p>因此发布的app，在crash后并不能在设备上完成符号化工作，只能返回带地址的日志信息，需要我们自己进行符号化解析</p>
+
+<h4 id="toc_11">用Xcode解析日志</h4>
+
+<p>当<code>crash log</code>和<code>DSYM或者App</code>携带的UUID一致时(crash log的UUID指的是镜像的UUID)，Xcode可以将日志中的地址信息符号化为代码中的符号</p>
+
+<ul>
+<li>如果该App是由自己电脑编译生成的，Xcode根据spotlight自动找到对应的符号文件</li>
+<li><p>如果不是自己电脑编译生成的，只需要将.app和dSYM放入同一文件夹，然后手动生成索引。</p>
+<pre><code class="language-objectivec">//mdimport命令: 导入文件到datasource,这样Xcode也能找到符号文件
+mdimport pathName
+</code></pre>
+<p><code>Xcode</code>能根据UUID找到对应的符号文件，就能通过Xode的<code>Xcode-&gt;Devices-&gt;View Device Logs</code>自动解析解析崩溃日志</p></li>
+</ul>
+
+<h4 id="toc_12">symbolicatecrash</h4>
+
+<p>symbolicatecrash是Xcode自带的一个分析工具，可以通过机器上的崩溃日志和应用的.dSYM文件定位发生崩溃的位置，把crash日志中的一堆地址替换成代码相应位置。</p>
+
+<p>步骤:</p>
+
+<ol>
+<li><p>找到symbolicatecrash文件位置</p>
+<pre><code class="language-linx">find /Applications/Xcode.app -name symbolicatecrash -type f
+</code></pre>
+<p>将找到的文件拷贝到自己创建的文件夹中</p></li>
+<li><p>从Xcode的Archive中找到.dSYM文件和.app文件拷贝到自己创建的文件夹中</p></li>
+<li><p>在终端执行命令</p>
+<pre><code class="language-linux">./symbolicatecrash ./*.crash ./*.app.dSYM &gt; symbol.crash
+</code></pre>
+<blockquote>
+<p>如果这一步出现<code>DEVELOPER_DIR</code>错误 就需要先执行命令</p>
+<pre><code class="language-linix">export DEVELOPER_DIR=&quot;/Applications/XCode.app/Contents/Developer&quot;
+</code></pre>
+</blockquote></li>
+<li><p>在symbol.crash中查看符号化后崩溃信息</p></li>
+</ol>
+
+<h4 id="toc_13">atos命令</h4>
+
+<p>这是更常用的命令</p>
+
+<pre><code class="language-objectivec">//loadAddress：进程加载地址
+//architecture： 架构常用的有arm64或者armv7
+atos [-o AppName.app/AppName] [-l loadAddress] [-arch architecture]
+atos -o Your.app.dSYM/Contents/Resources/DWARF/Your -arch armv7 -l 0xa2000 0x000f0846
+
+</code></pre>
+
+
+    
+
+      </div>
+
+      <div class="row">
+        <div class="large-6 columns">
+        <p class="text-left" style="padding:15px 0px;">
+      
+          <a href="15554875512657.html" 
+          title="Previous Post: ARC实现">&laquo; ARC实现</a>
+      
+        </p>
+        </div>
+        <div class="large-6 columns">
+      <p class="text-right" style="padding:15px 0px;">
+      
+          <a  href="14872305472033.html" 
+          title="Next Post: UI测试">UI测试 &raquo;</a>
+      
+      </p>
+        </div>
+      </div>
+      <div class="comments-wrap">
+        <div class="share-comments">
+          
+
+          
+
+          
+        </div>
+      </div>
+    </div><!-- article-wrap -->
+  </div><!-- large 8 -->
+
+
+
+
+ <div class="large-4 medium-4 columns">
+  <div class="hide-for-small">
+    <div id="sidebar" class="sidebar">
+          <div id="site-info" class="site-info">
+            
+                <h1>ACEfish-Blog</h1>
+                <div class="site-des"></div>
+                <div class="social">
+
+
+
+
+
+
+
+
+
+<a target="_blank" class="github" target="_blank" href="https://github.com/ACEfish/ACEfish.github.io" title="GitHub">GitHub</a>
+
+  <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
+                
+              	 </div>
+          	</div>
+
+             
+
+              <div id="site-categories" class="side-item ">
+                <div class="side-header">
+                  <h2>Categories</h2>
+                </div>
+                <div class="side-content">
+
+      	<p class="cat-list">
+        
+            <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
+            <a href="Computer-programming.html"><strong>计算机编程</strong></a>
+        
+            <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
+        
+            <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
+        
+            <a href="React-Native.html"><strong>React-Native</strong></a>
+        
+            <a href="Python.html"><strong>Python</strong></a>
+         
+        </p>
+
+
+                </div>
+              </div>
+
+              <div id="site-categories" class="side-item">
+                <div class="side-header">
+                  <h2>Recent Posts</h2>
+                </div>
+                <div class="side-content">
+                <ul class="posts-list">
+	      
+		      
+			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15556625620569.html">pod repo update</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15554889031358.html">otool命令</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15553854847636.html">运行时</a>
+			      </li>
+		     
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		   
+		  		</ul>
+                </div>
+              </div>
+        </div><!-- sidebar -->
+      </div><!-- hide for small -->
+</div><!-- large 4 -->
+
+</div><!-- row -->
+
+ <div class="page-bottom clearfix">
+  <div class="row">
+   <p class="copyright">Copyright &copy; 2015
+Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a>,&nbsp; 
+Theme used <a target="_blank" href="http://github.com">GitHub CSS</a>.</p>
+  </div>
+</div>
+
+        </section>
+      </div>
+    </div>
+
+  
+    
+
+    <script src="asset/js/foundation.min.js"></script>
+    <script>
+      $(document).foundation();
+      function fixSidebarHeight(){
+        var w1 = $('.markdown-body').height();
+          var w2 = $('#sidebar').height();
+          if (w1 > w2) { $('#sidebar').height(w1); };
+      }
+      $(function(){
+        fixSidebarHeight();
+      })
+      $(window).load(function(){
+          fixSidebarHeight();
+      });
+     
+    </script>
+
+    
+
+
+
+  </body>
+</html>

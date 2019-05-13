@@ -112,100 +112,67 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15536843996723.html">
+                <a class="clearlink" href="14872918920673.html">
                 
-                  <h1>View层的架构</h1>
+                  <h1>并发编程中的问题</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>文章看自<a href="https://casatwy.com/iosying-yong-jia-gou-tan-kai-pian.html">这里</a></p>
+                        	<p>使用并发编程会带来许多陷阱<br/>
+优先级反转:也就是说低优先级的线程一直阻塞着高优先级的线程</p>
 
-<h2 id="toc_0">View层组织注意事项</h2>
+<h4 id="toc_0">1.资源共享</h4>
 
-<ol>
-<li><p><code>ViewController</code>中的书写规范</p>
-<ul>
-<li>在<code>viewDidLoad</code>中做<code>addSubViews</code>和布局</li>
-<li>getter和setter放到最后避免影响业务逻辑阅读</li>
-<li>将代理都写到一个delegate区域中，并且加上对应protocol名字</li>
-<li>为按钮点击事件等，单独开一个<code>event response</code>的区域</li>
-</ul></li>
-<li><p>建议使用全代码 不使用xib或者storyboard</p></li>
-<li><p>不建议统一派生<code>ViewController</code>，可以使用<code>AOP</code>或者使用NSObject的load函数(在应用启动时自动监听)，实现要实现的功能 --- 尽量不要使用继承</p></li>
-<li><p>能不放在Controller中做的事情就尽量不要放在Controller中做</p></li>
-</ol>
+<p>并发编程中许多问题的根源就是在多线程中访问共享资源。资源可以是一个属性、一个对象，通用的内存、网络设备或者一个文件等等。<br/>
+这里我们举了一个<a href="https://en.wikipedia.org/wiki/Race_condition#Software">竞态条件</a>的例子:<br/>
+<img src="media/14872918920673/14872931592764.jpg" alt=""/><br/>
+这个时候我们需要保证线程B必须等线程A访问完该共享资源才会开始访问共享资源.这时候我们需要一种互斥机制:</p>
 
-<h2 id="toc_1">View层应避免</h2>
+<h4 id="toc_1">2.互斥锁</h4>
 
-<ol>
-<li>代码不规范导致混乱</li>
-<li>过多继承导致复杂的依赖关系</li>
-<li>横向依赖</li>
-<li>架构设计失去传承</li>
-</ol>
+<p><strong>互斥访问的意思就是同一时刻，只允许一个线程访问某个特定资源</strong><br/>
+首先需要获得一个共享资源的互斥锁，一旦某个线程对资源完成了操作，就释放掉这个互斥锁，这样别的线程就有机会访问该共享资源<br/>
+<img src="media/14872918920673/14872933923493.jpg" alt=""/><br/>
+因为现代 CPU 为了优化目的，往往会改变向内存读写数据的顺序（<a href="https://en.wikipedia.org/wiki/Out-of-order_execution">乱序执行</a>）因此还需要解决代码无序执行所带来的问题。如果不能确保 CPU 访问内存的顺序跟编程时的代码指令一样，那么仅仅依靠互斥访问是不够的。为了解决由 CPU 的优化策略引起的副作用，还需要引入<a href="https://en.wikipedia.org/wiki/Memory_barrier">内存屏障</a>。通过设置内存屏障，来确保没有无序执行的指令能跨过屏障而执行。</p>
 
-<h2 id="toc_2">制作好的View架构</h2>
+<p>(<a href="https://en.wikipedia.org/wiki/Lock_%28computer_science%29#Granularity">锁的竞争</a>是这样产生的：当一个或者多个线程尝试获取一个已经被别的线程获取过了的锁)<br/>
+获取和释放锁所是要带来开销的，因此你需要确保你不会频繁地进入和退出临界区段（比如获取和释放锁）。同时，如果你获取锁之后要执行一大段代码，这将带来锁竞争的风险：其它线程可能必须等待获取资源锁而无法工作。</p>
 
-<p>要做一个View层架构，主要就是从以下三方面入手：</p>
+<p>对于你的代码会如何在多核上运行的预测往往十分重要，你可以使用 Instrument 的 CPU strategy view 来检查是否有效的利用了 CPU 的可用核数，进而得出更好的想法，以此来优化代码。</p>
 
-<p>制定良好的规范<br/>
-选择好合适的模式（MVC、MVCS、MVVM、VIPER）<br/>
-根据业务情况针对ViewController做好拆分，提供一些小工具方便开发</p>
+<h4 id="toc_2">3.死锁</h4>
 
-<h2 id="toc_3">MVC MVVM等设计模式</h2>
+<p>互斥锁解决了竞态条件的问题，但很不幸同时这也引入了一些其他问题，其中一个就是死锁。当多个线程在相互等待着对方的结束时，就会发生死锁，这时程序可能会被卡住。<br/>
+<img src="media/14872918920673/14872940417124.jpg" alt=""/><br/>
+你在线程之间共享的资源越多，你使用的锁也就越多，同时程序被死锁的概率也会变大。这也是为什么我们需要尽量减少线程间资源共享，并确保共享的资源尽量简单的原因之一。建议阅读一下底层<a href="https://objccn.io/issue-2-3/">并发编程 API</a> 中的全部使用异步分发一节。</p>
 
-<p>这些设计模式其实是 规定了架构中的3个角色:数据管理者，数据加工者，数据展示者,之间的数据如何交换</p>
+<h4 id="toc_3">4.资源饥饿（Starvation）</h4>
 
-<h3 id="toc_4">对mvc的一些总结</h3>
+<p>锁定的共享资源会引起<a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writers_problem">读写问题</a>，大多数情况下，限制资源一次只能有一个线程进行读取访问其实是非常浪费的。因此，在资源上没有写入锁的时候，持有一个读取锁是被允许的。这种情况下，如果一个持有读取锁的线程在等待获取写入锁的时候，其他希望读取资源的线程则因为无法获得这个读取锁而导致<a href="https://en.wikipedia.org/wiki/Starvation_(computer_science)">资源饥饿</a>的发生。</p>
 
-<p>M应该做的事：</p>
+<p>为了解决这个问题，我们需要使用一个比简单的读/写锁更聪明的方法，例如给定一个 <a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writer_lock">writer preference</a>，或者使用 <a href="https://en.wikipedia.org/wiki/Read-copy-update">read-copy-update</a> 算法。Daniel 在底层并发编程 API 中有介绍了如何用 GCD 实现一个多读取单写入的模式，这样就不会被写入资源饥饿的问题困扰了。</p>
 
-<ul>
-<li>给ViewController提供数据</li>
-<li>给ViewController存储数据提供接口</li>
-<li>响应数据请求一般来时C的</li>
-<li>提供经过抽象的业务基本组件，供Controller调度</li>
-</ul>
+<h4 id="toc_4">5.优先级反转</h4>
+
+<p><code>优先级反转</code>是指程序在运行时低优先级的任务阻塞了高优先级的任务，有效的反转了任务的优先级。由于 GCD 提供了拥有不同优先级的后台队列，甚至包括一个 I/O 队列，所以我们最好了解一下优先级反转的可能性。</p>
 
 <blockquote>
-<p>M不应该这是dataModel 而是整个Model层</p>
+<p>高优先级和低优先级的任务之间共享资源时，就可能发生优先级反转。当低优先级的任务获得了共享资源的锁时，该任务应该迅速完成，并释放掉锁，这样高优先级的任务就可以在没有明显延时的情况下继续执行。然而高优先级任务会在低优先级的任务持有锁的期间被阻塞。如果这时候有一个中优先级的任务(该任务不需要那个共享资源)，那么它就有可能会抢占低优先级任务而被执行，因为此时高优先级任务是被阻塞的，所以中优先级任务是目前所有可运行任务中优先级最高的。此时，中优先级任务就会阻塞着低优先级任务，导致低优先级任务不能释放掉锁，这也就会引起高优先级任务一直在等待锁的释放。</p>
+
+<p>解决这个问题的方法，通常就是不要使用不同的优先级。通常最后你都会以让高优先级的代码等待低优先级的代码来解决问题。当你使用 GCD 时，总是使用默认的优先级队列（直接使用，或者作为目标队列）。如果你使用不同的优先级，很可能实际情况会让事情变得更糟糕。</p>
 </blockquote>
 
-<p>C应该做的事：</p>
+<p><img src="media/14872918920673/14872951554551.jpg" alt=""/></p>
 
-<ul>
-<li>管理View Container的生命周期</li>
-<li>负责生成所有的View实例，并放入View Container</li>
-<li>监听来自View与业务有关的事件，通过与Model的合作，来完成对应事件的业务。</li>
-</ul>
+<h3 id="toc_5">总结:</h3>
 
-<p>V应该做的事：</p>
+<p>我们希望通过本文你能够了解到并发编程带来的复杂性和相关问题。并发编程中，无论是看起来多么简单的 API ，它们所能产生的问题会变得非常的难以观测，而且要想调试这类问题往往也都是非常困难的。</p>
 
-<ul>
-<li>响应与业务无关的事件，并因此引发动画效果，点击反馈（如果合适的话，尽量还是放在View去做）等。</li>
-<li>界面元素表达</li>
-</ul>
+<p>但另一方面，并发实际上是一个非常棒的工具。它充分利用了现代多核 CPU 的强大计算能力。在开发中，关键的一点就是尽量让并发模型保持简单，这样可以限制所需要的锁的数量。</p>
 
-<h2 id="toc_5">MVVM</h2>
-
-<p>MVVM把数据加工的任务从Controller中解放了出来，使得Controller只需要专注于数据调配的工作，ViewModel则去负责数据加工并通过通知机制让View响应ViewModel的改变。</p>
-
-<p>MVVM是基于胖Model的架构思路建立的，然后在胖Model中拆出两部分：Model和ViewModel。</p>
-
-<p>MVVM<br/>
-viewmodel需要做的就是将json等数据转换为能给view用的model<br/>
-Model层 这里的model层包括数据model层、网络请求层、数据存储层、</p>
-
-<p>C负责View和ViewModel数据的绑定</p>
-
-<p>MVVM就是讲MVC的C中的数据处理逻辑抽出来了</p>
-
-<blockquote>
-<p>对于API的调用应该放在VM还是C中，看情况而定，如果你的请求独立于C，请求时不需要再联系ViewController就可以放在VM中，否则的话在VM中调用逻辑混乱，最好放在C中</p>
-
-<p>RAC的目的1：View并不适合直接持有ViewModel。第二个目的就在于，ViewModel有可能并不是只服务于特定的一个View，使用更加松散的绑定关系能够降低ViewModel和View之间的耦合度</p>
-</blockquote>
+<p>我们建议采纳的安全模式是这样的：<br/>
+<strong>从主线程中提取出要使用到的数据，并利用一个操作队列在后台处理相关的数据，最后回到主队列中来发送你在后台队列中得到的结果。使用这种方式，你不需要自己做任何锁操作，这也就大大减少了犯错误的几率。</strong></p>
 
                         
                       </div>
@@ -214,10 +181,10 @@ Model层 这里的model层包括数据model层、网络请求层、数据存储�
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2019/3/27</span>
+                    <span class="date">2017/2/17</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E6%9E%B6%E6%9E%84%E8%B0%88.html'>架构谈</a></span>
+          					    <span class="posted-in"><a href='%E5%8E%9F%E6%9C%89%E7%AC%94%E8%AE%B0.html'>原有笔记</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -311,25 +278,25 @@ Model层 这里的model层包括数据model层、网络请求层、数据存储�
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

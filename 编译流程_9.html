@@ -112,49 +112,107 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15540299299293.html">
+                <a class="clearlink" href="15539566553487.html">
                 
-                  <h1>CodeGen IR LLVM</h1>
+                  <h1>Target在build中的控制</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">CodeGen生成IR代码</h2>
+                        	<p>在<code>Xcode</code>的<code>Project editor</code>中的<code>Build Setting</code>、<code>Build Phases</code>和<code>Build Rules</code>用来控制整个编译过程</p>
 
-<p>将语法树翻译成LLVM IR中间代码，作为LLVM Backend输入的桥接语言。方便LLVM Backend可以做到与语言无关的优化</p>
+<h2 id="toc_0">Build Phases</h2>
 
-<p><strong>这个过程还会与runtime进行桥接</strong></p>
+<p>构建可执行文件规则。</p>
 
-<ul>
-<li>各种类、方法、成员变量等的结构体的生成，将其放到对应的Mach-O的Section中</li>
-<li>Non-Fragile ABI合成OBJC_IVAR_$_偏移值常量</li>
-<li>ObjCMessageExpr(AST树结构)翻译生成相应版本的objc_msgSend、super翻译生成objc_msgSendSuper</li>
-<li>strong、weak、copy、atomic、nonatomic、readwrite等合成@property自动实现setter和getter</li>
-<li>@synthesize 的处理</li>
-<li>生成block_layout数据结构(即block对应的结构体)</li>
-<li><strong>block和</strong>weak处理</li>
-<li>_block_invoke</li>
-<li>ARC的处理，即插入objc_storeStrong和objc_storeWeak等ARC代码;ObjCAutoreleasePoolStmt 转 objc_autorealeasePoolPush / Pop;自动添加 [super dealloc];给每个 ivar 的类合成 .cxx_destructor 方法自动释放类的成员变量</li>
-</ul>
+<p><code>Target Dependencies</code><br/>
+指定target的依赖项目，在targrt build之前需要先build的依赖</p>
 
-<p><strong>不管编译的语言时 Objective-C 还是 Swift 也不管对应机器是什么，亦或是即时编译，LLVM 里唯一不变的是中间语言 LLVM IR</strong></p>
+<p><code>Compile Source</code><br/>
+指定所有必须编译的文件,这些文件会根据<code>build Setting</code>和<code>Builsd Rules</code>里的设置来处理</p>
 
-<h3 id="toc_1">LLVM IR</h3>
+<p><code>Link Binary With Libraries</code><br/>
+列出所有的静态库和动态库，和编译生成文件进行链接</p>
 
-<p>LLVM IR有三种表示格式，第一种是bitcode这样的存储格式，以.bc做后缀；第二种是可读的.ll；第三种是用于开发是操作LLVM IR的内存格式</p>
+<p><code>Copy Bundle Resources</code><br/>
+指定要copy的资源文件</p>
 
-<p>一个编译单元即一个文件在IR里就是一个<code>Module</code>，Module里有<code>Global variable</code>和<code>Function</code>，在Function里有<code>Basic Block</code>，<code>Basic Block</code>里有指令<code>Instructions</code><br/>
-这样的话，如果想要开发一门新的语言只需要完成语法解析后，通过LLVM提供的丰富接口在内存中生成IR就可以直接运行在各个不同的平台</p>
+<h2 id="toc_1">Build Rules</h2>
 
-<h3 id="toc_2">LLVM IR的优化</h3>
+<p>指定不同文件类型如何编译。每条build rule 指定了该类型怎么处理立即输出在哪。可以增加一条新规则对特定类型文件类型添加处理方法</p>
 
-<p>选择不同的O2、O3这样的优化回调用对应的Pass进行处理，比如死代码清理、内联化、表达式重组、循环变量移动等这样的Pass，可以通过命令<code>llvm -opt</code>调用LLVM优化相关的库</p>
+<h2 id="toc_2">Build Setting</h2>
 
-<h3 id="toc_3">SSA</h3>
+<p>在<code>build</code>的过程中各个阶段的选项的设置</p>
 
-<p>LLVM IR是SSA形式的，维护双向def-use信息，user-def是通过普通指针实现信息维护，def-user通过内存跳表和链表来实现，便于forward dataflow analysis和backward dataflow analysis。</p>
+<h2 id="toc_3">pbxproj工程文件</h2>
 
-<p>llc 编译器是专门编译 LLVM IR 的编译器用来生成汇编文件。</p>
+<p><code>.xcodeproj</code>包中的工程文件<code>project.pbxproj</code>里包含了build过程中的设置.</p>
+
+<ol>
+<li>在这个文件中，首先找到rootObject的值
+<code>
+rootObject = CFE011DA22409055007FEEDD /* Project object */;
+</code></li>
+<li>根据CFE011DA22409055007FEEDD代表的proect找到这个工程,这里面包括了部分这个工程的信息
+<code>
+/* Begin PBXProject section */<br/>
+    CFE011DA22409055007FEEDD /* Project object */ = {<br/>
+        isa = PBXProject;<br/>
+        attributes = {<br/>
+            LastUpgradeCheck = 1010;<br/>
+            ORGANIZATIONNAME = universalCertification;<br/>
+            TargetAttributes = {<br/>
+                CFE011E122409055007FEEDD = {<br/>
+                    CreatedOnToolsVersion = 10.1;<br/>
+                };<br/>
+            };<br/>
+        };<br/>
+        buildConfigurationList = CFE011DD22409055007FEEDD /* Build configuration list for PBXProject &quot;RSSReader&quot; */;<br/>
+        compatibilityVersion = &quot;Xcode 9.3&quot;;<br/>
+        developmentRegion = en;<br/>
+        hasScannedForEncodings = 0;<br/>
+        knownRegions = (<br/>
+            en,<br/>
+            Base,<br/>
+        );<br/>
+        mainGroup = CFE011D922409055007FEEDD;<br/>
+        productRefGroup = CFE011E322409055007FEEDD /* Products */;<br/>
+        projectDirPath = &quot;&quot;;<br/>
+        projectRoot = &quot;&quot;;<br/>
+        targets = (<br/>
+            CFE011E122409055007FEEDD /* RSSReader */,<br/>
+        );<br/>
+    };<br/>
+/* End PBXProject section */
+</code></li>
+<li>然后根据工程中的<code>targets</code>可以找到对应target
+<code>
+/* Begin PBXNativeTarget section */<br/>
+        CFE011E122409055007FEEDD /* RSSReader */ = {<br/>
+            isa = PBXNativeTarget;<br/>
+            buildConfigurationList = CFE011F822409056007FEEDD /* Build configuration list for PBXNativeTarget &quot;RSSReader&quot; */;<br/>
+            buildPhases = (<br/>
+                47F7B3ABDF3263B6EDCA68AD /* [CP] Check Pods Manifest.lock */,<br/>
+                CFE011DE22409055007FEEDD /* Sources */,<br/>
+                CFE011DF22409055007FEEDD /* Frameworks */,<br/>
+                CFE011E022409055007FEEDD /* Resources */,<br/>
+            );<br/>
+            buildRules = (<br/>
+            );<br/>
+            dependencies = (<br/>
+            );<br/>
+            name = RSSReader;<br/>
+            productName = RSSReader;<br/>
+            productReference = CFE011E222409055007FEEDD /* RSSReader.app */;<br/>
+            productType = &quot;com.apple.product-type.application&quot;;<br/>
+        };<br/>
+/* End PBXNativeTarget section */
+</code></li>
+<li>可以根据这些信息查看更详细的编译信息<br/>
+比如:
+<code>buildConfigurationList</code>指向了debug和release的详细配置信息</li>
+</ol>
 
                         
                       </div>
@@ -163,7 +221,7 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2019/3/31</span>
+                    <span class="date">2019/3/30</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html'>编译流程</a></span>
@@ -260,25 +318,25 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

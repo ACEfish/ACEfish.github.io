@@ -112,259 +112,229 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14872969075485.html">
+                <a class="clearlink" href="15548054751703.html">
                 
-                  <h1>并发编程实践</h1>
+                  <h1>GCD的常用功能</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h4 id="toc_0">1.<a href="https://developer.apple.com/reference/dispatch">GCD</a> OR <a href="https://developer.apple.com/reference/foundation/operationqueue">操作队列</a></h4>
+                        	<h2 id="toc_0">1. dispatch_after</h2>
 
-<p>这两个是目前我们在iOS中用的最多的两套API</p>
+<p>等待特定时间，<strong>异步</strong>的添加执行block到特定queue中</p>
 
-<ul>
-<li>操作队列提供了在 GCD 中不那么容易复制的有用特性。其中最重要的一个就是可以取消在任务处理队列中的任务</li>
-<li>操作队列在管理操作间的依赖关系方面也容易一些</li>
-<li>CD 给予你更多的控制权力以及操作队列中所不能使用的底层函数<br/>
-扩展阅读:
-<a href="http://stackoverflow.com/questions/10373331/nsoperation-vs-grand-central-dispatch">StackOverflow: NSOperation vs. Grand Central Dispatch</a>
-<a href="http://eschatologist.net/blog/?p=232">Blog: When to use NSOperation vs. GCD</a></li>
-</ul>
-
-<h4 id="toc_1">2.后台的Core Data</h4>
-
-<p>在着手 Core Data 的并行处理之前，最好先打一些基础。我们强烈建议通读苹果的官方文档 <a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/CoreData/Articles/cdConcurrency.html">Concurrency with Core Data</a> </p>
-
-<blockquote>
-<p>Xcode 所提供的 Core Data 标准模版中，所设立的是运行在主线程中的一个存储调度 (persistent store coordinator)和一个托管对象上下文 (managed object context) 的方式。在很多情况下，这种模式可以运行良好。创建新的对象和修改已存在的对象开销都非常小，也都能在主线程中没有困难地完成。然后，如果你想要做大量的处理，那么把它放到一个后台上下文来做会比较好。一个典型的应用场景是将大量数据导入到 Core Data 中。</p>
-</blockquote>
-
-<p>示例:<br/>
-我们要导入一大组柏林的交通数据。在导入的过程中，我们展示一个进度条，如果耗时太长，我们希望可以取消当前的导入操作。同时，我们显示一个随着数据加入可以自动更新的 table view 来展示目前可用的数据。</p>
-
-<p>解决方案:<br/>
-我们创建一个<code>NSOperation</code> 的子类，将其叫做<code>ImportOperation</code>，我们通过重写 <code>main</code>方法，用来处理所有的导入工作。这里我们使用<code>NSPrivateQueueConcurrencyType</code>来创建一个独立并拥有自己的私有<code>dispatch queue</code>的 managed object context，这个 <code>context</code> 需要管理自己的队列。在队列中的所有操作必须使用<code>performBlock</code>或者<code>performBlockAndWait</code>来进行触发。</p>
-
-<pre><code class="language-object-c">NSManagedObjectContext* context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
-context.persistentStoreCoordinator = self.persistentStoreCoordinator;
-context.undoManager = nil;
-//performBlockAndWait:Synchronously performs a given block on the receiver’s queue.
-[self.context performBlockAndWait:^
-{
-    [self import];
-}];
+<pre><code class="language-objectivec">void dispatch_after(dispatch_time_t when, dispatch_queue_t queue, dispatch_block_t block);
+//when： 时间，dispatch_time_t或者dispatch_walltime
+//queue: 执行的queue 被系统retain直到block完成
+//block: 函数内部帮助调用者适时执行Block_copy and Block_release
 </code></pre>
 
-<p>在这里我们重用了已经存在的<code>persistent store coordinator</code>。一般来说，初始化 managed object contexts 要么使用<code>NSPrivateQueueConcurrencyType</code>，要么使用 <code>NSMainQueueConcurrencyType</code>。</p>
+<h3 id="toc_1">dispatch_after_f</h3>
 
-<p>导入文件内容</p>
-
-<pre><code class="language-object-c">/**
-    在导入前，我们枚举文件中的各行，并对可以解析的每一行创建 managed object ：
-*/
-[lines enumerateObjectsUsingBlock:
-  ^(NSString* line, NSUInteger idx, BOOL* shouldStop)
-  {
-      NSArray* components = [line csvComponents];
-      if(components.count &lt; 5) {
-          NSLog(@&quot;couldn&#39;t parse: %@&quot;, components);
-          return;
-      }
-      [Stop importCSVComponents:components intoContext:context];
-  }];
+<pre><code class="language-objectivec">void dispatch_after_f(dispatch_time_t when, dispatch_queue_t queue, void *context, dispatch_function_t work);
 </code></pre>
 
-<pre><code class="language-object-c">/**
-    在 view controller 中通过以下代码来开始操作：
-*/
-ImportOperation* operation = [[ImportOperation alloc]
-     initWithStore:self.store fileName:fileName];
-[self.operationQueue addOperation:operation];
-</code></pre>
+<h2 id="toc_2">2. dispatch_apply</h2>
 
-<pre><code class="language-object-c">/**
-    至此为止，后台导入部分已经完成。接下来，我们要加入取消功能，这其实非常简单，只需要枚举的 block 中加一个判断就行了：
-*/
-if(self.isCancelled) {
-    *shouldStop = YES;
-    return;
-}
-</code></pre>
+<p><strong>同步</strong>的在指定的queue中执行指定次数 的block，可用来进行更有性能的迭代<br/>
+此方法将block提交到指定的queue中执行 并且<strong>等所有迭代完成后</strong>才会返回；<br/>
+如果目标队列是<code>dispatch_get_global_queue</code>迭代并发执行，因此应该保证block是<strong>可重入</strong>安全的，可以作为有效的并行for循环</p>
 
-<pre><code class="language-object-c">/**
-    最后为了支持进度条，我们在 operation 中创建一个叫做 progressCallback 的属性。需要注意的是，更新进度条必须在主线程中完成，否则会导致 UIKit 崩溃。
-*/
-operation.progressCallback = ^(float progress)
-{
-    [[NSOperationQueue mainQueue] addOperationWithBlock:^
-    {
-        self.progressIndicator.progress = progress;
-    }];
-};
-//我们在枚举中来调用这个进度条更新的 block 的操作：
-
-self.progressCallback(idx / (float) count);
-
-</code></pre>
-
-<pre><code class="language-object-c">  //  然而，如果你执行示例代码的话，你会发现它运行逐渐变得很慢，取消操作也有迟滞。这是因为主操作队列中塞满了要更新进度条的 block 操作。一个简单的解决方法是降低更新的频度，比如只在每导入一百行时更新一次：
-
-NSInteger progressGranularity = 100;
-
-if (idx % progressGranularity == 0) {
-    self.progressCallback(idx / (float) count);
-}
-
-</code></pre>
-
-<h5 id="toc_2">更新 Main Context</h5>
-
-<p>在让一切运转起来之前之前，还有一件事情要做。现在在后台 context 中导入的数据还不能传送到主 context 中，除非我们显式地让它这么去做。我们在<code>Store</code>类的设置<code>Core Data stack</code>的<code>init</code>方法中加入下面的代码：</p>
-
-<pre><code class="language-object-c">[NSNotificationCenter defaultCenter]
-    addObserverForName:NSManagedObjectContextDidSaveNotification
-                object:nil
-                 queue:nil
-            usingBlock:^(NSNotification* note)
-{
-    NSManagedObjectContext *moc = self.mainManagedObjectContext;
-    if (note.object != moc)
-        [moc performBlock:^(){
-            [moc mergeChangesFromContextDidSaveNotification:note];
-        }];
-    }];
-}];
-/**
-    如果 block 在主队列中被作为参数传递的话，那么这个 block 也会在主队列中被执行。如果现在你运行程序的话，你会注意到 table view 会在完成导入数据后刷新数据，但是这个行为会阻塞用户大概几秒钟。
-    要修正这个问题，我们需要做一些无论如何都应该做的事情：批量保存。在导入较大的数据时，我们需要定期保存，逐渐导入，否则内存很可能就会被耗光，性能一般也会更坏。而且，定期保存也可以分散主线程在更新 table view 时的工作压力。
-    合理的保存的次数可以通过试错得到。保存太频繁的话，可能会在 I/O 操作上花太多时间；保存次数太少的话，应用会变得无响应。在经过一些尝试后，我们设定每 250 次导入就保存一次。改进后，导入过程变得很平滑，它可以适时更新 table view，也没有阻塞主 context 太久。
-*/
-</code></pre>
-
-<h5 id="toc_3">其他考虑</h5>
-
-<p>在导入操作时，我们将整个文件都读入到一个字符串中，然后将其分割成行。这种处理方式对于相对小的文件来说没有问题，但是对于大文件，最好采用惰性读取 (lazily read) 的方式逐行读入。本文最后的示例将使用输入流的方式来实现这个特性，在 StackOverflow 上 Dave DeLong 也提供了一段非常好的示例代码来说明这个问题。</p>
-
-<p>在 app 第一次运行时，除开将大量数据导入 Core Data 这一选择以外，你也可以在你的 app bundle 中直接放一个 sqlite 文件，或者从一个可以动态生成数据的服务器下载。如果使用这些方式的话，可以节省不少在设备上的处理时间。</p>
-
-<p>最后，最近对于 child contexts 有很多争议。我们的建议是不要在后台操作中使用它。如果你以主 context 的 child 的方式创建了一个后台 context 的话，保存这个后台 context 将阻塞主线程。而要是将主 context 作为后台 context 的 child 的话，实际上和与创建两个传统的独立 contexts 来说是没有区别的。因为你仍然需要手动将后台的改变合并回主 context 中去。</p>
-
-<p>设置一个 persistent store coordinator 和两个独立的 contexts 被证明了是在后台处理 Core Data 的好方法。除非你有足够好的理由，否则在处理时你应该坚持使用这种方式。</p>
-
-<p><a href="http://wiki.jikexueyuan.com/project/objc/concurrent-programming/2-2.html">扩展阅读</a></p>
-
-<h4 id="toc_4">3.后台 UI 代码</h4>
-
-<p>首先要强调：UIKit 只能在主线程上运行。而那部分不与 UIKit 直接相关，却会消耗大量时间的 UI 代码可以被移动到后台去处理，以避免其将主线程阻塞太久。但是在你将你的 UI 代码移到后台队列之前，你应该好好地测量哪一部分才是你代码中的瓶颈。这非常重要，否则你所做的优化根本是南辕北辙。</p>
-
-<p>如果你找到了你能够隔离出的昂贵操作的话，可以将其放到操作队列中去：</p>
-
-<pre><code class="language-object-c">__weak id weakSelf = self;
-[self.operationQueue addOperationWithBlock:^{
-    NSNumber* result = findLargestMersennePrime();
-    [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-        MyClass* strongSelf = weakSelf;
-        strongSelf.textLabel.text = [result stringValue];
-    }];
-}];
+<pre><code class="language-objectivec">void dispatch_apply(size_t iterations, dispatch_queue_t queue, void (^block)(size_t));
+//iterations: 执行几次
+//block: 执行事件 参数为当前执行次数
 </code></pre>
 
 <blockquote>
-<p>如你所见，这些代码其实一点也不直接明了。我们首先声明了一个 weak 引用来参照 self，否则会形成循环引用（ block 持有了 self，私有的 operationQueue retain 了 block，而 self 又 retain 了 operationQueue ）。为了避免在运行 block 时访问到已被释放的对象，在 block 中我们又需要将其转回 strong 引用。</p>
+<p>dispatch_apply 和 dispatch_apply_f 是同步函数,会阻塞当前线程直到所有循环迭代执行完成。</p>
 </blockquote>
 
-<h4 id="toc_5">4.后台绘制</h4>
+<h3 id="toc_3">dispatch_apply_f</h3>
 
-<p>如果你确定<code>drawRect:</code>是你的应用的性能瓶颈，那么你可以将这些绘制代码放到后台去做。但是在你这样做之前，检查下看看是不是有其他方法来解决，比如、考虑使用<code>core animation layers</code>或者预先渲染图片而不去做<code>Core Graphics</code>绘制。<br/>
-解决方案:<br/>
-其实解决起来也很简单，把<code>drawRect:</code>中的代码放到一个后台操作中去做就可以了。然后将原本打算绘制的视图用一个 image view 来替换，等到操作执行完后再去更新。在绘制的方法中，使用 <code>UIGraphicsBeginImageContextWithOptions</code>来取代<code>UIGraphicsGetCurrentContext ：</code></p>
+<p>将函数多次执行</p>
 
-<pre><code class="language-object-c">UIGraphicsBeginImageContextWithOptions(size, NO, 0);
-// drawing code here
-UIImage *i = UIGraphicsGetImageFromCurrentImageContext();
-UIGraphicsEndImageContext();
-return i;
-/**
-    通过在第三个参数中传入 0 ，设备的主屏幕的 scale 将被自动传入，这将使图片在普通设备和
-     retina 屏幕上都有良好的表现。
-*/
+<pre><code class="language-objectivec">void dispatch_apply_f(size_t iterations, dispatch_queue_t queue, void *context, void (*work)(void *, size_t));
 </code></pre>
+
+<h2 id="toc_4">3.dispatch_once</h2>
+
+<p>在应用程序的生命周期内 只执行一次block内容<br/>
+常用来初始化程序的单例数据<br/>
+当多线程执行时，其内部会保证同步执行等待block完成</p>
+
+<pre><code class="language-objectivec">void dispatch_once(dispatch_once_t *predicate, dispatch_block_t block);
+//predicate： dispatch_once_t指针 用来标记block是否已经被执行
+//
+</code></pre>
+
+<h4 id="toc_5">dispatch_once_t</h4>
+
+<p>必须保证为全局或者静态变量，如果该值动态或者自动存储将会发生无法预知事件</p>
+
+<h3 id="toc_6">dispatch_once_f</h3>
+
+<pre><code class="language-objectivec">void dispatch_once_f(dispatch_once_t *predicate, void *context, dispatch_function_t function);
+</code></pre>
+
+<h2 id="toc_7">4.dispatch_barrier</h2>
+
+<p>当执行到barrier block 其并不会立即执行，而是等待当前正在执行的所有block完成后才会执行，而所有在barrier block后的block会等待barrier block执行完成后才执行</p>
 
 <p>注意:<br/>
-如果你在 table view 或者是 collection view 的 cell 上做了自定义绘制的话，最好将它们放入 <code>operation</code> 的子类中去。你可以将它们添加到后台操作队列，也可以在用户将 cell 滚动出边界时的 <code>didEndDisplayingCell</code> 委托方法中进行取消。这些技巧都在 2012 年的<a href="https://developer.apple.com/videos/wwdc2012/">WWDC Session 211 -- Building Concurrent User Interfaces on iOS</a>中有详细阐述。</p>
+<strong>使用的queue应该为concurrent队列，并且使用<code>dispatch_queue_create</code>函数创建的</strong></p>
 
-<p>除了在后台自己调度绘制代码，以也可以试试看使用 CALayer 的 drawsAsynchronously 属性。然而你需要精心衡量这样做的效果，因为有时候它能使绘制加速，有时候却适得其反。</p>
+<h3 id="toc_8">dispatch_barrier_async</h3>
 
-<h4 id="toc_6">4.异步网络请求处理</h4>
+<p>提交一个异步执行的barrier block并立即返回</p>
 
-<p><strong>所有的网络请求都应该通过异步的方式进行</strong></p>
-
-<pre><code class="language-object-c">// 警告：不要使用这些代码。
-dispatch_async(backgroundQueue, ^{
-   NSData* contents = [NSData dataWithContentsOfURL:url]
-   dispatch_async(dispatch_get_main_queue(), ^{
-      // 处理取到的日期
-   });
-});
-//这段代码问题：没有办法去取消这个同步的网络请求。它将阻塞住线程直到它完成。如果请求一直没结果，那就只能干等到超时
+<pre><code class="language-objectivec">void dispatch_barrier_async(dispatch_queue_t queue, dispatch_block_t block);
+//queue: barrier block执行的队列，系统持有该队列直到block执行完成
+//block：barrier block，这个block会被copy 和 retain直到执行完成
 </code></pre>
 
-<p>要解决上面的困境，我们可以使用<code>NSURLConnection</code>的异步方法，并且把所有操作转化为 operation 来执行. NSURLConnection 是通过<code>run loop</code>来发送事件的。因为事件发送不会花多少时间，因此最简单的是就只使用 main run loop 来做这个。然后，我们就可以用后台线程来处理输入的数据了。<br/>
-要处理URL 连接，我们重写自定义的 operation 子类中的 start 方法：</p>
+<p><strong>dispatch_barrier_async_f</strong></p>
 
-<pre><code class="language-object-c">- (void)start
-{
-    NSURLRequest* request = [NSURLRequest requestWithURL:self.url];
-    self.isExecuting = YES;
-    self.isFinished = NO;
-    [[NSOperationQueue mainQueue] addOperationWithBlock:^
-    {
-        self.connection = [NSURLConnectionconnectionWithRequest:request
-                                                       delegate:self];
-    }];
-}
+<pre><code class="language-objectivec">void dispatch_barrier_async_f(dispatch_queue_t queue, void *context, dispatch_function_t work);
 </code></pre>
 
-<p>由于重写的是 start 方法，所以我们需要自己要管理操作的 isExecuting 和 isFinished 状态。要取消一个操作，我们需要取消 connection ，并且设定合适的标记，这样操作队列才知道操作已经完成。</p>
+<h3 id="toc_9">dispatch_barrier_sync</h3>
 
-<pre><code class="language-object-c">- (void)connectionDidFinishLoading:(NSURLConnection *)connection
-{
-    self.data = self.buffer;
-    self.buffer = nil;
-    self.isExecuting = NO;
-    self.isFinished = YES;
-}
+<p><strong>同步</strong>提交一个barrier block并等待block执行完成，会阻塞当前线程</p>
+
+<pre><code class="language-objectivec">void dispatch_barrier_sync(dispatch_queue_t queue, dispatch_block_t block);
+//queue: barrier block执行的队列
+//block：barrier block，
 </code></pre>
-
-<p><a href="https://github.com/objcio/issue-2-background-networking">Demo下载</a><br/>
-因此:我们总结如下:建议<strong>要么你花时间来把事情做对做好，要么就直接使用像<code>AFNetworking</code>这样的框架</strong><br/>
-其实 AFNetworking 还提供了不少好用的小工具，比如有个 UIImageView 的 category，来负责异步地从一个 URL 加载图片。在你的 table view 里使用的话，还能自动帮你处理取消加载操作，非常方便。</p>
-
-<h4 id="toc_7">5.进阶：后台文件 I/O</h4>
-
-<p>一次性将文件读入内存中对于较小的文件可能没什么问题,但是对于大文件来说就并不友好。<br/>
-我们将构建一个类，它负责<code>一行一行</code>读取文件而不是一次将整个文件读入内存，另外要在<code>后台队列处理文件</code>，以保持应用相应用户的操作。<br/>
-为了达到这个目的，我们使用能让我们异步处理文件的<code>NSInputStream</code></p>
 
 <blockquote>
-<p>如果你总是需要从头到尾来读/写文件的话，streams 提供了一个简单的接口来异步完成这个操作</p>
+<p>与<code>dispatch_barrier_async</code>不同，因为是函数是同步执行的，因此queue不会被retain，block也不会进行copy</p>
 </blockquote>
 
-<p>不管你是否使用 streams，大体上逐行读取一个文件的模式是这样的：</p>
+<p><strong>dispatch_barrier_sync_f</strong></p>
+
+<pre><code class="language-objectivec">void dispatch_barrier_sync_f(dispatch_queue_t queue, void *context, dispatch_function_t work);
+</code></pre>
+
+<h2 id="toc_10">5. dispatch_group_t</h2>
 
 <ol>
-<li>建立一个中间缓冲层以提供，当没有找到换行符号的时候可以向其中添加数据</li>
-<li>从 stream 中读取一块数据</li>
-<li>对于这块数据中发现的每一个换行符，取中间缓冲层，向其中添加数据，直到（并包括）这个换行符，并将其输出</li>
-<li>将剩余的字节添加到中间缓冲层去</li>
+<li><p>group中的queue可以执行在不同queue，group中的blocks互相独立</p></li>
+<li><p><code>dispatch_group</code>一直追踪group内的未完成的block的数量，并且GCD会retain该group直到与其关联的所有block完成</p></li>
 </ol>
 
-<p><strong>绝大部分时候，使用逐块读入的方式来处理大文件，是非常有用的技术。</strong></p>
+<p><strong>group 主要做的事情就是计算内部未完成blocks的数量</strong><br/>
+加到group中的block即会立即执行</p>
 
-<h3 id="toc_8">总结</h3>
+<h3 id="toc_11">dispatch_group_create</h3>
 
-<p><strong>在主队列中接收事件或者数据，然后用后台操作队列来执行实际操作，然后回到主队列去传递结果，遵循这样的原则来编写尽量简单的并行代码，将是保证高效正确的不二法则。</strong></p>
+<pre><code class="language-objectivec">dispatch_group_t dispatch_group_create(void);
+</code></pre>
+
+<ol>
+<li>group对象会维持内部未完成block的数量，<code>dispatch_group_notify</code> and <code>dispatch_group_wait</code>使用这个count来决定何时group完成</li>
+</ol>
+
+<h3 id="toc_12">dispatch_group_async</h3>
+
+<p>将一个<code>block</code>提交到<code>queue</code>中执行，并与group关联</p>
+
+<pre><code class="language-objectivec">void dispatch_group_async(dispatch_group_t group, dispatch_queue_t queue, dispatch_block_t block);
+//group： 与block关联的group 被系统持有直到block完成
+// queue: block异步执行的队列，被系统持有直到block完成
+// block: 异步执行，该函数会帮助调用者对block执行Block_copy and Block_release操作
+</code></pre>
+
+<p>group可以用来等待block执行完成</p>
+
+<h4 id="toc_13">dispatch_group_async_f</h4>
+
+<pre><code class="language-objectivec">void dispatch_group_async_f(dispatch_group_t group, dispatch_queue_t queue, void *context, dispatch_function_t work);
+</code></pre>
+
+<h3 id="toc_14">dispatch_group_enter &amp;&amp; dispatch_group_leave</h3>
+
+<pre><code class="language-objectivec">//明确指示有一个block进入group,将group内未完成的blocks计数加一
+void dispatch_group_enter(dispatch_group_t group);
+</code></pre>
+
+<pre><code class="language-objectivec">//明确指示有一个block已经完成，group未完成计数减1
+void dispatch_group_leave(dispatch_group_t group);
+</code></pre>
+
+<blockquote>
+<p>可以使用这个函数 将一个block同时与多个group关联</p>
+</blockquote>
+
+<h3 id="toc_15">dispatch_group_wait</h3>
+
+<p>同步的阻塞当前线程等待group中所有block完成，直到全部完成或者timeout</p>
+
+<pre><code class="language-objectivec">long dispatch_group_wait(dispatch_group_t group, dispatch_time_t timeout);
+//返回值： 0表示成功执行所有block，非0表示超时
+</code></pre>
+
+<ol>
+<li>当group为空时，立即返回</li>
+</ol>
+
+<blockquote>
+<p>一个group虽然可以wait多次，但是只wait从监测那一刻之前，group中的block完成状态，而在等待过程添加的block本次并不会监测</p>
+</blockquote>
+
+<h3 id="toc_16">dispatch_group_wait</h3>
+
+<p>异步等待group中的task执行完成，调用block在指定queue中执行</p>
+
+<pre><code class="language-objectivec">void dispatch_group_notify(dispatch_group_t group, dispatch_queue_t queue, dispatch_block_t block);
+//group: 等待的group，系统retaingroup直到block运行完成
+//queue: group完成，block执行的queue，系统持有该queue直到block运行完成
+//block: group完成后放入queue中执行的block,函数会帮助调用Block_copy and Block_release
+</code></pre>
+
+<blockquote>
+<p>当group为空时，立即返回<br/>
+当notify block运行完成后，group为空</p>
+</blockquote>
+
+<h2 id="toc_17">dispatch_time_t</h2>
+
+<pre><code class="language-objectivec">typedef uint64_t dispatch_time_t
+</code></pre>
+
+<p>常用的time常量</p>
+
+<pre><code class="language-objectivec">//立即发生时间
+DISPATCH_TIME_NOW
+//无限远的时间
+DISPATCH_TIME_FOREVER
+</code></pre>
+
+<h3 id="toc_18">dispatch_time</h3>
+
+<p>创建一个时间</p>
+
+<pre><code class="language-objectivec">dispatch_time_t dispatch_time(dispatch_time_t when, int64_t delta);
+
+//int64_t delta: 纳秒数
+</code></pre>
+
+<blockquote>
+<p><code>dispatch_time</code>的默认时钟是基于<code>mach_absolute_time.</code></p>
+</blockquote>
+
+<h3 id="toc_19">dispatch_walltime</h3>
+
+<p>根据<code>wall clock</code>创建一个绝对的时间</p>
+
+<pre><code class="language-objectivec">dispatch_time_t dispatch_walltime(const struct timespec *when, int64_t delta);
+//when:结构体，创建的是绝对时间；传NULL表示当前时间
+</code></pre>
+
+<p><code>wall clock</code>基于<code>gettimeofday(_:_:)</code></p>
+
+<blockquote>
+<p>与<code>dispatch_time</code>区别：<code>dispatch_time</code>会在设备休眠(关机)时停止运行，<code>dispatch_walltime</code>会继续运行；即<code>dispatch_time</code>是设备运行的一段时间后某个时间点，而<code>dispatch_walltime</code>是绝对时间，与设备运行状态无关</p>
+</blockquote>
 
                         
                       </div>
@@ -373,7 +343,7 @@ dispatch_async(backgroundQueue, ^{
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/17</span>
+                    <span class="date">2019/4/9</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
@@ -470,25 +440,25 @@ dispatch_async(backgroundQueue, ^{
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

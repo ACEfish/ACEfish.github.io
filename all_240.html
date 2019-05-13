@@ -112,28 +112,62 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14921642710849.html">
+                <a class="clearlink" href="15555568072278.html">
                 
-                  <h1>动画</h1>
+                  <h1>后台任务超时崩溃</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>1.隐式动画<br/>
-    利用图层的属性动画来做动画<br/>
-    通过事务来控制动画的时间等属性<br/>
-    UIView的animateWithDuration:animations:方法创建的动画。<br/>
-2.显式动画<br/>
-    就是直接显式的向图层上添加一个动画<br/>
-    beginAnimations:context:和commitAnimations创建的动画。</p>
+                        	<h2 id="toc_0">信号不可捕获的崩溃</h2>
 
-<p>之所以叫<strong><code>隐式</code>是因为我们并没有指定任何动画的类型</strong>.我们改变属性之后是<code>Core Animation</code>来决定如何并且何时去做动画（这是隐式当然也可以显式动画）.</p>
+<ol>
+<li><p>后台任务超时</p></li>
+<li><p>内存打爆</p></li>
+<li><p>主线程卡顿超阈值<br/>
+如果主线程超过系统规定的时间无响应，就会被<code>Watchdog</code>杀掉,这是崩溃对应的异常编码为<code>0x8badf00d</code></p></li>
+</ol>
 
-<p>隐式动画的动画执行的时间取决于当前<code>事务</code>的设置，动画类型取决于图层行为。</p>
+<h2 id="toc_1">后台崩溃</h2>
 
-<p>3.<br/>
-<code>CATransaction</code> 隐式动画<br/>
-<code>CATransition</code> 过渡动画</p>
+<p>当App退到后台后，即使代码逻辑没有问题，也容易导致崩溃。这是以内系统强杀某些进程导致，而这些情况由于系统原因没有办法捕获到</p>
+
+<p>我们通常在应用进入后台时，通过调用<code>beginBackgroundTaskWithExpirationHandler</code>方法来延长应用存活</p>
+
+<pre><code class="language-objectivec">- (void)applicationDidEnterBackground:(UIApplication *)application {
+    //正常app 退到后台只有几秒时间执行代码，接下来就会被系统挂起
+    
+    //通过backgroud task方法延长后台时间 这个方法必须与endBackgroundTask一一对象
+    self.backgroundTaskIdentifier = [application beginBackgroundTaskWithExpirationHandler:^{
+        //如果在最后时间到了之前仍然没有调用endBackgroundTask方法 就会执行此回调
+        //通常时间为3分钟，如果时间到期之前调用endBackgroundTask方法 就会强制杀掉进程，就会造成崩溃
+        
+        /*
+         * 因此我们可以加一个定时器 在3分钟将要到达时 判断是否后台应用程序还在执行
+         * 如果还在执行的话，就可以认为快要崩溃 进行记录 上报
+         */
+
+        self.backGroundTimer = [NSTimer scheduledTimerWithTimeInterval:2*60 target:self selector:@selector(threeMinuteTimeOut) userInfo:nil repeats:NO];
+        
+        
+    }];
+    
+    NSLog(@&quot;开始执行后台任务&quot;);
+    //此处为执行任务代码 通常用来保存应用程序关键数据数据
+    //当任务执行完成时 调用endBackgroundTask方法 调用后就会将app挂起 
+//    [application endBackgroundTask:self.backgroundTaskIdentifier];
+
+
+}
+</code></pre>
+
+<blockquote>
+<p>可以在应用程序的任何时候 多次调用<code>beginBackgroundTaskWithExpirationHandler</code>方法，此时建议使用<code>beginBackgroundTaskWithName：expirationHandler：</code>方法，来给每个单独指定名称，方便调试。此时，每个任务都需要用返回的标识符，单独结束</p>
+
+<p>假如不支持后台任务 该方法返回<code>UIBackgroundTaskInvalid</code></p>
+
+<p>挂起状态是指:应用处在后台，并且已停止执行代码。当处在此状态时，应用依然驻留内存但不执行任何程序代码。当系统发生低内存告警时，系统将会将处 于Suspended状态的应用清除出内存以为正在前台运行的应用提供足够的内存。</p>
+</blockquote>
 
                         
                       </div>
@@ -142,10 +176,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/4/14</span>
+                    <span class="date">2019/4/18</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
+          					    <span class="posted-in"><a href='%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7-1.html'>项目监控</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -239,25 +273,25 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

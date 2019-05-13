@@ -112,34 +112,129 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15540375355169.html">
+                <a class="clearlink" href="15553791452907.html">
                 
-                  <h1>Clang CFE</h1>
+                  <h1>autorelease && autorelease pool block</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>常用的Clang前端组件和库</p>
+                        	<p>autorelease pool block提供了一个允许我们延时<code>deallocated</code>对象的机制</p>
+
+<h2 id="toc_0">autorelease</h2>
+
+<p><code>NSAutoReleasePool</code>对象的生存周期相当于C语言变量的作用域。对于所有调用过<code>autorelease</code>的实例方法，会在废弃NSAutorelease对象时，调用release方法</p>
+
+<pre><code class="language-objectivec">NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+id obj = [[NSObject alloc] init];
+[obj autorelease];
+[pool drain]; //调用pool drain方法相当于调用[obj release]
+</code></pre>
+
+<p>在Cocoa框架也有很多可以返回autorelease对象的方法</p>
+
+<pre><code class="language-objectivec">//返回autorelease对象
+id array = [NSMutableArray Array];
+//相当与
+id array = [[[NSMutableArray alloc] init] autorelease];
+</code></pre>
+
+<h2 id="toc_1">autorelease 原理</h2>
+
+<p>在NSAutoreleasePool维持了一个数组来保存autorelase的对象，[obj autorelease]方法实际上是调用了<code>NSAutoreleasePool</code>的<code>[NSAutoreleasePool addObject:obj]</code>方法，该方法会找到当前的pool并add到数组中，当调用<code>[pool drain]</code>时会废弃当前pool对象，并释放内部数组，因此内部所有对象都会被调用release方法</p>
+
+<blockquote>
+<p>可以使用<code>[NSAutoreleasePool showPools];</code>这个非公开方法查看现在的pool中对象状况,查看结果类似下面输出，可以用其查看对象是否被自动release</p>
+</blockquote>
+
+<pre><code class="language-objectivec">objc[41725]: ##############
+objc[41725]: AUTORELEASE POOLS for thread 0x10cd6f5c0
+objc[41725]: 2337 releases pending.
+objc[41725]: [0x7ff2b4000000]  ................  PAGE (full)  (cold)
+objc[41725]: [0x7ff2b4000038]    0x6000012fd180  __NSArrayI
+objc[41725]: [0x7ff2b4000040]    0x6000024aa1c0  __NSSetI
+objc[41725]: [0x7ff2b4000048]  ################  POOL 0x7ff2b4000048
+objc[41725]: [0x7ff2b4000050]    0x6000007a8480  __NSCFString
+...
+objc[41725]: [0x7ff2b4000058]  ################  POOL 0x7ff2b4000058
+objc[41725]: [0x7ff2b406ea10]  ################  POOL 0x7ff2b406ea10
+objc[41725]: [0x7ff2b406ea18]    0x6000005a77c0  NSObject
+objc[41725]: ##############
+</code></pre>
+
+<h2 id="toc_2">autorelease pool block</h2>
+
+<p>在Cocoa框架中，主循环的RunLoop会对<code>NSAutoreleasePool</code>进行生成、持有和废弃，因此，通常，我们不需要创建自己的自动释放池，但是有些情况下我怕们需要这么做<br/>
+在autorelease pool block结束时，所有在block内部收到<code>autorelease</code>消息的对象都会被发送一个<code>release</code>消息</p>
+
+<p>autorelease pool block可以嵌套:</p>
+
+<pre><code class="language-objectivec">@autoreleasepool {
+    // . . .
+    @autoreleasepool {
+        // . . .
+    }
+    . . .
+}
+</code></pre>
+
+<p>Cocoa中代码都是在自动释放池block中执行，否则会自动释放的对象未被释放造成内存泄漏。(因此，如果在自动释放池block外执行走动式房消息，Cocoa会报错)。AppKit或者UIKit框架都在自动释放池block中处理每个事件循环(详情见runLoop)。因此，通常不需要创建autorelease pool block，但是<strong>以下三种情况可能需要使用自己的自动释放池</strong>：</p>
 
 <ul>
-<li>LLVM Support Library: <code>LLVM libSupport</code>库提供了许多底层库和数据结果，包括命令行option处理，各种容器和系统抽象层，用于文件系统访问</li>
-<li>The Clang &quot;Basic&quot; Library: 提供了追踪和操纵<code>source buffers</code>，<code>source buffers</code>的位置，<code>diagnostics</code>，<code>token</code>，抽象目标以及编译语言自己信息的<code>low-level</code>实用程序。还部分由可以用在其他非C语言比如<code>SourceLocation</code>、<code>SourceManager</code>,<code>Diagnositics</code>，<code>FileManager</code>等。其中Diagnositics这个子系统是编译器和普通写代码人交流的主要组成部分，它会诊断当前代码那些不正确，按照严重程度产生warning或error，每个诊断会有唯一ID,sourceLocation会负责管理</li>
-<li>The Driver Library : 和Driver相关的库</li>
-<li>Precompiled Header： Clang支持预编译Header的两个实现</li>
-<li>The Frontend Library： 这个库包含在Clang库之上构建的功能，比如输出diagnosistics的几种方法</li>
-<li>The Lexer and Preprocessor Library: 词法分析和预处理的库，包含了Token、Annotation、Tokens、TokenLexer、Lexer等词法类，还有Parser library和AST语法树相关的比如Type、ASTContext、QualType、DeclarationName、DeclContext以及CFG类</li>
-<li>The Sema Library： 解析器调用此库时，会对输入进行语义分析。对有效的程序，Sema为解析构造一个AST</li>
-<li>The CodeGen Lirary： 用AST作为输入，生成LLVM IR代码</li>
+<li>假如编写不基于UI框架的程序，例如命令行工具</li>
+<li>假如编写一个创建了很多临时对象的循环<br/>
+可以再循环内的下一次迭代之前处理这些对象，有助于减少应用程序的最大内存占用量</li>
+<li>如果你创建了一个辅助线程<br/>
+当你的线程开始执行时，必须创建自己的自动释放池，否则你的应用程序有可能会内存泄漏</li>
 </ul>
 
-<h2 id="toc_0">libClang</h2>
+<h3 id="toc_3">使用本地自动释放池block减少峰值内存占用</h3>
 
-<h2 id="toc_1">Driver</h2>
+<pre><code class="language-objectivec">NSArray *urls = &lt;# An array of file URLs #&gt;;
+for (NSURL *url in urls) {
+ 
+    @autoreleasepool {
+        NSError *error;
+        NSString *fileContents = [NSString stringWithContentsOfURL:url
+                                         encoding:NSUTF8StringEncoding error:&amp;error];
+        /* Process the string, creating and autoreleasing more objects. */
+    }
+}
+</code></pre>
 
-<p>Driver是Clang面向用户的接口，用来解析Option设置，判断决定调用的工具链，最终完成整个编译过程</p>
+<p>在上面例子中，for循环每次循环的自动释放block结束时，将自动释放对象(例如:<code>fileContents</code>)发送release消息</p>
 
-<p>Driver 的流程是按照 ArgList - Actions - Jobs 来的<br/>
-<img src="media/15540375355169/15540403081825.jpg" alt="" style="width:716px;"/></p>
+<p>在自动释放池block后，块中的自动释放对象不应该再向其发送消息或者返回。如果想要将其返回，则可以先将其<code>retain</code>然后在block外将其autorelease</p>
+
+<pre><code class="language-objectivec">– (id)findMatchingObject:(id)anObject {
+ 
+    id match;
+    while (match == nil) {
+        @autoreleasepool {
+ 
+            /* Do a search that creates a lot of temporary objects. */
+            match = [self expensiveSearchForObject:anObject];
+ 
+            if (match != nil) {
+                [match retain]; /* Keep match around. */
+            }
+        }
+    }
+ 
+    return [match autorelease];   /* Let match go and return it. */
+}
+</code></pre>
+
+<h3 id="toc_4">线程和自动释放池block</h3>
+
+<p><code>Cocoa</code>应用程序的每个线程都会维护自己的自动释放池堆栈。如果编写基于<code>Foundation</code>的程序或者分离线程，则你必须创建自己的autoreleasePool</p>
+
+<p>如果应用程序或者线程长时间运行，则有可能产生大量自动释放对象，此时就需要使用自动释放池(例如主线程的UIKit和AppKit)；否则自动释放对象会累计，造成内存增加。但，如果你的线程没有进行Cocoa调用，则不需要使用自动释放池block</p>
+
+<blockquote>
+<p>注意:<br/>
+<strong>如果使用POSIX线程API而不是NSThread创建辅助线程，则除非Cocoa处于多线程模式，否则不能使用Cocoa</strong>Cocoa仅在分离其第一个NSThread对象后才进入多线程模式。 要在辅助POSIX线程上使用Cocoa，您的应用程序必须首先分离至少一个NSThread对象，该对象可以立即退出。 您可以使用NSThread类方法isMultiThreaded测试Cocoa是否处于多线程模式。</p>
+</blockquote>
 
                         
                       </div>
@@ -148,10 +243,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2019/3/31</span>
+                    <span class="date">2019/4/16</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html'>编译流程</a></span>
+          					    <span class="posted-in"><a href='%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html'>内存管理</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -245,25 +340,25 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

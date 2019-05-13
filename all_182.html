@@ -112,59 +112,96 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15541067561617.html">
+                <a class="clearlink" href="15017615739867.html">
                 
-                  <h1>Link Map File && dSYM</h1>
+                  <h1>下标</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>学习自 <a href="https://github.com/ming1016/study/wiki/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90-iOS-%E7%BC%96%E8%AF%91-Clang---LLVM">深入剖析iOS编译</a></p>
+                        	<p>下标可以定义在类、结构体和枚举中，用于访问集合、列表或序列中的元素</p>
 
-<h2 id="toc_0">编译后生成的二进制内容 Link Map File</h2>
+<p>一个类型可以定义多个下标.通过不同索引类型进行重载.下标不限于一维</p>
 
-<p>在<code>build Setting</code>里设置<code>Write Link Map File</code>为Yes后，每次编译都会在指定目录生成这样一个文件。文件内容包含了<code>Object files</code>，<code>Sections</code>，<code>Symbols</code></p>
+<h2 id="toc_0">下标语法</h2>
 
-<h3 id="toc_1">Object files</h3>
+<p>通过在实例名称后的方括号中传入一个或多个索引值来对实例进行存取</p>
 
-<p>这部分内容都是.m编译后的.o和需要link的.a文件。前面是文件编号，后面是文件路径</p>
+<p>定义下标使用<code>subscript</code>关键字,指定一个或者多个输入参数和返回类型<br/>
+下标可以设置为读写或者只读,通过是<code>getter</code>或者<code>setter</code>实现</p>
 
-<pre><code class="language-c">[  2] /Users/fish/Library/Developer/Xcode/DerivedData/RSSReader-dguiqpuhzqvuwbewcrithsiyuewj/Build/Intermediates.noindex/RSSReader.build/Debug-iphonesimulator/RSSReader.build/Objects-normal/x86_64/UIView+Extension.o
-...
-...
-...
-[160] /Users/fish/Library/Developer/Xcode/DerivedData/RSSReader-dguiqpuhzqvuwbewcrithsiyuewj/Build/Products/Debug-iphonesimulator/libPods-RSSReader.a(Pods-RSSReader-dummy.o)
+<pre><code class="language-swift">subscript(index: Int) -&gt; Int {
+    get {
+        // 返回一个适当的 Int 类型的值
+    }
+    set(newValue) {
+        // 执行适当的赋值操作
+    }
+}
 </code></pre>
 
-<h3 id="toc_2">Sections</h3>
+<p>可以不指定<code>setter</code>的参数,默认提供<code>newValue</code></p>
 
-<p>描述每个Section在可执行文件中的位置和大小。每个Section的Segment类型分为__TEXT代码段和__DATA数据段两种</p>
-
-<p><img src="media/15541067561617/15541075745329.jpg" alt="" style="width:698px;"/><br/>
-.data数据段里面保存的都是初始化过的全局静态变量和局部静态变量。.rodata段存放的是只读数据，一般都是const修饰的变量和字符串常量。.bss段存放的是未初始化的全局变量和局部静态变量。代码段就在.text段。</p>
-
-<h3 id="toc_3">Symbols</h3>
-
-<p>symbols对Sections进行了再划分。这里会描述所有的method、ivar和字符串，以及对应的地址、大小、文件编号信息等</p>
-
-<p><img src="media/15541067561617/15541077442023.jpg" alt="" style="width:650px;"/><br/>
-<img src="media/15541067561617/15541077540760.jpg" alt="" style="width:732px;"/></p>
-
-<h2 id="toc_4">每次编译后生成的dSYM文件</h2>
-
-<p>在每次编译后都会生成dSYM文件，程序在执行中通过地址来调用方法函数，而dSYM文件里存储了函数地址映射，这样调用栈里的地址可以通过dSYM这个映射表获取具体函数的位置。常用来处理crash时获取到的调用栈.crash文件，将其符号化</p>
-
-<p>可以通过 Xcode 进行符号化，将 .crash 文件，.dSYM 和 .app 文件放到同一个目录下，打开 Xcode 的 Window 菜单下的 organizer，再点击 Device tab，最后选中左边的 Device Logs。选择 import 将 .crash 文件导入就可以看到 crash 的详细 log 了。</p>
-
-<p>还可以通过命令行工具 symbolicatecrash 来手动符号化 crash log。同样先将 .crash 文件，.dSYM 和 .app 文件放到同一个目录下，然后输入下面的命令</p>
-
-<pre><code class="language-objectivec">export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-symbolicatecrash appName.crash appName.app &gt; appName.log
+<pre><code class="language-swift">struct TimesTable {
+    let multiplier: Int
+    subscript(index: Int) -&gt; Int {
+        return multiplier * index
+    }
+}
+let threeTimesTable = TimesTable(multiplier: 3)
+print(&quot;six times three is \(threeTimesTable[6])&quot;)
+// 打印 &quot;six times three is 18&quot;
 </code></pre>
 
-<blockquote>
-<p>debug环境默认不生成dsym文件，release环境才会生成</p>
-</blockquote>
+<p>定义一个数学公式结构体,只读的下标语法</p>
+
+<h2 id="toc_1">下标用法</h2>
+
+<pre><code class="language-swift">//字典的下标语法
+var numberOfLegs = [&quot;spider&quot;: 8, &quot;ant&quot;: 6, &quot;cat&quot;: 4]
+numberOfLegs[&quot;bird&quot;] = 2
+</code></pre>
+
+<h2 id="toc_2">下标选项</h2>
+
+<p>下标可以使用变量参数和可变参数,但不能使用输入输出参数,也不能给参数设置默认值</p>
+
+<p>下标的重载:<br/>
+类和结构体可以根据自身需要提供多个下标实现,通过入参和类型进行区分</p>
+
+<pre><code class="language-swift">struct Matrix {
+    let rows: Int, columns: Int
+    var grid: [Double]
+    init(rows: Int, columns: Int) {
+        self.rows = rows
+        self.columns = columns
+        //通过传入数组长度和初始值0.0到数组的构造器，将矩阵中每个位置的值初始化为0.0
+        grid = Array(count: rows * columns, repeatedValue: 0.0)
+    }
+    func indexIsValidForRow(row: Int, column: Int) -&gt; Bool {
+        return row &gt;= 0 &amp;&amp; row &lt; rows &amp;&amp; column &gt;= 0 &amp;&amp; column &lt; columns
+    }
+    subscript(row: Int, column: Int) -&gt; Double {
+        get {
+            //断言语句
+            assert(indexIsValidForRow(row, column: column), &quot;Index out of range&quot;)
+            return grid[(row * columns) + column]
+        }
+        set {
+            //断言语句
+            assert(indexIsValidForRow(row, column: column), &quot;Index out of range&quot;)
+            grid[(row * columns) + column] = newValue
+        }
+    }
+}
+</code></pre>
+
+<pre><code class="language-swift">var matrix = Matrix(rows: 2, columns: 2)
+//下标入参用逗号进行分割
+matrix[0, 1] = 1.5 //将下标为(0,1)位置设置为1.5
+</code></pre>
+
+<p>通过断言,检查下标入参<code>row</code>和<code>colum</code>的值是否有效.定义方法<code>indexIsValidForRow(_:column:)</code>检查入参<code>row</code>和<code>columu</code>是否越界,断言会在下标月结</p>
 
                         
                       </div>
@@ -173,10 +210,10 @@ symbolicatecrash appName.crash appName.app &gt; appName.log
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2019/4/1</span>
+                    <span class="date">2017/8/3</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html'>编译流程</a></span>
+          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -270,25 +307,25 @@ symbolicatecrash appName.crash appName.app &gt; appName.log
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

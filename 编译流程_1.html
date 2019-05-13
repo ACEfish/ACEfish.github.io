@@ -112,14 +112,60 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15554886689884.html">
+                <a class="clearlink" href="15541067561617.html">
                 
-                  <h1>Mach文件</h1>
+                  <h1>Link Map File && dSYM</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	
+                        	<p>学习自 <a href="https://github.com/ming1016/study/wiki/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90-iOS-%E7%BC%96%E8%AF%91-Clang---LLVM">深入剖析iOS编译</a></p>
+
+<h2 id="toc_0">编译后生成的二进制内容 Link Map File</h2>
+
+<p>在<code>build Setting</code>里设置<code>Write Link Map File</code>为Yes后，每次编译都会在指定目录生成这样一个文件。文件内容包含了<code>Object files</code>，<code>Sections</code>，<code>Symbols</code></p>
+
+<h3 id="toc_1">Object files</h3>
+
+<p>这部分内容都是.m编译后的.o和需要link的.a文件。前面是文件编号，后面是文件路径</p>
+
+<pre><code class="language-c">[  2] /Users/fish/Library/Developer/Xcode/DerivedData/RSSReader-dguiqpuhzqvuwbewcrithsiyuewj/Build/Intermediates.noindex/RSSReader.build/Debug-iphonesimulator/RSSReader.build/Objects-normal/x86_64/UIView+Extension.o
+...
+...
+...
+[160] /Users/fish/Library/Developer/Xcode/DerivedData/RSSReader-dguiqpuhzqvuwbewcrithsiyuewj/Build/Products/Debug-iphonesimulator/libPods-RSSReader.a(Pods-RSSReader-dummy.o)
+</code></pre>
+
+<h3 id="toc_2">Sections</h3>
+
+<p>描述每个Section在可执行文件中的位置和大小。每个Section的Segment类型分为__TEXT代码段和__DATA数据段两种</p>
+
+<p><img src="media/15541067561617/15541075745329.jpg" alt="" style="width:698px;"/><br/>
+.data数据段里面保存的都是初始化过的全局静态变量和局部静态变量。.rodata段存放的是只读数据，一般都是const修饰的变量和字符串常量。.bss段存放的是未初始化的全局变量和局部静态变量。代码段就在.text段。</p>
+
+<h3 id="toc_3">Symbols</h3>
+
+<p>symbols对Sections进行了再划分。这里会描述所有的method、ivar和字符串，以及对应的地址、大小、文件编号信息等</p>
+
+<p><img src="media/15541067561617/15541077442023.jpg" alt="" style="width:650px;"/><br/>
+<img src="media/15541067561617/15541077540760.jpg" alt="" style="width:732px;"/></p>
+
+<h2 id="toc_4">每次编译后生成的dSYM文件</h2>
+
+<p>在每次编译后都会生成dSYM文件，程序在执行中通过地址来调用方法函数，而dSYM文件里存储了函数地址映射，这样调用栈里的地址可以通过dSYM这个映射表获取具体函数的位置。常用来处理crash时获取到的调用栈.crash文件，将其符号化</p>
+
+<p>可以通过 Xcode 进行符号化，将 .crash 文件，.dSYM 和 .app 文件放到同一个目录下，打开 Xcode 的 Window 菜单下的 organizer，再点击 Device tab，最后选中左边的 Device Logs。选择 import 将 .crash 文件导入就可以看到 crash 的详细 log 了。</p>
+
+<p>还可以通过命令行工具 symbolicatecrash 来手动符号化 crash log。同样先将 .crash 文件，.dSYM 和 .app 文件放到同一个目录下，然后输入下面的命令</p>
+
+<pre><code class="language-objectivec">export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+symbolicatecrash appName.crash appName.app &gt; appName.log
+</code></pre>
+
+<blockquote>
+<p>debug环境默认不生成dsym文件，release环境才会生成</p>
+</blockquote>
+
                         
                       </div>
                   </div>
@@ -127,7 +173,7 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2019/4/17</span>
+                    <span class="date">2019/4/1</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html'>编译流程</a></span>
@@ -224,25 +270,25 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

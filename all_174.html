@@ -112,242 +112,255 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14892022301750.html">
+                <a class="clearlink" href="15028525854956.html">
                 
-                  <h1>图层几何学、视觉效果</h1>
+                  <h1>自动引用计数</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>遗忘点:</p>
+                        	<p>与<code>OC</code>相同 <code>Swift</code>使用自动引用计数(ARC)来跟踪和管理应用程序内存</p>
 
-<ol>
-<li>用作mask的layer不一定非要静态的,只要有layer的都可以作为蒙版</li>
-</ol>
+<h2 id="toc_0">工作机制</h2>
 
-<p>2.<code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；我们常用这个方法获取点击位置的视图（判断点击在了哪个视图）</p>
+<p>创建类的实例时,<code>ARC</code>会分配一块内存来存储实例信息.不再使用该实例,ARC将其释放.当是实例被释放后，其方法或属性均不能被访问或调用。<br/>
+因此，为了确保使用中的实例不会被销毁，ARC 会跟踪和计算每一个实例正在被多少属性，常量和变量所引用。哪怕实例的引用数为1，ARC都不会销毁这个实例。</p>
 
-<pre><code class="language-text">CALayer *layer = [self.layerView.layer hitTest:point];
+<h2 id="toc_1">循环强引用</h2>
+
+<p>如果两个类实例互相引用,那么类实例的强引用数永远不能变为0，这就是<strong>循环强引用</strong></p>
+
+<h2 id="toc_2">解决循环强引用方法</h2>
+
+<p>解决办法: <strong>弱引用</strong> <strong>无主引用</strong></p>
+
+<p>将循环引用中一个实例对另外的实例不保持强引用</p>
+
+<p>当其他的实例有更短的生命周期时,使用弱引用，即其 实例 析构在先时; 当其他实例有相同或者更长的声明周期时,请使用无主引用</p>
+
+<h3 id="toc_3">弱引用</h3>
+
+<p>弱引用不会对其引用的实例保持强引用，因而不会阻止<code>ARC</code>销毁被引用的实例。</p>
+
+<p>声明属性或变量时,在前面加上<code>weak</code>关键字表明是个弱引用</p>
+
+<p><code>ARC</code>会在引用的实例被销毁后自动将其赋值为<code>nil</code>.并且弱引用可以允许它们的值运行时赋值为<code>nil</code>，所以会被定义为可选类型变量而不是常量</p>
+
+<p>弱引用为可选类型变量,可以通过检查是否为nil,防止访问已经销毁的实例的引用</p>
+
+<blockquote>
+<p>在<code>ARC</code>设置弱引用为<code>nil</code>时,属性观察不会被触发</p>
+</blockquote>
+
+<pre><code class="language-swift">class Person {
+    let name: String
+    init(name: String) { self.name = name }
+    var apartment: Apartment?
+    deinit { print(&quot;\(name) is being deinitialized&quot;) }
+}
+
+class Apartment {
+    let unit: String
+    init(unit: String) { self.unit = unit }
+    weak var tenant: Person?
+    deinit { print(&quot;Apartment \(unit) is being deinitialized&quot;) }
+}
+
+var john: Person?
+var unit4A: Apartment?
+john = Person(name: &quot;John Appleseed&quot;)
+unit4A = Apartment(unit: &quot;4A&quot;)
+john!.apartment = unit4A
+unit4A!.tenant = john
+//因为Apartment 中 的 tenant 属性为弱引用,因此即使这样也不会产生循环引用
+
+john = nil
+// 打印 “John Appleseed is being deinitialized”
+
+unit4A = nil
+// 打印 “Apartment 4A is being deinitialized”
+
 </code></pre>
 
-<h2 id="toc_0">图层几何学</h2>
+<p>变量<code>john</code>和<code>unit4A</code>在被赋值为<code>nil</code>后，<code>Person</code>实例和<code>Apartment</code>实例的析构函数都打印出“销毁”的信息</p>
 
-<h3 id="toc_1">布局</h3>
+<h3 id="toc_4">无主引用</h3>
 
-<p>UIView布局属性:<code>frame</code> <code>bounds</code> <code>center</code><br/><br/>
-与之对应<br/>
-CALayer布局属性:<code>frame</code> <code>bounds</code> <code>position</code><br/>
-center和postion是一样的值，都代表了相对于父图层 <code>anchorPoint</code> 所在的位置</p>
+<p>与弱引用类似,无主引用不会保持住引用的实例<br/>
+与弱引用不同,<strong>无主引用用在与其他实例有相同或者更长声明周期时使用</strong><br/>
+在属性前加<code>unowned</code>关键字进行声明</p>
 
-<p>视图的布局属性仅仅是存取方法，对其进行改变其实是改变视图下方CALayer的frame  </p>
+<p>无主引用为非可选类型,因此<code>ARC</code>无法在实例被销毁后将无主引用设置为<code>nil</code></p>
 
-<p>视图或者图层的frame是根据其bounds，position和transform计算而来的，其中任意一值发生改变都会导致其frame改变  </p>
+<p><em>注意</em>:</p>
 
-<p><img src="media/14892022301750/14892031426669.jpg" alt=""/></p>
+<blockquote>
+<p>使用无主引用，必须<strong>保证引用始终指向一个未销毁的实例</strong><br/>
+试图在实例被销毁后，访问该实例的无主引用，会触发运行时错误</p>
+</blockquote>
 
-<h3 id="toc_2">锚点</h3>
+<p>举个栗子:<br/>
+<code>Customer</code>客户和<code>CreditCard</code>银行卡之间的关系,两个类都将另外一个类的实例作为自身属性,关系是客户可能没有银行卡,但是银行卡一定有客户,因此将银行卡的<code>customer</code>设置为无主引用</p>
 
-<p>视图的<code>center</code>属性和图层的<code>position</code>属性都指定了<code>anchorPoint</code>相对于父图层的位置。</p>
-
-<p><code>anchorPoint</code>是用来移动图层的把柄</p>
-
-<p>默认<code>anchorPoint</code>是在图层的中心,这个属性UIView并没有暴露出来,这也是视图的<code>position</code>属性被叫做“center”的原因。但是图层的锚点可以移动，锚点的移动会导致frame的改变即位置改变</p>
-
-<p><img src="media/14892022301750/14893741880682.jpg" alt=""/></p>
-
-<p>anchorPoint也是单位坐标，默认是{0.5，0.5}，可以通过指定大于或者小于1，使其在图层范围之外</p>
-
-<p>改变<code>anchorPoint</code>常用于做不随着中心点做动画的动画使用,比如 时钟的表针旋转</p>
-
-<p><strong>注意</strong><br/>
-中心和锚点（即position或者center和anchorPoint没有任何关系），锚点的改变不会影响中心点位置，只会影响frame</p>
-
-<pre><code class="language-objectivec">position.x = frame.origin.x + anchorPoint.x * bounds.size.width；  
-position.y = frame.origin.y + anchorPoint.y * bounds.size.height；
-
-frame.origin.x = position.x - anchorPoint.x * bounds.size.width；  
-frame.origin.y = position.y - anchorPoint.y * bounds.size.height；
-</code></pre>
-
-<h3 id="toc_3">坐标系转换</h3>
-
-<p>CALayer提供了转换坐标系的方法（视图也有）</p>
-
-<pre><code class="language-objectivec">- (CGPoint)convertPoint:(CGPoint)point fromLayer:(CALayer *)layer;
-- (CGPoint)convertPoint:(CGPoint)point toLayer:(CALayer *)layer;
-- (CGRect)convertRect:(CGRect)rect fromLayer:(CALayer *)layer;
-- (CGRect)convertRect:(CGRect)rect toLayer:(CALayer *)layer;
-</code></pre>
-
-<h3 id="toc_4">Z坐标</h3>
-
-<p>UIView是二维坐标 而CALayer则是三维的<br/><br/>
-因此CALayer还有两个属性:<code>zPosition</code> <code>anchorPointZ</code> 在Z轴上描述图层位置的浮点类型<br/>
-<code>zPosition</code>最实用的功能就是改变图层的显示顺序了，一般给图层增加<code>1.f</code>就可以控制显示顺序了</p>
-
-<h3 id="toc_5">HIT Testing</h3>
-
-<p><code>CALayer</code>并不关心任何响应链事件，所以不能直接处理触摸事件或者手势。但是它有一系列的方法帮你处理事件：<code>-containsPoint:</code>和<code>-hitTest:</code>。    </p>
-
-<p><code>-containsPoint:</code> 接受一个在本图层坐标系吓得一个CGPoint，如果这个点在图层frame内就返回YES。注意必须将这个点转为每个图层坐标系下的坐标</p>
-
-<p><code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；</p>
-
-<pre><code class="language-objectivec">//举个栗子
-- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
-{
-    //get touch position
-    CGPoint point = [[touches anyObject] locationInView:self.view];
-    //get touched layer
-    //获取这个点击的layer
-    CALayer *layer = [self.layerView.layer hitTest:point];
-    //get layer using hitTest
-    if (layer == self.blueLayer) {
-        [[[UIAlertView alloc] initWithTitle:@&quot;Inside Blue Layer&quot; message:nil delegate:nil cancelButtonTitle:@&quot;OK&quot; otherButtonTitles:nil] show];
-    } else if (layer == self.layerView.layer) {
-        [[[UIAlertView alloc] initWithTitle:@&quot;Inside White Layer&quot;
-        message:nil
-        delegate:nil
-        cancelButtonTitle:@&quot;OK&quot;
-        otherButtonTitles:nil] show];
+<pre><code class="language-swift">
+class Customer {
+    let name: String
+    var card: CreditCard?
+    init(name: String) {
+        self.name = name
     }
+    deinit { print(&quot;\(name) is being deinitialized&quot;) }
+}
+
+class CreditCard {
+    let number: UInt64 //确保在32、64位机器上均可以保存16位的卡号
+    unowned let customer: Customer
+    init(number: UInt64, customer: Customer) {
+        self.number = number
+        self.customer = customer
+    }
+    deinit { print(&quot;Card #\(number) is being deinitialized&quot;) }
+}
+
+
+var john: Customer?
+john = Customer(name: &quot;John Appleseed&quot;)
+john!.card = CreditCard(number: 1234_5678_9012_3456, customer: john!)
+
+john = nil
+// 打印 “John Appleseed is being deinitialized”
+// 打印 ”Card #1234567890123456 is being deinitialized”
+
+</code></pre>
+
+<p><code>Customer</code>实例持有对<code>CreditCard</code>实例的强引用，而<code>CreditCard</code>实例持有对 <code>Customer</code>实例的无主引用</p>
+
+<blockquote>
+<p>对于需要禁用运行时的安全检查的情况（例如，出于性能方面的原因），Swift还提供了不安全的无主引用。与所有不安全的操作一样，你需要负责检查代码以确保其安全性。 你可以通过 <code>unowned(unsafe)</code>来声明不安全无主引用。如果你试图在实例被销毁后，访问该实例的不安全无主引用，你的程序会尝试访问该实例之前所在的内存地址，这是一个不安全的操作</p>
+</blockquote>
+
+<h3 id="toc_5">无主引用以及隐式解析可选属性</h3>
+
+<pre><code class="language-swift">class Country {
+    let name: String
+    var capitalCity: City!
+    init(name: String, capitalName: String) {
+        self.name = name
+        self.capitalCity = City(name: capitalName, country: self)
+    }
+}
+
+class City {
+    let name: String
+    unowned let country: Country
+    init(name: String, country: Country) {
+        self.name = name
+        self.country = country
+    }
+}
+</code></pre>
+
+<p>我们在<code>Country</code>的<code>capitalCity</code>属性声明为<code>City!</code>隐式解析可选类型的属性,表明像其他可选类型一样，默认值为<code>nil</code>，但是不需要展开他的值就能访问</p>
+
+<p>因为<code>capitalCity</code>的默认值为默认为<code>nil</code>，因此在构造country时,当name赋值以后,初始化就完成了,此时我们就能把这个初始化的<code>country</code>实例传递给<code>City</code>来构造City实例</p>
+
+<h2 id="toc_6">闭包引起的循环强引用</h2>
+
+<p>闭包和类 类似,都是引用类型,因此,将闭包赋值为某属性时,是将这个闭包的引用赋值给属性,因此当闭包体中访问实例的某个属性时,就会造成循环引用</p>
+
+<pre><code class="language-swift">class HTMLElement {
+    let name: String
+    let text: String?
+    lazy var asHTML: Void -&gt; String = {
+        if let text = self.text {
+            return &quot;&lt;\(self.name)&gt;\(text)&lt;/\(self.name)&gt;&quot;
+        } else {
+            return &quot;&lt;\(self.name) /&gt;&quot;
+        }
+    }
+    init(name: String, text: String? = nil) {
+        self.name = name
+        self.text = text
+    }
+    deinit {
+        print(&quot;\(name) is being deinitialized&quot;)
+    }
+}
+</code></pre>
+
+<blockquote>
+<p><code>asHTML</code>声明为<code>lazy</code>属性，因为只有当元素确实需要被处理为<code>HTML</code>输出的字符串时，才需要使用<code>asHTML</code>。也就是说，在默认的闭包中可以使用<code>self</code>，因为只有当初始化完成以及<code>self</code>确实存在后，才能访问<code>lazy</code>属性。</p>
+</blockquote>
+
+<p><strong>闭包捕获列表</strong>解决闭包引起的循环引用</p>
+
+<p>对于一个类的闭包属性,想要改变这个属性的行为,可以通过给这个属性再赋值一个闭包</p>
+
+<p><code>HTMLElement</code>有类和作为<code>asHTML</code>默认值的闭包之间的循环强引用</p>
+
+<p>注意:<br/>
+虽然闭包中多次使用<code>self</code>，但是它只捕获<code>HTMLElement</code>实例的一个强引用</p>
+
+<p>此时<code>HTMLElement</code>实例和它的闭包是不会被销毁和释放的</p>
+
+<h2 id="toc_7">解决闭包引起的循环强引用</h2>
+
+<p>在定义闭包时同时定义<strong>捕获列表</strong>作为闭包的一部分，捕获列表定义了闭包体内捕获一个或多个引用类型的规则.声明捕获的引用为弱引用或者无主引用,而不是强引用</p>
+
+<blockquote>
+<p><code>Swift</code>规定:在闭包中使用<code>self</code>的成员，要使用<code>self.someProperty</code>或者<code>self.someMethod()</code>，而不是使用<code>someProperty</code>或<code>someMethod()</code></p>
+</blockquote>
+
+<h3 id="toc_8">定义捕获列表</h3>
+
+<p>捕获列表由一对元素组成,一个是<code>weak</code>或<code>unowned</code>关键字,另一个是类实例的引用如<code>self</code>或初始化的变量.在方括号中用逗号隔开</p>
+
+<pre><code class="language-swift">//如果闭包有参数列表和返回类型，把捕获列表放在它们前面
+lazy var someClosure: (Int, String) -&gt; String = {
+    [unowned self, weak delegate = self.delegate!] (index: Int, stringToProcess: String) -&gt; String in
+    // 这里是闭包的函数体
+}
+
+/**
+如果闭包没有指明参数列表或者返回类型，即它们会通过上下文推断，
+那么可以把捕获列表和关键字 in 放在闭包最开始的地方
+*/
+
+lazy var someClosure: Void -&gt; String = {
+    [unowned self, weak delegate = self.delegate!] in
+    // 这里是闭包的函数体
 }
 
 </code></pre>
 
-<p><strong>注意</strong></p>
+<h3 id="toc_9">弱引用和无主引用</h3>
 
-<ol>
-<li>当调用图层的<code>-hitTest:</code>方法时，测算的顺序严格依赖于图层树当中的图层顺序（和<code>UIView</code>处理事件类似）。之前提到的<code>zPosition</code>属性可以明显改变屏幕上图层的顺序，但不能改变事件传递的顺序。<br/></li>
-<li>这两个方法是layer的实例方法 我们可以直接用layer调用而不需要作为系统判断方法</li>
-</ol>
+<p>在闭包和捕获的实例总是互相引用并且总是同时销毁时，将闭包内的捕获定义为<code>无主引用</code>。(即被捕获的引用不会变为nil使用无主引用)<br/>
+在被捕获的引用可能会变为<code>nil</code>时，将闭包内的捕获定义为<code>弱引用</code>，弱引用总是可选类型,在引用的实例被销毁后自动置为<code>nil</code></p>
 
-<h3 id="toc_6">自动布局</h3>
-
-<p>对于UIView如果想要自动布局我们可以使用<code>UIViewAutoresizingMask</code>  和<code>NSLayoutConstraint</code>API<br/><br/>
-CALayer没有自动布局办法<br/>
-如果想要随意控制CALayer的布局，我们可以用CALayerDelegate方法:  </p>
-
-<pre><code class="language-objectivec">- (void)layoutSublayersOfLayer:(CALayer *)layer;
-/**当图层的 bounds 发生改变，或者图层的 -setNeedsLayout 方法被调用的时候，这个函数将会被执
-行。（但是也没法做大自适应屏幕等自动布局,这也是为什么我们用UIView来布局）*/
+<pre><code class="language-swift">class HTMLElement {
+    let name: String
+    let text: String?
+    lazy var asHTML: Void -&gt; String = {
+        [unowned self] in
+        if let text = self.text {
+            return &quot;&lt;\(self.name)&gt;\(text)&lt;/\(self.name)&gt;&quot;
+        } else {
+            return &quot;&lt;\(self.name) /&gt;&quot;
+        }
+    }
+    init(name: String, text: String? = nil) {
+        self.name = name
+        self.text = text
+    }
+    deinit {
+        print(&quot;\(name) is being deinitialized&quot;)
+    }
+}
 </code></pre>
 
-<h2 id="toc_7">视觉效果</h2>
-
-<h3 id="toc_8">圆角</h3>
-
-<p>CALayer有一个叫做<code>conrnerRadius</code>的属性控制着图层角的曲率。它是一个浮点数，默认为0（为0的时候就是直角）,默认这个值不影响背景图片或者子图层,但是如果设置<code>maskToBounds</code>为<code>YES</code>,图层中东西都会被截取.</p>
-
-<h3 id="toc_9">图层边框</h3>
-
-<p><code>borderWidth</code>和<code>borderColor</code>，这条线（stroke）沿着图层的bounds绘制,同时也包含图层的角.<br/>
-<code>borderWith</code>以点为单位的浮点数<br/><br/>
-<code>borderColor</code>边框的颜色默认黑色,<code>CGColorRef</code>类型，不是UIColor所以不是<code>Cocoa</code>内置对象  </p>
-
-<pre><code class="language-objectivec">// CGColorRef 属性即便是强引用也只能通过assign关键字来声明
-@property(nullable) CGColorRef borderColor;
-</code></pre>
-
-<p><strong>注意</strong></p>
-
-<ol>
-<li>边框是绘制在图层边界里面的，而且在所有子内容之前，也在子图层之前。（这个之前是显示最前而不是在最前绘制被遮盖）</li>
-<li>边框是跟随图层的边界变化的，而不是图层里面的内容</li>
-<li>
-<img src="media/14892022301750/14893838391060.jpg" alt=""/></li>
-</ol>
-
-<h3 id="toc_10">阴影</h3>
-
-<p><code>shadowOpacity</code>默认0。他是一个必须在<code>0.0</code>（不可见）和<code>1.0</code>（完全不透明）之间的浮点数。  </p>
-
-<p>阴影的另外三个属性:<br/><br/>
-<code>shadowColor</code>控制阴影的颜色，和 borderColor 和 backgroundColor 一样，它的类型也是 CGColorRef，默认黑色<br/><br/>
-<code>shadowOffset</code>阴影的方向和距离 CGSize类型，宽度为阴影横向位移，高度为纵向位移，默认{0,-3},即相对Y轴有3个点的向上位移<br/><br/>
-<code>shadowRadius</code>控制着阴影的模糊度，当它的值是0的时候，阴影就和视图一样有一个非常确定的边界线。我们推荐为大于0的值,值越大阴影越模糊,图层层次更明显.</p>
-
-<p><img src="media/14892022301750/14893848191222.jpg" alt=""/></p>
-
-<h4 id="toc_11">阴影裁剪</h4>
-
-<p>与边框不同,图层的阴影继承自内容的外形，CoreAnimation会将寄宿图（包括子视图）来结合图层形状创建一个阴影。<br/><br/>
-但是由于他们的不同,我们在包括子图层创建阴影后,如果按照边框进行裁剪就会导致部分阴影没有了，这时候我们只能额外创建一个裁剪后的图层形状的阴影图层（可以作为最外层的父图层）来实现效果。</p>
-
-<h3 id="toc_12">shadowPath属性</h3>
-
-<p>因为实时计算阴影是非常消耗资源的,我们可以通过事先指定<code>shadowPath</code>来提高性能.<code>shadowPath</code>是一个<code>CGPathRef</code>类型（一个指向<code>CGPath</code>的指针）。<code>CGPath</code> 是一个<code>Core Graphics</code>对象，用来指定任意的一个矢量图形。我们可以用这个属性在图层形状之外指定阴影形状.  </p>
-
-<p>举个栗子:</p>
-
-<pre><code class="language-objectivec">
-CGMutablePathRef squarePath = CGPathCreateMutable();
-CGPathAddRect(squarePath, NULL, self.layerView1.bounds);
-self.layerView1.layer.shadowPath = squarePath;
-//需要我们手动释放
-CGPathRelease(squarePath);
-//create a circular shadow
-CGMutablePathRef circlePath = CGPathCreateMutable();
-CGPathAddEllipseInRect(circlePath, NULL, self.layerView2.bounds);
-self.layerView2.layer.shadowPath = circlePath; 
-CGPathRelease(circlePath);
-</code></pre>
-
-<p><code>CGPath</code>适合搭建比较简单的形状,比如举行或者圆,但是如果是复杂的图形推荐<strong>使用<code>UIBezierPath</code></strong>，它是一个由UIKit提供的在<code>CGPath</code>基础上的<code>Objective-C</code>包装类</p>
-
-<h3 id="toc_13">图层蒙版</h3>
-
-<p>CALayer的<code>mask</code>属性是一个CALayer类型,它类似于一个自图层，mask图层定义了父图层的可见区域。  </p>
-
-<p>mask图层的color没用,轮廓才是重要的。对于mask图层中的部分会保留下来,其他部分会被抛弃（对于视图View其实你可以看做其他部分还在只不过颜色为透明色,但是这部分还会拦截点击事件）  </p>
-
-<p>这个<code>Mask</code><strong>不仅仅局限于静态图</strong>，任何有图层的构成都可以作为Mask，因此我们甚至可以用一个动画的layer作为蒙版.</p>
-
-<h3 id="toc_14">拉伸过滤</h3>
-
-<p>这里牵涉到<code>minificationFilter</code>和<code>magnificationFilter</code>属性。  </p>
-
-<p>当图片需要显示不同大小的时候,这种拉伸算法就起到作用。它作用于原图的像素上并根据需要生成新的像素显示在屏幕上。</p>
-
-<p><code>CALayer</code>提供给我们三种拉伸过滤方法:</p>
-
-<ul>
-<li>kCAFilterLinear </li>
-<li>kCAFilterNearest</li>
-<li>kCAFilterTrilinear</li>
-</ul>
-
-<p><code>minification</code>（缩小图片）和<code>magnification</code>（放大图片）默认的过滤器都是<code>kCAFilterLinear</code></p>
-
-<p><code>kCAFilterLinear</code>双线性滤波，大多数情况下表现良好，但是当放大倍数较大时会比较模糊不清  </p>
-
-<p><code>kCAFilterTrilinear</code>和<code>kCAFilterLinear</code>很相似，是三线性滤波<br/>
-<img src="media/14892022301750/14893953542514.jpg" alt=""/></p>
-
-<p><code>kCAFilterNearest</code> 最近过滤 ，就是取样最近的单像素点而不管其他的颜色。总的来说，对于比较小的图或者是差异特别明显，极少斜线的大图，最近过滤算法会保留这种差异明显的特质以呈现更好的结果。但是对于大多数的图尤其是有很多斜线或是曲线轮廓的图片来说，最近过滤算法会导致更差的结果。换句话说，线性过滤保留了形状，最近过滤则保留了像素的差异。<br/>
-<img src="media/14892022301750/14893958244715.jpg" alt=""/></p>
-
-<h3 id="toc_15">组透明</h3>
-
-<p>UIView用<code>alpha</code>属性设置透明度<br/>
-CALayy用<code>opacity</code>设置图层透明度<br/>
-这两个属性都是影响子层级的，比如我们设置一个图层透明度为50%，图层的每个像素都会一半显示自己的颜色，另一半显示图层下面的颜色。。但是如果图层包含一个同样显示50%透明的子图层时，你所看到的视图，50%来自子视图，25%来了图层本身的颜色，另外的25%则来自背景色。因此经常导致我们我们视图颜色的不协调。</p>
-
-<p>这时候我们可以<br/><br/>
-方法一：<br/><br/>
-通过设置<code>Info.plist</code>文件中的 <code>UIViewGroupOpacity</code>为<code>YES</code>来达到这个效果，但是这个设置会影响到这个应用，整个app可能会受到不良影响。</p>
-
-<p>方法二：（推荐）<br/><br/>
-设置CALayer的一个叫做<code>shouldRasterize</code>属性来实现组透明的效果，如果它被设置为YES，在应用透明度之前，图层及其子图层都会被整合成一个整体的图片，这样就没有透明度混合的问题了</p>
-
-<p>为了启用<code>shouldRasterize</code>属性，我们设置了图层的<code>rasterizationScale</code>属性。默认情况下，所有图层拉伸都是1.0， 所以如果你使用了<code>shouldRasterize</code>属性，你就要确保你设置了 <code>rasterizationScale</code> 属性去匹配屏幕，以防止出现Retina屏幕像素化的问题。</p>
-
-<pre><code class="language-objectivec">button2.layer.shouldRasterize = YES;
-button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
-</code></pre>
-
-<p><strong>注意</strong><br/>
-当<code>shouldRasterize</code>和<code>UIViewGroupOpacity</code>一起的时候，会出现性能问题（但是好像影响不大）</p>
+<p>在<code>asHTML</code>闭包中多了一个捕获列表，<code>[unowned self]</code>将self声明为无主引用<br/>
+这时候没有了循环引用,我们就可以销毁<code>HTMLElement</code>实例了</p>
 
                         
                       </div>
@@ -356,10 +369,10 @@ button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/3/11</span>
+                    <span class="date">2017/8/16</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%9B%BE%E5%B1%82.html'>图层</a></span>
+          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -453,25 +466,25 @@ button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

@@ -112,148 +112,405 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14873831706932.html">
+                <a class="clearlink" href="14873146865194.html">
                 
-                  <h1>OCMock</h1>
+                  <h1>NSOperation</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h3 id="toc_0">Mock介绍</h3>
-
-<p>对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。</p>
-
-<h3 id="toc_1">OCMock介绍</h3>
-
-<p><a href="http://ocmock.org/features/">官方网站</a><br/>
-根据要mock的对象的class来创建一个对应的对象，并且设置好该对象的属性和调用预定方法后的动作（例如返回一个值，调用代码块，发送消息等等），然后将其记录到一个数组中，接下来开发者主动调用该方法，最后做一个verify（验证），从而判断该方法是否被调用，或者调用过程中是否抛出异常等。</p>
-
-<h4 id="toc_2">1.OCMock中简单使用</h4>
+                        	<p><a href="http://www.jianshu.com/p/4b1d77054b35">NSOperation</a><br/>
+与GCD相比好处:</p>
 
 <ol>
-<li><p>class mock一个对象</p>
-<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
-//创建mock object当做类的实例
-</code></pre></li>
-<li><p>Stubbing methods that return objects</p>
-<pre><code class="language-object-c">/**
-意的就是有参数的方法，参数是可以具体指定的，也就是说只有满足你指定的具体参数的调用才会被mock指定的返回值。例子中的[OCMArg any]是指任意参数。<br/>
-*/<br/>
-//没有参数的方法<br/>
-OCMStub([mockClass someMethod]).andReturn(anObject);<br/>
-//有参数的方法<br/>
-OCMStub([mockClass someMethod:[OCMArg any]]).andReturn(anObject);
-</code></pre>
-<p>注意:<br/>
-<strong>OCMock会在mock实例上没有找到相同名字的实例方法的时候去找同名的类方法。</strong></p></li>
-<li><p>Verify-after-running<br/>
-有些时候需要验证我们执行的代码流程是否调用了某个外部的方法，这个时候用OCMock就比较简单来实现。如果没有调用过这个方法的话，会立即抛一个异常出来。</p>
-<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
-//...<br/>
-//some code<br/>
-//...<br/>
-OCMVerify([mockClass someMethod]);
-</code></pre></li>
-<li><p>验证mock方法没有被调用<br/>
-验证代码没有调用某个方法<br/>
-如果方法被调用了，就将isCalled设置为YES，这样最后assert的时候就会报错。</p>
-<pre><code class="language-object-c">static BOOL isCalled = false;
-id mockClass = OCMClassMock([SomeClass class]);<br/>
-OCMStub([mockClass someMethod]).andDo(^(NSInvocation *invocation){<br/>
-isCalled = YES;<br/>
-});<br/>
-//...<br/>
-//some code<br/>
-//...<br/>
-XCTAssertFalse(isCalled);
-</code></pre></li>
-<li><p>验证mock方法传入的参数<br/>
-验证传递给外部调用的参数是否符合预期</p>
-<pre><code class="language-objec-c">id mockClass = OCMClassMock([SomeClass class]);
-OCMStub([mockClass someMethod:[OCMArg checkWithBlock:^BOOL(id obj) {<br/>
-//...<br/>
-//some code<br/>
-//...<br/>
-return YES;<br/>
-]]);
-</code></pre></li>
-<li><p>mock单例</p>
-<p>如果我们mock的类是个单例的话，那么使用之前的方法进行mock是不会生效的。不过OCMock提供了一个很简单的解决方法，那就是调用单例返回mock</p>
-<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
-OCMStub([mockClass instanceMethod]).andReturn(mockClass);
-</code></pre></li>
-<li><p>The any constraint</p>
-<pre><code class="language-object-c">OCMStub([mock someMethodWithAnArgument:[OCMArg any]])
-OCMStub([mock someMethodWithPointerArgument:[OCMArg anyPointer]])<br/>
-OCMStub([mock someMethodWithSelectorArgument:[OCMArg anySelector]])
-</code></pre></li>
-<li><p>处理block参数<br/>
-OCMock也可以处理block回调参数。block回调通常用于网络代码，数据库代码，或者在任何异步操作中。在这个例子中，思考下下面的方法：<br/>
-<code>- (void)downloadWeatherDataForZip:(NSString *)zip callback:(void (^)(NSDictionary *response))callback;</code></p></li>
+<li>NSOperation是基于GCD之上的更高一层封装, 拥有更多的API(e.g. suspend, resume, cancel等等).</li>
+<li>在NSOperationQueue中, 可以指定各个NSOperation之间的依赖关系</li>
+<li>用KVO可以方便的监测NSOperation的状态(isExecuted, isFinished, isCancelled).</li>
+<li>更高的可定制能力, 你可以继承NSOperation实现可复用的逻辑模块.</li>
 </ol>
 
-<p>在这个例子中，我们有一个下载天气压缩数据的方法，并且把下载下来的dictionary代理到一个block的回调中。在测试中，我们通过预定义的天气数据来测试回调处理。这也是明智的测试失败场景。你永远不会知道网络上会返回你什么东西！</p>
+<h2 id="toc_0">NSOperation和NSOperationQueue</h2>
 
-<pre><code class="language-object">OCMStub([groupModelMock downloadWeatherDataForZip:@&quot;80304&quot; callback:[OCMArg any]]]).andDo(^(NSInvocation *invocation){
-        //2. declare a block with same signature
-        void (^weatherStubResponse)(NSDictionary *dict);
-        //3. link argument 3 with with our block callback
-        [invoke getArgument:&amp;weatherStubResponse atIndex:3];
-        //4. invoke block with pre-defined input
-        NSDictionary *testResponse = @{@&quot;high&quot;: 43 , @&quot;low&quot;: 12};
-        weatherStubResponse(groupMemberMock);
-    });
+<p>NSOpration是苹果公司对GCD的封装，NSOperation和MSOprationQueue分别对应GCD中的任务和队列<br/><br/>
+因此操作步骤如下：  </p>
+
+<ol>
+<li>将要执行的任务封装到NSOperation对象中</li>
+<li>将任务添加到一个NSOprationQueue对象中<br/>
+###添加任务
+<code>NSOperation</code>是一个抽象类，所以不能封装任务。但他有两个子类可以封装任务。分别为：NSInvocationOperation和NSBlockOperation。创建之后需要start启动，默认<strong>在当前队列同步执行</strong>当然也可以用<code>cancle</code>在中途取消任务</li>
+</ol>
+
+<p>在不使用NSOperationQueue，单独使用NSOperation的情况下系统同步执行操作:</p>
+
+<pre><code class="language-text">//1.创建NSInvocationOperation对象
+  NSInvocationOperation *operation = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(run) object:nil];
+
+  //2.开始执行
+  [operation start];   
+</code></pre>
+
+<pre><code class="language-object-c">/**[]()
+    在没有使用NSOperationQueue、单独使用NSInvocationOperation的情况下，
+    NSInvocationOperation在主线程执行操作，并没有开启新线程。
+*/
+</code></pre>
+
+<pre><code class="language-text">   在swift中这种方法是不是类型安全的（推荐第二种）
+
+
+//1.创建NSBlockOperation对象
+  NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
+      NSLog(@&quot;%@&quot;, [NSThread currentThread]);
+  }];
+
+  //2.开始任务
+  [operation start];
+</code></pre>
+
+<p>默认会在当前线程中执行。但是<code>NSBlockOperation</code>还有一个方法<code>addExecutionBlock:</code>，通过这个方法会给Operation添加多个执行Block。这样的话Operation中的任务会并发执行，他会在主线程和其他多个线程执行这些任务</p>
+
+<pre><code class="language-objectivec"> //1.创建NSBlockOperation对象
+  NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
+      NSLog(@&quot;%@&quot;, [NSThread currentThread]);
+  }];
+
+  //添加多个Block
+  for (NSInteger i = 0; i &lt; 5; i++) {
+      [operation addExecutionBlock:^{
+          NSLog(@&quot;第%ld次：%@&quot;, i, [NSThread currentThread]);
+      }];
+  }
+
+  //2.开始任务
+  [operation start];
+  /**
+    可以看出，blockOperationWithBlock:方法中的操作是在主线程中执行的，而
+    addExecutionBlock:方法中的操作是在其他线程中执行的。
+  */
+</code></pre>
+
+<hr/>
+
+<h2 id="toc_1">自定义Operation</h2>
+
+<p>除了上面的两种 Operation 以外，我们还可以自定义 Operation。自定义 Operation 需要继承 NSOperation 类，并实现其 main() 方法，因为在调用 start() 方法的时候，内部会调用 main() 方法完成相关逻辑。<br/>
+在没有使用NSOperationQueue、单独使用自定义子类的情况下，是在主线程执行操作，并没有开启新线程。</p>
+
+<p>注意:<br/>
+<code>NSOperation</code>可以自己独立执行(直接调用<code>[operation start]</code>), 也可以放到<code>NSOperationQueue</code>里面执行, 这两种情况下是否并发执行是不同的.</p>
+
+<h5 id="toc_2">1. non-concurrent</h5>
+
+<p>NSOperation默认是非并发的(non-concurrent),果你把operation放到某个线程执行, 它会一直block住该线程, 直到<code>operation finished</code>.<br/>
+对于非并发的operation你只需要继承NSOperation, 然后重写main()方法即可<br/>
+示例:下载一张:</p>
+
+<pre><code class="language-object-c">/**
+    由于NSOperation是可以cancel的, 所以你需要在operation程序内部执行过程中判断当前
+    operation是否已经被cancel了(isCancelled). 如果已经被cancel那就不往下执行了. 当你在外面
+    调用[operation cancel]后, isCancelled会被置为YES.
+*/
+
+@implementation YourOperation 
+
+- (void)main 
+{
+    @autoreleasepool {
+
+        if (self.isCancelled) return;
+
+        NSData *imageData = [[NSData alloc] initWithContentsOfURL:imageURL];
+
+        if (self.isCancelled) { imageData = nil; return; }
+
+        if (imageData) {
+            UIImage *downloadedImage = [UIImage imageWithData:imageData];
+        }
+
+        imageData = nil;
+
+        if (self.isCancelled) return;
+
+        [self.delegate performSelectorOnMainThread:@selector(imageDownloaderDidFinish:)                                                                  
+                                        withObject:downloadedImage
+                                     waitUntilDone:NO];
+    }
+}
+
+@end
+</code></pre>
+
+<h5 id="toc_3">1. Concurrent</h5>
+
+<p>NSOperation有三个状态量isCancelled, isExecuting和isFinished. isCancelled上面解释过. main函数执行完成后, isExecuting会被置为NO, 而isFinished则被置为YES.</p>
+
+<p>那肿么实现并发(concurrent)的NSOperation呢? 也很简单:<br/>
+1). 重写isConcurrent函数, 返回YES, 这个告诉系统各单位注意了我这个operation是要并发的.<br/>
+2). 重写start()函数.<br/>
+3). 重写isExecuting和isFinished函数<br/>
+4). 有必要时需要重写isCanceled函数</p>
+
+<blockquote>
+<p>为什么在并发情况下需要自己来设定isExecuting和isFinished这两个状态量呢? 因为在并发情况下系统不知道operation什么时候finished, operation里面的task一般来说是异步执行的, 也就是start函数返回了operation不一定就是finish了, 这个你自己来控制, 你什么时候将isFinished置为YES(发送相应的KVO消息), operation就什么时候完成了.</p>
+</blockquote>
+
+<pre><code class="language-object-c">- (BOOL)isConcurrent {
+    return YES;
+}
+
+- (void)start 
+{
+    [self willChangeValueForKey:@&quot;isExecuting&quot;];
+    _isExecuting = YES;
+    [self didChangeValueForKey:@&quot;isExecuting&quot;];
+
+    NSURLRequest * request = [NSURLRequest requestWithURL:imageURL];
+    _connection = [[NSURLConnection alloc] initWithRequest:request
+                                                  delegate:self];
+    if (_connection == nil) [self finish];
+}
+
+- (void)finish
+{
+    self.connection = nil;
+
+    [self willChangeValueForKey:@&quot;isExecuting&quot;];
+    [self willChangeValueForKey:@&quot;isFinished&quot;];
+
+    _isExecuting = NO;
+    _isFinished = YES;
+
+    [self didChangeValueForKey:@&quot;isExecuting&quot;];
+    [self didChangeValueForKey:@&quot;isFinished&quot;];
+}
+
+#pragma mark - NSURLConnection delegate
+- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
+    // to do something...
+}
+
+- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
+    // to do something...
+}
+
+- (void)connectionDidFinishLoading:(NSURLConnection *)connection {
+    [self finish];
+}
+
+- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
+    [self finish];
+}
+
+@end
+</code></pre>
+
+<p>还有以下几点需要注意:</p>
+
+<ul>
+<li> operation的executing和finished状态量需要用willChangeValueForKey/didChangeValueForKey来触发KVO消息.</li>
+<li> 在调用完NSURLConnection之后start函数就返回了, 后面就坐等connection的回调了</li>
+<li> 在connection的didFinish或didFail回调里面设置operation的finish状态, 告诉系统operation执行完毕了.</li>
+</ul>
+
+<p><strong>注意:</strong><br/>
+如果你是在主线程调用的这个并发的operation, 那一切都是非常的perfect, 就算你当前在操作UI也不影响operation的下载操作. BUT, 如果你是在子线程调用的, 或者把operation加到了非main queue, 那么问题来了, 你会发现这货的NSURLConnection delegate不走了.</p>
+
+<blockquote>
+<p>这是runLoop的原因，主线程会自动创建一个RunLoop来保证程序一直运行. 但子线程默认不创建NSRunLoop, 所以子线程的任务一旦返回, 线程就over了.上面的并发operation当start函数返回后子线程就退出了, 当NSURLConnection的delegate回调时, 线程已经木有了, 所以你也就收不到回调了. 为了保证子线程持续live(等待connection回调), 你需要在子线程中加入RunLoop, 来保证它不会被kill掉.<br/>
+详细关于RunLoop的知识可以查看 <a href="%5B%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B%E3%80%81NSThread&amp;GCD&amp;NSOpration&amp;runLoop%5D(14871584203378.html)">并发编程Runloop</a></p>
+</blockquote>
+
+<p>对于这个问题:我们解决办法</p>
+
+<ol>
+<li><p>让start函数在主线程运行(即使[operation start]是在子线程调用的).</p>
+<pre><code class="language-object-c">- (void)start 
+{<br/>
+    if (![NSThread isMainThread]) {<br/>
+        [self performSelectorOnMainThread:@selector(start)<br/>
+                           withObject:nil<br/>
+                        waitUntilDone:NO];<br/>
+        return;<br/>
+ }<br/>
+    // set up NSURLConnection...<br/>
+}<br/>
+或者<br/>
+   - (void)start<br/>
+   {<br/>
+       [[NSOperationQueue mainQueue] addOperationWithBlock:^{<br/>
+       self.connection = [NSURLConnection connectionWithRequest:self.request delegate:self];<br/>
+       }];<br/>
+   }
+</code></pre></li>
+<li><p>方法二是:让<code>operation</code>的start函数在子线程运行, 但是我们为它创建一个RunLoop. 然后把<code>URL connection schedule</code>到上面去. （这种方法不推荐）</p>
+<pre><code class="language-object-c">    //参考AFNetWorking的做法
+    + (void)networkRequestThreadEntryPoint:(id)__unused object <br/>
+    {<br/>
+        @autoreleasepool {<br/>
+            [[NSThread currentThread] setName:@&quot;AFNetworking&quot;];<br/>
+            NSRunLoop *runLoop = [NSRunLoop currentRunLoop];<br/>
+            [runLoop addPort:[NSMachPort port] forMode:NSDefaultRunLoopMode];<br/>
+            [runLoop run];<br/>
+        }<br/>
+    }<br/>
+    + (NSThread *)networkRequestThread <br/>
+    {<br/>
+        static NSThread *_networkRequestThread = nil;<br/>
+        static dispatch_once_t oncePredicate;<br/>
+        dispatch_once(&amp;oncePredicate, ^{<br/>
+            _networkRequestThread = [[NSThread alloc] initWithTarget:self selector:@selector(networkRequestThreadEntryPoint:) object:nil];<br/>
+            [_networkRequestThread start];<br/>
+        });<br/>
+        return _networkRequestThread;<br/>
+    }<br/>
+    - (void)start <br/>
+    {<br/>
+        [self.lock lock];<br/>
+        if ([self isCancelled]) {<br/>
+            [self performSelector:@selector(cancelConnection) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];<br/>
+        } else if ([self isReady]) {<br/>
+            self.state = AFOperationExecutingState;<br/>
+            [self performSelector:@selector(operationDidStart) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];<br/>
+        }<br/>
+        [self.lock unlock];<br/>
+    }
+</code></pre>
+<p>AFNetworking创建了一个新的子线程(在子线程中调用NSRunLoop *runloop = [NSRunLoop currentRunLoop]; 获取RunLoop对象的时候, 就会创建RunLoop), 然后把它加到RunLoop里面来保证它一直运行.</p>
+<blockquote>
+<p>这边我们可以简单的判断下当前start()的线程是子线程还是主线程, 如果是子线程则调用[NSRunLoop currentRunLoop]创新RunLoop, 否则就直接调用[NSRunLoop mainRunLoop], 当然在主线程下就没必要调用[runLoop run]了, 因为它本来就是一直run的.<br/>
+我们还可以使用CFRunLoop来启动和停止RunLoop<br/>
+<code>[self.connection scheduleInRunLoop:[NSRunLoop currentRunLoop]<br/>
+                       forMode:NSRunLoopCommonModes];<br/>
+CFRunLoopRun();<br/>
+</code><br/>
+等到该Operation结束的时候, 一定要记得调用<strong>CFRunLoopStop()</strong>停止当前线程的RunLoop, 让当前线程在operation finished之后可以退出.</p>
+</blockquote></li>
+</ol>
+
+<hr/>
+
+<h2 id="toc_4">NSOperationQueue</h2>
+
+<p>看过上面的内容就知道，我们可以调用一个 NSOperation 对象的 <code>start()</code> 方法来启动这个任务，但是这样做他们默认是 同步执行 的。就算是 <code>addExecutionBlock</code> 方法，也会在 当前线程和其他线程 中执行，也就是说还是会占用当前线程。这是就要用到队列 <code>NSOperationQueue</code> 了。而且，按类型来说的话一共有两种类型：主队列、其他队列。只要添加到队列，会自动调用任务的 <code>start()</code> 方法</p>
+
+<p>一旦NSOperation被add到Queue里面那么我们就不care它自身是不是并发设计的了, 因为被add到Queue里面的operation必定是并发的. 而且我们可以设置Queue的maxConcurrentOperationCount来指定最大的并发数(也就是几个operation可以同时被执行, <strong>如果这个值设为1, 那这个Queue就是串行队列了</strong>).<br/>
+ Queue会为每一个add到队列里面的operation创建一个线程来运行其start函数, 这样每个start都分布在不同的线程里面来实现operation们的并发执行.<br/>
+注意:<br/>
+** 我们这边所说的并发都是指NSOperation之间的并发(多个operation同时执行), 如果maxConcurrentOperationCount设置为1或者把operation放到[NSOperationQueue mainQueue]里面执行, 那它们只会顺序(Serial)执行, 当然就不可能并发了.**</p>
+
+<h5 id="toc_5">* 主队列</h5>
+
+<p>细心同学会发现，每套多线程方案都会有一个主线程。这是一个特殊的线程必须串行。凡是添加到主队列中的任务（NSOperation），都会放到主线程中执行<br/><br/>
+    //OBJECTIVE-C<br/>
+    NSOperationQueue *queue = [NSOperationQueue mainQueue];</p>
+
+<pre><code class="language-text">//SWIFT
+let queue = NSOperationQueue.mainQueue()
+</code></pre>
+
+<h5 id="toc_6">* 其他队列</h5>
+
+<p>通过初始化产生的队列就是其他队列了，其他队列不需要名字<br/>
+<strong>注意：</strong>其他队列会在其他线程中并行执行</p>
+
+<pre><code class="language-object-c">    //1.创建一个其他队列    
+    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+    
+    //2.创建NSBlockOperation对象
+    NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@&quot;%@&quot;, [NSThread currentThread]);
+    }];
+    
+    //3.添加多个Block
+    for (NSInteger i = 0; i &lt; 5; i++) {
+        [operation addExecutionBlock:^{
+            NSLog(@&quot;第%ld次：%@&quot;, i, [NSThread currentThread]);
+        }];
+    }
+
+    //4.队列添加任务
+    [queue addOperation:operation];
     /**
-        1.这个mock对象使用带NSInvocation参数的“andDo”方法。一个NSInvocation对象代表一
-        个‘objectivetified’（实在不知道这个什么鬼）表现的方法调用。通过这个NSinvocation对
-        象，使得拦截传递给我们的方法的block参数变得可能。
-        2.用与我们测试的方法中相同的方法签名声明一个block参数。
-        3.NSInvocation实例方法&quot;getArgument:atIndex:&quot;将赋值后的块函数传递都原始函数中定义
-        的块函数中。注意：在Objective-C中，传递给任意方法的前两个参数都是“self”和“_cmd”.这是
-        一个运行时的小功能以及用下标来获取NSInvocation参数时我们需要考虑的东西。
-        4.最后，传递这个回调的预定义字典。
+       NSInvocationOperation和NSOperationQueue结合后能够开启新线程，进行并发执行
+       NSBlockOperation和NSOperationQueue也能够开启新线程，进行并发执行
     */
 </code></pre>
 
-<h4 id="toc_3">2.OCMock简单示例</h4>
+<p><code>- (void)addOperationWithBlock:(void (^)(void))block;</code><br/>
+无需先创建任务，在block中添加任务，直接将任务block加入到队列中,能够开启新线程，进行并发执行。</p>
 
-<p><img src="media/14873831706932/14873839517952.png" alt=""/></p>
+<hr/>
 
-<p>示例2：</p>
+<p>这时如果我们想要任务在其他线程串行执行<br/><br/>
+<code>NSOperationQueue</code>有个参数<code>maxConcurrentOperationCount</code>最大并发数，设置为1时就是串行了<br/><br/>
+<code>maxConcurrentOperationCount</code>默认情况下为-1，表示不进行限制，默认为并发执行。<br/>
+<code>maxConcurrentOperationCount</code>大于1时，进行并发执行，当然这个值不应超过系统限制，即使自己设置一个很大的值，系统也会自动调整</p>
 
-<pre><code class="language-object-c">- (void)testStrictMock3{
+<h3 id="toc_7">操作依赖</h3>
 
-    id classMock = OCMClassMock([TweetView class]);
+<p><code>NSOperation</code>还有个实用功能添加依赖。比如有 3 个任务：A: 从服务器上下载一张图片，B：给这张图片加个水印，C：把图片返回给服务器。这时就可以用到依赖了:</p>
 
-    //设置期望或预设，这个classMock需要执行addTweet方法且参数不为nil。  不然的话会抛出异常
-    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
-    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
-
-    /* 如果不执行以下代码的话会抛出异常 */
-    Tweet *testTweet = [[Tweet alloc] init];
-    testTweet.userName = @&quot;齐滇大圣&quot;;
-    [classMock addTweet:testTweet];
-
-    OCMVerifyAll(classMock);
-}
+<pre><code class="language-object-c">    //1.任务一：下载图片
+    NSBlockOperation *operation1 = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@&quot;下载图片 - %@&quot;, [NSThread currentThread]);
+        [NSThread sleepForTimeInterval:1.0];
+    }];
+    
+    //2.任务二：打水印
+    NSBlockOperation *operation2 = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@&quot;打水印   - %@&quot;, [NSThread currentThread]);
+        [NSThread sleepForTimeInterval:1.0];
+    }];
+    
+    //3.任务三：上传图片
+    NSBlockOperation *operation3 = [NSBlockOperation blockOperationWithBlock:^{
+        NSLog(@&quot;上传图片 - %@&quot;, [NSThread currentThread]);
+        [NSThread sleepForTimeInterval:1.0];
+    }];
+    
+    //4.设置依赖
+    [operation2 addDependency:operation1];      //任务二依赖任务一
+    [operation3 addDependency:operation2];      //任务三依赖任务二
+    
+    //5.创建队列并加入任务
+    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+    [queue addOperations:@[operation3, operation2, operation1] waitUntilFinished:NO];
 </code></pre>
 
-<p>这表示一种友好的mock，不会在没有OCMExpect或OCMStub设置类的所有方法时抛出异常。以上代码把OCMExpect和OCMStub注释掉时不会报错。</p>
+<p>注意不能添加互相依赖否则会锁死<br/><br/>
+可以用<code>removeDependency</code>来解除依赖</p>
 
-<p>还有一种表示严格的mock：OCMStrictClassMock，如果把OCMExpect和OCMStub注释掉时会报错，它要求你执行类中的所有方法，所以比较适合用来测试必须实现的方法，代码如下：</p>
+<p><strong>注意:</strong><br/>
+如果我在子线程调用[operation start]函数, 或者把operation放到非MainQueue里面执行, 但是在operation的内部把start抛到主线程来执行(利用主线程的main run loop), 那多个operation其实不都是要在主线程执行的么, 这样还能并发? Luckily, 仍然是并发执行的,当然这个并发指的是狭义并发也就是主线程进行伪并行<br/>
+<img src="media/14873146865194/14873217004353.jpg" alt=""/></p>
 
-<pre><code class="language-object-c">- (void)testStrictMock3{
-    id classMock = OCMStrictClassMock([TweetView class]);
-    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
-    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
+<hr/>
 
-    Tweet *testTweet = [[Tweet alloc] init];
-    testTweet.userName = @&quot;齐滇大圣&quot;;
-    [classMock addTweet:testTweet]; 
+<h3 id="toc_8">其他方法</h3>
 
-    OCMVerifyAll(classMock);
-}
-</code></pre>
+<ul>
+<li><h5 id="toc_9">NSOperation</h5>
+<pre><code class="language-text">BOOL executing; //判断任务是否正在执行
+BOOL finished; //判断任务是否完成<br/>
+void (^completionBlock)(void); //用来设置完成后需要执行的操作<br/>
+- (void)cancel; //取消任务 `NSOperation`提供的方法，可取消单个操作<br/>
+- (void)waitUntilFinished; //阻塞当前线程直到此任务执行完毕
+</code></pre></li>
+<li><h5 id="toc_10">NSOperationQueue</h5>
+<pre><code class="language-text">NSUInteger operationCount; //获取队列的任务数
+- (void)cancelAllOperations; //取消队列中所有的任务<br/>
+- (void)waitUntilAllOperationsAreFinished; //阻塞当前线程直到此队列中的所有任务执行完毕<br/>
+[queue setSuspended:YES]; // 暂停queue<br/>
+[queue setSuspended:NO]; // 继续queue
+</code></pre></li>
+</ul>
+
+<hr/>
+
+<h3 id="toc_11">与君共勉</h3>
+
+<p><img src="media/14873146865194/14876658479087.jpg" alt=""/></p>
 
                         
                       </div>
@@ -262,10 +519,10 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/18</span>
+                    <span class="date">2017/2/17</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95.html'>自动化测试</a></span>
+          					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -359,25 +616,25 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

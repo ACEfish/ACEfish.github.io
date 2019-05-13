@@ -112,146 +112,195 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15005513837564.html">
+                <a class="clearlink" href="15540426044478.html">
                 
-                  <h1>类和结构体</h1>
+                  <h1>Clang Attributes</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>可以使用完全相同的语法规则来为<code>类</code>和<code>结构体</code>定义属性(<code>常量</code>、<code>变量</code>)和添加方法，从而扩展类和结构体的功能</p>
+                        	<p><code>attribute(xx)</code>是clang提供的能让开发者在编译过程中参与一些源码控制的方法</p>
 
-<p>与其他编程语言不同,<code>swift</code>不要求为自定义类和结构创建独立的接口和实现文件.所要做的是在一个单一文件中定义一个类或者结构体，系统将会自动生成面向其它代码的外部接口</p>
-
-<h2 id="toc_0">类和结构体对比</h2>
+<h3 id="toc_0">attribute((format(NSString,F,A)))格式化字符串</h3>
 
 <blockquote>
-<p>类通过引用计数进行多次引用,结构体通过复制的方式在代码中传递,不使用引用计数</p>
+<p>因为此时已经是C语言级别 String不需要加<code>@</code></p>
 </blockquote>
 
-<h3 id="toc_1">定义语法</h3>
+<p>比如NSLog的用法</p>
 
-<p>通过关键之<code>class</code>和<code>struct</code>来分别标识类和结构体</p>
+<pre><code class="language-objectivec">FOUNDATION_EXPORT void NSLog(NSString *format, ...) NS_FORMAT_FUNCTION(1,2) NS_NO_TAIL_CALL;
 
-<blockquote>
-<p>类和结构体名使用首字母大写的方式进行命名</p>
-</blockquote>
+#if !defined(NS_FORMAT_FUNCTION)
+    #if (__GNUC__*10+__GNUC_MINOR__ &gt;= 42) &amp;&amp; (TARGET_OS_MAC || TARGET_OS_EMBEDDED)
+    #define NS_FORMAT_FUNCTION(F,A) __attribute__((format(__NSString__, F, A)))
+    #else
+    #define NS_FORMAT_FUNCTION(F,A)
+    #endif
+#endif
+</code></pre>
 
-<pre><code class="language-swift">//定义一个结构体 描述显示器屏幕分辨率
-struct Resolution {
-    var width = 0
-    var height = 0
-    //当这两个属性被初始化为整数 0 的时候，它们会被推断为 Int 类型。
+<h3 id="toc_1">attribute((deprecated(s)))版本弃用提示</h3>
+
+<p>在编译过程中提示开发者该方法已经被弃用</p>
+
+<pre><code class="language-objectivec">@property (nonatomic, strong) NSString *testProperty __attribute__((deprecated(&quot;该属性已经不能用了&quot;)));
+
+- (void)testDeprecatedMethod __attribute__((deprecated(&quot;该方法已经被弃用&quot;)));
+
+- (void)deprecatedMethod DEPRECATED_ATTRIBUTE; //也可以直接使用DEPRECATED_ATTRIBUTE这个系统定义的宏
+</code></pre>
+
+<h3 id="toc_2">attribute((availability(os,introduced=m,deprecated=n, obsoleted=o,message=“” VA_ARGS))) 指明使用版本范围</h3>
+
+<pre><code class="language-objectivec">- (void)method __attribute__((availability(ios,introduced=3_0,deprecated=6_0,obsoleted=7_0,message=“iOS3到iOS7版本可用，iOS7不能用”)));
+</code></pre>
+
+<h3 id="toc_3">attribute((unavailable(s))) 方法不可用提示</h3>
+
+<pre><code class="language-objectivec">- (void)testUnvailableMethod __attribute__((unavailable(&quot;该方法已经不能使用&quot;)));
+</code></pre>
+
+<h3 id="toc_4">attribute((unused))</h3>
+
+<p>没有被使用也不报警告</p>
+
+<pre><code class="language-objectivec">NSString *str __attribute__((unused));
+NSInteger reuslt __attribute__((unused)) = [vc testResultUnused];
+</code></pre>
+
+<h3 id="toc_5">attribute((warn_unused_result))</h3>
+
+<p>不使用该方法的返回值就会被警告</p>
+
+<pre><code class="language-objectivec">- (NSInteger)testResultUnused __attribute__((warn_unused_result));
+</code></pre>
+
+<h3 id="toc_6">attribute((availability(swift, unavailable, message=_msg)))</h3>
+
+<p>OC的方法 不能在swift中使用</p>
+
+<h3 id="toc_7">attribute((cleanup(…))) 作用域结束时自动执行一个指定方法</h3>
+
+<p>作用于结束包括大括号结束，return，goto，break，exception等情况。这个动作是先于这个对象的dealloc调用的</p>
+
+<pre><code class="language-objectivec">//修饰一个变量 在他的作用域结束时 自动执行该方法
+}
+    NSString *testCleanUp __attribute__((cleanup(testLastMethod) unused)) = @&quot;testCleanUp&quot;;
 }
 
-//定义一个类 描述视频显示器的特定模式
-//四个变量存储属性
-class VideoMode {
-    var resolution = Resolution()//分辨率 结构体
-    var interlaced = false
-    var frameRate = 0.0
-    var name: String?
+int testLastMethod(__strong NSString **str) {
+    return 10;
 }
 </code></pre>
 
-<p><code>存储属性</code>是被<code>捆绑</code>和<code>存储</code>在类或结构体中的常量或变量。</p>
+<h3 id="toc_8">attribute((overloadable)) 方法重载</h3>
 
-<h3 id="toc_2">类和结构体实例</h3>
+<p>能够在 c 的函数上实现方法重载。即同样的函数名函数能够对不同参数在编译时能够自动根据参数来选择定义的函数</p>
 
-<p>初始化结构体或类的实例</p>
+<pre><code class="language-c">__attribute__((overloadable)) void printArgument(int number){
+    NSLog(@“Add Int %i”, number);
+}
 
-<pre><code class="language-swift">let someResolution = Resolution()
-let someVideoMode = VideoMode()
+__attribute__((overloadable)) void printArgument(NSString *number){
+    NSLog(@“Add NSString %@“, number);
+}
+
+__attribute__((overloadable)) void printArgument(NSNumber *number){
+    NSLog(@“Add NSNumber %@“, number);
+}
 </code></pre>
 
-<p>通过这种方式创建类或者结构体实例,属性都会被初始化为默认值.</p>
+<h3 id="toc_9">attribute((objc_designated_initializer)) 指定内部实现的初始化方法</h3>
 
-<h3 id="toc_3">属性访问</h3>
+<p>也可以使用OC中定义的宏 <code>NS_DESIGNATED_INITIALIZER</code></p>
 
-<p>通过点语法访问实例属性。</p>
+<p>即指定该类的指定构造器函数，使用规则</p>
 
-<pre><code class="language-swift">//访问结构体属性
-print(&quot;The width of someResolution is \(someResolution.width)&quot;)
-// 打印 &quot;The width of someResolution is 0&quot;
+<ul>
+<li>该类的指定构造器函数必须调用父类的指定构造器函数</li>
+<li>该类的遍历构造器函数必须最终执行该类的指定构造器函数</li>
+</ul>
 
-//访问变量属性
-someVideoMode.resolution.width = 1280
-print(&quot;The width of someVideoMode is now \(someVideoMode.resolution.width)&quot;)
-// 打印 &quot;The width of someVideoMode is now 1280&quot;
+<h3 id="toc_10">attribute((objc_subclassing_restricted)) 指定不能有子类</h3>
+
+<p>指定该类不能有子类，类似java中的final函数</p>
+
+<pre><code class="language-objectivec">__attribute__((objc_subclassing_restricted))
+@interface ViewController : UIViewController
+@end
+</code></pre>
+
+<h3 id="toc_11">attribute((objc_requires_super)) 子类继承必须调用 super</h3>
+
+<pre><code class="language-objectivec">//子类重写该方法如果不调用super 会有警告⚠️
+- (void)testInheritanceMethod __attribute__((objc_requires_super));
+</code></pre>
+
+<h3 id="toc_12">attribute((const)) 重复调用相同数值参数优化返回</h3>
+
+<p>用于数值类型参数的函数，多次调用相同的数值型参数，返回是相同的，只在第一次需要进行运算，后面只返回第一次的结果，这是编译器的一种优化处理</p>
+
+<h3 id="toc_13">attribute((constructor(PRIORITY))) 和 attribute((destructor(PRIORITY)))</h3>
+
+<p>PRIORITY 是指执行的优先级，main 函数执行之前会执行 constructor，main 函数执行后会执行 destructor，+load 会比 constructor 执行的更早点，因为动态链接器加载 Mach-O 文件时会先加载每个类，需要 +load 调用，然后才会调用所有的 constructor 方法。</p>
+
+<p>通过这个特性，可以做些比较好玩的事情，比如说类已经 load 完了，是不是可以在 constructor 中对想替换的类进行替换，而不用加在特定类的 +load 方法里。</p>
+
+<h2 id="toc_14">Clang警告处理</h2>
+
+<pre><code class="language-objectivec">#pragma clang diagnostic push
+#pragma clang diagnostic ignored “-Wdeprecated-declarations”
+        sizeLabel = [self sizeWithFont:font constrainedToSize:size lineBreakMode:NSLineBreakByWordWrapping];
+#pragma clang diagnostic pop
+</code></pre>
+
+<h2 id="toc_15"><strong>attribute</strong>((constructor)) 在main函数之前调用</h2>
+
+<h2 id="toc_16"><strong>attribute</strong>((destructor)) 在main函数执行之后 或者exit()后被自动执行</h2>
+
+<h3 id="toc_17">文件级:在源代码文件中诊断(忽略/警告)</h3>
+
+<p>语法:</p>
+
+<pre><code class="language-objectivec">#pragma clang diagnostic [error|warning|ignored] &quot;-W&lt;警告选项&gt;&quot;
+
+
+诊断-忽略:(关闭警告)
+#pragma  clang diagnostic ignored  &quot;-Wunused&quot;
+#pragma  clang diagnostic ignored  &quot;-Wunused-parameter&quot;
+
+
+诊断-警告:(开启警告)
+#pragma  clang diagnostic warning  &quot;-Wunused&quot;
+#pragma  clang diagnostic warning  &quot;-Wunused-parameter&quot;
+
+
+诊断-错误:(开启警告-升级为错误)
+#pragma  clang diagnostic error  &quot;-Wunused&quot;
+#pragma  clang diagnostic error  &quot;-Wunused-parameter&quot;
+用法:
+在文件开头处关闭警告,在文件结尾出再开启警告,这样可以忽略该文件中的指定警告.
 </code></pre>
 
 <blockquote>
-<p>在OC中是不能直接设置结构体子属性值，swift中可以直接设置比如<code>resolution.width</code>属性值,在oc中我们需要给整个结构体<code>resolution</code>设置新值</p>
+<p>对于项目中的警告我们可以右键警告revela in log 查看编译时的警告<br/>
+<img src="media/15540426044478/15540987741636.jpg" alt="" style="width:693px;"/><br/>
+就可以根据具体警告类型进行忽略</p>
 </blockquote>
 
-<h3 id="toc_4">结构体类型成员逐一构造器</h3>
+<h3 id="toc_18">补充: 项目级别忽略警告</h3>
 
-<p>对于<strong>结构体</strong><br/>
-所有结构体都有一个自动生成的<strong>成员逐一构造器</strong>，用来初始化新结构体成员的属性</p>
+<p>在项目的<code>Build Settings</code>中也可以设置忽略某种或者多种类型的警告,忽略整个项目的警告类型</p>
 
-<pre><code class="language-swift">//通过属性名称
-let vga = Resolution(width:640, height: 480)
-</code></pre>
+<p><img src="media/15540426044478/15540998238927.jpg" alt="" style="width:706px;"/><br/>
+也可以指定debug 或者 release</p>
 
-<p>类是没有这个成员构造器的</p>
-
-<h2 id="toc_5">结构体和枚举时值类型</h2>
-
-<p><strong>值类型被赋予给一个变量、常量或者被传递给一个函数的时候，其值会被拷贝</strong></p>
-
-<p>实际上,在<code>Swift</code>中，所有的基本类型：整数（Integer）、浮点数（floating-point）、布尔值（Boolean）、字符串（string)、数组（array）和字典（dictionary），都是值类型，并且在底层都是<strong>以结构体的形式所实现</strong></p>
-
-<p>在<code>swift</code>中,所有结构体和枚举类型都是值类型。因此,它们的实例以及实例中包含的值类型属性,在传递时都会被复制</p>
-
-<pre><code class="language-swift">let hd = Resolution(width: 1920, height: 1080)
-var cinema = hd
-cinema.width = 2048
-print(&quot;cinema is now \(cinema.width) pixels wide&quot;)// &quot;cinema is now 2048 pixels wide&quot;
-print(&quot;hd is still \(hd.width) pixels wide&quot;)//&quot;hd is still 1920 pixels wide&quot;
-</code></pre>
-
-<p>在对结构体进行赋值的时候,进行了拷贝,cinema和hd是完全不同的两个实例,因此改变了cinema的宽对hd没有影响</p>
-
-<p>枚举也是值类型,遵循相同的行为准则</p>
-
-<h2 id="toc_6">类是引用类型</h2>
-
-<p>与值类型不同,引用类型在传递时,值不会被拷贝.因此，<strong>引用的是已存在的实例本身而不是其拷贝</strong>。</p>
-
-<pre><code class="language-swift">let tenEighty = VideoMode()
-tenEighty.frameRate = 25.0
-
-let alsoTenEighty = tenEighty
-alsoTenEighty.frameRate = 30.0
-print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&quot;)//30.0
-</code></pre>
-
-<p>类是引用类型，所以<code>tenEight</code>和<code>alsoTenEight</code>实际上引用的是相同的<code>VideoMode</code>实例<br/>
-注意:<br/>
-虽然<code>alsoTenEighty</code>为常量但是仍然可以改变<code>alsoTenEighty.frameRate</code>因为这两个常量的值并未改变,这个常量的值存储的并不是<code>ViewMode</code>的实例,而是对其的引用.</p>
-
-<h3 id="toc_7">恒等运算符</h3>
-
-<p>等价于 <code>===</code>  不等价于 <code>!==</code> 用来检测两个变量或常量是否引用同一个实例</p>
-
-<p><code>===</code>与<code>==</code>的不同:<br/>
-“等价于”表示两个类类型（class type）的常量或者变量引用同一个类实例。<br/>
-“等于”表示两个实例的值“相等”或“相同”，判定时要遵照设计者定义的评判标准</p>
-
-<h3 id="toc_8">指针</h3>
-
-<p>一个引用实例的<code>swift</code>常量或者变量,与C指针类似,但是并不直接指向某个内存地址,也不需要用<code>*</code>表明在创建引用.</p>
-
-<h2 id="toc_9">类和结构体的选择</h2>
-
-<h2 id="toc_10">字符串、数组、字典类型的赋值和复制行为</h2>
-
-<p>因为<code>swift</code>中很多基本类型,<code>String</code>，<code>Array</code>和<code>Dictionary</code>类型均以结构体的形式实现，赋值给新的常量变量或者传入函数方法中的时候会被拷贝</p>
+<p>选项格式: -W[no-]&lt;警告选项&gt;<br/>
+如 : -Wno-unused-parameter   # no- 表示诊断时忽略这个警告</p>
 
 <blockquote>
-<p>在OC中<code>NSString</code>，<code>NSArray</code>和<code>NSDictionary</code>是以类的形式实现,不会发生值拷贝而是传递引用</p>
-
-<p>Swift会在绝对必要时才执行实际拷贝,确保性能最优,因此我们没有必要回避赋值来增加性能</p>
+<p>通过 CocoaPods 给项目导入了一些第三方库，这些库里面或多或少会有些警告，想消除这些警告，很简单，只需在 Podfile 中加上这一句 inhibit_all_warnings!，所有通过 CocoaPods 安装的第三库的警告就没有了。</p>
 </blockquote>
 
                         
@@ -261,10 +310,10 @@ print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&qu
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/7/20</span>
+                    <span class="date">2019/3/31</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
+          					    <span class="posted-in"><a href='%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html'>编译流程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -358,25 +407,25 @@ print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&qu
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

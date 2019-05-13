@@ -112,44 +112,116 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15547054235829.html">
+                <a class="clearlink" href="14974389141976.html">
                 
-                  <h1>拾遗</h1>
+                  <h1>Swift 基本运算符</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h3 id="toc_0">1.</h3>
+                        	<pre><code class="language-text"></code></pre>
 
-<p>对于RunLoop。系统定义了其他mode，并且可以在其他mode中执行runLoop，以限制处理哪些源，定时器和观察器。 由于runLoop只是指定为字符串，因此您还可以定义自己的自定义模式以限制事件的处理</p>
+<h2 id="toc_0">赋值运算符</h2>
 
-<h3 id="toc_1">2.Run loop并无并发</h3>
+<pre><code class="language-swift">//赋值符可以赋值元组
+let (x, y) = (1, 2)
+// 现在 x 等于 1，y 等于 2
+</code></pre>
 
-<p>Run loop并不像 GCD 或者操作队列那样是一种并发机制，因为它并不能并行执行任务。不过在<code>主 dispatch/operation</code>队列中， <code>run loop</code> 将直接配合任务的执行，它提供了一种异步执行代码的机制。</p>
+<p>注意点:<br/>
+与OC不同，赋值符不返回值,防止把想要判断相等运算符（ == ）的地方写成赋值符导致的错误</p>
 
-<h3 id="toc_2">3.&quot;计时器&quot;的背后都是依靠runLoop来处理</h3>
+<h2 id="toc_1">算术运算符</h2>
 
-<p>无论你什么时候设置<code>计时器</code>、使用<code>NSURLConnection</code>或者调用<code>performSelector:withObject:afterDelay:</code>，其实背后都是 run loop 在处理这些异步任务。</p>
+<pre><code class="language-swift">//加法运算符也可用于 String 的拼接
+&quot;hello, &quot; + &quot;world&quot; // 等于 &quot;hello, world&quot;
+</code></pre>
 
-<h3 id="toc_3">4.commod mode</h3>
+<p>注意:<br/>
+与<code>OC</code>不同,<code>Swift</code>默认情况下不允许在数值运算中出现溢出情况.(可以使用<code>Swift</code>提供的溢出运算符实现溢出运算)</p>
 
-<p>CF中有一种特殊的“假”mode即common mode，允许你将一个item添加到多个mode中；如果要指定commod模式，使用<code>kCFRunLoopCommonModes</code>常量作为模式名； 一个mode可以通过<code>CFRunLoopAddCommonMode</code>将mode的名字添加到commonModes中，每个runLoop都有自己独立的common模式集。每当RunLoop内容发生变化时，RunLoop会自动将_commonModeItems里的item同步到有&quot;common&quot;标记的mode</p>
+<h2 id="toc_2">求余运算</h2>
 
-<h3 id="toc_4">5.Autorelease和runloop</h3>
+<p>求余运算(<code>%</code>)在其他语言也叫取模运算</p>
 
-<p>因为苹果只在主线程注册了Observer的回调 因此也只在主线程有autoreleasePool了</p>
+<h3 id="toc_3">一元负号/正号运算符</h3>
 
-<p>在主线程执行的代码，通常是写在诸如事件回调、Timer回调内的。这些回调会被 RunLoop 创建好的 AutoreleasePool 环绕着，所以不会出现内存泄漏，开发者也不必显示创建 Pool 了。</p>
+<p>一元负/正号符（ -/+ ）写在操作数之前，中间没有空格。<br/>
+负号或者正号可以抵消</p>
 
-<p>通过RunLoopObserver在RunLoop两次Sleep间对AutoreleasePool进行了Pop和PUsh 将这次Loop中产生的Autorelease对象释放</p>
+<h2 id="toc_4">组合赋值运算符</h2>
 
-<h3 id="toc_5">6.更换Mode时 需要停止当前Loop(退出当前Loop，而不是RunLoop)，然后重启新的Loop</h3>
+<p>例如:<br/>
+<code>a += 2</code> //这组合赋值运算符也是没有返回值的（和赋值运算符一样）</p>
 
-<h3 id="toc_6">7. GCD中 dispatch到main queue的block被分发到main RunLoop执行，也只有这种情况，会在runloop执行</h3>
+<blockquote>
+<p>在Swift3 中已经移除了 ++ 或 -- 的自增 自减运算符</p>
 
-<h3 id="toc_7">8. 计时器Timer的不准</h3>
+<h2 id="toc_5">比较运算符</h2>
 
-<p>计时器不是实时机制，只有当RunLoop的其中一个循环模式正在运行，并且能够检查计时器的出发时间是否已经过去，才会触发。如果运行循环处于未监视的定时器的mode或者有个长时间回调，定时器不会被触发直到下次runLoop检查定时器。因此，定时器可能发射的时间是在计划时间之后的某个时间，但是重复的定时器按照计划时间重新即使而不是实际触发时间。一个计时器同时只能注册在一个runLoop中，尽管他可以在该runloop中添加到多个modes</p>
+<p>和OC中是相同的,返回一个表达式是否成立的布尔值</p>
+
+<p><code>Swift</code> 也提供恒等（<code>===</code>）和不恒等（<code>!==</code>）这两个比较符来判断两个对象是否引用同一个对象实例</p>
+</blockquote>
+
+<p>注意:</p>
+
+<p><strong>元组的比较方法:</strong><br/>
+当元组中的值可以比较时，你也可以使用这些运算符来比较它们的大小。例如，因为<code>Int</code>和<code>String</code>类型的值可以比较，所以类型为<code>(Int, String)</code>的元组也可以被比较。相反，<code>Bool</code> 不能被比较，也意味着存有布尔类型的元组不能被比较</p>
+
+<p>比较元组大小会按照从左到右、逐值比较的方式，直到发现有两个值不等时停止。如果所有的值都相等，那么这一对元组我们就称它们是相等的</p>
+
+<pre><code class="language-swift">//当比较到1小于2就判断为ture 不会再比较下去
+(1, &quot;zebra&quot;) &lt; (2, &quot;apple&quot;) // true，因为 1 小于 2
+(3, &quot;apple&quot;) &lt; (3, &quot;bird&quot;) // true，因为 3 等于 3，但是 apple 小于 bird
+(4, &quot;dog&quot;) == (4, &quot;dog&quot;) // true，因为 4 等于 4，dog 等于 dog
+</code></pre>
+
+<blockquote>
+<p>Swift 标准库只能比较七个以内元素的元组比较函数。如果你的元组元素超过七个时，你需要自己实现比较运算符。</p>
+</blockquote>
+
+<h2 id="toc_6">三目运算</h2>
+
+<h2 id="toc_7">空合运算符</h2>
+
+<p>空合运算符<code>（a ?? b）</code>将对可选类型<code>a</code>进行空判断，如果<code>a</code>包含一个值就进行解封，否则就返回一个默认值<code>b</code>。表达式<code>a</code>必须是<code>Optional</code>类型。默认值<code>b</code>的类型必须要和<code>a</code>存储值的类型保持一致。</p>
+
+<p>空合运算符有<code>a != nil ? a! : b</code>相当于这种表达</p>
+
+<p>注意:<br/>
+空合运算符也采用了短路求值,即当a为非空时,那么就不会再去计算b的值</p>
+
+<h2 id="toc_8">区间运算符</h2>
+
+<h3 id="toc_9">闭区间运算符</h3>
+
+<p><code>a...b</code>定义一个包含从a到b(包括a和b)</p>
+
+<pre><code class="language-swift">for index in 1...5 {
+    print(&quot;\(index) * 5 = \(index * 5)&quot;)
+}
+// 1 * 5 = 5
+// 2 * 5 = 10
+// 3 * 5 = 15
+// 4 * 5 = 20
+// 5 * 5 = 25
+</code></pre>
+
+<h3 id="toc_10">半开区间运算符</h3>
+
+<p><code>a..&lt;b</code>定义一个从<code>a</code>到<code>b</code>但不包括<code>b</code>的区间</p>
+
+<h2 id="toc_11">逻辑运算符</h2>
+
+<p>与<code>&amp;&amp;</code> 或<code>||</code> 非<code>!</code></p>
+
+<blockquote>
+<p>与或非运算也是使用短路计算的</p>
+</blockquote>
+
+<p>注意:<br/>
+<code>Swift</code>逻辑操作符 <code>&amp;&amp;</code> 和 <code>||</code> 是左结合的，即从左向右读,优先计算左边,建议加上括号来增加代码可读性</p>
 
                         
                       </div>
@@ -158,10 +230,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2019/4/8</span>
+                    <span class="date">2017/6/14</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='RunLoop.html'>RunLoop</a></span>
+          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -255,25 +327,25 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

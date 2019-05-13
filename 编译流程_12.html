@@ -112,250 +112,43 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15538518127841.html">
+                <a class="clearlink" href="15538277002309.html">
                 
-                  <h1>App程序编译的完整流程</h1>
+                  <h1>基础知识</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>本文学习自戴铭老师的<a href="https://github.com/ming1016/study/wiki/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90-iOS-%E7%BC%96%E8%AF%91-Clang---LLVM">深入剖析 iOS 编译 Clang LLVM</a></p>
+                        	<h2 id="toc_0">编译过程</h2>
 
-<h2 id="toc_0">前言</h2>
+<p>从源代码文件到可执行文件</p>
 
-<p>每次项目编译 不论模拟器还是真机都会在<code>Xcode</code>的<code>DerivedData</code>文件夹下创建一个该次编译需要或者产生文件的文件夹(缓存文件夹)<br/>
-<img src="media/15538518127841/15538525190405.jpg" alt="" style="width:624px;"/></p>
+<p>以C语言程序为例子:<br/>
+<img src="media/15538277002309/15538277527739.jpg" alt="" style="width:963px;"/></p>
 
-<p>而在build文件夹中就是我们这次编译的主要信息<br/>
-<img src="media/15538518127841/15538525902894.jpg" alt="" style="width:820px;"/><br/>
-其中<code>Intermediates.noindex</code>文件夹中为编译的缓存文件(辅助文件)，主要为辅助文件<code>.yml</code><code>.hamp</code>等<br/>
-product中为我们编译的结果<br/>
-<img src="media/15538518127841/15538527710516.jpg" alt="" style="width:592px;"/><br/>
-包括了pod库打包的.a文件，安装用到的.app文件，.app中还包括资源文件、.plist文件、storybord或者xib编译后的nib文件等</p>
+<p>程序经历了预处理、编译、汇编、链接<br/>
+编译后为汇编文件、汇编之后的文件即为<code>.o</code>文件（二进制文件）,经过链接后即变为可执行文件（二进制文件）</p>
 
-<p><img src="media/15538518127841/15538542741556.jpg" alt="" style="width:203px;"/></p>
+<p>编译将高级语言翻译为汇编语言<br/>
+汇编即将语言翻译为机器语言指令，并打包为可重定位目标程序，即.o文件</p>
 
-<h2 id="toc_1">编译流程</h2>
+<h2 id="toc_1">LLVM和Clang的历史</h2>
 
-<p>在本文中我们编译一个cocopoda程序来做演示</p>
+<h3 id="toc_2">GCC</h3>
 
-<h3 id="toc_2">1. 编译信息写入辅助文件，创建文件架构.app文件</h3>
+<p>是GUN开发的编程语言编译器，是自由类的Unix和苹果电脑Mac OS X操作系统标准编译器，原本用来处理C语言，后来扩展为可以处理C++、Fortran、Pascal、Objective-C、Java, 以及 Ada与其他语言</p>
 
-<p>创建.app文件夹,用来存放最后生成.app文件的信息<br/>
-<img src="media/15538518127841/15538531245953.jpg" alt="" style="width:837px;"/></p>
+<h3 id="toc_3">LLVM</h3>
 
-<p>辅助文件用于辅助编译，暂时不知道有什么其他用？？？？</p>
+<p>LLVM 是 Low Level Virtual Machine 的简称，这个库提供了与编译器相关的支持，能够进行程序语言的编译期优化、链接优化、在线编译优化、代码生成。简而言之，就是可以作为多种语言编译器的<strong>后台</strong>使用</p>
 
-<p>写入辅助文件.yaml文件<br/>
-<img src="media/15538518127841/15538520286678.jpg" alt="" style="width:824px;"/></p>
+<p>Clang是C++编写的、基于LLVM的C/C++/Objective C/Objective C++ 编译器，其目标就是超越GCC</p>
 
-<p>写入辅助文件.hamp文件<br/>
-<img src="media/15538518127841/15538520549132.jpg" alt="" style="width:838px;"/><br/>
-写入辅助文件Entitlements.plist 和 Entitlements-Simulated.plist<br/>
-<img src="media/15538518127841/15538536658391.jpg" alt="" style="width:818px;"/></p>
+<p>LLVM历史:<br/>
+Apple早期是用GCC作为官方编译器，但是苹果给Object-C新增了很多特性，但是GCC开发者并不愿意给Apple实现，因此Apple就找到了毕业的Chris Lattner，其在学校就突出了一整套的完整的在编译时、链接时、运行时、甚至是在闲置时优化程序的编译思想，即为LLVM，其用GCC作为前端来对于用户程序进行语意分析产生IF（Intermidiate Format中间格式）然后用LLVM分析完成代码的优化和生成</p>
 
-<h3 id="toc_3">2. 处理文件的打包信息</h3>
-
-<p>1.真机打包文件: 真机需要配置文件信息,此时在.app文件夹下为<br/>
-包含了配置文件信息是应用程序能在真机上运行的必须<br/>
-这步即将电脑内存放的开发证书证书直接放置到.app文件夹中<br/>
-<img src="media/15538518127841/15538540868414.jpg" alt="" style="width:879px;"/><br/>
-见上图中<code>embedded.mobileprovision</code>文件</p>
-
-<p>1.2 模拟器打包文件<br/>
-模拟器的配置文件信息，是app能在模拟器上运行的必须<br/>
-<img src="media/15538518127841/15538544375164.jpg" alt="" style="width:1098px;"/></p>
-
-<p>2.打包文件的实体信息 .app.xcent 主要为Entilements，信息  （不论模拟器或者真机都有）真机的文件信息中 包括了app信息，开发者信息、app用到的权限信息等<br/>
- <img src="media/15538518127841/15538542169158.jpg" alt="" style="width:840px;"/></p>
-
-<h3 id="toc_4">3. 执行 CocoaPod 编译前脚本，checkPods Manifest.lock</h3>
-
-<p>默认是在这一步执行，这和你放置这个脚本的位置有关</p>
-
-<p><img src="media/15538518127841/15538558869448.jpg" alt="" style="width:684px;"/></p>
-
-<p><img src="media/15538518127841/15538547657710.jpg" alt="" style="width:834px;"/></p>
-
-<p><img src="media/15538518127841/15538547101237.jpg" alt="" style="width:701px;"/></p>
-
-<p>执行脚本比较这两个.lock文件 判断是否差异</p>
-
-<h3 id="toc_5">4.编译.m文件，使用 CompileC 和 clang 命令</h3>
-
-<p>编译所有的.m文件，包括自己项目的和pod库中的,（为什么没有.h文件呢？因为在预编译的时候都进了其它.m文件啊）</p>
-
-<p>编译后生成.o文件</p>
-
-<p><img src="media/15538518127841/15538550281496.jpg" alt="" style="width:864px;"/></p>
-
-<p>首先对任务进行描述</p>
-
-<pre><code class="language-text">CompileC /Users/fish/Library/Developer/Xcode/DerivedData/AlipayDemo-bqmyunxtybyzyecoutybsvekthlo/Build/...
-</code></pre>
-
-<p>接下来对会更新工作路径</p>
-
-<pre><code class="language-text">cd /Users/fish/Desktop/AlipayDemo
-export LANG=en_US.US-ASCII
-</code></pre>
-
-<p>接下来就是实际的编译命令</p>
-
-<pre><code class="language-text">//调用了clang命名
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x objective-c -arch arm64 -fmessage-length=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit=0 -std=gnu11 -fobjc-arc -fobjc-weak -fmodules -gmodules -fmodules-cache-path=/Users/fi....
-</code></pre>
-
-<pre><code class="language-text">//将pch文件一起编译
--include /Users.../Application/PrefixHeader.pch
-</code></pre>
-
-<p>将文件都编译完成后,会将所有的.o文件写入一个辅助文件 <code>.LinkFileList</code>文件中，便于下一步链接</p>
-
-<p>clang常用命令参数</p>
-
-<pre><code class="language-text">-x 编译语言比如objective-c
--arch 编译的架构，比如arm7
--f 以-f开头的。
--W 以-W开头的，可以通过这些定制编译警告
--D 以-D开头的，指的是预编译宏，通过这些宏可以实现条件编译
--iPhoneSimulator10.1.sdk 编译采用的iOS SDK版本
--I 把编译信息写入指定的辅助文件
--c 标识符指明需要运行预处理器，语法分析，类型检查，LLVM生成优化以及汇编代码生成.o文件
--F 需要的Framework
--L 连接静态库
--o 编译结果
--inclue 将文件include一起编译(当我们添加的有prefix文件时，就会在这这一步一起编译)
-</code></pre>
-
-<h3 id="toc_6">5.将cocoapods中的pod生成.a静态库</h3>
-
-<p><img src="media/15538518127841/15538703095401.jpg" alt="" style="width:1031px;"/></p>
-
-<p>使用<code>libTool</code>命令,<br/>
-<code>-fileList</code>指定上一步编译的所有.o文件等，其记录在一个AFNetworking.LinkFileList的文件中<br/>
-<code>-framework</code>指定需要依赖的framework <br/>
-打包为一个.a静态库</p>
-
-<blockquote>
-<p>swift的话，因为其pod不支持静态库，我们一般podfile中指定 userFramework？？？</p>
-</blockquote>
-
-<h3 id="toc_7">6.链接需要的 Framework和library</h3>
-
-<p><img src="media/15538518127841/15538692299741.jpg" alt="" style="width:1050px;"/></p>
-
-<p>采用 clang <br/>
--L 链接静态库<br/>
--framework 添加需要的依赖系统库库<br/>
--F 链接framework</p>
-
-<p>链接的内容包括:</p>
-
-<ol>
-<li>pod库生成的.a文件 即libPods-[ProjectName].a文件</li>
-<li>pod库打包生成的.a文件,例如libAFNetworking.a等链接到工程</li>
-<li>需要的外部framework文件</li>
-<li>-fileList 将上一步编译生成的所有.o文件 记录在.buile/.LinkFileList中,链接所以工程文件</li>
-<li>以及其他的一些辅助文件</li>
-<li>链接需要的系统库</li>
-</ol>
-
-<p>生成项目程序的可执行文件就是一个脚本文件</p>
-
-<h3 id="toc_8">7. 处理资源文件</h3>
-
-<h4 id="toc_9">编译 ImageAssets</h4>
-
-<p>即使多个.xcassets也是一起编译的，而不是分开编译多次</p>
-
-<p><img src="media/15538518127841/15538746736648.jpg" alt="" style="width:1078px;"/></p>
-
-<p>使用<code>actool</code>命令 这个命令只用于这个地方<br/>
-<code>--output-format human-readable-text</code><br/>
-<code>--export-dependency-info</code> 将编译后的生成的文件信息记录在.build文件夹下的assetcatalog_dependencies文件中,包括.xcassets文件、appIcon图片、launchImage图片、生成的唯一.car文件、记录信息的.plist文件</p>
-
-<p><code>--output-partial-info-plist</code> 生成一个.build/assetcatalog_generated_info.plist ,主要记录了appIcon和launchImage信息<br/>
-<img src="media/15538518127841/15538756202833.jpg" alt="" style="width:702px;"/></p>
-
-<p><code>--app-icon AppIcon</code><br/>
-<code>--launch-image LaunchImage</code><br/>
-<code>--compress-pngs --enable-on-demand-resources YES</code></p>
-
-<p><code>--filter-for-device-model iPhone10,3 --filter-for-device-os-version 12.2 --target-device iphone</code> 当前的设备信息</p>
-
-<p><code>--target-device iphone --minimum-deployment-target 8.0</code><br/>
-<code>--compile</code>  将编译生成的.car信息直接放入.app文件夹中<br/>
-将appIcon、LaunchImage图片文件放入.app文件中</p>
-
-<h4 id="toc_10">编译 xib</h4>
-
-<p>xib编译</p>
-
-<p><code>ibtool</code>命令<br/>
-<code>--module</code>指定所属模块名称<br/>
-<code>--target-device</code>指定面向设备，iPhone/iPad<br/>
-<code>--auto-activate-custom-fonts</code><br/>
-<code>--minimum-deployment-target 8.0</code> 最低支持目标设备系统</p>
-
-<p><code>--output-partial-info-plist</code> 生成一个-PartialInfo.plist文件 放置在.build文件的辅助文件中</p>
-
-<p><code>--output-format human-readable-text</code><br/>
-<code>--compile</code> 编译生成一个nib文件,直接放置在.app文件中</p>
-
-<p><img src="media/15538518127841/15538725620996.jpg" alt="" style="width:834px;"/></p>
-
-<h4 id="toc_11">编译 storyBoard</h4>
-
-<p><img src="media/15538518127841/15538729971749.jpg" alt="" style="width:905px;"/></p>
-
-<p>类似编译xib<br/>
-<code>ibtool</code>命令<br/>
-<code>--module</code>指定所属模块名称<br/>
-<code>--output-partial-info-plist</code> 生成一个 <code>/Base.lproj/Name-SBPartialInfo.plist</code>文件 存放在<code>.build</code>文件夹中<br/>
-<code>--target-device iphone --target-device ipad</code><br/>
-<code>--minimum-deployment-target 8.0</code><br/>
-<code>--output-format human-readable-text</code> <br/>
-<code>--compilation-directory</code> 编译生成.storyboardc文件,放在<code>.build</code>文件中<br/>
-<img src="media/15538518127841/15538719624665.jpg" alt="" style="width:630px;"/></p>
-
-<h4 id="toc_12">链接storyBoard文件</h4>
-
-<p><img src="media/15538518127841/15538732881268.jpg" alt="" style="width:887px;"/></p>
-
-<p>使用<code>ibtool</code>命令<br/>
-指定一些信息<br/>
-<code>--module</code>指定所属模块名称<br/>
-<code>--target-device iphone --target-device ipad --minimum-deployment-target 8.0</code><br/>
-<code>--output-format human-readable-text</code><br/>
-<code>--link</code>将项目模块中所有上一步生成的<code>.storyboardc</code>文件连接到 .app文件夹中</p>
-
-<h4 id="toc_13">拷贝xib、资源文件</h4>
-
-<p>拷贝一些资源文件到我们创建.app文件中</p>
-
-<h4 id="toc_14">处理 info.plist文件</h4>
-
-<p><img src="media/15538518127841/15538764050221.jpg" alt="" style="width:958px;"/></p>
-
-<p><code>-genpkginfo</code> 在.app文件夹下，生成了PkgInfo文件 ???<br/>
-<code>-additionalcontentfile</code>加入多个前面生成的plist文件<br/>
-<code>-o</code>将合并信息 生成为info.plist,放置在.app文件夹下</p>
-
-<h3 id="toc_15">8. 执行 一些自定义 脚本</h3>
-
-<pre><code class="language-text">这个地方可以执行一些自定义脚本，具体执行位置还是要看 在`build Phases`中的自定义顺序
-</code></pre>
-
-<h3 id="toc_16">9. 签名</h3>
-
-<p>主要用于真机<br/>
-使用<code>codesign</code>命令,利用我们之前生成的.app.xcent信息 进行应用签名</p>
-
-<h3 id="toc_17">10. 创建 .app 文件</h3>
-
-<p>生成.app文件 即最终的可安装文件<br/>
-<img src="media/15538518127841/15538768732306.jpg" alt="" style="width:1057px;"/></p>
+<p>Clang历史:<br/>
+Apple吸收了Chris Lattner后，觉得GCC庞大而且笨重，然而自己OC语言在gcc中的优先级很低，再加上一些许可证方面的要求。Apple决定写一个只支C、C++、Object-C语言的前端Clang，来完全替代GCC</p>
 
                         
                       </div>
@@ -391,7 +184,7 @@ export LANG=en_US.US-ASCII
 			  </div>
 			  <div class="large-6 columns">
 			<p class="text-right" style="padding-top:25px;">
-			 <a href="编译流程_13.html">&raquo; Next Page</a> 
+			
 			</p>
 			  </div>
 			</div>
@@ -461,25 +254,25 @@ export LANG=en_US.US-ASCII
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

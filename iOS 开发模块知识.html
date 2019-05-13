@@ -112,30 +112,126 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15556625620569.html">
+                <a class="clearlink" href="15560883411509.html">
                 
-                  <h1>pod repo update</h1>
+                  <h1>MatrixiOS学习</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>我们平时开发pod update或者pod install , 这里其实 pod的工作就是根据pod库名在master/Specs/中找到对应的库，若指定版本则找到指定版本的podspec,否则找最高版本的podspec，找到后根据podsepc文件中的配置下载指定的库资源。</p>
+                        	<h2 id="toc_0">学习到的知识点</h2>
 
-<p>那么pod repo update 的工作就是更新pod资源目录，也就是master下的资源，简单说 如果有一个第三方库发布了一个最新的版本，如果你不执行pod repo update，那么你的本地是不会知道有一个最新版本的，还会一直以你本地的资源目录为准。那么你永远都拿不到这个库的最新版本。</p>
+<h4 id="toc_1">1.使用协议和继承进行规范开发</h4>
 
-<p>使用pod update是默认会执行一遍pod repo update ，所以会发现如果你的pod库引用多了，每次pod update都很慢，网络如果不好更是经常会断掉，就是因为你在更新pod时，也更新了资源目录</p>
+<p>在项目中定义了plugin的基类<code>MatrixPlugin</code>继承自协议<code>MatrixPluginProtocol</code>，而接下来的组件开发，只需要继承自<code>MatrixPlugin</code>，然后实现协议中的方法即可</p>
 
-<p>pod update 工作流程 :</p>
+<p>而当回调时，也不需要知道具体是哪个<code>plugin</code>，只需指定其实一个继承了协议的插件即可:<br/>
+<code>- (void)onInit:(id&lt;MatrixPluginProtocol&gt;)plugin</code>,就可以使用其在协议中指定的方法</p>
 
-<ul>
-<li>先拉取远程最新目录，再根据目录中的资源重新更新一遍pod</li>
-<li>如果你的podfile中每个库都指定了版本还好，如果没有，那么每次都是拉一遍最新库， 这时候就要用到命令
-<code>
-pod update --no-repo-update
-</code></li>
-</ul>
+<h4 id="toc_2">2.利用运行时实现NSCoding协议</h4>
 
-<p>有些时候会引用一些私有库 ， <code>pod repo update</code> 会把<code>~/.cocoapods/repos/</code>这个目录下所有的资源库目录都更新一遍，有时候不想更新master，只想更新某个具体的私有库 可以使用<code>pod repo update ~/.cocoapods/repos/***/</code></p>
+<p>利用运行时方法获取对象类以及父类的所有属性变量属性变量，执行<code>encodeObject</code>和<code>decodeObjectForKey</code>方法</p>
+
+<p><a href="media/15560883411509/MatrixBaseModel.mm">MatrixBaseMode</a></p>
+
+<h4 id="toc_3">3. 对于app中常用文件路径可以专门写个工具类，为避免每次都访问使用单例</h4>
+
+<pre><code class="language-objectivec">+ (NSString *)matrixCacheRootPath
+{
+    static NSString *s_rootPath;
+    static dispatch_once_t onceToken;
+    dispatch_once(&amp;onceToken, ^{
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+        s_rootPath = [paths[0] stringByAppendingString:@&quot;/Matrix&quot;];
+        if ([[NSFileManager defaultManager] fileExistsAtPath:s_rootPath] == NO) {
+            [[NSFileManager defaultManager] createDirectoryAtPath:s_rootPath withIntermediateDirectories:YES attributes:nil error:nil];
+        }
+    });
+    return s_rootPath;
+}
+</code></pre>
+
+<h4 id="toc_4">4.判断app是否处于调试环境下</h4>
+
+<pre><code class="language-objectivec">+ (BOOL)isBeingDebugged
+{
+    // Returns true if the current process is being debugged (either
+    // running under the debugger or has a debugger attached post facto).
+    int                 junk;
+    int                 mib[4];
+    struct kinfo_proc   info;
+    size_t              size;
+    
+    // Initialize the flags so that, if sysctl fails for some bizarre
+    // reason, we get a predictable result.
+    
+    info.kp_proc.p_flag = 0;
+    
+    // Initialize mib, which tells sysctl the info we want, in this case
+    // we&#39;re looking for information about a specific process ID.
+    
+    mib[0] = CTL_KERN;
+    mib[1] = KERN_PROC;
+    mib[2] = KERN_PROC_PID;
+    mib[3] = getpid();
+    
+    // Call sysctl.
+    
+    /**
+     *int sysctl(int *name, u_int namelen, void *old, size_t *oldlen, void *newp, size_t newlen);
+     *name参数是一个用以指定查询的信息数组；
+     *namelen用以指定name数组的元素个数；
+     *old是用以函数返回的缓冲区；
+     *oldlen用以指定oldp缓冲区长度；
+     *newp和newlen在设置时使用；
+     *当进程被调试器依附时，kinfo_proc结构下有一个kp_proc结构域，
+     kp_proc的p_flag的被调试标识将被设置，即会进行类似如下的设置：
+     kinfo_proc.kp_proc.p_flag&amp;P_TRACED
+     其中P_TRACED的定义如下：
+     #define P_TRACED        0x00000800
+     */
+    
+    
+    size = sizeof(info);
+    junk = sysctl(mib, sizeof(mib) / sizeof(*mib), &amp;info, &amp;size, NULL, 0);
+    assert(junk == 0);
+    
+    // We&#39;re being debugged if the P_TRACED flag is set.
+    return ((info.kp_proc.p_flag &amp; P_TRACED) != 0);
+}
+</code></pre>
+
+<p>以及一些获取app基本信息的方法<br/>
+<a href="media/15560883411509/MatrixDeviceInfo.mm">MatrixDeviceInfo</a></p>
+
+<h4 id="toc_5">5. atexit(func)在app正常退出时调用函数</h4>
+
+<p><code>atexit</code>函数是一个特殊的函数，它在正常退出程序时调用的函数<br/>
+atexit设置的函数会在exit过程中被调用，exit调用终止处理函数的顺序和atexit登记的顺序相反</p>
+
+<p>进程终止的方式有8种:</p>
+
+<ol>
+<li>从main函数返回</li>
+<li>调⽤用exit函数</li>
+<li>调⽤用_exit或_Exit； </li>
+<li>最后⼀一个线程从启动例程返回；</li>
+<li>最后⼀一个线程调⽤用pthread_exit</li>
+<li>调⽤用abort函数； </li>
+<li>接到一个信号并终⽌； </li>
+<li>最后⼀一个线程对取消请求做出响应<br/>
+其中前5种为正常终止，而后3种为异常终止</li>
+</ol>
+
+<p><code>_exit</code>和<code>_Exit</code>立即进入内核，而exit会进行一些清理工作<br/>
+exit函数运行时首先会执行由atexit()函数登记的函数，然后会做一些自身的清理工作，同时刷新所有输出流、关闭所有打开的流并且关闭通过标准I/O函数tmpfile()创建的临时文件。 </p>
+
+<h4 id="toc_6">6. 使用dispatch_block_cancel()来取消执行某些未来执行的block</h4>
+
+<h4 id="toc_7">7. MatrixAppRebootAnalyzer中对App启动和关闭状态的监控</h4>
+
+<p>Matrix中对应用被杀原因检测<br/>
+<img src="media/15560883411509/15562491518956.jpg" alt="" style="width:500px;"/></p>
 
                         
                       </div>
@@ -144,10 +240,10 @@ pod update --no-repo-update
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2019/4/19</span>
+                    <span class="date">2019/4/24</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='Cocoapods.html'>Cocoapods</a></span>
+          					    <span class="posted-in"><a href='%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7-1.html'>项目监控</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -241,25 +337,25 @@ pod update --no-repo-update
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

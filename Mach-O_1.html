@@ -1,0 +1,557 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+    
+  Mach-O - ACEfish-Blog
+  
+  </title>
+  
+  
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+    <link rel="stylesheet" href="asset/css/foundation.min.css" />
+    <link rel="stylesheet" href="asset/css/docs.css" />
+    <script src="asset/js/vendor/modernizr.js"></script>
+    <script src="asset/js/vendor/jquery.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/github.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+<script type="text/javascript">
+  function before_search(){
+    var searchVal = 'site:acefish.github.io ' + document.getElementById('search_input').value;
+    document.getElementById('search_q').value = searchVal;
+    return true;
+  }
+</script>
+  </head>
+  <body class="antialiased hide-extras">
+    
+    <div class="marketing off-canvas-wrap" data-offcanvas>
+      <div class="inner-wrap">
+
+
+<nav class="top-bar docs-bar hide-for-small" data-topbar>
+
+
+  <section class="top-bar-section">
+  <div class="row">
+      <div style="position: relative;width:100%;"><div style="position: absolute; width:100%;">
+        <ul id="main-menu" class="left">
+        
+        <li id=""><a target="_self" href="index.html">Home</a></li>
+        
+        <li id=""><a target="_self" href="archives.html">Archives</a></li>
+        
+        </ul>
+
+        <ul class="right" id="search-wrap">
+          <li>
+<form target="_blank" onsubmit="return before_search();" action="http://google.com/search" method="get">
+    <input type="hidden" id="search_q" name="q" value="" />
+    <input tabindex="1" type="search" id="search_input"  placeholder="Search"/>
+</form>
+</li>
+          </ul>
+      </div></div>
+  </div>
+  </section>
+
+</nav>
+
+        <nav class="tab-bar show-for-small">
+  <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
+    <span> &nbsp; ACEfish-Blog</span>
+  </a>
+</nav>
+
+<aside class="left-off-canvas-menu">
+      <ul class="off-canvas-list">
+        
+        <li><a target="_self" href="index.html">Home</a></li>
+        
+        <li><a target="_self" href="archives.html">Archives</a></li>
+        
+
+    <li><label>Categories</label></li>
+
+        
+            <li><a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html">iOS 开发模块知识</a></li>
+        
+            <li><a href="Swift.html">Swift初学笔记</a></li>
+        
+            <li><a href="Computer-programming.html">计算机编程</a></li>
+        
+            <li><a href="iOSDevelop.html">iOSDevelop</a></li>
+        
+            <li><a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html">JavaScript学习笔记</a></li>
+        
+            <li><a href="React-Native.html">React-Native</a></li>
+        
+            <li><a href="Python.html">Python</a></li>
+         
+
+      </ul>
+    </aside>
+
+<a class="exit-off-canvas" href="#"></a>
+
+
+        <section id="main-content" role="main" class="scroll-container">
+        
+       
+
+ <script type="text/javascript">
+	$(function(){
+		$('#menu_item_index').addClass('is_active');
+	});
+</script>
+<div class="row">
+	<div class="large-8 medium-8 columns">
+		<div class="markdown-body home-categories">
+		
+			<div class="article">
+                <a class="clearlink" href="15541132912435.html">
+                
+                  <h1>Mach-O文件</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<p>记录编译后的可执行文件、对象代码、共享库、动态加载代码和内存转储的文件格式<br/>
+是二进制数据文件，里面有不同的包含元信息的数据块，比如字节顺序，cpu类型，块大小等。文件内容不可修改，因为在.app目录中有<code>_CodeSignature</code>目录，里面包含了程序代码的签名，这个签名的作用就是保证.app里的文件，包括资源文件，Mach-O文件都不能更改</p>
+
+<p>Mach-O文件包含三个区域</p>
+
+<ul>
+<li><code>Mach-O Header</code>：包含字节顺序，magic，cpu类型，加载指令的数量等</li>
+<li><code>Load Commands</code>：包含很多内容的表，包括区域的位置，符号表，动态符号表。每个加载指令包含一个元信息，比如指令类型，名称，在二进制中的位置</li>
+<li><code>data</code>: 文件中最大的部分，包含了代码，数据，比如符号表、动态符号表</li>
+</ul>
+
+<p><img src="media/15541132912435/15541134009742.jpg" alt="" style="width:415px;"/></p>
+
+<p><img src="media/15541132912435/15541204613989.jpg" alt="" style="width:636px;"/></p>
+
+<h2 id="toc_0">Mach-O 文件的解析</h2>
+
+<p>自己创建一个test.c文件</p>
+
+<pre><code class="language-c">#include &lt;stdio.h&gt;
+int main(int argc, char *argv[])
+{
+    printf(&quot;hi there!\n&quot;);
+    return 0;
+}
+</code></pre>
+
+<pre><code class="language-c">//将test.c 编译汇编链接成一个可执行文件 未指定输出文件 即默认为a.out
+xcrun clang test.c 
+</code></pre>
+
+<hr/>
+
+<p>使用size工具查看a.out中的section</p>
+
+<pre><code class="language-c">xcrun size -x -l -m a.out
+</code></pre>
+
+<pre><code class="language-c">Segment __PAGEZERO: 0x100000000 (vmaddr 0x0 fileoff 0)
+Segment __TEXT: 0x1000 (vmaddr 0x100000000 fileoff 0)
+    Section __text: 0x34 (addr 0x100000f50 offset 3920)
+    Section __stubs: 0x6 (addr 0x100000f84 offset 3972)
+    Section __stub_helper: 0x1a (addr 0x100000f8c offset 3980)
+    Section __cstring: 0xa (addr 0x100000fa6 offset 4006)
+    Section __unwind_info: 0x48 (addr 0x100000fb0 offset 4016)
+    total 0xa6
+Segment __DATA: 0x1000 (vmaddr 0x100001000 fileoff 4096)
+    Section __nl_symbol_ptr: 0x10 (addr 0x100001000 offset 4096)
+    Section __la_symbol_ptr: 0x8 (addr 0x100001010 offset 4112)
+    total 0x18
+Segment __LINKEDIT: 0x1000 (vmaddr 0x100002000 fileoff 8192)
+total 0x100003000
+</code></pre>
+
+<p>有4个segment和多个section<br/>
+当运行时，虚拟内存会把segment映射到进程的地址空间，虚拟内存会避免将全部执行文件全部加载到内存</p>
+
+<p><code>__PAGEZERO sement</code>的大小是4GB，不是文件真实大小，是规定进程地址空间前4GB被映射为不可执行文件，不可读、不可写</p>
+
+<p><code>__TEXT segment</code>包含被执行的代码以只读和可执行的方式映射</p>
+
+<ul>
+<li>__text section 包含编译后的机器码</li>
+<li><strong>stubs和</strong>stub_hepler是给动态链接器dyld使用，可以允许延迟链接</li>
+<li>__csstring 可执行文件中的字符串</li>
+<li>__const不可变的常量</li>
+</ul>
+
+<p><code>__DATA segment</code>以可读写和不可执行的方式映射,里面是会被更改的数据</p>
+
+<ul>
+<li>__nl_symbol_ptr 非延迟指针.可执行文件加载同时加载</li>
+<li>__la_symbol_ptr延迟符号指针.延迟用于可执行文件汇总调用未定义的函数，可执行文件里没有包含的函数会延迟加载</li>
+<li>__const 需要重定向的常量  例如 char * const c = “foo”; c指针指向可变的数据</li>
+<li>__bbs不用初始化的静态变量</li>
+<li>__common包含外部全局变量。例如在函数外定义 int i；</li>
+<li>__dyld是section占位符，用于动态链接器</li>
+</ul>
+
+<hr/>
+
+<p>查看<strong>section中的内容</strong></p>
+
+<pre><code class="language-text">xcrun otool -s __TEXT __text a.out
+</code></pre>
+
+<p>显示的为二进制数据，我们可以反汇编,查看汇编信息 -s __TEXT __text 有个缩写 -t</p>
+
+<pre><code class="language-text">xcrun otool -v -t a.out
+</code></pre>
+
+<pre><code class="language-c">a.out:
+(__TEXT,__text) section
+_main:
+0000000100000f50    pushq    %rbp
+0000000100000f51    movq    %rsp, %rbp
+0000000100000f54    subq    $0x20, %rsp
+0000000100000f58    leaq    0x47(%rip), %rax
+0000000100000f5f    movl    $0x0, -0x4(%rbp)
+0000000100000f66    movl    %edi, -0x8(%rbp)
+0000000100000f69    movq    %rsi, -0x10(%rbp)
+0000000100000f6d    movq    %rax, %rdi
+0000000100000f70    movb    $0x0, %al
+0000000100000f72    callq    0x100000f84
+0000000100000f77    xorl    %ecx, %ecx
+0000000100000f79    movl    %eax, -0x14(%rbp)
+0000000100000f7c    movl    %ecx, %eax
+0000000100000f7e    addq    $0x20, %rsp
+0000000100000f82    popq    %rbp
+0000000100000f83    retq
+</code></pre>
+
+<hr/>
+
+<p>使用otool查看可执行文件的头部,即header</p>
+
+<pre><code class="language-c">otool -v -h a.out
+</code></pre>
+
+<p>得到 <strong>头部信息</strong></p>
+
+<pre><code class="language-text">Mach header
+      magic cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+MH_MAGIC_64  X86_64        ALL LIB64     EXECUTE    15       1200   NOUNDEFS DYLDLINK TWOLEVEL PIE
+</code></pre>
+
+<p>mach_header 结构体</p>
+
+<pre><code class="language-text">struct mach_header {
+  uint32_t      magic; 
+  cpu_type_t    cputype; 
+  cpu_subtype_t cpusubtype;
+  uint32_t      filetype;
+  uint32_t      ncmds;
+  uint32_t      sizeofcmds;
+  uint32_t      flags;
+};
+</code></pre>
+
+<p>cputype 和 cpusubtype 规定可执行文件可以在哪些目标架构运行。ncmds 和 sizeofcmds 是加载命令<code>LoadCommand</code></p>
+
+<hr/>
+
+<p><strong>查看LoadCommands</strong>使用命令 <code>otool -v -l a.out</code></p>
+
+<pre><code class="language-c">...
+...
+Load command 1
+      cmd LC_SEGMENT_64
+  cmdsize 472
+  segname __TEXT
+   vmaddr 0x0000000100000000
+   vmsize 0x0000000000001000
+  fileoff 0
+ filesize 4096
+  maxprot rwx
+ initprot r-x
+   nsects 5
+    flags (none)
+Section
+  Section
+  sectname __text
+   segname __TEXT
+      addr 0x0000000100000f50 //代码的位置地址 和上面反汇编的地址是一样的
+      size 0x0000000000000034 
+    offset 3920 //在文件中的偏移量
+     align 2^4 (16)
+    reloff 0
+    nreloc 0
+      type S_REGULAR
+attributes PURE_INSTRUCTIONS SOME_INSTRUCTIONS
+ reserved1 0
+ reserved2 0
+Section
+  sectname __stubs
+   segname __TEXT
+      addr 0x0000000100000f88
+      size 0x0000000000000006
+    offset 3976
+     align 2^1 (2)
+    reloff 0
+    nreloc 0
+      type S_SYMBOL_STUBS
+attributes PURE_INSTRUCTIONS SOME_INSTRUCTIONS
+ reserved1 0 (index into indirect symbol table)
+ reserved2 6 (size of stubs)
+ ...
+ ...
+</code></pre>
+
+<p>加载命令的结构体</p>
+
+<pre><code class="language-text">struct segment_command {
+  uint32_t  cmd;
+  uint32_t  cmdsize;
+  char      segname[16];
+  uint32_t  vmaddr;
+  uint32_t  vmsize;
+  uint32_t  fileoff;
+  uint32_t  filesize;
+  vm_prot_t maxprot;
+  vm_prot_t initprot; //权限 例如r-x
+  uint32_t  nsects;
+  uint32_t  flags;
+};
+</code></pre>
+
+<hr/>
+
+<h2 id="toc_1">逆向Mach-O文件</h2>
+
+<p>需要先安装 tweak，安装越狱可以通过 cydia，不越狱直接打包成 ipa 安装包。越狱的话会安装一个 mobilesubstrate 的动态库，使用 theos 开发工具，非越狱的直接把这个库打包进 ipa 中或者直接修改汇编代码。</p>
+
+<p>Mobilesubstrate 提供了三个模块来方便开发。</p>
+
+<p>MobileHooker：利用 method swizzling 技术定义一些宏和函数来替换系统或者目标函数。<br/>
+MobileLoader：在程序启动时将我们写的破解程序用的第三方库注入进去。怎么注入的呢，还记得先前说的 clang attribute 里的一个 attribute((constructor)) 么，它会在 main 执行之前执行，所以把我们的 hook 放在这里就可以了。<br/>
+Safe mode：类似安全模式，会禁用的改动。<br/>
+先前提到 Mach-O 的结构有 Header，Load commands 和 Data，Mobileloader 会通过修改二进制的 loadCommands 来先把自己注入然后再把我们写的第三方库注入进去，这样破解程序就会放在 Load commands 段里面了。</p>
+
+<p>当然如果是我们自己的程序我们是知道要替换哪些方法的，既然是逆向肯定是别人的程序了，这个时候就需要去先分析下我们想替换方法是哪个，网络相关的分析可以用常用那些抓包工具，比如 Charles，WireShark 等，静态的可以通过砸壳，反汇编，classdump 头文件来分析 app 的架构，对应的常用工具dumpdecrypted，hopper disassembler 和 class_dump。运行时的分析可用工具有运行时控制台cycript，远程断点调试lldb+debugserver，logify。</p>
+
+<ul>
+<li>入门文章可以看看这篇: <a href="https://github.com/zhengmin1989/MyArticles/tree/master/iOS%E5%86%B0%E4%B8%8E%E7%81%AB%E4%B9%8B%E6%AD%8C"> MyArticles/iOS冰与火之歌 at master · zhengmin1989/MyArticles · GitHub</a></li>
+<li><a href="http://blog.imjun.net/posts/convert-iOS-app-to-dynamic-library/">黑科技：把第三方 iOS 应用转成动态库 - Jun’s Blog</a>  <a href="http://blog.imjun.net/posts/restore-symbol-of-iOS-app/"> iOS符号表恢复&amp;逆向支付宝 - Jun’s Blog</a></li>
+</ul>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2019/4/1</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='Mach-O.html'>Mach-O</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
+              
+
+
+			<div class="row">
+			  <div class="large-6 columns">
+			  <p class="text-left" style="padding-top:25px;">
+			   <a href="Mach-O.html">&laquo; Prev Page</a>  
+			  </p>
+			  </div>
+			  <div class="large-6 columns">
+			<p class="text-right" style="padding-top:25px;">
+			
+			</p>
+			  </div>
+			</div>
+		</div>
+	</div><!-- large 8 -->
+
+ <div class="large-4 medium-4 columns">
+  <div class="hide-for-small">
+    <div id="sidebar" class="sidebar">
+          <div id="site-info" class="site-info">
+            
+                <h1>ACEfish-Blog</h1>
+                <div class="site-des"></div>
+                <div class="social">
+
+
+
+
+
+
+
+
+
+<a target="_blank" class="github" target="_blank" href="https://github.com/ACEfish/ACEfish.github.io" title="GitHub">GitHub</a>
+
+  <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
+                
+              	 </div>
+          	</div>
+
+             
+
+              <div id="site-categories" class="side-item ">
+                <div class="side-header">
+                  <h2>Categories</h2>
+                </div>
+                <div class="side-content">
+
+      	<p class="cat-list">
+        
+            <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识</strong></a>
+        
+            <a href="Swift.html"><strong>Swift初学笔记</strong></a>
+        
+            <a href="Computer-programming.html"><strong>计算机编程</strong></a>
+        
+            <a href="iOSDevelop.html"><strong>iOSDevelop</strong></a>
+        
+            <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记</strong></a>
+        
+            <a href="React-Native.html"><strong>React-Native</strong></a>
+        
+            <a href="Python.html"><strong>Python</strong></a>
+         
+        </p>
+
+
+                </div>
+              </div>
+
+              <div id="site-categories" class="side-item">
+                <div class="side-header">
+                  <h2>Recent Posts</h2>
+                </div>
+                <div class="side-content">
+                <ul class="posts-list">
+	      
+		      
+			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15556625620569.html">pod repo update</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15554889031358.html">otool命令</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15553854847636.html">运行时</a>
+			      </li>
+		     
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		   
+		  		</ul>
+                </div>
+              </div>
+        </div><!-- sidebar -->
+      </div><!-- hide for small -->
+</div><!-- large 4 -->
+
+</div><!-- row -->
+
+ <div class="page-bottom clearfix">
+  <div class="row">
+   <p class="copyright">Copyright &copy; 2015
+Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a>,&nbsp; 
+Theme used <a target="_blank" href="http://github.com">GitHub CSS</a>.</p>
+  </div>
+</div>
+
+        </section>
+      </div>
+    </div>
+
+  
+    
+
+    <script src="asset/js/foundation.min.js"></script>
+    <script>
+      $(document).foundation();
+      function fixSidebarHeight(){
+        var w1 = $('.markdown-body').height();
+          var w2 = $('#sidebar').height();
+          if (w1 > w2) { $('#sidebar').height(w1); };
+      }
+      $(function(){
+        fixSidebarHeight();
+      })
+      $(window).load(function(){
+          fixSidebarHeight();
+      });
+     
+    </script>
+
+    
+
+
+
+  </body>
+</html>

@@ -112,46 +112,229 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14872305472033.html">
+                <a class="clearlink" href="15548054751703.html">
                 
-                  <h1>UI测试</h1>
+                  <h1>GCD的常用功能</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>关于iOS的UI自动化测试，Xcode 7 Apple从新提供了一个新的框架UITest，使用XCTest.framework，Xcode可以自动录制UI测试的动作流，还有就是可以使用<code>XCTest UI testing API</code></p>
+                        	<h2 id="toc_0">1. dispatch_after</h2>
 
-<h4 id="toc_0"><a href="http://www.itnose.net/detail/6507467.html">基础知识</a></h4>
+<p>等待特定时间，<strong>异步</strong>的添加执行block到特定queue中</p>
 
-<p>核心的三个类:<code>XCUIApplication</code> <code>XCUIElement</code> <code>XCUIElementQuery</code><br/>
-<strong>XCUIApplication类</strong> 是Application的代理，就像我们项目工程中的AppDelegate，这个对象用来启动或者是终止UI测试程序，还可以在启动的时候设置一些启动参数，在获取程序中的UI元素的时候，就是通过这个类的实例。这个类继承自XCUIElement类<br/>
-<strong>XCUIElement类</strong> 是XCTest.framework对应用中的所有UI控件的抽象，在UI测试中，没有UIKit中的UI类型，只是用这个类的实例表示所有的UI控件，以及相应的交互方法，例如：执行手势（tap，press，swipe），滑动控件交互，拾取器交互，这个类采取了XCUIElementAttributes协议（描述UI元素的属性：Identity，Value，Interaction State，Size），XCUIElementTypeQueryProvider协议(为指定类型的子代元素提供ready-made查询，子代元素查询包含button，具体实现是:@property(readonly, copy) XCUIElementQuery *buttons;等一系列对UIKit中元素的映射)<br/>
-<strong>XCUIElementQuery类</strong> 是定位UI元素的查询，这个类使用类似key-value的机制得到XCUIElement的实例，使用Type(XCUIElementType枚举)，Predicate，Identifier创建query，使用elementAtIndex:, elementMatchingPredicate,elementMatchingType: identifier:方法访问匹配到的UI元素，此类采用XCUIElementTypeQueryProvider协议</p>
+<pre><code class="language-objectivec">void dispatch_after(dispatch_time_t when, dispatch_queue_t queue, dispatch_block_t block);
+//when： 时间，dispatch_time_t或者dispatch_walltime
+//queue: 执行的queue 被系统retain直到block完成
+//block: 函数内部帮助调用者适时执行Block_copy and Block_release
+</code></pre>
 
-<p>XCTest一共提供了三种UI测试对象<br/>
-    XCUIApplication 当前测试应用target<br/>
-    XCUIElementQuery 定位查询当前UI中xctuielement的一个类<br/>
-    XCUIElement UI测试中任何一个item项都被抽象成一个XCUIElement类型<br/>
-因此:当我们获取了录制生成的代码以后，根据UITest提供的三种对象，我可以在此来对测试代码进行修改，调试,我们同样可以使用断言语句来进行测试</p>
+<h3 id="toc_1">dispatch_after_f</h3>
 
-<h4 id="toc_1">UI测试Demo</h4>
+<pre><code class="language-objectivec">void dispatch_after_f(dispatch_time_t when, dispatch_queue_t queue, void *context, dispatch_function_t work);
+</code></pre>
+
+<h2 id="toc_2">2. dispatch_apply</h2>
+
+<p><strong>同步</strong>的在指定的queue中执行指定次数 的block，可用来进行更有性能的迭代<br/>
+此方法将block提交到指定的queue中执行 并且<strong>等所有迭代完成后</strong>才会返回；<br/>
+如果目标队列是<code>dispatch_get_global_queue</code>迭代并发执行，因此应该保证block是<strong>可重入</strong>安全的，可以作为有效的并行for循环</p>
+
+<pre><code class="language-objectivec">void dispatch_apply(size_t iterations, dispatch_queue_t queue, void (^block)(size_t));
+//iterations: 执行几次
+//block: 执行事件 参数为当前执行次数
+</code></pre>
+
+<blockquote>
+<p>dispatch_apply 和 dispatch_apply_f 是同步函数,会阻塞当前线程直到所有循环迭代执行完成。</p>
+</blockquote>
+
+<h3 id="toc_3">dispatch_apply_f</h3>
+
+<p>将函数多次执行</p>
+
+<pre><code class="language-objectivec">void dispatch_apply_f(size_t iterations, dispatch_queue_t queue, void *context, void (*work)(void *, size_t));
+</code></pre>
+
+<h2 id="toc_4">3.dispatch_once</h2>
+
+<p>在应用程序的生命周期内 只执行一次block内容<br/>
+常用来初始化程序的单例数据<br/>
+当多线程执行时，其内部会保证同步执行等待block完成</p>
+
+<pre><code class="language-objectivec">void dispatch_once(dispatch_once_t *predicate, dispatch_block_t block);
+//predicate： dispatch_once_t指针 用来标记block是否已经被执行
+//
+</code></pre>
+
+<h4 id="toc_5">dispatch_once_t</h4>
+
+<p>必须保证为全局或者静态变量，如果该值动态或者自动存储将会发生无法预知事件</p>
+
+<h3 id="toc_6">dispatch_once_f</h3>
+
+<pre><code class="language-objectivec">void dispatch_once_f(dispatch_once_t *predicate, void *context, dispatch_function_t function);
+</code></pre>
+
+<h2 id="toc_7">4.dispatch_barrier</h2>
+
+<p>当执行到barrier block 其并不会立即执行，而是等待当前正在执行的所有block完成后才会执行，而所有在barrier block后的block会等待barrier block执行完成后才执行</p>
+
+<p>注意:<br/>
+<strong>使用的queue应该为concurrent队列，并且使用<code>dispatch_queue_create</code>函数创建的</strong></p>
+
+<h3 id="toc_8">dispatch_barrier_async</h3>
+
+<p>提交一个异步执行的barrier block并立即返回</p>
+
+<pre><code class="language-objectivec">void dispatch_barrier_async(dispatch_queue_t queue, dispatch_block_t block);
+//queue: barrier block执行的队列，系统持有该队列直到block执行完成
+//block：barrier block，这个block会被copy 和 retain直到执行完成
+</code></pre>
+
+<p><strong>dispatch_barrier_async_f</strong></p>
+
+<pre><code class="language-objectivec">void dispatch_barrier_async_f(dispatch_queue_t queue, void *context, dispatch_function_t work);
+</code></pre>
+
+<h3 id="toc_9">dispatch_barrier_sync</h3>
+
+<p><strong>同步</strong>提交一个barrier block并等待block执行完成，会阻塞当前线程</p>
+
+<pre><code class="language-objectivec">void dispatch_barrier_sync(dispatch_queue_t queue, dispatch_block_t block);
+//queue: barrier block执行的队列
+//block：barrier block，
+</code></pre>
+
+<blockquote>
+<p>与<code>dispatch_barrier_async</code>不同，因为是函数是同步执行的，因此queue不会被retain，block也不会进行copy</p>
+</blockquote>
+
+<p><strong>dispatch_barrier_sync_f</strong></p>
+
+<pre><code class="language-objectivec">void dispatch_barrier_sync_f(dispatch_queue_t queue, void *context, dispatch_function_t work);
+</code></pre>
+
+<h2 id="toc_10">5. dispatch_group_t</h2>
 
 <ol>
-<li><p>创建项目时勾选UITest</p></li>
-<li><p>打开DemoUiTest.m,创建 - (void)testUI函数,同时将光标留在函数内<br/>
-<img src="media/14872305472033/14872344264789.png" alt=""/><br/>
-点击下面的红色按钮，开始recorder操作，程序运行起来后，点击APP界面进行操作,然后光标处就会生成测试代码</p></li>
-<li><p>进行测试<br/>
-之后我们测试只需要点击test函数前的测试按钮测试这个函数 或者command+u 来进行全部测试<br/>
-此时刚才的一连串动作会一步一步连续执行下来</p></li>
-<li><p>我们此时可以通过修改这段代码来进行我们想要的测试<br/>
-比如：</p>
-<ul>
-<li>通过添加循环语句来测试一直执行是否会出现问题,判断内存问题等</li>
-<li>通过添加断言来判断运行中元素或情况与我们预想是否一致</li>
-</ul></li>
-<li></li>
+<li><p>group中的queue可以执行在不同queue，group中的blocks互相独立</p></li>
+<li><p><code>dispatch_group</code>一直追踪group内的未完成的block的数量，并且GCD会retain该group直到与其关联的所有block完成</p></li>
 </ol>
+
+<p><strong>group 主要做的事情就是计算内部未完成blocks的数量</strong><br/>
+加到group中的block即会立即执行</p>
+
+<h3 id="toc_11">dispatch_group_create</h3>
+
+<pre><code class="language-objectivec">dispatch_group_t dispatch_group_create(void);
+</code></pre>
+
+<ol>
+<li>group对象会维持内部未完成block的数量，<code>dispatch_group_notify</code> and <code>dispatch_group_wait</code>使用这个count来决定何时group完成</li>
+</ol>
+
+<h3 id="toc_12">dispatch_group_async</h3>
+
+<p>将一个<code>block</code>提交到<code>queue</code>中执行，并与group关联</p>
+
+<pre><code class="language-objectivec">void dispatch_group_async(dispatch_group_t group, dispatch_queue_t queue, dispatch_block_t block);
+//group： 与block关联的group 被系统持有直到block完成
+// queue: block异步执行的队列，被系统持有直到block完成
+// block: 异步执行，该函数会帮助调用者对block执行Block_copy and Block_release操作
+</code></pre>
+
+<p>group可以用来等待block执行完成</p>
+
+<h4 id="toc_13">dispatch_group_async_f</h4>
+
+<pre><code class="language-objectivec">void dispatch_group_async_f(dispatch_group_t group, dispatch_queue_t queue, void *context, dispatch_function_t work);
+</code></pre>
+
+<h3 id="toc_14">dispatch_group_enter &amp;&amp; dispatch_group_leave</h3>
+
+<pre><code class="language-objectivec">//明确指示有一个block进入group,将group内未完成的blocks计数加一
+void dispatch_group_enter(dispatch_group_t group);
+</code></pre>
+
+<pre><code class="language-objectivec">//明确指示有一个block已经完成，group未完成计数减1
+void dispatch_group_leave(dispatch_group_t group);
+</code></pre>
+
+<blockquote>
+<p>可以使用这个函数 将一个block同时与多个group关联</p>
+</blockquote>
+
+<h3 id="toc_15">dispatch_group_wait</h3>
+
+<p>同步的阻塞当前线程等待group中所有block完成，直到全部完成或者timeout</p>
+
+<pre><code class="language-objectivec">long dispatch_group_wait(dispatch_group_t group, dispatch_time_t timeout);
+//返回值： 0表示成功执行所有block，非0表示超时
+</code></pre>
+
+<ol>
+<li>当group为空时，立即返回</li>
+</ol>
+
+<blockquote>
+<p>一个group虽然可以wait多次，但是只wait从监测那一刻之前，group中的block完成状态，而在等待过程添加的block本次并不会监测</p>
+</blockquote>
+
+<h3 id="toc_16">dispatch_group_wait</h3>
+
+<p>异步等待group中的task执行完成，调用block在指定queue中执行</p>
+
+<pre><code class="language-objectivec">void dispatch_group_notify(dispatch_group_t group, dispatch_queue_t queue, dispatch_block_t block);
+//group: 等待的group，系统retaingroup直到block运行完成
+//queue: group完成，block执行的queue，系统持有该queue直到block运行完成
+//block: group完成后放入queue中执行的block,函数会帮助调用Block_copy and Block_release
+</code></pre>
+
+<blockquote>
+<p>当group为空时，立即返回<br/>
+当notify block运行完成后，group为空</p>
+</blockquote>
+
+<h2 id="toc_17">dispatch_time_t</h2>
+
+<pre><code class="language-objectivec">typedef uint64_t dispatch_time_t
+</code></pre>
+
+<p>常用的time常量</p>
+
+<pre><code class="language-objectivec">//立即发生时间
+DISPATCH_TIME_NOW
+//无限远的时间
+DISPATCH_TIME_FOREVER
+</code></pre>
+
+<h3 id="toc_18">dispatch_time</h3>
+
+<p>创建一个时间</p>
+
+<pre><code class="language-objectivec">dispatch_time_t dispatch_time(dispatch_time_t when, int64_t delta);
+
+//int64_t delta: 纳秒数
+</code></pre>
+
+<blockquote>
+<p><code>dispatch_time</code>的默认时钟是基于<code>mach_absolute_time.</code></p>
+</blockquote>
+
+<h3 id="toc_19">dispatch_walltime</h3>
+
+<p>根据<code>wall clock</code>创建一个绝对的时间</p>
+
+<pre><code class="language-objectivec">dispatch_time_t dispatch_walltime(const struct timespec *when, int64_t delta);
+//when:结构体，创建的是绝对时间；传NULL表示当前时间
+</code></pre>
+
+<p><code>wall clock</code>基于<code>gettimeofday(_:_:)</code></p>
+
+<blockquote>
+<p>与<code>dispatch_time</code>区别：<code>dispatch_time</code>会在设备休眠(关机)时停止运行，<code>dispatch_walltime</code>会继续运行；即<code>dispatch_time</code>是设备运行的一段时间后某个时间点，而<code>dispatch_walltime</code>是绝对时间，与设备运行状态无关</p>
+</blockquote>
 
                         
                       </div>
@@ -160,10 +343,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/16</span>
+                    <span class="date">2019/4/9</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95.html'>自动化测试</a></span>
+          					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -257,25 +440,25 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

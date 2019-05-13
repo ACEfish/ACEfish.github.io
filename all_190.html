@@ -112,173 +112,147 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15553153173429.html">
+                <a class="clearlink" href="15005513837564.html">
                 
-                  <h1>Cocoa基本内存管理规则</h1>
+                  <h1>类和结构体</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/MemoryMgmt/Articles/MemoryMgmt.html">官方文档地址</a></p>
+                        	<p>可以使用完全相同的语法规则来为<code>类</code>和<code>结构体</code>定义属性(<code>常量</code>、<code>变量</code>)和添加方法，从而扩展类和结构体的功能</p>
 
-<h2 id="toc_0">基本内存管理规则</h2>
+<p>与其他编程语言不同,<code>swift</code>不要求为自定义类和结构创建独立的接口和实现文件.所要做的是在一个单一文件中定义一个类或者结构体，系统将会自动生成面向其它代码的外部接口</p>
 
-<p>内存管理是基于对象所有权进行管理的，任一对象都可能有1个或者多个持有者，只要至少有一个持有者，该对象就会一直存在，否则加入没有了持有者，运行时系统就会将其自动销毁，为确保你可以清楚管理自己持有对象，<code>Cocoa</code>设置了基本的内存分配原则:</p>
-
-<h3 id="toc_1">自己生成的对象，自己持有</h3>
-
-<pre><code class="language-text">当你使用`alloc`、`new`、`copy`、`mutableCopy`开头的方法创建一个对象时
-
-alloc或者new就自己生成对象并持有
-copy方法利用基于`NSCopying`协议约定，由各类实现`copyWithZone:`方法生成并持有对象副本；mutableCopy方法与其类似，只是其利用基于`NSMutableCopying`协议约定，由各类实现`mutableCopyWithZone:`方法生成并持有对象的副本。而两者区别在于：copy生成的时可变对象，而mutableCopy生成了可变更对象。虽然生成的是副本，但是仍然是生成并持有对象
-</code></pre>
-
-<h3 id="toc_2">非自己生成的对象，自己也可以使用<code>retain</code>持有</h3>
-
-<pre><code class="language-text">用除了上面的方法外生成的对象，所以并非自己生成的对象持有，可以使用retain进行持有
-
-为了保证接收到的对象在接收到的方法中保持有效，并且该方法也可以安全的将对象返回给其调用者。通常需要在以下两种情况下`retain`:
-1. 在访问器方法和初始化方法实现中，对想要作为属性存储的对象进行持有
-2. 防止对象因为其他操作的副作用而失效(例如从数组移除或父对象被删除)
-</code></pre>
-
-<h3 id="toc_3">当你不再需要该对象，释放</h3>
-
-<pre><code class="language-text">自己持有的对象，当不再需要时需要，通过`release`或者`autorelease`方法放弃对象的持有权
-</code></pre>
-
-<h3 id="toc_4">非自己持有的对象无法释放</h3>
-
-<p>例如:</p>
-
-<pre><code class="language-objectivec">id obj = [NSMutableArray array];
-//释放了非自己持有的对象
-[obj release];
-</code></pre>
-
-<h2 id="toc_5">内存管理方法的实现</h2>
-
-<p>苹果管理对象内存引用计数的方法大概是通过散列表(引用计数表)的方式，这张表的键位内存块地址的散列值(hash值)，而值即为该对象内存的引用计数</p>
-
-<p>而至于<code>retainCount/retain/release</code>方法实现是通过CoreFoundation中的<code>__CFDoExternRefOperation（）</code>函数，通过不同的操作将表中对象内存地址对应的引用计数进行操作</p>
-
-<h2 id="toc_6">示例</h2>
-
-<h4 id="toc_7">0.可以通过retainCount获取对象引用计数</h4>
-
-<pre><code class="language-objectivec">//可以通过retainCount获取对象引用计数
-id obj = [[NSObject alloc] init];
-NSLog(@&quot;%ld&quot;, [obj retainCount]);
-</code></pre>
-
-<h4 id="toc_8">1.不在需要时使用release释放</h4>
-
-<pre><code class="language-objectivec">//自己生成持有的对象 自己释放
-{
-    id obj = [[NSObject alloc] init];
-    [obj release];
-}
-//非自己生成持有的对象，自己释放
-{
-    id array = [NSMutableArray array];
-    [array retain];
-    [array release];
-}
-</code></pre>
-
-<h4 id="toc_9">2. 使用autorelease来延时释放</h4>
-
-<p>当需要用某个方法生成对象，并返回给调用方:</p>
-
-<pre><code class="language-objectivec">
-- (id)allocObject {
-    id obj = [[NSObject alloc] init];
-    return obj;
-}
-</code></pre>
-
-<p>因为调用方法名满足以<code>alloc</code>开头条件，因此返回生成并持有的对象，就可以让调用方也持有该对象</p>
-
-<p>那么类似[NSMutableArray Array]生成对象，但是不持有对象是如何实现的：</p>
-
-<pre><code class="language-objectivec">- (NSString *)fullName {
-    NSString *string = [[[NSString alloc] initWithFormat:@&quot;%@ %@&quot;,
-                                          self.firstName, self.lastName] autorelease];
-    return string;
-}
-</code></pre>
-
-<p>根据内存管理规则，你必须释放<code>alloc</code>对象，但是如果直接<code>release</code>，string就会在返回前被deallocated(方法就会返回一个无效对象),因此我们可以使用<code>autorelease</code>,表示想要释放对象，但是允许方法调用者在释放之前使用方法的返回值</p>
+<h2 id="toc_0">类和结构体对比</h2>
 
 <blockquote>
-<p><code>autorelease</code>会使对象继续存在 但是自己并不持有对象<br/>
-这种方法的命名开头不能为<code>alloc/mew/copy/mutablerCopy</code></p>
+<p>类通过引用计数进行多次引用,结构体通过复制的方式在代码中传递,不使用引用计数</p>
 </blockquote>
 
-<p>还可以这么写:</p>
+<h3 id="toc_1">定义语法</h3>
 
-<pre><code class="language-objectivec">- (NSString *)fullName {
-    NSString *string = [NSString stringWithFormat:@&quot;%@ %@&quot;,
-                                 self.firstName, self.lastName];
-    return string;
+<p>通过关键之<code>class</code>和<code>struct</code>来分别标识类和结构体</p>
+
+<blockquote>
+<p>类和结构体名使用首字母大写的方式进行命名</p>
+</blockquote>
+
+<pre><code class="language-swift">//定义一个结构体 描述显示器屏幕分辨率
+struct Resolution {
+    var width = 0
+    var height = 0
+    //当这两个属性被初始化为整数 0 的时候，它们会被推断为 Int 类型。
+}
+
+//定义一个类 描述视频显示器的特定模式
+//四个变量存储属性
+class VideoMode {
+    var resolution = Resolution()//分辨率 结构体
+    var interlaced = false
+    var frameRate = 0.0
+    var name: String?
 }
 </code></pre>
 
-<p>此时<code>string</code>对象自己并不持有，因此也不负责释放，可以安全的返回给方法的调用者</p>
+<p><code>存储属性</code>是被<code>捆绑</code>和<code>存储</code>在类或结构体中的常量或变量。</p>
 
-<h4 id="toc_10">3.你不持有通过引用返回的对象</h4>
+<h3 id="toc_2">类和结构体实例</h3>
 
-<p>在<code>cocoa</code>方法中一些对象通过<strong>引用</strong>返回(即这些方法有参数为<code>class **</code>或者<code>id *</code>),例如常用的<code>NSError</code>对象</p>
+<p>初始化结构体或类的实例</p>
 
-<pre><code class="language-objectivec">NSString *fileName = &lt;#Get a file name#&gt;;
-NSError *error;
-NSString *string = [[NSString alloc] initWithContentsOfFile:fileName
-                        encoding:NSUTF8StringEncoding error:&amp;error];
-if (string == nil) {
-    // Deal with error...
-}
-// ...
-[string release];
+<pre><code class="language-swift">let someResolution = Resolution()
+let someVideoMode = VideoMode()
 </code></pre>
 
-<p>当你调用这些方法时，你并不创建<code>NSError</code>对象，你并不持有该对象，因此也无需release</p>
+<p>通过这种方式创建类或者结构体实例,属性都会被初始化为默认值.</p>
 
-<h3 id="toc_11">使用dealloc放弃对象的所有权</h3>
+<h3 id="toc_3">属性访问</h3>
 
-<p><code>NSObject</code>类中定义了<code>dealloc</code>方法，当对象没有了持有者或者需要被回收时，就会调用该方法.其作用是释放对象内存，并且处置其拥有的资源，包括释放其持有的所有对象</p>
+<p>通过点语法访问实例属性。</p>
 
-<pre><code class="language-objectivec">@interface Person : NSObject
-@property (retain) NSString *firstName;
-@property (retain) NSString *lastName;
-@property (assign, readonly) NSString *fullName;
-@end
- 
-@implementation Person
-// ...
-- (void)dealloc
-    [_firstName release];
-    [_lastName release];
-    [super dealloc];
-}
-@end
+<pre><code class="language-swift">//访问结构体属性
+print(&quot;The width of someResolution is \(someResolution.width)&quot;)
+// 打印 &quot;The width of someResolution is 0&quot;
+
+//访问变量属性
+someVideoMode.resolution.width = 1280
+print(&quot;The width of someVideoMode is now \(someVideoMode.resolution.width)&quot;)
+// 打印 &quot;The width of someVideoMode is now 1280&quot;
 </code></pre>
 
 <blockquote>
-<ol>
-<li>不要主动调用另外一个对象的dealloc方法</li>
-<li>在dealloc方法后必须主动调用super(MRC环境下)</li>
-<li>不要将系统资源的管理与对象声明周期相关联</li>
-<li>当应用被杀死时，对象不会收到<code>dealloc</code>方法，因为应用进程内存都会在退出时进行清理</li>
-</ol>
+<p>在OC中是不能直接设置结构体子属性值，swift中可以直接设置比如<code>resolution.width</code>属性值,在oc中我们需要给整个结构体<code>resolution</code>设置新值</p>
 </blockquote>
 
-<h3 id="toc_12">Core Foundation的内存管理规则比较</h3>
+<h3 id="toc_4">结构体类型成员逐一构造器</h3>
 
-<p><code>Core Foundation</code>对象的<a href="https://developer.apple.com/library/archive/documentation/CoreFoundation/Conceptual/CFMemoryMgmt/CFMemoryMgmt.html#//apple_ref/doc/uid/10000127i">内存管理规则</a>和Cocoa相似，但是其命名约定是不同的,特别是Core Foundation的Create Rule不适用于返回Objective-C对象的方法。<br/>
-例如：</p>
+<p>对于<strong>结构体</strong><br/>
+所有结构体都有一个自动生成的<strong>成员逐一构造器</strong>，用来初始化新结构体成员的属性</p>
 
-<pre><code class="language-objectivec">MyClass *myInstance = [MyClass createInstance];
+<pre><code class="language-swift">//通过属性名称
+let vga = Resolution(width:640, height: 480)
 </code></pre>
+
+<p>类是没有这个成员构造器的</p>
+
+<h2 id="toc_5">结构体和枚举时值类型</h2>
+
+<p><strong>值类型被赋予给一个变量、常量或者被传递给一个函数的时候，其值会被拷贝</strong></p>
+
+<p>实际上,在<code>Swift</code>中，所有的基本类型：整数（Integer）、浮点数（floating-point）、布尔值（Boolean）、字符串（string)、数组（array）和字典（dictionary），都是值类型，并且在底层都是<strong>以结构体的形式所实现</strong></p>
+
+<p>在<code>swift</code>中,所有结构体和枚举类型都是值类型。因此,它们的实例以及实例中包含的值类型属性,在传递时都会被复制</p>
+
+<pre><code class="language-swift">let hd = Resolution(width: 1920, height: 1080)
+var cinema = hd
+cinema.width = 2048
+print(&quot;cinema is now \(cinema.width) pixels wide&quot;)// &quot;cinema is now 2048 pixels wide&quot;
+print(&quot;hd is still \(hd.width) pixels wide&quot;)//&quot;hd is still 1920 pixels wide&quot;
+</code></pre>
+
+<p>在对结构体进行赋值的时候,进行了拷贝,cinema和hd是完全不同的两个实例,因此改变了cinema的宽对hd没有影响</p>
+
+<p>枚举也是值类型,遵循相同的行为准则</p>
+
+<h2 id="toc_6">类是引用类型</h2>
+
+<p>与值类型不同,引用类型在传递时,值不会被拷贝.因此，<strong>引用的是已存在的实例本身而不是其拷贝</strong>。</p>
+
+<pre><code class="language-swift">let tenEighty = VideoMode()
+tenEighty.frameRate = 25.0
+
+let alsoTenEighty = tenEighty
+alsoTenEighty.frameRate = 30.0
+print(&quot;The frameRate property of tenEighty is now \(tenEighty.frameRate)&quot;)//30.0
+</code></pre>
+
+<p>类是引用类型，所以<code>tenEight</code>和<code>alsoTenEight</code>实际上引用的是相同的<code>VideoMode</code>实例<br/>
+注意:<br/>
+虽然<code>alsoTenEighty</code>为常量但是仍然可以改变<code>alsoTenEighty.frameRate</code>因为这两个常量的值并未改变,这个常量的值存储的并不是<code>ViewMode</code>的实例,而是对其的引用.</p>
+
+<h3 id="toc_7">恒等运算符</h3>
+
+<p>等价于 <code>===</code>  不等价于 <code>!==</code> 用来检测两个变量或常量是否引用同一个实例</p>
+
+<p><code>===</code>与<code>==</code>的不同:<br/>
+“等价于”表示两个类类型（class type）的常量或者变量引用同一个类实例。<br/>
+“等于”表示两个实例的值“相等”或“相同”，判定时要遵照设计者定义的评判标准</p>
+
+<h3 id="toc_8">指针</h3>
+
+<p>一个引用实例的<code>swift</code>常量或者变量,与C指针类似,但是并不直接指向某个内存地址,也不需要用<code>*</code>表明在创建引用.</p>
+
+<h2 id="toc_9">类和结构体的选择</h2>
+
+<h2 id="toc_10">字符串、数组、字典类型的赋值和复制行为</h2>
+
+<p>因为<code>swift</code>中很多基本类型,<code>String</code>，<code>Array</code>和<code>Dictionary</code>类型均以结构体的形式实现，赋值给新的常量变量或者传入函数方法中的时候会被拷贝</p>
+
+<blockquote>
+<p>在OC中<code>NSString</code>，<code>NSArray</code>和<code>NSDictionary</code>是以类的形式实现,不会发生值拷贝而是传递引用</p>
+
+<p>Swift会在绝对必要时才执行实际拷贝,确保性能最优,因此我们没有必要回避赋值来增加性能</p>
+</blockquote>
 
                         
                       </div>
@@ -287,10 +261,10 @@ if (string == nil) {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2019/4/15</span>
+                    <span class="date">2017/7/20</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html'>内存管理</a></span>
+          					    <span class="posted-in"><a href='Swift-BaseLearning.html'>Swift基础知识</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -384,25 +358,25 @@ if (string == nil) {
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

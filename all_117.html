@@ -112,22 +112,96 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15082392311480.html">
+                <a class="clearlink" href="15082385455420.html">
                 
-                  <h1>实战:ARKit捕捉平面</h1>
+                  <h1>ARCamera</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>当捕捉到一个平面锚点<code>ARPlaneAnchor</code>会添加到当前场景中，我们可以通过监听<code>ARSCNView</code>代理来获取这个平面锚点</p>
+                        	<p><code>ARCamera</code>是一个相机,连接虚拟场景与现实场景的枢纽</p>
 
-<pre><code class="language-objectivec">//添加节点时候调用（当开启平地捕捉模式之后，如果捕捉到平地，ARKit会自动添加一个平地节点）
-- (void)renderer:(id &lt;SCNSceneRenderer&gt;)renderer didAddNode:(SCNNode *)node forAnchor:(ARAnchor *)anchor
-{
-    if ([anchor isMemberOfClass:[ARPlaneAnchor class]]) {
-        NSLog(@&quot;捕捉到平地&quot;);
-    }
-}
+<p>它的API大致只需要了解即可,ARKit会默认帮我们进行配置好</p>
+
+<h2 id="toc_0">API</h2>
+
+<pre><code class="language-objectivec">/**
+ 4x4矩阵表示相机位置，同ARAnchor
+ */
+@property (nonatomic, readonly) matrix_float4x4 transform;
+
+/**
+相机方向（旋转）的矢量欧拉角
+分别是x/y/z
+ */
+@property (nonatomic, readonly) vector_float3 eulerAngles;
+
+/**
+ 相机追踪状态（在下方会有枚举值介绍）
+ */
+@property (nonatomic, readonly) ARTrackingState trackingState NS_REFINED_FOR_SWIFT;
+
+/**
+追踪运动类型
+ */
+@property (nonatomic, readonly) ARTrackingStateReason trackingStateReason NS_REFINED_FOR_SWIFT;
+
+/**
+相机内参矩阵
+3x3矩阵
+ fx 0   px
+ 0  fy  py
+ 0  0   1
+ */
+@property (nonatomic, readonly) matrix_float3x3 intrinsics;
+
+/**
+摄像头分辨率
+ */
+@property (nonatomic, readonly) CGSize imageResolution;
+
+/**
+投影矩阵
+*/
+@property (nonatomic, readonly) matrix_float4x4 projectionMatrix;
+
+/**
+创建相机投影矩阵
+ */
+- (matrix_float4x4)projectionMatrixWithViewportSize:(CGSize)viewportSize orientation:(UIInterfaceOrientation)orientation zNear:(CGFloat)zNear zFar:(CGFloat)zFar;
+
+@end
+
+//相机追踪状态枚举
+typedef NS_ENUM(NSInteger, ARTrackingState) {
+
+    /** 不被允许 */
+    ARTrackingStateNotAvailable,
+
+    /** 被限制 限值原因ARTrackingStateReason */
+    ARTrackingStateLimited,
+
+    /** 正常. */
+    ARTrackingStateNormal,
+} NS_REFINED_FOR_SWIFT;
+
+/**
+ 追踪运动类型
+ */
+API_AVAILABLE(ios(11.0)) API_UNAVAILABLE(macos, watchos, tvos)
+typedef NS_ENUM(NSInteger, ARTrackingStateReason) {
+    /** 无. */
+    ARTrackingStateReasonNone,
+    
+    /** 初始化追踪 */
+    ARTrackingStateReasonInitializing,
+
+    /** 过度运动. */
+    ARTrackingStateReasonExcessiveMotion,
+
+    /** 未找到可见特征 缺少纹理 */
+    ARTrackingStateReasonInsufficientFeatures,
+} NS_REFINED_FOR_SWIFT;
 
 </code></pre>
 
@@ -235,25 +309,25 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

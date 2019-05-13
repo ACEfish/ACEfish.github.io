@@ -112,51 +112,225 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14872162581601.html">
+                <a class="clearlink" href="15548649461552.html">
                 
-                  <h1>测试</h1>
+                  <h1>dispatch_block_t</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h5 id="toc_0">1.流行框架</h5>
+                        	<h4 id="toc_0">dispatch_block_t</h4>
 
-<p>Apple自带的<code>XCTest</code>和第三方的<code>GHUnit</code>.他两之间的区别:XCTest：与Xcode深度集成。而且可以享受Apple后续对XCTest升级的福利。 GHUnit：集成度不如XCTest，安装麻烦。但是有自己的GUI界面。因为XCTest是苹果的，所以我们选择XCTest</p>
+<p><code>typedef void (^dispatch_block_t)(void);</code></p>
 
-<h5 id="toc_1">2.OCMock</h5>
+<p>注意:<br/>
+声明的block是分配在stack上的</p>
 
-<p>mock测试是个很神奇而又很酷的技术，在测试过程中，对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。<br/>
-而我们在进行iOS测试时候是使用<code>OCMock</code>来进行对象的mock</p>
+<pre><code class="language-objectivec">//下面写法是错误的
+dispatch_block_t block;
+if (x) {
+block = ^{ printf(&quot;true\n&quot;); };
+} else {
+block = ^{ printf(&quot;false\n&quot;); };
+}
+block();
+</code></pre>
 
-<h5 id="toc_2">3.断言框架</h5>
+<p>block是在栈上的，当<code>{}</code>退出时，block就无效了</p>
 
-<p>Expecta和OCHamcrest这两个都是断言的扩展框架。一开始我选择了Expecta，因为我后来有一段时间将测试文件用BDD框架Specta来写（当然这是后话），而Expecta 和Specta都出自同一个人之手，不论是教程文档都更加丰富。但是后来我废弃了BDD框架，还是用原生的XCTest，Expecta在使用中也遇到了一些问题，我就把我们的断言框架由Expecta切换到了OCHamcrest。<br/>
-原因有两点：<br/>
-<code><br/>
-1.Expecta不成熟，至笔者切换的时候才0.3.1版本，遇到很多框架自身的问题。case跑着跑着验证通不过了，再跑一次又过了，是不是还爆出个Expecta框架内部的crash。<br/>
-2.OCHamcrest更加成熟，而且可扩展性高，可以自定义自己的断言，更灵活。<br/>
-</code><br/>
-比如OCHamcrest不支持superClass验证，我们必须自己去比较，返回一个bool值，然后去判断bool是否为真。很麻烦。自己自定义个superClass的验证，就不需要每次都这么麻烦的写这么多代码了。而如果Expecta不支持的断言，那就永远不能支持了。 我们可以通过OCHamcrest这个特性，做一些符合自己app场景的特有断言。</p>
+<h4 id="toc_1">dispatch_block_create_with_qos_class</h4>
 
-<h5 id="toc_3">BDD Or Not</h5>
+<p>在堆上创建新的dispatch block，指定其执行block，分配指定的<code>QoS</code>类和相对优先级</p>
 
-<p>BDD和TDD都是敏捷开发的技术;<br/>
-<strong>BDD</strong>（Behavior Driven Development），也就是行为驱动开发，它旨在解决具体问题，帮助开发人员确定应该测试些什么.此外，它提供了一个 <code>DSL</code>（译者注: Domain-specific language，域特定语言）鼓励开发者弄清楚他们的需求，并且它引入了一个通用语言帮助你轻易理解测试的目的。<br/>
-<strong>TDD</strong>（Test-Driven Development），就是测试驱动开发，通过测试来推动整个开发的进行<br/>
-目前使用比较多得是BDD框架:<br/>
-Cedar，Specta和Kiwi这3个框架就是目前Objc最流行的BDD测试框架<br/>
-    Specta和Kiwi的区别就是Kiwi包含了Specta和OCmock以及Expeata所有的功能<br/>
-除此之外还有Apple的XCTest:XCTest与Xcode深度集成，而且可以享受Apple后续对XCTest升级的福利</p>
+<pre><code class="language-objectivec">dispatch_block_t dispatch_block_create_with_qos_class(dispatch_block_flags_t flags, dispatch_qos_class_t qos_class, int relative_priority, dispatch_block_t block);
+//flags 设置block的标记 必须为有效的位标记，否则返回NULL
+//qos_class QoS类， 这个值传QOS_CLASS_UNSPECIFIED 相当于DISPATCH_BLOCK_NO_QOS_CLASSflag
+//指定qos类的相对优先级 越大优先级越高 为负值 不能赋值给其大于0 小于QOS_MIN_RELATIVE_PRIORITY的值 否则会返回NULL
+</code></pre>
 
-<p>XCTest 的优势和缺点都是由于它太简单了。你只需要创建一个类，使用 “test” 作为测试方法名的前缀，只需要这样就可以了，不需要再做其他的。和 Xcode 很好的集成性也是 XCTest 获得青睐的原因。你可以点击边栏上的小菱形按钮来运行测试用例，你也可以很容易的查看所有失败的测试用例，也可以在测试用例列表中点击某一行而快速的跳转到某一个测试用例。</p>
+<blockquote>
+<p>提供的参数block会被copy到堆上，被新创建的dispatch block持有</p>
 
-<p>不幸的是，这已经是 XCTest 的全部优点了。在开发和测试中，使用 XCTest 时我们没有碰到任何的障碍，但是经常会想如果它能更方便一些就好了。XCTest 类看起来就像普通的类，而一个 BDD 测试套件的结构和其嵌套的上下文是显而易见的。并且这种为测试创建嵌套上下文的可能性也是最缺失的。嵌套的上下文允许我们在使独立的测试相对简单的情况下创建越来越具体的场景。当然，在 XCTest 中这也是可以的，比如在一些测试用例中调用自定义的 setup 方法，但这并不方便。</p>
+<p>这个block可以<code>dispatch_async</code>到queue中执行或者直接执行<br/>
+block可以用这两种方式多次执行，但是只有第一次执行的block可以被<code>dispatch_block_wait</code>等待或者<code>dispatch_block_notify.</code>监听</p>
 
-<p>BDD 框架的附加功能的重要性是取决于项目的大小。我们的结论是，XCTest 对中小型的工程来说是一个很好的选择，但是对于更大型的工程，就有必要参考一下像 Kiwi 或者 Specta 这样的 BDD 框架。</p>
+<p>直接执行时，如果分配的QoS类比调用的线程的QoS类优先级高，则使用分配的QoS类执行<br/>
+如果dispatch block到queue中执行，则执行它的QoS类取决于分配给bloc的QoS，queue的QoS或者flags共同决定<br/>
+如果block被直接提交到串行队列执行，则QoS类无效，系统会尽力覆盖QoS使先执行的block的QoS类等级更高，优先执行</p>
+</blockquote>
 
-<h5 id="toc_4">4.UITests</h5>
+<pre><code class="language-objectivec">//flag的类型
+DISPATCH_ENUM(dispatch_block_flags, unsigned long,
+    DISPATCH_BLOCK_BARRIER = 0x1,
+    /**
+    当在一个DISPATCH_QUEUE_CONCURRENT的queue中执行dispatch block时
+    表明这个block是barrier，即使不使用dispatch_barrier_async函数也可以在起到栅栏作用
+    在直接执行dispatch block时，这个flags无效
+    */
+    DISPATCH_BLOCK_DETACHED = 0x2,
+    /**
+    将dispatch block与当前执行的context(上下文)分离
+    */
+    DISPATCH_BLOCK_ASSIGN_CURRENT = 0x4,
+    /**
+    指定dispatch block使用当前执行的context
+    */
+    DISPATCH_BLOCK_NO_QOS_CLASS = 0x8,
+    /**
+    表示不为block分配QoS类
+    直接执行block，则使用调用线程的QoS
+    如果给该block分配了特定QoS类，则该flag设置无效，忽略
+    */
+    DISPATCH_BLOCK_INHERIT_QOS_CLASS = 0x10,
+    /**
+        Queue的QoS类优先于block的QoS类，只有当队列没有QoS时才会使用block的QoS
+        在直接调用block时，该flags值无效
+        将block提交到queue中异步执行时，该值为默认值
+        当设置了DISPATCH_BLOCK_ENFORCE_QOS_CLASS时，该default flag被忽略
+    */
+    DISPATCH_BLOCK_ENFORCE_QOS_CLASS = 0x20,
+    /**
+        表示当block的QoS类优先级高于Queue的QoS类时，优先选择block的QoS类
+        当直接执行block或者将block提交到Queue中进行同步执行时，此为默认值
+    */
+);
+</code></pre>
 
-<p>通过代码化来实现自动点击界面，输入文字等功能</p>
+<blockquote>
+<p><code>DISPATCH_BLOCK_BARRIER</code>即在自己创建的并行队列中 做栅栏block</p>
+
+<p><code>DISPATCH_BLOCK_DETACHED</code>、<code>DISPATCH_BLOCK_ASSIGN_CURRENT</code>、<code>DISPATCH_BLOCK_NO_QOS_CLASS</code>用于<code>dispatch_block_create</code>函数，而在<code>dispatch_block_create_with_qos_class</code>中指定了QoS类，该flag就失效了</p>
+</blockquote>
+
+<p><a href="https://developer.apple.com/library/archive/documentation/Performance/Conceptual/power_efficiency_guidelines_osx/RelatedDocuments.html#//apple_ref/doc/uid/TP40013929-CH20-SW16">Quality of Service Classes (QoS).</a></p>
+
+<pre><code class="language-objectivec">__QOS_ENUM(qos_class, unsigned int,
+    QOS_CLASS_USER_INTERACTIVE = 0x21,
+        /**
+          表示任务需要被立即执行 响应事件更新UI 用来处理主事件循环、视图绘制、动画等
+        */
+    QOS_CLASS_USER_INITIATED = 0x19,
+        /**
+          表示任务由UI发起异步任务。等待结果
+        */
+    QOS_CLASS_DEFAULT = 0x15,
+        /**
+          默认优先级
+        */
+    QOS_CLASS_UTILITY = 0x11,
+        /**
+          表示需要长时间运行任务，伴有进度指示器；用来做计算、I/O,网络，持续数据填充等
+        */
+    QOS_CLASS_BACKGROUND = 0x09,
+        /**
+          表示用户不需要察觉的任务，用来预处理加载
+        */
+    QOS_CLASS_UNSPECIFIED = 0x00,
+        /**
+          未指明
+        */
+);
+</code></pre>
+
+<h4 id="toc_2">dispatch_block_create</h4>
+
+<pre><code class="language-objectivec">dispatch_block_t dispatch_block_create(dispatch_block_flags_t flags, dispatch_block_t block);
+//flags 设置block的标记 必须为有效的位标记，否则返回NULL 与上面的flag相同
+//block设置具体任务 block将会copy到新的dispatch block中
+</code></pre>
+
+<blockquote>
+<p>当返回的dispath block被提交到queue中执行时，block与当前提交时的QoS类相关联，除非有以下flags在创建block时指定了QoS类(或者不指定QoS类):<br/>
+<code>DISPATCH_BLOCK_ASSIGN_CURRENT</code><br/>
+<code>DISPATCH_BLOCK_NO_QOS_CLASS</code><br/>
+<code>DISPATCH_BLOCK_DETACHED</code></p>
+
+<p>当dispatch block在queue中执行时，则执行它的QoS类取决于分配给bloc的QoS，queue的QoS或者flags共同决定:<br/>
+<code>DISPATCH_BLOCK_INHERIT_QOS_CLASS</code>(异步执行默认值)<br/>
+<code>DISPATCH_BLOCK_INHERIT_QOS_CLASS</code>(同步执行默认值)</p>
+</blockquote>
+
+<h2 id="toc_3">dispatch_block_perform</h2>
+
+<pre><code class="language-objectivec">void dispatch_block_perform(dispatch_block_flags_t flags, dispatch_block_t block);
+</code></pre>
+
+<p>通过指定<code>flag</code>和block，<strong>同步</strong>执行该block，并且release生成的dispatchBlock</p>
+
+<p>这个函数相当于下面这段代码:<br/>
+并且与下面这段代码相比，不需要将block copy到堆上开辟新的内存，在内部更高效的实现</p>
+
+<pre><code class="language-objectivec">dispatch_block_t b = dispatch_block_create(flags, block);
+b();
+Block_release(b);
+</code></pre>
+
+<h2 id="toc_4">dispatch_block_wait</h2>
+
+<p><strong>同步</strong>等待dispatch Block执行完成 或者 超时<br/>
+会阻塞当前线程 </p>
+
+<pre><code class="language-obj">long dispatch_block_wait(dispatch_block_t block, dispatch_time_t timeout);
+//block: 应该为dispatch_block_create 或者dispatch_block_create_with_qos_class 创建的block
+//超时时间:  
+//返回值: 如果执行block时间小于超时时间返回0，否则返回非0
+</code></pre>
+
+<p><strong>同一个block只会被等待一次，执行多次，也只能同时被一个等待</strong></p>
+
+<blockquote>
+<ol>
+<li>dispatch_block_wait 只会监听第一个block执行情况，如果已经执行过一次了，这个函数就会立即返回</li>
+<li>请使用<code>dispatch_group_wait</code>监听统一block的多次执行</li>
+<li>不能在多线程中同时执行该函数等待同一个block返回，因为block只能等待一次</li>
+<li>如果该函数返回超时，则这次等待不算，即还可以再次等待block完成，否则只能等待一次</li>
+<li>提交到queue执行block即使立即用<code>dispatch_block_cancel</code>使其不执行，这也算执行过一次了</li>
+</ol>
+</blockquote>
+
+<h2 id="toc_5">dispatch_block_notify</h2>
+
+<p>监听block执行完成，将要执行的block放入queue指定queue中执行</p>
+
+<pre><code class="language-objectivec">void dispatch_block_notify(dispatch_block_t block, dispatch_queue_t queue, dispatch_block_t notification_block);
+//block: 监听的block  应该为dispatch_block_create 或者dispatch_block_create_with_qos_class 创建的block
+//queue
+//notification_block: 当监听的block执行完成 执行的block
+</code></pre>
+
+<blockquote>
+<ol>
+<li>当监听的block已经完成 该监听block会立即执行</li>
+<li>无法监听相同block的多次执行的，请使用<code>dispatch_group_notify</code></li>
+<li><strong>block可以执行一次 监听多次</strong></li>
+<li>如果多个监听统一block执行，不能预期监听的block执行顺序</li>
+<li>提交到queue执行block即使立即用<code>dispatch_block_cancel</code>使其不执行，这也算执行过一次了</li>
+</ol>
+</blockquote>
+
+<h2 id="toc_6">dispatch_block_cancel</h2>
+
+<p>异步取消指定<code>dispatch block</code></p>
+
+<pre><code class="language-objectivec">void dispatch_block_cancel(dispatch_block_t block);
+//block： 应该使用dispatch_block_create 或者dispatch_block_create_with_qos_class 创建的block
+</code></pre>
+
+<p>对于所有未执行的block去 立即返回并不执行，但是对于那些已经在执行的 则没有影响</p>
+
+<p>注意: 确保可能被取消的block不持有任何需要执行block才会释放的资源，例如malloc内存，否则由于永远不执行block块导致内存泄漏</p>
+
+<blockquote>
+<p>已经被cancel的block无法再执行</p>
+</blockquote>
+
+<h4 id="toc_7">dispatch_block_testcancel</h4>
+
+<p>测试是否这个block已经被取消</p>
+
+<pre><code class="language-objectivec">long dispatch_block_testcancel(dispatch_block_t block);
+//返回: 被取消的话返回非0，否则返回0
+</code></pre>
 
                         
                       </div>
@@ -165,10 +339,10 @@ Cedar，Specta和Kiwi这3个框架就是目前Objc最流行的BDD测试框架<br
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/16</span>
+                    <span class="date">2019/4/10</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95.html'>自动化测试</a></span>
+          					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -262,25 +436,25 @@ Cedar，Specta和Kiwi这3个框架就是目前Objc最流行的BDD测试框架<br
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

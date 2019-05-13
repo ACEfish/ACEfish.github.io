@@ -112,118 +112,94 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15555568072278.html">
+                <a class="clearlink" href="15556458372058.html">
                 
-                  <h1>崩溃监控</h1>
+                  <h1>内存监控</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">常见的崩溃问题</h2>
+                        	<h2 id="toc_0">基础概念和知识</h2>
 
-<h3 id="toc_1">信号可捕获崩溃</h3>
+<h3 id="toc_1">物理内存和虚拟内存</h3>
 
-<ol>
-<li>KVO问题:</li>
-<li>NSNotification线程问题</li>
-<li><p>数组越界<br/>
-在取数组索引时候，或者给数组赋值nil(字典赋值nil)，App发生崩溃</p></li>
-<li><p>野指针<br/>
-指针指向一个已经删除的对象内存</p></li>
-<li><p>多线程导致问题<br/>
-在子线程更新UI可能导致崩溃<br/>
-多线程对数据存储发生竞态，比如一个线程置空而在另外一个线程读取</p></li>
-</ol>
+<p>因为CPU的寻址范围是有限的，取决于CPU的地址总线，例如在32位平台下，其寻址范围就是2^ 32即4G。但是如果每次开启一个线程都给4G内存空间，因为物理内存是有限的，会导致内存很快就分完了，这样的话没有分配资源的进程就只能等待已分配内存的进程执行完成才能执行</p>
 
-<h4 id="toc_2">捕获崩溃信号</h4>
+<p>因此提出了虚拟内存的概念，它利用磁盘空间虚拟出来一块逻辑内存，而这个用于虚拟内存的磁盘空间被称为交换空间，当内存不足时会使用交换分区的内存空间(即将暂时用不到的资源写入交换空间，将物理内存进行释放)</p>
 
-<pre><code class="language-objectivec">//通过注册Signal捕获到信号
-void registerSignalHandler(void) {
-    signal(SIGSEGV, handleSignalException);/* segmentation violation 分段违规 */
-    signal(SIGFPE, handleSignalException);/* floating point exception 浮点异常 */
-    signal(SIGBUS, handleSignalException);/* bus error 总线错误 */
-    signal(SIGPIPE, handleSignalException);/* write on a pipe with no one to read it  写在了没有人阅读的管道*/
-    signal(SIGHUP, handleSignalException);/* hangup 挂断 */
-    signal(SIGINT, handleSignalException); /* interrupt 中断 */
-    signal(SIGQUIT, handleSignalException); /* quit 退出 */
-    signal(SIGABRT, handleSignalException); /* abort() */
-    signal(SIGILL, handleSignalException); /* illegal instruction (not reset when caught) 非法指令 */
-}
-
-void handleSignalException(int signal) {
-    NSMutableString *crashString = [NSMutableString string];
-    void *callstack[128];
-    int frames = backtrace(callstack, 128);
-    char** traceChar = backtrace_symbols(callstack, frames);
-    for (int i=0; i&lt;frames; i++) {
-        [crashString appendFormat:@&quot;%s\n&quot;, traceChar[i]];
-    }
-    NSLog(@&quot;%@&quot;, crashString);
-}
-</code></pre>
-
-<p>我们常将捕获到的信号持久化到本地 等下次打开APP后再上传</p>
-
-<h3 id="toc_3">信号不可捕获的崩溃</h3>
+<p>此时我们给一个进程只需要分配4G的虚拟内存空间，它是一个连续的内存空间(虚拟上的)。此时进程要访问内存地址可能需要一下流程：</p>
 
 <ol>
-<li><p>后台任务超时</p></li>
-<li><p>内存打爆</p></li>
-<li><p>主线程卡顿超阈值<br/>
-如果主线程超过系统规定的时间无响应，就会被<code>Watchdog</code>杀掉,这是崩溃对应的异常编码为<code>0x8badf00d</code></p></li>
+<li>访问地址空间上某一地址，需要把地址翻译为实际需要的物理地址</li>
+<li>虽然所有进程共享这一整块物理内存，每个进程只需要把目前需要的虚拟地址映射到物理内存</li>
+<li>进程需要知道哪些地址空间上的数据在物理内存上，哪些不在（可能这部分存储在磁盘上），还有在物理内存上的哪里，这就需要通过页表来记录</li>
+<li>页表的每一个表项分两部分，第一部分记录此页是否在物理内存上，第二部分记录物理内存页的地址（如果在的话）</li>
+<li>当进程访问某个虚拟地址的时候，就会先去看页表，如果发现对应的数据不在物理内存上，就会发生缺页异常</li>
+<li>缺页异常的处理过程，操作系统立即阻塞该进程，并将硬盘里对应的页换入内存，然后使该进程就绪，如果内存已经满了，没有空地方了，那就找一个页覆盖，至于具体覆盖的哪个页，就需要看操作系统的页面置换算法是怎么设计的了</li>
 </ol>
 
-<h4 id="toc_4">后台崩溃</h4>
+<p><strong>因此进程工作流程为:</strong><br/>
+当进程创建时，内核会为进程分配4G虚拟内存，当进程还没开始时，这只是内存布局。实际上并不立即把内存对应位置的程序数据和代码(比如.text .data段)拷贝到物理内存中，只是建立好虚拟内存和磁盘文件之间的映射就好（叫做存储器映射）。这个时候数据和代码还是在磁盘上的。当运行到对应的程序时，进程去寻找页表，发现页表中地址没有存放在物理内存上，而是在磁盘上，于是发生缺页异常，于是将磁盘上的数据拷贝到物理内存中。</p>
 
-<p>当App退到后台后，即使代码逻辑没有问题，也容易导致崩溃。这是以内系统强杀某些进程导致，而这些情况由于系统原因没有办法捕获到</p>
+<p>另外在进程运行过程中，要通过malloc来动态分配内存时，也只是分配了虚拟内存，即为这块虚拟内存对应的页表项做相应设置，当进程真正访问到此数据时，才引发缺页异常。</p>
 
-<p>我们通常在应用进入后台时，通过调用<code>beginBackgroundTaskWithExpirationHandler</code>方法来延长应用存活</p>
+<p>可以认为虚拟空间都被映射到了磁盘空间中（事实上也是按需要映射到磁盘空间上，通过mmap，mmap是用来建立虚拟空间和磁盘空间的映射关系的）</p>
 
-<pre><code class="language-objectivec">- (void)applicationDidEnterBackground:(UIApplication *)application {
-    //正常app 退到后台只有几秒时间执行代码，接下来就会被系统挂起
+<h2 id="toc_2">iOS内存是怎么工作的</h2>
+
+<p><strong>1. iOS怎么监测内存的</strong></p>
+
+<p>iOS会开启一个优先级最高的线程<code>vm_pressure_monitor</code>来监控系统的内存压力情况，并通过一个堆栈来维护所有App的进程。另外，iOS还会维护一个内存快照表，用于保存每个进程内存也的消耗情况。当系统监测发现某个app内存有压力了，就会发出通知，内存有压力的App就会执行代理<code>didReceiveMemoryWarning</code>代理。通过这个代理，可以获得最后一个编写代码释放内存的机会。通过这段代码的执行，可以避免App被系统强杀</p>
+
+<p><strong>2. 为什么iOS上内存占用过大会被系统强杀呢</strong>?(在其他系统或者MacOS就不会)</p>
+
+<p>上面提到了交换空间来作为虚拟内存，但是苹果公司考虑到手持设备的存储空间小的问题，并没有使用交换空间，这样虚拟内存就没法记录到外部存储。因此，苹果引入了MemoryStatus机制</p>
+
+<p><code>MemoryStatus</code>机制的主要思路就是，在iOS系统上弹出尽可能多的内存供当前应用使用。因此其机制就是先强杀后台应用，如果内存还不够就强杀掉当前应用。<br/>
+<code>MemoryStatus</code>机制，会开启一个<code>memorystatus_jetsam_thread</code>线程。这个线程和内存压力监测线程<code>vm_pressure_monitor</code>没有联系，只负责强杀应用和记录日志，不会发送消息，所以内存压力检测线程无法获取到强杀应用的消息</p>
+
+<p><strong><em>3. 系统强杀App时，怎么判断优先级</em></strong><br/>
+iOS系统内核中有一个数组，专门用于维护线程优先级。优先级规定:内核占用线程的优先级最高，操作系统次之，App的优先级最后。并且前台App的优先级高于后台运次那个优先级；COU使用多的线程优先级降低</p>
+
+<p><strong>iOS系统在因为内存问题强杀掉App之前，至少有6秒钟时间用来做优先级判断。同时来生成<code>JetSamEvent</code>日志</strong></p>
+
+<h2 id="toc_3">获取内存</h2>
+
+<p>获取当前进程占用内存:</p>
+
+<pre><code class="language-objectivec">struct mach_task_basic_info info;
+mach_msg_type_number_t size = sizeof(info);
+kern_return_t kl = task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t)&amp;info, &amp;size);
     
-    //通过backgroud task方法延长后台时间 这个方法必须与endBackgroundTask一一对象
-    self.backgroundTaskIdentifier = [application beginBackgroundTaskWithExpirationHandler:^{
-        //如果在最后时间到了之前仍然没有调用endBackgroundTask方法 就会执行此回调
-        //通常时间为3分钟，如果时间到期之前调用endBackgroundTask方法 就会强制杀掉进程，就会造成崩溃
-        
-        /*
-         * 因此我们可以加一个定时器 在3分钟将要到达时 判断是否后台应用程序还在执行
-         * 如果还在执行的话，就可以认为快要崩溃 进行记录 上报
-         */
-
-        self.backGroundTimer = [NSTimer scheduledTimerWithTimeInterval:2*60 target:self selector:@selector(threeMinuteTimeOut) userInfo:nil repeats:NO];
-        
-        
-    }];
-    
-    NSLog(@&quot;开始执行后台任务&quot;);
-    //此处为执行任务代码 通常用来保存应用程序关键数据数据
-    //当任务执行完成时 调用endBackgroundTask方法 调用后就会将app挂起 
-//    [application endBackgroundTask:self.backgroundTaskIdentifier];
-
-
+NSString *memStr;
+if (kl == KERN_SUCCESS) {
+    memStr = [NSString stringWithFormat:@&quot;used %llu MB \n&quot;,info.resident_size / (1024 * 1024)];
 }
+NSLog(@&quot;%@&quot;, memStr);
+
+//
+struct mach_task_basic_info {
+    mach_vm_size_t  virtual_size;   //虚拟内存      mach_vm_size_t  resident_size;   //物理内存     mach_vm_size_t  resident_size_max;  /* maximum resident memory size (bytes) */
+    time_value_t    user_time;          /* total user run time for
+                                         *  terminated threads */
+    time_value_t    system_time;        /* total system run time for
+                                         *  terminated threads */
+    policy_t        policy;             /* default policy for new threads */
+    integer_t       suspend_count;      /* suspend count for task */
+};
 </code></pre>
 
-<blockquote>
-<p>可以在应用程序的任何时候 多次调用<code>beginBackgroundTaskWithExpirationHandler</code>方法，此时建议使用<code>beginBackgroundTaskWithName：expirationHandler：</code>方法，来给每个单独指定名称，方便调试。此时，每个任务都需要用返回的标识符，单独结束</p>
+<p>这种方法检测到的物理内存值与<code>Xcode</code>或者<code>Instrument</code>值差异较大<br/>
+为与Xcode的内存值检测相同可以使用<code>task_vm_info</code>中的<code>phys_footprint</code>值</p>
 
-<p>假如不支持后台任务 该方法返回<code>UIBackgroundTaskInvalid</code></p>
-
-<p>挂起状态是指:应用处在后台，并且已停止执行代码。当处在此状态时，应用依然驻留内存但不执行任何程序代码。当系统发生低内存告警时，系统将会将处 于Suspended状态的应用清除出内存以为正在前台运行的应用提供足够的内存。</p>
-</blockquote>
-
-<h2 id="toc_5">崩溃信息处理</h2>
-
-<p>我们采集到的崩溃日志，主要包含以下内容:</p>
-
-<ul>
-<li>进程信息: 崩溃进程的相关信息，比如崩溃报告唯一标识符、唯一键值、设备标识</li>
-<li>基本信息: 崩溃发生的日期、iOS版本</li>
-<li>异常信息: 异常类型、异常编码、异常的线程</li>
-<li>线程回溯: 奔溃是的方法调用栈</li>
-</ul>
+<pre><code class="language-objectivec">    struct task_vm_info info;
+    mach_msg_type_number_t size = sizeof(info);
+    kern_return_t kl = task_info(mach_task_self(), TASK_VM_INFO, (task_info_t) &amp;info, &amp;size);
+    NSString *memStr;
+    if (kl == KERN_SUCCESS) {
+        memStr = [NSString stringWithFormat:@&quot;used %llu MB \n&quot;,info.phys_footprint / (1024 * 1024)];
+}
+</code></pre>
 
                         
                       </div>
@@ -232,7 +208,7 @@ void handleSignalException(int signal) {
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2019/4/18</span>
+                    <span class="date">2019/4/19</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7-1.html'>项目监控</a></span>
@@ -329,25 +305,25 @@ void handleSignalException(int signal) {
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

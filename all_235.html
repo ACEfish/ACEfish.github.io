@@ -112,225 +112,123 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15548649461552.html">
+                <a class="clearlink" href="15536896283260.html">
                 
-                  <h1>dispatch_block_t</h1>
+                  <h1>网络层架构</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h4 id="toc_0">dispatch_block_t</h4>
+                        	<p>文章看自<a href="https://casatwy.com/iosying-yong-jia-gou-tan-kai-pian.html">这里</a></p>
 
-<p><code>typedef void (^dispatch_block_t)(void);</code></p>
+<h2 id="toc_0">网络层设计需要注意</h2>
 
-<p>注意:<br/>
-声明的block是分配在stack上的</p>
+<h3 id="toc_1">1. 以什么样的方式将数据交付给业务层</h3>
 
-<pre><code class="language-objectivec">//下面写法是错误的
-dispatch_block_t block;
-if (x) {
-block = ^{ printf(&quot;true\n&quot;); };
-} else {
-block = ^{ printf(&quot;false\n&quot;); };
-}
-block();
-</code></pre>
+<p>Delegate block notification</p>
 
-<p>block是在栈上的，当<code>{}</code>退出时，block就无效了</p>
+<p>尽量不要使用notification，这要会导致可能的跨层访问导致耦合性增加；notification的一对多关系，导致问题难以追踪</p>
 
-<h4 id="toc_1">dispatch_block_create_with_qos_class</h4>
+<p>block比较难追踪、维护；block会延长对象的生命周期；</p>
 
-<p>在堆上创建新的dispatch block，指定其执行block，分配指定的<code>QoS</code>类和相对优先级</p>
+<p>在离散场景下，因为每次回调时做的任务，在每次回调时都是一致的，因此不要用block，使用delegate最好<br/>
+在集约型调用时，因为每次请求类型都不一样，回调做的业务也不一致，因此使用block较好</p>
 
-<pre><code class="language-objectivec">dispatch_block_t dispatch_block_create_with_qos_class(dispatch_block_flags_t flags, dispatch_qos_class_t qos_class, int relative_priority, dispatch_block_t block);
-//flags 设置block的标记 必须为有效的位标记，否则返回NULL
-//qos_class QoS类， 这个值传QOS_CLASS_UNSPECIFIED 相当于DISPATCH_BLOCK_NO_QOS_CLASSflag
-//指定qos类的相对优先级 越大优先级越高 为负值 不能赋值给其大于0 小于QOS_MIN_RELATIVE_PRIORITY的值 否则会返回NULL
-</code></pre>
+<p>在网络请求和网络层接受请求地方，采用block没问题，但是在获得数据交给业务方时，最好还是通过delegate去通知业务方,因为使用block的话 会导致调用请求的逻辑和获得结果的处理逻辑在同一个地方，代码变长，同时包含调用前和调用后的两部分逻辑，一次使用delegate，请求API地方只写请求的逻辑，在回调地方 只写回调的逻辑</p>
 
-<blockquote>
-<p>提供的参数block会被copy到堆上，被新创建的dispatch block持有</p>
+<h3 id="toc_2">2.交付什么样的数给业务层</h3>
 
-<p>这个block可以<code>dispatch_async</code>到queue中执行或者直接执行<br/>
-block可以用这两种方式多次执行，但是只有第一次执行的block可以被<code>dispatch_block_wait</code>等待或者<code>dispatch_block_notify.</code>监听</p>
+<p>不要交付直接转换好的对象模型给业务层，可以交付json或者NSDictionary或者array，然后业务层通过特定的工具类转换为自己需要的数据(这个工具类可能是遵循了同一个协议的很多类，每个类有自己的转换方法，以及转换结果)</p>
 
-<p>直接执行时，如果分配的QoS类比调用的线程的QoS类优先级高，则使用分配的QoS类执行<br/>
-如果dispatch block到queue中执行，则执行它的QoS类取决于分配给bloc的QoS，queue的QoS或者flags共同决定<br/>
-如果block被直接提交到串行队列执行，则QoS类无效，系统会尽力覆盖QoS使先执行的block的QoS类等级更高，优先执行</p>
-</blockquote>
+<p>如果直接下发模型给业务层，那么在API请求层可能会有很多转换性能消耗，而且需要引入很多模型类，导致维护灾难</p>
 
-<pre><code class="language-objectivec">//flag的类型
-DISPATCH_ENUM(dispatch_block_flags, unsigned long,
-    DISPATCH_BLOCK_BARRIER = 0x1,
-    /**
-    当在一个DISPATCH_QUEUE_CONCURRENT的queue中执行dispatch block时
-    表明这个block是barrier，即使不使用dispatch_barrier_async函数也可以在起到栅栏作用
-    在直接执行dispatch block时，这个flags无效
-    */
-    DISPATCH_BLOCK_DETACHED = 0x2,
-    /**
-    将dispatch block与当前执行的context(上下文)分离
-    */
-    DISPATCH_BLOCK_ASSIGN_CURRENT = 0x4,
-    /**
-    指定dispatch block使用当前执行的context
-    */
-    DISPATCH_BLOCK_NO_QOS_CLASS = 0x8,
-    /**
-    表示不为block分配QoS类
-    直接执行block，则使用调用线程的QoS
-    如果给该block分配了特定QoS类，则该flag设置无效，忽略
-    */
-    DISPATCH_BLOCK_INHERIT_QOS_CLASS = 0x10,
-    /**
-        Queue的QoS类优先于block的QoS类，只有当队列没有QoS时才会使用block的QoS
-        在直接调用block时，该flags值无效
-        将block提交到queue中异步执行时，该值为默认值
-        当设置了DISPATCH_BLOCK_ENFORCE_QOS_CLASS时，该default flag被忽略
-    */
-    DISPATCH_BLOCK_ENFORCE_QOS_CLASS = 0x20,
-    /**
-        表示当block的QoS类优先级高于Queue的QoS类时，优先选择block的QoS类
-        当直接执行block或者将block提交到Queue中进行同步执行时，此为默认值
-    */
-);
-</code></pre>
+<p>使用统一的工具类转换: 1. 可以使转换的逻辑集中，2. 将数据网络请求的数据直接转换为我们View需要展示的方便的数据，一步到位 3. 可以将业务数据和业务隔离，如果业务逻辑有修改，直接修改或者替换这个工具类即可，而UI有修改时，也不影响该转换工具类</p>
 
-<blockquote>
-<p><code>DISPATCH_BLOCK_BARRIER</code>即在自己创建的并行队列中 做栅栏block</p>
+<p>转化出来的数据是直接可用的数据，不限定于dictionary或者model，也可以是view或者tableCell等</p>
 
-<p><code>DISPATCH_BLOCK_DETACHED</code>、<code>DISPATCH_BLOCK_ASSIGN_CURRENT</code>、<code>DISPATCH_BLOCK_NO_QOS_CLASS</code>用于<code>dispatch_block_create</code>函数，而在<code>dispatch_block_create_with_qos_class</code>中指定了QoS类，该flag就失效了</p>
-</blockquote>
+<h3 id="toc_3">3.调用API应该是集约型还是离散型</h3>
 
-<p><a href="https://developer.apple.com/library/archive/documentation/Performance/Conceptual/power_efficiency_guidelines_osx/RelatedDocuments.html#//apple_ref/doc/uid/TP40013929-CH20-SW16">Quality of Service Classes (QoS).</a></p>
+<p>集约型: 所有api调用的是同一个类<br/>
+离散型: 每一个请求api对应初始化一个请求类的对象</p>
 
-<pre><code class="language-objectivec">__QOS_ENUM(qos_class, unsigned int,
-    QOS_CLASS_USER_INTERACTIVE = 0x21,
-        /**
-          表示任务需要被立即执行 响应事件更新UI 用来处理主事件循环、视图绘制、动画等
-        */
-    QOS_CLASS_USER_INITIATED = 0x19,
-        /**
-          表示任务由UI发起异步任务。等待结果
-        */
-    QOS_CLASS_DEFAULT = 0x15,
-        /**
-          默认优先级
-        */
-    QOS_CLASS_UTILITY = 0x11,
-        /**
-          表示需要长时间运行任务，伴有进度指示器；用来做计算、I/O,网络，持续数据填充等
-        */
-    QOS_CLASS_BACKGROUND = 0x09,
-        /**
-          表示用户不需要察觉的任务，用来预处理加载
-        */
-    QOS_CLASS_UNSPECIFIED = 0x00,
-        /**
-          未指明
-        */
-);
-</code></pre>
+<p>推荐离散型原因:</p>
 
-<h4 id="toc_2">dispatch_block_create</h4>
-
-<pre><code class="language-objectivec">dispatch_block_t dispatch_block_create(dispatch_block_flags_t flags, dispatch_block_t block);
-//flags 设置block的标记 必须为有效的位标记，否则返回NULL 与上面的flag相同
-//block设置具体任务 block将会copy到新的dispatch block中
-</code></pre>
-
-<blockquote>
-<p>当返回的dispath block被提交到queue中执行时，block与当前提交时的QoS类相关联，除非有以下flags在创建block时指定了QoS类(或者不指定QoS类):<br/>
-<code>DISPATCH_BLOCK_ASSIGN_CURRENT</code><br/>
-<code>DISPATCH_BLOCK_NO_QOS_CLASS</code><br/>
-<code>DISPATCH_BLOCK_DETACHED</code></p>
-
-<p>当dispatch block在queue中执行时，则执行它的QoS类取决于分配给bloc的QoS，queue的QoS或者flags共同决定:<br/>
-<code>DISPATCH_BLOCK_INHERIT_QOS_CLASS</code>(异步执行默认值)<br/>
-<code>DISPATCH_BLOCK_INHERIT_QOS_CLASS</code>(同步执行默认值)</p>
-</blockquote>
-
-<h2 id="toc_3">dispatch_block_perform</h2>
-
-<pre><code class="language-objectivec">void dispatch_block_perform(dispatch_block_flags_t flags, dispatch_block_t block);
-</code></pre>
-
-<p>通过指定<code>flag</code>和block，<strong>同步</strong>执行该block，并且release生成的dispatchBlock</p>
-
-<p>这个函数相当于下面这段代码:<br/>
-并且与下面这段代码相比，不需要将block copy到堆上开辟新的内存，在内部更高效的实现</p>
-
-<pre><code class="language-objectivec">dispatch_block_t b = dispatch_block_create(flags, block);
-b();
-Block_release(b);
-</code></pre>
-
-<h2 id="toc_4">dispatch_block_wait</h2>
-
-<p><strong>同步</strong>等待dispatch Block执行完成 或者 超时<br/>
-会阻塞当前线程 </p>
-
-<pre><code class="language-obj">long dispatch_block_wait(dispatch_block_t block, dispatch_time_t timeout);
-//block: 应该为dispatch_block_create 或者dispatch_block_create_with_qos_class 创建的block
-//超时时间:  
-//返回值: 如果执行block时间小于超时时间返回0，否则返回非0
-</code></pre>
-
-<p><strong>同一个block只会被等待一次，执行多次，也只能同时被一个等待</strong></p>
-
-<blockquote>
 <ol>
-<li>dispatch_block_wait 只会监听第一个block执行情况，如果已经执行过一次了，这个函数就会立即返回</li>
-<li>请使用<code>dispatch_group_wait</code>监听统一block的多次执行</li>
-<li>不能在多线程中同时执行该函数等待同一个block返回，因为block只能等待一次</li>
-<li>如果该函数返回超时，则这次等待不算，即还可以再次等待block完成，否则只能等待一次</li>
-<li>提交到queue执行block即使立即用<code>dispatch_block_cancel</code>使其不执行，这也算执行过一次了</li>
+<li>可以方便做到正在进行的请求的取消</li>
+<li>离散型可以针对不同的请求做不同的处理方式</li>
+<li>当请求的着陆点消失时，离散型可以直接在请求类中感知并取消请求<br/>
+如果是离散型的API调用，取消请求的代码写到APIManager里面就可以了，然后随着ViewController的回收进程，APIManager也会被跟着回收，这部分代码就得到了调用的机会。</li>
+<li>离散型的请求可以给业务方提供更灵活性</li>
 </ol>
-</blockquote>
 
-<h2 id="toc_5">dispatch_block_notify</h2>
+<p>综上，关于集约型的API调用和离散型的API调用，我倾向于这样：对外提供一个BaseAPIManager来给业务方做派生，在BaseManager里面采用集约化的手段组装请求，放飞请求，然而业务方调用API的时候，则是以离散的API调用方式来调用。如果你的App只提供了集约化的方式，而没有离散方式的通道，那么我建议你再封装一层，便于业务方使用离散的API调用方式来放飞请求。</p>
 
-<p>监听block执行完成，将要执行的block放入queue指定queue中执行</p>
+<p>关于集约型的API调用和离散型的API调用，我倾向于这样：对外提供一个BaseAPIManager来给业务方做派生，在BaseManager里面采用集约化的手段组装请求，放飞请求，然而业务方调用API的时候，则是以离散的API调用方式来调用。</p>
 
-<pre><code class="language-objectivec">void dispatch_block_notify(dispatch_block_t block, dispatch_queue_t queue, dispatch_block_t notification_block);
-//block: 监听的block  应该为dispatch_block_create 或者dispatch_block_create_with_qos_class 创建的block
-//queue
-//notification_block: 当监听的block执行完成 执行的block
-</code></pre>
+<p>当我们不得已要实现继承时，最好使用协议方式来规范子类的重载方法，使用IOP方式来限制派生类的重载</p>
 
-<blockquote>
+<p>总结</p>
+
 <ol>
-<li>当监听的block已经完成 该监听block会立即执行</li>
-<li>无法监听相同block的多次执行的，请使用<code>dispatch_group_notify</code></li>
-<li><strong>block可以执行一次 监听多次</strong></li>
-<li>如果多个监听统一block执行，不能预期监听的block执行顺序</li>
-<li>提交到queue执行block即使立即用<code>dispatch_block_cancel</code>使其不执行，这也算执行过一次了</li>
+<li>使用delegate来做数据对接，仅在必要时采用Notification来做跨层访问</li>
+<li>提供reformer机制来处理网络层反馈的数据，这个机制很重要，好处极多</li>
+<li>网络层上部分使用离散型设计，下部分使用集约型设计</li>
+<li>设计合理的继承机制，让派生出来的APIManager受到限制，避免混乱</li>
 </ol>
-</blockquote>
 
-<h2 id="toc_6">dispatch_block_cancel</h2>
+<h2 id="toc_4">网络层的安全</h2>
 
-<p>异步取消指定<code>dispatch block</code></p>
+<h2 id="toc_5">网络层优化方案</h2>
 
-<pre><code class="language-objectivec">void dispatch_block_cancel(dispatch_block_t block);
-//block： 应该使用dispatch_block_create 或者dispatch_block_create_with_qos_class 创建的block
+<p>优化入手切点:</p>
+
+<ol>
+<li>针对链路建立环节的优化</li>
+<li>针对链路传输数据量的优化</li>
+<li>针对链路复用的优化</li>
+</ol>
+
+<h3 id="toc_6">针对链路建立环节的优化</h3>
+
+<p>请求建立的步骤：</p>
+
+<ol>
+<li>发起请求</li>
+<li>DNS解析得到域名</li>
+<li>根据IP进行3次或者4次(HTTPS)握手</li>
+</ol>
+
+<p>优化方案1.1： 缓存一些时效性比较长数据，减少请求发起的次数，将把API名字和参数拼成一个字符串然后取MD5作为key，存储对应数据； 清除数据策略:超时清理或者缓存数据过大清理，可以根据APP的操作日志决定；缓存可以存储在内存中，或者磁盘上<br/>
+优化方案1.2： 减少请求发起的次数；1）比如多次下拉刷新，在一次请求没落地前剩下的没必要继续请求发送了 2）而类似条件筛选的，就可以取消前面的发送的请求 3）对于某些请求，没必要频繁发送的，可以先在本地记录，等数据满多少条后，上传数据；app每次启动时，上传上次的一流数据</p>
+
+<p>优化方案2.1: 因为移动端的信号源常变，因此DNS链路的缓存经常变化，导致缓存的作用一般，另外因为很多应用app网络请求操作，属于你的app的DNS缓存很快被其他应用使用、覆盖，因此在解析DNS时，会耗费时间，优化方案就是：直接使用ip请求</p>
+
+<p>对于建立链接时候的第三步，国内的网络环境分北网通南电信（当然实际情况更复杂，这里随便说说），不同服务商之间的连接，延时是很大的，我们需要想办法让用户在最适合他的IP上给他提供服务，那么就针对我们绕过DNS服务的手段有一个额外要求：尽可能不要让用户使用对他来说很慢的IP。</p>
+
+<p>所以综上所述，方案就应该是这样：本地有一份IP列表，这些IP是所有提供API的服务器的IP，每次应用启动的时候，针对这个列表里的所有IP取ping延时时间，然后取延时时间最小的那个IP作为今后发起请求的IP地址。</p>
+
+<pre><code class="language-objectivec">针对建立连接的优化手段其实是跟DNS域名解析的优化手段是一样的。不过这需要你的服务器提供
+服务的网络情况要多，一般现在的服务器都是双网卡，电信和网通。由于中国特色的互联网ISP分
+布，南北网络之间存在瓶颈，而我们App针对链接的优化手段主要就是着手于如何减轻这个瓶颈对
+App产生的影响，所以需要维护一个IP列表，这样就能就近连接了，就起到了优化的效果。
+
+我们一般都是在应用启动的时候获得本地列表中所有IP的ping值，然后通过NSURLProtocol的
+手段将URL中的HOST修改为我们找到的最快的IP。另外，这个本地IP列表也会需要通过一个API
+来维护，一般是每天第一次启动的时候读一次API，然后更新到本地。
+
 </code></pre>
 
-<p>对于所有未执行的block去 立即返回并不执行，但是对于那些已经在执行的 则没有影响</p>
+<h3 id="toc_7">针对链接复用的优化</h3>
 
-<p>注意: 确保可能被取消的block不持有任何需要执行block才会释放的资源，例如malloc内存，否则由于永远不执行block块导致内存泄漏</p>
+<h2 id="toc_8">自己的一些思考</h2>
 
-<blockquote>
-<p>已经被cancel的block无法再执行</p>
-</blockquote>
-
-<h4 id="toc_7">dispatch_block_testcancel</h4>
-
-<p>测试是否这个block已经被取消</p>
-
-<pre><code class="language-objectivec">long dispatch_block_testcancel(dispatch_block_t block);
-//返回: 被取消的话返回非0，否则返回0
-</code></pre>
+<ol>
+<li><p>转化网络层下发数据的一些思考:<br/>
+业务层通过特定的工具类转换为自己需要的数据(这个工具类可能是遵循了同一个协议的很多类，每个类有自己的转换方法，以及转换结果)</p></li>
+<li><p>使用离散型请求，关于多模块共享数据</p>
+<p>我们可以使用离散型请求，在业务层获取到数据后，如果该数据需要共享，则可以业务层告诉一个共享模块(单例模块)，将此数据存储（此共享模块数据Model层，提供数据的存。取、删、该等功能）</p></li>
+<li></li>
+</ol>
 
                         
                       </div>
@@ -339,10 +237,10 @@ Block_release(b);
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2019/4/10</span>
+                    <span class="date">2019/3/27</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%A4%9A%E7%BA%BF%E7%A8%8B.html'>多线程</a></span>
+          					    <span class="posted-in"><a href='%E6%9E%B6%E6%9E%84%E8%B0%88.html'>架构谈</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -436,25 +334,25 @@ Block_release(b);
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

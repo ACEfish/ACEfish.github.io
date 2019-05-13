@@ -112,45 +112,34 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15541003911598.html">
+                <a class="clearlink" href="15540375355169.html">
                 
-                  <h1>Clang库&&插件</h1>
+                  <h1>Clang CFE</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h2 id="toc_0">使用 libclang 来进行语法分析</h2>
-
-<p>使用<code>libclang</code>里面提供的方法对源文件进行语法分析，分析语法树，遍历语法树上每个节点。</p>
-
-<h2 id="toc_1">LibTooling 对语法树完全的控制</h2>
-
-<p>因为LibTooling能够完全控制语法树，那么就可以做很多事情了</p>
+                        	<p>常用的Clang前端组件和库</p>
 
 <ul>
-<li>可以改变clang生成代码的方式</li>
-<li>增加更强的类型检查</li>
-<li>按照自己的定义进行代码的检查分析</li>
-<li>对源码做任意类型分析，甚至重写程序</li>
-<li>给clang添加一些自定义的分析，创建自己的重构器</li>
-<li>基于现有代码做出大量的修改</li>
-<li>基于工程生成相关图形或文档</li>
-<li>检查命名是否规范，还能够进行语言的转换，比如把OC转为JS或者Swift</li>
+<li>LLVM Support Library: <code>LLVM libSupport</code>库提供了许多底层库和数据结果，包括命令行option处理，各种容器和系统抽象层，用于文件系统访问</li>
+<li>The Clang &quot;Basic&quot; Library: 提供了追踪和操纵<code>source buffers</code>，<code>source buffers</code>的位置，<code>diagnostics</code>，<code>token</code>，抽象目标以及编译语言自己信息的<code>low-level</code>实用程序。还部分由可以用在其他非C语言比如<code>SourceLocation</code>、<code>SourceManager</code>,<code>Diagnositics</code>，<code>FileManager</code>等。其中Diagnositics这个子系统是编译器和普通写代码人交流的主要组成部分，它会诊断当前代码那些不正确，按照严重程度产生warning或error，每个诊断会有唯一ID,sourceLocation会负责管理</li>
+<li>The Driver Library : 和Driver相关的库</li>
+<li>Precompiled Header： Clang支持预编译Header的两个实现</li>
+<li>The Frontend Library： 这个库包含在Clang库之上构建的功能，比如输出diagnosistics的几种方法</li>
+<li>The Lexer and Preprocessor Library: 词法分析和预处理的库，包含了Token、Annotation、Tokens、TokenLexer、Lexer等词法类，还有Parser library和AST语法树相关的比如Type、ASTContext、QualType、DeclarationName、DeclContext以及CFG类</li>
+<li>The Sema Library： 解析器调用此库时，会对输入进行语义分析。对有效的程序，Sema为解析构造一个AST</li>
+<li>The CodeGen Lirary： 用AST作为输入，生成LLVM IR代码</li>
 </ul>
 
-<p>官方有个文档开发者可以按照这个里面的说明去构造 LLVM，clang 和其工具： <a href="http://clang.llvm.org/docs/LibASTMatchersTutorial.html">Tutorial for building tools using LibTooling and LibASTMatchers — Clang 4.0 documentation</a></p>
+<h2 id="toc_0">libClang</h2>
 
-<h2 id="toc_2">Clang Plugin</h2>
+<h2 id="toc_1">Driver</h2>
 
-<p>通过自己写个插件，比如上面写的LibTooling的clang工具，可以将这个插件动态的加载到编译器中，对编译进行控制，可以再LLVM的目录看到一些范例<code>llvm/tools/clang/tools</code></p>
+<p>Driver是Clang面向用户的接口，用来解析Option设置，判断决定调用的工具链，最终完成整个编译过程</p>
 
-<p>动态化方案<code>DynamicCocoa</code>中就是使用了一个将<code>OC</code>源码转<code>JS</code>的插件来进行代码的转换，这里整理了些利用clang转js的库 <a href="https://lmsgsendnilself.github.io/blog/2017/02/28/clangtojszi-yuan/">clangtojs资源 - Lmsgsendnilself</a> ，JSPatch 是直接手写 JS 而没有转换的过程，所以也就没有多出这一步，而鹅厂的OCS更猛，直接在端内写了个编译器。在 C 函数的调用上孙源有个<code>slides</code>可以看看：<a href="http://slides.com/sunnyxx/calling-conventions-in-cocoa#/">Calling Conventions in Cocoa by sunnyxx</a> bang 也有篇文章：<a href="http://blog.cnbang.net/tech/3219/">如何动态调用 C 函数 « bang’s blog </a></p>
-
-<ul>
-<li><a href="http://blog.cnbang.net/tech/2808/">JSPatch实现原理详解 « bang’s blog</a></li>
-</ul>
-
-<p>滴滴的王康在做瘦身时也实现了一个自定义的 clang 插件，具体自定义插件的实现可以查看他的这文章 <a href="https://mp.weixin.qq.com/s?__biz=MzUxMzcxMzE5Ng==&amp;mid=2247488360&amp;amp;idx=1&amp;amp;sn=94fba30a87d0f9bc0b9ff94d3fed3386&amp;source=41#wechat_redirect">《基于clang插件的一种iOS包大小瘦身方案》</a></p>
+<p>Driver 的流程是按照 ArgList - Actions - Jobs 来的<br/>
+<img src="media/15540375355169/15540403081825.jpg" alt="" style="width:716px;"/></p>
 
                         
                       </div>
@@ -159,7 +148,7 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2019/4/1</span>
+                    <span class="date">2019/3/31</span>
                     <span>posted in&nbsp;</span> 
           				  
           					    <span class="posted-in"><a href='%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html'>编译流程</a></span>
@@ -256,25 +245,25 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

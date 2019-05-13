@@ -112,208 +112,272 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15553988088853.html">
+                <a class="clearlink" href="14913623029277.html">
                 
-                  <h1>ARC</h1>
+                  <h1>基于定时器的动画</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>在ARC有效的环境下，其内存管理规则和手动计数相同</p>
+                        	<p>缓冲主要学习<code>CAMediaTimingFunction</code>通过来做加速减速等增强现实感.</p>
+
+<p>本章学习精确地控制一帧一帧展示的基于定时器的动画,来更加真实模拟物理交互或者根据用户输入来改变动画</p>
+
+<h3 id="toc_0">定时帧</h3>
+
+<p>iOS按照每秒60次刷新屏幕,<code>CAAnimation</code>计算出需要展示的新的帧。</p>
+
+<h4 id="toc_1">NSTimer</h4>
+
+<p>我们可以用NStimer来一秒钟更新60次，来做动画.</p>
+
+<p>用<code>NSTimer</code>做动画的话需要几个属性来存储动画的<code>fromValue</code> ，<code>toValue</code>，<code>duration</code>和当前的 <code>timeOffset</code>。</p>
+
+<p><code>示例代码省略</code></p>
+
+<p>但是用<code>NSTimer</code>并不是一个很好的方案</p>
+
+<p>iOS中每个线程都管理了一个<code>NSRunloop</code>，通过循环来完成一些任务列表</p>
+
+<p>但是主线程的任务有:</p>
 
 <ul>
-<li>自己生成对象，自己持有</li>
-<li>非自己生成对象，自己也能持有</li>
-<li>自己持有的对象不再需要时释放</li>
-<li>非自己持有的对象无法释放</li>
+<li>处理触摸事件</li>
+<li>发送和接受网络数据包</li>
+<li>执行使用gcd的代码</li>
+<li>处理定时器行为</li>
+<li>屏幕重绘</li>
 </ul>
 
-<h2 id="toc_0">所有权修饰符</h2>
+<p>当我们设置了一个NSTimer,会被插入到当前任务列表中,指定时间过去后才被执行.但是何时启动定时器并没有一个时间上限，而且它只会在列表中上一个任务完成之后开始执行。这通常会导致有几毫秒的延迟，但是如果上一个任务过了很久才完成就会导致延迟很长一段时间。</p>
 
-<p>OC中的变量类型有对象类型(即指向OC类的指针<code>NSObject *</code>)和<code>id</code>类型(用于隐藏对象类型类名部分，相当于C语言中的void *)</p>
+<p>屏幕重绘的频率是一秒钟六十次，但是和定时器行为一样，如果列表中上一个执行了很长时间，它也会延迟。这些延迟都是一个随机值，于是就不能保证定时器精准地一秒钟执行六十次。有时候发生在屏幕重绘之后，这就会使得更新屏幕会有个延迟，看起来就是动画卡壳了。有时候定时器会在屏幕更新的时候执行两次，于是动画看起来就跳动了。</p>
 
-<p>在ARC有效时，id类型和对象类型与C语言的其他类型不同，必须加上所有权修饰符</p>
+<p>优化方法:</p>
 
 <ul>
-<li>__strong 修饰符</li>
-<li>__weak修饰符</li>
-<li>__unsafe __unretained修饰符</li>
-<li>__autoreleasing修饰符</li>
+<li>我们可以用 CADisplayLink 让更新频率严格控制在每次屏幕刷新之后。</li>
+<li>基于真实帧的持续时间而不是假设的更新频率来做动画。</li>
+<li>调整动画计时器的 <code>run loop</code> 模式，这样就不会被别的事件干扰。</li>
 </ul>
 
-<h3 id="toc_1">__strong修饰符</h3>
+<h4 id="toc_2">CADisplayLink</h4>
 
-<p>是id类型和对象类型的默认修饰符,即</p>
+<p><code>CADisplayLink</code>是<code>CoreAnimation</code>提供的另一个类似<code>NSTimer</code>类,总是在屏幕完成一次更新之前启动,它和<code>NSTimer</code>的内部实现相同,只不过它不是以时间间隔秒为单位,<code>CADisplayLink</code> 有一个整型的<code>frameInterval</code> 属性，指定了间隔多少帧之后才执行。默认值是1，意味着每次屏幕更新之前都会执行一次。(我们可以根据动画的执行时间来确定多少帧执行一次)</p>
 
-<pre><code class="language-objectivec">id obj = [[NSObject alloc] init];
-//等效于
-id __strong obj = [[NSObject alloc] init];
-//或者
-__strong id obj = [[NSObject alloc] init];
-</code></pre>
+<p>虽然<code>CADisplayLink</code>也不能保证每帧都按计划执行,出现丢帧情况,但是和<code>NSTimer</code>不同的是<code>NSTimer</code>一有机会就会开启,而<code>CADisplayLink</code>如果丢帧的话会直接忽略它们,在下一次更新时接着运行;</p>
 
-<p>__strong修饰符的内存管理:</p>
+<pre><code class="language-objectivec">self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
 
-<ol>
-<li><code>__strong</code>修饰符的变量赋值对象，即可完成对自己生成或非自己生成对象的强引用</li>
-<li>当变量超出作用域被废弃、变量所属对象废弃(赋值nil)或者变量赋值即会释放对原有对象的强引用，相当于对对象执行release操作</li>
-</ol>
-
-<p>而当对象没有了所有者 就会被销毁</p>
-
-<p>示例如下:</p>
-
-<pre><code class="language-objectivec">//1.
+- (void)step:(CADisplayLink *)timer
 {
-    //取得非自己生成并持有的对象
-    id __strong obj = [NSMutableArray array];
-    //因为obj为强引用 所以自己持有对象
+    //calculate time delta
+    CFTimeInterval thisStep = CACurrentMediaTime();
+    CFTimeInterval stepDuration = thisStep - self.lastStep;
+    self.lastStep = thisStep;
+    
+    self.timeOffset = MIN(self.timeOffset + stepDuration, self.duration);
+    //get normalized time offset (in range 0 - 1)
+    float time = self.timeOffset / self.duration;
+    //apply easing
+    time = bounceEaseOut(time);
+    //interpolate position
+    id position = [self interpolateFromValue:self.fromValue toValue:self.toValue
+    time:time];
+    //move ball view to new position
+    self.ballView.center = [position CGPointValue];
+    //stop the timer if we&#39;ve reached the end of the animation
+    if (self.timeOffset &gt;= self.duration) {
+        [self.timer invalidate];
+        self.timer = nil;
+    }
 }
-//此时变量obj超出作用域被废弃时，强引用失效，所以自动释放自己持有的对象
+</code></pre>
 
-//2.
+<h4 id="toc_3">Run Loop 模式</h4>
+
+<p>创建Run Loop时需要指定mode,iOS会根据指定的优先级,，而且当UI很活跃的时候的确会暂停一些别的任务.</p>
+
+<ul>
+<li>NSDefaultRunLoopMode - 标准优先级</li>
+<li>NSRunLoopCommonModes - 高优先级</li>
+<li>UITrackingRunLoopMode - 用于 UIScrollView 和别的控件的动画</li>
+</ul>
+
+<pre><code class="language-objectivec">/*我们可以同时加入 NSDefaultRunLoopMode 和 UITrackingRunLoopMode 
+    来保证它不会被滑动打断，也不会被其他UIKit控件动画影响性能
+**/
+self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:UITrackingRunLoop];
+</code></pre>
+
+<h3 id="toc_4">物理模拟</h3>
+
+<p>我们在上面的方法中，关键帧的实现中我们提前加计算了所有帧,这次我们按需要进行计算,这样我们可以根据用户输入实时修改动画的逻辑，或者和别的实时动画系统例如物理引擎进行整合。</p>
+
+<h4 id="toc_5">Chipmunk</h4>
+
+<p>基于物理学创建一个真实的重力模拟效果来取代当前基于缓冲的弹性动画,因为模拟物理效果太复杂了，我们直接使用开源的物理引擎,我这里使用<code>Chipmunk</code>，有很多版本包括和<code>Objective-C</code>绑定的<code>“indie”</code>版本<a href="http://chipmunk-physics.net/">下载地址</a></p>
+
+<p>我们只简单使用这个引擎中的几个类:</p>
+
+<ul>
+<li>cpSpace - 所有的物理结构体的容器。它有一个大小和一个可选的重力矢量</li>
+<li>cpBody - 一个固态无弹力的刚体。它有一个坐标，以及其他物理属性，例如质量，运动和摩擦系数等等。</li>
+<li>cpShape - 一个抽象的几何形状，用来检测碰撞。可以给结构体添加一个多边形，而且<code>cpShape</code>有各种子类来代表不同形状的类型。</li>
+</ul>
+
+<p>因为C语言是不支持引用计数的所以为了准确的创建和释放我们将<code>cpShape</code>和<code>cpBody</code>和<code>Crate</code>（木箱）类进行绑定，在木箱的<code>- init</code>方法中创建,<code>-dealloc</code>中释放。用视图控制器来管理<code>cpSpace</code></p>
+
+<p><code>Chipmunk</code>使用了一个和<code>UIKit</code>颠倒的坐标系（Y轴向上为正方向）。我们可以使用<code>geometryFlipped</code>属性翻转容器视图的集合坐标,这样模型和视图就共享一个坐标系了<br/>
+<strong>geometryFlipped</strong>设置layer的这个属性可以调整坐标系Y轴方向</p>
+
+<p>代码示例:</p>
+
+<pre><code class="language-objectivec">//创建木箱的image对象
+@interface Crate : UIImageView
+@property (nonatomic, assign) cpBody *body;
+@property (nonatomic, assign) cpShape *shape;
+@end
+
+@implementation Crate
+#define MASS 100
+- (id)initWithFrame:(CGRect)frame
 {
-    //取得自己生成并持有的对象
-    id __strong obj = [[NSObject alloc] init];
-    //因为obj为强引用 所以自己持有对象
+    if ((self = [super initWithFrame:frame])) {
+        //set image
+        self.image = [UIImage imageNamed:@&quot;Crate.png&quot;];
+        self.contentMode = UIViewContentModeScaleAspectFill;
+        //create the body
+        self.body = cpBodyNew(MASS, cpMomentForBox(MASS, frame.size.width, frame.size.height));
+        //create the shape
+        cpVect corners[] = {
+            cpv(0, 0),
+            cpv(0, frame.size.height),
+            cpv(frame.size.width, frame.size.height),
+            cpv(frame.size.width, 0),
+        };
+    self.shape = cpPolyShapeNew(self.body, 4, corners, cpv(-frame.size.width/2, -frame.size.height/2));
+    //set shape friction &amp; elasticity
+    cpShapeSetFriction(self.shape, 0.5);
+    cpShapeSetElasticity(self.shape, 0.8);
+    //link the crate to the shape
+    //so we can refer to crate from callback later on
+    self.shape-&gt;data = (__bridge void *)self;
+    //set the body position to match view
+    cpBodySetPos(self.body, cpv(frame.origin.x + frame.size.width/2, 300 - frame.origin.y - frame.size.height/2));
+    }
+    return self;
 }
-/*
-* 此时变量obj超出作用域，强引用失效，所以自动释放自己持有的对象
-* 对象所有者不存在，因此废弃该对象
-*/ 
+- (void)dealloc
+{
+    //release shape and body
+    cpShapeFree(_shape);
+    cpBodyFree(_body);
+}
+@end
 
-//3. 
+//创建重力空间
+@interface ViewController ()
+@property (nonatomic, weak) IBOutlet UIView *containerView;
+@property (nonatomic, assign) cpSpace *space;
+@property (nonatomic, strong) CADisplayLink *timer;
+@property (nonatomic, assign) CFTimeInterval lastStep;
+@end
 
-id __strong obj0 = [[NSObject alloc] init];
-//obj0强引用对象A
-id __strong obj1 = [[NSObject alloc] init];
-//obj1强引用对象B
-obj0 = 0bj1;
-//obj0强引用对象B，此时对对象A强引用失效，对象A没有所有者因此废弃对象A
-obj0 = nil;
-//因为obj0被赋值nil，因此其对对象B的强引用失效 此时对象B的强引用只剩下obj1
+@implementation ViewController
+#define GRAVITY 1000
+- (void)viewDidLoad
+{
+    //invert view coordinate system to match physics
+    self.containerView.layer.geometryFlipped = YES;
+    //set up physics space
+    self.space = cpSpaceNew();
+    cpSpaceSetGravity(self.space, cpv(0, -GRAVITY));
+    //add a crate
+    Crate *crate = [[Crate alloc] initWithFrame:CGRectMake(100, 0, 100, 100)];
+    [self.containerView addSubview:crate];
+    cpSpaceAddBody(self.space, crate.body);
+    cpSpaceAddShape(self.space, crate.shape);
+    //start the timer
+    self.lastStep = CACurrentMediaTime();
+    self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+    [self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+}
+
+void updateShape(cpShape *shape, void *unused)
+{
+    //get the crate object associated with the shape
+    Crate *crate = (__bridge Crate *)shape-&gt;data;
+    //update crate view position and angle to match physics shape
+    cpBody *body = shape-&gt;body;
+    crate.center = cpBodyGetPos(body);
+    crate.transform = CGAffineTransformMakeRotation(cpBodyGetAngle(body));
+}
+
+- (void)step:(CADisplayLink *)timer
+{
+    //calculate step duration
+    CFTimeInterval thisStep = CACurrentMediaTime();
+    CFTimeInterval stepDuration = thisStep - self.lastStep;
+    self.lastStep = thisStep;
+    //update physics
+    cpSpaceStep(self.space, stepDuration);
+    //update all the shapes
+    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
+}
+@end
 </code></pre>
 
-<blockquote>
-<p>__ strong、__weak、__autoreleasing修饰符，会将修饰符修饰的变量自动初始化为nil</p>
-</blockquote>
+<h4 id="toc_6">添加用户交互</h4>
 
-<h3 id="toc_2">__weak修饰符</h3>
+<p>为了使木箱不掉落到屏幕外 我们在屏幕周围添加四条线来限制范围;</p>
 
-<p>主要用来避免使用强引用导致的循环引用</p>
+<p>通过给<code>cpSpace</code>添加四个<code>cpSegmentShape</code>对象（<code>cpSegmentShape</code>代表一条直线，所以四个拼起来就是一个矩形）。然后赋值给空间的<code>staticBody</code>属性(这是不受重力的结构体)，而不是像木箱那样会受重力的<code>cpBody</code>实例，因为我们不想这线画出屏幕或者被木箱击中消失。</p>
 
-<p><code>__weak</code>提供弱引用，并不持有对象实例</p>
+<p>通过添加一个加速器,可以通过倾斜手机来调整重力矢量,在横屏模式下，要交换加速计矢量的x和y值，竖屏模式下再换回来.</p>
 
-<p>错误使用:</p>
-
-<pre><code class="language-objectivec">id __weak obj = [[NSObject alloc] init]; //编译器会报警高
-//这种情况下 obj并不持有生成的对象，而是持有对象的弱引用，所以对象会立即释放
+<pre><code class="language-text">代码省略
 </code></pre>
 
-<p>正确使用</p>
+<h4 id="toc_7">模拟时间以及固定的时间步长</h4>
 
-<pre><code class="language-objectivec">{
-    id __strong obj = [[NSObject alloc] init];
-    id __weak obj1 = obj;
+<p>在上面我们做动画的缓冲效果来说,都是计算每帧的持续时间，这样的话两个时间步长就是可变的,对于模拟物理效果并不理想:</p>
+
+<p>因此我们通过<strong>固定的时间步长</strong>来计算物理效果，还要保证在屏幕发生重绘时能够同步更新视图</p>
+
+<p>因为刚好我们的模型（在这个例子中就是Chipmunk的 cpSpace 中的 cpBody ）被视图（就是屏幕上代表木箱的 UIView 对象）分离，于是就很简单了。我们只需要根据屏幕刷新的时间跟踪时间步长，然后根据每帧去计算一个或者多个模拟出来的效果。</p>
+
+<pre><code class="language-objectivec">
+/**
+    通过每次 CADisplayLink 的启动来通知屏幕将要刷新，然后记录下当前的
+    CACurrentMediaTime() 。
+    在一个小增量中提前重复物理模拟（这里用120分之一秒）直到赶上显示的时间。然后更新我们的视图，
+    在屏幕刷新的时候匹配当前物理结构体的显示位置。
+*/
+
+#define SIMULATION_STEP (1/120.0)
+- (void)step:(CADisplayLink *)timer
+{
+    //calculate frame step duration
+    CFTimeInterval frameTime = CACurrentMediaTime();
+    //update simulation
+    while (self.lastStep &lt; frameTime) {
+        cpSpaceStep(self.space, SIMULATION_STEP);
+        self.lastStep += SIMULATION_STEP;
+    }
+    //update all the shapes
+    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
 }
 </code></pre>
 
-<p><code>__weak</code>修饰符修饰的变量当持有某个对象的弱引用时，若该对象被废弃(没有了持有者)，则弱引用<strong>自动失效并处于值为nil</strong>状态</p>
+<h4 id="toc_8">避免死亡螺旋</h4>
 
-<h3 id="toc_3">__ unsafe__retained修饰符</h3>
+<p>在上面例子中我们随意选择了1/120秒来模拟物理效果,但是我们在场景很复杂，<code>cpSpaceStp()</code>计算也会超出1/120秒,这样就会造成延迟帧率,帧延迟的话，我们需要更多时间来同步真实时间,这样就越来越慢，直到应用程序卡死,这就是所谓的<code>死亡螺旋</code></p>
 
-<p>是不安全的修饰符。因为<code>__weak</code>只能用在iOS5之上的版本，所以在iOS4就只能使用<code>__unsafe__retained</code>修饰符</p>
-
-<p><strong><code>__unsafe__retaine</code>d变量修饰的对象不属于编译器的内存管理对象</strong></p>
-
-<pre><code class="language-objectivec">//__unsafe__retained与__weak类似，并不持有生成对象所以对象会立即释放
-id __weak obj = [[NSObject alloc] init]; //编译器会报警高
-</code></pre>
-
-<p><strong>unsafe</strong>retained变量修饰的对象当销毁时不会自动置nil，因此有可能访问悬空指针</p>
-
-<p>因此，不要使用这个修饰符</p>
-
-<h3 id="toc_4">__autoreleasing修饰符</h3>
-
-<pre><code class="language-objectivec">//非ARC环境下
-NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-id obj = [[NSObject alloc] init]; 
-[obj autorelease];
-[pool drain];
-//ARC环境下
-@autoreleasepool {
-    id __autoreleasing obj = [[NSObject alloc] init];
-}
-</code></pre>
-
-<blockquote>
-<p>@autoreleasepool {}在非ARC环境下也能使用 推荐@autoreleasepool来表示自动释放池，提高程序的可读性</p>
-</blockquote>
-
-<p>在平常使用中 我们通常不需要主动指定<code>__autorelease</code>修饰符,例子如下：</p>
-
-<h4 id="toc_5">1. 编译器会自动将返回值注册到autorelease pool</h4>
-
-<p>编译器会检查方法名，如果使用<code>alloc/new/copy/mutableCopy</code>以外开头的方法，则自动将返回值注册到`autorelease pool中</p>
-
-<pre><code class="language-objectivec">+ (id)array {
-    id obj = [[NSMutableArray alloc] init];
-    return obj;
-}
-//obj没有显式指定修饰符，因此为__strong,由于return会使对象变量超出作用域，所以自己持有的强引用被释放，但该函数以对象作为返回值，编译器会自动帮其注册到autorelease pool中
-</code></pre>
-
-<h4 id="toc_6">2. 访问__weak修饰的变量一定要访问注册的到autoreleapool的对象</h4>
-
-<p>因为<code>__weak</code>只持有对象弱引用，在访问过程中，对象有可能销毁，而把对象注册到<code>autorelease pool</code>就能保证对象在访问结束前不会被销毁</p>
-
-<pre><code class="language-objectivec">id __weak obj0 = obj1;
-NSLog(@&quot;class = %@&quot;, [obj0 class]);
-
-//等效于
-id __weak obj0 = obj1;
-id __autoreleasing tmp = obj1;
-NSLog(@&quot;class = %@&quot;, [tmp class]);
-</code></pre>
-
-<h4 id="toc_7">3. id的指针或者对象指针会默认加上__autoreleasing修饰符</h4>
-
-<p>id的指针<code>id *obj</code>和<code>NSObject **obj</code>在没有显式指定时会被附加上<code>__autoreleasing</code>修饰符</p>
-
-<p>例如:</p>
-
-<pre><code class="language-obj"> - (nullable instancetype)dataWithContentsOfFile:(NSString *)path ... error:(NSError **)errorPtr;
-//相当于
-- (nullable instancetype)dataWithContentsOfFile:(NSString *)path... error:(NSError * __autoreleasing *)errorPtr;
-</code></pre>
-
-<p>使用__autoreleasing修饰的变量作为对象取得参数就和用非自己生成对象方法取得返回值的对象完全一样，会注册到<code>autorelease pool</code>中</p>
-
-<pre><code class="language-objectivec">//源码应该类似这个样子
-- (nullable instancetype)dataWithContentsOfFile:(NSString *)path... error:(NSError * __autoreleasing *)errorPtr {
-    *error = [[NSError alloc] initWithDomain:MyAppDomin code:errorCode userInfo:nil];
-}
-</code></pre>
-
-<p>在使用过程中应该注意，保持赋值互相对象的修饰符一致:</p>
-
-<pre><code class="language-objectivec">NSError * __autoreleasing error;//修改修饰符为__autoreleasing保持一致进行赋值
-NSError **pError = &amp;error;
-//或者
-NSError * error;
-NSError * __strong *pError = &amp;error;
-</code></pre>
-
-<p>在下面的NSError **参数赋值了一个__strong对象变量也没报错，是因为编译器自动帮我们做了转换</p>
-
-<pre><code class="language-objectivec">NSError * error;
-    id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;error];
-//编译器帮我们转化为了
-NSError __strong *error;
-NSError __autoreleasing *tmp = error;
-id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;tmp];
-</code></pre>
+<p>为了避免这种情况 我们需要留下足够的时间容错，如果物理计算超过了模拟时间的50%，就需要考虑增加模拟时间步长（或者简化场景）。如果模拟时间步长增加到超过1/60秒（一个完整的屏幕更新时间），你就需要减少动画帧率到一秒30帧或者增加<code>CADisplayLink</code>的<code>frameInterval</code>来保证不会随机丢帧，不然你的动画将会看起来不平滑。</p>
 
                         
                       </div>
@@ -322,10 +386,10 @@ id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;tmp];
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2019/4/16</span>
+                    <span class="date">2017/4/5</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html'>内存管理</a></span>
+          					    <span class="posted-in"><a href='%E5%8A%A8%E7%94%BB.html'>动画</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -419,25 +483,25 @@ id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;tmp];
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

@@ -112,91 +112,107 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15554693626882.html">
+                <a class="clearlink" href="15539566553487.html">
                 
-                  <h1>Foundation、Core Foundation框架对象</h1>
+                  <h1>Target在build中的控制</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p><code>Core Foundation</code>对象主要在用C语言编写的<code>Core Foundation</code>框架中，并使用引用计数对象。Core Foundation框架中的retain/release分别为<code>CFRetain()、CFRelease()</code>(CF对象不属于ARC内存管理)<br/>
-CF对象和foundation对象很区别很小，只是生成框架不同，连着可以互相在不同框架中使用。因为两者几乎没有区别可以使用简单的C语言即可互相转换。这种转换不需要额外的CPU资源消耗，因此称之为<strong>免费桥</strong></p>
+                        	<p>在<code>Xcode</code>的<code>Project editor</code>中的<code>Build Setting</code>、<code>Build Phases</code>和<code>Build Rules</code>用来控制整个编译过程</p>
 
-<blockquote>
-<p>Core Foundation变量没有ARC，因此对其操作均为手动引用计数</p>
-</blockquote>
+<h2 id="toc_0">Build Phases</h2>
 
-<h2 id="toc_0">id和void *的转换</h2>
+<p>构建可执行文件规则。</p>
 
-<p>在ARC无效时，可以简单的进行赋值</p>
+<p><code>Target Dependencies</code><br/>
+指定target的依赖项目，在targrt build之前需要先build的依赖</p>
 
-<pre><code class="language-objectivec">id obj = [[NSObject alloc] init];
-void *obj1 = obj; //简单的赋值 此时obj1不持有该对象
-[obj release];
-</code></pre>
+<p><code>Compile Source</code><br/>
+指定所有必须编译的文件,这些文件会根据<code>build Setting</code>和<code>Builsd Rules</code>里的设置来处理</p>
 
-<p>但是在ARC环境下，需要进行转换</p>
+<p><code>Link Binary With Libraries</code><br/>
+列出所有的静态库和动态库，和编译生成文件进行链接</p>
 
-<pre><code class="language-objectivec">id obj = [[NSObject alloc] init];
-void *obj1 = (__bridge void *)(obj);
-</code></pre>
+<p><code>Copy Bundle Resources</code><br/>
+指定要copy的资源文件</p>
 
-<p><code>__bridge</code>是最简单的转换 只是单纯的赋值，并不负责内存管理，导致其安全性很低，很容易访问悬空指针，因此不推荐这么使用</p>
+<h2 id="toc_1">Build Rules</h2>
 
-<p><strong>除了 <code>__bridge</code>外还有<code>__bridge_retained</code>和<code>__bridge_transfer</code>转换</strong><br/>
-<code>__bridge_retained</code>:使要赋值的变量也持有所赋值的变量(对象引用计数+1)</p>
+<p>指定不同文件类型如何编译。每条build rule 指定了该类型怎么处理立即输出在哪。可以增加一条新规则对特定类型文件类型添加处理方法</p>
 
-<pre><code class="language-objectivec">//ARC有效时
-id obj = [[NSObject alloc] init];
-void *p = (__bridge_retained void *)(obj);
-//等效于 ARC无效于
-id obj = [[NSObject alloc] init];
-void *p = obj;
-[(id)p retain];
-</code></pre>
+<h2 id="toc_2">Build Setting</h2>
 
-<p><code>__bridge_transfer</code>: 与其相反，被转换的变量在所持有的对象在该变量被赋值给转换目标后即释放(对象引用计数-1)</p>
+<p>在<code>build</code>的过程中各个阶段的选项的设置</p>
 
-<pre><code class="language-objectivec">//ARC有效时
-id obj1 = (__bridge_transfer id)(p);
-//等效于 ARC无效于
-id obj = (id)p;
-[obj retain];
-[(id)p release];
-</code></pre>
+<h2 id="toc_3">pbxproj工程文件</h2>
 
-<p><code>Core Foundation</code>中提供了<code>Toll-Free-Bridge</code>函数:</p>
+<p><code>.xcodeproj</code>包中的工程文件<code>project.pbxproj</code>里包含了build过程中的设置.</p>
 
-<pre><code class="language-objectivec">CFTypeRef _Nullable CFBridgingRetain(id _Nullable X) {
-    return (__bridge_retained CFTypeRef)X;
-}
-
- id _Nullable CFBridgingRelease(CFTypeRef CF_CONSUMED _Nullable X) {
-    return (__bridge_transfer id)X;
-}
-</code></pre>
-
-<p>示例：</p>
-
-<pre><code class="language-objectivec">CFMutableArrayRef cfObject = NULL;
-{
-    id obj = [[NSMutableArray alloc] init];
-    cfObject = CFBridgingRetain(obj);
-    CFShow(cfObject);
-    printf(&quot;retain count %ld\n&quot;, (long)CFGetRetainCount(cfObject)); //2
-}
-printf(&quot;出了作用域范围引用计数%ld\n&quot;, (long)CFGetRetainCount(cfObject));//1
-CFRelease(cfObject);
-</code></pre>
-
-<p><code>Foundation</code>框架产生的OC对象也可以作为<code>Core Foundation</code>框架对象使用</p>
-
-<pre><code class="language-objectivec">CFMutableArrayRef cfObject = CFArrayCreateMutable(kCFAllocatorDefault, 0, NULL);
-printf(&quot;retain count %ld\n&quot;, (long)CFGetRetainCount(cfObject)); //1
-id obj = CFBridgingRelease(cfObject); 
-printf(&quot;转换后的retain count %ld\n&quot;, (long)CFGetRetainCount(cfObject)); // 1
-NSLog(@&quot;class = %@&quot;, obj);
-</code></pre>
+<ol>
+<li>在这个文件中，首先找到rootObject的值
+<code>
+rootObject = CFE011DA22409055007FEEDD /* Project object */;
+</code></li>
+<li>根据CFE011DA22409055007FEEDD代表的proect找到这个工程,这里面包括了部分这个工程的信息
+<code>
+/* Begin PBXProject section */<br/>
+    CFE011DA22409055007FEEDD /* Project object */ = {<br/>
+        isa = PBXProject;<br/>
+        attributes = {<br/>
+            LastUpgradeCheck = 1010;<br/>
+            ORGANIZATIONNAME = universalCertification;<br/>
+            TargetAttributes = {<br/>
+                CFE011E122409055007FEEDD = {<br/>
+                    CreatedOnToolsVersion = 10.1;<br/>
+                };<br/>
+            };<br/>
+        };<br/>
+        buildConfigurationList = CFE011DD22409055007FEEDD /* Build configuration list for PBXProject &quot;RSSReader&quot; */;<br/>
+        compatibilityVersion = &quot;Xcode 9.3&quot;;<br/>
+        developmentRegion = en;<br/>
+        hasScannedForEncodings = 0;<br/>
+        knownRegions = (<br/>
+            en,<br/>
+            Base,<br/>
+        );<br/>
+        mainGroup = CFE011D922409055007FEEDD;<br/>
+        productRefGroup = CFE011E322409055007FEEDD /* Products */;<br/>
+        projectDirPath = &quot;&quot;;<br/>
+        projectRoot = &quot;&quot;;<br/>
+        targets = (<br/>
+            CFE011E122409055007FEEDD /* RSSReader */,<br/>
+        );<br/>
+    };<br/>
+/* End PBXProject section */
+</code></li>
+<li>然后根据工程中的<code>targets</code>可以找到对应target
+<code>
+/* Begin PBXNativeTarget section */<br/>
+        CFE011E122409055007FEEDD /* RSSReader */ = {<br/>
+            isa = PBXNativeTarget;<br/>
+            buildConfigurationList = CFE011F822409056007FEEDD /* Build configuration list for PBXNativeTarget &quot;RSSReader&quot; */;<br/>
+            buildPhases = (<br/>
+                47F7B3ABDF3263B6EDCA68AD /* [CP] Check Pods Manifest.lock */,<br/>
+                CFE011DE22409055007FEEDD /* Sources */,<br/>
+                CFE011DF22409055007FEEDD /* Frameworks */,<br/>
+                CFE011E022409055007FEEDD /* Resources */,<br/>
+            );<br/>
+            buildRules = (<br/>
+            );<br/>
+            dependencies = (<br/>
+            );<br/>
+            name = RSSReader;<br/>
+            productName = RSSReader;<br/>
+            productReference = CFE011E222409055007FEEDD /* RSSReader.app */;<br/>
+            productType = &quot;com.apple.product-type.application&quot;;<br/>
+        };<br/>
+/* End PBXNativeTarget section */
+</code></li>
+<li>可以根据这些信息查看更详细的编译信息<br/>
+比如:
+<code>buildConfigurationList</code>指向了debug和release的详细配置信息</li>
+</ol>
 
                         
                       </div>
@@ -205,10 +221,10 @@ NSLog(@&quot;class = %@&quot;, obj);
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2019/4/17</span>
+                    <span class="date">2019/3/30</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html'>内存管理</a></span>
+          					    <span class="posted-in"><a href='%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html'>编译流程</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -302,25 +318,25 @@ NSLog(@&quot;class = %@&quot;, obj);
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

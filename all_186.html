@@ -112,65 +112,42 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="15541023147431.html">
+                <a class="clearlink" href="15552393320703.html">
                 
-                  <h1>LLVM Backend</h1>
+                  <h1>内存管理介绍</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<p>整个编译流程中 LLVM Backend的位置<br/>
-<img src="media/15541023147431/15541023747982.jpg" alt="" style="width:707px;"/></p>
+                        	<p><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/MemoryMgmt/Articles/MemoryMgmt.html">官方文档地址</a></p>
 
-<p>LLVM Backend的流程图<br/>
-<img src="media/15541023147431/15541050358473.jpg" alt="" style="width:715px;"/></p>
+<p>应用程序的内存管理即在运行时分配内存使用，并且在完成后释放内存的过程<br/>
+<img src="media/15552393320703/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202019-04-15%2015.37.09.png" alt="" style="width:450px;"/></p>
 
-<h3 id="toc_0">CodeGen 阶段</h3>
+<p>OC中有两种应用程序管理方法</p>
 
-<ul>
-<li>Instruction Selection 指令选择：将IR转化成目标平台指令组成的定向非循环图 DAG（Directed Acyclic Graph）</li>
-<li>Scheduling and Formation 调度与排序：读取 DAG，将 DAG 的指令排成 MachineInstr 的队列</li>
-<li>SSA 优化：多个基于 SSA（Static Single Assignment） 的 Pass 组成。比如 modulo-scheduling 和 peephole optimization 都是在这个阶段完成的</li>
-<li>Register allocation 寄存器分配：将 Virtual Register 映射到 Physical Register 或内存上 Prolog / Epilog 生成</li>
-<li>确定所需堆栈大小：Machine Code</li>
-<li>晚期优化：最后一次优化机会</li>
-<li>Code Emission：输出代码，可以选择汇编或者二进制机器码。</li>
-</ul>
-
-<h3 id="toc_1">SelectionDAG</h3>
+<ol>
+<li>我们接下来使用的手动保留-释放（MRR): 由Foundation类和NSObject运行时环境一起提供了引用计数环境</li>
+<li><p>自动引用计数(ARC):使用与MRR一样的引用计数系统，只是在编译时帮助插入适当的内存管理方法，查看<a href="https://developer.apple.com/library/archive/releasenotes/ObjectiveC/RN-TransitioningToARC/Introduction/Introduction.html#//apple_ref/doc/uid/TP40011226">ARC开发文档</a></p></li>
+</ol>
 
 <ul>
-<li>构建最初的 DAG：把 IR 里的 add 指令转成 SelectionDAG 的 add 节点</li>
-<li>优化构建好的 DAG：把一些平台支持的 meta instructions 比如 Rotates，div / rem 指令识别出</li>
-<li>Legalization SelectionDAG 类型：比如某些平台只有64位浮点和32位整数运算指令，那么就需要把所有 f32 都提升到 f64，i1/i8/i16 都提升到 i32，同时还要把 i64 拆分成两个 i32 来存储，操作符的合法化，比如 SDIV 在 x86 上回转成 SDIVREM。这个过程结果可以通过 llc -view-dag-combine2-dags sum.ll 看到</li>
-<li>指令选择 instruction selector（ISel）：将平台无关的 DAG 通过 TableGen 读入 .tb 文件并且生成对应的模式匹配代码从而转成平台相关的 DAG</li>
-<li>SelectionDAG Scheduling and Formation：因为 CPU 是没法执行 DAG，所以需要将指令从 DAG 中提取依据一定规则比如 minimal register pressure 或隐藏指令延迟重排成指令队列。（DAG -&gt; linear list（SSA form） -&gt; MachineInstr -&gt; MC Layer API MCInst MCStreamr -&gt; MCCodeEmitter -&gt; Binary Instr）</li>
+<li>Xcode内置的<code>Clang Static Analyzer</code>会识别编译时的代码问题</li>
+<li>在Technical Note TN2239、<a href="https://developer.apple.com/library/archive/technotes/tn2239/_index.html#//apple_ref/doc/uid/DTS40010638">iOS Debugging Magic</a>中介绍了很多工具和计数，特别是可以使用<code>NSZombie</code>来帮助找到过度释放的对象</li>
+<li>可以使用<code>Instrument</code>工具来追踪引用计数，并且检查内存泄漏；参考<a href="https://help.apple.com/instruments/mac/current/#//apple_ref/doc/uid/TP40004652-CH5">Collecting Data on Your App.</a></li>
 </ul>
 
-<h3 id="toc_2">Register Allocation 寄存器分配</h3>
+<h4 id="toc_0">补充:</h4>
 
-<h4 id="toc_3">寄存器在 LLVM 中的表达</h4>
+<p>这些有关OC内存管理的方法，实际并不包含在该语言中，而是包含在Cocoa框架中用于iOS、OS X开发。<strong>Cocoa框架中的Foundation框架类库的NSObject类承担内存管理职责</strong>。OC内存管理中的<code>alloc/retain/release/dealloc</code>方法分别指向NSObject类的alloc类方法和retain、release、dealloc实例方法</p>
 
-<p>物理寄存器在 LLVM 里均有 1 - 1023 范围内的编号。</p>
+<blockquote>
+<p>内存管理中的引用计数由<code>NSObject protocol</code>以及标准方法的命名约定组合提供</p>
 
-<h4 id="toc_4">虚拟寄存器到物理寄存器的映射</h4>
+<p>NSObject中定义了<code>dealloc</code>方法，会在取消分配对象时自动调用</p>
 
-<p>直接映射使用 TargetRegisterInfo 和 MachineOperand 中的 API。间接映射的API用 VirtRegMap 以正确插入读写指令实现内存调度</p>
-
-<h4 id="toc_5">LLVM 自带的寄存器分配算法</h4>
-
-<p><code>llc -regalloc=Greedy add.bc -o ln.s</code></p>
-
-<ul>
-<li>Fast - debug 默认，尽可能保存寄存器。</li>
-<li>Basic - 增量分配</li>
-<li>Greedy - LLVM 默认寄存器分配算法，对 Basic 算法变量生存期进行分裂进行高度优化</li>
-<li>PBQP - 将寄存器分配描述成分区布尔二次规划</li>
-</ul>
-
-<h3 id="toc_6">Code Emission</h3>
-
-<p><img src="media/15541023147431/15541063937960.jpg" alt="" style="width:706px;"/></p>
+<p>内存泄漏:就是应当废弃的对象在超出其生命周期后继续存在</p>
+</blockquote>
 
                         
                       </div>
@@ -179,10 +156,10 @@
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2019/4/1</span>
+                    <span class="date">2019/4/14</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html'>编译流程</a></span>
+          					    <span class="posted-in"><a href='%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html'>内存管理</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -276,25 +253,25 @@
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  

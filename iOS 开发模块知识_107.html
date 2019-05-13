@@ -112,148 +112,122 @@
 		<div class="markdown-body home-categories">
 		
 			<div class="article">
-                <a class="clearlink" href="14873831706932.html">
+                <a class="clearlink" href="15559026860989.html">
                 
-                  <h1>OCMock</h1>
+                  <h1>KSCrash</h1>
                   <div class="a-content">
                       
                       <div class="a-content-text">
                         
-                        	<h3 id="toc_0">Mock介绍</h3>
+                        	<p>debug模式下,KSCrash的线程回调线程</p>
 
-<p>对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。</p>
-
-<h3 id="toc_1">OCMock介绍</h3>
-
-<p><a href="http://ocmock.org/features/">官方网站</a><br/>
-根据要mock的对象的class来创建一个对应的对象，并且设置好该对象的属性和调用预定方法后的动作（例如返回一个值，调用代码块，发送消息等等），然后将其记录到一个数组中，接下来开发者主动调用该方法，最后做一个verify（验证），从而判断该方法是否被调用，或者调用过程中是否抛出异常等。</p>
-
-<h4 id="toc_2">1.OCMock中简单使用</h4>
-
-<ol>
-<li><p>class mock一个对象</p>
-<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
-//创建mock object当做类的实例
-</code></pre></li>
-<li><p>Stubbing methods that return objects</p>
-<pre><code class="language-object-c">/**
-意的就是有参数的方法，参数是可以具体指定的，也就是说只有满足你指定的具体参数的调用才会被mock指定的返回值。例子中的[OCMArg any]是指任意参数。<br/>
-*/<br/>
-//没有参数的方法<br/>
-OCMStub([mockClass someMethod]).andReturn(anObject);<br/>
-//有参数的方法<br/>
-OCMStub([mockClass someMethod:[OCMArg any]]).andReturn(anObject);
-</code></pre>
-<p>注意:<br/>
-<strong>OCMock会在mock实例上没有找到相同名字的实例方法的时候去找同名的类方法。</strong></p></li>
-<li><p>Verify-after-running<br/>
-有些时候需要验证我们执行的代码流程是否调用了某个外部的方法，这个时候用OCMock就比较简单来实现。如果没有调用过这个方法的话，会立即抛一个异常出来。</p>
-<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
-//...<br/>
-//some code<br/>
-//...<br/>
-OCMVerify([mockClass someMethod]);
-</code></pre></li>
-<li><p>验证mock方法没有被调用<br/>
-验证代码没有调用某个方法<br/>
-如果方法被调用了，就将isCalled设置为YES，这样最后assert的时候就会报错。</p>
-<pre><code class="language-object-c">static BOOL isCalled = false;
-id mockClass = OCMClassMock([SomeClass class]);<br/>
-OCMStub([mockClass someMethod]).andDo(^(NSInvocation *invocation){<br/>
-isCalled = YES;<br/>
-});<br/>
-//...<br/>
-//some code<br/>
-//...<br/>
-XCTAssertFalse(isCalled);
-</code></pre></li>
-<li><p>验证mock方法传入的参数<br/>
-验证传递给外部调用的参数是否符合预期</p>
-<pre><code class="language-objec-c">id mockClass = OCMClassMock([SomeClass class]);
-OCMStub([mockClass someMethod:[OCMArg checkWithBlock:^BOOL(id obj) {<br/>
-//...<br/>
-//some code<br/>
-//...<br/>
-return YES;<br/>
-]]);
-</code></pre></li>
-<li><p>mock单例</p>
-<p>如果我们mock的类是个单例的话，那么使用之前的方法进行mock是不会生效的。不过OCMock提供了一个很简单的解决方法，那就是调用单例返回mock</p>
-<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
-OCMStub([mockClass instanceMethod]).andReturn(mockClass);
-</code></pre></li>
-<li><p>The any constraint</p>
-<pre><code class="language-object-c">OCMStub([mock someMethodWithAnArgument:[OCMArg any]])
-OCMStub([mock someMethodWithPointerArgument:[OCMArg anyPointer]])<br/>
-OCMStub([mock someMethodWithSelectorArgument:[OCMArg anySelector]])
-</code></pre></li>
-<li><p>处理block参数<br/>
-OCMock也可以处理block回调参数。block回调通常用于网络代码，数据库代码，或者在任何异步操作中。在这个例子中，思考下下面的方法：<br/>
-<code>- (void)downloadWeatherDataForZip:(NSString *)zip callback:(void (^)(NSDictionary *response))callback;</code></p></li>
-</ol>
-
-<p>在这个例子中，我们有一个下载天气压缩数据的方法，并且把下载下来的dictionary代理到一个block的回调中。在测试中，我们通过预定义的天气数据来测试回调处理。这也是明智的测试失败场景。你永远不会知道网络上会返回你什么东西！</p>
-
-<pre><code class="language-object">OCMStub([groupModelMock downloadWeatherDataForZip:@&quot;80304&quot; callback:[OCMArg any]]]).andDo(^(NSInvocation *invocation){
-        //2. declare a block with same signature
-        void (^weatherStubResponse)(NSDictionary *dict);
-        //3. link argument 3 with with our block callback
-        [invoke getArgument:&amp;weatherStubResponse atIndex:3];
-        //4. invoke block with pre-defined input
-        NSDictionary *testResponse = @{@&quot;high&quot;: 43 , @&quot;low&quot;: 12};
-        weatherStubResponse(groupMemberMock);
-    });
-    /**
-        1.这个mock对象使用带NSInvocation参数的“andDo”方法。一个NSInvocation对象代表一
-        个‘objectivetified’（实在不知道这个什么鬼）表现的方法调用。通过这个NSinvocation对
-        象，使得拦截传递给我们的方法的block参数变得可能。
-        2.用与我们测试的方法中相同的方法签名声明一个block参数。
-        3.NSInvocation实例方法&quot;getArgument:atIndex:&quot;将赋值后的块函数传递都原始函数中定义
-        的块函数中。注意：在Objective-C中，传递给任意方法的前两个参数都是“self”和“_cmd”.这是
-        一个运行时的小功能以及用下标来获取NSInvocation参数时我们需要考虑的东西。
-        4.最后，传递这个回调的预定义字典。
-    */
+<pre><code class="language-javascript">&quot;backtrace&quot;: {
+                    &quot;contents&quot;: [
+                        {
+                            &quot;object_name&quot;: &quot;CoreFoundation&quot;,
+                            &quot;object_addr&quot;: 7134101504,
+                            &quot;symbol_name&quot;: &quot;&lt;redacted&gt;&quot;,
+                            &quot;symbol_addr&quot;: 7135249460,
+                            &quot;instruction_addr&quot;: 7135249688
+                        },
+                        ...
+                        {
+                            &quot;object_name&quot;: &quot;KSCrashLearnDemo&quot;,
+                            &quot;object_addr&quot;: 4367810560, //104578000
+                            &quot;symbol_name&quot;: &quot;-[ViewController testArrayRangeException:]&quot;,
+                            &quot;symbol_addr&quot;: 4367835524, //10457e184
+                            &quot;instruction_addr&quot;: 4367835696 //10457e230
+                        },
+                        ...
+                        ...
+                        {
+                            &quot;object_name&quot;: &quot;KSCrashLearnDemo&quot;,
+                            &quot;object_addr&quot;: 4367810560, //104578000
+                            &quot;symbol_name&quot;: &quot;main&quot;,
+                            &quot;symbol_addr&quot;: 4367835828, // 10457e2b4
+                            &quot;instruction_addr&quot;: 4367835952 // 10457e330
+                        },
+                        {
+                            &quot;object_name&quot;: &quot;libdyld.dylib&quot;,
+                            &quot;object_addr&quot;: 7129288704, // 1a8f05000
+                            &quot;symbol_name&quot;: &quot;&lt;redacted&gt;&quot;,
+                            &quot;symbol_addr&quot;: 7129295068,  //1a8f068dc
+                            &quot;instruction_addr&quot;: 7129295072 // 1a8f068e0
+                        }
+                    ],
 </code></pre>
 
-<h4 id="toc_3">2.OCMock简单示例</h4>
+<p>对应用Xcode解析出来的crash文件</p>
 
-<p><img src="media/14873831706932/14873839517952.png" alt=""/></p>
+<pre><code class="language-text">Last Exception Backtrace:
+0   CoreFoundation                  0x1a94b4518 __exceptionPreprocess + 228
+...
+3   CoreFoundation                  0x1a93c2484 -[__NSArrayM setObject:atIndexedSubscript:] + 703
+4   KSCrashLearnDemo                0x10457e230 0x104578000 + 25136
+5   UIKitCore                       0x1d58eb230 -[UIApplication sendAction:to:from:forEvent:] + 95
+...
+22  KSCrashLearnDemo                0x10457e330 0x104578000 + 25392
+23  libdyld.dylib                   0x1a8f068e0 start + 3
+</code></pre>
 
-<p>示例2：</p>
+<h2 id="toc_0">KSCrash 学习知识点</h2>
 
-<pre><code class="language-object-c">- (void)testStrictMock3{
+<h4 id="toc_1">1. 获取内存使用情况</h4>
 
-    id classMock = OCMClassMock([TweetView class]);
+<pre><code class="language-objectivec">static bool VMStats(vm_statistics_data_t* const vmStats, vm_size_t* const pageSize)
+{
+    kern_return_t kr;
+    const mach_port_t hostPort = mach_host_self();
+    
+    if((kr = host_page_size(hostPort, pageSize)) != KERN_SUCCESS)
+    {
+        KSLOG_ERROR(@&quot;host_page_size: %s&quot;, mach_error_string(kr));
+        return false;
+    }
+    
+    mach_msg_type_number_t hostSize = sizeof(*vmStats) / sizeof(natural_t);
+    kr = host_statistics(hostPort,
+                         HOST_VM_INFO,
+                         (host_info_t)vmStats,
+                         &amp;hostSize);
+    if(kr != KERN_SUCCESS)
+    {
+        KSLOG_ERROR(@&quot;host_statistics: %s&quot;, mach_error_string(kr));
+        return false;
+    }
+    
+    return true;
+}
 
-    //设置期望或预设，这个classMock需要执行addTweet方法且参数不为nil。  不然的话会抛出异常
-    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
-    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
+static uint64_t freeMemory(void)
+{
+    vm_statistics_data_t vmStats;
+    vm_size_t pageSize;
+    if(VMStats(&amp;vmStats, &amp;pageSize))
+    {
+        return ((uint64_t)pageSize) * vmStats.free_count;
+    }
+    return 0;
+}
 
-    /* 如果不执行以下代码的话会抛出异常 */
-    Tweet *testTweet = [[Tweet alloc] init];
-    testTweet.userName = @&quot;齐滇大圣&quot;;
-    [classMock addTweet:testTweet];
-
-    OCMVerifyAll(classMock);
+static uint64_t usableMemory(void)
+{
+    vm_statistics_data_t vmStats;
+    vm_size_t pageSize;
+    if(VMStats(&amp;vmStats, &amp;pageSize))
+    {
+        return ((uint64_t)pageSize) * (vmStats.active_count +
+                                       vmStats.inactive_count +
+                                       vmStats.wire_count +
+                                       vmStats.free_count);
+    }
+    return 0;
 }
 </code></pre>
 
-<p>这表示一种友好的mock，不会在没有OCMExpect或OCMStub设置类的所有方法时抛出异常。以上代码把OCMExpect和OCMStub注释掉时不会报错。</p>
+<h2 id="toc_2">参考资料:</h2>
 
-<p>还有一种表示严格的mock：OCMStrictClassMock，如果把OCMExpect和OCMStub注释掉时会报错，它要求你执行类中的所有方法，所以比较适合用来测试必须实现的方法，代码如下：</p>
-
-<pre><code class="language-object-c">- (void)testStrictMock3{
-    id classMock = OCMStrictClassMock([TweetView class]);
-    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
-    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
-
-    Tweet *testTweet = [[Tweet alloc] init];
-    testTweet.userName = @&quot;齐滇大圣&quot;;
-    [classMock addTweet:testTweet]; 
-
-    OCMVerifyAll(classMock);
-}
-</code></pre>
+<p><a href="http://jianli2017.top/wiki/IOS/crash/3_KSCrash_Analize/">KSCrash原理</a></p>
 
                         
                       </div>
@@ -262,10 +236,10 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
                 <div class="read-more clearfix">
                   <div class="more-left left">
                   
-                    <span class="date">2017/2/18</span>
+                    <span class="date">2019/4/22</span>
                     <span>posted in&nbsp;</span> 
           				  
-          					    <span class="posted-in"><a href='%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95.html'>自动化测试</a></span>
+          					    <span class="posted-in"><a href='%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7-1.html'>项目监控</a></span>
           				   
                   </div>
                   <div class="more-right right">
@@ -359,25 +333,25 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	      
 		      
 			      <li class="post">
+			        <a href="15560883411509.html">MatrixiOS学习</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="15559005276972.html">Mach-O文件结构</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
 			        <a href="15556625620569.html">pod repo update</a>
 			      </li>
 		     
 		  
 		      
 			      <li class="post">
-			        <a href="15556594680013.html"></a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
 			        <a href="15554889031358.html">otool命令</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="15554886689884.html">Mach文件</a>
 			      </li>
 		     
 		  
