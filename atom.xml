@@ -4,13 +4,186 @@
   <title><![CDATA[ACEfish-Blog]]></title>
   <link href="https://acefish.github.io/atom.xml" rel="self"/>
   <link href="https://acefish.github.io/"/>
-  <updated>2019-04-22T10:30:49+08:00</updated>
+  <updated>2019-05-21T14:42:44+08:00</updated>
   <id>https://acefish.github.io/</id>
   <author>
     <name><![CDATA[]]></name>
     
   </author>
-  <generator uri="http://www.mweb.im/">MWeb</generator>
+  <generator uri="http://www.coderforart.com/">CoderForArt</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[RACSignal]]></title>
+    <link href="https://acefish.github.io/15578383647199.html"/>
+    <updated>2019-05-14T20:52:44+08:00</updated>
+    <id>https://acefish.github.io/15578383647199.html</id>
+    <content type="html"><![CDATA[
+<p><code>RACSignal</code>继承自<code>RACStream</code>，对该抽象类的方法进行了重写实现</p>
+
+<h3 id="toc_0"><code>return</code>方法</h3>
+
+<pre><code class="language-objectivec">+ (RACSignal *)return:(id)value {
+    return [RACReturnSignal return:value];
+}
+/**
+RACReturnSignal *signal = [[self alloc] init];
+signal-&gt;_value = value;
+*/
+</code></pre>
+
+<h3 id="toc_1"><code>-bind</code>方法</h3>
+
+<pre><code class="language-objectivec">
+/**
+实现过程
+1. 订阅原始信号值
+2. 当原信号发送值时，使用bindblock对其进行转换
+3. 如果bindblock返回一个信号，订阅该信号，并在收到该信号值时，将所有值传递给接收者subscriber
+4. 如果bindblock请求终止就向原信号发出`-sendError:`消息
+5. 当所有信号完成，向订阅者发送`-sendCompleted`
+6. 无论何时 当信号发生错误，向订阅者发送-sendError: 消息
+*/
+
+- (RACSignal *)bind:(RACSignalBindBlock (^)(void))block
+</code></pre>
+
+<p><code>-bind</code>方法在原始信号每次发出消息时，执行<code>RACSignalBindBlock</code>对其进行变换生成一个新的信号</p>
+
+<p>示例:</p>
+
+<pre><code class="language-objectivec">//示例1：
+RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+    [subscriber sendNext:@1];
+    [subscriber sendNext:@2];
+    [subscriber sendNext:@3];
+    [subscriber sendNext:@4];
+    [subscriber sendCompleted];
+    return nil;
+}];
+RACSignal *bindSignal = [signal bind:^RACSignalBindBlock _Nonnull{
+    return ^(NSNumber *value, BOOL *stop) {
+        //简单的利用bind将 原始信号的值进行了一个变换
+        value = @(value.integerValue * value.integerValue);
+        return [RACSignal return:value];
+    };
+}];
+[signal subscribeNext:^(id  _Nullable x) {
+    NSLog(@&quot;signal: %@&quot;, x);
+}];
+[bindSignal subscribeNext:^(id  _Nullable x) {
+    NSLog(@&quot;bindSignal: %@&quot;, x);
+}];
+</code></pre>
+
+<h3 id="toc_2">-concat方法</h3>
+
+<pre><code class="language-objectivec">- (RACSignal *)concat:(RACSignal *)signal {
+    return [[RACSignal createSignal:^(id&lt;RACSubscriber&gt; subscriber) {
+
+        [self subscribeNext:^(id x) {
+            [subscriber sendNext:x];
+        } error:^(NSError *error) {
+            [subscriber sendError:error];
+        } completed:^{
+            [signal subscribe:subscriber];
+        }];
+    }] setNameWithFormat:@&quot;[%@] -concat: %@&quot;, self.name, signal];
+}
+</code></pre>
+
+<p>当原始信号<code>completed</code>后 subcribe contact的信号</p>
+
+<h3 id="toc_3">-concat方法</h3>
+
+<ul>
+<li>(RACSignal *)zipWith:(RACSignal *)signal</li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[RACStream]]></title>
+    <link href="https://acefish.github.io/15578193513091.html"/>
+    <updated>2019-05-14T15:35:51+08:00</updated>
+    <id>https://acefish.github.io/15578193513091.html</id>
+    <content type="html"><![CDATA[
+<p><code>RACStream</code>是继承自NSObject最基础的类，其它的子类例如<code>RCSignal</code>、<code>RACSequence</code>均继承自该类</p>
+
+<p><code>RACStream</code>作为一个抽象类存在，本身并不提供任何方法的实现，内部方法均为抽象方法，在调用时抛出异常</p>
+
+<pre><code class="language-objectivec">+ (__kindof RACStream *)empty {
+    NSString *reason = [NSString stringWithFormat:@&quot;%@ must be overridden by subclasses&quot;, NSStringFromSelector(_cmd)];
+    @throw [NSException exceptionWithName:NSInternalInconsistencyException reason:reason userInfo:nil];
+}
+- (__kindof RACStream *)bind:(RACStreamBindBlock (^)(void))block
+// return 根据该value 返回一个RACStream对象
++ (__kindof RACStream *)return:(id)value
+- (__kindof RACStream *)concat:(RACStream *)stream
+- (__kindof RACStream *)zipWith:(RACStream *)stream
+
+</code></pre>
+
+<p>但是在RACStream的Operations分类<code>RACStream (Operations)</code>提供了更丰富的方法</p>
+
+<pre><code class="language-objectivec">//对信号的值进行map映射
+- (__kindof RACStream *)flattenMap:(__kindof RACStream * (^)(id value))block {
+    Class class = self.class;
+
+    return [[self bind:^{
+        return ^(id value, BOOL *stop) {
+            id stream = block(value) ?: [class empty];
+            NSCAssert([stream isKindOfClass:RACStream.class], @&quot;Value returned from -flattenMap: is not a stream: %@&quot;, stream);
+
+            return stream;
+        };
+    }] setNameWithFormat:@&quot;[%@] -flattenMap:&quot;, self.name];
+}
+- (__kindof RACStream *)flatten
+- (__kindof RACStream *)map:(id (^)(id value))block
+- (__kindof RACStream *)mapReplace:(id)object
+
+//根据规则过滤
+- (__kindof RACStream *)filter:(BOOL (^)(id value))block
+- (__kindof RACStream *)ignore:(id)value
+
+//对RACTuple中每个值进行处理 
+- (__kindof RACStream *)reduceEach:(RACReduceBlock)reduceBlock
+
+//将RACStream 前拼上一个新的值
+- (__kindof RACStream *)startWith:(id)value
+
+//跳过固定个数的值
+- (__kindof RACStream *)skip:(NSUInteger)skipCount
+//接收前固定个数的值
+- (__kindof RACStream *)take:(NSUInteger)count
+
+//将一组Stream按照block的规则合并为一个  
++ (__kindof RACStream *)join:(id&lt;NSFastEnumeration&gt;)streams block:(RACStream * (^)(id, id))block
++ (__kindof RACStream *)zip:(id&lt;NSFastEnumeration&gt;)streams
++ (__kindof RACStream *)zip:(id&lt;NSFastEnumeration&gt;)streams reduce:(RACGenericReduceBlock)reduceBlock
+
+//一组Stream contact(连接)
++ (__kindof RACStream *)concat:(id&lt;NSFastEnumeration&gt;)streams
+
+//用初始值开始reduce 返回每次block之后的结果
+- (__kindof RACStream *)scanWithStart:(id)startingValue reduceWithIndex:(id (^)(id, id, NSUInteger))reduceBlock
+
+//忽略不符合条件的
+- (__kindof RACStream *)takeUntilBlock:(BOOL (^)(id x))predicate
+- (__kindof RACStream *)takeWhileBlock:(BOOL (^)(id x))predicate
+
+//忽略不符合条件的 直到第一个符合条件的
+- (__kindof RACStream *)skipUntilBlock:(BOOL (^)(id x))predicate
+- (__kindof RACStream *)skipWhileBlock:(BOOL (^)(id x))predicate
+
+//忽略未改变值的改变
+- (__kindof RACStream *)distinctUntilChanged
+</code></pre>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[MatrixiOS学习]]></title>
@@ -131,6 +304,14 @@ exit函数运行时首先会执行由atexit()函数登记的函数，然后会�
 
 <p>Matrix中对应用被杀原因检测<br/>
 <img src="media/15560883411509/15562491518956.jpg" alt="" style="width:500px;"/></p>
+
+<h4 id="toc_8">8.获取CPU</h4>
+
+<p><code>WCCPUHandler</code>文件中对于CPU usage的计算</p>
+
+<h4 id="toc_9">9.获取线程信息</h4>
+
+<p><code>WCGetMainThreadUtil</code>文件中使用基于KSCrash获取堆栈</p>
 
 ]]></content>
   </entry>
@@ -912,159 +1093,6 @@ objc_msgSend调用频率最高，本身是用汇编语言写的，可以提高ap
 
 <p>Fackbook开源了一个库，可以再iOS上运行的Mach-O二进制文件中动态地重新绑定符号，<strong>fishhook</strong><a href="https://github.com/facebook/fishhook">源码地址</a></p>
 
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LLDB]]></title>
-    <link href="https://acefish.github.io/15541740415551.html"/>
-    <updated>2019-04-02T11:00:41+08:00</updated>
-    <id>https://acefish.github.io/15541740415551.html</id>
-    <content type="html"><![CDATA[
-<p>学习自 <a href="https://juejin.im/post/5c8ca84ce51d456f43189dbd">LLDB 知多少</a></p>
-
-<p>LLDB是一个有着REPL的特性和C++、Python插件的开源调试器<br/>
-LLDB是下一代高性能调试器。 它由一组可重用的组件构建，可以高度利用较大的LLVM项目中的现有库，例如Clang表达式解析器和LLVM反汇编程序。<br/>
-LLDB是Mac OS X上Xcode的默认调试器，支持在桌面和iOS设备和模拟器上调试C，Objective-C和C ++。</p>
-
-<h2 id="toc_0">LLDB命令结构</h2>
-
-<p>LLDB命令通用结构:</p>
-
-<pre><code class="language-c">&lt;command&gt;[&lt;subcommand&gt; [&lt;subcommand&gt;...]] &lt;action&gt; [-options [option-value]] [argument [argument...]]
-</code></pre>
-
-<ul>
-<li>commond、subcommond：LLDB调试命令的名称。命令和子命令按照层级结构来排列:一个命令对象为跟随其的子命令对象创建一个上下文，子命令又为其子命令创建一个上下文，以此类推</li>
-<li>action：命令操作，想在前面的命令序列的上下文中执行的一些操作</li>
-<li>options：命令选项，行为修改器。通常带有一些值</li>
-<li>argument：命令参数，根据使用的命令的上下文来表示不同的东西</li>
-<li>[]：表示命令可选</li>
-</ul>
-
-<p>例如:<br/>
-<code>breakpoint set -n main</code> <br/>
-command为breakpoint、action为set、option即为-n表示根据方法name设置断点、argument：main表示方法名main</p>
-
-<h4 id="toc_1">原始命令</h4>
-
-<p>LLDB支持不带命令选项的原始命令，原始命令会将命令后面的所有东西当做参数(arguement)处理。但很多原始命令也可以带命令选项，当你使用命令选项的时候，需要在命令选项<strong>后面</strong>加<code>--</code>区分命令选项和参数。<br/>
-例如： <br/>
-<code>expression</code>(就是<code>p</code>/<code>print</code>/<code>call</code>)、<code>expression -o</code>(就是 <code>po</code>)，我们用这两个命令打印一下一个<code>UIView</code>的地址</p>
-
-<pre><code class="language-objectivec">//调用对象的description方法
-(lldb) po 0x7fe8a201b400
-&lt;UITableView: 0x7fe8a201b400; frame = (0 0; 0 0); clipsToBounds = YES; gestureRecognizers = &lt;NSArray: 0x600001c072a0&gt;; layer = &lt;CALayer: 0x6000012029e0&gt;; contentOffset: {0, 0}; contentSize: {0, 0}; adjustedContentInset: {0, 0, 0, 0}&gt;
-
-//计算地址的值
-(lldb) expression 0x7fa3b981ee00
-(long) $0 = 140341168696832
-
-(lldb) p 0x7fa3b981ee00
-(long) $1 = 140341168696832
-
-//expression即为一个原始命令 为了告诉其 -o为命令选项而不是参数 需要加上 --
-(lldb) expression -o -- 0x7fa3b981ee00
-&lt;UITableView: 0x7fa3b981ee00; frame = (0 0; 0 0); clipsToBounds = YES; gestureRecognizers = &lt;NSArray: 0x600001e19ce0&gt;; layer = &lt;CALayer: 0x600001001420&gt;; contentOffset: {0, 0}; contentSize: {0, 0}; adjustedContentInset: {0, 0, 0, 0}&gt;
-
-(lldb) expression -object -- 0x7fa3b981ee00
-&lt;UITableView: 0x7fa3b981ee00; frame = (0 0; 0 0); clipsToBounds = YES; gestureRecognizers = &lt;NSArray: 0x600001e19ce0&gt;; layer = &lt;CALayer: 0x600001001420&gt;; contentOffset: {0, 0}; contentSize: {0, 0}; adjustedContentInset: {0, 0, 0, 0}&gt;
-</code></pre>
-
-<blockquote>
-<p>假如前n个字母已经能匹配到某个命令，则只写前n个命令等效于写下完整的命令。</p>
-</blockquote>
-
-<h2 id="toc_2">LLDB常用命令</h2>
-
-<h3 id="toc_3">apropos 辅助记忆</h3>
-
-<p>当不能完全记得某个命令时，使用<code>apropos</code>通过命令中的关键字获取相关命令信息</p>
-
-<p><img src="media/15541740415551/15541870365461.jpg" alt=""/></p>
-
-<h3 id="toc_4">断点设置</h3>
-
-<p>使用断点命令，实现图形化界面不好实现的功能</p>
-
-<ol>
-<li>breakpoint list: 查看所有断点列表</li>
-<li>breakpoint delete: 删除所有断点（可以跟上组号，表示删除指定组）</li>
-<li>breakpoint disable/enable: 禁用 启用指定断点</li>
-<li>breakpoint set -r some：遍历项目中包含some这个字符所有方法并设置断点</li>
-<li>breakpoint 支持按文件名、函数名、行数、正则等各种条件筛选设置断点</li>
-<li>watchpoint set expression 0x10cc64d50: 在内存中为地址为0x10cc64d50的对象设置内存断点</li>
-<li>target stop-hook add -o &quot;frame variable&quot;: 添加每次程序stop时都希望执行的命令</li>
-<li>target stop-hook、watchpoint 的增删改查命令与 breakpoint 的基本相同</li>
-<li>等等</li>
-</ol>
-
-<h3 id="toc_5">流程控制</h3>
-
-<ol>
-<li><p>图一<br/>
-<img src="media/15541740415551/15541893007015.jpg" alt=""/></p></li>
-<li><p>图二<br/>
-<img src="media/15541740415551/15541893330198.jpg" alt=""/></p></li>
-</ol>
-
-<ul>
-<li>第一个按钮：continue/c 继续执行</li>
-<li>第二个按钮：
-<ul>
-<li>图一： thread step-over/next/n 当前线程下一步（以一个完整子函数为一步）</li>
-<li>图二： thread step-inst-over/ni 当前线程下一步（以一个汇编函数为一步）</li>
-</ul></li>
-<li>第三个按钮：
-<ul>
-<li>图一： thread step-in/step/s 当前线程下一步（遇到子函数就进入并且继续单步执行）</li>
-<li>图二： thread step-inst-over/si 当前线程下一步（遇到汇编函数就进入并且继续单步执行汇编指令）</li>
-</ul></li>
-<li>第四个按钮：thread step-out/finish 退出当前帧栈</li>
-</ul>
-
-<p><strong>其他命令</strong></p>
-
-<ul>
-<li>thread return: 有一个可选参数，在执行时它会把可选参数加载进返回寄存器里，然后立刻执行返回命令，跳出当前栈帧。这意味这函数剩余的部分不会被执行。这会给 ARC 的引用计数造成一些问题，或者会使函数内的清理部分失效。但是在函数的开头执行这个命令，是个非常好的隔离次函数、伪造返回值的方式。</li>
-</ul>
-
-<h3 id="toc_6">可执行文件&amp;共享库查询命令</h3>
-
-<p>这些命令常用于逆向和定位错误时</p>
-
-<ol>
-<li>image list: 列出主要的可执行文件和所有依赖的共享库。</li>
-<li><p>image lookup --address 0x1ec4：在可执行文件或者任何共享库中查找原始地址信息</p></li>
-<li><p>image lookup -v --address 0x1ec4：查找完整的源代码行信息。</p></li>
-<li><p>image lookup --type NSString：根据名称查找对应（NSString）类型的信息。</p></li>
-</ol>
-
-<h3 id="toc_7">其它常用命令模板</h3>
-
-<ul>
-<li><code>register read</code>：显示当前线程的通用寄存器。</li>
-<li><code>register write rax 123</code>：将一个新的十进制值“123”写入当前线程寄存器“rax”。</li>
-<li><code>memory read --size 4 --format x --count 4 0xbffff3c0</code>：从地址0xbffff3c0读取内存，并显示4个十六进制uint32_t值。</li>
-</ul>
-
-<h2 id="toc_8">插件</h2>
-
-<ol>
-<li>推荐插件一： facebook 开源的 LLDB 插件 <a href="https://github.com/facebook/chisel">chisel</a></li>
-<li>推荐插件二：<a href="https://github.com/DerekSelander/LLDB">DerekSelander/LLDB</a></li>
-</ol>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[可变数组的实现原理]]></title>
-    <link href="https://acefish.github.io/15541732018193.html"/>
-    <updated>2019-04-02T10:46:41+08:00</updated>
-    <id>https://acefish.github.io/15541732018193.html</id>
-    <content type="html"><![CDATA[
 
 ]]></content>
   </entry>
