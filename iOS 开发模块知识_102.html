@@ -82,109 +82,45 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14873150230777.html">并发编程基础知识</a></h1>
-			<p class="meta"><time datetime="2017-02-17T15:03:43+08:00" 
-			pubdate data-updated="true">2017/2/17</time></p>
+		  	<h1 class="entry-title"><a href="15554670188763.html">ARC环境下规则</a></h1>
+			<p class="meta"><time datetime="2019-04-17T10:10:18+08:00" 
+			pubdate data-updated="true">2019/4/17</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>基础容易混淆知识:</p>
+		  	<h2 id="toc_0">1. ARC有效时 禁止使用retain或者release代码</h2>
+
+<h2 id="toc_1">2. 不能使用NSAllocateObject/NSDeallocObject代码</h2>
+
+<pre><code class="language-text">使用alloc方法会通过`NSAllocateObject`函数生成并持有对象，但是在ARC有效时禁止使用类似函数
+</code></pre>
+
+<h2 id="toc_2">3. 要遵守内存管理命名规则</h2>
 
 <ol>
-<li><p>串行(Serial) VS. 并行(Concurrent)<br/>
-串行和并行描述的是任务和任务之间的执行方式. 串行是任务A执行完了任务B才能执行, 它们俩只能顺序   执行. 并行则是任务A和任务B可以同时执行.</p></li>
-<li><p>同步(Synchronous) VS. 异步(Asynchronous)<br/>
-同步和异步描述的其实就是函数什么时候返回. 比如用来下载图片的函数A: {download image}, 同步函数只有在image下载结束之后才返回, 下载的这段时间函数A只能搬个小板凳在那儿坐等... 而异步函数, 立即返回. 图片会去下载, 但函数A不会去等它完成. So, 异步函数不会堵塞当前线程去执行下一个函数!</p></li>
-<li><p>并发(Concurrency) VS. 并行(Parallelism)</p>
-<blockquote>
-<p>并发是程序的属性(property of the program), 而并行是计算机的属性(property of the machine).<br/>
-<img src="media/14873150230777/14873157020644.png" alt=""/></p>
-</blockquote>
-<p>并行和并发都是用来让不同的任务可以&quot;同时执行&quot;, 只是并发是伪同时, 而并行是真同时. 假设你有任务T1和任务T2(这里的任务可以是进程也可以是线程):</p>
-<blockquote>
-<p>其实我们平常说的并发编程包括狭义上的&quot;并行&quot;和&quot;并发&quot;, 你不能保证你的代码会被并行执行, 但你可以以并发的方式设计你的代码. 系统会判断在某一个时刻是否有可用的core(多核CPU核心), 如果有就并行(parallelism)执行, 否则就用context switch来分时并发(concurrency)执行. 最后再以Ray大神的话结尾: Parallelism requires Concurrency, but Concurrency does not guarantee Parallelism!</p>
-</blockquote></li>
+<li>在ARC和非ARC环境下，以<code>alloc</code>、<code>new</code>、<code>copy</code>、<code>mutableCopy</code>开头的方法 应该返回调用者应当持有的对象</li>
+<li>在ARC环境下 以<code>init</code>开头的方法必须为构造器方法</li>
 </ol>
 
-<h1 id="toc_0">iOS多线程</h1>
+<h2 id="toc_3">4. 不要显式调用dealloc</h2>
 
-<h2 id="toc_1">1.Pthrea</h2>
+<pre><code class="language-text">在ARC有效时，不需要调用`super dealloc`
+</code></pre>
 
-<p>可以自己了解</p>
+<h2 id="toc_4">5. 用@autoreleasepool 代替 NSAutoreleasePool</h2>
 
-<h2 id="toc_2">2.NSThread</h2>
+<p>在ARC无效时也推荐使用@autoreleasepool block</p>
 
-<p>经过苹果封装后直接面对对象的，可以直接操控线程对象，但是生命周期需要我们自己管理，偶尔使用。例如<strong>NSThrea mainthread</strong>可以获取当前线程类，知道当前线程的各种属性用于调试  </p>
+<h2 id="toc_5">6. 不能使用NSZone</h2>
 
-<h3 id="toc_3">创建线程并启动</h3>
+<h2 id="toc_6">7. 对象型变量不能作为C语言结构体成员</h2>
 
-<ul>
-<li>先创建再启动<br/>
-<code>NSThread *thread = [[NSThread alloc] initWithTarget:self selector:@selector(run:) object:nil];
-[thread start];</code></li>
-<li><p>创建并启动<br/><br/>
-<code>[NSThread detachNewThreadSelector:@selector(run:) toTarget:self withObject:nil];</code>  </p>
-<ul>
-<li>用oc方法创建启动（不安全）<br/>
-<code>[self performSelectorInBackground:@selector(run:) withObject:nil];</code><br/></li>
-<li><p>其他方法  </p>
-<p>//取消线程</p>
-<ul>
-<li>(void)cancel;</li>
-</ul>
-<p>//启动线程</p>
-<ul>
-<li>(void)start;</li>
-</ul>
-<p>//判断某个线程的状态的属性<br/>
-@property (readonly, getter=isExecuting) BOOL executing;<br/>
-@property (readonly, getter=isFinished) BOOL finished;<br/>
-@property (readonly, getter=isCancelled) BOOL cancelled;</p>
-<p>//设置和获取线程名字<br/>
--(void)setName:(NSString *)n;<br/>
--(NSString *)name;</p>
-<p>//获取当前线程信息</p>
-<ul>
-<li>(NSThread *)currentThread;</li>
-</ul>
-<p>//获取主线程信息</p>
-<ul>
-<li>(NSThread *)mainThread;</li>
-</ul>
-<p>//使当前线程暂停一段时间，或者暂停到某个时刻</p>
-<ul>
-<li>(void)sleepForTimeInterval:(NSTimeInterval)time;</li>
-<li>(void)sleepUntilDate:(NSDate *)date; </li>
-</ul></li>
-</ul></li>
-</ul>
+<pre><code class="language-text">因为OC变量由编译器负责ARC的生命周期，但是C语言中没有对结构体成员的生存周期。因此，如果要在结构体中使用OC变量，可以将变量显式转换为`void *`类型（见下一条），或者使用`__unsafe__retained`修饰符(使用此修饰符表示其不属于编译器内存管理的对象)
+</code></pre>
 
-<h3 id="toc_4">从其他线程回到主线程的方法</h3>
+<h2 id="toc_7">8. 显式转换id和void *</h2>
 
-<ul>
-<li><h5 id="toc_5">NSThread</h5>
-<pre><code class="language-text">//Objective-C
-[self performSelectorOnMainThread:@selector(run) withObject:nil waitUntilDone:NO];<br/>
-//Swift<br/>
-//swift 取消了 performSelector 方法。
-</code></pre></li>
-<li><h5 id="toc_6">GCD</h5>
-<pre><code class="language-text">//Objective-C
-dispatch_async(dispatch_get_main_queue(), ^{<br/>
-});<br/>
-//Swift<br/>
-dispatch_async(dispatch_get_main_queue(), { () -&gt; Void in<br/>
-})
-</code></pre></li>
-<li><h5 id="toc_7">NSOperationQueue</h5>
-<pre><code class="language-text">//Objective-C
-[[NSOperationQueue mainQueue] addOperationWithBlock:^{<br/>
-}];<br/>
-//Swift<br/>
-NSOperationQueue.mainQueue().addOperationWithBlock { () -&gt; Void in<br/>
-}
-</code></pre></li>
-</ul>
+<p>详情见CoreFoundation和Foundation对象转换</p>
 
 
 		</div>
@@ -207,8 +143,10 @@ NSOperationQueue.mainQueue().addOperationWithBlock { () -&gt; Void in<br/>
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -220,11 +158,9 @@ NSOperationQueue.mainQueue().addOperationWithBlock { () -&gt; Void in<br/>
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -309,31 +245,31 @@ NSOperationQueue.mainQueue().addOperationWithBlock { () -&gt; Void in<br/>
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

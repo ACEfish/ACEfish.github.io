@@ -82,404 +82,122 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14873146865194.html">NSOperation</a></h1>
-			<p class="meta"><time datetime="2017-02-17T14:58:06+08:00" 
-			pubdate data-updated="true">2017/2/17</time></p>
+		  	<h1 class="entry-title"><a href="14905958336865.html">图层时间</a></h1>
+			<p class="meta"><time datetime="2017-03-27T14:23:53+08:00" 
+			pubdate data-updated="true">2017/3/27</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><a href="http://www.jianshu.com/p/4b1d77054b35">NSOperation</a><br/>
-与GCD相比好处:</p>
+		  	<p>我们可以用<code>CAAnimation</code>和它的子类实现的多种图层动画。但是动画是需要持续时间的,因此我们来学习一下计时的<code>CAMediaTiming</code>，跟踪时间。</p>
 
-<ol>
-<li>NSOperation是基于GCD之上的更高一层封装, 拥有更多的API(e.g. suspend, resume, cancel等等).</li>
-<li>在NSOperationQueue中, 可以指定各个NSOperation之间的依赖关系</li>
-<li>用KVO可以方便的监测NSOperation的状态(isExecuted, isFinished, isCancelled).</li>
-<li>更高的可定制能力, 你可以继承NSOperation实现可复用的逻辑模块.</li>
-</ol>
+<h3 id="toc_0">CAMediaTiming 协议</h3>
 
-<h2 id="toc_0">NSOperation和NSOperationQueue</h2>
+<p><code>CAMediaTiming</code> 协议定义了<strong>在一段动画内用来控制逝去时间的属性的集合</strong>。<code>CALayer</code> 和<code>CAAnimation</code>都实现了这个协议，所以时间可以被任意基于一个图层或者一段动画的类控制。</p>
 
-<p>NSOpration是苹果公司对GCD的封装，NSOperation和MSOprationQueue分别对应GCD中的任务和队列<br/><br/>
-因此操作步骤如下：  </p>
+<h4 id="toc_1">持续和重复</h4>
 
-<ol>
-<li>将要执行的任务封装到NSOperation对象中</li>
-<li>将任务添加到一个NSOprationQueue对象中<br/>
-###添加任务
-<code>NSOperation</code>是一个抽象类，所以不能封装任务。但他有两个子类可以封装任务。分别为：NSInvocationOperation和NSBlockOperation。创建之后需要start启动，默认<strong>在当前队列同步执行</strong>当然也可以用<code>cancle</code>在中途取消任务</li>
-</ol>
+<p><code>duration</code>(<code>CAMediaTiming</code>的属性之一)是<code>CFTimeInterval</code>类型(双精度浮点型),对将要进行的动画的一次迭代指定了时间。<br/>
+<code>repeatCount</code>(<code>CAMediaTiming</code>的属性之一)，代表动画重复的迭代次数。<br/>
+通过上面两个属性我们可以创建重复动画</p>
 
-<p>在不使用NSOperationQueue，单独使用NSOperation的情况下系统同步执行操作:</p>
+<p>创建重复动画的另外方式:<br/>
+<code>repeatDuration</code>属性。它让动画重复一个指定的时间，而不是指定次数。如果我们将 <code>repeatDuration</code>设置为<code>INFINITY</code>(无限大)动画无限循环播放，设置<code>repeatCount</code>为<code>INFINITY</code>也有同样的效果。(但是<strong>这两个属性我们只能设置一个</strong>)<br/>
+<code>autoreverses</code>属性,设置是否在每次间隔交替循环过程中自动回放（常用于播放非循环动画）。</p>
 
-<pre><code class="language-text">//1.创建NSInvocationOperation对象
-  NSInvocationOperation *operation = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(run) object:nil];
+<h4 id="toc_2">相对时间</h4>
 
-  //2.开始执行
-  [operation start];   
+<p><code>beginTime</code>指定了动画开始之前的的延迟时间（默认是0即立刻执行）。<br/>
+设置beginTime属性为：要延迟的时间（单位为秒）+ CACurrentMediaTime(); </p>
+
+<p><code>speed</code>是一个时间的倍数，默认<code>1.0</code>，减少它会减慢图层/动画的时间，增加它会加快速度。如果2.0的速度，那么对于一个 duration 为1的动画，实际上在0.5秒的时候就已经完成了。</p>
+
+<p><code>timeOffset</code>和<code>beginTime</code>类似，但是和增加<code>beginTime</code>导致的延迟动画不同，增加<code>timeOffset</code>只是让动画快进到某一点，例如，对于一个持续1秒的动画来说，设置<code>timeOffset</code>为0.5意味着动画将从一半的地方开始。<br/>
+和<code>beginTime</code>不同的是，<code>timeOffset</code>并不受 <code>speed</code> 的影响。所以如果你把<code>speed</code> 设为2.0，把 <code>timeOffset</code> 设置为0.5，那么你的动画将从动画最后结束的地方开始，因为1秒的动画实际上被缩短到了0.5秒。然而即使使用了 <code>timeOffset</code>让动画从结束的地方开始，它仍然播放了一个完整的时长，这个动画仅仅是循环了一圈，然后从头开始播放。</p>
+
+<h4 id="toc_3">fillMode</h4>
+
+<p><code>fillMode</code> 属性是一个<code>NSString</code>类型，接受以下常量:</p>
+
+<pre><code class="language-objectivec">kCAFillModeForwards
+kCAFillModeBackwards
+kCAFillModeBoth
+kCAFillModeRemoved//默认
 </code></pre>
 
-<pre><code class="language-object-c">/**[]()
-    在没有使用NSOperationQueue、单独使用NSInvocationOperation的情况下，
-    NSInvocationOperation在主线程执行操作，并没有开启新线程。
-*/
+<p>默认是 <code>kCAFillModeRemoved</code>，当动画不再播放的时候就显示图层模型指定的值</p>
+
+<p>向前，向后或者即向前又向后去填充动画状态，使得动画在开始前或者结束后仍然保持开始和结束那一刻的值。<br/>
+这就对避免在动画结束的时候急速返回提供另一种方案。但是，需要把 removeOnCompletion 设置为 NO ，另外需要给动画添加一个非空的键，于是可以在不需要动画的时候把它从图层上移除.</p>
+
+<h3 id="toc_4">层级关系时间</h3>
+
+<p>动画时间也是有层级关系的,每个动画和图层在时间上都有它自己的层级概念,相对于父图层.对图层调整时间将会影响到它本身和子图层的动画，但不会影响到父图层（图层的时间属性）。类似的使用<code>CAAnimationGroup</code>时将动画都被按照层级组合.(CAAnimationGroup将动画层级组合)（动画属性）</p>
+
+<p>对<code>CALayer</code>或者 <code>CAGroupAnimation</code> 调整 <code>duration</code> 和 <code>repeatCount / repeatDuration</code> 属性并不会影响到子动画。但是 <code>beginTime</code>， <code>timeOffset</code> 和 <code>speed</code> 属性将会影响到子动画。<code>beginTime</code>指定了父图层开始动画（或者组合关系中的父动画）和对象将要开始自己动画之间的偏移。调整<code>CALayer</code> 和<code>CAGroupAnimation</code>的 <code>speed</code> 属性将会对动画以及子动画速度应用一个缩放的因子。</p>
+
+<h4 id="toc_5">全局时间和本地时间</h4>
+
+<p>全局时间:<br/>
+CoreAnimation有一个全局时间的概念，也就是所谓的马赫时间（“马赫”实际上是iOS和Mac OS系统内核的命名）（返回了设备自从上次启动后的秒数）。马赫时间在设备上所有进程都是全局的--但是在不同设备上并不是全局的.</p>
+
+<pre><code class="language-objectivec">//CACurrentMediaTime 函数来访问马赫时间
+CFTimeInterval time = CACurrentMediaTime();
 </code></pre>
 
-<pre><code class="language-text">   在swift中这种方法是不是类型安全的（推荐第二种）
+<p>这个值我们并不关心,但是它对我们的对时间实测提供了一个基准,可以提供相对值.</p>
 
+<p><strong>注意</strong><br/>
+当设备休眠的时候马赫时间会暂停，也就是所有的<code>CAAnimations</code>（基于马赫时间）同样也会暂停。因此马赫时间对长时间测量并不有用。比如用 CACurrentMediaTime 去更新一个实时闹钟并不明智。</p>
 
-//1.创建NSBlockOperation对象
-  NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
-      NSLog(@&quot;%@&quot;, [NSThread currentThread]);
-  }];
+<p>本地时间:<br/>
+每个 CALayer 和 CAAnimation 实例都有自己本地时间的概念，是根据父图层/动画层级关系中的 beginTime ， timeOffset 和 speed 属性计算出来的.</p>
 
-  //2.开始任务
-  [operation start];
+<p>类似坐标系转换：</p>
+
+<pre><code class="language-objectivec">- (CFTimeInterval)convertTime:(CFTimeInterval)t fromLayer:(CALayer *)layer;
+- (CFTimeInterval)convertTime:(CFTimeInterval)t toLayer:(CALayer *)layer;
 </code></pre>
 
-<p>默认会在当前线程中执行。但是<code>NSBlockOperation</code>还有一个方法<code>addExecutionBlock:</code>，通过这个方法会给Operation添加多个执行Block。这样的话Operation中的任务会并发执行，他会在主线程和其他多个线程执行这些任务</p>
+<h4 id="toc_6">暂停，倒回和快进</h4>
 
-<pre><code class="language-objectivec"> //1.创建NSBlockOperation对象
-  NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
-      NSLog(@&quot;%@&quot;, [NSThread currentThread]);
-  }];
+<p>设置动画的<code>speed</code>属性为0可以暂停动画，但在动画被添加到图层之后不太可能再修改它了，所以不能对正在进行的动画使用这个属性(注意这是动画的speed属性)。</p>
 
-  //添加多个Block
-  for (NSInteger i = 0; i &lt; 5; i++) {
-      [operation addExecutionBlock:^{
-          NSLog(@&quot;第%ld次：%@&quot;, i, [NSThread currentThread]);
-      }];
-  }
+<p>如果移除图层正在进行的动画，图层将会急速返回动画之前的状态。但如果在动画移除之前拷贝呈现图层到模型图层，动画将会看起来暂停在那里。但是不好的地方在于不能再恢复动画了。<br/>
+给图层添加一个<code>CAAnimation</code>实际上是给动画对象做了一个不可改变的拷贝，所以对原始动画对象属性的改变对真实的动画并没有作用。相反，直接用 <code>- animationForKey:</code> 来检索图层正在进行的动画可以返回正确的动画对象，但是修改它的属性将会抛出异常。</p>
 
-  //2.开始任务
-  [operation start];
-  /**
-    可以看出，blockOperationWithBlock:方法中的操作是在主线程中执行的，而
-    addExecutionBlock:方法中的操作是在其他线程中执行的。
-  */
+<p>暂停的方法：<br/>
+可以利用<code>CAMediaTiming</code>来暂停图层本身。如果把图层的 <code>speed</code> 设置成0，它会暂停任何添加到图层上的动画。类似的，设置<code>speed</code> 大于1.0将会快进，设置成一个负值将会倒回动画。</p>
+
+<p>通过增加主窗口图层的speed，可以暂停整个应用程序的动画.我们可以利用改变speed来加速所有视图动画来进行自动化测试.</p>
+
+<pre><code class="language-objectivec">self.window.layer.speed = 100;
 </code></pre>
 
-<hr/>
+<h3 id="toc_7">手动动画</h3>
 
-<h2 id="toc_1">自定义Operation</h2>
+<p>我们可以通过设置动画<code>speed</code>属性为0,禁用动画的自动播放,然后通过设置<code>timeOffset</code>来显示动画序列.这样就可以运用手势来控制动画.</p>
 
-<p>除了上面的两种 Operation 以外，我们还可以自定义 Operation。自定义 Operation 需要继承 NSOperation 类，并实现其 main() 方法，因为在调用 start() 方法的时候，内部会调用 main() 方法完成相关逻辑。<br/>
-在没有使用NSOperationQueue、单独使用自定义子类的情况下，是在主线程执行操作，并没有开启新线程。</p>
+<p>例如:</p>
 
-<p>注意:<br/>
-<code>NSOperation</code>可以自己独立执行(直接调用<code>[operation start]</code>), 也可以放到<code>NSOperationQueue</code>里面执行, 这两种情况下是否并发执行是不同的.</p>
-
-<h5 id="toc_2">1. non-concurrent</h5>
-
-<p>NSOperation默认是非并发的(non-concurrent),果你把operation放到某个线程执行, 它会一直block住该线程, 直到<code>operation finished</code>.<br/>
-对于非并发的operation你只需要继承NSOperation, 然后重写main()方法即可<br/>
-示例:下载一张:</p>
-
-<pre><code class="language-object-c">/**
-    由于NSOperation是可以cancel的, 所以你需要在operation程序内部执行过程中判断当前
-    operation是否已经被cancel了(isCancelled). 如果已经被cancel那就不往下执行了. 当你在外面
-    调用[operation cancel]后, isCancelled会被置为YES.
-*/
-
-@implementation YourOperation 
-
-- (void)main 
+<pre><code class="language-objectivec">//设置平移手势
+- (void)pan:(UIPanGestureRecognizer *)pan
 {
-    @autoreleasepool {
-
-        if (self.isCancelled) return;
-
-        NSData *imageData = [[NSData alloc] initWithContentsOfURL:imageURL];
-
-        if (self.isCancelled) { imageData = nil; return; }
-
-        if (imageData) {
-            UIImage *downloadedImage = [UIImage imageWithData:imageData];
-        }
-
-        imageData = nil;
-
-        if (self.isCancelled) return;
-
-        [self.delegate performSelectorOnMainThread:@selector(imageDownloaderDidFinish:)                                                                  
-                                        withObject:downloadedImage
-                                     waitUntilDone:NO];
-    }
+    //get horizontal component of pan gesture
+    CGFloat x = [pan translationInView:self.view].x;
+    //convert from points to animation duration //using a reasonable scale factor
+    x /= 200.0f;
+    //update timeOffset and clamp result
+    CFTimeInterval timeOffset = self.doorLayer.timeOffset;
+    timeOffset = MIN(0.999, MAX(0.0, timeOffset - x));
+    self.doorLayer.timeOffset = timeOffset;
+    //reset pan gesture
+    [pan setTranslation:CGPointZero inView:self.view];
 }
-
-@end
 </code></pre>
 
-<h5 id="toc_3">1. Concurrent</h5>
+<p>其实如果是这样的话,对于比较复杂的动画我们可以这样的方法,但是对于比较简单图层我们完全可以直接用移动手势来设置图层<code>transform</code>,</p>
 
-<p>NSOperation有三个状态量isCancelled, isExecuting和isFinished. isCancelled上面解释过. main函数执行完成后, isExecuting会被置为NO, 而isFinished则被置为YES.</p>
-
-<p>那肿么实现并发(concurrent)的NSOperation呢? 也很简单:<br/>
-1). 重写isConcurrent函数, 返回YES, 这个告诉系统各单位注意了我这个operation是要并发的.<br/>
-2). 重写start()函数.<br/>
-3). 重写isExecuting和isFinished函数<br/>
-4). 有必要时需要重写isCanceled函数</p>
-
-<blockquote>
-<p>为什么在并发情况下需要自己来设定isExecuting和isFinished这两个状态量呢? 因为在并发情况下系统不知道operation什么时候finished, operation里面的task一般来说是异步执行的, 也就是start函数返回了operation不一定就是finish了, 这个你自己来控制, 你什么时候将isFinished置为YES(发送相应的KVO消息), operation就什么时候完成了.</p>
-</blockquote>
-
-<pre><code class="language-object-c">- (BOOL)isConcurrent {
-    return YES;
-}
-
-- (void)start 
-{
-    [self willChangeValueForKey:@&quot;isExecuting&quot;];
-    _isExecuting = YES;
-    [self didChangeValueForKey:@&quot;isExecuting&quot;];
-
-    NSURLRequest * request = [NSURLRequest requestWithURL:imageURL];
-    _connection = [[NSURLConnection alloc] initWithRequest:request
-                                                  delegate:self];
-    if (_connection == nil) [self finish];
-}
-
-- (void)finish
-{
-    self.connection = nil;
-
-    [self willChangeValueForKey:@&quot;isExecuting&quot;];
-    [self willChangeValueForKey:@&quot;isFinished&quot;];
-
-    _isExecuting = NO;
-    _isFinished = YES;
-
-    [self didChangeValueForKey:@&quot;isExecuting&quot;];
-    [self didChangeValueForKey:@&quot;isFinished&quot;];
-}
-
-#pragma mark - NSURLConnection delegate
-- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
-    // to do something...
-}
-
-- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
-    // to do something...
-}
-
-- (void)connectionDidFinishLoading:(NSURLConnection *)connection {
-    [self finish];
-}
-
-- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
-    [self finish];
-}
-
-@end
-</code></pre>
-
-<p>还有以下几点需要注意:</p>
-
-<ul>
-<li> operation的executing和finished状态量需要用willChangeValueForKey/didChangeValueForKey来触发KVO消息.</li>
-<li> 在调用完NSURLConnection之后start函数就返回了, 后面就坐等connection的回调了</li>
-<li> 在connection的didFinish或didFail回调里面设置operation的finish状态, 告诉系统operation执行完毕了.</li>
-</ul>
-
-<p><strong>注意:</strong><br/>
-如果你是在主线程调用的这个并发的operation, 那一切都是非常的perfect, 就算你当前在操作UI也不影响operation的下载操作. BUT, 如果你是在子线程调用的, 或者把operation加到了非main queue, 那么问题来了, 你会发现这货的NSURLConnection delegate不走了.</p>
-
-<blockquote>
-<p>这是runLoop的原因，主线程会自动创建一个RunLoop来保证程序一直运行. 但子线程默认不创建NSRunLoop, 所以子线程的任务一旦返回, 线程就over了.上面的并发operation当start函数返回后子线程就退出了, 当NSURLConnection的delegate回调时, 线程已经木有了, 所以你也就收不到回调了. 为了保证子线程持续live(等待connection回调), 你需要在子线程中加入RunLoop, 来保证它不会被kill掉.<br/>
-详细关于RunLoop的知识可以查看 <a href="%5B%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B%E3%80%81NSThread&amp;GCD&amp;NSOpration&amp;runLoop%5D(14871584203378.html)">并发编程Runloop</a></p>
-</blockquote>
-
-<p>对于这个问题:我们解决办法</p>
-
-<ol>
-<li><p>让start函数在主线程运行(即使[operation start]是在子线程调用的).</p>
-<pre><code class="language-object-c">- (void)start 
-{<br/>
-    if (![NSThread isMainThread]) {<br/>
-        [self performSelectorOnMainThread:@selector(start)<br/>
-                           withObject:nil<br/>
-                        waitUntilDone:NO];<br/>
-        return;<br/>
- }<br/>
-    // set up NSURLConnection...<br/>
-}<br/>
-或者<br/>
-   - (void)start<br/>
-   {<br/>
-       [[NSOperationQueue mainQueue] addOperationWithBlock:^{<br/>
-       self.connection = [NSURLConnection connectionWithRequest:self.request delegate:self];<br/>
-       }];<br/>
-   }
-</code></pre></li>
-<li><p>方法二是:让<code>operation</code>的start函数在子线程运行, 但是我们为它创建一个RunLoop. 然后把<code>URL connection schedule</code>到上面去. （这种方法不推荐）</p>
-<pre><code class="language-object-c">    //参考AFNetWorking的做法
-    + (void)networkRequestThreadEntryPoint:(id)__unused object <br/>
-    {<br/>
-        @autoreleasepool {<br/>
-            [[NSThread currentThread] setName:@&quot;AFNetworking&quot;];<br/>
-            NSRunLoop *runLoop = [NSRunLoop currentRunLoop];<br/>
-            [runLoop addPort:[NSMachPort port] forMode:NSDefaultRunLoopMode];<br/>
-            [runLoop run];<br/>
-        }<br/>
-    }<br/>
-    + (NSThread *)networkRequestThread <br/>
-    {<br/>
-        static NSThread *_networkRequestThread = nil;<br/>
-        static dispatch_once_t oncePredicate;<br/>
-        dispatch_once(&amp;oncePredicate, ^{<br/>
-            _networkRequestThread = [[NSThread alloc] initWithTarget:self selector:@selector(networkRequestThreadEntryPoint:) object:nil];<br/>
-            [_networkRequestThread start];<br/>
-        });<br/>
-        return _networkRequestThread;<br/>
-    }<br/>
-    - (void)start <br/>
-    {<br/>
-        [self.lock lock];<br/>
-        if ([self isCancelled]) {<br/>
-            [self performSelector:@selector(cancelConnection) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];<br/>
-        } else if ([self isReady]) {<br/>
-            self.state = AFOperationExecutingState;<br/>
-            [self performSelector:@selector(operationDidStart) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];<br/>
-        }<br/>
-        [self.lock unlock];<br/>
-    }
-</code></pre>
-<p>AFNetworking创建了一个新的子线程(在子线程中调用NSRunLoop *runloop = [NSRunLoop currentRunLoop]; 获取RunLoop对象的时候, 就会创建RunLoop), 然后把它加到RunLoop里面来保证它一直运行.</p>
-<blockquote>
-<p>这边我们可以简单的判断下当前start()的线程是子线程还是主线程, 如果是子线程则调用[NSRunLoop currentRunLoop]创新RunLoop, 否则就直接调用[NSRunLoop mainRunLoop], 当然在主线程下就没必要调用[runLoop run]了, 因为它本来就是一直run的.<br/>
-我们还可以使用CFRunLoop来启动和停止RunLoop<br/>
-<code>[self.connection scheduleInRunLoop:[NSRunLoop currentRunLoop]<br/>
-                       forMode:NSRunLoopCommonModes];<br/>
-CFRunLoopRun();<br/>
-</code><br/>
-等到该Operation结束的时候, 一定要记得调用<strong>CFRunLoopStop()</strong>停止当前线程的RunLoop, 让当前线程在operation finished之后可以退出.</p>
-</blockquote></li>
-</ol>
-
-<hr/>
-
-<h2 id="toc_4">NSOperationQueue</h2>
-
-<p>看过上面的内容就知道，我们可以调用一个 NSOperation 对象的 <code>start()</code> 方法来启动这个任务，但是这样做他们默认是 同步执行 的。就算是 <code>addExecutionBlock</code> 方法，也会在 当前线程和其他线程 中执行，也就是说还是会占用当前线程。这是就要用到队列 <code>NSOperationQueue</code> 了。而且，按类型来说的话一共有两种类型：主队列、其他队列。只要添加到队列，会自动调用任务的 <code>start()</code> 方法</p>
-
-<p>一旦NSOperation被add到Queue里面那么我们就不care它自身是不是并发设计的了, 因为被add到Queue里面的operation必定是并发的. 而且我们可以设置Queue的maxConcurrentOperationCount来指定最大的并发数(也就是几个operation可以同时被执行, <strong>如果这个值设为1, 那这个Queue就是串行队列了</strong>).<br/>
- Queue会为每一个add到队列里面的operation创建一个线程来运行其start函数, 这样每个start都分布在不同的线程里面来实现operation们的并发执行.<br/>
-注意:<br/>
-** 我们这边所说的并发都是指NSOperation之间的并发(多个operation同时执行), 如果maxConcurrentOperationCount设置为1或者把operation放到[NSOperationQueue mainQueue]里面执行, 那它们只会顺序(Serial)执行, 当然就不可能并发了.**</p>
-
-<h5 id="toc_5">* 主队列</h5>
-
-<p>细心同学会发现，每套多线程方案都会有一个主线程。这是一个特殊的线程必须串行。凡是添加到主队列中的任务（NSOperation），都会放到主线程中执行<br/><br/>
-    //OBJECTIVE-C<br/>
-    NSOperationQueue *queue = [NSOperationQueue mainQueue];</p>
-
-<pre><code class="language-text">//SWIFT
-let queue = NSOperationQueue.mainQueue()
-</code></pre>
-
-<h5 id="toc_6">* 其他队列</h5>
-
-<p>通过初始化产生的队列就是其他队列了，其他队列不需要名字<br/>
-<strong>注意：</strong>其他队列会在其他线程中并行执行</p>
-
-<pre><code class="language-object-c">    //1.创建一个其他队列    
-    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
-    
-    //2.创建NSBlockOperation对象
-    NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
-        NSLog(@&quot;%@&quot;, [NSThread currentThread]);
-    }];
-    
-    //3.添加多个Block
-    for (NSInteger i = 0; i &lt; 5; i++) {
-        [operation addExecutionBlock:^{
-            NSLog(@&quot;第%ld次：%@&quot;, i, [NSThread currentThread]);
-        }];
-    }
-
-    //4.队列添加任务
-    [queue addOperation:operation];
-    /**
-       NSInvocationOperation和NSOperationQueue结合后能够开启新线程，进行并发执行
-       NSBlockOperation和NSOperationQueue也能够开启新线程，进行并发执行
-    */
-</code></pre>
-
-<p><code>- (void)addOperationWithBlock:(void (^)(void))block;</code><br/>
-无需先创建任务，在block中添加任务，直接将任务block加入到队列中,能够开启新线程，进行并发执行。</p>
-
-<hr/>
-
-<p>这时如果我们想要任务在其他线程串行执行<br/><br/>
-<code>NSOperationQueue</code>有个参数<code>maxConcurrentOperationCount</code>最大并发数，设置为1时就是串行了<br/><br/>
-<code>maxConcurrentOperationCount</code>默认情况下为-1，表示不进行限制，默认为并发执行。<br/>
-<code>maxConcurrentOperationCount</code>大于1时，进行并发执行，当然这个值不应超过系统限制，即使自己设置一个很大的值，系统也会自动调整</p>
-
-<h3 id="toc_7">操作依赖</h3>
-
-<p><code>NSOperation</code>还有个实用功能添加依赖。比如有 3 个任务：A: 从服务器上下载一张图片，B：给这张图片加个水印，C：把图片返回给服务器。这时就可以用到依赖了:</p>
-
-<pre><code class="language-object-c">    //1.任务一：下载图片
-    NSBlockOperation *operation1 = [NSBlockOperation blockOperationWithBlock:^{
-        NSLog(@&quot;下载图片 - %@&quot;, [NSThread currentThread]);
-        [NSThread sleepForTimeInterval:1.0];
-    }];
-    
-    //2.任务二：打水印
-    NSBlockOperation *operation2 = [NSBlockOperation blockOperationWithBlock:^{
-        NSLog(@&quot;打水印   - %@&quot;, [NSThread currentThread]);
-        [NSThread sleepForTimeInterval:1.0];
-    }];
-    
-    //3.任务三：上传图片
-    NSBlockOperation *operation3 = [NSBlockOperation blockOperationWithBlock:^{
-        NSLog(@&quot;上传图片 - %@&quot;, [NSThread currentThread]);
-        [NSThread sleepForTimeInterval:1.0];
-    }];
-    
-    //4.设置依赖
-    [operation2 addDependency:operation1];      //任务二依赖任务一
-    [operation3 addDependency:operation2];      //任务三依赖任务二
-    
-    //5.创建队列并加入任务
-    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
-    [queue addOperations:@[operation3, operation2, operation1] waitUntilFinished:NO];
-</code></pre>
-
-<p>注意不能添加互相依赖否则会锁死<br/><br/>
-可以用<code>removeDependency</code>来解除依赖</p>
-
-<p><strong>注意:</strong><br/>
-如果我在子线程调用[operation start]函数, 或者把operation放到非MainQueue里面执行, 但是在operation的内部把start抛到主线程来执行(利用主线程的main run loop), 那多个operation其实不都是要在主线程执行的么, 这样还能并发? Luckily, 仍然是并发执行的,当然这个并发指的是狭义并发也就是主线程进行伪并行<br/>
-<img src="media/14873146865194/14873217004353.jpg" alt=""/></p>
-
-<hr/>
-
-<h3 id="toc_8">其他方法</h3>
-
-<ul>
-<li><h5 id="toc_9">NSOperation</h5>
-<pre><code class="language-text">BOOL executing; //判断任务是否正在执行
-BOOL finished; //判断任务是否完成<br/>
-void (^completionBlock)(void); //用来设置完成后需要执行的操作<br/>
-- (void)cancel; //取消任务 `NSOperation`提供的方法，可取消单个操作<br/>
-- (void)waitUntilFinished; //阻塞当前线程直到此任务执行完毕
-</code></pre></li>
-<li><h5 id="toc_10">NSOperationQueue</h5>
-<pre><code class="language-text">NSUInteger operationCount; //获取队列的任务数
-- (void)cancelAllOperations; //取消队列中所有的任务<br/>
-- (void)waitUntilAllOperationsAreFinished; //阻塞当前线程直到此队列中的所有任务执行完毕<br/>
-[queue setSuspended:YES]; // 暂停queue<br/>
-[queue setSuspended:NO]; // 继续queue
-</code></pre></li>
-</ul>
-
-<hr/>
-
-<h3 id="toc_11">与君共勉</h3>
-
-<p><img src="media/14873146865194/14876658479087.jpg" alt=""/></p>
+<p>w</p>
 
 
 		</div>
@@ -502,8 +220,10 @@ void (^completionBlock)(void); //用来设置完成后需要执行的操作<br/>
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -515,11 +235,9 @@ void (^completionBlock)(void); //用来设置完成后需要执行的操作<br/>
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -604,31 +322,31 @@ void (^completionBlock)(void); //用来设置完成后需要执行的操作<br/>
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

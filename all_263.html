@@ -82,19 +82,75 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15553927659857.html">拾遗</a></h1>
-			<p class="meta"><time datetime="2019-04-16T13:32:45+08:00" 
-			pubdate data-updated="true">2019/4/16</time></p>
+		  	<h1 class="entry-title"><a href="14925128921601.html">常用动画示例</a></h1>
+			<p class="meta"><time datetime="2017-04-18T18:54:52+08:00" 
+			pubdate data-updated="true">2017/4/18</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">1.NSZone</h2>
+		  	<h3 id="toc_0">1.地震动画</h3>
 
-<p>在调用类的alloc方法时，其实是调用了<code>allocWithZone:NSDefaultMallocZone</code>方法，而这写NSZone是做什么的？</p>
+<p>适合一整个大视图的突然晃动</p>
 
-<p>是为了防止内存碎片化而引入的结构，对内存分配的区域进行多重化管理，可以根据使用对象的目的、对象大小分配内存，从而提高内存管理效率</p>
+<pre><code class="language-objectivec">- (void)earthquake:(UIView*)itemView {
+    CGFloat t = 2.0;
+    CGAffineTransform leftQuake  = CGAffineTransformTranslate(CGAffineTransformIdentity, t, 0);
+    CGAffineTransform rightQuake = CGAffineTransformTranslate(CGAffineTransformIdentity, -t, 0); //水平晃动
 
-<p>但是苹果官方文档中说：现在的运行时系统的内存管理已经很有效率，因此使用区域管理反而会引起内存使用效率低和源代码复杂问题，因此现在的运行时系统只是简单的忽略了区域的概念，而且在ARC环境下 也不能使用NSZone</p>
+    itemView.transform = leftQuake;  // starting point
+
+    [UIView beginAnimations:@&quot;earthquake&quot; context:(__bridge void *)(itemView)];
+    [UIView setAnimationRepeatAutoreverses:YES]; // 如果不加这一句 整个动画感觉不连贯
+    [UIView setAnimationRepeatCount:5];
+    [UIView setAnimationDuration:0.07];
+    [UIView setAnimationDelegate:self];
+    [UIView setAnimationDidStopSelector:@selector(earthquakeEnded:finished:context:)];
+
+    itemView.transform = rightQuake; // end here &amp; auto-reverse
+
+    [UIView commitAnimations];
+}
+
+- (void)earthquakeEnded:(NSString *)animationID finished:(NSNumber *)finished context:(void *)context {
+    if ([finished boolValue]) {
+        UIView* item = (__bridge UIView *)context;
+        item.transform = CGAffineTransformIdentity;
+    }
+}
+</code></pre>
+
+<h3 id="toc_1">2.图标的抖动效果</h3>
+
+<pre><code class="language-objectivec">//开始抖动
+-(void)BeginWobble
+{
+
+    srand([[NSDate date] timeIntervalSince1970]);
+    float rand=(float)random();
+    CFTimeInterval t=rand*0.0000000001;
+
+    [UIView animateWithDuration:0.1 delay:t options:0  animations:^
+     {
+         要抖动的视图.transform=CGAffineTransformMakeRotation(-0.05);
+     } completion:^(BOOL finished)
+     {
+         [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionRepeat|UIViewAnimationOptionAutoreverse|UIViewAnimationOptionAllowUserInteraction  animations:^
+          {
+              要抖动的视图.transform=CGAffineTransformMakeRotation(0.05);
+          } completion:^(BOOL finished) {}];
+     }];
+}
+//停止抖动
+-(void)EndWobble
+{
+
+    [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionAllowUserInteraction|UIViewAnimationOptionBeginFromCurrentState animations:^
+     {
+         要抖动的视图.transform=CGAffineTransformIdentity;
+     } completion:^(BOOL finished) {}];
+}
+
+</code></pre>
 
 
 		</div>
@@ -117,8 +173,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -130,11 +188,9 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -219,31 +275,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

@@ -82,235 +82,143 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15082286345415.html">ARKit框架API简介</a></h1>
-			<p class="meta"><time datetime="2017-10-17T16:23:54+08:00" 
-			pubdate data-updated="true">2017/10/17</time></p>
+		  	<h1 class="entry-title"><a href="15350068830702.html">CGBlendMode</a></h1>
+			<p class="meta"><time datetime="2018-08-23T14:48:03+08:00" 
+			pubdate data-updated="true">2018/8/23</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">ARAnchor</h2>
+		  	<p>用于图像的合成操作</p>
 
-<p>物体的3D锚点,表示物体在3D空间的位置和方向</p>
+<p>不同的混合模式常量表示不同的混合模式,这些混合模式的等式中的符号表示:<br/>
+<code>R</code>:表示混合结果 <code>S</code>:是源颜色 包括alpha通道  <code>D</code>:是目标颜色 包括alpha通道 <br/>
+<code>Ra</code>,<code>Sa</code>,<code>Da</code>是R,S,D的alpha分量</p>
 
-<pre><code class="language-objectivec">/**
- 标识符
- */
-@property (nonatomic, readonly) NSUUID *identifier;
+<p>因此例如: <br/>
+<code>kCGBlendModeDestinationIn</code> <code>R = D*Sa</code>  表示 结果=目标颜色和原色的透明度加成</p>
 
-/**
- 锚点的旋转变换矩阵，定义了锚点的旋转、位置、缩放。是一个4x4的矩阵（读者可以自行科普什么叫4x4矩阵）
- */
-@property (nonatomic, readonly) matrix_float4x4 transform;
+<p>所有枚举:</p>
 
-/**
- 构造方法,一般我们无需构造。因为添加一个3D物体时ARKit会有代理告知我们物体的锚点
- */
-- (instancetype)initWithTransform:(matrix_float4x4)transform;
-</code></pre>
-
-<h2 id="toc_1">ARFrame</h2>
-
-<p>主要用于追踪相机的当前状态,包括位置、图像帧以及时间等参数</p>
-
-<pre><code class="language-objectivec">/**
-时间戳.
- */
-@property (nonatomic, readonly) NSTimeInterval timestamp;
-
-/**
- 缓冲区图像帧
- */
-@property (nonatomic, readonly) CVPixelBufferRef capturedImage;
-
-/**
-相机（表示这个ARFrame是哪一个相机的，iPhone7plus有两个摄像机）
- */
-@property (nonatomic, copy, readonly) ARCamera *camera;
-
-/**
- 返回当前相机捕捉到的锚点数据（当一个3D虚拟模型加入到ARKit中时，锚点值得就是这个模型在AR中的位置）
- */
-@property (nonatomic, copy, readonly) NSArray&lt;ARAnchor *&gt; *anchors;
-
-/**
-灯光（指的是灯光强度 一般是0-2000，系统默认1000）
- */
-@property (nonatomic, copy, nullable, readonly) ARLightEstimate *lightEstimate;
-
-/**
-特征点（捕捉平地或者人脸的，比较苹果有自带的人脸识别功能）
- */
-@property (nonatomic, nullable, readonly) ARPointCloud *rawFeaturePoints;
-
-/**
-根据2D坐标点搜索3D模型，这个方法通常用于，当我们在手机屏幕点击某一个点的时候，可以捕捉到这一个点所在的3D模型的位置，至于为什么是一个数组非常好理解。手机屏幕一个是长方形，这是一个二维空间。而相机捕捉到的是一个由这个二维空间射出去的长方体，我们点击屏幕一个点可以理解为在这个长方体的边缘射出一条线，这一条线上可能会有多个3D物体模型
-point：2D坐标点（手机屏幕某一点）
-ARHitTestResultType：捕捉类型  点还是面
-(NSArray&lt;ARHitTestResult *&gt; *)：追踪结果数组  详情见本章节ARHitTestResult类介绍
-
- */
-- (NSArray&lt;ARHitTestResult *&gt; *)hitTest:(CGPoint)point types:(ARHitTestResultType)types;
-
-/**
-相机窗口的的坐标变换（可用于相机横竖屏的旋转适配）
- */
-- (CGAffineTransform)displayTransformWithViewportSize:(CGSize)viewportSize orientation:(UIInterfaceOrientation)orientation;
-</code></pre>
-
-<h2 id="toc_2">ARHitTestResult</h2>
-
-<p>点击的回调结果,通常用于获取ARKit的捕捉结果，获取物体到相机的距离/位置、方向等</p>
-
-<pre><code class="language-swift">//捕捉类型枚举
-typedef NS_OPTIONS(NSUInteger, ARHitTestResultType) {
-    /** 点. */
-    ARHitTestResultTypeFeaturePoint              = (1 &lt;&lt; 0),
-
-    /** 水平面 y为0. */
-    ARHitTestResultTypeEstimatedHorizontalPlane  = (1 &lt;&lt; 1),
-
-    /** 已结存在的平面. */
-    ARHitTestResultTypeExistingPlane             = (1 &lt;&lt; 3),
-
-    /** 已结存在的锚点和平面. */
-    ARHitTestResultTypeExistingPlaneUsingExtent  = (1 &lt;&lt; 4),
-} NS_SWIFT_NAME(ARHitTestResult.ResultType);
-
-/**
-捕捉类型
- */
-@property (nonatomic, readonly) ARHitTestResultType type;
-
-/**
- 3D虚拟物体与相机的距离（单位：米）
- */
-@property (nonatomic, readonly) CGFloat distance;
-
-/**
-本地坐标矩阵（世界坐标指的是相机为场景原点的坐标，而每一个3D物体自身有一个场景，本地坐标就是相对于这个场景的坐标）类似于frame和bounds的区别
- */
-@property (nonatomic, readonly) matrix_float4x4 localTransform;
-
-/**
-世界坐标矩阵
- */
-@property (nonatomic, readonly) matrix_float4x4 worldTransform;
-
-/**
- 锚点（3D虚拟物体，在虚拟世界有一个位置，这个位置参数是SceneKit中的SCNVector3：三维矢量），而锚点anchor是这个物体在AR现实场景中的位置，是一个4x4的矩阵
- */
-@property (nonatomic, strong, nullable, readonly) ARAnchor *anchor;
-
-</code></pre>
-
-<h2 id="toc_3">ARLightEstimate</h2>
-
-<p>灯光效果</p>
-
-<pre><code class="language-swift">/**
-灯光强度  范围0-2000 默认1000
- */
-@property (nonatomic, readonly) CGFloat ambientIntensity;
-
-</code></pre>
-
-<h2 id="toc_4">ARPlaneAnchor</h2>
-
-<p>平面锚点,是<code>ARAnchor</code>的子类,<code>ARKit</code>可以自动识别平面并且添加一个锚点到场景中</p>
-
-<p>所有被检测到的表面都会关联到一个<code>ARPlaneAnchor</code>对象，并可进一步使用提供物体到镜头的距离、位置和方向的<code>ARHitTestResult</code>进行描述。<code>ARPlaneAnchor</code>是<code>ARAnchor</code>的一个子类实例，可添加到AR场景中，实现在场景中放置虚拟物体。</p>
-
-<pre><code class="language-swift">/**
-平面类型，目前只有一个，就是水平面
- */
-@property (nonatomic, readonly) ARPlaneAnchorAlignment alignment;
-
-/**
-3轴矢量结构体，表示平地的中心点  x/y/z
- */
-@property (nonatomic, readonly) vector_float3 center;
-
-/**
-3轴矢量结构体，表示平地的大小（宽度和高度）  x/y/z
- */
-@property (nonatomic, readonly) vector_float3 extent;
-</code></pre>
-
-<h2 id="toc_5">ARPointCloud</h2>
-
-<p>点状渲染云 主要用于渲染场景</p>
-
-<pre><code class="language-objectivec">/**
- 点的数量
- */
-@property (nonatomic, readonly) NSUInteger count;
-
-/**
-每一个点的位置的集合（结构体带*表示的是结构体数组）
- */
-@property (nonatomic, readonly) const vector_float3 *points;
-</code></pre>
-
-<h2 id="toc_6">ARConfiguration</h2>
-
-<p>会话追踪配置，主要就是追踪相机的位置</p>
-
-<blockquote>
-<p>子类ARWorldTrackingConfiguration</p>
-</blockquote>
-
-<pre><code class="language-objectivec">/**
-当前设备是否支持，一般A9芯片以下设备不支持
- */
-@property(class, nonatomic, readonly) BOOL isSupported;
-
-/**
-会话的对齐方式，这里的对其指的是3D世界的坐标。枚举值见下方
- */
-@property (nonatomic, readwrite) ARWorldAlignment worldAlignment;
-
-typedef NS_ENUM(NSInteger, ARWorldAlignment) {
-    ARWorldAlignmentGravity,//相机位置
-    ARWorldAlignmentGravityAndHeading,//相机位置及方向
-    ARWorldAlignmentCamera//相机方向
-} 
-
-/**
-是否需要自适应灯光效果，默认是YES
- */
-@property (nonatomic, readwrite, getter=isLightEstimationEnabled) BOOL lightEstimationEnabled;
-
-@end
-
-
-//世界会话追踪配置，苹果建议我们使用这个类，这个子类只有一个属性，也就是可以帮助我们追踪相机捕捉到的平地
-@interface ARWorldTrackingSessionConfiguration : ARSessionConfiguration
-
-/**
-侦查类型。枚举值见下方（默认侦查平地）
- */
-@property (nonatomic, readwrite) ARPlaneDetection planeDetection;
-</code></pre>
-
-<h2 id="toc_7">ARError</h2>
-
-<p>描述ARKit中的错误信息</p>
-
-<pre><code class="language-swift">//作用域，一般会表示是哪一个类出现问题
-NSString *const ARErrorDomain;
-typedef NS_ERROR_ENUM(ARErrorDomain, ARErrorCode) {
-    /** Unsupported session configuration. */
-    ARErrorCodeUnsupportedConfiguration   = 100,//不支持会话追踪配置，由于A9芯片以下的机型会报错
-
-    /** A sensor required to run the session is not available. */
-    ARErrorCodeSensorUnavailable          = 101,//失活状态
-
-    /** A sensor failed to provide the required input. */
-    ARErrorCodeSensorFailed               = 102,//传感器故障
-
-    /** World tracking has encountered a fatal error. */
-    ARErrorCodeWorldTrackingFailed        = 200,//追踪失败
-};
+<pre><code class="language-objectivec">switch (blendMode) {  
+        case kCGBlendModeNormal: {  
+            strMsg = @&quot;kCGBlendModeNormal: 正常；也是默认的模式。前景图会覆盖背景图&quot;;  
+            break;  
+        }  
+        case kCGBlendModeMultiply: {  
+            strMsg = @&quot;kCGBlendModeMultiply: 正片叠底；混合了前景和背景的颜色，最终颜色比原先的都暗&quot;;  
+            break;  
+        }  
+        case kCGBlendModeScreen: {  
+            strMsg = @&quot;kCGBlendModeScreen: 滤色；把前景和背景图的颜色先反过来，然后混合&quot;;  
+            break;  
+        }  
+        case kCGBlendModeOverlay: {  
+            strMsg = @&quot;kCGBlendModeOverlay: 覆盖；能保留灰度信息，结合kCGBlendModeSaturation能保留透明度信息，在imageWithBlendMode方法中两次执行drawInRect方法实现我们基本需求&quot;;  
+            break;  
+        }  
+        case kCGBlendModeDarken: {  
+            strMsg = @&quot;kCGBlendModeDarken: 变暗&quot;;   //将线条色变为黑色，背景色设置为目的色
+            break;  
+        }  
+        case kCGBlendModeLighten: {  
+            strMsg = @&quot;kCGBlendModeLighten: 变亮&quot;;  
+            break;  
+        }  
+        case kCGBlendModeColorDodge: {  
+            strMsg = @&quot;kCGBlendModeColorDodge: 颜色变淡&quot;;  
+            break;  
+        }  
+        case kCGBlendModeColorBurn: {  
+            strMsg = @&quot;kCGBlendModeColorBurn: 颜色加深&quot;;  //线条颜色（原本）加深，背景色设置为目的色
+            break;  
+        }  
+        case kCGBlendModeSoftLight: {  
+            strMsg = @&quot;kCGBlendModeSoftLight: 柔光&quot;;  
+            break;  
+        }  
+        case kCGBlendModeHardLight: {  
+            strMsg = @&quot;kCGBlendModeHardLight: 强光&quot;;  //全为目的色
+            break;  
+        }  
+        case kCGBlendModeDifference: {  
+            strMsg = @&quot;kCGBlendModeDifference: 插值&quot;;  
+            break;  
+        }  
+        case kCGBlendModeExclusion: {  
+            strMsg = @&quot;kCGBlendModeExclusion: 排除&quot;;  
+            break;  
+        }  
+        case kCGBlendModeHue: {  
+            strMsg = @&quot;kCGBlendModeHue: 色调&quot;;  
+            break;  
+        }  
+        case kCGBlendModeSaturation: {  
+            strMsg = @&quot;kCGBlendModeSaturation: 饱和度&quot;;  
+            break;  
+        }  
+        case kCGBlendModeColor: {  
+            strMsg = @&quot;kCGBlendModeColor: 颜色&quot;;   //感觉将图片线条色设置为白色，背景色设置为目的色，之后再再图片上加一个有透明度的目的色
+            break;  
+        }  
+        case kCGBlendModeLuminosity: {  
+            strMsg = @&quot;kCGBlendModeLuminosity: 亮度&quot;;  
+            break;  
+        }  
+            //Apple额外定义的枚举  
+            //R: premultiplied result, 表示混合结果  
+            //S: Source, 表示源颜色(Sa对应透明度值: 0.0-1.0)  
+            //D: destination colors with alpha, 表示带透明度的目标颜色(Da对应透明度值: 0.0-1.0)  
+        case kCGBlendModeClear: {  
+            strMsg = @&quot;kCGBlendModeClear: R = 0&quot;; //1.清空（如果图标背景色为白色则为全白） 
+            break;  
+        }  
+        case kCGBlendModeCopy: {  
+            strMsg = @&quot;kCGBlendModeCopy: R = S&quot;;  //2全色覆盖整个图片
+            break;  
+        }  
+        case kCGBlendModeSourceIn: {  
+            strMsg = @&quot;kCGBlendModeSourceIn: R = S*Da&quot;;  //3.线条变色
+            break;  
+        }  
+        case kCGBlendModeSourceOut: {  
+            strMsg = @&quot;kCGBlendModeSourceOut: R = S*(1 - Da)&quot;;  //4.背景变为目的色,线条自动变为白色（比如图标线条原为蓝色，会自动变为白色）
+            break;  
+        }  
+        case kCGBlendModeSourceAtop: {  
+            strMsg = @&quot;kCGBlendModeSourceAtop: R = S*Da + D*(1 - Sa)&quot;;   //5.线条变色，目前感觉和SourceIn效果一致
+            break;  
+        }  
+        case kCGBlendModeDestinationOver: {  
+            strMsg = @&quot;kCGBlendModeDestinationOver: R = S*(1 - Da) + D&quot;;  //6.背景色变为目的色，线条色不变
+            break;  
+        }  
+        case kCGBlendModeDestinationIn: {  
+            strMsg = @&quot;kCGBlendModeDestinationIn: R = D*Sa；能保留透明度信息&quot;;  //7.只看到线条色（本色），无其他颜色
+            break;  
+        }  
+        case kCGBlendModeDestinationOut: {  
+            strMsg = @&quot;kCGBlendModeDestinationOut: R = D*(1 - Sa)&quot;;     //8.空白什么都没哟
+            break;  
+        }  
+        case kCGBlendModeDestinationAtop: {  
+            strMsg = @&quot;kCGBlendModeDestinationAtop: R = S*(1 - Da) + D*Sa&quot;;  //9.会把整个矩形的背景填充目的色（如图9系列）原色保留
+            break;  
+        }  
+        case kCGBlendModeXOR: {  
+            strMsg = @&quot;kCGBlendModeXOR: R = S*(1 - Da) + D*(1 - Sa)&quot;;  //10.线条变白，背景色变为目的色
+            break;  
+        }  
+        case kCGBlendModePlusDarker: {  
+            strMsg = @&quot;kCGBlendModePlusDarker: R = MAX(0, (1 - D) + (1 - S))&quot;;  //11.线条变为黑色， 背景色变为目的色
+            break;  
+        }  
+        case kCGBlendModePlusLighter: {  
+            strMsg = @&quot;kCGBlendModePlusLighter: R = MIN(1, S + D)（最后一种混合模式）&quot;;  //12.线条变为白色（混合色：如color为红色，就是偏粉色的白，有一定透明度的感觉）
+            break;  
+        }  
+        default: {  
+            break;  
+        }  
 
 </code></pre>
 
@@ -335,8 +243,10 @@ typedef NS_ERROR_ENUM(ARErrorDomain, ARErrorCode) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -348,11 +258,9 @@ typedef NS_ERROR_ENUM(ARErrorDomain, ARErrorCode) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -437,31 +345,31 @@ typedef NS_ERROR_ENUM(ARErrorDomain, ARErrorCode) {
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

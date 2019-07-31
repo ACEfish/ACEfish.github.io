@@ -82,177 +82,415 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15031302948355.html">可选链式调用</a></h1>
-			<p class="meta"><time datetime="2017-08-19T16:11:34+08:00" 
-			pubdate data-updated="true">2017/8/19</time></p>
+		  	<h1 class="entry-title"><a href="15047511695312.html">协议</a></h1>
+			<p class="meta"><time datetime="2017-09-07T10:26:09+08:00" 
+			pubdate data-updated="true">2017/9/7</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><strong>可选链式调用</strong>是在当前值可能为<code>nil</code>的可选值上请求和调用属性、方法以及下标的方法。如果可选值不为空,调用成功,否则如果可选值为<code>nil</code>，那么调用将返回<code>nil</code>。多个调用可以结合为一个调用链,若任何一个节点为<code>nil</code>。整个调用链都会失败</p>
+		  	<p>类和结构体、枚举都可以遵循协议,并为协议定义的这些要求提供实现<br/>
+除了遵循协议的类型必须实现外还可以对协议进行扩展，通过扩展来实现一部分要求或者添加附加功能</p>
 
-<h2 id="toc_0">可选链式调用代替强制展开</h2>
+<h2 id="toc_0">协议语法</h2>
 
-<p>在想调用的属性、方法、下标的可选值后加上<code>?</code>来定义一个可选链。</p>
+<p>协议的定义:</p>
 
-<blockquote>
-<p>很像在可选值后面放一个叹号（<code>!</code>）来强制展开它的值。它们的主要区别在于当可选值为空时可选链式调用只会调用失败，然而强制展开将会触发运行时错误</p>
-</blockquote>
-
-<p>可选链式调用,不论调用的属性、方法及下标返回值的类型,返回结果都是具有相同类型的可选值,可以利用这个可选返回值来判断链式调用是否成功,有值则返回成功，<code>nil</code>表示调用失败</p>
-
-<pre><code class="language-swift">class Person {
-    var residence: Residence?
-}
-class Residence {
-    var numberOfRooms = 1
-}
-let john = Person()
-</code></pre>
-
-<p>我们直接<code>let roomCount = john.residence!.numberOfRooms</code>因为<code>residence</code>为<code>nil</code>强制展开的话是会触发运行时错误的</p>
-
-<p>这时我们可以采用可选链式调用来访问<code>numberOfRooms</code>用<code>?</code>代替<code>!</code></p>
-
-<pre><code class="language-swift">if let roomCount = john.residence?.numberOfRooms {
-    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
-} else {
-    print(&quot;Unable to retrieve the number of rooms.&quot;)
+<pre><code class="language-swift">protocol SomeProtocol {
+    // 这里是协议的定义部分
 }
 </code></pre>
 
-<p><strong>添加问号之后，Swift 就会在<code>residence</code>不为<code>nil</code>的情况下访问<code>numberOfRooms</code></strong></p>
+<p>自定义类型遵循某个协议,定义类型时,可以在类型名称后加上协议名称,中间用<code>:</code>分割,多个协议之间用<code>,</code>分割</p>
 
-<p>即使<code>numberOfRooms</code>是非可选类型<code>Int</code>，只要使用可选链式调用就意味着<code>numberOfRooms</code>会返回<code>Int?</code>而不是<code>Int</code></p>
-
-<h2 id="toc_1">为可选链式调用定义模型类</h2>
-
-<h2 id="toc_2">通过可选链式调用访问属性</h2>
-
-<p>通过可选链式调用<strong>访问可能不存在实例的属性</strong>:</p>
-
-<pre><code class="language-swift">//john.residence实例可能为nil
-let john = Person()
-if let roomCount = john.residence?.numberOfRooms {
-    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
-} else {
-    print(&quot;Unable to retrieve the number of rooms.&quot;)
+<pre><code class="language-swift">struct SomeStructure: FirstProtocol, AnotherProtocol {
+    // 这里是结构体的定义部分
 }
 </code></pre>
 
-<p>通过可选链式调用<strong>设置属性值</strong></p>
+<p>拥有父类的类在遵循协议时，应该将父类名放在协议名之前，以逗号分隔：</p>
 
-<pre><code class="language-swift">//john.residence实例可能为nil
-let someAddress = Address()
-john.residence?.address = someAddress
-</code></pre>
-
-<p>对于这种可选链式调用的赋值,如果<code>john.residence</code>为<code>nil</code>，获取<code>address</code>属性失败，那么右侧的代码是不会被执行的</p>
-
-<h2 id="toc_3">通过可选链式调用调用方法</h2>
-
-<p>对于<code>Residence</code>类中定义的方法</p>
-
-<pre><code class="language-swift">func printNumberOfRooms() {
-    print(&quot;The number of rooms is \(numberOfRooms)&quot;)
+<pre><code class="language-swift">class SomeClass: SomeSuperClass, FirstProtocol, AnotherProtocol {
+    // 这里是类的定义部分
 }
 </code></pre>
 
-<p>这个方法没有返回值,那就是具有隐式的返回值<code>Void</code><br/>
-那么如果用可选链式调用这个方法，返回值就为<code>Void?</code></p>
+<h2 id="toc_1">属性要求</h2>
 
-<pre><code class="language-swift">//john.residence 为Residence类 可能为nil的实例
-if john.residence?.printNumberOfRooms() != nil {
-    print(&quot;It was possible to print the number of rooms.&quot;)
-} else {
-    print(&quot;It was not possible to print the number of rooms.&quot;)
-}
-//可以根据返回值是否为nil 判断调用是否成功
-</code></pre>
+<p>协议可以指定遵循协议的类型提供特定名称或属性的实例属性或类型属性。它只指定类型名称和属性而不能指定属性是存储型的还是计算型的,此外，还可以指定属性是可读的还是可写的</p>
 
-<p>对实例中的属性赋值 也会返回一个可选类型</p>
+<p>如果协议要求属性是可读可写的，那么该属性不能是常量属性或只读的计算型属性。如果协议只要求属性是可读的，那么该属性不仅可以是可读的，如果代码需要的话，还可以是可写的</p>
 
-<pre><code class="language-swift">if (john.residence?.address = someAddress) != nil {
-print(&quot;It was possible to set the address.&quot;)
-} else {
-print(&quot;It was not possible to set the address.&quot;)
+<p>协议总是用<code>var</code>关键字来声明变量属性，在类型声明后加上<code>{ set get }</code>来表示属性是可读可写的，可读属性则用<code>{ get }</code>来表示</p>
+
+<pre><code class="language-swift">protocol SomeProtocol {
+    var mustBeSettable: Int { get set }
+    var doesNotNeedToBeSettable: Int { get }
 }
 </code></pre>
 
-<h2 id="toc_4">通过可选链式调用访问下标</h2>
+<p>在协议中定义类型属性时，使用<code>static</code>关键字作为前缀。当类类型遵循协议时,除了<code>static</code>关键字,还可以使用<code>class</code>关键字声明类型属性:</p>
 
-<p>可以在一个可选值上访问下标,判断下标是否成功</p>
-
-<pre><code class="language-swift">//john.residence可能为nil
-if let firstRoomName = john.residence?[0].name {
-    print(&quot;The first room name is \(firstRoomName).&quot;)
-} else {
-    print(&quot;Unable to retrieve the first room name.&quot;)
+<pre><code class="language-swift">protocol AnotherProtocol {
+    static var someTypeProperty: Int { get set }
 }
 </code></pre>
 
-<blockquote>
-<p>注意:下标调用的时候将问号放在下标方括号的前面而不是后面</p>
-</blockquote>
+<h2 id="toc_2">方法要求</h2>
 
-<pre><code class="language-swift">john.residence?[0] = Room(name: &quot;Bathroom&quot;)
-</code></pre>
-
-<p><code>john.residence</code>为nil时，赋值仍然会失败</p>
-
-<h3 id="toc_5">访问可选类型的下标</h3>
-
-<p>如果下标返回可选类型值,可以在下标的结尾括号后面放一个问号来在其可选返回值上进行可选链式调用</p>
-
-<pre><code class="language-swift">var testScores = [&quot;Dave&quot;: [86, 82, 84], &quot;Bev&quot;: [79, 94, 81]]
-testScores[&quot;Dave&quot;]?[0] = 91
-testScores[&quot;Bev&quot;]?[0] += 1
-testScores[&quot;Brian&quot;]?[0] = 72
-</code></pre>
-
-<p>定义一个字典,包含两个键值对，因为字典下标返回的是可选类型值,对于<code>testScores[&quot;Brian&quot;]</code>因为字典中没有这个键，所以返回为<code>nil</code>，调用失败</p>
-
-<h2 id="toc_6">连接多层可选链式调用</h2>
-
-<p>可以连接多个可选链式调用在更深模型层级中访问属性、方法、下标，但是是不会增加返回值的可选层级的</p>
+<p>遵循协议的类型实现某些指定的实例方法或类方法</p>
 
 <ul>
-<li>通过可选链式调用访问一个 Int 值，将会返回 Int? ，无论使用了多少层可选链式调用</li>
-<li>通过可选链式调用访问 Int? 值，依旧会返回 Int? 值，并不会返回 Int??</li>
+<li>方法像普通方法一样放在协议的定义中,但是不需要大括号和方法体</li>
+<li>与普通方法类似可以在方法中提供可变参数,但是不能为参数提供默认值</li>
+<li>在协议中定义类方法时，总是使用<code>static</code>关键字为前缀.当类类型遵循协议时，除了<code>static</code>关键字，还可以使用<code>class</code>关键字作为前缀</li>
 </ul>
 
-<pre><code class="language-swift">if let johnsStreet = john.residence?.address?.street {
-    print(&quot;John&#39;s street name is \(johnsStreet).&quot;)
-} else {
-    print(&quot;Unable to retrieve the address.&quot;)
+<pre><code class="language-swift">protocol RandomNumberGenerator {
+    func random() -&gt; Double
 }
 </code></pre>
 
-<p><code>john.residence.address</code>为<code>nil</code>因此调用失败<br/>
-尽管<code>street</code>属性为<code>String？</code>  返回值仍然为<code>String?</code></p>
-
-<h2 id="toc_7">在方法的可选返回值上进行可选链式调用</h2>
-
-<pre><code class="language-swift">if let buildingIdentifier = john.residence?.address?.buildingIdentifier() {
-    print(&quot;John&#39;s building identifier is \(buildingIdentifier).&quot;)
-}
-</code></pre>
-
-<p>在可选值的基础上调用<code>buildingIdentifier()</code>方法  返回<code>String?</code>类型值</p>
-
-<pre><code class="language-swift">if let beginsWithThe =
-john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
-    if beginsWithThe {
-        print(&quot;John&#39;s building identifier begins with \&quot;The\&quot;.&quot;)
-    } else {
-        print(&quot;John&#39;s building identifier does not begin with \&quot;The\&quot;.&quot;)
+<pre><code class="language-swift">class LinearCongruentialGenerator: RandomNumberGenerator {
+    var lastRandom = 42.0
+    let m = 139968.0
+    let a = 3877.0
+    let c = 29573.0
+    func random() -&gt; Double {
+        lastRandom = ((lastRandom * a + c) % m)
+        return lastRandom / m
     }
 }
 </code></pre>
 
-<p>在方法的返回值基础上进行可选链式调用 </p>
+<h2 id="toc_3">Mutating方法要求</h2>
+
+<p>如果在协议中定义了一个实例方法，该方法会改变遵循该协议的类型的实例，那么在定义协议时需要在方法前加<code>mutating</code>关键字,使得结构体和枚举能够遵循此协议并满足方法要求</p>
 
 <blockquote>
-<p>在方法的圆括号后面加上问号即可</p>
+<p>在实现协议的<code>mutating</code>方法时，若是类类型则不用写<code>mutating</code>关键字，而若是结构体或枚举必须写<code>mutating</code>关键字</p>
+</blockquote>
+
+<pre><code class="language-swift">protocol Togglable {
+    mutating func toggle()
+}
+
+//定义在两种状态间切换的枚举
+enum OnOffSwitch: Togglable {
+    case Off, On
+    mutating func toggle() {
+        switch self {
+        case Off:
+            self = On
+        case On:
+            self = Off
+        }
+    }
+}
+</code></pre>
+
+<h2 id="toc_4">构造器要求</h2>
+
+<p><strong>协议可以要求遵循协议的类型实现指定的构造器</strong></p>
+
+<pre><code class="language-swift">protocol SomeProtocol {
+    init(someParameter: Int)
+}
+</code></pre>
+
+<h3 id="toc_5">构造器要求在类中的实现</h3>
+
+<p>遵循协议的类实现构造器.不论指定构造器或者便利构造器都必须在实现加上<code>required</code>修饰符</p>
+
+<pre><code class="language-swift">class SomeClass: SomeProtocol {
+    required init(someParameter: Int) {
+        // 这里是构造器的实现部分
+    }
+}
+</code></pre>
+
+<p>使用<code>required</code>修饰符可以确保所有子类也必须提供此构造器实现，即符合协议</p>
+
+<p>注意:</p>
+
+<blockquote>
+<p>如果类被标记为<code>final</code>，就不需要在协议构造器中使用<code>required</code>修饰符,因为<code>final</code>类不会有子类</p>
+</blockquote>
+
+<p>如果一个子类重写了父类的指定构造器，并且该构造器满足了某个协议的要求,那么重写上需要同时加上<code>required</code>和<code>override</code>修饰符</p>
+
+<pre><code class="language-swift">protocol SomeProtocol {
+    init()
+}
+class SomeSuperClass {
+    init() {
+        // 这里是构造器的实现部分
+    }
+}
+class SomeSubClass: SomeSuperClass, SomeProtocol {
+    // 因为遵循协议，需要加上 required
+    // 因为继承自父类，需要加上 override
+    required override init() {
+        // 这里是构造器的实现部分
+    }
+}
+</code></pre>
+
+<h3 id="toc_6">可失败构造器要求</h3>
+
+<p>协议还可以为遵循协议的类型定义可失败构造器要求</p>
+
+<p>遵循协议的类型可以通过可失败构造器<code>（init?）</code>或非可失败构造器<code>（init）</code>来满足协议中定义的可失败构造器要求。协议中定义的非可失败构造器要求可以通过非可失败构造器<code>（init</code>或隐式解包可失败构造器<code>（init!）</code>来满足</p>
+
+<h2 id="toc_7">协议作为类型</h2>
+
+<p>协议可以作为成熟的类型来使用:</p>
+
+<ul>
+<li>作为函数、方法或构造器中的参数类型或返回值类型</li>
+<li>作为常量、变量或属性的类型</li>
+<li>作为数组、字典或其他容器中的元素类型</li>
+</ul>
+
+<p>协议作为一种类型,因此与它类型的命名写法相同 应该使用驼峰写法</p>
+
+<pre><code class="language-swift">class Dice {
+    let sides: Int
+    let generator: RandomNumberGenerator
+    init(sides: Int, generator: RandomNumberGenerator) {
+        self.sides = sides
+        self.generator = generator
+    }
+    func roll() -&gt; Int {
+        return Int(generator.random() * Double(sides)) + 1
+    }
+}
+</code></pre>
+
+<p>类<code>Dice</code>中含有属性<code>generator</code>为<code>RandomNumberGenerator</code>协议类型,因此遵循了<code>RandomNumberGenerator</code>协议类型的实例都可以赋值给<code>generator</code></p>
+
+<p>在类中有<code>roll</code>的实例方法,调用<code>generator</code>的<code>random()</code>方法来生成一个<code>[0.0,1.0)</code>区间内的随机数</p>
+
+<h2 id="toc_8">委托（代理）模式</h2>
+
+<hr/>
+
+<p>委托是一种设计模式，它允许类或结构体将一些需要它们负责的功能委托给其他类型的实例.<br/>
+委托模式的实现很简单：定义协议来封装那些需要被委托的功能，这样就能确保遵循协议的类型能提供这些功能。<br/>
+委托模式可以用来响应特定的动作，或者接收外部数据源提供的数据，而无需关心外部数据源的类型</p>
+
+<hr/>
+
+<h2 id="toc_9">通过扩展添加协议一致性</h2>
+
+<p>我们可以通过扩展代码来为已有类型添加属性、方法、下标以及构造器，因此可以符合协议中相应要求</p>
+
+<blockquote>
+<p>通过扩展使已有类型遵循并符合协议时,该类型的所有实例也会获得协议中定义的各项功能</p>
+</blockquote>
+
+<pre><code class="language-swift">protocol TextRepresentable {
+    var textualDescription: String { get }
+}
+
+extension Dice: TextRepresentable {
+    var textualDescription: String {
+        return &quot;A \(sides)-sided dice&quot;
+    }
+}
+</code></pre>
+
+<p>扩展来遵循并符合协议与原始定义中效果相同</p>
+
+<h2 id="toc_10">通过扩展遵循协议</h2>
+
+<pre><code class="language-swift">struct Hamster {
+    var name: String
+    var textualDescription: String {
+        return &quot;A hamster named \(name)&quot;
+    }
+}
+
+extension Hamster: TextRepresentable {}
+</code></pre>
+
+<h2 id="toc_11">协议类型的集合</h2>
+
+<p>协议类型可以在数组或字典这样的集合使用</p>
+
+<p><code>let things: [TextRepresentable] = [game, d12, simonTheHamster]</code></p>
+
+<h2 id="toc_12">协议的继承</h2>
+
+<p>协议可以继承一个或多个其他协议,可以在继承协议基础上增加新的要求.协议继承与发与类相似,多个协议用逗号分割：</p>
+
+<pre><code class="language-swift">protocol InheritingProtocol: SomeProtocol, AnotherProtocol {
+    // 这里是协议的定义部分
+}
+</code></pre>
+
+<h2 id="toc_13">类类型专属协议</h2>
+
+<p>在协议的继承列表中，通过添加<code>class</code>关键字来限制协议只能被类类型遵循，而值类型如枚举和结构体不能遵循该协议</p>
+
+<pre><code class="language-swift">protocol SomeClassOnlyProtocol: class, SomeInheritedProtocol {
+    // 这里是类类型专属协议的定义部分
+}
+</code></pre>
+
+<p><code>class</code>关键字必须第一个出现在协议的继承列表中，在其他继承的协议之前</p>
+
+<h2 id="toc_14">协议合成</h2>
+
+<p>同时遵循多个协议时,可以将多个协议采用<code>SomeProtocol &amp; AnotherProtocol</code>的格式进行组合,即<strong>协议合成</strong></p>
+
+<pre><code class="language-swift">protocol Named {
+    var name: String { get }
+}
+protocol Aged {
+    var age: Int { get }
+}
+struct Person: Named, Aged {
+    var name: String
+    var age: Int
+}
+
+func wishHappyBirthday(to celebrator: Named &amp; Aged) {
+    print(&quot;Happy birthday, \(celebrator.name), you&#39;re \(celebrator.age)!&quot;)
+}
+
+let birthdayPerson = Person(name: &quot;Malcolm&quot;, age: 21)
+wishHappyBirthday(to: birthdayPerson)// “Happy birthday Malcolm - you&#39;re 21!”
+</code></pre>
+
+<blockquote>
+<p>协议合成并不是生成一个新的、永久的协议</p>
+</blockquote>
+
+<h2 id="toc_15">检查协议一致性</h2>
+
+<p>使用<code>is</code>和<code>as</code>检查协议的一致性,即是否符合某协议，并且可以转换到指定的协议类型,与类型检查和转换用法相同:</p>
+
+<ul>
+<li><code>is</code>用来检查实例是否符合某个协议，若符合则返回<code>true</code>，否则返回<code>false</code></li>
+<li><code>as?</code>返回一个可选值，当实例符合某个协议时，返回类型为协议类型的可选值，否则返回<code>nil</code></li>
+<li><code>as!</code>将实例强制向下转换到某个协议类型，如果强转失败，会引发运行时错误</li>
+</ul>
+
+<pre><code class="language-swift">protocol HasArea {
+    var area: Double { get }
+}
+
+for object in objects {
+    if let objectWithArea = object as? HasArea {
+        print(&quot;Area is \(objectWithArea.area)&quot;)
+    } else {
+        print(&quot;Something that doesn&#39;t have an area&quot;)
+    }
+}
+</code></pre>
+
+<p>判断元素是否符合<code>HasArea</code>协议后将<code>as?</code>操作符通过可选绑定，绑定到<code>objectWithArea</code>常量上进行访问</p>
+
+<blockquote>
+<p>在数据中的元素类型并不会因为强转而丢失类型信息,只是在被赋值为<code>objectWithArea</code>时，被视为<code>HasArea</code>类型，因此只有<code>area</code>属性可以被访问</p>
+</blockquote>
+
+<h2 id="toc_16">可选的协议要求</h2>
+
+<p>协议可以被定义为可选的，用<code>option</code>关键字作为前缀来标记可选要求<br/>
+可选要求用在你需要和<code>Objective-C</code>打交道的代码中<br/>
+协议和可选要求都必须带上<code>@objc</code>属性<br/>
+标记<code>@objc</code>特性的协议只能被继承自<code>Objective-C</code>类的类或者<code>@objc</code>类遵循，其他类以及结构体和枚举均不能遵循这种协议</p>
+
+<p>当使用可选要求时，协议中的可选的方法或属性会自动变成可选的（函数的话整个函数类型是可选的而不是函数的返回值）</p>
+
+<pre><code class="language-swift">@objc protocol CounterDataSource {
+    optional func incrementForCount(count: Int) -&gt; Int
+    optional var fixedIncrement: Int { get }
+}
+</code></pre>
+
+<pre><code class="language-swift">class Counter {
+    var count = 0
+    var dataSource: CounterDataSource?
+    func increment() {
+    //此处无法确定是否存在dataSource 以及 datasource是否遵循了协议 因此需要两层的可选链式调用
+        if let amount = dataSource?.incrementForCount?(count) {
+            count += amount
+        } else if let amount = dataSource?.fixedIncrement {
+            count += amount
+        }
+    }
+}
+</code></pre>
+
+<p>通过可选链式调用可选协议</p>
+
+<p><code>CounterDataSource</code>的简单实现</p>
+
+<pre><code class="language-swift">//继承自OC的NSObject
+class ThreeSource: NSObject, CounterDataSource {
+    let fixedIncrement = 3
+}
+
+//@objc类
+@objc class TowardsZeroSource: NSObject, CounterDataSource {
+    func increment(forCount count: Int) -&gt; Int {
+        if count == 0 {
+            return 0
+        } else if count &lt; 0 {
+            return 1
+        } else {
+            return -1
+        }
+    }
+}
+</code></pre>
+
+<h2 id="toc_17">协议扩展</h2>
+
+<p>通过扩展来为遵循协议的类型提供属性、方法以及下标的&quot;实现&quot;.这样可以基于协议本身实现这些功能,而不需要给每个遵循协议的类型进行重复的实现或者使用全局函数</p>
+
+<pre><code class="language-swift">//定义一个协议
+protocol RandomNumberGenerator {
+    func random() -&gt; Double
+}
+//为协议进行协议扩展
+extension RandomNumberGenerator {
+    func randomBool() -&gt; Bool {
+        return random() &gt; 0.5
+    }
+}
+</code></pre>
+
+<p>所有遵循该协议的类型 都能获得扩展所增加的方法实现</p>
+
+<h3 id="toc_18">提供默认实现</h3>
+
+<p>可以通过协议扩展来为协议中的的要求提供默认实现，如果遵循该协议的类型提供了自己的实现,那么自定义实现会代替扩展中的默认实现</p>
+
+<h3 id="toc_19">为协议扩展添加限制条件</h3>
+
+<p>在协议扩展的时候条件一些限制条件,只有遵循协议的类型满足这些条件的时候才能获取协议扩展提供的默认实现</p>
+
+<p>将这些限制条件写在协议名字之后,并且使用<code>where</code>字句描述</p>
+
+<pre><code class="language-swift">/**
+扩展CollectionType协议,但是只适用于集合中的元素遵循`TextRepresentable`协议的情况
+*/
+extension CollectionType where Generator.Element: TextRepresentable {
+    var textualDescription: String {
+        let itemsAsText = self.map { $0.textualDescription }
+        return &quot;[&quot; + itemsAsText.joinWithSeparator(&quot;, &quot;) + &quot;]&quot;
+    }
+}
+</code></pre>
+
+<p>因此需要一个集合类型的遵循CollectionType协议,而且其中的每个元素都遵循TextRepresentable协议<br/>
+这样的话这个集合就默认有扩展协议的默认实现</p>
+
+<blockquote>
+<p>如果多个协议扩展都为同一个协议要求提供了默认实现，而遵循协议的类型又同时满足这些协议扩展的限制条件，那么将会使用限制条件最多的那个协议扩展提供的默认实现。</p>
 </blockquote>
 
 
@@ -276,8 +514,10 @@ john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -289,11 +529,9 @@ john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -378,31 +616,31 @@ john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

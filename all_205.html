@@ -82,91 +82,244 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15556458372058.html">内存监控</a></h1>
-			<p class="meta"><time datetime="2019-04-19T11:50:37+08:00" 
-			pubdate data-updated="true">2019/4/19</time></p>
+		  	<h1 class="entry-title"><a href="14993105877642.html">闭包</a></h1>
+			<p class="meta"><time datetime="2017-07-06T11:09:47+08:00" 
+			pubdate data-updated="true">2017/7/6</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">基础概念和知识</h2>
+		  	<p>闭包是自包含的函数代码块,可以在代码中被传递和使用</p>
 
-<h3 id="toc_1">物理内存和虚拟内存</h3>
+<p><strong>闭包可以捕获和存储其所在上下文中任意常量和变量的引用。被称为包裹常量和变量。 Swift 会为你管理在捕获过程中涉及到的所有内存操作。</strong></p>
 
-<p>因为CPU的寻址范围是有限的，取决于CPU的地址总线，例如在32位平台下，其寻址范围就是2^ 32即4G。但是如果每次开启一个线程都给4G内存空间，因为物理内存是有限的，会导致内存很快就分完了，这样的话没有分配资源的进程就只能等待已分配内存的进程执行完成才能执行</p>
+<blockquote>
+<p><code>Swift</code>中的闭包与<code>C</code>和<code>Objective-C</code>中的代码块（<code>blocks</code>）以及其他一些编程语言中的匿名函数比较相似<br/>
+在函数章节中介绍的全局和嵌套函数实际上也是特殊的闭包</p>
+</blockquote>
 
-<p>因此提出了虚拟内存的概念，它利用磁盘空间虚拟出来一块逻辑内存，而这个用于虚拟内存的磁盘空间被称为交换空间，当内存不足时会使用交换分区的内存空间(即将暂时用不到的资源写入交换空间，将物理内存进行释放)</p>
+<p>闭包的形式：</p>
 
-<p>此时我们给一个进程只需要分配4G的虚拟内存空间，它是一个连续的内存空间(虚拟上的)。此时进程要访问内存地址可能需要一下流程：</p>
+<ul>
+<li>全局函数是一个有名字但不会捕获任何值的闭包</li>
+<li>嵌套函数是一个有名字并可以捕获其封闭函数域内值的闭包</li>
+<li>闭包表达式是一个利用轻量级语法所写的可以捕获其上下文中变量或常量值的匿名闭包</li>
+</ul>
 
-<ol>
-<li>访问地址空间上某一地址，需要把地址翻译为实际需要的物理地址</li>
-<li>虽然所有进程共享这一整块物理内存，每个进程只需要把目前需要的虚拟地址映射到物理内存</li>
-<li>进程需要知道哪些地址空间上的数据在物理内存上，哪些不在（可能这部分存储在磁盘上），还有在物理内存上的哪里，这就需要通过页表来记录</li>
-<li>页表的每一个表项分两部分，第一部分记录此页是否在物理内存上，第二部分记录物理内存页的地址（如果在的话）</li>
-<li>当进程访问某个虚拟地址的时候，就会先去看页表，如果发现对应的数据不在物理内存上，就会发生缺页异常</li>
-<li>缺页异常的处理过程，操作系统立即阻塞该进程，并将硬盘里对应的页换入内存，然后使该进程就绪，如果内存已经满了，没有空地方了，那就找一个页覆盖，至于具体覆盖的哪个页，就需要看操作系统的页面置换算法是怎么设计的了</li>
-</ol>
+<p>闭包可以进行一定语法优化，常见优化:</p>
 
-<p><strong>因此进程工作流程为:</strong><br/>
-当进程创建时，内核会为进程分配4G虚拟内存，当进程还没开始时，这只是内存布局。实际上并不立即把内存对应位置的程序数据和代码(比如.text .data段)拷贝到物理内存中，只是建立好虚拟内存和磁盘文件之间的映射就好（叫做存储器映射）。这个时候数据和代码还是在磁盘上的。当运行到对应的程序时，进程去寻找页表，发现页表中地址没有存放在物理内存上，而是在磁盘上，于是发生缺页异常，于是将磁盘上的数据拷贝到物理内存中。</p>
+<ul>
+<li>利用上下文推断参数和返回值类型</li>
+<li>隐式返回<code>单表达式</code>闭包，即单表达式闭包可以省略<code>return</code>关键字</li>
+<li>参数名称缩写</li>
+<li>尾随闭包语法</li>
+</ul>
 
-<p>另外在进程运行过程中，要通过malloc来动态分配内存时，也只是分配了虚拟内存，即为这块虚拟内存对应的页表项做相应设置，当进程真正访问到此数据时，才引发缺页异常。</p>
+<h2 id="toc_0">闭包表达式</h2>
 
-<p>可以认为虚拟空间都被映射到了磁盘空间中（事实上也是按需要映射到磁盘空间上，通过mmap，mmap是用来建立虚拟空间和磁盘空间的映射关系的）</p>
+<p>闭包表达式是一种利用简洁语法构建内联闭包的方式。</p>
 
-<h2 id="toc_2">iOS内存是怎么工作的</h2>
+<h3 id="toc_1">sorted方法</h3>
 
-<p><strong>1. iOS怎么监测内存的</strong></p>
+<p><code>Swift</code>的<code>sorted(by:)</code>方法根据提供的排序的闭包函数.将数组排序后返回一个同样大小排序后的数组,原数组不变</p>
 
-<p>iOS会开启一个优先级最高的线程<code>vm_pressure_monitor</code>来监控系统的内存压力情况，并通过一个堆栈来维护所有App的进程。另外，iOS还会维护一个内存快照表，用于保存每个进程内存也的消耗情况。当系统监测发现某个app内存有压力了，就会发出通知，内存有压力的App就会执行代理<code>didReceiveMemoryWarning</code>代理。通过这个代理，可以获得最后一个编写代码释放内存的机会。通过这段代码的执行，可以避免App被系统强杀</p>
+<p><code>let names = [&quot;Chris&quot;, &quot;Alex&quot;, &quot;Ewa&quot;, &quot;Barry&quot;, &quot;Daniella&quot;]</code><br/>
+对于数组这个用于排序的闭包函数类型为<code>(String, String) -&gt; Bool</code>通过返回bool值决定第一个参数在前还是在后</p>
 
-<p><strong>2. 为什么iOS上内存占用过大会被系统强杀呢</strong>?(在其他系统或者MacOS就不会)</p>
-
-<p>上面提到了交换空间来作为虚拟内存，但是苹果公司考虑到手持设备的存储空间小的问题，并没有使用交换空间，这样虚拟内存就没法记录到外部存储。因此，苹果引入了MemoryStatus机制</p>
-
-<p><code>MemoryStatus</code>机制的主要思路就是，在iOS系统上弹出尽可能多的内存供当前应用使用。因此其机制就是先强杀后台应用，如果内存还不够就强杀掉当前应用。<br/>
-<code>MemoryStatus</code>机制，会开启一个<code>memorystatus_jetsam_thread</code>线程。这个线程和内存压力监测线程<code>vm_pressure_monitor</code>没有联系，只负责强杀应用和记录日志，不会发送消息，所以内存压力检测线程无法获取到强杀应用的消息</p>
-
-<p><strong><em>3. 系统强杀App时，怎么判断优先级</em></strong><br/>
-iOS系统内核中有一个数组，专门用于维护线程优先级。优先级规定:内核占用线程的优先级最高，操作系统次之，App的优先级最后。并且前台App的优先级高于后台运次那个优先级；COU使用多的线程优先级降低</p>
-
-<p><strong>iOS系统在因为内存问题强杀掉App之前，至少有6秒钟时间用来做优先级判断。同时来生成<code>JetSamEvent</code>日志</strong></p>
-
-<h2 id="toc_3">获取内存</h2>
-
-<p>获取当前进程占用内存:</p>
-
-<pre><code class="language-objectivec">struct mach_task_basic_info info;
-mach_msg_type_number_t size = sizeof(info);
-kern_return_t kl = task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t)&amp;info, &amp;size);
-    
-NSString *memStr;
-if (kl == KERN_SUCCESS) {
-    memStr = [NSString stringWithFormat:@&quot;used %llu MB \n&quot;,info.resident_size / (1024 * 1024)];
+<pre><code class="language-swift">func backward(_ s1: String, _ s2: String) -&gt; Bool {
+    return s1 &gt; s2
 }
-NSLog(@&quot;%@&quot;, memStr);
-
-//
-struct mach_task_basic_info {
-    mach_vm_size_t  virtual_size;   //虚拟内存      mach_vm_size_t  resident_size;   //物理内存     mach_vm_size_t  resident_size_max;  /* maximum resident memory size (bytes) */
-    time_value_t    user_time;          /* total user run time for
-                                         *  terminated threads */
-    time_value_t    system_time;        /* total system run time for
-                                         *  terminated threads */
-    policy_t        policy;             /* default policy for new threads */
-    integer_t       suspend_count;      /* suspend count for task */
-};
+var reversedNames = names.sorted(by: backward)
+// reversedNames 为 [&quot;Ewa&quot;, &quot;Daniella&quot;, &quot;Chris&quot;, &quot;Barry&quot;, &quot;Alex&quot;]
 </code></pre>
 
-<p>这种方法检测到的物理内存值与<code>Xcode</code>或者<code>Instrument</code>值差异较大<br/>
-为与Xcode的内存值检测相同可以使用<code>task_vm_info</code>中的<code>phys_footprint</code>值</p>
+<p>为了写<code>return s1 &gt; s2</code>这么简单的表达式却需要写函数太过繁琐,我们可以使用闭包表达式语法</p>
 
-<pre><code class="language-objectivec">    struct task_vm_info info;
-    mach_msg_type_number_t size = sizeof(info);
-    kern_return_t kl = task_info(mach_task_self(), TASK_VM_INFO, (task_info_t) &amp;info, &amp;size);
-    NSString *memStr;
-    if (kl == KERN_SUCCESS) {
-        memStr = [NSString stringWithFormat:@&quot;used %llu MB \n&quot;,info.phys_footprint / (1024 * 1024)];
+<h3 id="toc_2">闭包表达式语法</h3>
+
+<pre><code class="language-swift">{ (parameters) -&gt; returnType in
+    statements
+}
+</code></pre>
+
+<p>闭包表达式参数 可以是<code>in-out</code>参数，但不能设定默认值。可以使用可变参数但是要放到参数最后</p>
+
+<p>闭包的函数体部分由关键字<code>in</code>引入。该关键字表示闭包的参数和返回值类型定义已经完成，闭包函数体即将开始。（<code>in</code>前为闭包定义,后为闭包函数体）</p>
+
+<pre><code class="language-swift">reversedNames = names.sorted(by: { (s1: String, s2: String) -&gt; Bool in
+    return s1 &gt; s2
+})
+</code></pre>
+
+<h3 id="toc_3">根据上下文推断类型</h3>
+
+<p>因为这个闭包函数的作为方法参数传入,因此其类型已经确定为<code>(String, String) -&gt; Bool</code>,因此我们可以省略这些类型声明,因为可以被正确推断出来</p>
+
+<pre><code class="language-swift">reversedNames = names.sorted(by: { s1, s2 in return s1 &gt; s2 } )
+//我们将闭包作为函数或方法的参数时,其类型总是可以推断出来的
+//推荐完整格式闭包,增加代码可读性
+</code></pre>
+
+<h3 id="toc_4">单表达式闭包隐式返回</h3>
+
+<p>如果闭包内只有一行单一表达式,并且明确了需要的返回类型,可以省略<code>return</code>关键字</p>
+
+<pre><code class="language-swift">//
+reversedNames = names.sorted(by: { s1, s2 in s1 &gt; s2 } )
+</code></pre>
+
+<h3 id="toc_5">参数名称缩写</h3>
+
+<p><code>Swift</code>自动为内联闭包提供了参数名称缩写功能，你可以直接通过<code>$0</code>，<code>$1</code>，<code>$2</code>来顺序调用闭包的参数</p>
+
+<p>如果使用参数名称缩写,那么在闭包定义中也可以省略参数列表,对应的参数名称缩写的类型也可以推断出来,这样的话<code>in</code>关键字也可以省略</p>
+
+<pre><code class="language-swift">//此时闭包表达式只剩下闭包函数体
+reversedNames = names.sorted(by: { $0 &gt; $1 } )
+</code></pre>
+
+<h3 id="toc_6">运算符方法</h3>
+
+<p><code>Swift</code>的<code>String</code>类型定义了关于大于号<code>（ &gt; ）</code>的字符串实现，其作为一个函数接受两个<code>String</code>类型的参数并返回<code>Bool</code>类型的值。而这正好与<code>sorted(by:)</code>方法的参数需要的函数类型相符合。因此，你可以简单地传递一个大于号，Swift 可以自动推断出你想使用大于号的字符串函数实现：</p>
+
+<pre><code class="language-swift">reversedNames = names.sorted(by: &gt;)
+</code></pre>
+
+<h2 id="toc_7">尾随闭包</h2>
+
+<p>如果要将一个很长的闭包作为函数最后一个参数,为了增强代码的可读性,我们可以使用<code>尾随闭包</code>的方式来调用函数</p>
+
+<pre><code class="language-swift">func someFunctionThatTakesAClosure(closure: () -&gt; Void) {
+    // 函数体部分
+}
+// 以下是不使用尾随闭包进行函数调用
+someFunctionThatTakesAClosure(closure: {
+    // 闭包主体部分
+})
+// 以下是使用尾随闭包进行函数调用
+someFunctionThatTakesAClosure() {
+    // 闭包主体部分
+}
+
+reversedNames = names.sorted() { $0 &gt; $1 }
+//如果闭包函数是函数的唯一参数我们还可以省略（）
+reversedNames = names.sorted { $0 &gt; $1 }
+</code></pre>
+
+<pre><code class="language-swift">//举栗子
+let strings = numbers.map {
+    (number) -&gt; String in
+    var number = number
+    var output = &quot;&quot;
+    repeat {
+        output = digitNames[number % 10]! + output
+        number /= 10
+    } while number &gt; 0
+    return output
+}
+// strings 常量被推断为字符串类型数组，即 [String]
+// 其值为 [&quot;OneSix&quot;, &quot;FiveEight&quot;, &quot;FiveOneZero&quot;]
+</code></pre>
+
+<h2 id="toc_8">值捕获</h2>
+
+<p>闭包可以在被定义的上下文捕获常量或变量</p>
+
+<p>最简单的捕获值的闭包形式是嵌套函数</p>
+
+<pre><code class="language-swift">func makeIncrementer(forIncrement amount: Int) -&gt; () -&gt; Int {
+    var runningTotal = 0
+    func incrementer() -&gt; Int {
+        runningTotal += amount
+    return runningTotal
+    }
+    return incrementer
+}
+</code></pre>
+
+<p><code>makeIncrementer</code>的返回类型是<code>() -&gt; Int</code>说明要返回一个函数<br/>
+对于嵌套函数<code>incrementer()</code>并没有参数，而是捕获了<code>runningTotal</code>和<code>amount</code>变量的引用.捕获引用保证了<code>runningTotal</code>和<code>amount</code>变量在调用完<code>makeIncrementer</code>后不会消失，并且保证了在下一次执行<code>incrementer</code>函数时，<code>runningTotal</code>依旧存在。</p>
+
+<blockquote>
+<p>如果一个值不会被闭包改变，或者在闭包创建后不会改变，Swift 可能会改为捕获并保存一份对值的拷贝。 Swift 也会负责被捕获变量的所有内存管理工作，包括释放不再需要的变量。</p>
+</blockquote>
+
+<pre><code class="language-swift">let incrementByTen = makeIncrementor(forIncrement: 10)
+incrementByTen()// 返回的值为10
+incrementByTen()// 返回的值为20
+incrementByTen()// 返回的值为30
+</code></pre>
+
+<p>这个常量函数每次调用都会将<code>runningTotal</code>变量增加<code>10</code></p>
+
+<h2 id="toc_9">闭包是引用类型</h2>
+
+<p><code>函数</code>和<code>闭包</code>都是引用类型，因此我们设置的常量或者变量是设置的对应函数或闭包的引用，而不是闭包内容本身</p>
+
+<blockquote>
+</blockquote>
+
+<h2 id="toc_10">逃逸闭包</h2>
+
+<p>将闭包作为参数传递到另一个函数中,但是这个闭包在函数返回后才执行,则这个闭包从函数中<code>逃逸</code>，我们可以通过在函数名之前标注<code>@escaping</code>表示这个闭包允许<code>逃逸</code></p>
+
+<p>一种能使闭包“逃逸”出函数的方法是，将这个闭包保存在一个函数外部定义的变量中,此时必须闭包是可逃逸的否则函数的作用域结束，这个外部变量保存的闭包。。。会导致编译错误</p>
+
+<p>逃逸闭包我们常用于在一个函数需要异步执行操作,通常会让函数返回,在异步操作完成后再调用执行这个闭包,因为闭包需要在函数返回之后被调用,所以需要逃逸闭包</p>
+
+<pre><code class="language-swift">var completionHandlers: [() -&gt; Void] = []
+func someFunctionWithEscapingClosure(completionHandler: @escaping () -&gt; Void) {
+    completionHandlers.append(completionHandler)
+}
+
+func someFunctionWithNonescapingClosure(closure: () -&gt; Void) {
+    closure()
+}
+class SomeClass {
+    var x = 10
+    func doSomething() {
+        someFunctionWithEscapingClosure { self.x = 100 }
+        someFunctionWithNonescapingClosure { x = 200 }
+    }
+}
+let instance = SomeClass()
+instance.doSomething()
+print(instance.x)
+// 打印出 &quot;200&quot;
+completionHandlers.first?()
+print(instance.x)
+</code></pre>
+
+<h2 id="toc_11">自动闭包</h2>
+
+<p>一种自动创建的闭包，用于包装传递给函数作为参数的表达式。不接受任何参数，当它被调用的时候，会返回被包装在其中的表达式的值。这样帮我们省略掉花括号,用一个普通表达式代替显式的闭包</p>
+
+<p>我们经常会调用采用自动闭包的函数，但是很少去实现这样的函数。举个例子来说，<code>assert(condition:message:file:line:)</code>函数接受自动闭包作为它的<code>condition</code>参数和 <code>message</code>参数；它的<code>condition</code>参数仅会在<code>debug</code>模式下被求值，它的<code>message</code>参数仅当 <code>condition</code>参数为<code>false</code>时被计算求值。</p>
+
+<p><strong>自动闭包让你能够延迟求值，因为直到你调用这个闭包，代码段才会被执行。</strong></p>
+
+<pre><code class="language-swift">// customersInLine is [&quot;Alex&quot;, &quot;Ewa&quot;, &quot;Barry&quot;, &quot;Daniella&quot;]
+//未使用自动闭包
+func serve(customer customerProvider: () -&gt; String) {
+    print(&quot;Now serving \(customerProvider())!&quot;)
+}
+serve(customer: { customersInLine.remove(at: 0) } )
+// 打印出 &quot;Now serving Alex!&quot;
+
+//使用自动闭包
+func serve(customer customerProvider: @autoclosure () -&gt; String) {
+print(&quot;Now serving \(customerProvider())!&quot;)
+}
+serve(customer: customersInLine.remove(at: 0))
+</code></pre>
+
+<blockquote>
+<p>过度使用 autoclosures 会让你的代码变得难以理解。上下文和函数名应该能够清晰地表明求值是被延迟<br/>
+执行的</p>
+</blockquote>
+
+<pre><code class="language-swift">//可以通过同时加上@autoclosure @escaping 自动闭包可以“逃逸”
+func collectCustomerProviders(_ customerProvider: @autoclosure @escaping () -&gt; String) {
+    customerProviders.append(customerProvider)
 }
 </code></pre>
 
@@ -191,8 +344,10 @@ struct mach_task_basic_info {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -204,11 +359,9 @@ struct mach_task_basic_info {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -293,31 +446,31 @@ struct mach_task_basic_info {
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

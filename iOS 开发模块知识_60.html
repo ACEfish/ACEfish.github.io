@@ -82,23 +82,189 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15077234771115.html">ARKit</a></h1>
-			<p class="meta"><time datetime="2017-10-11T20:04:37+08:00" 
-			pubdate data-updated="true">2017/10/11</time></p>
+		  	<h1 class="entry-title"><a href="15284514278903.html">Git</a></h1>
+			<p class="meta"><time datetime="2018-06-08T17:50:27+08:00" 
+			pubdate data-updated="true">2018/6/8</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>AR即虚拟现实增强技术</p>
+		  	<pre><code class="language-text">git show 命令可以查看很多信息 分支 标签 commitId
 
-<p><code>ARKit</code>是基于苹果的游戏引擎3D(SceneKit)和2D的(SpriktKit)</p>
+</code></pre>
 
-<p>注意:需要A9处理器的的iOS11以上的系统</p>
+<h3 id="toc_0">log</h3>
 
-<p>增强现实的目标是往真实世界中的特定点插入虚拟内容，并且在真实世界中移动时还能对此虚拟内容保持追踪。ARKit 的基本流程包括从 iOS 设备摄像头中读取视频帧，对每一帧的图片进行处理并获得特征点。特征有很多很多，但我们需要从图片中找出能在多个帧中都被追踪到的特征。特征可能是物体的某个角，或是有纹理的织物的某条边等等。有很多种方式可以生成这些特征，可以在网上了解更多（例如搜索 SIFT）但目前我们只需知道，每张图片里会产生多个唯一标识的特征就足够了。</p>
+<blockquote>
+<p>git log 的节点只与当前分支相关的节点,包括创建此分支之前继承的节点 和 之后自己提交的 以及作为当前分支与其他分支合并的log</p>
+</blockquote>
 
-<p>获得某张图片的特征后，就可以从多个帧中追踪这些特征，随着用户在世界中移动，就可以利用相应的特征点来估算 3D 世界信息，例如当前摄像头的位置和特征的位置。用户移动地越多，就会获得越多的特征，并优化这些估算的 3D 世界信息。</p>
+<pre><code class="language-text">git log --graph  可以看到分支合并图
+git log --graph --pretty=oneline --abbrev-commit 以图形化方式更好的展示分支合并状况
+</code></pre>
 
-<p>至于平面检测，就是在获得一定数量的 3D 特征点后，尝试在这些点中安装一些平面，然后根据尺度、方向和位置找出最匹配的那个。ARKit 会不断分析 3D 特征点并在代码中报告找到的平面。</p>
+<h3 id="toc_1">diff</h3>
+
+<pre><code class="language-text">git diff 工作区与缓存区比较
+git diff --cache 缓存区与HEAD比较
+git diff HEAD 工作区与当前分支对比
+git diff branchName 当前分支与某分支对比
+git diff commitId 工作区与某次提交对比
+</code></pre>
+
+<h3 id="toc_2">回退</h3>
+
+<pre><code class="language-text">git checkout -- fileName 将工作区文件撤销修改至与暂存区一致
+
+git reset HEAD fileName 将暂存区的修改撤销掉 重新放回工作区(HEAD表示最新版本)
+
+git reset commitId 回退版本
+
+</code></pre>
+
+<h3 id="toc_3">删除</h3>
+
+<pre><code class="language-text"> git rm filename 将暂存区和工作区的文件一起删除
+ git rm --cache filename 将暂存区的文件删除但是保留工作区文件
+</code></pre>
+
+<h3 id="toc_4">分支</h3>
+
+<blockquote>
+<p>不同分支共享工作区和暂存区,但是版本库是不一样的 ，因此不同分支下的文件是工作区 暂存区可各自的版本库文件总和 可能文件不同</p>
+</blockquote>
+
+<pre><code class="language-text">git checkout -b newBranchName 创建分支并且切换分支 相当于 git branch branchName +  git checkout branchName
+git branch branchName 创建分支
+git checkout branchName 切换分支为当前分支
+git branch -d branchName 删除分支
+git merge branchName 将其他分支合并到当前分支
+git merge -m &quot;commitInfo&quot; branchName 合并分支 当不为快速合并时 新建commitInfo的提交
+git merge --no-ff -m &quot;commitInfo&quot; branchName 禁用快速合并
+</code></pre>
+
+<h4 id="toc_5">快速合并</h4>
+
+<p>如果当前的分支和另一个分支没有内容上的差异，就是说当前分支的每一个提交(commit)都已经存在另一个分支里了，git 就会执行一个“快速向前”(fast forward)操作；git 不创建任何新的提交(commit),只是将当前分支指向合并进来的分支。 否则合并会新建一个提交来合并分支</p>
+
+<h3 id="toc_6">stash</h3>
+
+<pre><code class="language-text">git stash 将工作去和缓存区文件stash起来
+
+ git stash list 查看stash内容的列表
+ 
+ git stash apply stash@\{0\}  恢复暂存 不删除stash内容(如果不指定节点 默认最后stash的一个)
+ 
+ git stash drop stash@\{0\} 删除stash内容(如果不指定节点 默认最后stash的一个)
+ 
+git stash pop stash@\{0\} 恢复暂存 并且删除stash内容(如果不指定节点 默认最后stash的一个)
+</code></pre>
+
+<h3 id="toc_7">remote</h3>
+
+<pre><code class="language-text">git remote -v 查看远程信息
+
+git branch -r 查看远程分支信息
+
+git checkout -b branchName origin/branchName  创建远程的branchName分支到本地
+
+
+</code></pre>
+
+<pre><code class="language-text">git push &lt;远程主机名&gt; &lt;本地分支名&gt;:&lt;远程分支名&gt; 将本地分支推送到远程分支 如果没有这个远程分支就新建远程分支
+
+git pull &lt;远程主机名&gt; &lt;远程分支名&gt;:&lt;本地分支名&gt; 如果没有本地分支 就创建本地分支
+
+</code></pre>
+
+<pre><code class="language-text">
+git push origin branchName 将本地分支推送到远程分支 如果分支不存在 就会新建
+
+git push origin :branchName 删除指定远程分支 等同于 git push origin --delete master
+
+git push origin 将当前分支 推送到远程分支
+
+git push -u origin master 使用-u选项指定一个默认主机，这样以后就可以不加任何参数使用git push
+
+git push -f origin branchName -f表示覆盖远程分支 相当于先删除远程分支在新建
+
+</code></pre>
+
+<pre><code class="language-text">git pull origin remoteBranch  remoteBranch与当前分支合并
+
+git branch --set-upstream-to=origin/branchName branchName 指定本地分支与远程分支的连接，建立追踪关系后 就可以直接 git pull origin 省略远程分支名字 如果只有一个追踪分支 origin也可以省略 
+
+</code></pre>
+
+<h3 id="toc_8">变基</h3>
+
+<p>使用<code>rebase</code>命令将提交到某一分支上的所有修改都移至另一分支上，就好像“重新播放”一样。</p>
+
+<p>找到两个分支的共同祖先分支,然后对比当前分支相对于该祖先的历次提交，提取相应的修改并存为临时文件，然后将当前分支指向目标基底</p>
+
+<p>和<code>merge</code>合并出来的结果没什么区别 只是减少了分支使合并历史更加整洁</p>
+
+<pre><code class="language-text">git rebase 分支名称
+</code></pre>
+
+<h3 id="toc_9">标签</h3>
+
+<p>标签也是版本库的快照</p>
+
+<pre><code class="language-text">git tag tagName 打标签 默认打在最新提交commit
+git tag tagName commitId 给commit打上标签
+git tag -a tagName -m &quot;tag说明文字&quot; commitId 给tag加说明文字 -a为标签名 -m为说明文字
+git tag 查看所有标签
+git show tagName 查看标签信息(git show命令还可以查看其它很多信息)
+git tag -d tagName 删除本地标签
+
+//推送标签
+git push origin refs/tags/源标签名:refs/tags/目的标签名 
+
+git push origin tagname 推送标签到远程
+git push origin --tags 推送所有标签
+
+删除远程标签
+git tag -d tagname //先删除本地标签
+git push origin :refs/tags/tagname
+
+</code></pre>
+
+<h3 id="toc_10">删除未追踪文件</h3>
+
+<pre><code class="language-text"># 删除 untracked files
+git clean -f
+ 
+# 连 untracked 的目录也一起删掉
+git clean -fd
+ 
+# 连 gitignore 的untrack 文件/目录也一起删掉 （慎用，一般这个是用来删掉编译出来的 .o之类的文件用的）
+git clean -xfd
+ 
+# 在用上述 git clean 前，墙裂建议加上 -n 参数来先看看会删掉哪些文件，防止重要文件被误删
+git clean -nxfd
+git clean -nf
+git clean -nfd
+</code></pre>
+
+<h3 id="toc_11">补充</h3>
+
+<h4 id="toc_12">ignore</h4>
+
+<p>git check-ignore -v 文件名 查看ignore文件写的有什么问题</p>
+
+<h4 id="toc_13">alias</h4>
+
+<pre><code class="language-text">git config --global alias.st status //st代表status
+git config --global alias.co checkout //co 代表 checkout
+git config --global alias.ci commit //ci代表commit
+git config --global alias.br branch //br代表branch
+git config --global alias.last &#39;log -1&#39; //git last代表 git log -l 最后一次提交信息
+git config --global alias.lg &quot;log --color --graph --pretty=format:&#39;%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)&lt;%an&gt;%Creset&#39; --abbrev-commit&quot; //修改git lg 为一种好看的格式
+</code></pre>
+
+<h3 id="toc_14">搭建自定义Git仓库</h3>
+
+<p><a href="https://www.liaoxuefeng.com/wiki/0013739516305929606dd18361248578c67b8067c8c017b000/00137583770360579bc4b458f044ce7afed3df579123eca000">参考</a></p>
 
 
 		</div>
@@ -121,8 +287,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -134,11 +302,9 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -223,31 +389,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

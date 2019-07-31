@@ -82,147 +82,260 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14873831706932.html">OCMock</a></h1>
-			<p class="meta"><time datetime="2017-02-18T09:59:30+08:00" 
-			pubdate data-updated="true">2017/2/18</time></p>
+		  	<h1 class="entry-title"><a href="15538518127841.html">App程序编译的完整流程</a></h1>
+			<p class="meta"><time datetime="2019-03-29T17:30:12+08:00" 
+			pubdate data-updated="true">2019/3/29</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h3 id="toc_0">Mock介绍</h3>
+		  	<p>本文学习自戴铭老师的<a href="https://github.com/ming1016/study/wiki/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90-iOS-%E7%BC%96%E8%AF%91-Clang---LLVM">深入剖析 iOS 编译 Clang LLVM</a></p>
 
-<p>对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。</p>
+<h2 id="toc_0">前言</h2>
 
-<h3 id="toc_1">OCMock介绍</h3>
+<p>每次项目编译 不论模拟器还是真机都会在<code>Xcode</code>的<code>DerivedData</code>文件夹下创建一个该次编译需要或者产生文件的文件夹(缓存文件夹)<br/>
+<img src="media/15538518127841/15538525190405.jpg" alt="" style="width:624px;"/></p>
 
-<p><a href="http://ocmock.org/features/">官方网站</a><br/>
-根据要mock的对象的class来创建一个对应的对象，并且设置好该对象的属性和调用预定方法后的动作（例如返回一个值，调用代码块，发送消息等等），然后将其记录到一个数组中，接下来开发者主动调用该方法，最后做一个verify（验证），从而判断该方法是否被调用，或者调用过程中是否抛出异常等。</p>
+<p>而在build文件夹中就是我们这次编译的主要信息<br/>
+<img src="media/15538518127841/15538525902894.jpg" alt="" style="width:820px;"/><br/>
+其中<code>Intermediates.noindex</code>文件夹中为编译的缓存文件(辅助文件)，主要为辅助文件<code>.yml</code><code>.hamp</code>等<br/>
+product中为我们编译的结果<br/>
+<img src="media/15538518127841/15538527710516.jpg" alt="" style="width:592px;"/><br/>
+包括了pod库打包的.a文件，安装用到的.app文件，.app中还包括资源文件、.plist文件、storybord或者xib编译后的nib文件等</p>
 
-<h4 id="toc_2">1.OCMock中简单使用</h4>
+<p><img src="media/15538518127841/15538542741556.jpg" alt="" style="width:203px;"/></p>
+
+<h2 id="toc_1">编译流程</h2>
+
+<p>在本文中我们编译一个cocopoda程序来做演示</p>
+
+<h3 id="toc_2">1. 编译信息写入辅助文件，创建文件架构.app文件</h3>
+
+<p>创建.app文件夹,用来存放最后生成.app文件的信息<br/>
+<img src="media/15538518127841/15538531245953.jpg" alt="" style="width:837px;"/></p>
+
+<p>辅助文件用于辅助编译，暂时不知道有什么其他用？？？？</p>
+
+<p>写入辅助文件.yaml文件<br/>
+<img src="media/15538518127841/15538520286678.jpg" alt="" style="width:824px;"/></p>
+
+<p>写入辅助文件.hamp文件<br/>
+<img src="media/15538518127841/15538520549132.jpg" alt="" style="width:838px;"/><br/>
+写入辅助文件Entitlements.plist 和 Entitlements-Simulated.plist<br/>
+<img src="media/15538518127841/15538536658391.jpg" alt="" style="width:818px;"/></p>
+
+<h3 id="toc_3">2. 处理文件的打包信息</h3>
+
+<p>1.真机打包文件: 真机需要配置文件信息,此时在.app文件夹下为<br/>
+包含了配置文件信息是应用程序能在真机上运行的必须<br/>
+这步即将电脑内存放的开发证书证书直接放置到.app文件夹中<br/>
+<img src="media/15538518127841/15538540868414.jpg" alt="" style="width:879px;"/><br/>
+见上图中<code>embedded.mobileprovision</code>文件</p>
+
+<p>1.2 模拟器打包文件<br/>
+模拟器的配置文件信息，是app能在模拟器上运行的必须<br/>
+<img src="media/15538518127841/15538544375164.jpg" alt="" style="width:1098px;"/></p>
+
+<p>2.打包文件的实体信息 .app.xcent 主要为Entilements，信息  （不论模拟器或者真机都有）真机的文件信息中 包括了app信息，开发者信息、app用到的权限信息等<br/>
+ <img src="media/15538518127841/15538542169158.jpg" alt="" style="width:840px;"/></p>
+
+<h3 id="toc_4">3. 执行 CocoaPod 编译前脚本，checkPods Manifest.lock</h3>
+
+<p>默认是在这一步执行，这和你放置这个脚本的位置有关</p>
+
+<p><img src="media/15538518127841/15538558869448.jpg" alt="" style="width:684px;"/></p>
+
+<p><img src="media/15538518127841/15538547657710.jpg" alt="" style="width:834px;"/></p>
+
+<p><img src="media/15538518127841/15538547101237.jpg" alt="" style="width:701px;"/></p>
+
+<p>执行脚本比较这两个.lock文件 判断是否差异</p>
+
+<h3 id="toc_5">4.编译.m文件，使用 CompileC 和 clang 命令</h3>
+
+<p>编译所有的.m文件，包括自己项目的和pod库中的,（为什么没有.h文件呢？因为在预编译的时候都进了其它.m文件啊）</p>
+
+<p>编译后生成.o文件</p>
+
+<p><img src="media/15538518127841/15538550281496.jpg" alt="" style="width:864px;"/></p>
+
+<p>首先对任务进行描述</p>
+
+<pre><code class="language-text">CompileC /Users/fish/Library/Developer/Xcode/DerivedData/AlipayDemo-bqmyunxtybyzyecoutybsvekthlo/Build/...
+</code></pre>
+
+<p>接下来对会更新工作路径</p>
+
+<pre><code class="language-text">cd /Users/fish/Desktop/AlipayDemo
+export LANG=en_US.US-ASCII
+</code></pre>
+
+<p>接下来就是实际的编译命令</p>
+
+<pre><code class="language-text">//调用了clang命名
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x objective-c -arch arm64 -fmessage-length=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit=0 -std=gnu11 -fobjc-arc -fobjc-weak -fmodules -gmodules -fmodules-cache-path=/Users/fi....
+</code></pre>
+
+<pre><code class="language-text">//将pch文件一起编译
+-include /Users.../Application/PrefixHeader.pch
+</code></pre>
+
+<p>将文件都编译完成后,会将所有的.o文件写入一个辅助文件 <code>.LinkFileList</code>文件中，便于下一步链接</p>
+
+<p>clang常用命令参数</p>
+
+<pre><code class="language-text">-x 编译语言比如objective-c
+-arch 编译的架构，比如arm7
+-f 以-f开头的。
+-W 以-W开头的，可以通过这些定制编译警告
+-D 以-D开头的，指的是预编译宏，通过这些宏可以实现条件编译
+-iPhoneSimulator10.1.sdk 编译采用的iOS SDK版本
+-I 把编译信息写入指定的辅助文件
+-c 标识符指明需要运行预处理器，语法分析，类型检查，LLVM生成优化以及汇编代码生成.o文件
+-F 需要的Framework
+-L 连接静态库
+-o 编译结果
+-inclue 将文件include一起编译(当我们添加的有prefix文件时，就会在这这一步一起编译)
+</code></pre>
+
+<h3 id="toc_6">5.将cocoapods中的pod生成.a静态库</h3>
+
+<p><img src="media/15538518127841/15538703095401.jpg" alt="" style="width:1031px;"/></p>
+
+<p>使用<code>libTool</code>命令,<br/>
+<code>-fileList</code>指定上一步编译的所有.o文件等，其记录在一个AFNetworking.LinkFileList的文件中<br/>
+<code>-framework</code>指定需要依赖的framework <br/>
+打包为一个.a静态库</p>
+
+<blockquote>
+<p>swift的话，因为其pod不支持静态库，我们一般podfile中指定 userFramework？？？</p>
+</blockquote>
+
+<h3 id="toc_7">6.链接需要的 Framework和library</h3>
+
+<p><img src="media/15538518127841/15538692299741.jpg" alt="" style="width:1050px;"/></p>
+
+<p>采用 clang <br/>
+-L 链接静态库<br/>
+-framework 添加需要的依赖系统库库<br/>
+-F 链接framework</p>
+
+<p>链接的内容包括:</p>
 
 <ol>
-<li><p>class mock一个对象</p>
-<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
-//创建mock object当做类的实例
-</code></pre></li>
-<li><p>Stubbing methods that return objects</p>
-<pre><code class="language-object-c">/**
-意的就是有参数的方法，参数是可以具体指定的，也就是说只有满足你指定的具体参数的调用才会被mock指定的返回值。例子中的[OCMArg any]是指任意参数。<br/>
-*/<br/>
-//没有参数的方法<br/>
-OCMStub([mockClass someMethod]).andReturn(anObject);<br/>
-//有参数的方法<br/>
-OCMStub([mockClass someMethod:[OCMArg any]]).andReturn(anObject);
-</code></pre>
-<p>注意:<br/>
-<strong>OCMock会在mock实例上没有找到相同名字的实例方法的时候去找同名的类方法。</strong></p></li>
-<li><p>Verify-after-running<br/>
-有些时候需要验证我们执行的代码流程是否调用了某个外部的方法，这个时候用OCMock就比较简单来实现。如果没有调用过这个方法的话，会立即抛一个异常出来。</p>
-<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
-//...<br/>
-//some code<br/>
-//...<br/>
-OCMVerify([mockClass someMethod]);
-</code></pre></li>
-<li><p>验证mock方法没有被调用<br/>
-验证代码没有调用某个方法<br/>
-如果方法被调用了，就将isCalled设置为YES，这样最后assert的时候就会报错。</p>
-<pre><code class="language-object-c">static BOOL isCalled = false;
-id mockClass = OCMClassMock([SomeClass class]);<br/>
-OCMStub([mockClass someMethod]).andDo(^(NSInvocation *invocation){<br/>
-isCalled = YES;<br/>
-});<br/>
-//...<br/>
-//some code<br/>
-//...<br/>
-XCTAssertFalse(isCalled);
-</code></pre></li>
-<li><p>验证mock方法传入的参数<br/>
-验证传递给外部调用的参数是否符合预期</p>
-<pre><code class="language-objec-c">id mockClass = OCMClassMock([SomeClass class]);
-OCMStub([mockClass someMethod:[OCMArg checkWithBlock:^BOOL(id obj) {<br/>
-//...<br/>
-//some code<br/>
-//...<br/>
-return YES;<br/>
-]]);
-</code></pre></li>
-<li><p>mock单例</p>
-<p>如果我们mock的类是个单例的话，那么使用之前的方法进行mock是不会生效的。不过OCMock提供了一个很简单的解决方法，那就是调用单例返回mock</p>
-<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
-OCMStub([mockClass instanceMethod]).andReturn(mockClass);
-</code></pre></li>
-<li><p>The any constraint</p>
-<pre><code class="language-object-c">OCMStub([mock someMethodWithAnArgument:[OCMArg any]])
-OCMStub([mock someMethodWithPointerArgument:[OCMArg anyPointer]])<br/>
-OCMStub([mock someMethodWithSelectorArgument:[OCMArg anySelector]])
-</code></pre></li>
-<li><p>处理block参数<br/>
-OCMock也可以处理block回调参数。block回调通常用于网络代码，数据库代码，或者在任何异步操作中。在这个例子中，思考下下面的方法：<br/>
-<code>- (void)downloadWeatherDataForZip:(NSString *)zip callback:(void (^)(NSDictionary *response))callback;</code></p></li>
+<li>pod库生成的.a文件 即libPods-[ProjectName].a文件</li>
+<li>pod库打包生成的.a文件,例如libAFNetworking.a等链接到工程</li>
+<li>需要的外部framework文件</li>
+<li>-fileList 将上一步编译生成的所有.o文件 记录在.buile/.LinkFileList中,链接所以工程文件</li>
+<li>以及其他的一些辅助文件</li>
+<li>链接需要的系统库</li>
 </ol>
 
-<p>在这个例子中，我们有一个下载天气压缩数据的方法，并且把下载下来的dictionary代理到一个block的回调中。在测试中，我们通过预定义的天气数据来测试回调处理。这也是明智的测试失败场景。你永远不会知道网络上会返回你什么东西！</p>
+<p>生成项目程序的可执行文件就是一个脚本文件</p>
 
-<pre><code class="language-object">OCMStub([groupModelMock downloadWeatherDataForZip:@&quot;80304&quot; callback:[OCMArg any]]]).andDo(^(NSInvocation *invocation){
-        //2. declare a block with same signature
-        void (^weatherStubResponse)(NSDictionary *dict);
-        //3. link argument 3 with with our block callback
-        [invoke getArgument:&amp;weatherStubResponse atIndex:3];
-        //4. invoke block with pre-defined input
-        NSDictionary *testResponse = @{@&quot;high&quot;: 43 , @&quot;low&quot;: 12};
-        weatherStubResponse(groupMemberMock);
-    });
-    /**
-        1.这个mock对象使用带NSInvocation参数的“andDo”方法。一个NSInvocation对象代表一
-        个‘objectivetified’（实在不知道这个什么鬼）表现的方法调用。通过这个NSinvocation对
-        象，使得拦截传递给我们的方法的block参数变得可能。
-        2.用与我们测试的方法中相同的方法签名声明一个block参数。
-        3.NSInvocation实例方法&quot;getArgument:atIndex:&quot;将赋值后的块函数传递都原始函数中定义
-        的块函数中。注意：在Objective-C中，传递给任意方法的前两个参数都是“self”和“_cmd”.这是
-        一个运行时的小功能以及用下标来获取NSInvocation参数时我们需要考虑的东西。
-        4.最后，传递这个回调的预定义字典。
-    */
+<h3 id="toc_8">7. 处理资源文件</h3>
+
+<h4 id="toc_9">编译 ImageAssets</h4>
+
+<p>即使多个.xcassets也是一起编译的，而不是分开编译多次</p>
+
+<p><img src="media/15538518127841/15538746736648.jpg" alt="" style="width:1078px;"/></p>
+
+<p>使用<code>actool</code>命令 这个命令只用于这个地方<br/>
+<code>--output-format human-readable-text</code><br/>
+<code>--export-dependency-info</code> 将编译后的生成的文件信息记录在.build文件夹下的assetcatalog_dependencies文件中,包括.xcassets文件、appIcon图片、launchImage图片、生成的唯一.car文件、记录信息的.plist文件</p>
+
+<p><code>--output-partial-info-plist</code> 生成一个.build/assetcatalog_generated_info.plist ,主要记录了appIcon和launchImage信息<br/>
+<img src="media/15538518127841/15538756202833.jpg" alt="" style="width:702px;"/></p>
+
+<p><code>--app-icon AppIcon</code><br/>
+<code>--launch-image LaunchImage</code><br/>
+<code>--compress-pngs --enable-on-demand-resources YES</code></p>
+
+<p><code>--filter-for-device-model iPhone10,3 --filter-for-device-os-version 12.2 --target-device iphone</code> 当前的设备信息</p>
+
+<p><code>--target-device iphone --minimum-deployment-target 8.0</code><br/>
+<code>--compile</code>  将编译生成的.car信息直接放入.app文件夹中<br/>
+将appIcon、LaunchImage图片文件放入.app文件中</p>
+
+<h4 id="toc_10">编译 xib</h4>
+
+<p>xib编译</p>
+
+<p><code>ibtool</code>命令<br/>
+<code>--module</code>指定所属模块名称<br/>
+<code>--target-device</code>指定面向设备，iPhone/iPad<br/>
+<code>--auto-activate-custom-fonts</code><br/>
+<code>--minimum-deployment-target 8.0</code> 最低支持目标设备系统</p>
+
+<p><code>--output-partial-info-plist</code> 生成一个-PartialInfo.plist文件 放置在.build文件的辅助文件中</p>
+
+<p><code>--output-format human-readable-text</code><br/>
+<code>--compile</code> 编译生成一个nib文件,直接放置在.app文件中</p>
+
+<p><img src="media/15538518127841/15538725620996.jpg" alt="" style="width:834px;"/></p>
+
+<h4 id="toc_11">编译 storyBoard</h4>
+
+<p><img src="media/15538518127841/15538729971749.jpg" alt="" style="width:905px;"/></p>
+
+<p>类似编译xib<br/>
+<code>ibtool</code>命令<br/>
+<code>--module</code>指定所属模块名称<br/>
+<code>--output-partial-info-plist</code> 生成一个 <code>/Base.lproj/Name-SBPartialInfo.plist</code>文件 存放在<code>.build</code>文件夹中<br/>
+<code>--target-device iphone --target-device ipad</code><br/>
+<code>--minimum-deployment-target 8.0</code><br/>
+<code>--output-format human-readable-text</code> <br/>
+<code>--compilation-directory</code> 编译生成.storyboardc文件,放在<code>.build</code>文件中<br/>
+<img src="media/15538518127841/15538719624665.jpg" alt="" style="width:630px;"/></p>
+
+<h4 id="toc_12">链接storyBoard文件</h4>
+
+<p><img src="media/15538518127841/15538732881268.jpg" alt="" style="width:887px;"/></p>
+
+<p>使用<code>ibtool</code>命令<br/>
+指定一些信息<br/>
+<code>--module</code>指定所属模块名称<br/>
+<code>--target-device iphone --target-device ipad --minimum-deployment-target 8.0</code><br/>
+<code>--output-format human-readable-text</code><br/>
+<code>--link</code>将项目模块中所有上一步生成的<code>.storyboardc</code>文件连接到 .app文件夹中</p>
+
+<h4 id="toc_13">拷贝xib、资源文件</h4>
+
+<p>拷贝一些资源文件到我们创建.app文件中</p>
+
+<h4 id="toc_14">处理 info.plist文件</h4>
+
+<p><img src="media/15538518127841/15538764050221.jpg" alt="" style="width:958px;"/></p>
+
+<p><code>-genpkginfo</code> 在.app文件夹下，生成了PkgInfo文件 ???<br/>
+<code>-additionalcontentfile</code>加入多个前面生成的plist文件<br/>
+<code>-o</code>将合并信息 生成为info.plist,放置在.app文件夹下</p>
+
+<h3 id="toc_15">8. 生成符号表文件(GenerateDSYMFile)</h3>
+
+<p>利用可执行文件中的符号表 生成 符号表文件 .dSYM<br/>
+当设置build setting中-&gt;build option -&gt; dysm 符号表为 -&gt; dwarf-dYSM时会生产该文件 默认debug不生成 release生成<br/>
+<img src="media/15538518127841/15560737675622.jpg" alt="" style="width:871px;"/></p>
+
+<h3 id="toc_16">9. 裁剪掉app文件中的符号表</h3>
+
+<p>这是只在archive app中才会执行这一步<br/>
+<img src="media/15538518127841/15560737281876.jpg" alt="" style="width:885px;"/></p>
+
+<h3 id="toc_17">8. 执行 一些自定义 脚本</h3>
+
+<pre><code class="language-text">这个地方可以执行一些自定义脚本，具体执行位置还是要看 在`build Phases`中的自定义顺序
 </code></pre>
 
-<h4 id="toc_3">2.OCMock简单示例</h4>
+<h3 id="toc_18">9. 签名 验证</h3>
 
-<p><img src="media/14873831706932/14873839517952.png" alt=""/></p>
+<p>主要用于真机<br/>
+使用<code>codesign</code>命令,利用我们之前生成的.app.xcent信息 进行应用签名</p>
 
-<p>示例2：</p>
+<h3 id="toc_19">10. 创建 .app 文件</h3>
 
-<pre><code class="language-object-c">- (void)testStrictMock3{
-
-    id classMock = OCMClassMock([TweetView class]);
-
-    //设置期望或预设，这个classMock需要执行addTweet方法且参数不为nil。  不然的话会抛出异常
-    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
-    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
-
-    /* 如果不执行以下代码的话会抛出异常 */
-    Tweet *testTweet = [[Tweet alloc] init];
-    testTweet.userName = @&quot;齐滇大圣&quot;;
-    [classMock addTweet:testTweet];
-
-    OCMVerifyAll(classMock);
-}
-</code></pre>
-
-<p>这表示一种友好的mock，不会在没有OCMExpect或OCMStub设置类的所有方法时抛出异常。以上代码把OCMExpect和OCMStub注释掉时不会报错。</p>
-
-<p>还有一种表示严格的mock：OCMStrictClassMock，如果把OCMExpect和OCMStub注释掉时会报错，它要求你执行类中的所有方法，所以比较适合用来测试必须实现的方法，代码如下：</p>
-
-<pre><code class="language-object-c">- (void)testStrictMock3{
-    id classMock = OCMStrictClassMock([TweetView class]);
-    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
-    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
-
-    Tweet *testTweet = [[Tweet alloc] init];
-    testTweet.userName = @&quot;齐滇大圣&quot;;
-    [classMock addTweet:testTweet]; 
-
-    OCMVerifyAll(classMock);
-}
-</code></pre>
+<p>生成.app文件 即最终的可安装文件<br/>
+<img src="media/15538518127841/15538768732306.jpg" alt="" style="width:1057px;"/></p>
 
 
 		</div>
@@ -245,8 +358,10 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -258,11 +373,9 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -347,31 +460,31 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

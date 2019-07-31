@@ -82,383 +82,228 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14964011409915.html">iOS 开发中的九种锁</a></h1>
-			<p class="meta"><time datetime="2017-06-02T18:59:00+08:00" 
-			pubdate data-updated="true">2017/6/2</time></p>
+		  	<h1 class="entry-title"><a href="15548054751703.html">GCD的常用功能</a></h1>
+			<p class="meta"><time datetime="2019-04-09T18:24:35+08:00" 
+			pubdate data-updated="true">2019/4/9</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>我们在使用多线程的时候多个线程可能会访问同一块资源，这样就很容易引发数据错乱和数据安全等问题，这时候就需要我们保证每次只有一个线程访问这一块资源，锁 应运而生。</p>
+		  	<h2 id="toc_0">1. dispatch_after</h2>
 
-<p>补充:<a href="http://www.cnblogs.com/huangjianwu/p/4575763.html">实现锁的多种方式和锁的高级用法</a><br/>
-<a href="http://www.jianshu.com/p/938d68ed832c">iOS中保证线程安全的几种方式与性能对比</a></p>
+<p>等待特定时间，<strong>异步</strong>的添加执行block到特定queue中</p>
 
-<h2 id="toc_0">一、OSSpinLock 自旋锁</h2>
-
-<p>OSSpinLock 自旋锁，性能最高的锁。在任何时刻只会有一个线程能获得锁,而其他线程忙着等待直到获得锁。缺点是<code>spinlock</code>使用不当(如临界区执行时间过长)会导致<code>cpu busy</code>飙高。不适合较长时间任务</p>
-
-<pre><code class="language-objectivec">__block OSSpinLock theLock = OS_SPINLOCK_INIT;
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    OSSpinLockLock(&amp;theLock);
-    NSLog(@&quot;需要线程同步的操作1 开始&quot;);
-    sleep(3);
-    NSLog(@&quot;需要线程同步的操作1 结束&quot;);
-    OSSpinLockUnlock(&amp;theLock);
-
-});
-
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    OSSpinLockLock(&amp;theLock);
-    sleep(1);
-    NSLog(@&quot;需要线程同步的操作2&quot;);
-    OSSpinLockUnlock(&amp;theLock);
-
-});
+<pre><code class="language-objectivec">void dispatch_after(dispatch_time_t when, dispatch_queue_t queue, dispatch_block_t block);
+//when： 时间，dispatch_time_t或者dispatch_walltime
+//queue: 执行的queue 被系统retain直到block完成
+//block: 函数内部帮助调用者适时执行Block_copy and Block_release
 </code></pre>
 
-<pre><code class="language-objectivec">//
-OS_SPINLOCK_INIT： 默认值为 0,在 locked 状态时就会大于 0，unlocked状态下为 0
-OSSpinLockLock(&amp;oslock)：上锁，参数为 OSSpinLock 地址
-OSSpinLockUnlock(&amp;oslock)：解锁，参数为 OSSpinLock 地址
-OSSpinLockTry(&amp;oslock)：尝试加锁，可以加锁则立即加锁并返回 YES,反之返回 NO
-/**
-当前线程锁失败，也可以继续其它任务，用 trylock 合适
-当前线程只有锁成功后，才会做一些有意义的工作，那就 lock，没必要轮询 trylock
-*/
+<h3 id="toc_1">dispatch_after_f</h3>
+
+<pre><code class="language-objectivec">void dispatch_after_f(dispatch_time_t when, dispatch_queue_t queue, void *context, dispatch_function_t work);
 </code></pre>
+
+<h2 id="toc_2">2. dispatch_apply</h2>
+
+<p><strong>同步</strong>的在指定的queue中执行指定次数 的block，可用来进行更有性能的迭代<br/>
+此方法将block提交到指定的queue中执行 并且<strong>等所有迭代完成后</strong>才会返回；<br/>
+如果目标队列是<code>dispatch_get_global_queue</code>迭代并发执行，因此应该保证block是<strong>可重入</strong>安全的，可以作为有效的并行for循环</p>
+
+<pre><code class="language-objectivec">void dispatch_apply(size_t iterations, dispatch_queue_t queue, void (^block)(size_t));
+//iterations: 执行几次
+//block: 执行事件 参数为当前执行次数
+</code></pre>
+
+<blockquote>
+<p>dispatch_apply 和 dispatch_apply_f 是同步函数,会阻塞当前线程直到所有循环迭代执行完成。</p>
+</blockquote>
+
+<h3 id="toc_3">dispatch_apply_f</h3>
+
+<p>将函数多次执行</p>
+
+<pre><code class="language-objectivec">void dispatch_apply_f(size_t iterations, dispatch_queue_t queue, void *context, void (*work)(void *, size_t));
+</code></pre>
+
+<h2 id="toc_4">3.dispatch_once</h2>
+
+<p>在应用程序的生命周期内 只执行一次block内容<br/>
+常用来初始化程序的单例数据<br/>
+当多线程执行时，其内部会保证同步执行等待block完成</p>
+
+<pre><code class="language-objectivec">void dispatch_once(dispatch_once_t *predicate, dispatch_block_t block);
+//predicate： dispatch_once_t指针 用来标记block是否已经被执行
+//
+</code></pre>
+
+<h4 id="toc_5">dispatch_once_t</h4>
+
+<p>必须保证为全局或者静态变量，如果该值动态或者自动存储将会发生无法预知事件</p>
+
+<h3 id="toc_6">dispatch_once_f</h3>
+
+<pre><code class="language-objectivec">void dispatch_once_f(dispatch_once_t *predicate, void *context, dispatch_function_t function);
+</code></pre>
+
+<h2 id="toc_7">4.dispatch_barrier</h2>
+
+<p>当执行到barrier block 其并不会立即执行，而是等待当前正在执行的所有block完成后才会执行，而所有在barrier block后的block会等待barrier block执行完成后才执行</p>
 
 <p>注意:<br/>
-<a href="http://blog.ibireme.com/2016/01/16/spinlock_is_unsafe_in_ios/">不再安全的 OSSpinLock</a></p>
+<strong>使用的queue应该为concurrent队列，并且使用<code>dispatch_queue_create</code>函数创建的</strong></p>
 
-<h2 id="toc_1">二、dispatch_semaphore 信号量</h2>
+<h3 id="toc_8">dispatch_barrier_async</h3>
 
-<p>是GCD的用来同步的一种方式<br/>
-在没有等待情况出现时，它的性能比<code>pthread_mutex</code>还要高，但一旦有等待情况出现时，性能就会下降许多。相对于<code>OSSpinLock</code>来说，它的优势在于等待时不会消耗<code>CPU</code>资源。</p>
+<p>提交一个异步执行的barrier block并立即返回</p>
 
-<pre><code class="language-objectivec">  dispatch_semaphore_t signal = dispatch_semaphore_create(1);
-    dispatch_time_t overTime = dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC);
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        dispatch_semaphore_wait(signal, overTime);
-            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
-            sleep(2);
-            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
-        dispatch_semaphore_signal(signal);
-    });
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        sleep(1);
-        dispatch_semaphore_wait(signal, overTime);
-            NSLog(@&quot;需要线程同步的操作2&quot;);
-        dispatch_semaphore_signal(signal);
-    });
+<pre><code class="language-objectivec">void dispatch_barrier_async(dispatch_queue_t queue, dispatch_block_t block);
+//queue: barrier block执行的队列，系统持有该队列直到block执行完成
+//block：barrier block，这个block会被copy 和 retain直到执行完成
 </code></pre>
 
-<pre><code class="language-objectivec">dispatch_semaphore_create(1)： 传入值必须 &gt;=0, 若传入为 0 则阻塞线程并等待timeout,
-时间到后会执行其后的语句
-dispatch_semaphore_wait(signal, overTime)：可以理解为 lock,会使得 signal 值 -1，若信号量的值大于0，就可以继续往下执行,否则等待,如果在等待时间期间信号量一直为0，则会在`timeOut`后自动执行其后的语句。
-//
-dispatch_semaphore_signal(signal)：可以理解为 unlock,会使得 signal 值 +1
+<p><strong>dispatch_barrier_async_f</strong></p>
+
+<pre><code class="language-objectivec">void dispatch_barrier_async_f(dispatch_queue_t queue, void *context, dispatch_function_t work);
 </code></pre>
 
-<p>补充:<a href="http://www.cnblogs.com/snailHL/p/3906112.html">关于dispatch_semaphore的使用</a></p>
+<h3 id="toc_9">dispatch_barrier_sync</h3>
 
-<h2 id="toc_2">三、@synchronized</h2>
+<p><strong>同步</strong>提交一个barrier block并等待block执行完成，会阻塞当前线程</p>
 
-<pre><code class="language-objectivec"> NSObject *obj = [[NSObject alloc] init];
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        @synchronized(obj) {
-            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
-            sleep(3);
-            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
-        }
-    });
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        sleep(1);
-        @synchronized(obj) {
-            NSLog(@&quot;需要线程同步的操作2&quot;);
-        }
-    });
+<pre><code class="language-objectivec">void dispatch_barrier_sync(dispatch_queue_t queue, dispatch_block_t block);
+//queue: barrier block执行的队列
+//block：barrier block，
 </code></pre>
 
-<p><code>@synchronized(obj)</code>指令使用的<code>obj</code>为该锁的唯一标识，只有当标识相同时，才为满足互斥.<br/>
-<code>@synchronized</code>指令实现锁的优点就是我们不需要在代码中显式的创建锁对象，便可以实现锁的机制，但作为一种预防措施，<code>@synchronized</code>块会隐式的添加一个异常处理例程来保护代码，该处理例程会在异常抛出的时候自动的释放互斥锁。所以如果不想让隐式的异常处理例程带来额外的开销，你可以考虑使用锁对象。</p>
+<blockquote>
+<p>与<code>dispatch_barrier_async</code>不同，因为是函数是同步执行的，因此queue不会被retain，block也不会进行copy</p>
+</blockquote>
 
-<p>补充：<a href="http://ios.jobbole.com/82826/">关于 @synchronized，这儿比你想知道的还要多</a></p>
+<p><strong>dispatch_barrier_sync_f</strong></p>
 
-<h2 id="toc_3">四、NSLock</h2>
-
-<pre><code class="language-objectivec">    NSLock *lock = [[NSLock alloc] init];
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        //[lock lock];
-        [lock lockBeforeDate:[NSDate date]];
-            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
-            sleep(2);
-            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
-        [lock unlock];
-
-    });
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        sleep(1);
-        if ([lock tryLock]) {//尝试获取锁，如果获取不到返回NO，不会阻塞该线程
-            NSLog(@&quot;锁可用的操作&quot;);
-            [lock unlock];
-        }else{
-            NSLog(@&quot;锁不可用的操作&quot;);
-        }
-
-        NSDate *date = [[NSDate alloc] initWithTimeIntervalSinceNow:3];
-        if ([lock lockBeforeDate:date]) {//尝试在未来的3s内获取锁，并阻塞该线程，如果3s内获取不到恢复线程, 返回NO,不会阻塞该线程
-            NSLog(@&quot;没有超时，获得锁&quot;);
-            [lock unlock];
-        }else{
-            NSLog(@&quot;超时，没有获得锁&quot;);
-        }
-
-    });
-    //运行结果
-    2016-06-29 20:45:08.864 SafeMultiThread[35911:575795] 需要线程同步的操作1 开始
-    2016-06-29 20:45:09.869 SafeMultiThread[35911:575781] 锁不可用的操作
-    2016-06-29 20:45:10.869 SafeMultiThread[35911:575795] 需要线程同步的操作1 结束
-    2016-06-29 20:45:10.870 SafeMultiThread[35911:575781] 没有超时，获得锁
-
+<pre><code class="language-objectivec">void dispatch_barrier_sync_f(dispatch_queue_t queue, void *context, dispatch_function_t work);
 </code></pre>
 
-<p><code>lock</code>一般用于多线程同时访问、修改同一个数据源，保证在同一时间内数据源只被访问、修改一次，其他线程的命令需要在<code>lock</code>外等待，只到<code>unlock</code>，才可访问</p>
+<h2 id="toc_10">5. dispatch_group_t</h2>
 
-<p><code>NSLock</code>是<code>Cocoa</code>提供给我们最基本的锁对象，这也是我们经常所使用的，除了常使用的<code>lock</code>和<code>unlock</code>方法外,还提供了:<br/>
-<code>trylock</code>：能加锁返回<code>YES</code>并执行加锁操作，相当于<code>lock</code>，反之返回<code>NO</code><br/>
-<code>lockBeforeDate</code>：这个方法表示会在传入的时间内尝试加锁，若能加锁则执行加锁操作并返回<code>YES</code>，反之返回<code>NO</code></p>
+<ol>
+<li><p>group中的queue可以执行在不同queue，group中的blocks互相独立</p></li>
+<li><p><code>dispatch_group</code>一直追踪group内的未完成的block的数量，并且GCD会retain该group直到与其关联的所有block完成</p></li>
+</ol>
 
-<h2 id="toc_4">五、NSRecursiveLock递归锁</h2>
+<p><strong>group 主要做的事情就是计算内部未完成blocks的数量</strong><br/>
+加到group中的block即会立即执行</p>
 
-<pre><code class="language-objectivec">    NSRecursiveLock *lock = [[NSRecursiveLock alloc] init];
+<h3 id="toc_11">dispatch_group_create</h3>
 
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-
-        static void (^RecursiveMethod)(int);
-
-        RecursiveMethod = ^(int value) {
-
-            [lock lock];
-            if (value &gt; 0) {
-
-                NSLog(@&quot;value = %d&quot;, value);
-                sleep(1);
-                RecursiveMethod(value - 1);
-            }
-            [lock unlock];
-        };
-
-        RecursiveMethod(5);
-    });
-    //执行结果
-    2016-06-30 19:09:41.414 SafeMultiThread[30949:450684] value = 5
-    2016-06-30 19:09:42.418 SafeMultiThread[30949:450684] value = 4
-    2016-06-30 19:09:43.419 SafeMultiThread[30949:450684] value = 3
-    2016-06-30 19:09:44.424 SafeMultiThread[30949:450684] value = 2
-    2016-06-30 19:09:45.426 SafeMultiThread[30949:450684] value = 1
-    
-    
-    //在上面如果用NSLock的话就会造成死锁的情况
-    NSLock *lock = [[NSLock alloc] init];
-    /**
-        在我们的线程中，RecursiveMethod是递归调用的。所以每次进入这个block时，都会去加一次
-        锁，而从第二次开始，由于锁已经被使用了且没有解锁，所以它需要等待锁被解除，这样就导致了死
-        锁，线程被阻塞住了。
-    */
+<pre><code class="language-objectivec">dispatch_group_t dispatch_group_create(void);
 </code></pre>
 
-<p><code>NSRecursiveLock</code>递归锁，可以被同一线程多次请求，而不会引起死锁。这主要是用在循环或递归操作中。<br/>
-递归锁会跟踪它被lock的次数。每次成功的lock都必须平衡调用unlock操作。只有所有达到这种平衡，锁最后才能被释放，以供其它线程使用。</p>
+<ol>
+<li>group对象会维持内部未完成block的数量，<code>dispatch_group_notify</code> and <code>dispatch_group_wait</code>使用这个count来决定何时group完成</li>
+</ol>
 
-<p>补充:<a href="http://www.cocoachina.com/ios/20150513/11808.html">NSRecursiveLock递归锁的使用</a></p>
+<h3 id="toc_12">dispatch_group_async</h3>
 
-<h2 id="toc_5">六、NSConditionLock条件锁</h2>
+<p>将一个<code>block</code>提交到<code>queue</code>中执行，并与group关联</p>
 
-<p>只是<code>lock</code>和<code>unlock</code>通常并不能满足我们的使用，我们通常在满足某条件的情况下才会打开这把锁，这时候我们可以使用<code>NSConditionLock条件锁</code></p>
-
-<pre><code class="language-objectivec">    NSConditionLock *cLock = [[NSConditionLock alloc] initWithCondition:0];
-
-//线程1
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    if([cLock tryLockWhenCondition:0]){
-        NSLog(@&quot;线程1&quot;);
-       [cLock unlockWithCondition:1];
-    }else{
-         NSLog(@&quot;失败&quot;);
-    }
-});
-
-//线程2
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    [cLock lockWhenCondition:3];
-    NSLog(@&quot;线程2&quot;);
-    [cLock unlockWithCondition:2];
-});
-
-//线程3
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    [cLock lockWhenCondition:1];
-    NSLog(@&quot;线程3&quot;);
-    [cLock unlockWithCondition:3];
-});
-/**
-    我们在初始化 NSConditionLock 对象时，给了他的标示为 0
-    执行 tryLockWhenCondition:时，我们传入的条件标示也是 0,所 以线程1 加锁成功
-    执行 unlockWithCondition:时，这时候会把condition由 0 修改为 1
-    因为condition 修改为了  1， 会先走到 线程3，然后 线程3 又将 condition 修改为 3
-    最后 走了 线程2 的流程
-*/
-    
+<pre><code class="language-objectivec">void dispatch_group_async(dispatch_group_t group, dispatch_queue_t queue, dispatch_block_t block);
+//group： 与block关联的group 被系统持有直到block完成
+// queue: block异步执行的队列，被系统持有直到block完成
+// block: 异步执行，该函数会帮助调用者对block执行Block_copy and Block_release操作
 </code></pre>
 
-<p><img src="media/14964011409915/14967500416387.png" alt=""/></p>
+<p>group可以用来等待block执行完成</p>
 
-<p>相比于 NSLock 多了个<code>condition</code>参数，我们可以理解为一个条件标示.<br/>
-我们还用它实现了任务支架你的依赖</p>
+<h4 id="toc_13">dispatch_group_async_f</h4>
 
-<pre><code class="language-objectivec">//可用功能如下:
-- (instancetype)initWithCondition:(NSInteger)condition NS_DESIGNATED_INITIALIZER;
-
-@property (readonly) NSInteger condition;
-- (void)lockWhenCondition:(NSInteger)condition;
-- (BOOL)tryLock;
-- (BOOL)tryLockWhenCondition:(NSInteger)condition;
-- (void)unlockWithCondition:(NSInteger)condition;
-- (BOOL)lockBeforeDate:(NSDate *)limit;
-- (BOOL)lockWhenCondition:(NSInteger)condition beforeDate:(NSDate *)limit;
-
-@property (nullable, copy) NSString *name NS_AVAILABLE(10_5, 2_0);
+<pre><code class="language-objectivec">void dispatch_group_async_f(dispatch_group_t group, dispatch_queue_t queue, void *context, dispatch_function_t work);
 </code></pre>
 
-<h2 id="toc_6">七、NSCondition</h2>
+<h3 id="toc_14">dispatch_group_enter &amp;&amp; dispatch_group_leave</h3>
 
-<p>一种最基本的条件锁。手动控制线程<code>wait</code>和<code>signal</code>。</p>
-
-<pre><code class="language-objectivec">NSCondition *condition = [[NSCondition alloc] init];
-
-    NSMutableArray *products = [NSMutableArray array];
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        while (1) {
-            [condition lock];
-            if ([products count] == 0) {
-                NSLog(@&quot;wait for product&quot;);
-                [condition wait];
-            }
-            [products removeObjectAtIndex:0];
-            NSLog(@&quot;custome a product&quot;);
-            [condition unlock];
-        }
-
-    });
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        while (1) {
-            [condition lock];
-            [products addObject:[[NSObject alloc] init]];
-            NSLog(@&quot;produce a product,总量:%zi&quot;,products.count);
-            [condition signal];
-            [condition unlock];
-            sleep(1);
-        }
-
-    });
-    
-2016-06-30 20:21:25.295 SafeMultiThread[31256:513991] wait for product
-2016-06-30 20:21:25.296 SafeMultiThread[31256:513994] produce a product,总量:1
-2016-06-30 20:21:25.296 SafeMultiThread[31256:513991] custome a product
+<pre><code class="language-objectivec">//明确指示有一个block进入group,将group内未完成的blocks计数加一
+void dispatch_group_enter(dispatch_group_t group);
 </code></pre>
 
-<p><code>[condition lock]</code>一般用于多线程同时访问、修改同一个数据源，保证在同一时间内数据源只被访问、修改一次，其他线程的命令需要在lock 外等待，只到unlock ，才可访问<br/>
-<code>[condition unlock]</code>与lock 同时使用<br/>
-<code>[condition wait]</code>让当前线程处于等待状态<br/>
-<code>[condition signal]</code>CPU发信号告诉线程不用在等待，可以继续执行</p>
-
-<pre><code class="language-objectivec">- (void)wait;//进入等待状态(当一个线程调用wait时其他线程就可以获得这个锁)
-- (BOOL)waitUntilDate:(NSDate *)limit;//让一个线程等待一定的时间
-- (void)signal;//唤醒一个等待的线程
-- (void)broadcast;//唤醒所有等待的线程
+<pre><code class="language-objectivec">//明确指示有一个block已经完成，group未完成计数减1
+void dispatch_group_leave(dispatch_group_t group);
 </code></pre>
 
-<p>补充:<br/>
-这里需要注意wait和signal的问题：<br/>
-    1: 其实，wait函数内部悄悄的调用了unlock函数（猜测，有兴趣可自行分析），也就是说在调用wati函数后，这个NSCondition对象就处于了无锁的状态，这样其他线程就可以对此对象加锁并触发该NSCondition对象。当NSCondition被其他线程触发时，在wait函数内部得到此事件被触发的通知，然后对此事件重新调用lock函数（猜测），而在外部看起来好像接收事件的线程（调用wait的线程）从来没有放开NSCondition对象的所有权，wati线程直接由阻塞状态进入了触发状态一样。这里容易造成误解。<br/>
-    2: wait函数并不是完全可信的。也就是说wait返回后，并不代表对应的事件一定被触发了，因此，为了保证线程之间的同步关系，使用NSCondtion时往往需要加入一个额外的变量来对非正常的wait返回进行规避。<br/>
-   3: 关于多个wait时的调用顺序，测试发现与wait执行顺序有关。</p>
+<blockquote>
+<p>可以使用这个函数 将一个block同时与多个group关联</p>
+</blockquote>
 
-<h2 id="toc_7">八、pthread_mutex互斥锁</h2>
+<h3 id="toc_15">dispatch_group_wait</h3>
 
-<pre><code class="language-objectivec">  __block pthread_mutex_t theLock;
-    pthread_mutex_init(&amp;theLock, NULL);
+<p>同步的阻塞当前线程等待group中所有block完成，直到全部完成或者timeout</p>
 
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            pthread_mutex_lock(&amp;theLock);
-            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
-            sleep(3);
-            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
-            pthread_mutex_unlock(&amp;theLock);
-
-    });
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            sleep(1);
-            pthread_mutex_lock(&amp;theLock);
-            NSLog(@&quot;需要线程同步的操作2&quot;);
-            pthread_mutex_unlock(&amp;theLock);
-
-    });
-2016-06-30 21:13:32.440 SafeMultiThread[31429:548869] 需要线程同步的操作1 开始
-2016-06-30 21:13:35.445 SafeMultiThread[31429:548869] 需要线程同步的操作1 结束
-2016-06-30 21:13:35.446 SafeMultiThread[31429:548866] 需要线程同步的操作2
-    /**
-        与OSSpinLock类似,pthread_mutex 中也有个pthread_mutex_trylock(&amp;pLock)，和上面提
-        到的 OSSpinLockTry(&amp;oslock)区别在于，前者可以加锁时返回的是 0，否则返回一个错误提示
-        码；后者返回的 YES和NO
-    */
+<pre><code class="language-objectivec">long dispatch_group_wait(dispatch_group_t group, dispatch_time_t timeout);
+//返回值： 0表示成功执行所有block，非0表示超时
 </code></pre>
 
-<pre><code class="language-objectivec">1：pthread_mutex_init(pthread_mutex_t mutex,const pthread_mutexattr_t attr);
-初始化锁变量mutex。attr为锁属性，NULL值为默认属性。
-2：pthread_mutex_lock(pthread_mutex_t mutex);加锁
-3：pthread_mutex_tylock(*pthread_mutex_t *mutex);加锁，但是与2不一样的是当锁已经在使用的时候，返回为EBUSY，而不是挂起等待。
-4：pthread_mutex_unlock(pthread_mutex_t *mutex);释放锁
-5：pthread_mutex_destroy(pthread_mutex_t* mutex);使用完后释放
+<ol>
+<li>当group为空时，立即返回</li>
+</ol>
+
+<blockquote>
+<p>一个group虽然可以wait多次，但是只wait从监测那一刻之前，group中的block完成状态，而在等待过程添加的block本次并不会监测</p>
+</blockquote>
+
+<h3 id="toc_16">dispatch_group_wait</h3>
+
+<p>异步等待group中的task执行完成，调用block在指定queue中执行</p>
+
+<pre><code class="language-objectivec">void dispatch_group_notify(dispatch_group_t group, dispatch_queue_t queue, dispatch_block_t block);
+//group: 等待的group，系统retaingroup直到block运行完成
+//queue: group完成，block执行的queue，系统持有该queue直到block运行完成
+//block: group完成后放入queue中执行的block,函数会帮助调用Block_copy and Block_release
 </code></pre>
 
-<p><code>YYKit</code>源码<br/>
-<img src="media/14964011409915/14967514267813.png" alt=""/></p>
+<blockquote>
+<p>当group为空时，立即返回<br/>
+当notify block运行完成后，group为空</p>
+</blockquote>
 
-<h2 id="toc_8">九、pthread_mutex(recursive)递归锁</h2>
+<h2 id="toc_17">dispatch_time_t</h2>
 
-<p>之前的lock是和unlock成对出现，同一线程多次 lock 是不允许的，而递归锁允许同一个线程在未释放其拥有的锁时反复对该锁进行加锁操作。</p>
-
-<pre><code class="language-objectivec">static pthread_mutex_t pLock;
-pthread_mutexattr_t attr;
-pthread_mutexattr_init(&amp;attr); //初始化attr并且给它赋予默认
-pthread_mutexattr_settype(&amp;attr, PTHREAD_MUTEX_RECURSIVE); //设置锁类型，这边是设置为递归锁
-pthread_mutex_init(&amp;pLock, &amp;attr);
-pthread_mutexattr_destroy(&amp;attr); //销毁一个属性对象，在重新进行初始化之前该结构不能重新使用
-
-//1.线程1
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    static void (^RecursiveBlock)(int);
-    RecursiveBlock = ^(int value) {
-        pthread_mutex_lock(&amp;pLock);
-        if (value &gt; 0) {
-            NSLog(@&quot;value: %d&quot;, value);
-            RecursiveBlock(value - 1);
-        }
-        pthread_mutex_unlock(&amp;pLock);
-    };
-    RecursiveBlock(5);
-});
-//如果我们用 pthread_mutex_init(&amp;pLock, NULL) 初始化会出现死锁的情况，递归锁能很好的避免这种情况的死锁；
+<pre><code class="language-objectivec">typedef uint64_t dispatch_time_t
 </code></pre>
+
+<p>常用的time常量</p>
+
+<pre><code class="language-objectivec">//立即发生时间
+DISPATCH_TIME_NOW
+//无限远的时间
+DISPATCH_TIME_FOREVER
+</code></pre>
+
+<h3 id="toc_18">dispatch_time</h3>
+
+<p>创建一个时间</p>
+
+<pre><code class="language-objectivec">dispatch_time_t dispatch_time(dispatch_time_t when, int64_t delta);
+
+//int64_t delta: 纳秒数
+</code></pre>
+
+<blockquote>
+<p><code>dispatch_time</code>的默认时钟是基于<code>mach_absolute_time.</code></p>
+</blockquote>
+
+<h3 id="toc_19">dispatch_walltime</h3>
+
+<p>根据<code>wall clock</code>创建一个绝对的时间</p>
+
+<pre><code class="language-objectivec">dispatch_time_t dispatch_walltime(const struct timespec *when, int64_t delta);
+//when:结构体，创建的是绝对时间；传NULL表示当前时间
+</code></pre>
+
+<p><code>wall clock</code>基于<code>gettimeofday(_:_:)</code></p>
+
+<blockquote>
+<p>与<code>dispatch_time</code>区别：<code>dispatch_time</code>会在设备休眠(关机)时停止运行，<code>dispatch_walltime</code>会继续运行；即<code>dispatch_time</code>是设备运行的一段时间后某个时间点，而<code>dispatch_walltime</code>是绝对时间，与设备运行状态无关</p>
+</blockquote>
 
 
 		</div>
@@ -481,8 +326,10 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -494,11 +341,9 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -583,31 +428,31 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

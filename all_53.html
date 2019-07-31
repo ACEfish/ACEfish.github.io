@@ -82,254 +82,58 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15477172571640.html">React元素&组件</a></h1>
-			<p class="meta"><time datetime="2019-01-17T17:27:37+08:00" 
-			pubdate data-updated="true">2019/1/17</time></p>
+		  	<h1 class="entry-title"><a href="15502241816242.html">函数子组件</a></h1>
+			<p class="meta"><time datetime="2019-02-15T17:49:41+08:00" 
+			pubdate data-updated="true">2019/2/15</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">元素</h2>
+		  	<p>组件必须有子组件 而且子组件必须为函数，可以在这个组件的生命周期中通过<code>this.props.children</code>访问到该子组件函数，在组件中通过执行该子组件函数来渲染子组件内容，我们只需要负责使用该组件并且完成子组件函数，在函数中return我们需要的内容</p>
 
-<p>React元素是普通的对象,其与浏览的的DOM元素不同，而<code>React DOM</code>的作用是确保浏览器的数据内容与React元素保持一致</p>
+<pre><code class="language-javascript">class CountDown extends React.Component {
 
-<p>通常我们设置一个 id为root的div 将其内容都由<code>React DOM</code>来管理,就称之为根节点</p>
+  constructor() {
+    super(...arguments);
+    this.state = {count: this.props.startCount};
+  }
 
-<h3 id="toc_1">元素渲染</h3>
+  shouldComponentUpdate(nextProps, nextState) {
+    return nextState.count !== this.state.count;
+  }
 
-<p>React元素是<strong>不可变</strong>的,当被创建后无法改变其内容和属性，我们可以通过设置不同的react元素挂载到根节点来更新界面</p>
+  componentDidMount() {
+    this.intervalHandle = setInterval(() =&gt; {
+      const newCount = this.state.count - 1;
+      if (newCount &gt;= 0) {
+        this.setState({count: newCount});
+      } else {
+        window.clearInterval(this.intervalHandle);
+        this.intervalHandle = null;
+      }
+    }, 1000);
+  }
 
-<pre><code class="language-javascript">function tick() {
-    const element = (
-        &lt;div&gt;
-            &lt;h1&gt; hello lyy!&lt;/h1&gt;
-            &lt;h2&gt; It is {new Date().toLocaleTimeString()}&lt;/h2&gt;
-        &lt;/div&gt;
-    )
-    ReactDOM.render(element, document.getElementById(&#39;root&#39;))
-}
+  componentWillUnmount() {
+    if (this.intervalHandle) {
+      window.clearInterval(this.intervalHandle);
+      this.intervalHandle = null;
+    }
+  }
 
-setInterval(() =&gt; {
-    tick()
-}, 1000);
-</code></pre>
-
-<p>但是我们通常在项目中只挂载一次,因此我们想要更新元素,就需要使用到<strong>有状态组件</strong></p>
-
-<blockquote>
-<p>ReactDOM为了节约性能 会比较前后元素的不同后，只会渲染改变的部分,因此对于上面的例子 即使每秒钟都创建了新的元素 也只会渲染改变的部分而不是整个页面</p>
-</blockquote>
-
-<h2 id="toc_2">组件</h2>
-
-<p>组件是一个或者多个React元素的组合,接受任意的输入值(props)在页面上进行展示</p>
-
-<p>定义组件方法:</p>
-
-<p><code>{name: &quot;liyuyuan&quot;}</code>作为<code>props</code>传给新的组件</p>
-
-<pre><code class="language-javascript">//使用函数
-function Welcome(props) {
-  return &lt;h1&gt;Hello, {props.name}&lt;/h1&gt;
-}
-
-//使用class
-class Welcome extends React.Component {
   render() {
-    return &lt;h1&gt;Hello, svg, {this.props.name}&lt;/h1&gt;
+    //传入需要的参数 并执行子组件函数
+    return this.props.children(this.state.count);
   }
-    
-    //设置挂载点为 Welcome 组件 
-  ReactDOM.render(&lt;Welcome name=&quot;liyuyuan&quot;/&gt;, document.getElementById(&#39;root&#39;));
-
 }
-</code></pre>
 
-<p>组件也可以作为<code>React</code>元素</p>
 
-<pre><code class="language-javascript">  const element = &lt;Welcome name=&quot;zhe shi shen me?&quot; /&gt;
+使用该组件
 
-</code></pre>
-
-<p>组件返回只能为一个根元素，因此需要把这几个元素用<code>div</code>进行包裹</p>
-
-<pre><code class="language-javascript">function WelcomeTest(props) {
-  return (
-    &lt;div&gt;
-        &lt;Welcome name=&quot;zhe 第一行?&quot; /&gt;
-        &lt;Welcome name=&quot;zhe 第二行&quot; /&gt;
-        &lt;Welcome name=&quot;zhe 第三行&quot; /&gt;
-
-    &lt;/div&gt;
-  )
+&lt;CountDown startCount={10}&gt;
+{
+    (count) =&gt; &lt;div&gt;{count &gt; 0 ? count : &quot;新年快乐&quot;} &lt;/div&gt;
 }
-</code></pre>
-
-<h3 id="toc_3">Props属性是只读的</h3>
-
-<p>组件不能修改自己的<code>props</code>，意思是不能改变自己的输入值,当输入值相同时一定得到相同的输出结果(纯函数)</p>
-
-<h2 id="toc_4">条件渲染</h2>
-
-<p>可以根据条件渲染不同的组件</p>
-
-<pre><code class="language-javascript">render() {
-    let element
-    if(true) {
-        element = &lt;a href=&quot;#&quot; onClick={this.actionClick}&gt; Click Me &lt;/a&gt;
-    } else {
-        element = &lt;a href=&quot;http://www.baidu.com&quot; onClick={this.actionClick}&gt; Click Me &lt;/a&gt;
-    }
-    return element
-    
-}
-</code></pre>
-
-<p>在jsx代码中嵌入逻辑js代码和React元素 条件渲染元素</p>
-
-<pre><code class="language-javascript">render() {
-    return(
-        &lt;div&gt;
-            {true &amp;&amp; &lt;h1&gt; 条件渲染 &lt;/h1&gt;}
-        &lt;/div&gt;
-    )
-}
-</code></pre>
-
-<p>条件性不渲染元素</p>
-
-<pre><code class="language-javascript">    render() {
-        if (true) {
-            return null
-        } else {
-            return (
-                &lt;h1&gt;条件渲染&lt;/h1&gt;
-            )
-        }
-        
-    }
-</code></pre>
-
-<blockquote>
-<p>当不渲染元素时 可以返回null<br/>
-当返回null时 并不影响组件的声明周期函数</p>
-</blockquote>
-
-<h2 id="toc_5">列表组件</h2>
-
-<p>利用js中的map函数 创建一个元素列表组件</p>
-
-<pre><code class="language-javascript">function NumberList(props) {
-    const numbers = props.numbers;
-    const listItems = numbers.map((number) =&gt;
-    //创建一个元素，需要加一个特殊的key值
-      &lt;li key={number.toString()}&gt;{number}&lt;/li&gt;
-    );
-    return (
-      &lt;ul&gt;{listItems}&lt;/ul&gt;
-    );
-}
-</code></pre>
-
-<h3 id="toc_6">元素的key</h3>
-
-<p>我们在创建列表元素时, 当该元素有多个兄弟元素时，需要给元素增加标识即 <code>key</code> ，帮助在DOM中元素发生变化后识别哪些元素发生了变化.元素的key应该在兄弟元素间是唯一的(并不需要全局唯一,即多个非兄弟关系的元素之间key可以相同) 通常使用数据id(如果没有id就用下标index)作为元素的<code>key</code></p>
-
-<pre><code class="language-javascript">const todoItems = todos.map((todo) =&gt;
-  &lt;li key={todo.id}&gt;
-    {todo.text}
-  &lt;/li&gt;
-);
-
-const todoItems = todos.map((todo, index) =&gt;
-  // Only do this if items have no stable IDs
-  &lt;li key={index}&gt;
-    {todo.text}
-  &lt;/li&gt;
-);
-
-//在jsx代码中嵌入js表达式
-function NumberList(props) {
-    const numbers = props.numbers;
-
-    return (&lt;ul&gt;
-        { numbers.map((num) =&gt; (&lt;li key={num}&gt;
-            {2*num}
-        &lt;/li&gt;)) }
-    &lt;/ul&gt;)
-}
-</code></pre>
-
-<h2 id="toc_7">表单</h2>
-
-<h3 id="toc_8">受控组件</h3>
-
-<p>受控组件:即将组件的每个状态改变都有与之相关的处理函数,控制其行为</p>
-
-<h4 id="toc_9">Form</h4>
-
-<p>我们将表单改变为一个可控的组件 将值的改变包括在组件的<code>state</code>中，通过state改变组件的渲染<br/>
-改变submit时会自动刷新页面的行为即阻止默认行为</p>
-
-<pre><code class="language-javascript">export default class FormElement extends React.Component {
-
-    constructor(props) {
-        super(props)
-        this.state = {value: &#39;&#39;};
-
-        this.handleChange = this.handleChange.bind(this)
-        this.handleSubmit = this.handleSubmit.bind(this)
-    }
-
-    handleChange(event) {
-        this.setState({value: event.target.value})
-    }
-    
-    handleSubmit(event) {
-        //阻止提交表单的默认行为
-        event.preventDefault();
-    }
-
-    render() {
-        return(
-            &lt;form  onSubmit={this.handleSubmit}&gt;
-                &lt;label&gt;
-                    Name:
-                    &lt;input type=&quot;text&quot; value={this.state.value} onChange={this.handleChange}&gt;&lt;/input&gt;
-                &lt;/label&gt;
-                &lt;input type=&quot;submit&quot; value=&quot;Submit&quot;&gt;&lt;/input&gt;
-            &lt;/form&gt;
-        )
-    }
-    
-}
-</code></pre>
-
-<blockquote>
-<p>event.preventDefault(); 阻止默认行为</p>
-</blockquote>
-
-<p>当一个控件中存在多个受控元素,我们可以给元素指定<code>name</code>属性，让处理函数根据<code>event.target.name</code>值来选择做什么</p>
-
-<pre><code class="language-javascript">constructor(props) {
-    super(props);
-    this.state = {
-      isGoing: true,
-      numberOfGuests: 2
-    };
-
-    this.handleInputChange = this.handleInputChange.bind(this);
-  }
-
-  handleInputChange(event) {
-    const target = event.target;
-    const value = target.type === &#39;checkbox&#39; ? target.checked : target.value;
-    const name = target.name;
-
-    this.setState({
-    //利用计算属性名 来设置状态值的键
-      [name]: value
-    });
-  }
+&lt;/CountDown&gt;
 </code></pre>
 
 
@@ -353,8 +157,10 @@ function NumberList(props) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -366,11 +172,9 @@ function NumberList(props) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -455,31 +259,31 @@ function NumberList(props) {
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

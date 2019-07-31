@@ -82,99 +82,224 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15536843996723.html">View层的架构</a></h1>
-			<p class="meta"><time datetime="2019-03-27T18:59:59+08:00" 
-			pubdate data-updated="true">2019/3/27</time></p>
+		  	<h1 class="entry-title"><a href="15548649461552.html">dispatch_block_t</a></h1>
+			<p class="meta"><time datetime="2019-04-10T10:55:46+08:00" 
+			pubdate data-updated="true">2019/4/10</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>文章看自<a href="https://casatwy.com/iosying-yong-jia-gou-tan-kai-pian.html">这里</a></p>
+		  	<h4 id="toc_0">dispatch_block_t</h4>
 
-<h2 id="toc_0">View层组织注意事项</h2>
+<p><code>typedef void (^dispatch_block_t)(void);</code></p>
 
-<ol>
-<li><p><code>ViewController</code>中的书写规范</p>
-<ul>
-<li>在<code>viewDidLoad</code>中做<code>addSubViews</code>和布局</li>
-<li>getter和setter放到最后避免影响业务逻辑阅读</li>
-<li>将代理都写到一个delegate区域中，并且加上对应protocol名字</li>
-<li>为按钮点击事件等，单独开一个<code>event response</code>的区域</li>
-</ul></li>
-<li><p>建议使用全代码 不使用xib或者storyboard</p></li>
-<li><p>不建议统一派生<code>ViewController</code>，可以使用<code>AOP</code>或者使用NSObject的load函数(在应用启动时自动监听)，实现要实现的功能 --- 尽量不要使用继承</p></li>
-<li><p>能不放在Controller中做的事情就尽量不要放在Controller中做</p></li>
-</ol>
+<p>注意:<br/>
+声明的block是分配在stack上的</p>
 
-<h2 id="toc_1">View层应避免</h2>
+<pre><code class="language-objectivec">//下面写法是错误的
+dispatch_block_t block;
+if (x) {
+block = ^{ printf(&quot;true\n&quot;); };
+} else {
+block = ^{ printf(&quot;false\n&quot;); };
+}
+block();
+</code></pre>
 
-<ol>
-<li>代码不规范导致混乱</li>
-<li>过多继承导致复杂的依赖关系</li>
-<li>横向依赖</li>
-<li>架构设计失去传承</li>
-</ol>
+<p>block是在栈上的，当<code>{}</code>退出时，block就无效了</p>
 
-<h2 id="toc_2">制作好的View架构</h2>
+<h4 id="toc_1">dispatch_block_create_with_qos_class</h4>
 
-<p>要做一个View层架构，主要就是从以下三方面入手：</p>
+<p>在堆上创建新的dispatch block，指定其执行block，分配指定的<code>QoS</code>类和相对优先级</p>
 
-<p>制定良好的规范<br/>
-选择好合适的模式（MVC、MVCS、MVVM、VIPER）<br/>
-根据业务情况针对ViewController做好拆分，提供一些小工具方便开发</p>
-
-<h2 id="toc_3">MVC MVVM等设计模式</h2>
-
-<p>这些设计模式其实是 规定了架构中的3个角色:数据管理者，数据加工者，数据展示者,之间的数据如何交换</p>
-
-<h3 id="toc_4">对mvc的一些总结</h3>
-
-<p>M应该做的事：</p>
-
-<ul>
-<li>给ViewController提供数据</li>
-<li>给ViewController存储数据提供接口</li>
-<li>响应数据请求一般来时C的</li>
-<li>提供经过抽象的业务基本组件，供Controller调度</li>
-</ul>
+<pre><code class="language-objectivec">dispatch_block_t dispatch_block_create_with_qos_class(dispatch_block_flags_t flags, dispatch_qos_class_t qos_class, int relative_priority, dispatch_block_t block);
+//flags 设置block的标记 必须为有效的位标记，否则返回NULL
+//qos_class QoS类， 这个值传QOS_CLASS_UNSPECIFIED 相当于DISPATCH_BLOCK_NO_QOS_CLASSflag
+//指定qos类的相对优先级 越大优先级越高 为负值 不能赋值给其大于0 小于QOS_MIN_RELATIVE_PRIORITY的值 否则会返回NULL
+</code></pre>
 
 <blockquote>
-<p>M不应该这是dataModel 而是整个Model层</p>
+<p>提供的参数block会被copy到堆上，被新创建的dispatch block持有</p>
+
+<p>这个block可以<code>dispatch_async</code>到queue中执行或者直接执行<br/>
+block可以用这两种方式多次执行，但是只有第一次执行的block可以被<code>dispatch_block_wait</code>等待或者<code>dispatch_block_notify.</code>监听</p>
+
+<p>直接执行时，如果分配的QoS类比调用的线程的QoS类优先级高，则使用分配的QoS类执行<br/>
+如果dispatch block到queue中执行，则执行它的QoS类取决于分配给bloc的QoS，queue的QoS或者flags共同决定<br/>
+如果block被直接提交到串行队列执行，则QoS类无效，系统会尽力覆盖QoS使先执行的block的QoS类等级更高，优先执行</p>
 </blockquote>
 
-<p>C应该做的事：</p>
-
-<ul>
-<li>管理View Container的生命周期</li>
-<li>负责生成所有的View实例，并放入View Container</li>
-<li>监听来自View与业务有关的事件，通过与Model的合作，来完成对应事件的业务。</li>
-</ul>
-
-<p>V应该做的事：</p>
-
-<ul>
-<li>响应与业务无关的事件，并因此引发动画效果，点击反馈（如果合适的话，尽量还是放在View去做）等。</li>
-<li>界面元素表达</li>
-</ul>
-
-<h2 id="toc_5">MVVM</h2>
-
-<p>MVVM把数据加工的任务从Controller中解放了出来，使得Controller只需要专注于数据调配的工作，ViewModel则去负责数据加工并通过通知机制让View响应ViewModel的改变。</p>
-
-<p>MVVM是基于胖Model的架构思路建立的，然后在胖Model中拆出两部分：Model和ViewModel。</p>
-
-<p>MVVM<br/>
-viewmodel需要做的就是将json等数据转换为能给view用的model<br/>
-Model层 这里的model层包括数据model层、网络请求层、数据存储层、</p>
-
-<p>C负责View和ViewModel数据的绑定</p>
-
-<p>MVVM就是讲MVC的C中的数据处理逻辑抽出来了</p>
+<pre><code class="language-objectivec">//flag的类型
+DISPATCH_ENUM(dispatch_block_flags, unsigned long,
+    DISPATCH_BLOCK_BARRIER = 0x1,
+    /**
+    当在一个DISPATCH_QUEUE_CONCURRENT的queue中执行dispatch block时
+    表明这个block是barrier，即使不使用dispatch_barrier_async函数也可以在起到栅栏作用
+    在直接执行dispatch block时，这个flags无效
+    */
+    DISPATCH_BLOCK_DETACHED = 0x2,
+    /**
+    将dispatch block与当前执行的context(上下文)分离
+    */
+    DISPATCH_BLOCK_ASSIGN_CURRENT = 0x4,
+    /**
+    指定dispatch block使用当前执行的context
+    */
+    DISPATCH_BLOCK_NO_QOS_CLASS = 0x8,
+    /**
+    表示不为block分配QoS类
+    直接执行block，则使用调用线程的QoS
+    如果给该block分配了特定QoS类，则该flag设置无效，忽略
+    */
+    DISPATCH_BLOCK_INHERIT_QOS_CLASS = 0x10,
+    /**
+        Queue的QoS类优先于block的QoS类，只有当队列没有QoS时才会使用block的QoS
+        在直接调用block时，该flags值无效
+        将block提交到queue中异步执行时，该值为默认值
+        当设置了DISPATCH_BLOCK_ENFORCE_QOS_CLASS时，该default flag被忽略
+    */
+    DISPATCH_BLOCK_ENFORCE_QOS_CLASS = 0x20,
+    /**
+        表示当block的QoS类优先级高于Queue的QoS类时，优先选择block的QoS类
+        当直接执行block或者将block提交到Queue中进行同步执行时，此为默认值
+    */
+);
+</code></pre>
 
 <blockquote>
-<p>对于API的调用应该放在VM还是C中，看情况而定，如果你的请求独立于C，请求时不需要再联系ViewController就可以放在VM中，否则的话在VM中调用逻辑混乱，最好放在C中</p>
+<p><code>DISPATCH_BLOCK_BARRIER</code>即在自己创建的并行队列中 做栅栏block</p>
 
-<p>RAC的目的1：View并不适合直接持有ViewModel。第二个目的就在于，ViewModel有可能并不是只服务于特定的一个View，使用更加松散的绑定关系能够降低ViewModel和View之间的耦合度</p>
+<p><code>DISPATCH_BLOCK_DETACHED</code>、<code>DISPATCH_BLOCK_ASSIGN_CURRENT</code>、<code>DISPATCH_BLOCK_NO_QOS_CLASS</code>用于<code>dispatch_block_create</code>函数，而在<code>dispatch_block_create_with_qos_class</code>中指定了QoS类，该flag就失效了</p>
 </blockquote>
+
+<p><a href="https://developer.apple.com/library/archive/documentation/Performance/Conceptual/power_efficiency_guidelines_osx/RelatedDocuments.html#//apple_ref/doc/uid/TP40013929-CH20-SW16">Quality of Service Classes (QoS).</a></p>
+
+<pre><code class="language-objectivec">__QOS_ENUM(qos_class, unsigned int,
+    QOS_CLASS_USER_INTERACTIVE = 0x21,
+        /**
+          表示任务需要被立即执行 响应事件更新UI 用来处理主事件循环、视图绘制、动画等
+        */
+    QOS_CLASS_USER_INITIATED = 0x19,
+        /**
+          表示任务由UI发起异步任务。等待结果
+        */
+    QOS_CLASS_DEFAULT = 0x15,
+        /**
+          默认优先级
+        */
+    QOS_CLASS_UTILITY = 0x11,
+        /**
+          表示需要长时间运行任务，伴有进度指示器；用来做计算、I/O,网络，持续数据填充等
+        */
+    QOS_CLASS_BACKGROUND = 0x09,
+        /**
+          表示用户不需要察觉的任务，用来预处理加载
+        */
+    QOS_CLASS_UNSPECIFIED = 0x00,
+        /**
+          未指明
+        */
+);
+</code></pre>
+
+<h4 id="toc_2">dispatch_block_create</h4>
+
+<pre><code class="language-objectivec">dispatch_block_t dispatch_block_create(dispatch_block_flags_t flags, dispatch_block_t block);
+//flags 设置block的标记 必须为有效的位标记，否则返回NULL 与上面的flag相同
+//block设置具体任务 block将会copy到新的dispatch block中
+</code></pre>
+
+<blockquote>
+<p>当返回的dispath block被提交到queue中执行时，block与当前提交时的QoS类相关联，除非有以下flags在创建block时指定了QoS类(或者不指定QoS类):<br/>
+<code>DISPATCH_BLOCK_ASSIGN_CURRENT</code><br/>
+<code>DISPATCH_BLOCK_NO_QOS_CLASS</code><br/>
+<code>DISPATCH_BLOCK_DETACHED</code></p>
+
+<p>当dispatch block在queue中执行时，则执行它的QoS类取决于分配给bloc的QoS，queue的QoS或者flags共同决定:<br/>
+<code>DISPATCH_BLOCK_INHERIT_QOS_CLASS</code>(异步执行默认值)<br/>
+<code>DISPATCH_BLOCK_INHERIT_QOS_CLASS</code>(同步执行默认值)</p>
+</blockquote>
+
+<h2 id="toc_3">dispatch_block_perform</h2>
+
+<pre><code class="language-objectivec">void dispatch_block_perform(dispatch_block_flags_t flags, dispatch_block_t block);
+</code></pre>
+
+<p>通过指定<code>flag</code>和block，<strong>同步</strong>执行该block，并且release生成的dispatchBlock</p>
+
+<p>这个函数相当于下面这段代码:<br/>
+并且与下面这段代码相比，不需要将block copy到堆上开辟新的内存，在内部更高效的实现</p>
+
+<pre><code class="language-objectivec">dispatch_block_t b = dispatch_block_create(flags, block);
+b();
+Block_release(b);
+</code></pre>
+
+<h2 id="toc_4">dispatch_block_wait</h2>
+
+<p><strong>同步</strong>等待dispatch Block执行完成 或者 超时<br/>
+会阻塞当前线程 </p>
+
+<pre><code class="language-obj">long dispatch_block_wait(dispatch_block_t block, dispatch_time_t timeout);
+//block: 应该为dispatch_block_create 或者dispatch_block_create_with_qos_class 创建的block
+//超时时间:  
+//返回值: 如果执行block时间小于超时时间返回0，否则返回非0
+</code></pre>
+
+<p><strong>同一个block只会被等待一次，执行多次，也只能同时被一个等待</strong></p>
+
+<blockquote>
+<ol>
+<li>dispatch_block_wait 只会监听第一个block执行情况，如果已经执行过一次了，这个函数就会立即返回</li>
+<li>请使用<code>dispatch_group_wait</code>监听统一block的多次执行</li>
+<li>不能在多线程中同时执行该函数等待同一个block返回，因为block只能等待一次</li>
+<li>如果该函数返回超时，则这次等待不算，即还可以再次等待block完成，否则只能等待一次</li>
+<li>提交到queue执行block即使立即用<code>dispatch_block_cancel</code>使其不执行，这也算执行过一次了</li>
+</ol>
+</blockquote>
+
+<h2 id="toc_5">dispatch_block_notify</h2>
+
+<p>监听block执行完成，将要执行的block放入queue指定queue中执行</p>
+
+<pre><code class="language-objectivec">void dispatch_block_notify(dispatch_block_t block, dispatch_queue_t queue, dispatch_block_t notification_block);
+//block: 监听的block  应该为dispatch_block_create 或者dispatch_block_create_with_qos_class 创建的block
+//queue
+//notification_block: 当监听的block执行完成 执行的block
+</code></pre>
+
+<blockquote>
+<ol>
+<li>当监听的block已经完成 该监听block会立即执行</li>
+<li>无法监听相同block的多次执行的，请使用<code>dispatch_group_notify</code></li>
+<li><strong>block可以执行一次 监听多次</strong></li>
+<li>如果多个监听统一block执行，不能预期监听的block执行顺序</li>
+<li>提交到queue执行block即使立即用<code>dispatch_block_cancel</code>使其不执行，这也算执行过一次了</li>
+</ol>
+</blockquote>
+
+<h2 id="toc_6">dispatch_block_cancel</h2>
+
+<p>异步取消指定<code>dispatch block</code></p>
+
+<pre><code class="language-objectivec">void dispatch_block_cancel(dispatch_block_t block);
+//block： 应该使用dispatch_block_create 或者dispatch_block_create_with_qos_class 创建的block
+</code></pre>
+
+<p>对于所有未执行的block去 立即返回并不执行，但是对于那些已经在执行的 则没有影响</p>
+
+<p>注意: 确保可能被取消的block不持有任何需要执行block才会释放的资源，例如malloc内存，否则由于永远不执行block块导致内存泄漏</p>
+
+<blockquote>
+<p>已经被cancel的block无法再执行</p>
+</blockquote>
+
+<h4 id="toc_7">dispatch_block_testcancel</h4>
+
+<p>测试是否这个block已经被取消</p>
+
+<pre><code class="language-objectivec">long dispatch_block_testcancel(dispatch_block_t block);
+//返回: 被取消的话返回非0，否则返回0
+</code></pre>
 
 
 		</div>
@@ -197,8 +322,10 @@ Model层 这里的model层包括数据model层、网络请求层、数据存储�
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -210,11 +337,9 @@ Model层 这里的model层包括数据model层、网络请求层、数据存储�
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -299,31 +424,31 @@ Model层 这里的model层包括数据model层、网络请求层、数据存储�
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

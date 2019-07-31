@@ -82,103 +82,37 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15487460996181.html">Refs</a></h1>
-			<p class="meta"><time datetime="2019-01-29T15:14:59+08:00" 
-			pubdate data-updated="true">2019/1/29</time></p>
+		  	<h1 class="entry-title"><a href="15536741821323.html">Beehive学习</a></h1>
+			<p class="meta"><time datetime="2019-03-27T16:09:42+08:00" 
+			pubdate data-updated="true">2019/3/27</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>在React中我们的数据流是从上至下，通过传递给子组件<code>props</code>来重新渲染它</p>
+		  	<h3 id="toc_0">看此第三方库get到的新姿势</h3>
 
-<p>但是，有时候我们需要获取某些组件或者DOM元素，强制修改,这时我们可以使用<code>Refs</code></p>
-
-<p>我们应该使用声明式实现，避免使用<code>refs</code>，尽量只在一下几种情况下使用:</p>
-
-<ul>
-<li>处理焦点、文本选择或媒体控制</li>
-<li>触发强制动画</li>
-<li>集成第三方 DOM 库</li>
-</ul>
-
-<h2 id="toc_0">添加Ref</h2>
-
-<pre><code class="language-javascript">import React from &quot;react&quot;
-
-class CustomTextInput extends React.Component {
-
-    constructor(props) {
-        super(props)
-        this.focus = this.focus.bind(this)
-    }
-
-    focus() {
-        this.textInput.focus()
-    }
-
-    render() {
-        return(
-            &lt;div&gt;
-                //通过ref设置textInput 为此DOM元素
-                &lt;input type=&quot;text&quot; ref={input =&gt; this.textInput = input} &gt;&lt;/input&gt;
-                &lt;input type=&quot;button&quot; value=&quot;获得焦点&quot; onClick={this.focus} &gt;&lt;/input&gt;
-            &lt;/div&gt;
-        )
-    }
-
-}
-
-export default  CustomTextInput
+<ol>
+<li><p>BHAnnotation中的数据存储<br/>
+当我们想要在项目工程任何地方可以方便的的存储数据 而在其他地方方便的获取数据时，我们可以采用此方法，将数据存在data数据段中，指定数据段中，而在需要时 直接从指定的段中取出</p>
+<pre><code class="language-c">__attribute__((used, section(&quot;name&quot;)))
+char * kShopModule_mod __attribute((used, section(&quot;__DATA,&quot;&quot;BeehiveMods&quot;&quot; &quot;))) = &quot;&quot;&quot;ShopModule&quot;&quot;&quot;;
 </code></pre>
-
-<p><code>ref={input =&gt; this.textInput = input}</code>  ref属性 会在DOM元素加载时将此元素传入ref,卸载时传入null</p>
-
-<blockquote>
-<p>这种声明方式只对DOM元素和用class声明的组件有效<br/>
-在函数式组件上，因为没有实例，所以不能使用ref属性</p>
-</blockquote>
-
-<h2 id="toc_1">对父组件暴露DOM节点</h2>
-
-<p>当我们想要向从父组件访问子组件节点时,我们可以将传递给子组件一个特殊的函数属性,然后将这个函数属性作为ref属性传入子节点，可以通过这个函数将子节点赋值给父节点的属性</p>
-
-<pre><code class="language-javascript">class CustomTextInput extends React.Component {
-    render() {
-        return(
-            &lt;div&gt;
-                &lt;input type=&quot;text&quot; ref={this.props.inputRef} &gt;&lt;/input&gt;
-            &lt;/div&gt;
-        )
-    }
-
+<p>section的作用:<br/>
+编译器编译源代码后生成的文件叫目标文件，从文件结构上来说，它已经是编译后可执行的文件格式，只是还没有经过链接的过程。可执行文件(Executable)主要是Windows下的PE(Portable Executable)和Linux的ELF(Executable Linkable Format)，它们也都是COFF(Common file format)格式的变种。程序源程序代码被编译之后会主要分成两个段：程序指令和程序数据。代码段属于程序指令，数据段和.bss段属于数据段。</p>
+<p>.data数据段里面保存的都是初始化过的全局静态变量和局部静态变量。.rodata段存放的是只读数据，一般都是const修饰的变量和字符串常量。.bss段存放的是未初始化的全局变量和局部静态变量。代码段就在.text段。<br/>
+此时我们就指定数据存储在data数据段的sectionName的段中<br/>
+<img src="media/15536741821323/15536750915461.png" alt=""/></p></li>
+<li><p>constructor函数、dyld加载 <br/>
+在程序加载执行是，即main()函数执行之前，其实发生很多事情，就会有一系列方法执行<br/>
+dyld即是在程序加载之前执行</p>
+<pre><code class="language-objectivec">__attribute__((constructor))
+void initProphet() {<br/>
+    _dyld_register_func_for_add_image(dyld_callback);<br/>
 }
-
-class ParentCompnent extends React.Component {
-    constructor(props) {
-        super(props)
-        this.focus = this.focus.bind(this)
-    }
-
-    focus() {
-        this.textInput.focus()
-    }
-    render() {
-        return(
-            &lt;div&gt;
-                &lt;input type=&quot;button&quot; value=&quot;获得焦点&quot; onClick={this.focus} &gt;&lt;/input&gt;
-                &lt;CustomTextInput inputRef={refCom =&gt; this.textInput = refCom}&gt;&lt;/CustomTextInput&gt;
-            &lt;/div&gt;
-        )
-    }
-}
-
-export default  ParentCompnent
-</code></pre>
-
-<p><code>&lt;CustomTextInput inputRef={refCom =&gt; this.textInput = refCom}&gt;&lt;/CustomTextInput&gt;</code>设置子组件的ref属性回调此函数，将子组件设置为父组件的<code>this.textInput</code>属性</p>
-
-<blockquote>
-<p>如果有更深的层级结构 我们只需要一级一级传递即可</p>
-</blockquote>
+</code></pre></li>
+<li><p>程序加载时间记录分析 类似<code>BHTimeProfiler</code></p></li>
+<li class="task-list-item"><p><input disabled="disabled" type="checkbox" />     我们在日常开发中应该有类似的工具 帮助我们查看需要的执行时间</p></li>
+<li></li>
+</ol>
 
 
 		</div>
@@ -201,8 +135,10 @@ export default  ParentCompnent
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -214,11 +150,9 @@ export default  ParentCompnent
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -303,31 +237,31 @@ export default  ParentCompnent
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

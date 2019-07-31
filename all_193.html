@@ -82,195 +82,198 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15540426044478.html">Clang Attributes</a></h1>
-			<p class="meta"><time datetime="2019-03-31T22:30:04+08:00" 
-			pubdate data-updated="true">2019/3/31</time></p>
+		  	<h1 class="entry-title"><a href="15017296324997.html">方法</a></h1>
+			<p class="meta"><time datetime="2017-08-03T11:07:12+08:00" 
+			pubdate data-updated="true">2017/8/3</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><code>attribute(xx)</code>是clang提供的能让开发者在编译过程中参与一些源码控制的方法</p>
+		  	<p><code>类、结构体、枚举</code>都可以定义实例方法，实例方法为给定类型实例封装了具体的任务和功能</p>
 
-<h3 id="toc_0">attribute((format(NSString,F,A)))格式化字符串</h3>
+<p><code>类、结构体、枚举</code>也可定义类型方法,类型方法与类型本身关联（与OC中类似）</p>
+
+<h2 id="toc_0">实例方法</h2>
+
+<p>实例方法提供访问和修改实例属性的方法或提供与实例目的相关的功能，并以此来支撑实例的功能。<br/>
+<strong>实例方法的语法与函数完全一致</strong></p>
+
+<p>实例方法能够隐式访问它所属类型的所有的其他实例方法和属性</p>
+
+<pre><code class="language-swift">class Counter {
+    var count = 0
+    func increment() {
+        count += 1
+    }
+    func increment(by amount: Int) {
+        count += amount
+    }
+    func reset() {
+        count = 0
+    }
+}
+
+let counter = Counter()
+// 初始计数值是0
+counter.increment()
+// 计数值现在是1
+counter.increment(by: 5)
+// 计数值现在是6
+counter.reset()
+// 计数值现在是0
+</code></pre>
+
+<h3 id="toc_1">self属性</h3>
+
+<p>与OC类似,<code>self</code>等同于该类型的实例本身</p>
+
+<pre><code class="language-swift">//所以我们可以这么写
+func increment() {
+    self.count += 1
+}
+</code></pre>
+
+<p>其实没必要写<code>self</code>，使用已知的属性名或者方法名 <code>swift</code>会假定你使用的是当前实例属性或者方法</p>
+
+<p>我们使用的主要场景:<br/>
+实例方法的某个<code>参数名称</code>与实例的某个<code>属性名称</code>相同的时候,此时优先使用参数名,因此我们通过<code>self</code>属性来进行区分使用属性</p>
+
+<pre><code class="language-swift">struct Point {
+    var x = 0.0, y = 0.0
+    func isToTheRightOfX(_ x: Double) -&gt; Bool {
+        return self.x &gt; x//用self来区分属性
+    }
+}
+
+let somePoint = Point(x: 4.0, y: 5.0)
+
+if somePoint.isToTheRightOfX(1.0) {
+    print(&quot;This point is to the right of the line where x == 1.0&quot;)
+}
+// 打印 &quot;This point is to the right of the line where x == 1.0&quot;
+</code></pre>
+
+<h3 id="toc_2">实例方法中修改值类型</h3>
+
+<p>结构体和枚举是值类型。默认情况下，值类型的属性不能在它的实例方法中被修改</p>
+
+<p>我们可以通过给这个实例方法选择<code>可变(mutating)</code>行为，就可以在方法内部修改改变它的属性;这个方法做的任何改变都会在方法执行结束时写回到原始结构中。方法还可以给它隐含的<code>self</code>属性赋予一个全新的实例，这个新实例在方法结束时会替换现存实例</p>
+
+<pre><code class="language-swift">struct Point {
+    var x = 0.0, y = 0.0
+    mutating func moveByX(deltaX: Double, y deltaY: Double) {
+        x += deltaX
+        y += deltaY
+    }
+}
+var somePoint = Point(x: 1.0, y: 1.0)
+somePoint.moveByX(2.0, y: 3.0)
+print(&quot;The point is now at (\(somePoint.x), \(somePoint.y))&quot;)
+// 打印 &quot;The point is now at (3.0, 4.0)&quot;
+</code></pre>
+
+<p>注意:<br/>
+不能在结构体类型的常量上调用可变方法，因为其属性不能被改变，即使属性是变量属性</p>
+
+<h3 id="toc_3">在可变方法中给self赋值</h3>
+
+<p>可以在可变方法中给隐含属性<code>self</code>赋予一个新的实例</p>
+
+<pre><code class="language-swift">struct Point1 {
+    var x = 0.0, y = 0.0
+    mutating func moveBy(x deltaX: Double, y deltaY: Double) {
+        self = Point1(x: x + deltaX, y: y + deltaY)
+    }
+}
+</code></pre>
+
+<p>创建一个新的结构体实例赋值给self，替换现在的实例</p>
+
+<p>枚举的可变方法，定义了一个三态开关状态枚举,通过调用<code>next()</code>进行切换状态</p>
+
+<pre><code class="language-swift">enum TriStateSwitch {
+    case Off, Low, High
+    mutating func next() {
+        switch self {
+        case .Off:
+            self = .Low
+        case .Low:
+            self = .High
+        case .High:
+            self = .Off
+        }
+    }
+}
+var ovenLight = TriStateSwitch.Low
+ovenLight.next()
+// ovenLight 现在等于 .High
+ovenLight.next()
+// ovenLight 现在等于 .Off
+</code></pre>
+
+<h2 id="toc_4">类型方法</h2>
+
+<p>定义在类型本身上的方法,即为类型方法<br/>
+通过在方法<code>func</code>前加关键字<code>static</code>，来指定类型方法,通过加关键字<code>class</code>来实现子类重写父类的方法实现</p>
 
 <blockquote>
-<p>因为此时已经是C语言级别 String不需要加<code>@</code></p>
+<p>在<code>oc</code>中只能为类定义类型方法,但是在<code>swift</code>中可以为类,结构体,枚举定义类方法</p>
 </blockquote>
 
-<p>比如NSLog的用法</p>
+<p>类型方法在类型上通过点语法调用<br/>
+在类型方法中,<code>self</code>指向类型本身,同样的可以用其来区分同样的类型属性和类型方法参数</p>
 
-<pre><code class="language-objectivec">FOUNDATION_EXPORT void NSLog(NSString *format, ...) NS_FORMAT_FUNCTION(1,2) NS_NO_TAIL_CALL;
+<p>在类型方法体中可以调用本类中类型属性或的其他类型方法,调用是可以直接通过类型方法名称或者类型属性名称进行调用,而不用在前面添加类型名称</p>
 
-#if !defined(NS_FORMAT_FUNCTION)
-    #if (__GNUC__*10+__GNUC_MINOR__ &gt;= 42) &amp;&amp; (TARGET_OS_MAC || TARGET_OS_EMBEDDED)
-    #define NS_FORMAT_FUNCTION(F,A) __attribute__((format(__NSString__, F, A)))
-    #else
-    #define NS_FORMAT_FUNCTION(F,A)
-    #endif
-#endif
-</code></pre>
-
-<h3 id="toc_1">attribute((deprecated(s)))版本弃用提示</h3>
-
-<p>在编译过程中提示开发者该方法已经被弃用</p>
-
-<pre><code class="language-objectivec">@property (nonatomic, strong) NSString *testProperty __attribute__((deprecated(&quot;该属性已经不能用了&quot;)));
-
-- (void)testDeprecatedMethod __attribute__((deprecated(&quot;该方法已经被弃用&quot;)));
-
-- (void)deprecatedMethod DEPRECATED_ATTRIBUTE; //也可以直接使用DEPRECATED_ATTRIBUTE这个系统定义的宏
-</code></pre>
-
-<h3 id="toc_2">attribute((availability(os,introduced=m,deprecated=n, obsoleted=o,message=“” VA_ARGS))) 指明使用版本范围</h3>
-
-<pre><code class="language-objectivec">- (void)method __attribute__((availability(ios,introduced=3_0,deprecated=6_0,obsoleted=7_0,message=“iOS3到iOS7版本可用，iOS7不能用”)));
-</code></pre>
-
-<h3 id="toc_3">attribute((unavailable(s))) 方法不可用提示</h3>
-
-<pre><code class="language-objectivec">- (void)testUnvailableMethod __attribute__((unavailable(&quot;该方法已经不能使用&quot;)));
-</code></pre>
-
-<h3 id="toc_4">attribute((unused))</h3>
-
-<p>没有被使用也不报警告</p>
-
-<pre><code class="language-objectivec">NSString *str __attribute__((unused));
-NSInteger reuslt __attribute__((unused)) = [vc testResultUnused];
-</code></pre>
-
-<h3 id="toc_5">attribute((warn_unused_result))</h3>
-
-<p>不使用该方法的返回值就会被警告</p>
-
-<pre><code class="language-objectivec">- (NSInteger)testResultUnused __attribute__((warn_unused_result));
-</code></pre>
-
-<h3 id="toc_6">attribute((availability(swift, unavailable, message=_msg)))</h3>
-
-<p>OC的方法 不能在swift中使用</p>
-
-<h3 id="toc_7">attribute((cleanup(…))) 作用域结束时自动执行一个指定方法</h3>
-
-<p>作用于结束包括大括号结束，return，goto，break，exception等情况。这个动作是先于这个对象的dealloc调用的</p>
-
-<pre><code class="language-objectivec">//修饰一个变量 在他的作用域结束时 自动执行该方法
-}
-    NSString *testCleanUp __attribute__((cleanup(testLastMethod) unused)) = @&quot;testCleanUp&quot;;
-}
-
-int testLastMethod(__strong NSString **str) {
-    return 10;
+<pre><code class="language-swift">//检测玩家等级的结构体
+struct LevelTracker {
+    static var highestUnlockedLevel = 1
+    var currentLevel = 1
+    static func unlock(_ level: Int) {
+        if level &gt; highestUnlockedLevel { highestUnlockedLevel = level }
+    }
+    static func isUnlocked(_ level: Int) -&gt; Bool {
+        return level &lt;= highestUnlockedLevel
+    }
+    @discardableResult //
+    mutating func advance(to level: Int) -&gt; Bool {
+        if LevelTracker.isUnlocked(level) {
+            currentLevel = level
+            return true
+        } else {
+            return false
+        }
+    }
 }
 </code></pre>
 
-<h3 id="toc_8">attribute((overloadable)) 方法重载</h3>
-
-<p>能够在 c 的函数上实现方法重载。即同样的函数名函数能够对不同参数在编译时能够自动根据参数来选择定义的函数</p>
-
-<pre><code class="language-c">__attribute__((overloadable)) void printArgument(int number){
-    NSLog(@“Add Int %i”, number);
-}
-
-__attribute__((overloadable)) void printArgument(NSString *number){
-    NSLog(@“Add NSString %@“, number);
-}
-
-__attribute__((overloadable)) void printArgument(NSNumber *number){
-    NSLog(@“Add NSNumber %@“, number);
+<pre><code class="language-swift">//玩家类
+class Player {
+    var tracker = LevelTracker()
+    let playerName: String
+    func complete(level: Int) {
+        LevelTracker.unlock(level + 1)
+        tracker.advance(to: level + 1)
+    }
+    init(name: String) {
+        playerName = name
+    }
 }
 </code></pre>
 
-<h3 id="toc_9">attribute((objc_designated_initializer)) 指定内部实现的初始化方法</h3>
+<pre><code class="language-swift">var player = Player(name: &quot;Argyrios&quot;)
+player.complete(level: 1)
+print(&quot;highest unlocked level is now \(LevelTracker.highestUnlockedLevel)&quot;)
+// 打印 &quot;highest unlocked level is now 2&quot;
 
-<p>也可以使用OC中定义的宏 <code>NS_DESIGNATED_INITIALIZER</code></p>
+player = Player(name: &quot;Beto&quot;)
+if player.tracker.advance(to: 6) {
+print(&quot;player is now on level 6&quot;)
+} else {
+print(&quot;level 6 has not yet been unlocked&quot;)
+}
+// 打印 &quot;level 6 has not yet been unlocked&quot;
 
-<p>即指定该类的指定构造器函数，使用规则</p>
-
-<ul>
-<li>该类的指定构造器函数必须调用父类的指定构造器函数</li>
-<li>该类的遍历构造器函数必须最终执行该类的指定构造器函数</li>
-</ul>
-
-<h3 id="toc_10">attribute((objc_subclassing_restricted)) 指定不能有子类</h3>
-
-<p>指定该类不能有子类，类似java中的final函数</p>
-
-<pre><code class="language-objectivec">__attribute__((objc_subclassing_restricted))
-@interface ViewController : UIViewController
-@end
 </code></pre>
-
-<h3 id="toc_11">attribute((objc_requires_super)) 子类继承必须调用 super</h3>
-
-<pre><code class="language-objectivec">//子类重写该方法如果不调用super 会有警告⚠️
-- (void)testInheritanceMethod __attribute__((objc_requires_super));
-</code></pre>
-
-<h3 id="toc_12">attribute((const)) 重复调用相同数值参数优化返回</h3>
-
-<p>用于数值类型参数的函数，多次调用相同的数值型参数，返回是相同的，只在第一次需要进行运算，后面只返回第一次的结果，这是编译器的一种优化处理</p>
-
-<h3 id="toc_13">attribute((constructor(PRIORITY))) 和 attribute((destructor(PRIORITY)))</h3>
-
-<p>PRIORITY 是指执行的优先级，main 函数执行之前会执行 constructor，main 函数执行后会执行 destructor，+load 会比 constructor 执行的更早点，因为动态链接器加载 Mach-O 文件时会先加载每个类，需要 +load 调用，然后才会调用所有的 constructor 方法。</p>
-
-<p>通过这个特性，可以做些比较好玩的事情，比如说类已经 load 完了，是不是可以在 constructor 中对想替换的类进行替换，而不用加在特定类的 +load 方法里。</p>
-
-<h2 id="toc_14">Clang警告处理</h2>
-
-<pre><code class="language-objectivec">#pragma clang diagnostic push
-#pragma clang diagnostic ignored “-Wdeprecated-declarations”
-        sizeLabel = [self sizeWithFont:font constrainedToSize:size lineBreakMode:NSLineBreakByWordWrapping];
-#pragma clang diagnostic pop
-</code></pre>
-
-<h2 id="toc_15"><strong>attribute</strong>((constructor)) 在main函数之前调用</h2>
-
-<h2 id="toc_16"><strong>attribute</strong>((destructor)) 在main函数执行之后 或者exit()后被自动执行</h2>
-
-<h3 id="toc_17">文件级:在源代码文件中诊断(忽略/警告)</h3>
-
-<p>语法:</p>
-
-<pre><code class="language-objectivec">#pragma clang diagnostic [error|warning|ignored] &quot;-W&lt;警告选项&gt;&quot;
-
-
-诊断-忽略:(关闭警告)
-#pragma  clang diagnostic ignored  &quot;-Wunused&quot;
-#pragma  clang diagnostic ignored  &quot;-Wunused-parameter&quot;
-
-
-诊断-警告:(开启警告)
-#pragma  clang diagnostic warning  &quot;-Wunused&quot;
-#pragma  clang diagnostic warning  &quot;-Wunused-parameter&quot;
-
-
-诊断-错误:(开启警告-升级为错误)
-#pragma  clang diagnostic error  &quot;-Wunused&quot;
-#pragma  clang diagnostic error  &quot;-Wunused-parameter&quot;
-用法:
-在文件开头处关闭警告,在文件结尾出再开启警告,这样可以忽略该文件中的指定警告.
-</code></pre>
-
-<blockquote>
-<p>对于项目中的警告我们可以右键警告revela in log 查看编译时的警告<br/>
-<img src="media/15540426044478/15540987741636.jpg" alt="" style="width:693px;"/><br/>
-就可以根据具体警告类型进行忽略</p>
-</blockquote>
-
-<h3 id="toc_18">补充: 项目级别忽略警告</h3>
-
-<p>在项目的<code>Build Settings</code>中也可以设置忽略某种或者多种类型的警告,忽略整个项目的警告类型</p>
-
-<p><img src="media/15540426044478/15540998238927.jpg" alt="" style="width:706px;"/><br/>
-也可以指定debug 或者 release</p>
-
-<p>选项格式: -W[no-]&lt;警告选项&gt;<br/>
-如 : -Wno-unused-parameter   # no- 表示诊断时忽略这个警告</p>
-
-<blockquote>
-<p>通过 CocoaPods 给项目导入了一些第三方库，这些库里面或多或少会有些警告，想消除这些警告，很简单，只需在 Podfile 中加上这一句 inhibit_all_warnings!，所有通过 CocoaPods 安装的第三库的警告就没有了。</p>
-</blockquote>
 
 
 		</div>
@@ -293,8 +296,10 @@ __attribute__((overloadable)) void printArgument(NSNumber *number){
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -306,11 +311,9 @@ __attribute__((overloadable)) void printArgument(NSNumber *number){
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -395,31 +398,31 @@ __attribute__((overloadable)) void printArgument(NSNumber *number){
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

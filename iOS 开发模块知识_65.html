@@ -82,66 +82,237 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14879241904124.html">Method Swizzling</a></h1>
-			<p class="meta"><time datetime="2017-02-24T16:16:30+08:00" 
-			pubdate data-updated="true">2017/2/24</time></p>
+		  	<h1 class="entry-title"><a href="15082286345415.html">ARKit框架API简介</a></h1>
+			<p class="meta"><time datetime="2017-10-17T16:23:54+08:00" 
+			pubdate data-updated="true">2017/10/17</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<blockquote>
-<p>本文是由发表在南峰子博客的翻译由Mattt Thompson发表于<code>nshipster</code>的Method Swizzling文章</p>
+		  	<h2 id="toc_0">ARAnchor</h2>
+
+<p>物体的3D锚点,表示物体在3D空间的位置和方向</p>
+
+<pre><code class="language-objectivec">/**
+ 标识符
+ */
+@property (nonatomic, readonly) NSUUID *identifier;
+
+/**
+ 锚点的旋转变换矩阵，定义了锚点的旋转、位置、缩放。是一个4x4的矩阵（读者可以自行科普什么叫4x4矩阵）
+ */
+@property (nonatomic, readonly) matrix_float4x4 transform;
+
+/**
+ 构造方法,一般我们无需构造。因为添加一个3D物体时ARKit会有代理告知我们物体的锚点
+ */
+- (instancetype)initWithTransform:(matrix_float4x4)transform;
+</code></pre>
+
+<h2 id="toc_1">ARFrame</h2>
+
+<p>主要用于追踪相机的当前状态,包括位置、图像帧以及时间等参数</p>
+
+<pre><code class="language-objectivec">/**
+时间戳.
+ */
+@property (nonatomic, readonly) NSTimeInterval timestamp;
+
+/**
+ 缓冲区图像帧
+ */
+@property (nonatomic, readonly) CVPixelBufferRef capturedImage;
+
+/**
+相机（表示这个ARFrame是哪一个相机的，iPhone7plus有两个摄像机）
+ */
+@property (nonatomic, copy, readonly) ARCamera *camera;
+
+/**
+ 返回当前相机捕捉到的锚点数据（当一个3D虚拟模型加入到ARKit中时，锚点值得就是这个模型在AR中的位置）
+ */
+@property (nonatomic, copy, readonly) NSArray&lt;ARAnchor *&gt; *anchors;
+
+/**
+灯光（指的是灯光强度 一般是0-2000，系统默认1000）
+ */
+@property (nonatomic, copy, nullable, readonly) ARLightEstimate *lightEstimate;
+
+/**
+特征点（捕捉平地或者人脸的，比较苹果有自带的人脸识别功能）
+ */
+@property (nonatomic, nullable, readonly) ARPointCloud *rawFeaturePoints;
+
+/**
+根据2D坐标点搜索3D模型，这个方法通常用于，当我们在手机屏幕点击某一个点的时候，可以捕捉到这一个点所在的3D模型的位置，至于为什么是一个数组非常好理解。手机屏幕一个是长方形，这是一个二维空间。而相机捕捉到的是一个由这个二维空间射出去的长方体，我们点击屏幕一个点可以理解为在这个长方体的边缘射出一条线，这一条线上可能会有多个3D物体模型
+point：2D坐标点（手机屏幕某一点）
+ARHitTestResultType：捕捉类型  点还是面
+(NSArray&lt;ARHitTestResult *&gt; *)：追踪结果数组  详情见本章节ARHitTestResult类介绍
+
+ */
+- (NSArray&lt;ARHitTestResult *&gt; *)hitTest:(CGPoint)point types:(ARHitTestResultType)types;
+
+/**
+相机窗口的的坐标变换（可用于相机横竖屏的旋转适配）
+ */
+- (CGAffineTransform)displayTransformWithViewportSize:(CGSize)viewportSize orientation:(UIInterfaceOrientation)orientation;
+</code></pre>
+
+<h2 id="toc_2">ARHitTestResult</h2>
+
+<p>点击的回调结果,通常用于获取ARKit的捕捉结果，获取物体到相机的距离/位置、方向等</p>
+
+<pre><code class="language-swift">//捕捉类型枚举
+typedef NS_OPTIONS(NSUInteger, ARHitTestResultType) {
+    /** 点. */
+    ARHitTestResultTypeFeaturePoint              = (1 &lt;&lt; 0),
+
+    /** 水平面 y为0. */
+    ARHitTestResultTypeEstimatedHorizontalPlane  = (1 &lt;&lt; 1),
+
+    /** 已结存在的平面. */
+    ARHitTestResultTypeExistingPlane             = (1 &lt;&lt; 3),
+
+    /** 已结存在的锚点和平面. */
+    ARHitTestResultTypeExistingPlaneUsingExtent  = (1 &lt;&lt; 4),
+} NS_SWIFT_NAME(ARHitTestResult.ResultType);
+
+/**
+捕捉类型
+ */
+@property (nonatomic, readonly) ARHitTestResultType type;
+
+/**
+ 3D虚拟物体与相机的距离（单位：米）
+ */
+@property (nonatomic, readonly) CGFloat distance;
+
+/**
+本地坐标矩阵（世界坐标指的是相机为场景原点的坐标，而每一个3D物体自身有一个场景，本地坐标就是相对于这个场景的坐标）类似于frame和bounds的区别
+ */
+@property (nonatomic, readonly) matrix_float4x4 localTransform;
+
+/**
+世界坐标矩阵
+ */
+@property (nonatomic, readonly) matrix_float4x4 worldTransform;
+
+/**
+ 锚点（3D虚拟物体，在虚拟世界有一个位置，这个位置参数是SceneKit中的SCNVector3：三维矢量），而锚点anchor是这个物体在AR现实场景中的位置，是一个4x4的矩阵
+ */
+@property (nonatomic, strong, nullable, readonly) ARAnchor *anchor;
+
+</code></pre>
+
+<h2 id="toc_3">ARLightEstimate</h2>
+
+<p>灯光效果</p>
+
+<pre><code class="language-swift">/**
+灯光强度  范围0-2000 默认1000
+ */
+@property (nonatomic, readonly) CGFloat ambientIntensity;
+
+</code></pre>
+
+<h2 id="toc_4">ARPlaneAnchor</h2>
+
+<p>平面锚点,是<code>ARAnchor</code>的子类,<code>ARKit</code>可以自动识别平面并且添加一个锚点到场景中</p>
+
+<p>所有被检测到的表面都会关联到一个<code>ARPlaneAnchor</code>对象，并可进一步使用提供物体到镜头的距离、位置和方向的<code>ARHitTestResult</code>进行描述。<code>ARPlaneAnchor</code>是<code>ARAnchor</code>的一个子类实例，可添加到AR场景中，实现在场景中放置虚拟物体。</p>
+
+<pre><code class="language-swift">/**
+平面类型，目前只有一个，就是水平面
+ */
+@property (nonatomic, readonly) ARPlaneAnchorAlignment alignment;
+
+/**
+3轴矢量结构体，表示平地的中心点  x/y/z
+ */
+@property (nonatomic, readonly) vector_float3 center;
+
+/**
+3轴矢量结构体，表示平地的大小（宽度和高度）  x/y/z
+ */
+@property (nonatomic, readonly) vector_float3 extent;
+</code></pre>
+
+<h2 id="toc_5">ARPointCloud</h2>
+
+<p>点状渲染云 主要用于渲染场景</p>
+
+<pre><code class="language-objectivec">/**
+ 点的数量
+ */
+@property (nonatomic, readonly) NSUInteger count;
+
+/**
+每一个点的位置的集合（结构体带*表示的是结构体数组）
+ */
+@property (nonatomic, readonly) const vector_float3 *points;
+</code></pre>
+
+<h2 id="toc_6">ARConfiguration</h2>
+
+<p>会话追踪配置，主要就是追踪相机的位置</p>
+
+<blockquote>
+<p>子类ARWorldTrackingConfiguration</p>
 </blockquote>
 
-<p><code>Method Swizzling</code>是改变一个selector的实际实现的技术。通过这一技术，我们可以在运行时通过修改类的分发表中<code>selector</code>对应的函数，来修改方法的实现。</p>
+<pre><code class="language-objectivec">/**
+当前设备是否支持，一般A9芯片以下设备不支持
+ */
+@property(class, nonatomic, readonly) BOOL isSupported;
 
-<p>本文讲一些Method Swiling中需要注意的问题:</p>
+/**
+会话的对齐方式，这里的对其指的是3D世界的坐标。枚举值见下方
+ */
+@property (nonatomic, readwrite) ARWorldAlignment worldAlignment;
 
-<h2 id="toc_0">Swizzling应该总是在+load中执行</h2>
+typedef NS_ENUM(NSInteger, ARWorldAlignment) {
+    ARWorldAlignmentGravity,//相机位置
+    ARWorldAlignmentGravityAndHeading,//相机位置及方向
+    ARWorldAlignmentCamera//相机方向
+} 
 
-<p>在Objective-C中，运行时会自动调用每个类的两个方法。+load会在类初始加载时调用，+initialize会在第一次调用类的类方法或实例方法之前被调用。这两个方法是可选的，且只有在实现了它们时才会被调用。由于method swizzling会影响到类的全局状态，因此要尽量避免在并发处理中出现竞争的情况。+load能保证在类的初始化过程中被加载，并保证这种改变应用级别的行为的一致性。相比之下，+initialize在其执行时不提供这种保证–事实上，如果在应用中没为给这个类发送消息，则它可能永远不会被调用。</p>
+/**
+是否需要自适应灯光效果，默认是YES
+ */
+@property (nonatomic, readwrite, getter=isLightEstimationEnabled) BOOL lightEstimationEnabled;
 
-<h2 id="toc_1">Swizzling应该总是在dispatch_once中执行</h2>
+@end
 
-<p>因为swizzling会改变全局状态，所以我们需要在运行时采取一些预防措施。原子性就是这样一种措施，它确保代码只被执行一次，不管有多少个线程。GCD的dispatch_once可以确保这种行为，我们应该将其作为method swizzling的最佳实践。</p>
 
-<h2 id="toc_2">选择器、方法与实现</h2>
+//世界会话追踪配置，苹果建议我们使用这个类，这个子类只有一个属性，也就是可以帮助我们追踪相机捕捉到的平地
+@interface ARWorldTrackingSessionConfiguration : ARSessionConfiguration
 
-<p>在Objective-C中，选择器(selector)、方法(method)和实现(implementation)是运行时中一个特殊点，虽然在一般情况下，这些术语更多的是用在消息发送的过程描述中。</p>
-
-<p>以下是<code>Objective-C Runtime Reference</code>中的对这几个术语一些描述：  </p>
-
-<pre><code class="language-text">1. Selector(typedef struct objc_selector *SEL)：用于在运行时中表示一个方法的名称。一个方法选择器是一个C字符串，它是在Objective-C运行时被注册的。选择器由编译器生成，并且在类被加载时由运行时自动做映射操作。
-2. Method(typedef struct objc_method *Method)：在类定义中表示方法的类型
-3. Implementation(typedef id (*IMP)(id, SEL, ...))：这是一个指针类型，指向方法实现函数的开始位置。这个函数使用为当前CPU架构实现的标准C调用规范。每一个参数是指向对象自身的指针(self)，第二个参数是方法选择器。然后是方法的实际参数。
+/**
+侦查类型。枚举值见下方（默认侦查平地）
+ */
+@property (nonatomic, readwrite) ARPlaneDetection planeDetection;
 </code></pre>
 
-<p>理解这几个术语之间的关系最好的方式是：一个类维护一个运行时可接收的消息分发表；分发表中的每个入口是一个方法(Method)，其中key是一个特定名称，即选择器(SEL)，其对应一个实现(IMP)，即指向底层C函数的指针。</p>
+<h2 id="toc_7">ARError</h2>
 
-<p>为了swizzle一个方法，我们可以在分发表中将一个方法的现有的选择器映射到不同的实现，而将该选择器对应的原始实现关联到一个新的选择器中。（要将原来的实现映射到一个新的）</p>
+<p>描述ARKit中的错误信息</p>
 
-<h2 id="toc_3">调用_cmd</h2>
+<pre><code class="language-swift">//作用域，一般会表示是哪一个类出现问题
+NSString *const ARErrorDomain;
+typedef NS_ERROR_ENUM(ARErrorDomain, ARErrorCode) {
+    /** Unsupported session configuration. */
+    ARErrorCodeUnsupportedConfiguration   = 100,//不支持会话追踪配置，由于A9芯片以下的机型会报错
 
-<p>我们自己的实现代码:</p>
+    /** A sensor required to run the session is not available. */
+    ARErrorCodeSensorUnavailable          = 101,//失活状态
 
-<pre><code class="language-objectivec">- (void)xxx_viewWillAppear:(BOOL)animated {
-    [self xxx_viewWillAppear:animated];
-    NSLog(@&quot;viewWillAppear: %@&quot;, NSStringFromClass([self class]));
-}
+    /** A sensor failed to provide the required input. */
+    ARErrorCodeSensorFailed               = 102,//传感器故障
+
+    /** World tracking has encountered a fatal error. */
+    ARErrorCodeWorldTrackingFailed        = 200,//追踪失败
+};
+
 </code></pre>
-
-<p>咋看上去是会导致无限循环的。但令人惊奇的是，并没有出现这种情况。在<code>swizzling</code>的过程中，方法中的<code>[self xxx_viewWillAppear:animated]</code>已经被重新指定到UIViewController类的-<code>viewWillAppear:</code>中。在这种情况下，不会产生无限循环。不过如果我们调用的是<code>[self viewWillAppear:animated]</code>，则会产生无限循环，因为这个方法的实现在运行时已经被重新指定为<code>xxx_viewWillAppear:</code>了。</p>
-
-<h3 id="toc_4">注意事项</h3>
-
-<p>Swizzling通常被称作是一种黑魔法，容易产生不可预知的行为和无法预见的后果。虽然它不是最安全的，但如果遵从以下几点预防措施的话，还是比较安全的：</p>
-
-<ol>
-<li>总是调用方法的原始实现(除非有更好的理由不这么做)：API提供了一个输入与输出约定，但其内部实现是一个黑盒。Swizzle一个方法而不调用原始实现可能会打破私有状态底层操作，从而影响到程序的其它部分。</li>
-<li><p>避免冲突：给自定义的分类方法加前缀，从而使其与所依赖的代码库不会存在命名冲突。</p></li>
-<li><p>明白是怎么回事：简单地拷贝粘贴swizzle代码而不理解它是如何工作的，不仅危险，而且会浪费学习Objective-C运行时的机会。阅读Objective-C Runtime Reference和查看<objc/runtime.h>头文件以了解事件是如何发生的。</p></li>
-<li><p>小心操作：无论我们对Foundation, UIKit或其它内建框架执行Swizzle操作抱有多大信心，需要知道在下一版本中许多事可能会不一样。</p></li>
-<li></li>
-</ol>
 
 
 		</div>
@@ -164,8 +335,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -177,11 +350,9 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -266,31 +437,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

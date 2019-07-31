@@ -82,29 +82,192 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15556625620569.html">pod repo update</a></h1>
-			<p class="meta"><time datetime="2019-04-19T16:29:22+08:00" 
-			pubdate data-updated="true">2019/4/19</time></p>
+		  	<h1 class="entry-title"><a href="15609354619260.html">RACChannel</a></h1>
+			<p class="meta"><time datetime="2019-06-19T17:11:01+08:00" 
+			pubdate data-updated="true">2019/6/19</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>我们平时开发pod update或者pod install , 这里其实 pod的工作就是根据pod库名在master/Specs/中找到对应的库，若指定版本则找到指定版本的podspec,否则找最高版本的podspec，找到后根据podsepc文件中的配置下载指定的库资源。</p>
+		  	<p><code>RACChannel</code>是一对一的双向的数据流</p>
 
-<p>那么pod repo update 的工作就是更新pod资源目录，也就是master下的资源，简单说 如果有一个第三方库发布了一个最新的版本，如果你不执行pod repo update，那么你的本地是不会知道有一个最新版本的，还会一直以你本地的资源目录为准。那么你永远都拿不到这个库的最新版本。</p>
+<h2 id="toc_0">RACChannel</h2>
 
-<p>使用pod update是默认会执行一遍pod repo update ，所以会发现如果你的pod库引用多了，每次pod update都很慢，网络如果不好更是经常会断掉，就是因为你在更新pod时，也更新了资源目录</p>
+<p>在channel中向外暴露的有两个属性<code>terminal</code></p>
 
-<p>pod update 工作流程 :</p>
+<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) RACChannelTerminal&lt;ValueType&gt; *leadingTerminal;
+@property (nonatomic, strong, readonly) RACChannelTerminal&lt;ValueType&gt; *followingTerminal;
+</code></pre>
 
-<ul>
-<li>先拉取远程最新目录，再根据目录中的资源重新更新一遍pod</li>
-<li>如果你的podfile中每个库都指定了版本还好，如果没有，那么每次都是拉一遍最新库， 这时候就要用到命令
-<code>
-pod update --no-repo-update
-</code></li>
-</ul>
+<p>初始化<code>terminal</code>方法 </p>
 
-<p>有些时候会引用一些私有库 ， <code>pod repo update</code> 会把<code>~/.cocoapods/repos/</code>这个目录下所有的资源库目录都更新一遍，有时候不想更新master，只想更新某个具体的私有库 可以使用<code>pod repo update ~/.cocoapods/repos/***/</code></p>
+<pre><code class="language-objectivec">- (instancetype)init {
+    self = [super init];
+
+    RACReplaySubject *leadingSubject = [RACReplaySubject replaySubjectWithCapacity:0];
+    RACReplaySubject *followingSubject = [RACReplaySubject replaySubjectWithCapacity:1];
+    
+    [[leadingSubject ignoreValues] subscribe:followingSubject];
+    [[followingSubject ignoreValues] subscribe:leadingSubject];
+
+    _leadingTerminal = [[RACChannelTerminal alloc] initWithValues:leadingSubject otherTerminal:followingSubject];
+    _followingTerminal = [[RACChannelTerminal alloc] initWithValues:followingSubject otherTerminal:leadingSubject]
+    return self;
+}
+</code></pre>
+
+<ol>
+<li>可以看到<code>leadingSubject</code>是由<code>Capacity:0</code>的<code>RACReplaySubject</code> 而 <code>followingSubject</code>是由<code>Capacity:1</code>的<code>RACReplaySubject</code></li>
+<li><code>ignoreValues</code>通过订阅相互信号的错误信息，当一端出现错误信息能保证相互发送，防止当一方出错时 另外一方还在工作</li>
+<li><code>followingSubject</code>的<code>Capacity</code>为1，有初始值，因此当订阅followingTerminal信息时 可以直接进行初始化状态</li>
+</ol>
+
+<h2 id="toc_1">RACChannelTerminal: RACSignal&lt; RACSubscriber&gt;</h2>
+
+<h3 id="toc_2">初始化</h3>
+
+<p><code>ChannelTerminal</code>初始化,使用一个用于subcribe的<code>RACSignal</code>的value 和一个用于发送值的<code>id&lt;RACSubscriber&gt;</code>的otherTerminal</p>
+
+<p>期指那个<code>value</code>表示当前端点，<code>otherTerminal</code>表示远程端点</p>
+
+<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) RACSignal&lt;ValueType&gt; *values;
+@property (nonatomic, strong, readonly) id&lt;RACSubscriber&gt; otherTerminal;
+
+- (instancetype)initWithValues:(RACSignal *)values otherTerminal:(id&lt;RACSubscriber&gt;)otherTerminal {
+    self = [super init];
+    _values = values;
+    _otherTerminal = otherTerminal;
+    return self;
+}
+</code></pre>
+
+<h3 id="toc_3">订阅信号</h3>
+
+<p>订阅信号 其实订阅和接收的是<code>self.values</code>的信号，即订阅的时当前信号消息</p>
+
+<pre><code class="language-objectivec">- (RACDisposable *)subscribe:(id&lt;RACSubscriber&gt;)subscriber {
+    return [self.values subscribe:subscriber];
+}
+</code></pre>
+
+<h3 id="toc_4">发送</h3>
+
+<p>如果向<code>Terminal</code>发送消息  会被转发到远程端点上，因此当前端点的订阅者并不能接收到当前端点发送的消息</p>
+
+<pre><code class="language-objectivec">- (void)sendNext:(id)value {
+    [self.otherTerminal sendNext:value];
+}
+</code></pre>
+
+<h3 id="toc_5">使用</h3>
+
+<p>我们不应该直接初始化<code>RACChannelTerminal</code>实例，而可以通过 初始化RACChannle的方式生成</p>
+
+<h2 id="toc_6">RACChannel的使用</h2>
+
+<h3 id="toc_7">RACChannel+UIControl</h3>
+
+<pre><code class="language-objectivec">UIControl rac_channelForControlEvents:(UIControlEvents)controlEvents key:(NSString *)key nilValue:(nullable id)nilValue {
+    RACChannel *channel = [[RACChannel alloc] init];
+    
+    RACSignal *eventSignal = [[[self
+        rac_signalForControlEvents:controlEvents]
+        mapReplace:key]
+        takeUntil:[[channel.followingTerminal
+            ignoreValues]
+            catchTo:RACSignal.empty]];
+            
+            [[self
+        rac_liftSelector:@selector(valueForKey:) withSignals:eventSignal, nil]
+        subscribe:channel.followingTerminal];
+        
+        RACSignal *valuesSignal = [channel.followingTerminal
+        map:^(id value) {
+            return value ?: nilValue;
+        }];
+    [self rac_liftSelector:@selector(setValue:forKey:) withSignals:valuesSignal, [RACSignal return:key], nil];
+
+    return channel.leadingTerminal;
+}
+
+</code></pre>
+
+<ol>
+<li><code>eventSignal</code> 获取事件触发的<code>signal</code> 并将error转换为empty信号，发送的值即为key</li>
+<li><code>rac_liftSelector:with:</code> 执行一个<code>selector</code>方法,<code>rac_liftSelector:@selector(valueForKey:)</code>即为获取<code>UIControl</code>的事件的<code>key</code>的值</li>
+<li><code>subscribe:channel.followingTerminal</code> 即为 channel的<code>followingTerminal</code>订阅， 综合起来就是 每次事件触发时 获取<code>key</code>的value值 然后发送<code>followingTerminal</code>  而followTerminal的<code>sendNext</code>，触发leadingSubject的<code>sendNext</code>，即将事件触发时获取到的value值发送给leadingSubject的订阅者 即 leadingTerminal的订阅者</li>
+<li><p><code>valueSignal</code> 订阅<code>followingTerminal</code>即 订阅 followSubject的消息，即为收到leadingTerminal发送的消息</p></li>
+<li><p><code>[self rac_liftSelector:@selector(setValue:forKey:) withSignals:valuesSignal, [RACSignal return:key], nil];</code>  收到<code>leadingTerminal</code>发送的消息后将收到的值传给当前的控件，保证数据同步</p></li>
+</ol>
+
+<p>综合起来来说，就是在<code>controlEvent</code>事件发生时，将key的value值发送给<code>followingTerminal</code>，并在接收来自<code>leadingTerminal</code>消息后，更新控件的key属性对应的value值</p>
+
+<h4 id="toc_8">UITextField+TextChannel</h4>
+
+<pre><code class="language-objectivec">- (RACChannelTerminal *)rac_newTextChannel {
+    return [self rac_channelForControlEvents:UIControlEventAllEditingEvents key:@keypath(self.text) nilValue:@&quot;&quot;];
+}
+</code></pre>
+
+<h3 id="toc_9">RACChannel+KVO</h3>
+
+<p>RACChannel提供了<code>RACKVOChannel</code>来实现对象的某个属性值进行观测， 常可以用来进行与UIKit组件或者其他对象属性进行高效的双向绑定</p>
+
+<h4 id="toc_10">RACKVOChannel :RACChannel</h4>
+
+<p>在KVO的channel中 我们常通过<code>RACChannelTo</code>宏定义来直接使用，观测某对象属性</p>
+
+<pre><code class="language-objectivec">//参数分别为 对象、属性和默认值
+#define RACChannelTo_(TARGET, KEYPATH, NILVALUE)
+
+    [[RACKVOChannel alloc] initWithTarget:(TARGET) 
+    keyPath:@keypath(TARGET, KEYPATH) nilValue:(NILVALUE)]
+    [@keypath(RACKVOChannel.new, followingTerminal)]
+</code></pre>
+
+<p>例如：</p>
+
+<pre><code class="language-objectivec">RACChannelTerminal *integerChannel = [[RACKVOChannel alloc] initWithTarget:self keyPath:@&quot;integerProperty&quot; nilValue:@42][@&quot;followingTerminal&quot;];
+</code></pre>
+
+<p>先来看<code>RACKVOChannel</code>的初始化方法</p>
+
+<pre><code class="language-objectivec">- (instancetype)initWithTarget:(__weak NSObject *)target keyPath:(NSString *)keyPath nilValue:(id)nilValue {
+
+    //KVO对象属性值并发送
+    [strongTarget rac_observeKeyPath:keyPath options:NSKeyValueObservingOptionInitial observer:nil block:^(id value, NSDictionary *change, BOOL causedByDealloc, BOOL affectedOnlyLastComponent) {
+        [self.leadingTerminal sendNext:value];
+    }]
+    
+    // 收到订阅值 并设置对象的属性值
+    [[self.leadingTerminal
+        finally:^{
+            [observationDisposable dispose];
+        }]
+        subscribeNext:^(id x) {
+            NSObject *object = (keyPathComponentsCount &gt; 1 ? [self.target valueForKeyPath:keyPathByDeletingLastKeyPathComponent] : self.target);
+            if (object == nil) return;
+            [object setValue:x ?: nilValue forKey:lastKeyPathComponent];
+        } error:^(NSError *error) {
+        }];
+    
+}
+</code></pre>
+
+<p>使用RACKVOChannel的初始化方法即获得了一个Channel对象，对此对象执行 <code>[@keypath(RACKVOChannel.new, followingTerminal)]</code>来获取terminal对象是因为重写了以下两个方法:</p>
+
+<pre><code class="language-objectivec">- (RACChannelTerminal *)objectForKeyedSubscript:(NSString *)key {
+    RACChannelTerminal *terminal = [self valueForKey:key];
+    return terminal;
+}
+
+- (void)setObject:(RACChannelTerminal *)otherTerminal forKeyedSubscript:(NSString *)key {
+    RACChannelTerminal *selfTerminal = [self objectForKeyedSubscript:key];
+    [otherTerminal subscribe:selfTerminal];
+    [[selfTerminal skip:1] subscribe:otherTerminal];
+}
+</code></pre>
+
+<p>重写这两个方法 就会使在调用<code>setObject: forKeyedSubscript:</code>时执行<code>-subscribe:</code>方法完成双向绑定</p>
 
 
 		</div>
@@ -127,8 +290,10 @@ pod update --no-repo-update
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -140,11 +305,9 @@ pod update --no-repo-update
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -229,31 +392,31 @@ pod update --no-repo-update
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

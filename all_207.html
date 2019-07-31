@@ -82,186 +82,207 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14951065647732.html">图层性能</a></h1>
-			<p class="meta"><time datetime="2017-05-18T19:22:44+08:00" 
-			pubdate data-updated="true">2017/5/18</time></p>
+		  	<h1 class="entry-title"><a href="15553988088853.html">ARC</a></h1>
+			<p class="meta"><time datetime="2019-04-16T15:13:28+08:00" 
+			pubdate data-updated="true">2019/4/16</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>图层树</p>
+		  	<p>在ARC有效的环境下，其内存管理规则和手动计数相同</p>
 
-<p>选择性地选取光栅化或者绘制图层内容在合适的时候重新分配给CPU和GPU</p>
+<ul>
+<li>自己生成对象，自己持有</li>
+<li>非自己生成对象，自己也能持有</li>
+<li>自己持有的对象不再需要时释放</li>
+<li>非自己持有的对象无法释放</li>
+</ul>
 
-<h3 id="toc_0">隐式绘制</h3>
+<h2 id="toc_0">所有权修饰符</h2>
 
-<p>我们前几章讨论了几个场景下的优化:1.通过Core Graphics直接绘制 2.直接载入一个图片文件并赋值<br/>
-给<code>contents</code>属性 3.事先绘制一个屏幕之外的<code>CGContext</code>上下文</p>
+<p>OC中的变量类型有对象类型(即指向OC类的指针<code>NSObject *</code>)和<code>id</code>类型(用于隐藏对象类型类名部分，相当于C语言中的void *)</p>
 
-<p>我们可以通过以下方式创建隐式的寄宿图:</p>
+<p>在ARC有效时，id类型和对象类型与C语言的其他类型不同，必须加上所有权修饰符</p>
+
+<ul>
+<li>__strong 修饰符</li>
+<li>__weak修饰符</li>
+<li>__unsafe __unretained修饰符</li>
+<li>__autoreleasing修饰符</li>
+</ul>
+
+<h3 id="toc_1">__strong修饰符</h3>
+
+<p>是id类型和对象类型的默认修饰符,即</p>
+
+<pre><code class="language-objectivec">id obj = [[NSObject alloc] init];
+//等效于
+id __strong obj = [[NSObject alloc] init];
+//或者
+__strong id obj = [[NSObject alloc] init];
+</code></pre>
+
+<p>__strong修饰符的内存管理:</p>
 
 <ol>
-<li>使用特定的图层属性</li>
-<li>特定的视图</li>
-<li>特定的图层子类</li>
+<li><code>__strong</code>修饰符的变量赋值对象，即可完成对自己生成或非自己生成对象的强引用</li>
+<li>当变量超出作用域被废弃、变量所属对象废弃(赋值nil)或者变量赋值即会释放对原有对象的强引用，相当于对对象执行release操作</li>
 </ol>
 
-<h4 id="toc_1">文本</h4>
+<p>而当对象没有了所有者 就会被销毁</p>
 
-<p><code>CATextLayer</code>和<code>UILabel</code>都是直接将文本绘制在图层的寄宿图中。</p>
+<p>示例如下:</p>
 
-<p>尽可能地避免改变那些包含文本的视图的<code>frame</code>，因为这样做的话文本就需要重绘。例如，如果你想在图层的角落里显示一段静态的文本，但是这个图层经常改动，你就应该把文本放在一个子图层中。</p>
-
-<h4 id="toc_2">光栅化</h4>
-
-<p>启用<code>CALayer</code>的<code>shouldRaterize</code>属性会将图层绘制到一个屏幕之外的图像。然后这个图像会被缓存起来并绘制到实际图层的<code>contents</code>和子图层。如果有很多的子图层或者有复杂的效果应用，这样做就会比重绘所有事务的所有帧划得来得多。但是光栅化原始图像需要时间，而且还会消耗额外的内存。</p>
-
-<p>光栅化使用的当可以提供很大性能优势,但是避免使用在不断变动的图层上。否则缓存没用了。</p>
-
-<p>可以使用<code>Instrument</code>查看一下<code>Color Hits Green</code>和<code>Misses Red</code>项目，是否已光栅化图像被频繁地刷新,可以知道我们是否正确使用了光栅化</p>
-
-<h3 id="toc_3">离屏渲染</h3>
-
-<p>当图层属性的混合体被指定为在未预合成之前不能直接在屏幕中绘制时，屏幕外渲染被唤起。屏幕外渲染并不意味着软件绘制，但是它意味着图层必须在被显示之前在一个屏幕外上下文中被渲染（不论CPU还是GPU）。图层的以下属性将会触发屏幕外绘制：</p>
-
-<ul>
-<li>圆角（当和 maskToBounds 一起使用时）</li>
-<li>图层蒙板</li>
-<li>阴影</li>
-</ul>
-
-<p>屏幕外渲染和我们启用光栅化时相似，除了它并没有像光栅化图层那么消耗大，子图层并没有被影响到，而且结果也没有被缓存，所以不会有长期的内存占用。但是如果太多图层在屏幕外渲染依然会影响性能</p>
-
-<p>如果那些离屏绘制的图层并不会被频繁重绘的话,为这些图层开启光栅化也是一种优化方式</p>
-
-<p>对于那些需要动画而且要在屏幕外渲染的图层来说，你可以用<code>CAShapeLayer</code>，<code>contentsCenter</code>或者<code>shadowPath</code>来获得同样的表现而且较少地影响到性能。</p>
-
-<h4 id="toc_4">CAShaprLayer(圆角)</h4>
-
-<p><code>cornerRadius</code>和<code>maskToBounds</code>独立作用的时候都不会有太大的性能问题，但是当他俩结合在一起，就触发了屏幕外渲染。</p>
-
-<p>为了不引起性能问题,我们可以用现成的<code>UIBezierPath</code>的构造器<code>+ bezierPathWithRoundedRect:cornerRadius:</code>虽然不比直接用<code>cornerRadius</code>更快,但是避免性能问题</p>
-
-<pre><code class="language-objectivec">    - (void)viewDidLoad
-    {
-        [super viewDidLoad];
-        //create shape layer
-        CAShapeLayer *blueLayer = [CAShapeLayer layer];
-        blueLayer.frame = CGRectMake(50, 50, 100, 100);
-        blueLayer.fillColor = [UIColor blueColor].CGColor;
-        blueLayer.path = [UIBezierPath bezierPathWithRoundedRect:
-        CGRectMake(0, 0, 100, 100) cornerRadius:20].CGPath;
-        //add it to our view
-        [self.layerView.layer addSublayer:blueLayer];
-    }
-</code></pre>
-
-<h4 id="toc_5">可伸缩图片(圆角)</h4>
-
-<p>另外一个创建圆角矩形的方法使用一个圆形内容图片,并设置其<code>contentsCenter</code>去创建一个可伸缩图片.<br/>
-理论上来说，这个应该比用<code>CAShapeLayer</code>要快，因为一个可拉伸图片只需要18个三角形（一个图片是由一个3*3网格渲染而成），然而，许多都需要渲染成一个顺滑的曲线。在实际应用上，二者并没有太大的区别。</p>
-
-<pre><code class="language-objectivec">- (void)viewDidLoad
+<pre><code class="language-objectivec">//1.
 {
-    [super viewDidLoad];
-    //create layer
-    CALayer *blueLayer = [CALayer layer];
-    blueLayer.frame = CGRectMake(50, 50, 100, 100);
-    blueLayer.contentsCenter = CGRectMake(0.5, 0.5, 0.0, 0.0);
-    blueLayer.contentsScale = [UIScreen mainScreen].scale;
-    blueLayer.contents = (__bridge id)[UIImage imageNamed:@&quot;Circle.png&quot;].CGImage;
-    //add it to our view
-    [self.layerView.layer addSublayer:blueLayer];
+    //取得非自己生成并持有的对象
+    id __strong obj = [NSMutableArray array];
+    //因为obj为强引用 所以自己持有对象
 }
-/**
-    使用可伸缩图片的优势在于它可以绘制成任意边框效果而不需要额外的性能消耗。举个例子，可伸缩图片
-    甚至还可以显示出矩形阴影的效果。
-*/
+//此时变量obj超出作用域被废弃时，强引用失效，所以自动释放自己持有的对象
+
+//2.
+{
+    //取得自己生成并持有的对象
+    id __strong obj = [[NSObject alloc] init];
+    //因为obj为强引用 所以自己持有对象
+}
+/*
+* 此时变量obj超出作用域，强引用失效，所以自动释放自己持有的对象
+* 对象所有者不存在，因此废弃该对象
+*/ 
+
+//3. 
+
+id __strong obj0 = [[NSObject alloc] init];
+//obj0强引用对象A
+id __strong obj1 = [[NSObject alloc] init];
+//obj1强引用对象B
+obj0 = 0bj1;
+//obj0强引用对象B，此时对对象A强引用失效，对象A没有所有者因此废弃对象A
+obj0 = nil;
+//因为obj0被赋值nil，因此其对对象B的强引用失效 此时对象B的强引用只剩下obj1
 </code></pre>
 
-<h4 id="toc_6">shadowPath</h4>
+<blockquote>
+<p>__ strong、__weak、__autoreleasing修饰符，会将修饰符修饰的变量自动初始化为nil</p>
+</blockquote>
 
-<p>对于<code>shadowPath</code>属性，对于简单的几何图形(假设不包含任何透明部分或者子视图),创建阴影路径较容易，<code>Core Animation</code>绘制这个阴影也相当简单,避免了屏幕外图层部分预排版，对性能有好处。</p>
+<h3 id="toc_2">__weak修饰符</h3>
 
-<p>如果是个复杂的图形,那么生成阴影路径就比较困难，可以考虑用绘图软件生成一个阴影背景图</p>
+<p>主要用来避免使用强引用导致的循环引用</p>
 
-<h3 id="toc_7">混合和过度绘制</h3>
+<p><code>__weak</code>提供弱引用，并不持有对象实例</p>
 
-<p>我们知道,<code>GPU</code>每一帧可以绘制的像素有一个最大限制（就是所谓的<code>fill rate</code>），这个情况下可以轻易地绘制整个屏幕的所有像素。但是如果由于重叠图层的关系需要不停地重绘同一区域的话，掉帧就可能发生了。</p>
+<p>错误使用:</p>
 
-<p>GPU会放弃绘制那些完全被其他图层遮挡的像素，但是要计算出一个图层是否被遮挡也是相当复杂并且会消耗处理器资源。同样，合并不同图层的透明重叠像素（即混合）消耗的资源也是相当客观的。所以为了加速处理进程，不到必须时刻不要使用透明图层。<br/>
-任何情况下，你应该这样做：</p>
-
-<ul>
-<li>给视图的<code>backgroundColor</code>属性设置一个固定的，不透明的颜色</li>
-<li>设置<code>opaque</code>属性为YES</li>
-</ul>
-
-<p>这样减少了混合行为（因为编译器知道图层后的东西不对最终像素残生影响）计算得到加速，因为<code>Core Animation</code>完全可以舍弃所有被完全遮盖的图层，避免了过度绘制。</p>
-
-<p>如果用到了图像，尽量避免透明除非非常必要。如果图像要显示在一个固定的背景颜色或是固定的背景图之前，你没必要相对前景移动，你只需要预填充背景图片就可以避免运行时混色了。</p>
-
-<p>如果是文本的话，一个不透明颜色背景的<code>UILabel</code>会比透明背景要更高效。</p>
-
-<p>最后，明智地使用<code>shouldRasterize</code>属性，可以将一个固定的图层体系折叠成单张图片，这样就不需要每一帧重新合成了，也就不会有因为子图层之间的混合和过度绘制的性能问题了。</p>
-
-<h3 id="toc_8">减少图层数量</h3>
-
-<p>我们的图层呈现过程:<br/>
-初始化图层，处理图层，打包通过<code>IPC</code>发给渲染引擎，转化成<code>OpenGL</code>几何图形，这些是一个图层的大致资源开销。</p>
-
-<p>事实上，一次性在屏幕上显示的最大图层数量也是有限的。这取决于于iOS设备，图层类型，图层内容和属性等。</p>
-
-<h4 id="toc_9">裁切</h4>
-
-<p>不可见图层：</p>
-
-<ul>
-<li>图层在屏幕边界之外，或是在父图层边界之外。</li>
-<li>完全在一个不透明图层之后。</li>
-<li>完全透明</li>
-</ul>
-
-<p><code>Core Animation</code>非常擅长处理对视觉效果无意义的图层。但是经常性地，你自己的代码会比<code>Core Animation</code>更早地想知道一个图层是否是有用的。理想状况下，在图层对象在创建之前就想知道，以避免创建和配置不必要图层的额外工作。</p>
-
-<p>示例:<br/>
-当我们创建了很多图层,但是这些图层也许在屏幕外也许被遮盖,显示的数量一定，那么我们增加创建图层数量就会导致帧数下降,出现性能问题。</p>
-
-<p>但是如果计算每个图层根据是否最终显示在屏幕上这是一个很难的过程。所以我们可以用另外一种方式优化:<br/>
-随着视图的滚动动态地实例化图层而不是事先都分配好,这样，我们可以在创造它之前计算出是否需要它，接着，我们增加一些代码去计算可视区域这样就可以排除区域之外的图层了。</p>
-
-<p>类似<code>UITableView</code>或者<code>UICollectionView</code>的机制</p>
-
-<h4 id="toc_10">对象回收</h4>
-
-<p>处理巨大数量的相似视图或图层时还有一个技巧就是回收他们。对象回收在<code>iOS</code>颇为常见；<code>UITableView</code>和 <code>UICollectionView</code> 都有用到，<code>MKMapView</code>中的动画<code>pin</code>码也有用到，还有其他很多例子。</p>
-
-<p>做对象回收首先需要一个有一个对象池。进行对象的存取,避免了不断创建和释放对象(相当消耗资源因为涉及到内存的分配和销毁)而且也不必给相似实例重复赋值。</p>
-
-<pre><code class="language-objectivec">@property (nonatomic, strong) NSMutableSet *recyclePool;
+<pre><code class="language-objectivec">id __weak obj = [[NSObject alloc] init]; //编译器会报警高
+//这种情况下 obj并不持有生成的对象，而是持有对象的弱引用，所以对象会立即释放
 </code></pre>
 
-<p>注意：<br/>
-在本实例中做对象回收需要禁用隐式动画,因为之前图层对象都是在呈现之前改变属性,但是现在是回收的，需要禁用隐式动画,否咋改变属性就触发隐式动画</p>
+<p>正确使用</p>
 
-<h4 id="toc_11">Core Graphics绘制</h4>
+<pre><code class="language-objectivec">{
+    id __strong obj = [[NSObject alloc] init];
+    id __weak obj1 = obj;
+}
+</code></pre>
 
-<p>在上面我们派出了那些没有显示在屏幕上的图层,对于那些显示的对屏幕有贡献的图层和视图，我们还有减少图层数量的方法</p>
+<p><code>__weak</code>修饰符修饰的变量当持有某个对象的弱引用时，若该对象被废弃(没有了持有者)，则弱引用<strong>自动失效并处于值为nil</strong>状态</p>
 
-<p>比如多个<code>UILabel</code>或者<code>UIImageView</code>我们可以把他们全部替换为单独视图然后用<code>-drawRect</code>方法绘制出这些复杂的视图层级</p>
+<h3 id="toc_3">__ unsafe__retained修饰符</h3>
 
-<p>这个提议看上去并不合理因为大家都知道软件绘制行为要比<code>GPU</code>合成要慢而且还需要更多的内存空间，但是在因为图层数量而使得性能受限的情况下，软件绘制很可能提高性能呢，因为它避免了图层分配和操作问题。</p>
+<p>是不安全的修饰符。因为<code>__weak</code>只能用在iOS5之上的版本，所以在iOS4就只能使用<code>__unsafe__retained</code>修饰符</p>
 
-<p>你可以自己实验一下这个情况，它包含了性能和栅格化的权衡，但是意味着你可以从图层树上去掉子图层（用<code>shouldRasterize</code>，与完全遮挡图层相反）。</p>
+<p><strong><code>__unsafe__retaine</code>d变量修饰的对象不属于编译器的内存管理对象</strong></p>
 
-<h4 id="toc_12">- renderInContext: 方法</h4>
+<pre><code class="language-objectivec">//__unsafe__retained与__weak类似，并不持有生成对象所以对象会立即释放
+id __weak obj = [[NSObject alloc] init]; //编译器会报警高
+</code></pre>
 
-<p>用<code>Core Graphics</code>去绘制一个静态布局有时候会比用层级的<code>UIView</code>实例来得快，但是使用<code>UIView</code>实例要简单得多而且比用手写代码写出相同效果要可靠得多，更边说<code>Interface Builder</code>来得直接明了。</p>
+<p><strong>unsafe</strong>retained变量修饰的对象当销毁时不会自动置nil，因此有可能访问悬空指针</p>
 
-<p>如果大量的视图或者图层真的关联到了屏幕上将会是一个大问题。没有与图层树相关联的图层不会被送到渲染引擎，也没有性能问题（在他们被创建和配置之后）。</p>
+<p>因此，不要使用这个修饰符</p>
 
-<p>我们可以使用<code>CALayer</code>的<code>- renderInContext:</code>方法，你可以将图层及其子图层快照进一个<code>Core Graphics</code>上下文然后得到一个图片，可以直接显示在<code>UIImageView</code>中或者作为另外一个图层的<code>contents</code>。不同于<code>shouldRasterize</code>(要求图层与图层树相关联)，这个方法没有持续的性能消耗。</p>
+<h3 id="toc_4">__autoreleasing修饰符</h3>
 
-<p>当图层内容改变，不同于<code>shouldRasterize</code>的自动地处理缓存和缓存验证，这张图片的刷新时机取决于我们自己，但是一旦图片被生成,相比让<code>Core Animation</code>处理一个复杂的图层树，你节省了相当客观的性能。</p>
+<pre><code class="language-objectivec">//非ARC环境下
+NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+id obj = [[NSObject alloc] init]; 
+[obj autorelease];
+[pool drain];
+//ARC环境下
+@autoreleasepool {
+    id __autoreleasing obj = [[NSObject alloc] init];
+}
+</code></pre>
+
+<blockquote>
+<p>@autoreleasepool {}在非ARC环境下也能使用 推荐@autoreleasepool来表示自动释放池，提高程序的可读性</p>
+</blockquote>
+
+<p>在平常使用中 我们通常不需要主动指定<code>__autorelease</code>修饰符,例子如下：</p>
+
+<h4 id="toc_5">1. 编译器会自动将返回值注册到autorelease pool</h4>
+
+<p>编译器会检查方法名，如果使用<code>alloc/new/copy/mutableCopy</code>以外开头的方法，则自动将返回值注册到`autorelease pool中</p>
+
+<pre><code class="language-objectivec">+ (id)array {
+    id obj = [[NSMutableArray alloc] init];
+    return obj;
+}
+//obj没有显式指定修饰符，因此为__strong,由于return会使对象变量超出作用域，所以自己持有的强引用被释放，但该函数以对象作为返回值，编译器会自动帮其注册到autorelease pool中
+</code></pre>
+
+<h4 id="toc_6">2. 访问__weak修饰的变量一定要访问注册的到autoreleapool的对象</h4>
+
+<p>因为<code>__weak</code>只持有对象弱引用，在访问过程中，对象有可能销毁，而把对象注册到<code>autorelease pool</code>就能保证对象在访问结束前不会被销毁</p>
+
+<pre><code class="language-objectivec">id __weak obj0 = obj1;
+NSLog(@&quot;class = %@&quot;, [obj0 class]);
+
+//等效于
+id __weak obj0 = obj1;
+id __autoreleasing tmp = obj1;
+NSLog(@&quot;class = %@&quot;, [tmp class]);
+</code></pre>
+
+<h4 id="toc_7">3. id的指针或者对象指针会默认加上__autoreleasing修饰符</h4>
+
+<p>id的指针<code>id *obj</code>和<code>NSObject **obj</code>在没有显式指定时会被附加上<code>__autoreleasing</code>修饰符</p>
+
+<p>例如:</p>
+
+<pre><code class="language-obj"> - (nullable instancetype)dataWithContentsOfFile:(NSString *)path ... error:(NSError **)errorPtr;
+//相当于
+- (nullable instancetype)dataWithContentsOfFile:(NSString *)path... error:(NSError * __autoreleasing *)errorPtr;
+</code></pre>
+
+<p>使用__autoreleasing修饰的变量作为对象取得参数就和用非自己生成对象方法取得返回值的对象完全一样，会注册到<code>autorelease pool</code>中</p>
+
+<pre><code class="language-objectivec">//源码应该类似这个样子
+- (nullable instancetype)dataWithContentsOfFile:(NSString *)path... error:(NSError * __autoreleasing *)errorPtr {
+    *error = [[NSError alloc] initWithDomain:MyAppDomin code:errorCode userInfo:nil];
+}
+</code></pre>
+
+<p>在使用过程中应该注意，保持赋值互相对象的修饰符一致:</p>
+
+<pre><code class="language-objectivec">NSError * __autoreleasing error;//修改修饰符为__autoreleasing保持一致进行赋值
+NSError **pError = &amp;error;
+//或者
+NSError * error;
+NSError * __strong *pError = &amp;error;
+</code></pre>
+
+<p>在下面的NSError **参数赋值了一个__strong对象变量也没报错，是因为编译器自动帮我们做了转换</p>
+
+<pre><code class="language-objectivec">NSError * error;
+    id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;error];
+//编译器帮我们转化为了
+NSError __strong *error;
+NSError __autoreleasing *tmp = error;
+id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;tmp];
+</code></pre>
 
 
 		</div>
@@ -284,8 +305,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -297,11 +320,9 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -386,31 +407,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

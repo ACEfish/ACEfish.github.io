@@ -82,128 +82,44 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15553791452907.html">autorelease && autorelease pool block</a></h1>
-			<p class="meta"><time datetime="2019-04-16T09:45:45+08:00" 
-			pubdate data-updated="true">2019/4/16</time></p>
+		  	<h1 class="entry-title"><a href="15541003911598.html">Clang库&&插件</a></h1>
+			<p class="meta"><time datetime="2019-04-01T14:33:11+08:00" 
+			pubdate data-updated="true">2019/4/1</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>autorelease pool block提供了一个允许我们延时<code>deallocated</code>对象的机制</p>
+		  	<h2 id="toc_0">使用 libclang 来进行语法分析</h2>
 
-<h2 id="toc_0">autorelease</h2>
+<p>使用<code>libclang</code>里面提供的方法对源文件进行语法分析，分析语法树，遍历语法树上每个节点。</p>
 
-<p><code>NSAutoReleasePool</code>对象的生存周期相当于C语言变量的作用域。对于所有调用过<code>autorelease</code>的实例方法，会在废弃NSAutorelease对象时，调用release方法</p>
+<h2 id="toc_1">LibTooling 对语法树完全的控制</h2>
 
-<pre><code class="language-objectivec">NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-id obj = [[NSObject alloc] init];
-[obj autorelease];
-[pool drain]; //调用pool drain方法相当于调用[obj release]
-</code></pre>
-
-<p>在Cocoa框架也有很多可以返回autorelease对象的方法</p>
-
-<pre><code class="language-objectivec">//返回autorelease对象
-id array = [NSMutableArray Array];
-//相当与
-id array = [[[NSMutableArray alloc] init] autorelease];
-</code></pre>
-
-<h2 id="toc_1">autorelease 原理</h2>
-
-<p>在NSAutoreleasePool维持了一个数组来保存autorelase的对象，[obj autorelease]方法实际上是调用了<code>NSAutoreleasePool</code>的<code>[NSAutoreleasePool addObject:obj]</code>方法，该方法会找到当前的pool并add到数组中，当调用<code>[pool drain]</code>时会废弃当前pool对象，并释放内部数组，因此内部所有对象都会被调用release方法</p>
-
-<blockquote>
-<p>可以使用<code>[NSAutoreleasePool showPools];</code>这个非公开方法查看现在的pool中对象状况,查看结果类似下面输出，可以用其查看对象是否被自动release</p>
-</blockquote>
-
-<pre><code class="language-objectivec">objc[41725]: ##############
-objc[41725]: AUTORELEASE POOLS for thread 0x10cd6f5c0
-objc[41725]: 2337 releases pending.
-objc[41725]: [0x7ff2b4000000]  ................  PAGE (full)  (cold)
-objc[41725]: [0x7ff2b4000038]    0x6000012fd180  __NSArrayI
-objc[41725]: [0x7ff2b4000040]    0x6000024aa1c0  __NSSetI
-objc[41725]: [0x7ff2b4000048]  ################  POOL 0x7ff2b4000048
-objc[41725]: [0x7ff2b4000050]    0x6000007a8480  __NSCFString
-...
-objc[41725]: [0x7ff2b4000058]  ################  POOL 0x7ff2b4000058
-objc[41725]: [0x7ff2b406ea10]  ################  POOL 0x7ff2b406ea10
-objc[41725]: [0x7ff2b406ea18]    0x6000005a77c0  NSObject
-objc[41725]: ##############
-</code></pre>
-
-<h2 id="toc_2">autorelease pool block</h2>
-
-<p>在Cocoa框架中，主循环的RunLoop会对<code>NSAutoreleasePool</code>进行生成、持有和废弃，因此，通常，我们不需要创建自己的自动释放池，但是有些情况下我怕们需要这么做<br/>
-在autorelease pool block结束时，所有在block内部收到<code>autorelease</code>消息的对象都会被发送一个<code>release</code>消息</p>
-
-<p>autorelease pool block可以嵌套:</p>
-
-<pre><code class="language-objectivec">@autoreleasepool {
-    // . . .
-    @autoreleasepool {
-        // . . .
-    }
-    . . .
-}
-</code></pre>
-
-<p>Cocoa中代码都是在自动释放池block中执行，否则会自动释放的对象未被释放造成内存泄漏。(因此，如果在自动释放池block外执行走动式房消息，Cocoa会报错)。AppKit或者UIKit框架都在自动释放池block中处理每个事件循环(详情见runLoop)。因此，通常不需要创建autorelease pool block，但是<strong>以下三种情况可能需要使用自己的自动释放池</strong>：</p>
+<p>因为LibTooling能够完全控制语法树，那么就可以做很多事情了</p>
 
 <ul>
-<li>假如编写不基于UI框架的程序，例如命令行工具</li>
-<li>假如编写一个创建了很多临时对象的循环<br/>
-可以再循环内的下一次迭代之前处理这些对象，有助于减少应用程序的最大内存占用量</li>
-<li>如果你创建了一个辅助线程<br/>
-当你的线程开始执行时，必须创建自己的自动释放池，否则你的应用程序有可能会内存泄漏</li>
+<li>可以改变clang生成代码的方式</li>
+<li>增加更强的类型检查</li>
+<li>按照自己的定义进行代码的检查分析</li>
+<li>对源码做任意类型分析，甚至重写程序</li>
+<li>给clang添加一些自定义的分析，创建自己的重构器</li>
+<li>基于现有代码做出大量的修改</li>
+<li>基于工程生成相关图形或文档</li>
+<li>检查命名是否规范，还能够进行语言的转换，比如把OC转为JS或者Swift</li>
 </ul>
 
-<h3 id="toc_3">使用本地自动释放池block减少峰值内存占用</h3>
+<p>官方有个文档开发者可以按照这个里面的说明去构造 LLVM，clang 和其工具： <a href="http://clang.llvm.org/docs/LibASTMatchersTutorial.html">Tutorial for building tools using LibTooling and LibASTMatchers — Clang 4.0 documentation</a></p>
 
-<pre><code class="language-objectivec">NSArray *urls = &lt;# An array of file URLs #&gt;;
-for (NSURL *url in urls) {
- 
-    @autoreleasepool {
-        NSError *error;
-        NSString *fileContents = [NSString stringWithContentsOfURL:url
-                                         encoding:NSUTF8StringEncoding error:&amp;error];
-        /* Process the string, creating and autoreleasing more objects. */
-    }
-}
-</code></pre>
+<h2 id="toc_2">Clang Plugin</h2>
 
-<p>在上面例子中，for循环每次循环的自动释放block结束时，将自动释放对象(例如:<code>fileContents</code>)发送release消息</p>
+<p>通过自己写个插件，比如上面写的LibTooling的clang工具，可以将这个插件动态的加载到编译器中，对编译进行控制，可以再LLVM的目录看到一些范例<code>llvm/tools/clang/tools</code></p>
 
-<p>在自动释放池block后，块中的自动释放对象不应该再向其发送消息或者返回。如果想要将其返回，则可以先将其<code>retain</code>然后在block外将其autorelease</p>
+<p>动态化方案<code>DynamicCocoa</code>中就是使用了一个将<code>OC</code>源码转<code>JS</code>的插件来进行代码的转换，这里整理了些利用clang转js的库 <a href="https://lmsgsendnilself.github.io/blog/2017/02/28/clangtojszi-yuan/">clangtojs资源 - Lmsgsendnilself</a> ，JSPatch 是直接手写 JS 而没有转换的过程，所以也就没有多出这一步，而鹅厂的OCS更猛，直接在端内写了个编译器。在 C 函数的调用上孙源有个<code>slides</code>可以看看：<a href="http://slides.com/sunnyxx/calling-conventions-in-cocoa#/">Calling Conventions in Cocoa by sunnyxx</a> bang 也有篇文章：<a href="http://blog.cnbang.net/tech/3219/">如何动态调用 C 函数 « bang’s blog </a></p>
 
-<pre><code class="language-objectivec">– (id)findMatchingObject:(id)anObject {
- 
-    id match;
-    while (match == nil) {
-        @autoreleasepool {
- 
-            /* Do a search that creates a lot of temporary objects. */
-            match = [self expensiveSearchForObject:anObject];
- 
-            if (match != nil) {
-                [match retain]; /* Keep match around. */
-            }
-        }
-    }
- 
-    return [match autorelease];   /* Let match go and return it. */
-}
-</code></pre>
+<ul>
+<li><a href="http://blog.cnbang.net/tech/2808/">JSPatch实现原理详解 « bang’s blog</a></li>
+</ul>
 
-<h3 id="toc_4">线程和自动释放池block</h3>
-
-<p><code>Cocoa</code>应用程序的每个线程都会维护自己的自动释放池堆栈。如果编写基于<code>Foundation</code>的程序或者分离线程，则你必须创建自己的autoreleasePool</p>
-
-<p>如果应用程序或者线程长时间运行，则有可能产生大量自动释放对象，此时就需要使用自动释放池(例如主线程的UIKit和AppKit)；否则自动释放对象会累计，造成内存增加。但，如果你的线程没有进行Cocoa调用，则不需要使用自动释放池block</p>
-
-<blockquote>
-<p>注意:<br/>
-<strong>如果使用POSIX线程API而不是NSThread创建辅助线程，则除非Cocoa处于多线程模式，否则不能使用Cocoa</strong>Cocoa仅在分离其第一个NSThread对象后才进入多线程模式。 要在辅助POSIX线程上使用Cocoa，您的应用程序必须首先分离至少一个NSThread对象，该对象可以立即退出。 您可以使用NSThread类方法isMultiThreaded测试Cocoa是否处于多线程模式。</p>
-</blockquote>
+<p>滴滴的王康在做瘦身时也实现了一个自定义的 clang 插件，具体自定义插件的实现可以查看他的这文章 <a href="https://mp.weixin.qq.com/s?__biz=MzUxMzcxMzE5Ng==&amp;mid=2247488360&amp;amp;idx=1&amp;amp;sn=94fba30a87d0f9bc0b9ff94d3fed3386&amp;source=41#wechat_redirect">《基于clang插件的一种iOS包大小瘦身方案》</a></p>
 
 
 		</div>
@@ -226,8 +142,10 @@ for (NSURL *url in urls) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -239,11 +157,9 @@ for (NSURL *url in urls) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -328,31 +244,31 @@ for (NSURL *url in urls) {
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

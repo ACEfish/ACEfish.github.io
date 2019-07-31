@@ -82,92 +82,66 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14867842994268.html">容易忘记的易错点</a></h1>
-			<p class="meta"><time datetime="2017-02-11T11:38:19+08:00" 
-			pubdate data-updated="true">2017/2/11</time></p>
+		  	<h1 class="entry-title"><a href="14879241904124.html">Method Swizzling</a></h1>
+			<p class="meta"><time datetime="2017-02-24T16:16:30+08:00" 
+			pubdate data-updated="true">2017/2/24</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h3 id="toc_0">1. @property属性中如果是copy属性要记得：</h3>
+		  	<blockquote>
+<p>本文是由发表在南峰子博客的翻译由Mattt Thompson发表于<code>nshipster</code>的Method Swizzling文章</p>
+</blockquote>
 
-<pre><code class="language-text">**注意：**
-在重写setter方法时要记得加上 
+<p><code>Method Swizzling</code>是改变一个selector的实际实现的技术。通过这一技术，我们可以在运行时通过修改类的分发表中<code>selector</code>对应的函数，来修改方法的实现。</p>
 
-``` Object-c
-_name = [name copy]
-```
-在内部的init方法中 也要记得加copy，即在内部直接给属性变量赋值时记得加copy
+<p>本文讲一些Method Swiling中需要注意的问题:</p>
 
-```Object-c
-//这里尽量不要用self.实例变量 而用 _实例变量
+<h2 id="toc_0">Swizzling应该总是在+load中执行</h2>
+
+<p>在Objective-C中，运行时会自动调用每个类的两个方法。+load会在类初始加载时调用，+initialize会在第一次调用类的类方法或实例方法之前被调用。这两个方法是可选的，且只有在实现了它们时才会被调用。由于method swizzling会影响到类的全局状态，因此要尽量避免在并发处理中出现竞争的情况。+load能保证在类的初始化过程中被加载，并保证这种改变应用级别的行为的一致性。相比之下，+initialize在其执行时不提供这种保证–事实上，如果在应用中没为给这个类发送消息，则它可能永远不会被调用。</p>
+
+<h2 id="toc_1">Swizzling应该总是在dispatch_once中执行</h2>
+
+<p>因为swizzling会改变全局状态，所以我们需要在运行时采取一些预防措施。原子性就是这样一种措施，它确保代码只被执行一次，不管有多少个线程。GCD的dispatch_once可以确保这种行为，我们应该将其作为method swizzling的最佳实践。</p>
+
+<h2 id="toc_2">选择器、方法与实现</h2>
+
+<p>在Objective-C中，选择器(selector)、方法(method)和实现(implementation)是运行时中一个特殊点，虽然在一般情况下，这些术语更多的是用在消息发送的过程描述中。</p>
+
+<p>以下是<code>Objective-C Runtime Reference</code>中的对这几个术语一些描述：  </p>
+
+<pre><code class="language-text">1. Selector(typedef struct objc_selector *SEL)：用于在运行时中表示一个方法的名称。一个方法选择器是一个C字符串，它是在Objective-C运行时被注册的。选择器由编译器生成，并且在类被加载时由运行时自动做映射操作。
+2. Method(typedef struct objc_method *Method)：在类定义中表示方法的类型
+3. Implementation(typedef id (*IMP)(id, SEL, ...))：这是一个指针类型，指向方法实现函数的开始位置。这个函数使用为当前CPU架构实现的标准C调用规范。每一个参数是指向对象自身的指针(self)，第二个参数是方法选择器。然后是方法的实际参数。
 </code></pre>
 
-<ul>
-<li><p>initWithSpId:(SInt32)spId spName:(NSString *)spName type:(SInt32)spType spPinyin:(NSString *)spPinyin spLetter:(NSString *)spLetter {<br/>
-if (self = [super init]) {<br/>
-    _spId = spId;<br/>
-    _spName = [spName copy];<br/>
-    _type = spType;<br/>
-}<br/>
-return self;<br/>
-}</p>
-<pre><code class="language-text">### 2. 注意在修改navigation时是只修改了navigationItem还是修改了NavigationBar
-如果是仅仅修改了navigationItem那就只对本控制器有效 push或者pop了都不影响，一般有以下几种情况:<br/>
-1. 修改了navigationItem的元素<br/>
-    ```Object-c<br/>
-    self.navigationItem.title = @&quot;title&quot;;<br/>
-    self.navigationItem.titleView = [[UIView alloc] init];<br/>
-    ```<br/>
-2. 修改了navigationItem的BarButtonItem<br/>
-    ```Object-c<br/>
-    self.navigationItem.leftBarButtonItem = [UIBarButtonItem itemWithTarget:self action:@selector(popViewController) image:@&quot;general_arrow_back_white&quot; highImage:@&quot;general_arrow_back_orange&quot;];<br/>
-    ```<br/>
-    **一般我们可以通过这种方法拦截返回点击事件，比如全局控制器的返回按键已经写好，而我们想要拦截点击事件就可以用这种方法,写一个同一样式的按键触发不同的事件**<br/>
-这些修改是不影响的整个navigationBar的仅此不需要在视图控制器消失时做额外的操作<br/>
-而如果是修改了navigationBar 那就对全局有影响了,需要在控制器消失时做额外还原处理,一般情况如下:<br/>
-```Object-c<br/>
-//修改背景图片<br/>
-[self.navigationController.navigationBar setShadowImage:[UIImage new]];<br/>
-//修改背景颜色<br/>
-[self.navigationController.navigationBar lt_setBackgroundColor:[UIColor clearColor]];<br/>
-//修改navigationBar的整体字体颜色<br/>
-[self.navigationController.navigationBar setTitleTextAttributes:<br/>
- [NSDictionary dictionaryWithObjectsAndKeys:[UIColor whiteColor],NSForegroundColorAttributeName,nil]];<br/>
- //隐藏navigationBar<br/>
-self.navigationController.navigationBar.hidden = YES;
-</code></pre>
-<p>此时我们需要在退出时做一下还原操作</p>
-<pre><code class="language-object-c">[super viewWillDisappear:animated];
-[self.navigationController.navigationBar lt_reset];<br/>
-[self.navigationController.navigationBar setTitleTextAttributes:<br/>
-[NSDictionary dictionaryWithObjectsAndKeys:[UIColor blackColor],NSForegroundColorAttributeName,nil]];<br/>
-self.navigationController.navigationBar.hidden = NO;
-</code></pre>
-<h3 id="toc_1">3. 隐藏tabbar</h3>
-<p>我们在某些界面需要隐藏Tabbar的时候，会出现原区域无法响应点击事件的问题。系统的Tabbar已经被我们hidden了，但是仍然无法响应事件，此时我们只要将系统的Tabbar的frame设置为CGRectZero即可。</p>
-<pre><code class="language-objectivec">[UIApplication sharedApplication].keyWindow.rootViewController).tabBar.frame 
-= CGRectZero;
-</code></pre></li>
-</ul>
+<p>理解这几个术语之间的关系最好的方式是：一个类维护一个运行时可接收的消息分发表；分发表中的每个入口是一个方法(Method)，其中key是一个特定名称，即选择器(SEL)，其对应一个实现(IMP)，即指向底层C函数的指针。</p>
 
-<h3 id="toc_2">4. 自动布局的动画</h3>
+<p>为了swizzle一个方法，我们可以在分发表中将一个方法的现有的选择器映射到不同的实现，而将该选择器对应的原始实现关联到一个新的选择器中。（要将原来的实现映射到一个新的）</p>
 
-<pre><code class="language-text">用`xib`拉的视图或者`masonry`布局的视图在`[UIView animation...]`动画方法中都是可以直接改变`frame`或者`transform`来进行动画的
-我们可以直接改变`frame`包括宽、高、中心等 直接进行各种动画,而不用担心因为`autolayout`问题,毕竟masony或者xib拉约束都只是布局问题,在运行时还是会转成`frame`的.
+<h2 id="toc_3">调用_cmd</h2>
 
-而通常我们拖约束线出去是为了:
-1. 在视图还没加载时用代码设置某个约束值  
-2. 真的是要改变某个约束值做动画（通常某个视图也和这个约束有关系）
+<p>我们自己的实现代码:</p>
+
+<pre><code class="language-objectivec">- (void)xxx_viewWillAppear:(BOOL)animated {
+    [self xxx_viewWillAppear:animated];
+    NSLog(@&quot;viewWillAppear: %@&quot;, NSStringFromClass([self class]));
+}
 </code></pre>
 
-<h3 id="toc_3">让UIButton的title对齐方式</h3>
+<p>咋看上去是会导致无限循环的。但令人惊奇的是，并没有出现这种情况。在<code>swizzling</code>的过程中，方法中的<code>[self xxx_viewWillAppear:animated]</code>已经被重新指定到UIViewController类的-<code>viewWillAppear:</code>中。在这种情况下，不会产生无限循环。不过如果我们调用的是<code>[self viewWillAppear:animated]</code>，则会产生无限循环，因为这个方法的实现在运行时已经被重新指定为<code>xxx_viewWillAppear:</code>了。</p>
 
-<p>有些时候我们想让UIButton的title居左对齐</p>
+<h3 id="toc_4">注意事项</h3>
 
-<p>button.textLabel.textAlignment = UITextAlignmentLeft  //是没有作用的，我们需要设置</p>
+<p>Swizzling通常被称作是一种黑魔法，容易产生不可预知的行为和无法预见的后果。虽然它不是最安全的，但如果遵从以下几点预防措施的话，还是比较安全的：</p>
 
-<p>button.contentHorizontalAlignment = UIControlContentHorizonAlignmentLeft; //显示居左<br/>
-**除了水平 还有垂直方向的对齐方式</p>
+<ol>
+<li>总是调用方法的原始实现(除非有更好的理由不这么做)：API提供了一个输入与输出约定，但其内部实现是一个黑盒。Swizzle一个方法而不调用原始实现可能会打破私有状态底层操作，从而影响到程序的其它部分。</li>
+<li><p>避免冲突：给自定义的分类方法加前缀，从而使其与所依赖的代码库不会存在命名冲突。</p></li>
+<li><p>明白是怎么回事：简单地拷贝粘贴swizzle代码而不理解它是如何工作的，不仅危险，而且会浪费学习Objective-C运行时的机会。阅读Objective-C Runtime Reference和查看<objc/runtime.h>头文件以了解事件是如何发生的。</p></li>
+<li><p>小心操作：无论我们对Foundation, UIKit或其它内建框架执行Swizzle操作抱有多大信心，需要知道在下一版本中许多事可能会不一样。</p></li>
+<li></li>
+</ol>
 
 
 		</div>
@@ -190,8 +164,10 @@ self.navigationController.navigationBar.hidden = NO;
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -203,11 +179,9 @@ self.navigationController.navigationBar.hidden = NO;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -292,31 +266,31 @@ self.navigationController.navigationBar.hidden = NO;
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

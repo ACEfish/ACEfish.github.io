@@ -82,26 +82,343 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15542595230571.html">基础使用</a></h1>
-			<p class="meta"><time datetime="2019-04-03T10:45:23+08:00" 
-			pubdate data-updated="true">2019/4/3</time></p>
+		  	<h1 class="entry-title"><a href="15549735665033.html">KVC</a></h1>
+			<p class="meta"><time datetime="2019-04-11T17:06:06+08:00" 
+			pubdate data-updated="true">2019/4/11</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<pre><code class="language-objectivec">//直接定义
-@property (nonatomic, copy) void(^block)(NSInteger);
+		  	<p><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/KeyValueCoding/BasicPrinciples.html#//apple_ref/doc/uid/20002170-BAJEAIEE">官方文档地址</a></p>
 
-//方法中定义
-block:(void(^) (NSInteger index))block;
+<p><code>KVC(Key-value coding)</code>是由<code>NSKeyValueCoding</code>非正式协议(其实就是我们所的分类或类别)启用的机制，通过该机制提供了对属性的间接访问。<br/>
+当对象符合键值编码时，属性可以通过字符串参数进行接口寻址。<br/>
+这种对属性的间接访问机制提供了对实例变量和其相关访问器方法的直接访问</p>
 
-//其他定义
-typedef void(^Block)(NSInteger index);
-@property (nonatomic, copy) Block block;
+<blockquote>
+<p>键值编码是一个基本概念，是许多其他Cocoa技术的基础，例如键值观察(KVO)，Cocoa绑定，CoreData和AppleScript能力。在某些情况下，键值编码还有助于简化代码。</p>
+</blockquote>
+
+<p>通过KVC 我们可以实现以下功能:</p>
+
+<ol>
+<li>获取对象属性</li>
+<li>操作对象属性</li>
+<li>在集合对象上进行集合运算符运算</li>
+<li>获取非对象属性</li>
+<li>通过keyPath来获取对象属性</li>
+</ol>
+
+<p><code>NSObject</code>的<code>NSKeyValueCoding</code>分类实现了KVC方法，并提供默认实现;而<code>NSArray</code>、<code>NSDictionary</code>、<code>NSMutableDictionary</code>等都又提供了自己的实现</p>
+
+<p><img src="media/15549735665033/15550373964851.jpg" alt="" style="width:200px;"/></p>
+
+<p>为了使对象符合键值编码，应确保其实现了NSKeyValueCoding非正式协议，并实现了相应的方法，<code>NSObject</code>使用了<code>NSKeyValueCoding</code>协议并为它们和其它基本方法提供了默认实现。因此从NSObject派生的对象，大部分工作已经完成；</p>
+
+<p>符合键值编码的对象可以实现其他Cocoa的技术:</p>
+
+<ol>
+<li>KVO</li>
+<li>Cocoa绑定：这一系列技术完全实现了模型 - 视图 - 控制器范例，其中模型封装应用程序数据，视图显示和编辑数据，控制器在两者之间进行调解。 阅读<a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/CocoaBindings/CocoaBindings.html#//apple_ref/doc/uid/10000167i">Cocoa Bindings编程主题</a>以了解有关Cocoa绑定的更多信息。</li>
+<li>CoreData: <a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/CoreData/index.html#//apple_ref/doc/uid/TP40001075">文档地址</a></li>
+<li>AppleScript：  <a href="https://developer.apple.com/library/archive/documentation/AppleScript/Conceptual/AppleScriptX/AppleScriptX.html#//apple_ref/doc/uid/10000156i">AppleScript Overview</a></li>
+</ol>
+
+<h2 id="toc_0">API</h2>
+
+<h4 id="toc_1">直接访问对象属性</h4>
+
+<pre><code class="language-objectivec">- (nullable id)valueForKey:(NSString *)key;
+- (void)setValue:(nullable id)value forKey:(NSString *)key;
 </code></pre>
 
-<pre><code class="language-objectivec">//声明加定义
-returnType (^blockName)(parameterTypes) = ^returnType(parameters) {...};
+<pre><code class="language-objectivec">//点语法访问器
+myAccount.currentBalance = @(100.0);
+[myAccount setCurrentBalance:@(100.0)];
+
+//KVC
+[myAccount setValue:@(100.0) forKey:@&quot;currentBalance&quot;];
+NSNumber *currentBalance = [myAccount valueForKey:@&quot;currentBalance&quot;];
+
+Person *owerModel = [[Person alloc] init];
+[myAccount setValue:owerModel forKeyPath:@&quot;ower&quot;];
 </code></pre>
+
+<blockquote>
+<p>对于<code>forKey:</code>不常用，因为我们均可以使用<code>forKeyPath:</code>来代替，对于keyPath只有一层也是可以的</p>
+</blockquote>
+
+<h4 id="toc_2">路径访问属性</h4>
+
+<pre><code class="language-objectivec">- (nullable id)valueForKeyPath:(NSString *)keyPath;
+- (void)setValue:(nullable id)value forKeyPath:(NSString *)keyPath;
+</code></pre>
+
+<pre><code class="language-objectivec">//键路径是以点分隔的多个键字符串  指定了要遍历的对象属性序列
+[myAccount setValue:@&quot;lyy&quot; forKeyPath:@&quot;ower.name&quot;];
+NSString *name = [myAccount valueForKeyPath:@&quot;ower.name&quot;];
+</code></pre>
+
+<h4 id="toc_3">键未定义异常</h4>
+
+<p>当找不到key命名的属性时，会调用获取值的 </p>
+
+<pre><code class="language-objectivec">- (id)valueForUndefinedKey:(NSString *)key;
+- (void)setValue:(id)value forUndefinedKey:(NSString *)key;
+</code></pre>
+
+<p>找不到系统会默认引发一个<code>NSUndefinedKeyException</code>异常，可以通过重写这两个方法避免崩溃</p>
+
+<blockquote>
+<p>对于keyPath的方式访问属性，kayPath的键对应对象属性序列，到哪一级找不到对应属性，就会触发对应该级对象的这个两个方法，而不是总触发第一级对象的</p>
+</blockquote>
+
+<h4 id="toc_4">对于非对象值</h4>
+
+<p>当<code>setValue</code>时，如果属性不是对象值，而是标量或者结构体时，KVC会自动将value拆箱然后赋值给属性<br/>
+同理，当<code>valueForKey/keyPath:</code>会自动将属性值装箱，返回一个<code>NSNumber</code>或者<code>NSValue</code></p>
+
+<pre><code class="language-objectivec">//封装为为NSValue
+NSPoint、NSRange、NSRect、NSSize
+</code></pre>
+
+<h4 id="toc_5">对于nil</h4>
+
+<ul>
+<li><p>对于属性为对象值时，可以直接设置对象值为nil，或者获取对象指为nil</p></li>
+<li><p>对于属性为非对象值，即为标量或者结构体时，此时系统无法帮我们拆箱,会触发<code>setNilValueForKey:</code>方法，并且引发一个<code>NSInvalidArgumentException</code>异常，可以通过重写该方法避免</p></li>
+</ul>
+
+<h3 id="toc_6">多值访问</h3>
+
+<pre><code class="language-objectivec">- (NSDictionary&lt;NSString *, id&gt; *)dictionaryWithValuesForKeys:(NSArray&lt;NSString *&gt; *)keys;
+- (void)setValuesForKeysWithDictionary:(NSDictionary&lt;NSString *, id&gt; *)keyedValues;
+</code></pre>
+
+<p>提供了可以同时获取和设置多个值的方法，相当于一次性掉了多次<code>valueForKey</code>和<code>setValue:forKey:</code>，当key值不存在时也会触发<strong>键未定义异常</strong>的崩溃和避免崩溃方法<br/>
+注意： 这两个方法中只能设置的为key，而不能使用keyPath</p>
+
+<h3 id="toc_7">访问集合属性</h3>
+
+<p>对于属性为集合对象，与获取普通对象属性相同，可以直接获取和设置到集合对象属性值</p>
+
+<pre><code class="language-objectivec">[myAccount setValue:dataArr forKey:@&quot;transactionsArray&quot;];
+NSArray *obj = [myAccount valueForKeyPath:@&quot;transactionsArray&quot;];
+</code></pre>
+
+<p>另外一个较常用的功能,我们可以使用<code>valueForKeypath:</code>直接获取数组中每个对象的属性值集合</p>
+
+<pre><code class="language-objectivec">NSArray *obj1 = [myAccount valueForKeyPath:@&quot;transactionsArray.payee&quot;];
+</code></pre>
+
+<p>在keyPath中遇到数组时，会对数组中的每个元素都执行接下来的<code>valueForKeyPath:</code>,最后返回一个值的集合</p>
+
+<p>但是对于集合的属性集合<code>setValue:forkey/KeyPath:</code>并不好用，其并不会将value中的数组分别复制给key中的属性，而是会将value直接赋值给每个key中的属性</p>
+
+<h3 id="toc_8">操作集合属性</h3>
+
+<p>对于集合属性 我们想要修改其内容 需要先用<code>valueForKeyPath</code>获取到其不可变属性值，然后用其创建可变对象值然后修改，再用<code>setValueForKeyPath</code>方法重新设置回去，较麻烦</p>
+
+<p>苹果提供了直接可以获取集合属性的可变对象进行操作的方法</p>
+
+<pre><code class="language-objectivec">- (NSMutableArray *)mutableArrayValueForKey:(NSString *)key;
+- (NSMutableArray *)mutableArrayValueForKeyPath:(NSString *)keyPath;
+
+- (NSMutableOrderedSet *)mutableOrderedSetValueForKey:(NSString *)key;
+- (NSMutableOrderedSet *)mutableOrderedSetValueForKeyPath:(NSString *)keyPath;
+
+- (NSMutableSet *)mutableSetValueForKey:(NSString *)key;
+- (NSMutableSet *)mutableSetValueForKeyPath:(NSString *)keyPath;
+</code></pre>
+
+<p>会返回一个行为继承于<code>NSMutableArray/NSMutableOrderedSet/NSMutableSet</code>的内置对象，对这个对象直接操作(例如增加、删除元素)，系统会根据我们的操作直接修改原对象<br/>
+这样修改维护集合中的对象，还可以<strong>支持键值观察机制</strong></p>
+
+<blockquote>
+<p>这种方法只适合直接修改集合属性，而不适合修改集合属性的属性值集合，原因和不对其使用<code>setValue:forkey/KeyPath:</code>原因相同</p>
+</blockquote>
+
+<h3 id="toc_9">属性验证</h3>
+
+<p>NSKeyValueCoding协议提供了支持属性验证的方法。 可以通过调用</p>
+
+<pre><code class="language-objectivec">- (BOOL)validateValue:(inout id _Nullable * _Nonnull)ioValue forKey:(NSString *)inKey error:(out NSError **)outError;
+
+- (BOOL)validateValue:(inout id _Nullable * _Nonnull)ioValue forKeyPath:(NSString *)inKeyPath error:(out NSError **)outError;
+</code></pre>
+
+<p>协议的默认实现会像实例搜索是否存在实现了<code>validate&lt;Key&gt;:error:</code>方法，默认为返回YES表示验证成功，我们可以再这个方法中实现自己的验证逻辑</p>
+
+<pre><code class="language-objectivec">BankAccount *myAccount = [[BankAccount alloc] init];
+NSError *error;
+NSNumber *balance = @(100.0);
+BOOL result = [myAccount validateValue:&amp;balance forKey:@&quot;currentBalance&quot; error:&amp;error];
+
+//BankAccount.m
+- (BOOL)validateCurrentBalance:(id *)ioValue error:(NSError *__autoreleasing *)outError {
+    if (!ioValue || ((NSNumber *)*ioValue).integerValue &gt;= 100) {
+        *outError = [NSError errorWithDomain:@&quot;错误qqq&quot; code:123 userInfo:@{@&quot;key&quot;: @&quot;金额太大了&quot;}];
+        return NO;
+    }
+    return YES;
+}
+</code></pre>
+
+<p>当然如果不想每个不同key验证都写一次验证方法的话，就直接继承实现自己的validateValue</p>
+
+<pre><code class="language-objectivec">- (BOOL)validateValue:(inout id  _Nullable __autoreleasing *)ioValue forKey:(NSString *)inKey error:(out NSError * _Nullable __autoreleasing *)outError {
+    
+    if (!ioValue || ((NSNumber *)*ioValue).integerValue &gt;= 100) {
+        *outError = [NSError errorWithDomain:@&quot;错误qqq&quot; code:123 userInfo:@{@&quot;key&quot;: @&quot;金额太大了&quot;}];
+        return NO;
+    }
+    return YES;
+}
+</code></pre>
+
+<blockquote>
+<p><code>- (BOOL)validateValue:(inout id _Nullable * _Nonnull)ioValue forKeyPath:(NSString *)inKeyPath error:(out NSError **)outError;</code>怎么使用呢????</p>
+</blockquote>
+
+<h2 id="toc_10">集合运算符</h2>
+
+<p><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/KeyValueCoding/CollectionOperators.html#//apple_ref/doc/uid/20002176-SW9">官方文档</a></p>
+
+<p>使用<code>valueForKeyPath:</code>时，可以在路径中嵌入<strong>集合运算符</strong><br/>
+集合运算符是在<code>@</code>关键字标识，指定了getter应该执行的操作，以便在数据返回之前以某种方式操作数据</p>
+
+<p><img src="media/15549735665033/15550626615233.jpg" alt="" style="width:500px;"/></p>
+
+<p>当keyPath包含集合运算符时，@前路径为左键路径，表示相对操作对象的集合路径，当操作对象直接为集合对象时，可以省略左键路劲;@运算符后的为右键路径，表示操作的集合中的属性，除了<code>@count</code>都需要右键路径</p>
+
+<p>集合运算符共有三种类型:</p>
+
+<ul>
+<li><p>聚合运算符<br/>
+以某种方式合并集合中的对象，并返回和右键路径属性相同类型的一个值;（@count例外）</p>
+<ol>
+<li><p><strong>@avg</strong> 读取右键属性值，并将其转为<code>double</code>类型(将nil转为0)，计算其算术平均值，返回一个<code>NSNumber</code>对象</p>
+<pre><code class="language-objectivec">NSNumber *transactionAverage = [self.transactions valueForKeyPath:@&quot;@avg.amount&quot;];
+</code></pre></li>
+<li><p><strong>@count</strong> 获取集合中元素个数，忽略右键属性(如果有)</p>
+<pre><code class="language-objectivec">NSNumber *numberOfTransactions = [self.transactions valueForKeyPath:@&quot;@count&quot;];
+</code></pre></li>
+<li><p><strong>@max</strong> 搜索右键属性对应的值集合 返回最大的那个(比较时忽略nil)<br/>
+比较使用的时<code>compare:</code>方法，因此右键属性值必须能响应该方法</p>
+<pre><code class="language-objectivec">NSDate *latestDate = [self.transactions valueForKeyPath:@&quot;@max.date&quot;];
+</code></pre>
+<blockquote>
+<p><code>Foundation</code>中内置很多类都已经实现了该方法，我们也可以通过自己实现<code>- (NSComparisonResult)compare:(id)other</code>方法来实现自定义model的compare</p>
+</blockquote></li>
+<li><p><strong>@min</strong><br/>
+与@max同理</p></li>
+<li><p><strong>@sum</strong> 将集合中右键元素都转为double类型(将nil转为0)求和</p></li>
+<li><p><strong>@count</strong></p></li>
+</ol>
+<pre><code class="language-objectivec">    NSInteger count = [[myAccount.transactionsArray valueForKeyPath:@&quot;@count&quot;] integerValue];
+</code></pre></li>
+<li><p>数组运算符<br/>
+返回一个NSArray实例，返回集合中属性的子集</p>
+<p><strong>@distinctUnionOfObject</strong>返回一个数组其中包含了右键属性的不重复的值的集合(不包含nil元素)；</p>
+<pre><code class="language-objectivec">NSArray *arr = [myAccount valueForKeyPath:@&quot;transactionsArray.@distinctUnionOfObjects.amount&quot;];
+</code></pre>
+<p><strong>@unionOfObjects</strong> 返回右键属性值的集合并不会去重(不包含nil元素)</p></li>
+<li><p>嵌套操作符<br/>
+嵌套运算符处理嵌套的集合，集合的条目本身就包含了一个集合</p></li>
+</ul>
+
+<p><strong>@distinctUnionOfArrays</strong> 返回右键集合属性的所有集合元素中不重复值的集合</p>
+
+<pre><code class="language-objectivec">    NSArray *arr = [objArray valueForKeyPath:@&quot;@distinctUnionOfArrays.transactionsArray.payee&quot;];
+</code></pre>
+
+<p><strong>unionOfArrays</strong> 返回右键集合属性的所有元素集合（不去重）</p>
+
+<pre><code class="language-objectivec">    NSArray *arr1 = [objArray valueForKeyPath:@&quot;@unionOfArrays.transactionsArray.payee&quot;];
+</code></pre>
+
+<p><strong>@distinctUnionOfSets</strong> 与<code>distinctUnionOfArrays</code>类似 不同的是 其需要NSSet实例属性包含NSSet集合</p>
+
+<h2 id="toc_11">KVC的搜索规则</h2>
+
+<!--学习自简书[KVC原理剖析](https://www.jianshu.com/p/1d39bc610a5b)
+-->
+
+<p>NSObject提供的<code>NSKeyValueCoding</code>协议默认实现，将基于键的访问映射到对象属性。这些协议方法使用key参数在自己对象实例中搜索访问器、实例变量以及某些约定命名方法</p>
+
+<h3 id="toc_12">基础Getter的搜索模式</h3>
+
+<p><code>valueForKey:</code>的默认实现，会根据key参数在对象实例中进行以下搜索流程:</p>
+
+<ol>
+<li>按顺序搜索实例变量中的方法名类似:<code>get&lt;Key&gt;</code>、<code>&lt;Key&gt;</code>、<code>is&lt;Key&gt;</code>或者<code>_&lt;Key&gt;</code>的方法,如果找到直接跳到第5步</li>
+<li><p>搜索实例中匹配<code>countOf&lt;Key&gt;</code>方法和<code>objectIn&lt;Key&gt;AtIndex:</code>方法(对应NSArray类的基本方法)以及<code>&lt;key&gt;AtIndexes:</code>(对应NSArray的<code>objectsAtIndexes:</code>方法)，如果找到第一个方法以及至少后两个方法中的一个，就创建一个相应NSArray所有方法的集合代理对象并返回，否则执行第3步</p>
+<p>这个代理对象会将接收到的所有NSArray消息转换为<code>countOf&lt;Key&gt;</code>、<code>objectIn&lt;Key&gt;AtIndex:</code>、<code>&lt;key&gt;AtIndexes:</code>方法的组合来交给原始对象响应。如果原始对象还实现了<code>get&lt;Key&gt;:range:</code>可选方法，也会在适当时候是使用；这个数组代理对象工作起来就像真的NSArray一样</p>
+<blockquote>
+<p>代理对象的作用只是将交给其的方法进行组合，转交给原始对象响应，让其工作的像一个真的数组一样</p>
+</blockquote></li>
+<li><p>搜索名字为<code>countOf&lt;Key&gt;</code>、<code>enumeratorOf&lt;Key&gt;</code>和<code>memberOf &lt;Key&gt;</code>的三个方法(对应NSSet类定义方法)，如果找到这个3个方法就返回一个响应所有NSSet方法的代理对象，否则执行第4步<br/>
+其会将随后收到的所有NSSet方法转换为上面3个方法的组合，让这个代理对象就像真的NSSet一样</p></li>
+<li><p>如果上面方法都没找到，并且接收对象的<code>accessInstanceVariablesDirectly</code>类方法返回YES。就按顺序搜索<code>_&lt;key&gt;</code>、<code>_isKey</code>、<code>&lt;Key&gt;</code>、<code>is&lt;Key&gt;</code>实例变量名，找到的话执行第5步，否则执行第6步</p></li>
+<li><p>如果是对象就直接返回，如果为非对象就装箱返回</p></li>
+<li><p>如果都没找到就触发<code>valueForUndefineKey:</code>异常</p></li>
+</ol>
+
+<h3 id="toc_13">基础Setter模式搜索</h3>
+
+<ol>
+<li>按顺序搜索名字为<code>set&lt;Key&gt;</code>或者<code>_set&lt;Key&gt;</code>的访问器，找到就直接调用</li>
+<li>如果找不到简单访问器，并且类方法<code>accessInstanceVariablesDirectly</code>类方法返回YES，并且按顺序查找<code>&lt;Key&gt;</code>、<code>_is&lt;Key&gt;</code>、<code>&lt;key&gt;</code>、<code>is&lt;Key&gt;</code>实例变量，如果找到直接设置值</li>
+<li>以上两步都找不到,带用<code>setValue:forUndefinedKey:</code>默认会引发异常</li>
+</ol>
+
+<h3 id="toc_14">可变数组的搜索模式</h3>
+
+<p><code>mutableArrayValueForKey:</code>用一下流程返回一个可变数组的代理对象</p>
+
+<ol>
+<li><p>搜索方法<code>insertObject:in&lt;Key&gt;AtIndex:</code>和<code>removeObjectFrom&lt;Key&gt;AtIndex:</code>(对应NSMutableArray的私有方法<code>insertObject:atIndex:</code>和<code>removeObjectAtIndex:</code>)，或者方法名为<code>insert&lt;Key&gt;:atIndexes:</code>和<code>remove&lt;Key&gt;AtIndexes:</code>（对应NSMutableArray的为<code>insertObjects:atIndexes:</code>和<code>removeObjectsAtIndexes:</code>）。假如对象有至少一个insert方法或者一个remove方法，就返回一个响应<code>NSMutableArray</code>方法的代理对象。</p>
+<p>代理对象通过发送一些组合的消息insertObject:in<Key>AtIndex:, removeObjectFrom<Key>AtIndex:, insert<Key>:atIndexes:,和remove<Key>AtIndexes:给<code>mutableArrayValueForKey:</code>消息的原始接收者来响应这些插入或者删除方法</p>
+<p>当接收<code>mutableArrayValueForKey：</code>的原始消息对象实现名称为<code>replaceObjectIn&lt;Key&gt;AtIndex:withObject:</code>或<code>replace&lt;Key&gt;AtIndexes:with&lt;Key&gt;:</code>的（可选）替换方法时，代理对象也会在适当时使用这些方法以获得最佳性能。</p>
+<blockquote>
+<p>代理的可变对象会响应所有NSMUtalbeArray方法，并将其转交给原始的对象消息接受者，对集合数组进行修改</p>
+</blockquote></li>
+<li><p>如果对象没有可变数组方法，就搜索名称为<code>set&lt;Key&gt;:</code>的访问器方法，这种情况会向<code>mutableArrayValueForKey:</code>的原始接收者发出<code>set&lt;Key&gt;</code>方法来，来响应NSMutableArray代理对象的消息</p>
+<blockquote>
+<p>注意: 这种方法的机制会比上一步的效率低得多，它会重复创建集合而不是修改原有集合,在使用KVC时应该尽量避免这种情况</p>
+</blockquote></li>
+<li><p>加入以上2中都没找到哦，并且对象响应<code>accessInstanceVariablesDirectly</code>类方法返回YES，就按顺序搜索<code>_&lt;Key&gt;</code>和<code>&lt;Key&gt;</code>的实例变量<br/>
+找到这样的实例变量，就返回一个代理对象，会把NSMutableArray消息转发给实例变量</p></li>
+<li><p>如果以上消息都失败了，就返回一个NSMutableArray的代理对象，该对象在收到<code>NSMutablrArray</code>消息后向<code>mutableArrayValueForKey:</code>原始接受者发出<code>setValue:ForUndefineKey:</code>消息，会引起<code>NSUndefinedKeyException</code>异常</p></li>
+</ol>
+
+<h3 id="toc_15">MutableOrderedSet的搜索模式</h3>
+
+<p><code>mutableOrderedSetValueForKey</code> 与 数组搜索模式类似 ，只是其第一步搜索的方法为<code>insertObject:in&lt;Key&gt;AtIndex:</code>和<code>removeObjectFrom&lt;Key&gt;AtIndex:</code>、 <code>insert&lt;Key&gt;:atIndexes:</code>和<code>remove&lt;Key&gt;AtIndexes:</code>和可选方法<code>replaceObjectIn&lt;Key&gt;AtIndex:withObject: 或 replace&lt;Key&gt;AtIndexes:with&lt;Key&gt;:</code></p>
+
+<h3 id="toc_16">MutableSet搜索模式</h3>
+
+<p>和mutableArray类似</p>
+
+<p>第一步方法为:<br/>
+<code>add&lt;Key&gt;Object:</code>和 <code>remove&lt;Key&gt;Object:</code> <code>add&lt;Key&gt;:</code>和<code>remove&lt;Key&gt;:</code>和可选方法<code>intersect&lt;Key&gt;: or set&lt;Key&gt;:</code></p>
+
+<p>多了第二步骤搜索:<br/>
+加入<code>mutableSetValueForKey</code>方法调用者是<code>manager object</code>则搜索模式不在继续,详情看CoreData核心编程指南</p>
+
+<h2 id="toc_17">KVC性能</h2>
+
+<p>KVC性能没有直接访问属性快，但是性能消耗微乎其微;<br/>
+但是需要注意对操作可变集合对象的搜索模式，最好自己实现方法，避免重复创建集合进行赋值，这样性能消耗太大</p>
+
+<h2 id="toc_18">注意</h2>
+
+<ol>
+<li>KVC本质是运行时查找对象实例的方法或变量，因此可以利用其访问私有变量，因此可以利用这一点，修改系统组件的样式或属性</li>
+<li>为避免KVC的硬编码，可以采用<code>NSStringFromSelector(@selector(METHODNAME))</code></li>
+<li>可以用KVC来触发KVO，即使在对象没有set访问器方法的情况下，即直接时候使用kvc赋值给对象的实例变量而该变量没有set方法时</li>
+</ol>
+
+<p>参考资料: <a href="https://www.jianshu.com/p/1d39bc610a5b">KVC原理剖析</a></p>
 
 
 		</div>
@@ -124,8 +441,10 @@ returnType (^blockName)(parameterTypes) = ^returnType(parameters) {...};
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -137,11 +456,9 @@ returnType (^blockName)(parameterTypes) = ^returnType(parameters) {...};
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -226,31 +543,31 @@ returnType (^blockName)(parameterTypes) = ^returnType(parameters) {...};
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

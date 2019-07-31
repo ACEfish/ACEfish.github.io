@@ -85,7 +85,9 @@ $(document).ready(function(event) {
 				<p class="meta"><time datetime="2019-05-14T20:52:44+08:00" pubdate data-updated="true">2019/5/14</time></p>
 			 </header>
 		  	<div class="entry-content">
-			  	<p><code>RACSignal</code>继承自<code>RACStream</code>，对该抽象类的方法进行了重写实现</p>
+			  	<p>本文学习自<a href="https://github.com/halfrost/Analyze/blob/master/contents/ReactiveObjC/RACSignal.md">『状态』驱动的世界：ReactiveCocoa</a></p>
+
+<p><code>RACSignal</code>继承自<code>RACStream</code>，对该抽象类的方法进行了重写实现</p>
 
 <h3 id="toc_0"><code>return</code>方法</h3>
 
@@ -160,11 +162,81 @@ RACSignal *bindSignal = [signal bind:^RACSignalBindBlock _Nonnull{
 
 <p>当原始信号<code>completed</code>后 subcribe contact的信号</p>
 
-<h3 id="toc_3">-concat方法</h3>
+<h3 id="toc_3">-zipWith方法</h3>
 
 <ul>
-<li>(RACSignal *)zipWith:(RACSignal *)signal</li>
+<li>(RACSignal *)zipWith:(RACSignal *)signal<br/>
+将两个信号值进行zip 即每次发出一个为<code>RACTuple</code>值为[signal1value, signal2value]的值 当其中一个error或者completed即停止zipSignal</li>
 </ul>
+
+<h2 id="toc_4">信号的创建</h2>
+
+<p>RACSignal的<code>createSignal</code>方法</p>
+
+<pre><code class="language-objectivec">//RACSignal
++ (RACSignal *)createSignal:(RACDisposable * (^)(id&lt;RACSubscriber&gt; subscriber))didSubscribe {
+    return [RACDynamicSignal createSignal:didSubscribe];
+}
+
+//RACDynamicSignal
++ (RACSignal *)createSignal:(RACDisposable * (^)(id&lt;RACSubscriber&gt; subscriber))didSubscribe {
+    RACDynamicSignal *signal = [[self alloc] init];
+    signal-&gt;_didSubscribe = [didSubscribe copy];
+    return [signal setNameWithFormat:@&quot;+createSignal:&quot;];
+}
+</code></pre>
+
+<p>signal保存了<code>didSubscribe</code>并在每次有订阅者订阅当前信号时 都会执行一遍，向订阅者发送消息</p>
+
+<h3 id="toc_5">RACSignal类簇</h3>
+
+<p><code>RACSignal</code>拥有不同功能的子类</p>
+
+<ol>
+<li><p><code>RACDynamicSignal</code>：用于 <code>+ createSignal:</code></p></li>
+<li><p><code>RACEmptySignal</code> 用于 <code>+ empty</code></p>
+<pre><code class="language-objectivec">+ (RACSignal *)empty {
+    return [[[self alloc] init] setNameWithFormat:@&quot;+empty&quot;];<br/>
+}<br/>
+- (RACDisposable *)subscribe:(id&lt;RACSubscriber&gt;)subscriber {<br/>
+    return [RACScheduler.subscriptionScheduler schedule:^{<br/>
+        [subscriber sendCompleted];<br/>
+    }];<br/>
+}
+</code></pre></li>
+<li><p><code>RACReturnSignal</code>  用于 <code>+ return</code></p>
+<pre><code class="language-objectivec">+ (RACSignal *)return:(id)value {
+    RACReturnSignal *signal = [[self alloc] init];<br/>
+      signal-&gt;_value = value;<br/>
+      return signal;<br/>
+}<br/>
+//将value简单保存 在有其它订阅者时 向订阅者发送value<br/>
+- (RACDisposable *)subscribe:(id&lt;RACSubscriber&gt;)subscriber {<br/>
+        NSCParameterAssert(subscriber != nil);<br/>
+        return [RACScheduler.subscriptionScheduler schedule:^{<br/>
+            [subscriber sendNext:self.value];<br/>
+            [subscriber sendCompleted];<br/>
+        }];<br/>
+}
+</code></pre></li>
+<li><p><code>RACErrorSignal</code>  用于 <code>+ error</code></p>
+<pre><code class="language-objectivec">+ (RACSignal *)error:(NSError *)error {
+    RACErrorSignal *signal = [[self alloc] init];<br/>
+    signal-&gt;_error = error;<br/>
+#ifdef DEBUG<br/>
+    [signal setNameWithFormat:@&quot;+error: %@&quot;, error];<br/>
+#else<br/>
+    signal.name = @&quot;+error:&quot;;<br/>
+#endif<br/>
+    return signal;<br/>
+}<br/>
+- (RACDisposable *)subscribe:(id&lt;RACSubscriber&gt;)subscriber {<br/>
+       return [RACScheduler.subscriptionScheduler schedule:^{<br/>
+    [subscriber sendError:self.error];<br/>
+}];<br/>
+}
+</code></pre></li>
+</ol>
 
 			</div>
 
@@ -194,6 +266,9 @@ RACSignal *bindSignal = [signal bind:^RACSignalBindBlock _Nonnull{
 
 	    <p class="meta">
 	    
+	        <a class="basic-alignment left" href="15604257329990.html" 
+	        title="Previous Post: RACSignal信号的订阅与发送">&laquo; RACSignal信号的订阅与发送</a>
+	    
 	    
 	        <a class="basic-alignment right" href="15578193513091.html" 
 	        title="Next Post: RACStream">RACStream &raquo;</a>
@@ -209,8 +284,10 @@ RACSignal *bindSignal = [signal bind:^RACSignalBindBlock _Nonnull{
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -222,11 +299,9 @@ RACSignal *bindSignal = [signal bind:^RACSignalBindBlock _Nonnull{
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -311,31 +386,31 @@ RACSignal *bindSignal = [signal bind:^RACSignalBindBlock _Nonnull{
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

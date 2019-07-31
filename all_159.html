@@ -82,227 +82,387 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14865484031774.html">IOS开发小知识</a></h1>
-			<p class="meta"><time datetime="2017-02-08T18:06:43+08:00" 
-			pubdate data-updated="true">2017/2/8</time></p>
+		  	<h1 class="entry-title"><a href="14877347224030.html">运行时实例:</a></h1>
+			<p class="meta"><time datetime="2017-02-22T11:38:42+08:00" 
+			pubdate data-updated="true">2017/2/22</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h3 id="toc_0">1. MJRefresh使用小知识</h3>
+		  	<h2 id="toc_0">类与对象</h2>
 
-<pre><code class="language-text">1. 隐藏下拉刷新的时间Label  
-
- ```Object-c
-MJRefreshHeader *refreshHead = [MJRefreshHeader headerWithRefreshingTarget:target refreshingAction:action];  
-refreshHead.lastUpdatedTimeLabel.hidden = YES;
-```
-2. 上拉加载了所有数据  
-    可以选择在尾视图显示加载完成:  
-
-    ```Object-c
-    [refreshTableView.mj_footer endRefreshingWithNoMoreData];
-    ```
-    也可以在加载完成后隐藏上拉加载的视图:
-
-    ```Object-c
-    refreshTableView.mj_footer.hidden = YES;
-    ``` 
-</code></pre>
-
-<h3 id="toc_1">2.cell 初始化</h3>
-
-<p>对于tableView或者CollectionView的cell或者item 如果是以注册的方式初始化的话一定是会有的，因此就不需要if(!<code>cell</code>)的方式判空，因为一定是存在的<br/>
-    对于collection的头尾市图方式是一样的 因为其头尾视图也是用注册方式的</p>
-
-<h3 id="toc_2">3. 属性自动合成存取方法</h3>
-
-<p>在我们使用属性时，编译器会自动编写访问这些属性所需要的方法，即“自动合成”.这个过程是编译器在编译期间执行的因此我们看不到这些合成方法。除了添加方法外,编译器还自动向类中添加适当类的实例变量。<br/>
-    我们可以自己更改编译器的变量名字<br/>
-    我们可以自己实现存取方法，如果你实现了一个 那么另外一个还是会由编译器合成。我们也可以用<code>@dynamic</code>关键字来阻止编译器自动合成存取方法.</p>
-
-<h3 id="toc_3">4. 控制器在被pop后未销毁原因</h3>
-
-<p>控制器在被pop后移出栈后会被释放，但有些时候会发现控制器出栈的时候不会调用dealloc方法，归根结底，是因为当前控制器被某个对象强引用了，控制器的引用计数不为0，系统无法帮你释放这部分内存<br/>
-    以下几种原因:<br/>
-    1. 控制器中NSTimer没有被销毁<br/>
-    2. 控制器中的代理不是weak属性<br/>
-    3. 控制器中block的循环引用</p>
-
-<pre><code class="language-text">但是:比如添加的CAAnimation动画是就算不移除也不会影响的释放的
-</code></pre>
-
-<h3 id="toc_4">5.对象设置属性的KVC</h3>
-
-<p>[self setValue:obj forKey:propertyKey];</p>
-
-<h3 id="toc_5">6. frame、bounds、center、anchor、transform 关系：</h3>
-
-<pre><code class="language-objectivec">-(CGRect) frame  
-{  
-     float x = center.x - layer.anchorPoint.x * bounds.width;   
-     float y = center.y - layer.anchorPoint.y * bounds.height;  
-     float width = bounds.width;
-     float height = bounds.height;  
-     return CGRectMake(x, y, width, height);
+<pre><code class="language-objectivec">//-----------------------------------------------------------
+// MyClass.h
+@interface MyClass : NSObject &lt;NSCopying, NSCoding&gt;
+@property (nonatomic, strong) NSArray *array;
+@property (nonatomic, copy) NSString *string;
+- (void)method1;
+- (void)method2;
++ (void)classMethod1;
+@end
+//-----------------------------------------------------------
+// MyClass.m
+#import &quot;MyClass.h&quot;
+@interface MyClass () {
+    NSInteger       _instance1;
+    NSString    *   _instance2;
+}
+@property (nonatomic, assign) NSUInteger integer;
+- (void)method3WithArg1:(NSInteger)arg1 arg2:(NSString *)arg2;
+@end
+@implementation MyClass
++ (void)classMethod1 {
+}
+- (void)method1 {
+    NSLog(@&quot;call method method1&quot;);
+}
+- (void)method2 {
+}
+- (void)method3WithArg1:(NSInteger)arg1 arg2:(NSString *)arg2 {
+    NSLog(@&quot;arg1 : %ld, arg2 : %@&quot;, arg1, arg2);
+}
+@end
+//-----------------------------------------------------------
+// main.h
+#import &quot;MyClass.h&quot;
+#import &quot;MySubClass.h&quot;
+#import &lt;objc/runtime.h&gt;
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+    
+        MyClass *myClass = [[MyClass alloc] init];
+        unsigned int outCount = 0;
+        Class cls = myClass.class;
+        // 类名
+        NSLog(@&quot;class name: %s&quot;, class_getName(cls));
+        NSLog(@&quot;==========================================================&quot;);
+        // 父类
+        NSLog(@&quot;super class name: %s&quot;, class_getName(class_getSuperclass(cls)));
+        NSLog(@&quot;==========================================================&quot;);
+        // 是否是元类
+        NSLog(@&quot;MyClass is %@ a meta-class&quot;, (class_isMetaClass(cls) ? @&quot;&quot; : @&quot;not&quot;));
+        NSLog(@&quot;==========================================================&quot;);
+        Class meta_class = objc_getMetaClass(class_getName(cls));
+        NSLog(@&quot;%s&#39;s meta-class is %s&quot;, class_getName(cls), class_getName(meta_class));
+        NSLog(@&quot;==========================================================&quot;);
+        // 变量实例大小
+        NSLog(@&quot;instance size: %zu&quot;, class_getInstanceSize(cls));
+        NSLog(@&quot;==========================================================&quot;);
+        // 成员变量
+        Ivar *ivars = class_copyIvarList(cls, &amp;outCount);
+        for (int i = 0; i &lt; outCount; i++) {
+            Ivar ivar = ivars[i];
+            NSLog(@&quot;instance variable&#39;s name: %s at index: %d&quot;, ivar_getName(ivar), i);
+        }
+        free(ivars);
+        Ivar string = class_getInstanceVariable(cls, &quot;_string&quot;);
+        if (string != NULL) {
+            NSLog(@&quot;instace variable %s&quot;, ivar_getName(string));
+        }
+        NSLog(@&quot;==========================================================&quot;);
+        // 属性操作
+        objc_property_t * properties = class_copyPropertyList(cls, &amp;outCount);
+        for (int i = 0; i &lt; outCount; i++) {
+            objc_property_t property = properties[i];
+            NSLog(@&quot;property&#39;s name: %s&quot;, property_getName(property));
+        }
+        free(properties);
+        objc_property_t array = class_getProperty(cls, &quot;array&quot;);
+        if (array != NULL) {
+            NSLog(@&quot;property %s&quot;, property_getName(array));
+        }
+        NSLog(@&quot;==========================================================&quot;);
+        // 方法操作
+        Method *methods = class_copyMethodList(cls, &amp;outCount);
+        for (int i = 0; i &lt; outCount; i++) {
+            Method method = methods[i];
+            NSLog(@&quot;method&#39;s signature: %s&quot;, method_getName(method));
+        }
+        free(methods);
+        Method method1 = class_getInstanceMethod(cls, @selector(method1));
+        if (method1 != NULL) {
+            NSLog(@&quot;method %s&quot;, method_getName(method1));
+        }
+        Method classMethod = class_getClassMethod(cls, @selector(classMethod1));
+        if (classMethod != NULL) {
+            NSLog(@&quot;class method : %s&quot;, method_getName(classMethod));
+        }
+        NSLog(@&quot;MyClass is%@ responsd to selector: method3WithArg1:arg2:&quot;, class_respondsToSelector(cls, @selector(method3WithArg1:arg2:)) ? @&quot;&quot; : @&quot; not&quot;);
+        IMP imp = class_getMethodImplementation(cls, @selector(method1));
+        imp();
+        NSLog(@&quot;==========================================================&quot;);
+        // 协议
+        Protocol * __unsafe_unretained * protocols = class_copyProtocolList(cls, &amp;outCount);
+        Protocol * protocol;
+        for (int i = 0; i &lt; outCount; i++) {
+            protocol = protocols[i];
+            NSLog(@&quot;protocol name: %s&quot;, protocol_getName(protocol));
+        }
+        NSLog(@&quot;MyClass is%@ responsed to protocol %s&quot;, class_conformsToProtocol(cls, protocol) ? @&quot;&quot; : @&quot; not&quot;, protocol_getName(protocol));
+        NSLog(@&quot;==========================================================&quot;);
+    }
+    return 0;
 }
 
--(void) setFrame:(CGRect) rect
+//输出结果
+
+
+</code></pre>
+
+<h3 id="toc_1">动态创建类</h3>
+
+<pre><code class="language-objectivec">Class cls = objc_allocateClassPair(MyClass.class, &quot;MySubClass&quot;, 0);
+class_addMethod(cls, @selector(submethod1), (IMP)imp_submethod1, &quot;v@:&quot;);
+class_replaceMethod(cls, @selector(method1), (IMP)imp_submethod1, &quot;v@:&quot;);
+class_addIvar(cls, &quot;_ivar1&quot;, sizeof(NSString *), log(sizeof(NSString *)), &quot;i&quot;);
+objc_property_attribute_t type = {&quot;T&quot;, &quot;@\&quot;NSString\&quot;&quot;};
+objc_property_attribute_t ownership = { &quot;C&quot;, &quot;&quot; };
+objc_property_attribute_t backingivar = { &quot;V&quot;, &quot;_ivar1&quot;};
+objc_property_attribute_t attrs[] = {type, ownership, backingivar};
+class_addProperty(cls, &quot;property2&quot;, attrs, 3);
+objc_registerClassPair(cls);
+id instance = [[cls alloc] init];
+[instance performSelector:@selector(submethod1)];
+[instance performSelector:@selector(method1)];
+//输出
+2014-10-23 11:35:31.006 RuntimeTest[3800:66152] run sub method 1
+2014-10-23 11:35:31.006 RuntimeTest[3800:66152] run sub method 1
+
+</code></pre>
+
+<h3 id="toc_2">动态创建对象</h3>
+
+<pre><code class="language-objectivec">id theObject = class_createInstance(NSString.class, sizeof(unsigned));
+ 
+id str1 = [theObject init];
+NSLog(@&quot;%@&quot;, [str1 class]);
+id str2 = [[NSString alloc] initWithString:@&quot;test&quot;];
+NSLog(@&quot;%@&quot;, [str2 class]);
+//输出
+2014-10-23 12:46:50.781 RuntimeTest[4039:89088] NSString
+2014-10-23 12:46:50.781 RuntimeTest[4039:89088] __NSCFConstantString
+
+</code></pre>
+
+<h3 id="toc_3">实例操作函数</h3>
+
+<h4 id="toc_4">对象拷贝</h4>
+
+<pre><code class="language-objectivec">NSObject *a = [[NSObject alloc] init];
+id newB = object_copy(a, class_getInstanceSize(MyClass.class));
+object_setClass(newB, MyClass.class);
+object_dispose(a);
+</code></pre>
+
+<h4 id="toc_5">获取类定义（获取已注册类）</h4>
+
+<pre><code class="language-objectivec">int numClasses;
+Class * classes = NULL;
+numClasses = objc_getClassList(NULL, 0);
+if (numClasses &gt; 0) {
+    classes = malloc(sizeof(Class) * numClasses);
+    numClasses = objc_getClassList(classes, numClasses);
+    NSLog(@&quot;number of classes: %d&quot;, numClasses);
+    for (int i = 0; i &lt; numClasses; i++) {
+        Class cls = classes[i];
+        NSLog(@&quot;class name: %s&quot;, class_getName(cls));
+    }
+    free(classes);
+}
+</code></pre>
+
+<h2 id="toc_6">成员变量、属性</h2>
+
+<h3 id="toc_7">关联对象</h3>
+
+<p>假定我们想要动态地将一个Tap手势操作连接到任何UIView中，并且根据需要指定点击后的实际操作。这时候我们就可以将一个手势对象及操作的block对象关联到我们的UIView对象中。这项任务分两部分。<br/>
+首先，如果需要，我们要创建一个手势识别对象并将它及block做为关联对象。如下代码所示：</p>
+
+<pre><code class="language-objectivec">- (void)setTapActionWithBlock:(void (^)(void))block
 {
-    center.x = rect.x + layer.anchorPoint.x * rect.width;
-    center.y = rect.y + layer.anchorPoint.y * rect.height;
-    bounds.width = rect.width;
-    bounds.height = rect.height;
+    UITapGestureRecognizer *gesture = objc_getAssociatedObject(self, &amp;kDTActionHandlerTapGestureKey);
+ 
+    if (!gesture)
+    {
+        gesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(__handleActionForTapGesture:)];
+        [self addGestureRecognizer:gesture];
+        objc_setAssociatedObject(self, &amp;kDTActionHandlerTapGestureKey, gesture, OBJC_ASSOCIATION_RETAIN);
+    }
+    objc_setAssociatedObject(self, &amp;kDTActionHandlerTapBlockKey, block, OBJC_ASSOCIATION_COPY);
 }
 </code></pre>
 
-<p>layer的position和 UIVIew的center是等效的 任何时候都是相等的</p>
+<p>这段代码检测了手势识别的关联对象。如果没有，则创建并建立关联关系。同时，将传入的块对象连接到指定的key上。注意<code>block</code>对象的关联内存管理策略。<br/>
+手势识别对象需要一个<code>target</code>和<code>action</code>，所以接下来我们定义处理方法：</p>
 
-<p>所以当我们设置anchor为（0.0）因为bounds没变 center没变 因此frame会变化 而且center出现在左上角 </p>
-
-<p><strong>注意</strong><br/>
-当一个view的transform被更改了，即不为CGAffineTransformIdentity。<br/>
-frame属性可能会更改，view的bounds，center不会变，layer的position不会变。这个很重要，这样保持了在transform后，view的frame虽然改变了，但是内部参考系是不变的，可以继续进行其他变换，只要不更改frame或center或layer的position。</p>
-
-<h3 id="toc_6">7.隐藏Tabbar</h3>
-
-<h3 id="toc_7">8. 改变cell点击效果</h3>
-
-<p>1.这只是改变点击的颜色 点击效果还在(比如cell上的view颜色消失,image动画暂停)</p>
-
-<pre><code class="language-objectivec">cell.selectedBackgroundView = [[UIView alloc] initWithFrame:self.frame] ;
-cell.selectedBackgroundView.backgroundColor = [UIColor grayColor];
-</code></pre>
-
-<p>2.这个方法直接关闭了系统的点击效果 自己设计了cell的点击背景颜色变化</p>
-
-<pre><code class="language-objectivec">cell.selectionStyle = UITableViewCellSelectionStyleNone;
-
-//重写cell的点击高亮
-//bgView是我们铺满在cell.contentView上的最后的view
-- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
-    [super setHighlighted:highlighted animated:animated];
-    if (highlighted) {
-        [UIView animateWithDuration:0.25 animations:^{
-            self.contentBgView.backgroundColor = ICColorOfBorder_Gray;
-        }];
-    } else {
-        [UIView animateWithDuration:0.25 animations:^{
-            self.contentBgView.backgroundColor = [UIColor whiteColor];
-        }];
-        
+<pre><code class="language-objectivec">- (void)__handleActionForTapGesture:(UITapGestureRecognizer *)gesture
+{
+    if (gesture.state == UIGestureRecognizerStateRecognized)
+    {
+        void(^action)(void) = objc_getAssociatedObject(self, &amp;kDTActionHandlerTapBlockKey);
+        if (action)
+        {
+            action();
+        }
     }
 }
 </code></pre>
 
-<h3 id="toc_8">9.强制cell不复用</h3>
+<h3 id="toc_8">设置属性</h3>
 
-<p>有时候我们列表中有一个或很少几个cell 是特殊样式 我们并不想它参与cell的复用  </p>
+<p>我们从服务端两个不同的接口获取相同的字典数据，但这两个接口是由两个人写的，相同的信息使用了不同的字段表示。我们在接收到数据时，可将这些数据保存在相同的对象中。对象类如下定义：</p>
 
-<pre><code class="language-objectivec">UITableViewCell *cell;
-//不复用的cell
-//这样强制性初始化一个cell 不参与复用
-cell = [[UITableViewCell alloc] init];
-//参与复用的
-cell = [tableView dequeueReusableCellWithIdentifier:identifier];
-if (!cell) {
-    cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:identifier];
+<pre><code class="language-objectivec">@interface MyObject: NSObject
+@property (nonatomic, copy) NSString    *   name;                  
+@property (nonatomic, copy) NSString    *   status;                 
+@end
+</code></pre>
+
+<p>接口A、B返回的字典数据如下所示：</p>
+
+<pre><code class="language-objectivec">@{@&quot;name1&quot;: &quot;张三&quot;, @&quot;status1&quot;: @&quot;start&quot;}
+@{@&quot;name2&quot;: &quot;张三&quot;, @&quot;status2&quot;: @&quot;end&quot;}
+</code></pre>
+
+<p>通常的方法是写两个方法分别做转换，不过如果能灵活地运用Runtime的话，可以只实现一个转换方法，为此，我们需要先定义一个映射字典(全局变量)</p>
+
+<pre><code class="language-objectivec">static NSMutableDictionary *map = nil;
+@implementation MyObject    
++ (void)load
+{
+    map = [NSMutableDictionary dictionary];
+    map[@&quot;name1&quot;]                = @&quot;name&quot;;
+    map[@&quot;status1&quot;]              = @&quot;status&quot;;
+    map[@&quot;name2&quot;]                = @&quot;name&quot;;
+    map[@&quot;status2&quot;]              = @&quot;status&quot;;
 }
-
+@end
 </code></pre>
 
-<h3 id="toc_9">10.isKindOfClass &amp;&amp; isMemberOfClass</h3>
+<p>上面的代码将两个字典中不同的字段映射到MyObject中相同的属性上，这样，转换方法可如下处理：</p>
 
-<p>对于我们自定义的继承自UInavigaiton的自定义Navigaition类初始化的对象 并不能用ismemberof判断是不是UINavigation的子类 可以用 iskindof</p>
-
-<h3 id="toc_10">11.present视图控制器  &amp;&amp; 透明控制器</h3>
-
-<h3 id="toc_11">12.tableView reload 引起的复用 不会再次初始化</h3>
-
-<p>当tableView的cell有复用并且已经初始化后,再次reloadData这个tableView并不会引起cell重新初始化</p>
-
-<h3 id="toc_12">13.Timer未移除引起的问题</h3>
-
-<p>如果是是视图控制器的timer未移除 这个视图控制器不会被销毁 <br/>
-如果是视图的timer 这个控制器被销毁这个试图都不会被销毁</p>
-
-<h3 id="toc_13">14.设置按钮disable状态下和平常状态图片相同</h3>
-
-<p>[self.confimButton setAdjustsImageWhenDisabled:YES]</p>
-
-<h3 id="toc_14">15.awakeFromNib</h3>
-
-<p><code>awakeFromNib</code>是nib文件加载完成执行 就是loadFromNib执行完成后执行,而不是在nib文件即将呈现时执行</p>
-
-<h3 id="toc_15">16.tableView</h3>
-
-<pre><code class="language-objectivec">//动画改变tableView
-[self.tableView beginUpdates];  
-[self.tableView setTableHeaderView:headerView];  
-[self.tableView endUpdates];  
+<pre><code class="language-objectivec">- (void)setDataWithDic:(NSDictionary *)dic
+{
+    [dic enumerateKeysAndObjectsUsingBlock:^(NSString *key, id obj, BOOL *stop) {
+        NSString *propertyKey = [self propertyForKey:key];
+        if (propertyKey)
+        {
+            objc_property_t property = class_getProperty([self class], [propertyKey UTF8String]);
+            // TODO: 针对特殊数据类型做处理
+            NSString *attributeString = [NSString stringWithCString:property_getAttributes(property) encoding:NSUTF8StringEncoding];
+            ...
+            [self setValue:obj forKey:propertyKey];
+        }
+    }];
+}
 </code></pre>
 
-<h3 id="toc_16">17.textView</h3>
+<h2 id="toc_9">方法和消息</h2>
 
-<p>textView.contentInset = UIEdgeInsetsMake(-64, 0, 0, 0);</p>
+<h3 id="toc_10">消息转发 -</h3>
 
-<h3 id="toc_17">18.判断字典是否包含某个键</h3>
+<h4 id="toc_11">备用接收者</h4>
 
-<p>直接对这个字典取这个值 objectForKey 或者 dic[key] 对取出来的值判空即可 <br/>
-但是要保证这确实是一个字典</p>
+<p>使用这个方法通常是在对象内部，可能还有一系列其它对象能处理该消息，我们便可借这些对象来处理消息并返回，这样在对象外部看来，还是由该对象亲自处理了这一消息。</p>
 
-<h3 id="toc_18">19.oc中字符串与整型装换</h3>
-
-<p>在OC中想将字符串转为整形不能<code>(int)string</code>这样强制类型装换 这样会得到一个很大的无意义值,应该用<code>string.intValue</code>这样的形式 这样的话对于@“123”这样的字符串可以获得整型123,而对于“qed”等不能转转为整形的得到为0</p>
-
-<p>同理，想将整形转为字符串也不能用<code>(NSString *)int</code>(这种形式也是不允许的将整形转为指针？) 这样强转的形式,或得到我们意想不到结果,我们可以用<code>@（int）.stringValue</code>形式</p>
-
-<h3 id="toc_19">20.控制器present问题</h3>
-
-<p>对于present出来的控制器<br/>
-例如 A present B ， 然后 B present C ，这时候我们直接对B执行dismiss时没有问题的 不会导致崩溃 只会致使B和C均消失</p>
-
-<h3 id="toc_20">21.UIButton 扩展</h3>
-
-<p>button添加事件可以传递event参数,我们可以通过这个参数传递很多信息（比如点击位置）<br/>
-[speakBtn addTarget:self action:@selector(speakBtnDragged:withEvent:) forControlEvents:UIControlEventTouchDragOutside];</p>
-
-<h3 id="toc_21">22.权限服务</h3>
-
-<p>当改变应用的 通讯录 照片 相机权限 时会导致应用从新launch</p>
-
-<p>而改变应用或者手机定位权限时不会使应用状态改变</p>
-
-<h3 id="toc_22">23.label高亮颜色</h3>
-
-<pre><code class="language-objectivec">// the &#39;highlight&#39; property is used by subclasses for such things as pressed states. it&#39;s useful to make it part of the base class as a user property
-
-@property(nullable, nonatomic,strong) UIColor *highlightedTextColor; // default is nil
+<pre><code class="language-objectivec">@interface SUTRuntimeMethodHelper : NSObject
+- (void)method2;
+@end
+@implementation SUTRuntimeMethodHelper
+- (void)method2 {
+    NSLog(@&quot;%@, %p&quot;, self, _cmd);
+}
+@end
+#pragma mark -
+@interface SUTRuntimeMethod () {
+    SUTRuntimeMethodHelper *_helper;
+}
+@end
+@implementation SUTRuntimeMethod
++ (instancetype)object {
+    return [[self alloc] init];
+}
+- (instancetype)init {
+    self = [super init];
+    if (self != nil) {
+        _helper = [[SUTRuntimeMethodHelper alloc] init];
+    }
+    return self;
+}
+- (void)test {
+    [self performSelector:@selector(method2)];
+}
+- (id)forwardingTargetForSelector:(SEL)aSelector {
+    NSLog(@&quot;forwardingTargetForSelector&quot;);
+    NSString *selectorString = NSStringFromSelector(aSelector);
+    // 将消息转发给_helper来处理
+    if ([selectorString isEqualToString:@&quot;method2&quot;]) {
+        return _helper;
+    }
+    return [super forwardingTargetForSelector:aSelector];
+}
+@end
 </code></pre>
 
-<h3 id="toc_23">24.imageView内容是会超出iamgeView的</h3>
+<p>这一步合适于我们只想将消息转发到另一个能处理该消息的对象上。但这一步无法对消息进行处理，如操作消息的参数和返回值。</p>
 
-<p>设置<code>imageView</code>的<code>contentMode</code><br/>
-除了<code>UIViewContentModeScaleToFill</code>和<code>UIViewContentModeScaleAspectFit</code><br/>
-其他mode会超出边<br/>
-需要<code>self.iamgeView.layer.masksToBounds = YES;</code>进行裁剪</p>
+<h4 id="toc_12">完整消息转发</h4>
 
-<h3 id="toc_24">25.对象是存放在堆中 变量名存放在栈中</h3>
+<pre><code class="language-objectivec">- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+    NSMethodSignature *signature = [super methodSignatureForSelector:aSelector];
+    if (!signature) {
+        if ([SUTRuntimeMethodHelper instancesRespondToSelector:aSelector]) {
+            signature = [SUTRuntimeMethodHelper instanceMethodSignatureForSelector:aSelector];
+        }
+    }
+    return signature;
+}
+- (void)forwardInvocation:(NSInvocation *)anInvocation {
+    if ([SUTRuntimeMethodHelper instancesRespondToSelector:anInvocation.selector]) {
+        [anInvocation invokeWithTarget:_helper];
+    }
+}
+</code></pre>
 
-<p>初始化一个对象 对象是放在堆中的</p>
+<h2 id="toc_13">Method Swizzing</h2>
 
-<h3 id="toc_25">26.@synthesize</h3>
+<p>例如，我们想跟踪在程序中每一个view controller展示给用户的次数：当然，我们可以在每个view controller的viewDidAppear中添加跟踪代码；但是这太过麻烦，需要在每个view controller中写重复的代码。创建一个子类可能是一种实现方式，但需要同时创建UIViewController, UITableViewController, UINavigationController及其它UIKit中view controller的子类，这同样会产生许多重复的代码。</p>
 
-<p>@synthesize age = _age;</p>
+<pre><code class="language-objectivec">#import &lt;objc/runtime.h&gt;
+@implementation UIViewController (Tracking)
++ (void)load {
+    static dispatch_once_t onceToken;
+    dispatch_once(&amp;onceToken, ^{
+        Class class = [self class];         
+        // When swizzling a class method, use the following:
+        // Class class = object_getClass((id)self);
+        SEL originalSelector = @selector(viewWillAppear:);
+        SEL swizzledSelector = @selector(xxx_viewWillAppear:);
+        Method originalMethod = class_getInstanceMethod(class, originalSelector);
+        Method swizzledMethod = class_getInstanceMethod(class, swizzledSelector);
+        BOOL didAddMethod = class_addMethod(class,
+                originalSelector,
+                method_getImplementation(swizzledMethod),
+                method_getTypeEncoding(swizzledMethod));
+        if (didAddMethod) {
+            class_replaceMethod(class,
+                swizzledSelector,
+                method_getImplementation(originalMethod),
+                method_getTypeEncoding(originalMethod));
+        } else {
+            method_exchangeImplementations(originalMethod, swizzledMethod);
+        }
+    });
+}
+#pragma mark - Method Swizzling
+- (void)xxx_viewWillAppear:(BOOL)animated {
+    [self xxx_viewWillAppear:animated];
+    NSLog(@&quot;viewWillAppear: %@&quot;, self);
+}
+</code></pre>
 
-<ul>
-<li><p>会创造一个带下划线前缀的实例变量名，同时使用这个属性生成getter 和 setter 方法</p></li>
-<li><p>实际上它的作用是告诉编译器age属性为_age实例变量生成setter and getter方法的实现</p></li>
-<li><p>也就是说age属性的setter方法是setAge,它操作的是_age这个变量。</p></li>
-</ul>
+<p>在这里，我们通过method swizzling修改了UIViewController的@selector(viewWillAppear:)对应的函数指针，使其实现指向了我们自定义的xxx_viewWillAppear的实现。这样，当UIViewController及其子类的对象调用viewWillAppear时，都会打印一条日志信息。</p>
 
-<blockquote>
-<p>如果要阻止自动合成，记得使用 @dynamic 。经典的使用场景是你知道已经在某处实现了getter/setter 方法，而编译器不知道的情况</p>
-</blockquote>
+<p>上面的例子很好地展示了使用method swizzling来一个类中注入一些我们新的操作。当然，还有许多场景可以使用method swizzling，在此不多举例。</p>
 
 
 		</div>
@@ -325,8 +485,10 @@ if (!cell) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -338,11 +500,9 @@ if (!cell) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -427,31 +587,31 @@ if (!cell) {
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

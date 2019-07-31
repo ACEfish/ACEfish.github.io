@@ -82,238 +82,178 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15541132912435.html">Mach-O文件</a></h1>
-			<p class="meta"><time datetime="2019-04-01T18:08:11+08:00" 
-			pubdate data-updated="true">2019/4/1</time></p>
+		  	<h1 class="entry-title"><a href="15031302948355.html">可选链式调用</a></h1>
+			<p class="meta"><time datetime="2017-08-19T16:11:34+08:00" 
+			pubdate data-updated="true">2017/8/19</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>记录编译后的可执行文件、对象代码、共享库、动态加载代码和内存转储的文件格式<br/>
-是二进制数据文件，里面有不同的包含元信息的数据块，比如字节顺序，cpu类型，块大小等。文件内容不可修改，因为在.app目录中有<code>_CodeSignature</code>目录，里面包含了程序代码的签名，这个签名的作用就是保证.app里的文件，包括资源文件，Mach-O文件都不能更改</p>
+		  	<p><strong>可选链式调用</strong>是在当前值可能为<code>nil</code>的可选值上请求和调用属性、方法以及下标的方法。如果可选值不为空,调用成功,否则如果可选值为<code>nil</code>，那么调用将返回<code>nil</code>。多个调用可以结合为一个调用链,若任何一个节点为<code>nil</code>。整个调用链都会失败</p>
 
-<p>Mach-O文件包含三个区域</p>
+<h2 id="toc_0">可选链式调用代替强制展开</h2>
 
-<ul>
-<li><code>Mach-O Header</code>：包含字节顺序，magic，cpu类型，加载指令的数量等</li>
-<li><code>Load Commands</code>：包含很多内容的表，包括区域的位置，符号表，动态符号表。每个加载指令包含一个元信息，比如指令类型，名称，在二进制中的位置</li>
-<li><code>data</code>: 文件中最大的部分，包含了代码，数据，比如符号表、动态符号表</li>
-</ul>
+<p>在想调用的属性、方法、下标的可选值后加上<code>?</code>来定义一个可选链。</p>
 
-<p><img src="media/15541132912435/15541134009742.jpg" alt="" style="width:415px;"/></p>
+<blockquote>
+<p>很像在可选值后面放一个叹号（<code>!</code>）来强制展开它的值。它们的主要区别在于当可选值为空时可选链式调用只会调用失败，然而强制展开将会触发运行时错误</p>
+</blockquote>
 
-<p><img src="media/15541132912435/15541204613989.jpg" alt="" style="width:636px;"/></p>
+<p>可选链式调用,不论调用的属性、方法及下标返回值的类型,返回结果都是具有相同类型的可选值,可以利用这个可选返回值来判断链式调用是否成功,有值则返回成功，<code>nil</code>表示调用失败</p>
 
-<h2 id="toc_0">Mach-O 文件的解析</h2>
+<pre><code class="language-swift">class Person {
+    var residence: Residence?
+}
+class Residence {
+    var numberOfRooms = 1
+}
+let john = Person()
+</code></pre>
 
-<p>自己创建一个test.c文件</p>
+<p>我们直接<code>let roomCount = john.residence!.numberOfRooms</code>因为<code>residence</code>为<code>nil</code>强制展开的话是会触发运行时错误的</p>
 
-<pre><code class="language-c">#include &lt;stdio.h&gt;
-int main(int argc, char *argv[])
-{
-    printf(&quot;hi there!\n&quot;);
-    return 0;
+<p>这时我们可以采用可选链式调用来访问<code>numberOfRooms</code>用<code>?</code>代替<code>!</code></p>
+
+<pre><code class="language-swift">if let roomCount = john.residence?.numberOfRooms {
+    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
+} else {
+    print(&quot;Unable to retrieve the number of rooms.&quot;)
 }
 </code></pre>
 
-<pre><code class="language-c">//将test.c 编译汇编链接成一个可执行文件 未指定输出文件 即默认为a.out
-xcrun clang test.c 
+<p><strong>添加问号之后，Swift 就会在<code>residence</code>不为<code>nil</code>的情况下访问<code>numberOfRooms</code></strong></p>
+
+<p>即使<code>numberOfRooms</code>是非可选类型<code>Int</code>，只要使用可选链式调用就意味着<code>numberOfRooms</code>会返回<code>Int?</code>而不是<code>Int</code></p>
+
+<h2 id="toc_1">为可选链式调用定义模型类</h2>
+
+<h2 id="toc_2">通过可选链式调用访问属性</h2>
+
+<p>通过可选链式调用<strong>访问可能不存在实例的属性</strong>:</p>
+
+<pre><code class="language-swift">//john.residence实例可能为nil
+let john = Person()
+if let roomCount = john.residence?.numberOfRooms {
+    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
+} else {
+    print(&quot;Unable to retrieve the number of rooms.&quot;)
+}
 </code></pre>
 
-<hr/>
+<p>通过可选链式调用<strong>设置属性值</strong></p>
 
-<p>使用size工具查看a.out中的section</p>
-
-<pre><code class="language-c">xcrun size -x -l -m a.out
+<pre><code class="language-swift">//john.residence实例可能为nil
+let someAddress = Address()
+john.residence?.address = someAddress
 </code></pre>
 
-<pre><code class="language-c">Segment __PAGEZERO: 0x100000000 (vmaddr 0x0 fileoff 0)
-Segment __TEXT: 0x1000 (vmaddr 0x100000000 fileoff 0)
-    Section __text: 0x34 (addr 0x100000f50 offset 3920)
-    Section __stubs: 0x6 (addr 0x100000f84 offset 3972)
-    Section __stub_helper: 0x1a (addr 0x100000f8c offset 3980)
-    Section __cstring: 0xa (addr 0x100000fa6 offset 4006)
-    Section __unwind_info: 0x48 (addr 0x100000fb0 offset 4016)
-    total 0xa6
-Segment __DATA: 0x1000 (vmaddr 0x100001000 fileoff 4096)
-    Section __nl_symbol_ptr: 0x10 (addr 0x100001000 offset 4096)
-    Section __la_symbol_ptr: 0x8 (addr 0x100001010 offset 4112)
-    total 0x18
-Segment __LINKEDIT: 0x1000 (vmaddr 0x100002000 fileoff 8192)
-total 0x100003000
+<p>对于这种可选链式调用的赋值,如果<code>john.residence</code>为<code>nil</code>，获取<code>address</code>属性失败，那么右侧的代码是不会被执行的</p>
+
+<h2 id="toc_3">通过可选链式调用调用方法</h2>
+
+<p>对于<code>Residence</code>类中定义的方法</p>
+
+<pre><code class="language-swift">func printNumberOfRooms() {
+    print(&quot;The number of rooms is \(numberOfRooms)&quot;)
+}
 </code></pre>
 
-<p>有4个segment和多个section<br/>
-当运行时，虚拟内存会把segment映射到进程的地址空间，虚拟内存会避免将全部执行文件全部加载到内存</p>
+<p>这个方法没有返回值,那就是具有隐式的返回值<code>Void</code><br/>
+那么如果用可选链式调用这个方法，返回值就为<code>Void?</code></p>
 
-<p><code>__PAGEZERO sement</code>的大小是4GB，不是文件真实大小，是规定进程地址空间前4GB被映射为不可执行文件，不可读、不可写</p>
+<pre><code class="language-swift">//john.residence 为Residence类 可能为nil的实例
+if john.residence?.printNumberOfRooms() != nil {
+    print(&quot;It was possible to print the number of rooms.&quot;)
+} else {
+    print(&quot;It was not possible to print the number of rooms.&quot;)
+}
+//可以根据返回值是否为nil 判断调用是否成功
+</code></pre>
 
-<p><code>__TEXT segment</code>包含被执行的代码以只读和可执行的方式映射</p>
+<p>对实例中的属性赋值 也会返回一个可选类型</p>
+
+<pre><code class="language-swift">if (john.residence?.address = someAddress) != nil {
+print(&quot;It was possible to set the address.&quot;)
+} else {
+print(&quot;It was not possible to set the address.&quot;)
+}
+</code></pre>
+
+<h2 id="toc_4">通过可选链式调用访问下标</h2>
+
+<p>可以在一个可选值上访问下标,判断下标是否成功</p>
+
+<pre><code class="language-swift">//john.residence可能为nil
+if let firstRoomName = john.residence?[0].name {
+    print(&quot;The first room name is \(firstRoomName).&quot;)
+} else {
+    print(&quot;Unable to retrieve the first room name.&quot;)
+}
+</code></pre>
+
+<blockquote>
+<p>注意:下标调用的时候将问号放在下标方括号的前面而不是后面</p>
+</blockquote>
+
+<pre><code class="language-swift">john.residence?[0] = Room(name: &quot;Bathroom&quot;)
+</code></pre>
+
+<p><code>john.residence</code>为nil时，赋值仍然会失败</p>
+
+<h3 id="toc_5">访问可选类型的下标</h3>
+
+<p>如果下标返回可选类型值,可以在下标的结尾括号后面放一个问号来在其可选返回值上进行可选链式调用</p>
+
+<pre><code class="language-swift">var testScores = [&quot;Dave&quot;: [86, 82, 84], &quot;Bev&quot;: [79, 94, 81]]
+testScores[&quot;Dave&quot;]?[0] = 91
+testScores[&quot;Bev&quot;]?[0] += 1
+testScores[&quot;Brian&quot;]?[0] = 72
+</code></pre>
+
+<p>定义一个字典,包含两个键值对，因为字典下标返回的是可选类型值,对于<code>testScores[&quot;Brian&quot;]</code>因为字典中没有这个键，所以返回为<code>nil</code>，调用失败</p>
+
+<h2 id="toc_6">连接多层可选链式调用</h2>
+
+<p>可以连接多个可选链式调用在更深模型层级中访问属性、方法、下标，但是是不会增加返回值的可选层级的</p>
 
 <ul>
-<li>__text section 包含编译后的机器码</li>
-<li><strong>stubs和</strong>stub_hepler是给动态链接器dyld使用，可以允许延迟链接</li>
-<li>__csstring 可执行文件中的字符串</li>
-<li>__const不可变的常量</li>
+<li>通过可选链式调用访问一个 Int 值，将会返回 Int? ，无论使用了多少层可选链式调用</li>
+<li>通过可选链式调用访问 Int? 值，依旧会返回 Int? 值，并不会返回 Int??</li>
 </ul>
 
-<p><code>__DATA segment</code>以可读写和不可执行的方式映射,里面是会被更改的数据</p>
-
-<ul>
-<li>__nl_symbol_ptr 非延迟指针.可执行文件加载同时加载</li>
-<li>__la_symbol_ptr延迟符号指针.延迟用于可执行文件汇总调用未定义的函数，可执行文件里没有包含的函数会延迟加载</li>
-<li>__const 需要重定向的常量  例如 char * const c = “foo”; c指针指向可变的数据</li>
-<li>__bbs不用初始化的静态变量</li>
-<li>__common包含外部全局变量。例如在函数外定义 int i；</li>
-<li>__dyld是section占位符，用于动态链接器</li>
-</ul>
-
-<hr/>
-
-<p>查看<strong>section中的内容</strong></p>
-
-<pre><code class="language-text">xcrun otool -s __TEXT __text a.out
+<pre><code class="language-swift">if let johnsStreet = john.residence?.address?.street {
+    print(&quot;John&#39;s street name is \(johnsStreet).&quot;)
+} else {
+    print(&quot;Unable to retrieve the address.&quot;)
+}
 </code></pre>
 
-<p>显示的为二进制数据，我们可以反汇编,查看汇编信息 -s __TEXT __text 有个缩写 -t</p>
+<p><code>john.residence.address</code>为<code>nil</code>因此调用失败<br/>
+尽管<code>street</code>属性为<code>String？</code>  返回值仍然为<code>String?</code></p>
 
-<pre><code class="language-text">xcrun otool -v -t a.out
+<h2 id="toc_7">在方法的可选返回值上进行可选链式调用</h2>
+
+<pre><code class="language-swift">if let buildingIdentifier = john.residence?.address?.buildingIdentifier() {
+    print(&quot;John&#39;s building identifier is \(buildingIdentifier).&quot;)
+}
 </code></pre>
 
-<pre><code class="language-c">a.out:
-(__TEXT,__text) section
-_main:
-0000000100000f50    pushq    %rbp
-0000000100000f51    movq    %rsp, %rbp
-0000000100000f54    subq    $0x20, %rsp
-0000000100000f58    leaq    0x47(%rip), %rax
-0000000100000f5f    movl    $0x0, -0x4(%rbp)
-0000000100000f66    movl    %edi, -0x8(%rbp)
-0000000100000f69    movq    %rsi, -0x10(%rbp)
-0000000100000f6d    movq    %rax, %rdi
-0000000100000f70    movb    $0x0, %al
-0000000100000f72    callq    0x100000f84
-0000000100000f77    xorl    %ecx, %ecx
-0000000100000f79    movl    %eax, -0x14(%rbp)
-0000000100000f7c    movl    %ecx, %eax
-0000000100000f7e    addq    $0x20, %rsp
-0000000100000f82    popq    %rbp
-0000000100000f83    retq
+<p>在可选值的基础上调用<code>buildingIdentifier()</code>方法  返回<code>String?</code>类型值</p>
+
+<pre><code class="language-swift">if let beginsWithThe =
+john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
+    if beginsWithThe {
+        print(&quot;John&#39;s building identifier begins with \&quot;The\&quot;.&quot;)
+    } else {
+        print(&quot;John&#39;s building identifier does not begin with \&quot;The\&quot;.&quot;)
+    }
+}
 </code></pre>
 
-<hr/>
+<p>在方法的返回值基础上进行可选链式调用 </p>
 
-<p>使用otool查看可执行文件的头部,即header</p>
-
-<pre><code class="language-c">otool -v -h a.out
-</code></pre>
-
-<p>得到 <strong>头部信息</strong></p>
-
-<pre><code class="language-text">Mach header
-      magic cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
-MH_MAGIC_64  X86_64        ALL LIB64     EXECUTE    15       1200   NOUNDEFS DYLDLINK TWOLEVEL PIE
-</code></pre>
-
-<p>mach_header 结构体</p>
-
-<pre><code class="language-text">struct mach_header {
-  uint32_t      magic; 
-  cpu_type_t    cputype; 
-  cpu_subtype_t cpusubtype;
-  uint32_t      filetype;
-  uint32_t      ncmds;
-  uint32_t      sizeofcmds;
-  uint32_t      flags;
-};
-</code></pre>
-
-<p>cputype 和 cpusubtype 规定可执行文件可以在哪些目标架构运行。ncmds 和 sizeofcmds 是加载命令<code>LoadCommand</code></p>
-
-<hr/>
-
-<p><strong>查看LoadCommands</strong>使用命令 <code>otool -v -l a.out</code></p>
-
-<pre><code class="language-c">...
-...
-Load command 1
-      cmd LC_SEGMENT_64
-  cmdsize 472
-  segname __TEXT
-   vmaddr 0x0000000100000000
-   vmsize 0x0000000000001000
-  fileoff 0
- filesize 4096
-  maxprot rwx
- initprot r-x
-   nsects 5
-    flags (none)
-Section
-  Section
-  sectname __text
-   segname __TEXT
-      addr 0x0000000100000f50 //代码的位置地址 和上面反汇编的地址是一样的
-      size 0x0000000000000034 
-    offset 3920 //在文件中的偏移量
-     align 2^4 (16)
-    reloff 0
-    nreloc 0
-      type S_REGULAR
-attributes PURE_INSTRUCTIONS SOME_INSTRUCTIONS
- reserved1 0
- reserved2 0
-Section
-  sectname __stubs
-   segname __TEXT
-      addr 0x0000000100000f88
-      size 0x0000000000000006
-    offset 3976
-     align 2^1 (2)
-    reloff 0
-    nreloc 0
-      type S_SYMBOL_STUBS
-attributes PURE_INSTRUCTIONS SOME_INSTRUCTIONS
- reserved1 0 (index into indirect symbol table)
- reserved2 6 (size of stubs)
- ...
- ...
-</code></pre>
-
-<p>加载命令的结构体</p>
-
-<pre><code class="language-text">struct segment_command {
-  uint32_t  cmd;
-  uint32_t  cmdsize;
-  char      segname[16];
-  uint32_t  vmaddr;
-  uint32_t  vmsize;
-  uint32_t  fileoff;
-  uint32_t  filesize;
-  vm_prot_t maxprot;
-  vm_prot_t initprot; //权限 例如r-x
-  uint32_t  nsects;
-  uint32_t  flags;
-};
-</code></pre>
-
-<hr/>
-
-<h2 id="toc_1">逆向Mach-O文件</h2>
-
-<p>需要先安装 tweak，安装越狱可以通过 cydia，不越狱直接打包成 ipa 安装包。越狱的话会安装一个 mobilesubstrate 的动态库，使用 theos 开发工具，非越狱的直接把这个库打包进 ipa 中或者直接修改汇编代码。</p>
-
-<p>Mobilesubstrate 提供了三个模块来方便开发。</p>
-
-<p>MobileHooker：利用 method swizzling 技术定义一些宏和函数来替换系统或者目标函数。<br/>
-MobileLoader：在程序启动时将我们写的破解程序用的第三方库注入进去。怎么注入的呢，还记得先前说的 clang attribute 里的一个 attribute((constructor)) 么，它会在 main 执行之前执行，所以把我们的 hook 放在这里就可以了。<br/>
-Safe mode：类似安全模式，会禁用的改动。<br/>
-先前提到 Mach-O 的结构有 Header，Load commands 和 Data，Mobileloader 会通过修改二进制的 loadCommands 来先把自己注入然后再把我们写的第三方库注入进去，这样破解程序就会放在 Load commands 段里面了。</p>
-
-<p>当然如果是我们自己的程序我们是知道要替换哪些方法的，既然是逆向肯定是别人的程序了，这个时候就需要去先分析下我们想替换方法是哪个，网络相关的分析可以用常用那些抓包工具，比如 Charles，WireShark 等，静态的可以通过砸壳，反汇编，classdump 头文件来分析 app 的架构，对应的常用工具dumpdecrypted，hopper disassembler 和 class_dump。运行时的分析可用工具有运行时控制台cycript，远程断点调试lldb+debugserver，logify。</p>
-
-<ul>
-<li>入门文章可以看看这篇: <a href="https://github.com/zhengmin1989/MyArticles/tree/master/iOS%E5%86%B0%E4%B8%8E%E7%81%AB%E4%B9%8B%E6%AD%8C"> MyArticles/iOS冰与火之歌 at master · zhengmin1989/MyArticles · GitHub</a></li>
-<li><a href="http://blog.imjun.net/posts/convert-iOS-app-to-dynamic-library/">黑科技：把第三方 iOS 应用转成动态库 - Jun’s Blog</a>  <a href="http://blog.imjun.net/posts/restore-symbol-of-iOS-app/"> iOS符号表恢复&amp;逆向支付宝 - Jun’s Blog</a></li>
-</ul>
+<blockquote>
+<p>在方法的圆括号后面加上问号即可</p>
+</blockquote>
 
 
 		</div>
@@ -336,8 +276,10 @@ Safe mode：类似安全模式，会禁用的改动。<br/>
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -349,11 +291,9 @@ Safe mode：类似安全模式，会禁用的改动。<br/>
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -438,31 +378,31 @@ Safe mode：类似安全模式，会禁用的改动。<br/>
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

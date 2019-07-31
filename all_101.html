@@ -82,37 +82,124 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15318113047968.html">iOS CPU 和 Xcode Architectures</a></h1>
-			<p class="meta"><time datetime="2018-07-20T14:33:10+08:00" 
-			pubdate data-updated="true">2018/7/20</time></p>
+		  	<h1 class="entry-title"><a href="15325716345284.html">错误、调试、测试</a></h1>
+			<p class="meta"><time datetime="2018-07-26T10:20:34+08:00" 
+			pubdate data-updated="true">2018/7/26</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>arm64：iPhone6s | iphone6s plus｜iPhone6｜ iPhone6 plus｜iPhone5S | iPad Air｜ iPad mini2(iPad mini with Retina Display)<br/>
-armv7s：iPhone5｜iPhone5C｜iPad4(iPad with Retina Display)<br/>
-armv7：iPhone4｜iPhone4S｜iPad｜iPad2｜iPad3(The New iPad)｜iPad mini｜iPod Touch 3G｜iPod Touch4</p>
+		  	<h2 id="toc_0">错误处理</h2>
 
-<p>i386是针对intel通用微处理器32位处理器<br/>
-x86_64是针对x86架构的64位处理器</p>
+<h3 id="toc_1">try</h3>
 
-<p>模拟器32位处理器测试需要i386架构，<br/>
-模拟器64位处理器测试需要x86_64架构，<br/>
-真机32位处理器需要armv7,或者armv7s架构，<br/>
-真机64位处理器需要arm64架构。</p>
+<pre><code class="language-python">try:
+    print(&quot;try...&quot;)
+    result=10/0
+    print(&quot;result 10/0=&quot;, result)
+except Exception as e:  #捕获所有的异常
+    # raise  #raise 语句不带参数 就会把错误原样抛出
+    print(&quot;error+&quot;, e)
+else:
+    print(&quot;no erro&quot;) #没有错误发生时 执行
+finally:
+    print(&quot;finally...&quot;)
 
-<p>Xcode中指令集相关选项（Build Setting中）</p>
+print(&quot;end...&quot;)
 
-<p>Architectures<br/>
-指定工程被编译成可支持哪些指令集类型，而支持的指令集越多，就会编译出包含多个指令集代码的数据包，对应生成二进制包就越大，也就是ipa包会变大。</p>
+# try...
+# error+ division by zero
+# finally...
+# end...
 
-<p>Valid Architectures<br/>
-限制可能被支持的指令集的范围，也就是Xcode编译出来的二进制包类型最终从这些类型产生，而编译出哪种指令集的包，将由Architectures与Valid Architectures（因此这个不能为空）的交集来确定</p>
+</code></pre>
 
-<p>Build Active Architecture Only<br/>
-指定是否只对当前连接设备所支持的指令集编译<br/>
-当其值设置为YES，这个属性设置为yes，是为了debug的时候编译速度更快，它只编译当前的architecture版本，而设置为no时，会编译所有的版本。 所以，一般debug的时候可以选择设置为yes，release的时候要改为no，以适应不同设备。</p>
+<p>根据捕捉不用类型的错误</p>
 
-<p>Valid Architectures 设置里， 默认为 Standard architectures(armv7,arm64),如果你想改的话，自己在other中更改</p>
+<pre><code class="language-python">try:
+    print(&#39;try...&#39;)
+    r = 10 / int(&#39;a&#39;)
+    print(&#39;result:&#39;, r)
+except ValueError as e:   #如果int()函数发生错误
+    print(&#39;ValueError:&#39;, e)
+except ZeroDivisionError as e:  # 发现除数为0错误
+    print(&#39;ZeroDivisionError:&#39;, e)
+finally:
+    print(&#39;finally...&#39;)
+print(&#39;END&#39;)
+</code></pre>
+
+<p>Python的错误也是class,所有错误继承自<code>BaseException</code>，所以使用<code>exception</code>时可以捕获所有其子类错误</p>
+
+<blockquote>
+<p>捕获错误可以跨越多层调用,</p>
+
+<p>如果错误没有被捕获,就会一级一级往上抛出,最后被Python解释器捕获,打印错误信息并退出程序的执行</p>
+
+<p>发生错误时可以通过分析错误的调用异常栈，定位错误的位置信息</p>
+</blockquote>
+
+<h3 id="toc_2">抛出错误</h3>
+
+<p>自定义错误类，抛出错误，尽量使用内置的错误类型,只有在必要时才需要定义自己的错误类型</p>
+
+<h2 id="toc_3">调试</h2>
+
+<h3 id="toc_4">断言</h3>
+
+<p>断言使用<code>assert</code>关键字</p>
+
+<pre><code class="language-python">def my_func_div(s):
+    n=int(s)
+    assert n!=0, &quot;n is zero&quot;
+    return 10/n
+
+my_func_div(&quot;0&quot;)
+
+# AssertionError: n is zero
+</code></pre>
+
+<p>断言失败,<code>assert</code>语句会抛出<code>AssertionError</code><br/>
+Python解释器可以通过 添加参数<code>- O</code> 参数关闭所有assert 这时<code>assert</code>就可看做pass</p>
+
+<h3 id="toc_5">logging</h3>
+
+<p>logging不会抛出错误，而且可以输出到文件<br/>
+logging的另一个好处是通过简单的配置，一条语句可以同时输出到不同的地方，比如console和文件。</p>
+
+<pre><code class="language-python">import logging
+logging.basicConfig(level=logging.INFO)
+
+s = &#39;0&#39;
+n = int(s)
+logging.info(&#39;n = %d&#39; % n)
+print(10 / n)
+</code></pre>
+
+<blockquote>
+<p>logging语句允许指定记录信息的级别,共有<code>debug</code> <code>info</code> <code>warning</code> <code>error</code>这几个级别,当我们指定level=INFO时，logging.debug就不起作用了。同理，指定level=WARNING后，debug和info就不起作用了。这样一来，你可以放心地输出不同级别的信息，也不用删除，最后统一控制输出哪个级别的信息。</p>
+</blockquote>
+
+<h3 id="toc_6">pdb 单步调试</h3>
+
+<p><code>pdb</code>是python解释器的调试器,可以让程序但不执行，可以随时查看运行的状态</p>
+
+<pre><code class="language-python">s = &#39;0&#39;
+n = int(s)
+print(10 / n)
+</code></pre>
+
+<p><code>python -m pdb xxx.py</code></p>
+
+<p><img src="media/15325716345284/15329379992787.jpg" alt="" style="width:803px;"/><br/>
+<img src="media/15325716345284/15329380931674.jpg" alt="" style="width:806px;"/><br/>
+输入 <code>l</code>  查看diamante<br/>
+<code>n</code> 单步执行代码<br/>
+<code>p 变量名</code> 查看变量当前值<br/>
+<code>q</code> 结束调试</p>
+
+<h3 id="toc_7">pdb.set_trace() 断点</h3>
+
+<p><code>import pdb</code> 在可能出错的地方放<code>pdb.set_trace()</code>就设置了一个断点,程序会在断点处进入pdb调试环境  可以用<code>c</code>继续执行</p>
 
 
 		</div>
@@ -135,8 +222,10 @@ x86_64是针对x86架构的64位处理器</p>
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -148,11 +237,9 @@ x86_64是针对x86架构的64位处理器</p>
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -237,31 +324,31 @@ x86_64是针对x86架构的64位处理器</p>
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

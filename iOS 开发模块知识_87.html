@@ -82,195 +82,238 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15540426044478.html">Clang Attributes</a></h1>
-			<p class="meta"><time datetime="2019-03-31T22:30:04+08:00" 
-			pubdate data-updated="true">2019/3/31</time></p>
+		  	<h1 class="entry-title"><a href="15541132912435.html">Mach-O文件</a></h1>
+			<p class="meta"><time datetime="2019-04-01T18:08:11+08:00" 
+			pubdate data-updated="true">2019/4/1</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><code>attribute(xx)</code>是clang提供的能让开发者在编译过程中参与一些源码控制的方法</p>
+		  	<p>记录编译后的可执行文件、对象代码、共享库、动态加载代码和内存转储的文件格式<br/>
+是二进制数据文件，里面有不同的包含元信息的数据块，比如字节顺序，cpu类型，块大小等。文件内容不可修改，因为在.app目录中有<code>_CodeSignature</code>目录，里面包含了程序代码的签名，这个签名的作用就是保证.app里的文件，包括资源文件，Mach-O文件都不能更改</p>
 
-<h3 id="toc_0">attribute((format(NSString,F,A)))格式化字符串</h3>
-
-<blockquote>
-<p>因为此时已经是C语言级别 String不需要加<code>@</code></p>
-</blockquote>
-
-<p>比如NSLog的用法</p>
-
-<pre><code class="language-objectivec">FOUNDATION_EXPORT void NSLog(NSString *format, ...) NS_FORMAT_FUNCTION(1,2) NS_NO_TAIL_CALL;
-
-#if !defined(NS_FORMAT_FUNCTION)
-    #if (__GNUC__*10+__GNUC_MINOR__ &gt;= 42) &amp;&amp; (TARGET_OS_MAC || TARGET_OS_EMBEDDED)
-    #define NS_FORMAT_FUNCTION(F,A) __attribute__((format(__NSString__, F, A)))
-    #else
-    #define NS_FORMAT_FUNCTION(F,A)
-    #endif
-#endif
-</code></pre>
-
-<h3 id="toc_1">attribute((deprecated(s)))版本弃用提示</h3>
-
-<p>在编译过程中提示开发者该方法已经被弃用</p>
-
-<pre><code class="language-objectivec">@property (nonatomic, strong) NSString *testProperty __attribute__((deprecated(&quot;该属性已经不能用了&quot;)));
-
-- (void)testDeprecatedMethod __attribute__((deprecated(&quot;该方法已经被弃用&quot;)));
-
-- (void)deprecatedMethod DEPRECATED_ATTRIBUTE; //也可以直接使用DEPRECATED_ATTRIBUTE这个系统定义的宏
-</code></pre>
-
-<h3 id="toc_2">attribute((availability(os,introduced=m,deprecated=n, obsoleted=o,message=“” VA_ARGS))) 指明使用版本范围</h3>
-
-<pre><code class="language-objectivec">- (void)method __attribute__((availability(ios,introduced=3_0,deprecated=6_0,obsoleted=7_0,message=“iOS3到iOS7版本可用，iOS7不能用”)));
-</code></pre>
-
-<h3 id="toc_3">attribute((unavailable(s))) 方法不可用提示</h3>
-
-<pre><code class="language-objectivec">- (void)testUnvailableMethod __attribute__((unavailable(&quot;该方法已经不能使用&quot;)));
-</code></pre>
-
-<h3 id="toc_4">attribute((unused))</h3>
-
-<p>没有被使用也不报警告</p>
-
-<pre><code class="language-objectivec">NSString *str __attribute__((unused));
-NSInteger reuslt __attribute__((unused)) = [vc testResultUnused];
-</code></pre>
-
-<h3 id="toc_5">attribute((warn_unused_result))</h3>
-
-<p>不使用该方法的返回值就会被警告</p>
-
-<pre><code class="language-objectivec">- (NSInteger)testResultUnused __attribute__((warn_unused_result));
-</code></pre>
-
-<h3 id="toc_6">attribute((availability(swift, unavailable, message=_msg)))</h3>
-
-<p>OC的方法 不能在swift中使用</p>
-
-<h3 id="toc_7">attribute((cleanup(…))) 作用域结束时自动执行一个指定方法</h3>
-
-<p>作用于结束包括大括号结束，return，goto，break，exception等情况。这个动作是先于这个对象的dealloc调用的</p>
-
-<pre><code class="language-objectivec">//修饰一个变量 在他的作用域结束时 自动执行该方法
-}
-    NSString *testCleanUp __attribute__((cleanup(testLastMethod) unused)) = @&quot;testCleanUp&quot;;
-}
-
-int testLastMethod(__strong NSString **str) {
-    return 10;
-}
-</code></pre>
-
-<h3 id="toc_8">attribute((overloadable)) 方法重载</h3>
-
-<p>能够在 c 的函数上实现方法重载。即同样的函数名函数能够对不同参数在编译时能够自动根据参数来选择定义的函数</p>
-
-<pre><code class="language-c">__attribute__((overloadable)) void printArgument(int number){
-    NSLog(@“Add Int %i”, number);
-}
-
-__attribute__((overloadable)) void printArgument(NSString *number){
-    NSLog(@“Add NSString %@“, number);
-}
-
-__attribute__((overloadable)) void printArgument(NSNumber *number){
-    NSLog(@“Add NSNumber %@“, number);
-}
-</code></pre>
-
-<h3 id="toc_9">attribute((objc_designated_initializer)) 指定内部实现的初始化方法</h3>
-
-<p>也可以使用OC中定义的宏 <code>NS_DESIGNATED_INITIALIZER</code></p>
-
-<p>即指定该类的指定构造器函数，使用规则</p>
+<p>Mach-O文件包含三个区域</p>
 
 <ul>
-<li>该类的指定构造器函数必须调用父类的指定构造器函数</li>
-<li>该类的遍历构造器函数必须最终执行该类的指定构造器函数</li>
+<li><code>Mach-O Header</code>：包含字节顺序，magic，cpu类型，加载指令的数量等</li>
+<li><code>Load Commands</code>：包含很多内容的表，包括区域的位置，符号表，动态符号表。每个加载指令包含一个元信息，比如指令类型，名称，在二进制中的位置</li>
+<li><code>data</code>: 文件中最大的部分，包含了代码，数据，比如符号表、动态符号表</li>
 </ul>
 
-<h3 id="toc_10">attribute((objc_subclassing_restricted)) 指定不能有子类</h3>
+<p><img src="media/15541132912435/15541134009742.jpg" alt="" style="width:415px;"/></p>
 
-<p>指定该类不能有子类，类似java中的final函数</p>
+<p><img src="media/15541132912435/15541204613989.jpg" alt="" style="width:636px;"/></p>
 
-<pre><code class="language-objectivec">__attribute__((objc_subclassing_restricted))
-@interface ViewController : UIViewController
-@end
+<h2 id="toc_0">Mach-O 文件的解析</h2>
+
+<p>自己创建一个test.c文件</p>
+
+<pre><code class="language-c">#include &lt;stdio.h&gt;
+int main(int argc, char *argv[])
+{
+    printf(&quot;hi there!\n&quot;);
+    return 0;
+}
 </code></pre>
 
-<h3 id="toc_11">attribute((objc_requires_super)) 子类继承必须调用 super</h3>
-
-<pre><code class="language-objectivec">//子类重写该方法如果不调用super 会有警告⚠️
-- (void)testInheritanceMethod __attribute__((objc_requires_super));
+<pre><code class="language-c">//将test.c 编译汇编链接成一个可执行文件 未指定输出文件 即默认为a.out
+xcrun clang test.c 
 </code></pre>
 
-<h3 id="toc_12">attribute((const)) 重复调用相同数值参数优化返回</h3>
+<hr/>
 
-<p>用于数值类型参数的函数，多次调用相同的数值型参数，返回是相同的，只在第一次需要进行运算，后面只返回第一次的结果，这是编译器的一种优化处理</p>
+<p>使用size工具查看a.out中的section</p>
 
-<h3 id="toc_13">attribute((constructor(PRIORITY))) 和 attribute((destructor(PRIORITY)))</h3>
-
-<p>PRIORITY 是指执行的优先级，main 函数执行之前会执行 constructor，main 函数执行后会执行 destructor，+load 会比 constructor 执行的更早点，因为动态链接器加载 Mach-O 文件时会先加载每个类，需要 +load 调用，然后才会调用所有的 constructor 方法。</p>
-
-<p>通过这个特性，可以做些比较好玩的事情，比如说类已经 load 完了，是不是可以在 constructor 中对想替换的类进行替换，而不用加在特定类的 +load 方法里。</p>
-
-<h2 id="toc_14">Clang警告处理</h2>
-
-<pre><code class="language-objectivec">#pragma clang diagnostic push
-#pragma clang diagnostic ignored “-Wdeprecated-declarations”
-        sizeLabel = [self sizeWithFont:font constrainedToSize:size lineBreakMode:NSLineBreakByWordWrapping];
-#pragma clang diagnostic pop
+<pre><code class="language-c">xcrun size -x -l -m a.out
 </code></pre>
 
-<h2 id="toc_15"><strong>attribute</strong>((constructor)) 在main函数之前调用</h2>
-
-<h2 id="toc_16"><strong>attribute</strong>((destructor)) 在main函数执行之后 或者exit()后被自动执行</h2>
-
-<h3 id="toc_17">文件级:在源代码文件中诊断(忽略/警告)</h3>
-
-<p>语法:</p>
-
-<pre><code class="language-objectivec">#pragma clang diagnostic [error|warning|ignored] &quot;-W&lt;警告选项&gt;&quot;
-
-
-诊断-忽略:(关闭警告)
-#pragma  clang diagnostic ignored  &quot;-Wunused&quot;
-#pragma  clang diagnostic ignored  &quot;-Wunused-parameter&quot;
-
-
-诊断-警告:(开启警告)
-#pragma  clang diagnostic warning  &quot;-Wunused&quot;
-#pragma  clang diagnostic warning  &quot;-Wunused-parameter&quot;
-
-
-诊断-错误:(开启警告-升级为错误)
-#pragma  clang diagnostic error  &quot;-Wunused&quot;
-#pragma  clang diagnostic error  &quot;-Wunused-parameter&quot;
-用法:
-在文件开头处关闭警告,在文件结尾出再开启警告,这样可以忽略该文件中的指定警告.
+<pre><code class="language-c">Segment __PAGEZERO: 0x100000000 (vmaddr 0x0 fileoff 0)
+Segment __TEXT: 0x1000 (vmaddr 0x100000000 fileoff 0)
+    Section __text: 0x34 (addr 0x100000f50 offset 3920)
+    Section __stubs: 0x6 (addr 0x100000f84 offset 3972)
+    Section __stub_helper: 0x1a (addr 0x100000f8c offset 3980)
+    Section __cstring: 0xa (addr 0x100000fa6 offset 4006)
+    Section __unwind_info: 0x48 (addr 0x100000fb0 offset 4016)
+    total 0xa6
+Segment __DATA: 0x1000 (vmaddr 0x100001000 fileoff 4096)
+    Section __nl_symbol_ptr: 0x10 (addr 0x100001000 offset 4096)
+    Section __la_symbol_ptr: 0x8 (addr 0x100001010 offset 4112)
+    total 0x18
+Segment __LINKEDIT: 0x1000 (vmaddr 0x100002000 fileoff 8192)
+total 0x100003000
 </code></pre>
 
-<blockquote>
-<p>对于项目中的警告我们可以右键警告revela in log 查看编译时的警告<br/>
-<img src="media/15540426044478/15540987741636.jpg" alt="" style="width:693px;"/><br/>
-就可以根据具体警告类型进行忽略</p>
-</blockquote>
+<p>有4个segment和多个section<br/>
+当运行时，虚拟内存会把segment映射到进程的地址空间，虚拟内存会避免将全部执行文件全部加载到内存</p>
 
-<h3 id="toc_18">补充: 项目级别忽略警告</h3>
+<p><code>__PAGEZERO sement</code>的大小是4GB，不是文件真实大小，是规定进程地址空间前4GB被映射为不可执行文件，不可读、不可写</p>
 
-<p>在项目的<code>Build Settings</code>中也可以设置忽略某种或者多种类型的警告,忽略整个项目的警告类型</p>
+<p><code>__TEXT segment</code>包含被执行的代码以只读和可执行的方式映射</p>
 
-<p><img src="media/15540426044478/15540998238927.jpg" alt="" style="width:706px;"/><br/>
-也可以指定debug 或者 release</p>
+<ul>
+<li>__text section 包含编译后的机器码</li>
+<li><strong>stubs和</strong>stub_hepler是给动态链接器dyld使用，可以允许延迟链接</li>
+<li>__csstring 可执行文件中的字符串</li>
+<li>__const不可变的常量</li>
+</ul>
 
-<p>选项格式: -W[no-]&lt;警告选项&gt;<br/>
-如 : -Wno-unused-parameter   # no- 表示诊断时忽略这个警告</p>
+<p><code>__DATA segment</code>以可读写和不可执行的方式映射,里面是会被更改的数据</p>
 
-<blockquote>
-<p>通过 CocoaPods 给项目导入了一些第三方库，这些库里面或多或少会有些警告，想消除这些警告，很简单，只需在 Podfile 中加上这一句 inhibit_all_warnings!，所有通过 CocoaPods 安装的第三库的警告就没有了。</p>
-</blockquote>
+<ul>
+<li>__nl_symbol_ptr 非延迟指针.可执行文件加载同时加载</li>
+<li>__la_symbol_ptr延迟符号指针.延迟用于可执行文件汇总调用未定义的函数，可执行文件里没有包含的函数会延迟加载</li>
+<li>__const 需要重定向的常量  例如 char * const c = “foo”; c指针指向可变的数据</li>
+<li>__bbs不用初始化的静态变量</li>
+<li>__common包含外部全局变量。例如在函数外定义 int i；</li>
+<li>__dyld是section占位符，用于动态链接器</li>
+</ul>
+
+<hr/>
+
+<p>查看<strong>section中的内容</strong></p>
+
+<pre><code class="language-text">xcrun otool -s __TEXT __text a.out
+</code></pre>
+
+<p>显示的为二进制数据，我们可以反汇编,查看汇编信息 -s __TEXT __text 有个缩写 -t</p>
+
+<pre><code class="language-text">xcrun otool -v -t a.out
+</code></pre>
+
+<pre><code class="language-c">a.out:
+(__TEXT,__text) section
+_main:
+0000000100000f50    pushq    %rbp
+0000000100000f51    movq    %rsp, %rbp
+0000000100000f54    subq    $0x20, %rsp
+0000000100000f58    leaq    0x47(%rip), %rax
+0000000100000f5f    movl    $0x0, -0x4(%rbp)
+0000000100000f66    movl    %edi, -0x8(%rbp)
+0000000100000f69    movq    %rsi, -0x10(%rbp)
+0000000100000f6d    movq    %rax, %rdi
+0000000100000f70    movb    $0x0, %al
+0000000100000f72    callq    0x100000f84
+0000000100000f77    xorl    %ecx, %ecx
+0000000100000f79    movl    %eax, -0x14(%rbp)
+0000000100000f7c    movl    %ecx, %eax
+0000000100000f7e    addq    $0x20, %rsp
+0000000100000f82    popq    %rbp
+0000000100000f83    retq
+</code></pre>
+
+<hr/>
+
+<p>使用otool查看可执行文件的头部,即header</p>
+
+<pre><code class="language-c">otool -v -h a.out
+</code></pre>
+
+<p>得到 <strong>头部信息</strong></p>
+
+<pre><code class="language-text">Mach header
+      magic cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+MH_MAGIC_64  X86_64        ALL LIB64     EXECUTE    15       1200   NOUNDEFS DYLDLINK TWOLEVEL PIE
+</code></pre>
+
+<p>mach_header 结构体</p>
+
+<pre><code class="language-text">struct mach_header {
+  uint32_t      magic; 
+  cpu_type_t    cputype; 
+  cpu_subtype_t cpusubtype;
+  uint32_t      filetype;
+  uint32_t      ncmds;
+  uint32_t      sizeofcmds;
+  uint32_t      flags;
+};
+</code></pre>
+
+<p>cputype 和 cpusubtype 规定可执行文件可以在哪些目标架构运行。ncmds 和 sizeofcmds 是加载命令<code>LoadCommand</code></p>
+
+<hr/>
+
+<p><strong>查看LoadCommands</strong>使用命令 <code>otool -v -l a.out</code></p>
+
+<pre><code class="language-c">...
+...
+Load command 1
+      cmd LC_SEGMENT_64
+  cmdsize 472
+  segname __TEXT
+   vmaddr 0x0000000100000000
+   vmsize 0x0000000000001000
+  fileoff 0
+ filesize 4096
+  maxprot rwx
+ initprot r-x
+   nsects 5
+    flags (none)
+Section
+  Section
+  sectname __text
+   segname __TEXT
+      addr 0x0000000100000f50 //代码的位置地址 和上面反汇编的地址是一样的
+      size 0x0000000000000034 
+    offset 3920 //在文件中的偏移量
+     align 2^4 (16)
+    reloff 0
+    nreloc 0
+      type S_REGULAR
+attributes PURE_INSTRUCTIONS SOME_INSTRUCTIONS
+ reserved1 0
+ reserved2 0
+Section
+  sectname __stubs
+   segname __TEXT
+      addr 0x0000000100000f88
+      size 0x0000000000000006
+    offset 3976
+     align 2^1 (2)
+    reloff 0
+    nreloc 0
+      type S_SYMBOL_STUBS
+attributes PURE_INSTRUCTIONS SOME_INSTRUCTIONS
+ reserved1 0 (index into indirect symbol table)
+ reserved2 6 (size of stubs)
+ ...
+ ...
+</code></pre>
+
+<p>加载命令的结构体</p>
+
+<pre><code class="language-text">struct segment_command {
+  uint32_t  cmd;
+  uint32_t  cmdsize;
+  char      segname[16];
+  uint32_t  vmaddr;
+  uint32_t  vmsize;
+  uint32_t  fileoff;
+  uint32_t  filesize;
+  vm_prot_t maxprot;
+  vm_prot_t initprot; //权限 例如r-x
+  uint32_t  nsects;
+  uint32_t  flags;
+};
+</code></pre>
+
+<hr/>
+
+<h2 id="toc_1">逆向Mach-O文件</h2>
+
+<p>需要先安装 tweak，安装越狱可以通过 cydia，不越狱直接打包成 ipa 安装包。越狱的话会安装一个 mobilesubstrate 的动态库，使用 theos 开发工具，非越狱的直接把这个库打包进 ipa 中或者直接修改汇编代码。</p>
+
+<p>Mobilesubstrate 提供了三个模块来方便开发。</p>
+
+<p>MobileHooker：利用 method swizzling 技术定义一些宏和函数来替换系统或者目标函数。<br/>
+MobileLoader：在程序启动时将我们写的破解程序用的第三方库注入进去。怎么注入的呢，还记得先前说的 clang attribute 里的一个 attribute((constructor)) 么，它会在 main 执行之前执行，所以把我们的 hook 放在这里就可以了。<br/>
+Safe mode：类似安全模式，会禁用的改动。<br/>
+先前提到 Mach-O 的结构有 Header，Load commands 和 Data，Mobileloader 会通过修改二进制的 loadCommands 来先把自己注入然后再把我们写的第三方库注入进去，这样破解程序就会放在 Load commands 段里面了。</p>
+
+<p>当然如果是我们自己的程序我们是知道要替换哪些方法的，既然是逆向肯定是别人的程序了，这个时候就需要去先分析下我们想替换方法是哪个，网络相关的分析可以用常用那些抓包工具，比如 Charles，WireShark 等，静态的可以通过砸壳，反汇编，classdump 头文件来分析 app 的架构，对应的常用工具dumpdecrypted，hopper disassembler 和 class_dump。运行时的分析可用工具有运行时控制台cycript，远程断点调试lldb+debugserver，logify。</p>
+
+<ul>
+<li>入门文章可以看看这篇: <a href="https://github.com/zhengmin1989/MyArticles/tree/master/iOS%E5%86%B0%E4%B8%8E%E7%81%AB%E4%B9%8B%E6%AD%8C"> MyArticles/iOS冰与火之歌 at master · zhengmin1989/MyArticles · GitHub</a></li>
+<li><a href="http://blog.imjun.net/posts/convert-iOS-app-to-dynamic-library/">黑科技：把第三方 iOS 应用转成动态库 - Jun’s Blog</a>  <a href="http://blog.imjun.net/posts/restore-symbol-of-iOS-app/"> iOS符号表恢复&amp;逆向支付宝 - Jun’s Blog</a></li>
+</ul>
 
 
 		</div>
@@ -293,8 +336,10 @@ __attribute__((overloadable)) void printArgument(NSNumber *number){
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -306,11 +351,9 @@ __attribute__((overloadable)) void printArgument(NSNumber *number){
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -395,31 +438,31 @@ __attribute__((overloadable)) void printArgument(NSNumber *number){
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

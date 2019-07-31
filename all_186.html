@@ -82,198 +82,132 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15017296324997.html">方法</a></h1>
-			<p class="meta"><time datetime="2017-08-03T11:07:12+08:00" 
-			pubdate data-updated="true">2017/8/3</time></p>
+		  	<h1 class="entry-title"><a href="15541213204265.html">dyld动态链接</a></h1>
+			<p class="meta"><time datetime="2019-04-01T20:22:00+08:00" 
+			pubdate data-updated="true">2019/4/1</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><code>类、结构体、枚举</code>都可以定义实例方法，实例方法为给定类型实例封装了具体的任务和功能</p>
+		  	<p>生成可执行文件后，就是在启动时进行动态链接了,进行符号和地址的绑定。首先会加载所依赖的<code>dylibs</code>，修正地址偏移，因为iOS会用 ASLR 来做地址偏移避免攻击，确定<code>Non-Lazy Pointer</code>地址进行符号地址绑定，加载所有类，最后执行<code>load</code>方法和<code>clang attribute</code> 的<code>constructor</code>修饰函数。</p>
 
-<p><code>类、结构体、枚举</code>也可定义类型方法,类型方法与类型本身关联（与OC中类似）</p>
+<p>每个函数、全局变量和类都是通过符号的形式来定义和使用的，当把目标文件链接为一个执行文件时，链接器在目标文件和动态库之间对符号做解析处理</p>
 
-<h2 id="toc_0">实例方法</h2>
+<p>查看一个可链接文件的符号表<br/>
+<code>xcrun nm -nm SayHi.o</code></p>
 
-<p>实例方法提供访问和修改实例属性的方法或提供与实例目的相关的功能，并以此来支撑实例的功能。<br/>
-<strong>实例方法的语法与函数完全一致</strong></p>
-
-<p>实例方法能够隐式访问它所属类型的所有的其他实例方法和属性</p>
-
-<pre><code class="language-swift">class Counter {
-    var count = 0
-    func increment() {
-        count += 1
-    }
-    func increment(by amount: Int) {
-        count += amount
-    }
-    func reset() {
-        count = 0
-    }
-}
-
-let counter = Counter()
-// 初始计数值是0
-counter.increment()
-// 计数值现在是1
-counter.increment(by: 5)
-// 计数值现在是6
-counter.reset()
-// 计数值现在是0
+<pre><code class="language-c">                 (undefined) external _OBJC_CLASS_$_Foo
+                 (undefined) external _objc_autoreleasePoolPop
+                 (undefined) external _objc_autoreleasePoolPush
+                 (undefined) external _objc_msgSend
+0000000000000000 (__TEXT,__text) external _main
 </code></pre>
 
-<h3 id="toc_1">self属性</h3>
+<ul>
+<li><code>OBJC_CLASS$_Foo</code>表示<code>Foo</code>的<code>OC</code>符号</li>
+<li><code>(undefined) external</code>表示未实现非私有，如果是私有就是<code>non-external</code></li>
+<li><code>external _main</code> 表示<code>main()</code>函数，处理<code>0</code>地址，将要到 <strong>TEXT,</strong>text section</li>
+</ul>
 
-<p>与OC类似,<code>self</code>等同于该类型的实例本身</p>
-
-<pre><code class="language-swift">//所以我们可以这么写
-func increment() {
-    self.count += 1
-}
+<pre><code class="language-text">xcrun nm -nm Foo.o
 </code></pre>
 
-<p>其实没必要写<code>self</code>，使用已知的属性名或者方法名 <code>swift</code>会假定你使用的是当前实例属性或者方法</p>
-
-<p>我们使用的主要场景:<br/>
-实例方法的某个<code>参数名称</code>与实例的某个<code>属性名称</code>相同的时候,此时优先使用参数名,因此我们通过<code>self</code>属性来进行区分使用属性</p>
-
-<pre><code class="language-swift">struct Point {
-    var x = 0.0, y = 0.0
-    func isToTheRightOfX(_ x: Double) -&gt; Bool {
-        return self.x &gt; x//用self来区分属性
-    }
-}
-
-let somePoint = Point(x: 4.0, y: 5.0)
-
-if somePoint.isToTheRightOfX(1.0) {
-    print(&quot;This point is to the right of the line where x == 1.0&quot;)
-}
-// 打印 &quot;This point is to the right of the line where x == 1.0&quot;
+<pre><code class="language-c">                 (undefined) external _NSLog
+                 (undefined) external _OBJC_CLASS_$_NSObject
+                 (undefined) external _OBJC_METACLASS_$_NSObject
+                 (undefined) external ___CFConstantStringClassReference
+                 (undefined) external __objc_empty_cache
+0000000000000000 (__TEXT,__text) non-external -[Foo say]
+0000000000000060 (__DATA,__objc_const) non-external l_OBJC_METACLASS_RO_$_Foo
+00000000000000a8 (__DATA,__objc_const) non-external l_OBJC_$_INSTANCE_METHODS_Foo
+00000000000000c8 (__DATA,__objc_const) non-external l_OBJC_CLASS_RO_$_Foo
+0000000000000110 (__DATA,__objc_data) external _OBJC_METACLASS_$_Foo
+0000000000000138 (__DATA,__objc_data) external _OBJC_CLASS_$_Foo
 </code></pre>
 
-<h3 id="toc_2">实例方法中修改值类型</h3>
+<p>undefine符号表示该文件类未实现的，所以在目标文件和<code>Function framework</code>动态库做链接处理时，链接器尝试解析所有的undefined符号</p>
 
-<p>结构体和枚举是值类型。默认情况下，值类型的属性不能在它的实例方法中被修改</p>
+<p>链接器通过动态库解析成符号会记录是通过哪个动态库解析的，路径也会一起记录。对比下a.out符号表，看看可执行文件是怎么解析符号的</p>
 
-<p>我们可以通过给这个实例方法选择<code>可变(mutating)</code>行为，就可以在方法内部修改改变它的属性;这个方法做的任何改变都会在方法执行结束时写回到原始结构中。方法还可以给它隐含的<code>self</code>属性赋予一个全新的实例，这个新实例在方法结束时会替换现存实例</p>
-
-<pre><code class="language-swift">struct Point {
-    var x = 0.0, y = 0.0
-    mutating func moveByX(deltaX: Double, y deltaY: Double) {
-        x += deltaX
-        y += deltaY
-    }
-}
-var somePoint = Point(x: 1.0, y: 1.0)
-somePoint.moveByX(2.0, y: 3.0)
-print(&quot;The point is now at (\(somePoint.x), \(somePoint.y))&quot;)
-// 打印 &quot;The point is now at (3.0, 4.0)&quot;
+<pre><code class="language-text">xcrun nm -nm a.out
 </code></pre>
 
-<p>注意:<br/>
-不能在结构体类型的常量上调用可变方法，因为其属性不能被改变，即使属性是变量属性</p>
-
-<h3 id="toc_3">在可变方法中给self赋值</h3>
-
-<p>可以在可变方法中给隐含属性<code>self</code>赋予一个新的实例</p>
-
-<pre><code class="language-swift">struct Point1 {
-    var x = 0.0, y = 0.0
-    mutating func moveBy(x deltaX: Double, y deltaY: Double) {
-        self = Point1(x: x + deltaX, y: y + deltaY)
-    }
-}
+<pre><code class="language-c">                 (undefined) external _NSLog (from Foundation)
+                 (undefined) external _OBJC_CLASS_$_NSObject (from CoreFoundation)
+                 (undefined) external _OBJC_METACLASS_$_NSObject (from CoreFoundation)
+                 (undefined) external ___CFConstantStringClassReference (from CoreFoundation)
+                 (undefined) external __objc_empty_cache (from libobjc)
+                 (undefined) external _objc_autoreleasePoolPop (from libobjc)
+                 (undefined) external _objc_autoreleasePoolPush (from libobjc)
+                 (undefined) external _objc_msgSend (from libobjc)
+                 (undefined) external dyld_stub_binder (from libSystem)
+0000000100000000 (__TEXT,__text) [referenced dynamically] external __mh_execute_header
+0000000100000e90 (__TEXT,__text) external _main
+0000000100000f10 (__TEXT,__text) non-external -[Foo say]
+0000000100001130 (__DATA,__objc_data) external _OBJC_METACLASS_$_Foo
+0000000100001158 (__DATA,__objc_data) external _OBJC_CLASS_$_Foo
 </code></pre>
 
-<p>创建一个新的结构体实例赋值给self，替换现在的实例</p>
+<p>undefined 符号 有了更多信息，可以知道在哪个库能够找到<br/>
+通过otool可以找到所需要的库在哪</p>
 
-<p>枚举的可变方法，定义了一个三态开关状态枚举,通过调用<code>next()</code>进行切换状态</p>
-
-<pre><code class="language-swift">enum TriStateSwitch {
-    case Off, Low, High
-    mutating func next() {
-        switch self {
-        case .Off:
-            self = .Low
-        case .Low:
-            self = .High
-        case .High:
-            self = .Off
-        }
-    }
-}
-var ovenLight = TriStateSwitch.Low
-ovenLight.next()
-// ovenLight 现在等于 .High
-ovenLight.next()
-// ovenLight 现在等于 .Off
+<pre><code class="language-text">xcrun otool -L a.out
 </code></pre>
 
-<h2 id="toc_4">类型方法</h2>
-
-<p>定义在类型本身上的方法,即为类型方法<br/>
-通过在方法<code>func</code>前加关键字<code>static</code>，来指定类型方法,通过加关键字<code>class</code>来实现子类重写父类的方法实现</p>
-
-<blockquote>
-<p>在<code>oc</code>中只能为类定义类型方法,但是在<code>swift</code>中可以为类,结构体,枚举定义类方法</p>
-</blockquote>
-
-<p>类型方法在类型上通过点语法调用<br/>
-在类型方法中,<code>self</code>指向类型本身,同样的可以用其来区分同样的类型属性和类型方法参数</p>
-
-<p>在类型方法体中可以调用本类中类型属性或的其他类型方法,调用是可以直接通过类型方法名称或者类型属性名称进行调用,而不用在前面添加类型名称</p>
-
-<pre><code class="language-swift">//检测玩家等级的结构体
-struct LevelTracker {
-    static var highestUnlockedLevel = 1
-    var currentLevel = 1
-    static func unlock(_ level: Int) {
-        if level &gt; highestUnlockedLevel { highestUnlockedLevel = level }
-    }
-    static func isUnlocked(_ level: Int) -&gt; Bool {
-        return level &lt;= highestUnlockedLevel
-    }
-    @discardableResult //
-    mutating func advance(to level: Int) -&gt; Bool {
-        if LevelTracker.isUnlocked(level) {
-            currentLevel = level
-            return true
-        } else {
-            return false
-        }
-    }
-}
+<pre><code class="language-text">a.out:
+    /System/Library/Frameworks/Foundation.framework/Versions/C/Foundation (compatibility version 300.0.0, current version 1349.25.0)
+    /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1238.0.0)
+    /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation (compatibility version 150.0.0, current version 1348.28.0)
+    /usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
 </code></pre>
 
-<pre><code class="language-swift">//玩家类
-class Player {
-    var tracker = LevelTracker()
-    let playerName: String
-    func complete(level: Int) {
-        LevelTracker.unlock(level + 1)
-        tracker.advance(to: level + 1)
-    }
-    init(name: String) {
-        playerName = name
-    }
-}
+<p>dylib这种格式表示是动态链接的，即动态库，编译时不会被编译到执行文件中，在程序执行时才link，这样就不用算到包的大小中,而且也能够不更新执行程序就能更新库</p>
+
+<p>打印什么库被加载了</p>
+
+<pre><code class="language-text">(export DYLD_PRINT_LIBRARIES=; ./a.out )
 </code></pre>
 
-<pre><code class="language-swift">var player = Player(name: &quot;Argyrios&quot;)
-player.complete(level: 1)
-print(&quot;highest unlocked level is now \(LevelTracker.highestUnlockedLevel)&quot;)
-// 打印 &quot;highest unlocked level is now 2&quot;
-
-player = Player(name: &quot;Beto&quot;)
-if player.tracker.advance(to: 6) {
-print(&quot;player is now on level 6&quot;)
-} else {
-print(&quot;level 6 has not yet been unlocked&quot;)
-}
-// 打印 &quot;level 6 has not yet been unlocked&quot;
-
+<pre><code class="language-text">dyld: loaded: /Users/didi/Downloads/./a.out
+dyld: loaded: /System/Library/Frameworks/Foundation.framework/Versions/C/Foundation
+dyld: loaded: /usr/lib/libSystem.B.dylib
+dyld: loaded: /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation
+…
 </code></pre>
+
+<p>因为Fundation库依赖一些其他库,其他库还会依赖更多，因此为了减少处理的时间,系统上的动态链接器会共享缓存,共享的缓存在<code>/var/db/dyld/</code>，这样，当加载Mach-O文件时动态链接器会先检查共享内存是否有。每个进程都会有自己地址空间映射这些共享缓存，可以优化启动速度</p>
+
+<h3 id="toc_0">dyld做了什么事情</h3>
+
+<ul>
+<li>kernel做启动程序初始准备,开始由dyld负责</li>
+<li>基于非常简单的原始栈为kernel设置进程来启动自身</li>
+<li>使用共享缓存来处理递归依赖带来的性能问题,ImageLoader会读取二进制文件,其中包含了我们的类,方法等各种符号</li>
+<li>立即绑定non-lazy的符号并设置用于lazy bind的必要表，将这些库link到执行文件里</li>
+<li>为可执行文件运行静态初始化</li>
+<li>设置参数到可执行文件的 main 函数并调用它</li>
+<li>在执行期间，<strong>通过绑定符号处理对<code>lazily-bound</code>符号存根的调用提供runtime动态加载服务(通过 dl*() 这个 API ），并为gdb和其它调试器提供钩子以获得关键信息。runtime会调用map_images做解析和处理,load_images来调用call_load_methods方法遍历所有加载了的Class，按照继承层级依次调用+load方法；</strong></li>
+<li>在main函数返回后运行 static terminator</li>
+<li>在某些情况下,一旦main函数返回就需要调用<code>libSystem</code>的_exit</li>
+</ul>
+
+<p>查看运行时的调用 map_images 和 调用 +load 方法的相关 runtime 处理可以通过 RetVal 的可debug 的 objc/runtime<a href="https://github.com/RetVal/objc-runtime">RetVal/objc-runtime: objc runtime 706</a> 来进行断点查看调用的runtime方法具体实现。在 debug-objc 下创建一个类，在 +load 方法里断点查看走到这里调用的堆栈如下：</p>
+
+<pre><code class="language-objectivec">0 +[someclass load]
+1  call_class_loads()
+2  ::call_load_methods
+3  ::load_images(const char *path __unused, const struct mach_header *mh)
+4  dyld::notifySingle(dyld_image_states, ImageLoader const*, ImageLoader::InitializerTimingList*)
+11 _dyld_start
+</code></pre>
+
+<p>在<code>load_images</code>方法里断点 p path 可以打印出所有加载的动态链接库，这个方法的<code>hasLoadMethods</code>用于快速判断是否有<code>+load</code>方法。</p>
+
+<p><code>prepare_load_methods</code>这个方法会获取所有类的列表然后收集其中的<code>+load</code>方法，在代码里可以发现<code>Class</code>的<code>+load</code>是先执行的，然后执行<code>Category</code>的<code>+load</code>方法。为什么这样做，原因可以通过<code>prepare_load_methods</code>这个方法看出，在遍历<code>Class</code>的<code>+load</code>方法时会执行<code>schedule_class_load</code>这个方法，这个方法会递归到根节点来满足<code>Class</code>收集完整关系树的需求。<br/>
+最后<code>call_load_methods</code>会创建一个<code>autoreleasePool</code>使用函数指针来动态调用类和<code>Category</code>的<code>+load</code>方法</p>
+
+<p>如果想了解<code>Cocoa</code>的<code>Fundation</code>库可以通过<a href="https://github.com/AaronYi/gnustep-base">GNUStep</a>源码来学习。比如 NSNotificationCenter 发送通知是按什么顺序发送的可以查看 NSNotificationCenter.m 里的 addObserver 方法和 postNotification 方法，看看观察者是怎么添加的和怎么被遍历通知到的</p>
+
+<p>dyld 是开源的： <a href="https://github.com/opensource-apple/dyld**">GitHub - opensource-apple/dyld</a></p>
 
 
 		</div>
@@ -296,8 +230,10 @@ print(&quot;level 6 has not yet been unlocked&quot;)
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -309,11 +245,9 @@ print(&quot;level 6 has not yet been unlocked&quot;)
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -398,31 +332,31 @@ print(&quot;level 6 has not yet been unlocked&quot;)
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

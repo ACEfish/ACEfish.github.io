@@ -82,123 +82,29 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15350771796806.html">CGColorSpace</a></h1>
-			<p class="meta"><time datetime="2018-08-24T10:19:39+08:00" 
-			pubdate data-updated="true">2018/8/24</time></p>
+		  	<h1 class="entry-title"><a href="15446723749030.html">基础</a></h1>
+			<p class="meta"><time datetime="2018-12-13T11:39:34+08:00" 
+			pubdate data-updated="true">2018/12/13</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>表示指定的颜色值</p>
+		  	<h2 id="toc_0">常见编程风格</h2>
 
-<pre><code class="language-objectivec">CGColorSpaceRef
-//一个配置文件，指定如何解释显示的颜色值。
-</code></pre>
-
-<h2 id="toc_0">概述</h2>
-
-<p>颜色空间是多维的，每个维度表示特定的颜色分量。例如，RGB颜色空间的颜色有R,G,B三个三个维度.颜色空间的的每个维度强度由浮点值表示，其范围和含义取决于所讨论的颜色空间</p>
-
-<p>我们通过正确指定的颜色空间可以确保图像具有一致的外观</p>
-
-<p><code>Core Graphics</code>支持多种颜色空间：</p>
+<p>目前已知常用的编程风格:</p>
 
 <ol>
-<li>与设备无关的颜色空间: 校准的色彩空间。 确保在不同设备上现实的颜色相同,</li>
-<li>与设备相关的颜色空间: 依赖于设备的颜色空间与特定设备的颜色表示系统相关联。</li>
-<li>特殊的颜色空间: 使用索引和对应的基色空间 索引颜色空间包含了最多256个颜色表以及每个颜色表的条目都制定基色空间的一种颜色</li>
+<li><p>面向过程</p></li>
+<li><p>面向对象</p></li>
+<li><p>链式编程<br/>
+将多个操作通过 . 连接起来 增加代码的可读性<br/>
+例如: masonry框架</p></li>
+<li><p>响应式编程<br/>
+不考虑事件发生顺序 只考虑结果 发生的事件像流一样传播出去，我们关注数据流和变化传播<br/>
+例如: KVO运用</p></li>
+<li><p>函数式编程<br/>
+将操作写成一系列嵌套的函数或者方法调用，将其他函数作为参数</p>
+<p>其在OC中实质即:向方法中传入block，方法中嵌套block调用，对代码进行聚合管理</p></li>
 </ol>
-
-<h3 id="toc_1">创建与设备无关的颜色空间</h3>
-
-<p>为了创建与设备无关的颜色空间，我们需要提供白色参考点，黑色参考点以及特殊设备的gamma值</p>
-
-<ol>
-<li><p>创建标准的灰度色彩空间</p>
-<p><code>CGColorSpaceCreateCalibratedGray</code></p>
-<p>创建与设备无关的灰度颜色空间，表示相对于参考白点的颜色</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateCalibratedGray(const CGFloat *whitePoint, const CGFloat *blackPoint, CGFloat gamma);
-whitePoint :   3个数字的数组,制定了在CIE 1931 XYZ-space颜色系统中漫反射白点的3刺激值 (对色彩学不熟悉)<br/>
-blackPoint :   3个数字的数组,制定了在CIE 1931 XYZ-space颜色系统中漫反射黑点的3刺激值 <br/>
-gamma ： 适合于成像设备的伽马值。<br/>
-返回一个新的灰色色彩空间,需要主动调用`CGColorSpaceRelease`来释放
-</code></pre></li>
-<li><p>创建校准的RGB颜色空间<br/>
-<code>CGColorSpaceCreateCalibratedRGB</code></p>
-<p>创建与设备无关的RGB颜色空间，表示相对于参考白点的颜色。 此白点基于输出设备可以生成的最白光。 与设备无关的颜色空间中的颜色在不同设备上显示时应该相同，只要设备的功能允许。<br/>
-对于需要详细伽玛的色彩空间，例如sRGB或ITU-R BT.709中使用的分段传递函数，可以使用函数<code>CGColorSpaceCreateICCBased</code>，因为它可以准确地表示这些伽玛曲线。</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateCalibratedRGB(const CGFloat *whitePoint, const CGFloat *blackPoint, const CGFloat *gamma, const CGFloat *matrix);
-whitePoint：<br/>
-blackPoint<br/>
-gamma: 一个由3个数字组成的数组，用于指定颜色空间的红色，绿色和蓝色分量的伽玛值。<br/>
-matrix： 9个数字的数组，指定相对于最终XYZ表示的颜色空间的伽马修改的RGB值的线性解释。<br/>
-返回一个新的RGB色彩空间,需要主动调用`CGColorSpaceRelease`来释放
-</code></pre></li>
-<li><p>创建根绝ICC颜色配置文件的规范<br/>
-<code>CGColorSpaceCreateICCBased</code></p>
-<p>根据ICC颜色配置文件创建基于ICC的色彩空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateICCBased(size_t nComponents, const CGFloat *range, CGDataProviderRef profile, CGColorSpaceRef alternate);
-</code></pre></li>
-<li><p>创建根据 CIE L<em>a</em>b标准与人类感知相关颜色</p>
-<p><code>CGColorSpaceCreateLab</code><br/>
-<code>CIE L * a * b</code>*空间是Munsell颜色表示系统（一种通过色调，值和饱和度或“色度”值指定颜色的系统）的非线性变换，旨在将感知色差与定量距离相匹配 在色彩空间。 L *分量表示亮度值，a *分量表示从绿色到红色的值，b *分量表示从蓝色到黄色的值。 这大致对应于人脑被认为解码颜色的方式。 与设备无关的颜色空间中的颜色在不同设备上显示时应该相同，只要设备的功能允许。</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateLab(const CGFloat *whitePoint, const CGFloat *blackPoint, const CGFloat *range);
-whitePoint:<br/>
-blackPoint:<br/>
-range:一个由4个数字组成的数组，用于指定颜色空间的a *和b *组件的有效值范围。 a *组件表示从绿色到红色的值，b *组件表示从蓝色到黄色的值。
-</code></pre></li>
-</ol>
-
-<h2 id="toc_2">创建通用或者与设备相关的颜色空间</h2>
-
-<p>当在不同的输出设备上显示时，设备颜色空间中的颜色经常显得不同。 因此，在保持颜色很重要时，不建议使用设备颜色空间</p>
-
-<ol>
-<li><p>CMYK颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateDeviceCMYK(void);
-使用完后需要主动调用CGColorSpaceRelease进行释放
-</code></pre></li>
-<li><p>灰度颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateDeviceGray(void);
-</code></pre></li>
-<li><p>RGB颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateDeviceRGB(void);
-</code></pre></li>
-<li><p>特定平台的颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateWithPlatformColorSpace(const void *ref);
-platformColorSpace：指向特定于平台的颜色空间的通用指针。 在macOS中，传递CMProfileRef-a ColorSync配置文件。 Quartz仅在函数调用期间使用此指针（和基础信息）
-</code></pre></li>
-</ol>
-
-<h2 id="toc_3">创建特殊颜色空间</h2>
-
-<ol>
-<li><p>创建索引颜色空间，由颜色查找表指定的颜色组成。</p>
-<p>索引颜色空间包含最多255个条目的颜色表，以及颜色表条目映射到的基色空间。 颜色表中的每个条目都指定基色空间中的一种颜色。 索引颜色空间中的值被视为颜色空间的颜色表的索引。 表中的数据采用网格格式。 （例如，对于RGB颜色空间，值为R，G，B，R，G，B等。）</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateIndexed(CGColorSpaceRef baseSpace, size_t lastIndex, const unsigned char *colorTable);
-baseSpace:颜色索引表基于的 基色颜色空间<br/>
-lastIndex: 索引表的最大下标值 必须&lt;=255<br/>
-colorTable: m *（lastIndex + 1）个字节的数组，其中m是基色空间中的颜色分量数。 每个字节是0到255范围内的无符号整数，它被缩放到基色空间中相应颜色分量的范围。
-</code></pre></li>
-<li><p>创建图案颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreatePattern(CGColorSpaceRef baseSpace);
-baseSpace:对于蒙版图案，底层颜色空间指定要通过蒙版绘制的颜色。 对于彩色图案，您应该传递NULL。
-</code></pre></li>
-<li><p>创建指定类型的Quartz颜色空间</p>
-<p>我们可以使用此函数创建通用的颜色空间等,查看<a href="https://developer.apple.com/documentation/coregraphics/cgcolorspace/color_space_names?language=objc">Color Space Name</a></p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateWithName(CFStringRef name);
-name：颜色空间名称
-</code></pre></li>
-</ol>
-
-<h2 id="toc_4">颜色空间的引用和释放</h2>
-
-<pre><code class="language-objectivec">//减少颜色空间的引用计数
-void CGColorSpaceRelease(CGColorSpaceRef space);
-
-//增加颜色空间的引用计数
-CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space);
-
-</code></pre>
 
 
 		</div>
@@ -221,8 +127,10 @@ CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space);
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -234,11 +142,9 @@ CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space);
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -323,31 +229,31 @@ CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space);
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

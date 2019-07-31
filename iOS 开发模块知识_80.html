@@ -82,238 +82,140 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15541132912435.html">Mach-O文件</a></h1>
-			<p class="meta"><time datetime="2019-04-01T18:08:11+08:00" 
-			pubdate data-updated="true">2019/4/1</time></p>
+		  	<h1 class="entry-title"><a href="14861704124969.html">iOS 滤镜</a></h1>
+			<p class="meta"><time datetime="2017-02-04T09:06:52+08:00" 
+			pubdate data-updated="true">2017/2/4</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>记录编译后的可执行文件、对象代码、共享库、动态加载代码和内存转储的文件格式<br/>
-是二进制数据文件，里面有不同的包含元信息的数据块，比如字节顺序，cpu类型，块大小等。文件内容不可修改，因为在.app目录中有<code>_CodeSignature</code>目录，里面包含了程序代码的签名，这个签名的作用就是保证.app里的文件，包括资源文件，Mach-O文件都不能更改</p>
+		  	<hr/>
 
-<p>Mach-O文件包含三个区域</p>
+<h3 id="toc_0">CIFilter实现滤镜效果</h3>
 
-<ul>
-<li><code>Mach-O Header</code>：包含字节顺序，magic，cpu类型，加载指令的数量等</li>
-<li><code>Load Commands</code>：包含很多内容的表，包括区域的位置，符号表，动态符号表。每个加载指令包含一个元信息，比如指令类型，名称，在二进制中的位置</li>
-<li><code>data</code>: 文件中最大的部分，包含了代码，数据，比如符号表、动态符号表</li>
-</ul>
+<p>参考网址:<a href="http://www.jianshu.com/p/98ba256b034a" title="CoreImage滤镜学习 - 简书">CoreImage滤镜学习</a> </p>
 
-<p><img src="media/15541132912435/15541134009742.jpg" alt="" style="width:415px;"/></p>
+<h5 id="toc_1">CoreImage框架介绍</h5>
 
-<p><img src="media/15541132912435/15541204613989.jpg" alt="" style="width:636px;"/></p>
+<p>1.是一个图片框架 基于<code>OpenGL</code>顶层创建，底层用着色器来处理图像<br/><br/>
+2.利用GPU基于硬件加速来处理图像<br/><br/>
+3.CoreImage中有很多滤镜<br/><br/>
+4.它们能够一次给予一张图像或者视频帧多种视觉效果 -&gt; 滤镜链<br/><br/>
+5.滤镜可以连接起来组成一个滤镜链 把滤镜效果叠加起来处理图像</p>
 
-<h2 id="toc_0">Mach-O 文件的解析</h2>
+<h5 id="toc_2">CIFilter使用介绍</h5>
 
-<p>自己创建一个test.c文件</p>
-
-<pre><code class="language-c">#include &lt;stdio.h&gt;
-int main(int argc, char *argv[])
-{
-    printf(&quot;hi there!\n&quot;);
-    return 0;
+<ol>
+<li><p><code>CIFilter</code>滤镜类中有很多的滤镜效果 这里不一一列举，可以按住command 点击CIFilter 进入接口文件 找到第128行-148行全部都是 效果分类  </p></li>
+<li><p>常用效果<br/><br/>
+我们使用时需要先找到需要的效果类型 比如我们使用<code>kCICategoryDistortionEffect</code>失真的效果类型，有了效果类型我们需要找到里面我们需要的效果.<br/><br/>
+<code>NSLog -&gt; [CIFilter filterNamesInCategory:刚才拷贝的分类];</code><br/><br/>
+比如<code>CIColorMonochrome </code>,然后就可以使用这个滤镜效果<br/><br/>
+<code>CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome”];</code><br/><br/>
+然后打印这个效果中包含了那些属性:<br/><br/>
+<code>NSLog(@&quot;%@&quot;,filter.attributes);</code><br/><br/>
+在里面我们可以看到好多属性，里面是多个字典的形式，找到我们想要修改的属性(key值) 然后在他对应的value里面查看一下他的属性类型，比如我们打印的CIColorMonochrome里面有一个inputColor，他是一个CIColor类型的，有默认值，这里我们写了一个CIColor来给他进行赋值.<br/><br/>
+赋值时需要用kvc的方式:<br/><br/>
+<code>[filter setValue:colorforKey:kCIInputColorKey];</code><br/><br/>
+<img src="media/14861704124969/DraggedImage.png" alt="DraggedImage"/></p></li>
+<li><p>实现滤镜效果代码<br/><br/>
+首先我们创建一个全局变量的UIImageView，然后让他初始化出来,这个就是我们要处理的图片 一般我们从手机相册中取出来:<br/><br/>
+ @interface ViewController ()&lt;UINavigationControllerDelegate,UIImagePickerControllerDelegate&gt;<br/>
+    {<br/>
+         UIImageView *imageView;<br/>
+    }<br/>
+    @end<br/>
+    然后我们需要从相册中取出一张图片,保存起来:<br/>
+    //跳转相册的触发方法<br/>
+    - (void)doit{<br/>
+    UIImagePickerController *vc = [[UIImagePickerController alloc]init];<br/>
+    vc.delegate = self;<br/>
+    [self presentViewController:vc animated:YES completion:nil];</p>
+<pre><code class="language-text">}
+//让图片显示在VC上面的方法<br/>
+- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary&lt;NSString *,id&gt; *)info<br/>
+{<br/>
+NSLog(@&quot;%@&quot;,info);<br/>
+//获得选中的图像<br/>
+UIImage *chooseImage = info[UIImagePickerControllerOriginalImage];<br/>
+//先是在试图空间上<br/>
+imageView.image = chooseImage;<br/>
+[self dismissViewControllerAnimated:YES completion:nil];<br/>
 }
 </code></pre>
-
-<pre><code class="language-c">//将test.c 编译汇编链接成一个可执行文件 未指定输出文件 即默认为a.out
-xcrun clang test.c 
+<p><strong>接下来就是对图片进行滤镜处理:</strong><br/>
+    - (void)addColorFilter{<br/>
+    //CIImage 保存图像数据的类<br/>
+    CIImage <em>inputImage = [CIImage imageWithCGImage:imageView.image.CGImage];<br/>
+    //先打印NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);进去找到需要设置的属性(查询效果分类中都有什么效果)  可以设置什么效果<br/>
+    //然后通过[CIFilter filterWithName:@&quot;&quot;];找到属性   具体效果的属性<br/>
+    //然后通过KVC的方式设置属性<br/>
+    NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);<br/>
+    /</em><br/>
+     1.查询 效果分类中 包含什么效果：filterNamesInCategory:<br/>
+     2.查询 使用的效果中 可以设置什么属性（KVC） attributes</p>
+<pre><code class="language-text"> 使用步骤
+ 1.需要添加滤镜的源图<br/>
+ 2.初始化一个滤镜 设置滤镜（根据查询到的属性来设置）<br/>
+ 3.把滤镜 输出的图像 和滤镜  合并 CIContext -&gt; 得到一个合成之后的图像<br/>
+ 4.展示<br/>
+ */<br/>
+//CIFilter 滤镜类  图片属性进行细节处理的类<br/>
+CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome&quot;];<br/>
+NSLog(@&quot;%@&quot;,filter.attributes);<br/>
+//这个属性是必须赋值的，假如你处理的是图片的话<br/>
+[filter setValue:inputImage forKey:kCIInputImageKey];<br/>
+CIColor *color = [CIColor colorWithRed:1.000 green:0.759 blue:0.592 alpha:1];<br/>
+[filter setValue:color forKey:kCIInputColorKey];<br/>
+//CIContext 上下文是实现对图像处理的具体对象 用来把滤镜和图片合成成为一张图片 滤镜对象输出的图像并不是合成之后的图像，需要使用图片处理的上下文 合并输出图像<br/>
+    CIContext *context = [CIContext contextWithOptions:nil];<br/>
+CIImage *outPutImage = filter.outputImage;<br/>
+//CGImageRef-&gt;图像中的数据<br/>
+    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+    imageView.image = [UIImage imageWithCGImage:image];<br/>
+ }
 </code></pre>
+<p>注意：<br/><br/>
+对滤镜进行赋值之后图片就有了，但是我们这个时候拿出这个图片的时候发现他并没有发生变化，因为它只是单一进行了滤镜处理，还没有和原图片进行一个糅合。使用CIContext找到上下文对他进行糅合：<br/><br/>
+//extent得到图像的尺寸    合并一个包含源图   滤镜效果的图片<br/>
+    //1 滤镜输出的图像    2.合成之后图像的尺寸   图像.extent<br/>
+    CGImageRef imageRef = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+注意:<br/><br/>
+假如你的图片消失了，请检查一下，第一步获取图片的时候一定要获得图片的CGImage再来来获取，不要直接使用imageView.image.CGImage。</p></li>
+<li><p>滤镜链:<br/><br/>
+在给一张图片添加多种滤镜效果的时候，我们把它称为<code>滤镜链</code>，我们再添加滤镜链的时候，就是把图片添加一层滤镜，然后，和原图片糅合处理，然后在处理之后的图片上再添加一层滤镜，并不是直接给一张图片添加了两层路径，所以称为滤镜链。<br/><br/>
+我们继续使用这个图片，在它添加第一层滤镜的时候做一些修改:  </p>
+<pre><code class="language-text">//上接给效果属性赋值
+//把下面注释的给注释掉，然后添加一个方法<br/>
+    //CIContext<br/>
+//    CIContext *context = [CIContext contextWithOptions:nil];<br/>
+CIImage *outPutImage = filter.outputImage;<br/>
+[self addFilterLinkerWithImage:outPutImage];<br/>
+//    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+//    imageView.image = [UIImage imageWithCGImage:image];<br/>
+//再次添加滤镜  -&gt;  形成滤镜链<br/>
+- (void)addFilterLinkerWithImage:(CIImage *)image<br/>
+{<br/>
+CIFilter *filter = [CIFilter filterWithName:@&quot;CISepiaTone&quot;];<br/>
+[filter setValue:image forKey:kCIInputImageKey];<br/>
+CIContext *context = [CIContext contextWithOptions:nil];<br/>
+CGImageRef resultImage = [context createCGImage:filter.outputImage fromRect:filter.outputImage.extent];<br/>
+imageView.image = [UIImage imageWithCGImage:resultImage];<br/>
+//把添加好滤镜效果的图片   保存到相册<br/>
+//不可以直接保存 outputImage  -&gt;  这是一个没有吧滤镜效果和源图合成的图像<br/>
+UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishSavingWithError:contextInfo:), nil);<br/>
+ }<br/>
+//保存图片回调<br/>
+- (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo<br/>
+{<br/>
+    NSLog(@&quot;保存成功&quot;);<br/>
+}
+</code></pre>
+<p>这样就是一个双重的滤镜效果,同时保存到了相册.</p></li>
+</ol>
 
 <hr/>
 
-<p>使用size工具查看a.out中的section</p>
-
-<pre><code class="language-c">xcrun size -x -l -m a.out
-</code></pre>
-
-<pre><code class="language-c">Segment __PAGEZERO: 0x100000000 (vmaddr 0x0 fileoff 0)
-Segment __TEXT: 0x1000 (vmaddr 0x100000000 fileoff 0)
-    Section __text: 0x34 (addr 0x100000f50 offset 3920)
-    Section __stubs: 0x6 (addr 0x100000f84 offset 3972)
-    Section __stub_helper: 0x1a (addr 0x100000f8c offset 3980)
-    Section __cstring: 0xa (addr 0x100000fa6 offset 4006)
-    Section __unwind_info: 0x48 (addr 0x100000fb0 offset 4016)
-    total 0xa6
-Segment __DATA: 0x1000 (vmaddr 0x100001000 fileoff 4096)
-    Section __nl_symbol_ptr: 0x10 (addr 0x100001000 offset 4096)
-    Section __la_symbol_ptr: 0x8 (addr 0x100001010 offset 4112)
-    total 0x18
-Segment __LINKEDIT: 0x1000 (vmaddr 0x100002000 fileoff 8192)
-total 0x100003000
-</code></pre>
-
-<p>有4个segment和多个section<br/>
-当运行时，虚拟内存会把segment映射到进程的地址空间，虚拟内存会避免将全部执行文件全部加载到内存</p>
-
-<p><code>__PAGEZERO sement</code>的大小是4GB，不是文件真实大小，是规定进程地址空间前4GB被映射为不可执行文件，不可读、不可写</p>
-
-<p><code>__TEXT segment</code>包含被执行的代码以只读和可执行的方式映射</p>
-
-<ul>
-<li>__text section 包含编译后的机器码</li>
-<li><strong>stubs和</strong>stub_hepler是给动态链接器dyld使用，可以允许延迟链接</li>
-<li>__csstring 可执行文件中的字符串</li>
-<li>__const不可变的常量</li>
-</ul>
-
-<p><code>__DATA segment</code>以可读写和不可执行的方式映射,里面是会被更改的数据</p>
-
-<ul>
-<li>__nl_symbol_ptr 非延迟指针.可执行文件加载同时加载</li>
-<li>__la_symbol_ptr延迟符号指针.延迟用于可执行文件汇总调用未定义的函数，可执行文件里没有包含的函数会延迟加载</li>
-<li>__const 需要重定向的常量  例如 char * const c = “foo”; c指针指向可变的数据</li>
-<li>__bbs不用初始化的静态变量</li>
-<li>__common包含外部全局变量。例如在函数外定义 int i；</li>
-<li>__dyld是section占位符，用于动态链接器</li>
-</ul>
-
-<hr/>
-
-<p>查看<strong>section中的内容</strong></p>
-
-<pre><code class="language-text">xcrun otool -s __TEXT __text a.out
-</code></pre>
-
-<p>显示的为二进制数据，我们可以反汇编,查看汇编信息 -s __TEXT __text 有个缩写 -t</p>
-
-<pre><code class="language-text">xcrun otool -v -t a.out
-</code></pre>
-
-<pre><code class="language-c">a.out:
-(__TEXT,__text) section
-_main:
-0000000100000f50    pushq    %rbp
-0000000100000f51    movq    %rsp, %rbp
-0000000100000f54    subq    $0x20, %rsp
-0000000100000f58    leaq    0x47(%rip), %rax
-0000000100000f5f    movl    $0x0, -0x4(%rbp)
-0000000100000f66    movl    %edi, -0x8(%rbp)
-0000000100000f69    movq    %rsi, -0x10(%rbp)
-0000000100000f6d    movq    %rax, %rdi
-0000000100000f70    movb    $0x0, %al
-0000000100000f72    callq    0x100000f84
-0000000100000f77    xorl    %ecx, %ecx
-0000000100000f79    movl    %eax, -0x14(%rbp)
-0000000100000f7c    movl    %ecx, %eax
-0000000100000f7e    addq    $0x20, %rsp
-0000000100000f82    popq    %rbp
-0000000100000f83    retq
-</code></pre>
-
-<hr/>
-
-<p>使用otool查看可执行文件的头部,即header</p>
-
-<pre><code class="language-c">otool -v -h a.out
-</code></pre>
-
-<p>得到 <strong>头部信息</strong></p>
-
-<pre><code class="language-text">Mach header
-      magic cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
-MH_MAGIC_64  X86_64        ALL LIB64     EXECUTE    15       1200   NOUNDEFS DYLDLINK TWOLEVEL PIE
-</code></pre>
-
-<p>mach_header 结构体</p>
-
-<pre><code class="language-text">struct mach_header {
-  uint32_t      magic; 
-  cpu_type_t    cputype; 
-  cpu_subtype_t cpusubtype;
-  uint32_t      filetype;
-  uint32_t      ncmds;
-  uint32_t      sizeofcmds;
-  uint32_t      flags;
-};
-</code></pre>
-
-<p>cputype 和 cpusubtype 规定可执行文件可以在哪些目标架构运行。ncmds 和 sizeofcmds 是加载命令<code>LoadCommand</code></p>
-
-<hr/>
-
-<p><strong>查看LoadCommands</strong>使用命令 <code>otool -v -l a.out</code></p>
-
-<pre><code class="language-c">...
-...
-Load command 1
-      cmd LC_SEGMENT_64
-  cmdsize 472
-  segname __TEXT
-   vmaddr 0x0000000100000000
-   vmsize 0x0000000000001000
-  fileoff 0
- filesize 4096
-  maxprot rwx
- initprot r-x
-   nsects 5
-    flags (none)
-Section
-  Section
-  sectname __text
-   segname __TEXT
-      addr 0x0000000100000f50 //代码的位置地址 和上面反汇编的地址是一样的
-      size 0x0000000000000034 
-    offset 3920 //在文件中的偏移量
-     align 2^4 (16)
-    reloff 0
-    nreloc 0
-      type S_REGULAR
-attributes PURE_INSTRUCTIONS SOME_INSTRUCTIONS
- reserved1 0
- reserved2 0
-Section
-  sectname __stubs
-   segname __TEXT
-      addr 0x0000000100000f88
-      size 0x0000000000000006
-    offset 3976
-     align 2^1 (2)
-    reloff 0
-    nreloc 0
-      type S_SYMBOL_STUBS
-attributes PURE_INSTRUCTIONS SOME_INSTRUCTIONS
- reserved1 0 (index into indirect symbol table)
- reserved2 6 (size of stubs)
- ...
- ...
-</code></pre>
-
-<p>加载命令的结构体</p>
-
-<pre><code class="language-text">struct segment_command {
-  uint32_t  cmd;
-  uint32_t  cmdsize;
-  char      segname[16];
-  uint32_t  vmaddr;
-  uint32_t  vmsize;
-  uint32_t  fileoff;
-  uint32_t  filesize;
-  vm_prot_t maxprot;
-  vm_prot_t initprot; //权限 例如r-x
-  uint32_t  nsects;
-  uint32_t  flags;
-};
-</code></pre>
-
-<hr/>
-
-<h2 id="toc_1">逆向Mach-O文件</h2>
-
-<p>需要先安装 tweak，安装越狱可以通过 cydia，不越狱直接打包成 ipa 安装包。越狱的话会安装一个 mobilesubstrate 的动态库，使用 theos 开发工具，非越狱的直接把这个库打包进 ipa 中或者直接修改汇编代码。</p>
-
-<p>Mobilesubstrate 提供了三个模块来方便开发。</p>
-
-<p>MobileHooker：利用 method swizzling 技术定义一些宏和函数来替换系统或者目标函数。<br/>
-MobileLoader：在程序启动时将我们写的破解程序用的第三方库注入进去。怎么注入的呢，还记得先前说的 clang attribute 里的一个 attribute((constructor)) 么，它会在 main 执行之前执行，所以把我们的 hook 放在这里就可以了。<br/>
-Safe mode：类似安全模式，会禁用的改动。<br/>
-先前提到 Mach-O 的结构有 Header，Load commands 和 Data，Mobileloader 会通过修改二进制的 loadCommands 来先把自己注入然后再把我们写的第三方库注入进去，这样破解程序就会放在 Load commands 段里面了。</p>
-
-<p>当然如果是我们自己的程序我们是知道要替换哪些方法的，既然是逆向肯定是别人的程序了，这个时候就需要去先分析下我们想替换方法是哪个，网络相关的分析可以用常用那些抓包工具，比如 Charles，WireShark 等，静态的可以通过砸壳，反汇编，classdump 头文件来分析 app 的架构，对应的常用工具dumpdecrypted，hopper disassembler 和 class_dump。运行时的分析可用工具有运行时控制台cycript，远程断点调试lldb+debugserver，logify。</p>
-
-<ul>
-<li>入门文章可以看看这篇: <a href="https://github.com/zhengmin1989/MyArticles/tree/master/iOS%E5%86%B0%E4%B8%8E%E7%81%AB%E4%B9%8B%E6%AD%8C"> MyArticles/iOS冰与火之歌 at master · zhengmin1989/MyArticles · GitHub</a></li>
-<li><a href="http://blog.imjun.net/posts/convert-iOS-app-to-dynamic-library/">黑科技：把第三方 iOS 应用转成动态库 - Jun’s Blog</a>  <a href="http://blog.imjun.net/posts/restore-symbol-of-iOS-app/"> iOS符号表恢复&amp;逆向支付宝 - Jun’s Blog</a></li>
-</ul>
+<h3 id="toc_3">系统自带简单的滤镜效果</h3>
 
 
 		</div>
@@ -336,8 +238,10 @@ Safe mode：类似安全模式，会禁用的改动。<br/>
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -349,11 +253,9 @@ Safe mode：类似安全模式，会禁用的改动。<br/>
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -438,31 +340,31 @@ Safe mode：类似安全模式，会禁用的改动。<br/>
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

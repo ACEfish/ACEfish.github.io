@@ -82,138 +82,244 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15319012648780.html">高级特性</a></h1>
-			<p class="meta"><time datetime="2018-07-18T16:07:44+08:00" 
-			pubdate data-updated="true">2018/7/18</time></p>
+		  	<h1 class="entry-title"><a href="15331071952550.html">进程&&线程</a></h1>
+			<p class="meta"><time datetime="2018-08-01T15:06:35+08:00" 
+			pubdate data-updated="true">2018/8/1</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">切片</h2>
-
-<p>list的切片</p>
-
-<pre><code class="language-python">listTest = list(range(100))
-
-listTest[:10]  # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-listTest[:10:2] #[0, 2, 4, 6, 8]
-listTest[-10:] # [90, 91, 92, 93, 94, 95, 96, 97, 98, 99]
-listTest[:] # 拷贝一个新的list 相当于深拷贝
+		  	<pre><code class="language-python">print(&#39;Process (%s) start...&#39; % os.getpid())
+# Only works on Unix/Linux/Mac:
+pid = os.fork()
+if pid == 0:
+    #子进程
+    print(&#39;I am child process (%s) and my parent is %s.&#39; % (os.getpid(), os.getppid()))
+else:
+    print(&#39;I (%s) just created a child process (%s).&#39; % (os.getpid(), pid))
+    
+# Process (28301) start...
+# I (28301) just created a child process (28302).
+# I am child process (28302) and my parent is 28301.
 </code></pre>
 
-<p>元组:<br/>
-元组的切片结果 仍为不可变的元组</p>
+<h2 id="toc_0">multiprocessing（多进程）</h2>
 
-<pre><code class="language-python">(0, 1, 2, 3, 4, 5)[:3] #(0, 1, 2)
+<p>因为在windows是没有<code>fork</code>调用的，所以为了跨平台支持,可以使用<code>multiprocessing</code>跨平台的多进程模块<br/>
+<code>multiprocessing</code>模块提供了一个<code>Process</code>类来代表一个进程对象</p>
+
+<pre><code class="language-python">
+from multiprocessing import Process
+import os
+
+def run_proc(name):
+    print(&#39;Run child process %s (%s)...&#39; % (name, os.getpid()))
+
+print(&quot;parent process %s&quot; % os.getpid())
+p=Process(target=run_proc, args=(&quot;test&quot;,)) #创建子进程
+print(&quot;child process will start&quot;)  
+p.start()# 启动子进程
+p.join() # 等待子进程结束后继续运行
+print(&quot;child process end&quot;)
+
+# parent process 28492
+# child process will start
+# Run child process test (28493)...
+# child process end
+
 </code></pre>
-
-<p>字符串也可看做一种list，可执行切片</p>
-
-<pre><code class="language-python">&#39;ABCDEFG&#39;[:3] #&#39;ABC&#39;
-&#39;ABCDEFG&#39;[::2] #&#39;ACEG&#39;
-</code></pre>
-
-<h2 id="toc_1">迭代</h2>
-
-<pre><code class="language-python">#遍历dict
-for key in dict2: #遍历所有键
-for key in dict2.values(): #遍历所有值
-for key in dict2.items(): #遍历所有键值对，返回为元组
-    print(key)
-</code></pre>
-
-<p>当遍历时需要下标时,用enumerate()方法可以获取索引</p>
-
-<pre><code class="language-python">for x, value in enumerate(dict2):
-    print(x, value)
-</code></pre>
-
-<h2 id="toc_2">列表生成器</h2>
-
-<pre><code class="language-python">L1=list(range(1,11))
-print(L1) #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-L2=[x*x for x in L1]
-print(L2) #[1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
-L3=[x*x for x in L1 if x%2 == 0]
-print(L3) # [4, 16, 36, 64, 100]
-L4=[str(x1)+str(x2) for x1 in list(range(3)) for x2 in list(range(3,6))]
-print(L4) # [&#39;03&#39;, &#39;04&#39;, &#39;05&#39;, &#39;13&#39;, &#39;14&#39;, &#39;15&#39;, &#39;23&#39;, &#39;24&#39;, &#39;25&#39;]
-</code></pre>
-
-<h2 id="toc_3">生成器 generator</h2>
-
-<p>在列表中一遍循环一边计算的机制,称为生成器：<code>generator</code></p>
-
-<p>创建生成器:</p>
-
-<ol>
-<li><p>方法一: 通过将列表生成器的<code>[]</code>改为<code>()</code></p>
-<pre><code class="language-python"> LI1=list(range(1,5))
-LI2=(x*x for x in LI1)<br/>
-#通过next()方法来获取生成器中的下一个值 直到最后一个元素抛出错误<br/>
-print(next(LI2))<br/>
-print(next(LI2))<br/>
-print(next(LI2))<br/>
-print(next(LI2))<br/>
-print(next(LI2)) # 抛出 StopIteration错误<br/>
-# 通过next()方法太麻烦,我们应该用 for 循环 不用关心StopIteration错误<br/>
-for x in LI2:<br/>
-    print(x)<br/>
-# 1<br/>
-# 4<br/>
-# 9<br/>
-# 16
-</code></pre></li>
-<li><p>方法二: 函数中包含<code>yield</code>关键字,为一个generator函数<br/>
-generator函数在遇到yield关键字时会中断，返回yeild后的值,next之后会继续执行,直到没有yeild就会报错<br/>
-当然也可以通过<code>for</code>循环来获取</p>
-<pre><code class="language-python">def my_generatorFuc():
-    print(&quot;step1&quot;)<br/>
-    yield (1)<br/>
-    print(&quot;step2&quot;)<br/>
-    yield (5)<br/>
-    print(&quot;step3&quot;)<br/>
-    yield(10)<br/>
-    return 100
-</code></pre></li>
-</ol>
 
 <blockquote>
-<p>采用<code>next()</code>可以当遇到<code>StopIteration</code>错误可以获取到<code>generator</code>函数的<code>return</code>值,返回值包含在<code>StopIteration</code>的<code>value</code>中<br/>
-采用<code>for</code>循环获取不到函数的返回值,因此需要捕获<code>StopIteration</code>错误</p>
+<p><code>join()</code>方法可以等待子进程结束后再继续往下运行，通常用于进程间的同步。</p>
 </blockquote>
 
-<h2 id="toc_4">迭代器</h2>
+<h3 id="toc_1">Pool（进程池）</h3>
 
-<p> 对于可以用for循环的对象称为可迭代对象:<code>Iterable</code><br/>
- 目前常用的可迭代对象有:<br/>
- 1. list、tuple、dict、set、str<br/>
- 2. generator:生成器和带<code>yield</code>的generator函数<br/>
- <br/>
- 可以被next()函数调用并不断返回下一个值的对象称为迭代器：<code>Iterator</code><br/>
- 生成器都是迭代器,但是list、tuple、dict、set、str等是可迭代对象但不是迭代器<br/>
- </p>
+<pre><code class="language-python">from multiprocessing import Pool
+import os, time, random
 
-<blockquote>
-<p><code>Iterator</code>对象表示的是一个数据流，是一个惰性序列,不能事先知道序列长度，只能通过需要是<code>next()</code>计算下一个序列值</p>
+def long_time_task(name):
+    print(&#39;Run task %s (%s)...&#39; % (name, os.getpid()))
+    start = time.time()
+    time.sleep(random.random() * 3)
+    end = time.time()
+    print(&#39;Task %s runs %0.2f seconds.&#39; % (name, (end - start)))
 
-<p><code>for</code>循环本质上是通过不停调用<code>next()</code>来实现的</p>
-
-<p>list、tuple、dict、set、str等可迭代对象可以通过<code>iter()</code>函数获得一个<code>Iterator</code>对象</p>
-</blockquote>
-
-<pre><code class="language-python">it = iter([1, 2, 3, 4, 5])
-# 循环:
-while True:
-    try:
-        # 获得下一个值:
-        x = next(it)
-    except StopIteration:
-        # 遇到StopIteration就退出循环
-        break
+if __name__==&#39;__main__&#39;:
+    print(&#39;Parent process %s.&#39; % os.getpid())
+    p = Pool(4) #设置同事可以执行4个进程
+    for i in range(5):
+        p.apply_async(long_time_task, args=(i,))
+    print(&#39;Waiting for all subprocesses done...&#39;)
+    p.close() # 调用close()之后就不能继续添加新的Process了
+    p.join()  # 对Pool对象调用join()会等待所有子进程执行完毕，在
+    print(&#39;All subprocesses done.&#39;)
 </code></pre>
 
-<p> <br/>
- </p>
+<h3 id="toc_2">subprocess 子进程</h3>
+
+<p><code>subprocess</code>模块 允许我们创建子进程,连接其输入、输出、错误通道</p>
+
+<pre><code class="language-python">import subprocess
+
+print(&#39;$ nslookup www.python.org&#39;)
+r = subprocess.call([&#39;nslookup&#39;, &#39;www.python.org&#39;])
+# 相当于在命令行执行  nslookup www.python.org
+print(&#39;Exit code:&#39;, r)
+
+
+# 子进程还需要输入，则可以通过communicate()方法输入：
+import subprocess
+
+print(&#39;$ nslookup&#39;)
+p = subprocess.Popen([&#39;nslookup&#39;], stdin=·, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+output, err = p.communicate(b&#39;set q=mx\npython.org\nexit\n&#39;)
+print(output.decode(&#39;utf-8&#39;))
+print(&#39;Exit code:&#39;, p.returncode)
+
+</code></pre>
+
+<h3 id="toc_3">进程间通信</h3>
+
+<p>进程间通信，可以通过<code>mutiprocessing</code>提供的<code>Queue</code>和<code>pipes</code>等方式交换数据</p>
+
+<pre><code class="language-python"># 一个queue 可以往里 读写数据 实现数据交换共享
+
+from multiprocessing import Process, Queue
+import os, time, random
+
+# 写数据进程执行的代码:
+def write(q):
+    print(&#39;Process to write: %s&#39; % os.getpid())
+    for value in [&#39;A&#39;, &#39;B&#39;, &#39;C&#39;]:
+        print(&#39;Put %s to queue...&#39; % value)
+        q.put(value)
+        time.sleep(random.random())
+
+# 读数据进程执行的代码:
+def read(q):
+    print(&#39;Process to read: %s&#39; % os.getpid())
+    while True:
+        value = q.get(True)
+        print(&#39;Get %s from queue.&#39; % value)
+
+if __name__==&#39;__main__&#39;:
+    # 父进程创建Queue，并传给各个子进程：
+    q = Queue()
+    pw = Process(target=write, args=(q,))
+    pr = Process(target=read, args=(q,))
+    # 启动子进程pw，写入:
+    pw.start()
+    # 启动子进程pr，读取:
+    pr.start()
+    # 等待pw结束:
+    pw.join()
+    # pr进程里是死循环，无法等待其结束，只能强行终止:
+    pr.terminate()
+</code></pre>
+
+<blockquote>
+<p>父进程所有Python对象都必须通过pickle序列化再传到子进程去</p>
+</blockquote>
+
+<h2 id="toc_4">多线程</h2>
+
+<p>我们通常使用<code>threading</code>模块操作线程</p>
+
+<p>启动线程: 就是将要执行的任务任务函数传入创建<code>Thread</code>实例，然后<code>start()</code>开始执行</p>
+
+<pre><code class="language-python">import time, threading
+
+# 新线程执行的代码:
+def loop():
+    print(&#39;thread %s is running...&#39; % threading.current_thread().name)
+    n = 0
+    while n &lt; 5:
+        n = n + 1
+        print(&#39;thread %s &gt;&gt;&gt; %s&#39; % (threading.current_thread().name, n))
+        time.sleep(1)
+    print(&#39;thread %s ended.&#39; % threading.current_thread().name)
+
+print(&#39;thread %s is running...&#39; % threading.current_thread().name)
+#
+t = threading.Thread(target=loop, name=&#39;LoopThread&#39;)
+t.start()
+t.join()
+print(&#39;thread %s ended.&#39; % threading.current_thread().name)
+</code></pre>
+
+<blockquote>
+<p><code>Python</code>的<code>threading</code>模块有个<code>current_thread()</code>函数，它永远返回当前线程的实例。主线程实例的名字叫<code>MainThread</code>，子线程的名字在创建时指定，我们用<code>LoopThread</code>命名子线程。名字仅仅在打印时用来显示，完全没有其他意义，如果不起名字Python就自动给线程命名为Thread-1，Thread-2</p>
+</blockquote>
+
+<h3 id="toc_5">Lock</h3>
+
+<p>避免多线程对数据读写的冲突，需要lock</p>
+
+<pre><code class="language-python">balance = 0
+lock = threading.Lock()
+
+def run_thread(n):
+    for i in range(100000):
+        # 先要获取锁:
+        lock.acquire() #当有多个线程执行时，只有一个县城能成功获取锁
+        try:
+            # 放心地改吧:
+            change_it(n)
+        finally:
+            # 改完了一定要释放锁:
+            lock.release()
+</code></pre>
+
+<h3 id="toc_6">多核问题</h3>
+
+<p>Python由于历史遗留问题,同一进程的不同线程其实只能用到一个cpu核,即使启动了多个线程</p>
+
+<blockquote>
+<p>Python的线程虽然是真正的线程，但解释器执行代码时，有一个GIL锁：Global Interpreter Lock，任何Python线程执行前，必须先获得GIL锁，然后，每执行100条字节码，解释器就自动释放GIL锁，让别的线程有机会执行。这个GIL全局锁实际上把所有线程的执行代码都给上了锁，所以，多线程在Python中只能交替执行，即使100个线程跑在100核CPU上，也只能用到1个核。</p>
+
+<p>Python虽然不能利用多线程实现多核任务，但可以通过多进程实现多核任务。多个Python进程有各自独立的GIL锁，互不影响。</p>
+</blockquote>
+
+<h2 id="toc_7">ThreadLocal</h2>
+
+<p>多线程中，为不同线程绑定不同数据时,可以使用<code>ThreadLocal</code></p>
+
+<pre><code class="language-python">import threading
+
+# 创建全局ThreadLocal对象:
+local_school = threading.local()
+
+def process_student():
+    # 获取当前线程关联的student:
+    std = local_school.student
+    print(&#39;Hello, %s (in %s)&#39; % (std, threading.current_thread().name))
+
+def process_thread(name):
+    # 绑定ThreadLocal的student:
+    local_school.student = name
+    process_student()
+
+t1 = threading.Thread(target= process_thread, args=(&#39;Alice&#39;,), name=&#39;Thread-A&#39;)
+t2 = threading.Thread(target= process_thread, args=(&#39;Bob&#39;,), name=&#39;Thread-B&#39;)
+t1.start()
+t2.start()
+t1.join()
+t2.join()
+</code></pre>
+
+<p>每个线程可以读写<code>ThreadLocal</code>对象的属性,但是互不影响，只操作自己线程对应值，互不干扰，也不用管理锁的问题</p>
+
+<blockquote>
+<p>一个ThreadLocal变量虽然是全局变量，但每个线程都只能读写自己线程的独立副本，互不干扰。ThreadLocal解决了参数在一个线程中各个函数之间互相传递的问题。</p>
+</blockquote>
+
+<h3 id="toc_8">分布式进程</h3>
+
+<p>在<code>Thread</code>和<code>Process</code>中应该优先选择<code>Process</code>，因为其更稳定，而且可以分布到多台机器上，而<code>Thread</code>只能分不到同一台机器的多个CPU上</p>
+
+<p>在<code>mutiprocessing</code>的子模块<code>manager</code>支持把多进程分布到多台机器</p>
+
+<p>一个服务进程可以作为调度者，将任务分布到其他多个进程中，依靠网络通信。由于managers模块封装很好，不必了解网络通信的细节，就可以很容易地编写分布式多进程程序。</p>
 
 
 		</div>
@@ -236,8 +342,10 @@ while True:
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -249,11 +357,9 @@ while True:
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -338,31 +444,31 @@ while True:
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

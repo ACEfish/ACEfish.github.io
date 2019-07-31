@@ -82,223 +82,154 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15548649461552.html">dispatch_block_t</a></h1>
-			<p class="meta"><time datetime="2019-04-10T10:55:46+08:00" 
-			pubdate data-updated="true">2019/4/10</time></p>
+		  	<h1 class="entry-title"><a href="14901598468257.html">隐式动画</a></h1>
+			<p class="meta"><time datetime="2017-03-22T13:17:26+08:00" 
+			pubdate data-updated="true">2017/3/22</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h4 id="toc_0">dispatch_block_t</h4>
+		  	<p>我们在前面介绍了图层的相关知识,现在我们开始学本次的重点<strong>动画</strong><br/>
+<strong>注意</strong><br/>
+<code>CALayer</code>呈现图层&lt;--&gt;模型图层<br/>
+我们在创建<code>CALayer</code>对象存储了我们设置的属性值（只是存值所以是模型图层）,但是模型图层显示或者说是呈现时就会基于模型图层创建一个呈现图层,然后我们所能看到的都是基于这个呈现图层的.</p>
 
-<p><code>typedef void (^dispatch_block_t)(void);</code></p>
+<h3 id="toc_0">事务</h3>
 
-<p>注意:<br/>
-声明的block是分配在stack上的</p>
+<p><code>Core Animation</code>基于一个假设，说屏幕上的任何东西都可以（或者可能）做动画。动画并不需要你在<code>Core Animation</code>中手动打开，相反需要明确地关闭，否则他会一直存在。</p>
 
-<pre><code class="language-objectivec">//下面写法是错误的
-dispatch_block_t block;
-if (x) {
-block = ^{ printf(&quot;true\n&quot;); };
-} else {
-block = ^{ printf(&quot;false\n&quot;); };
+<p>当我们改变了<code>CALayer</code>的一个可做动画的属性时,但是他并不会立刻在屏幕上显示出来。它默认会从先前的值平滑过渡到新值,不需要做额外操作。这就是<code>隐式动画</code>,之所以叫<strong><code>隐式</code>是因为我们并没有指定任何动画的类型</strong>.我们改变属性之后是<code>Core Animation</code>来决定如何并且何时去做动画（这是隐式当然也可以显式动画）.</p>
+
+<p>隐式动画的动画执行的时间取决于当前<code>事务</code>的设置，动画类型取决于图层行为。</p>
+
+<p><code>事务</code>是<strong><code>Core Animation</code>用来包含一系列属性动画集合的机制</strong>，当用事务去改变可以做动画的图层属性都不会立刻变化,而是等到这个事务提交之后,才开始图层属性过渡到新值的动画.</p>
+
+<p>我们用<code>CATransaction</code>类来管理<code>事务</code>,这个类管理的事务并不能访问,也没有属性或者实例方法，并且也不能用<code>+alloc</code> 和<code>-init</code>方法创建它。但是可以用 <code>+begin</code> 和 <code>+commit</code> 分别来入栈或者出栈。</p>
+
+<p>任何可以做动画的图层属性的改变都会被添加到目前<code>栈顶</code>的<code>事务</code>中.我们可以用<code>+setAnimationDuration:</code>设置 或者<code>+animationDuration</code>获取当前的栈顶事务的动画时间(默认0.25秒)</p>
+
+<p><code>Core Animation</code>会在每个<code>run loop</code>周期中自动开始一次新的事务,，即使你不显式的用<code>[CATransaction begin]</code> 开始一次事务，任何在一次<code>run loop</code>循环中属性的改变都会被集中起来，然后做一次0.25秒的动画。  </p>
+
+<pre><code class="language-objectivec">/*我们在设置某个属性动画的事务属性（比如时间）时,我们通常会自己创建一个新的事务,
+否则会有可能影响到事务中其他属性动画*/
+[CATransaction begin];
+//set the animation duration to 1 second
+[CATransaction setAnimationDuration:1.0];
+
+self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
+//commit the transaction
+[CATransaction commit];
+</code></pre>
+
+<p><strong>补充</strong><br/>
+<code>UIView</code>有两个方法，<code>+beginAnimations:context:</code>和<code>+commitAnimations</code>，就是通过设置 <code>CATransaction</code>实现的,至于UIView的另外一个<code>+animateWithDuration:animations:</code>，只是将这些属性动画做成了一个block以避免开发者由于对<code>+begin</code> 和<code>+commit</code> 匹配的失误.</p>
+
+<h3 id="toc_1">完成块</h3>
+
+<p>我们在做基于<code>UIView</code>的<code>block</code>动画时可以在动画结束时提供一个完成动作. <br/>
+<code>CATranscation</code>接口提供的<code>+setCompletionBlock:</code>方法也有同样的功能。</p>
+
+<pre><code class="language-objectivec">[CATransaction begin];
+[CATransaction setAnimationDuration:1.0];
+[CATransaction setCompletionBlock:^{
+//rotate the layer 90 degrees
+CGAffineTransform transform = self.colorLayer.affineTransform;
+transform = CGAffineTransformRotate(transform, M_PI_2);
+self.colorLayer.affineTransform = transform;
+}];
+self.colorLayer.backgroundColor = [UIColor redColor];
+[CATransaction commit];
+/**
+注意旋转动画要比颜色渐变快得多，这是因为完成块是在颜色渐变的事务提交并出
+栈之后才被执行，于是，用默认的事务做变换，默认的时间也就变成了0.25秒。
+*/
+</code></pre>
+
+<h3 id="toc_2">图层行为</h3>
+
+<p><code>UIKit</code>默认禁用了隐式动画.即UIView把它关联的图层属性改编动画特性关闭了</p>
+
+<p>我们先来看一下<code>隐式动画</code>是怎么实现的:<br/>
+<strong>我们把改变属性时<code>CALayer</code>自动应用的动画称作<code>行为</code>.</strong><br/>
+当我们改变了<code>CALayer</code>的属性时，会调用<code>-actionForKey:</code>方法，传递属性的名称。然后</p>
+
+<ul>
+<li>图层首先检测它是否有委托，并且是否实现 CALayerDelegate 协议指定的 <code>-actionForLayer:forKey</code> 方法。如果有，直接调用并返回结果。</li>
+<li>如果没有委托，或者委托没有实现<code>-actionForLayer:forKey</code>方法，图层接着检查包含属性名称对应行为映射的<code>actions</code>字典。</li>
+<li>如果<code>actions</code>字典 没有包含对应的属性，那么图层接着在它的<code>style</code>字典接着搜索属性名。</li>
+<li>最后，如果在 <code>style</code> 里面也找不到对应的行为，那么图层将会直接调用定义了每个属性的标准行为的<code>-defaultActionForKey:</code>方法。</li>
+</ul>
+
+<p><code>-actionForKey:</code>是用来找这个属性对应的动画(action),要么返回空（这种情况下将不会有动画发生），要么是<code>CAAction</code>协议对应的对象，最后<code>CALayer</code>拿这个结果去对先前和当前的值做动画。</p>
+
+<p>UIKit禁用隐式动画的方法就是,：每个<code>UIView</code> 对它关联的图层都扮演了一个委托，并且提供了<code>-actionForLayer:forKey</code> 的实现方法。当不在一个动画块的实现中，<code>UIView</code> 对所有图层行为返回 <code>nil</code>，但是在动画<code>block</code>范围之内，它就返回了一个非空值。</p>
+
+<p><strong>注意</strong></p>
+
+<ol>
+<li>这里所说的关联是指UIView关联的图层即宿主图层,而对于其他add的图层并不是关联的图层所以是没有禁用隐式动画的</li>
+</ol>
+
+<p>当然对于<code>CATransacition</code>我们可以用<code>+setDisableActions:</code>来选择关闭/打开隐式动画<br/>
+<code>[CATransaction setDisableActions:YES]; //关闭隐式动画</code></p>
+
+<ul>
+<li>UIView 关联的图层禁用了隐式动画，对这种图层做动画的办法就是使用 <code>UIView</code> 的动画函数（而不是依赖 <code>CATransaction</code> ），或者继承 <code>UIView</code> ，并覆盖<code>-actionForLayer:forKey:</code>方法，或者直接创建一个显式动画（具体细节见第八章）。</li>
+<li>对于单独存在的图层，我们可以通过实现图层的<code>-actionForLayer:forKey:</code>委托方法，或者提供一个<code>actions</code> 字典来控制隐式动画(actions 字典可以写更少的代码)。</li>
+</ul>
+
+<p><code>行为</code>通常是一个被Core Animation隐式调用的显式动画对象。<br/>
+我们来改变一个图层属性的行为:</p>
+
+<pre><code class="language-objectivec">/**
+我们使用的是一个实现了 CATransaction 的实例，叫做推进过渡
+改变了CALayer的背景颜色属性行为.改变背景颜色，新的色块都是从左侧滑入，
+而不是默认的渐变效果
+*/
+CATransition *transition = [CATransition animation];
+transition.type = kCATransitionPush;
+transition.subtype = kCATransitionFromLeft;
+self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
+//add it to our view
+[self.layerView.layer addSublayer:self.colorLayer];
+</code></pre>
+
+<h3 id="toc_3">呈现与模型</h3>
+
+<p>我们在改变一个<code>CALayer</code>的属性时，属性值确实会立即更新(这个属性值在设置时就会立刻生效)但是苹果并没有立即呈现出来。</p>
+
+<p>当设置<code>CALayer</code>的属性，实际上是在定义当前事务结束之后图层如何显示的<code>模型</code>。而<code>Core Animation</code>则负责根据图层<code>行为</code>和<code>事务设置</code>去更新视图的这些属性在屏幕上的状态.</p>
+
+<p>我们的手机屏幕是每60秒重绘一次,如果我们要做的动画时长大于1/60,就需要在新值之前对屏幕重绘,即知道当前属性值.<strong>每个图层属性的显示值都被存储在一个叫做呈现图层的独立图层当中</strong>,可以通过<code>-presentationLayer</code>方法来访问.</p>
+
+<p>图层树(模型图层树)&lt;---&gt;呈现树:呈现树通过图层树中所有图层的呈现图层所形成。只有在图层首次在屏幕上呈现时候才会被创建,在之前获取呈现图层时会返回nil的.</p>
+
+<p>在模型图层上调用<code>- presentationLayer</code>能获取呈现图层,同样的调用<code>–modelLayer</code>是会获取模型图层(通常是self).</p>
+
+<p><img src="media/14901598468257/14903368056823.jpg" alt=""/></p>
+
+<p>通常我们只需要和模型图层交互即可让<code>Core Animation</code>更新显示.<br/>
+但是以下两种情况下呈现图层会很有效：  </p>
+
+<ul>
+<li>实现一个基于定时器的动画,而不仅仅是基于事务的动画，这个时候准确地知道在某一时刻图层显示在什么位置就会对正确摆放图层很有用了。</li>
+<li>如果你想让你做动画的图层响应用户输入，你可以使用<code>-hitTest:</code>方法来判断指定图层是否被触摸，这时候对呈现图层而不是模型图层调用 <code>-hitTest:</code> 会显得更有意义</li>
+</ul>
+
+<pre><code class="language-objectivec">- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    //get the touch point
+    CGPoint point = [[touches anyObject] locationInView:self.view];
+    //check if we&#39;ve tapped the moving layer
+    if ([self.colorLayer.presentationLayer hitTest:point]) {
+        self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
+    } else {
+        //otherwise (slowly) move the layer to new position
+        [CATransaction begin];
+        [CATransaction setAnimationDuration:4.0];
+        self.colorLayer.position = point;
+        [CATransaction commit];
+    }
 }
-block();
-</code></pre>
-
-<p>block是在栈上的，当<code>{}</code>退出时，block就无效了</p>
-
-<h4 id="toc_1">dispatch_block_create_with_qos_class</h4>
-
-<p>在堆上创建新的dispatch block，指定其执行block，分配指定的<code>QoS</code>类和相对优先级</p>
-
-<pre><code class="language-objectivec">dispatch_block_t dispatch_block_create_with_qos_class(dispatch_block_flags_t flags, dispatch_qos_class_t qos_class, int relative_priority, dispatch_block_t block);
-//flags 设置block的标记 必须为有效的位标记，否则返回NULL
-//qos_class QoS类， 这个值传QOS_CLASS_UNSPECIFIED 相当于DISPATCH_BLOCK_NO_QOS_CLASSflag
-//指定qos类的相对优先级 越大优先级越高 为负值 不能赋值给其大于0 小于QOS_MIN_RELATIVE_PRIORITY的值 否则会返回NULL
-</code></pre>
-
-<blockquote>
-<p>提供的参数block会被copy到堆上，被新创建的dispatch block持有</p>
-
-<p>这个block可以<code>dispatch_async</code>到queue中执行或者直接执行<br/>
-block可以用这两种方式多次执行，但是只有第一次执行的block可以被<code>dispatch_block_wait</code>等待或者<code>dispatch_block_notify.</code>监听</p>
-
-<p>直接执行时，如果分配的QoS类比调用的线程的QoS类优先级高，则使用分配的QoS类执行<br/>
-如果dispatch block到queue中执行，则执行它的QoS类取决于分配给bloc的QoS，queue的QoS或者flags共同决定<br/>
-如果block被直接提交到串行队列执行，则QoS类无效，系统会尽力覆盖QoS使先执行的block的QoS类等级更高，优先执行</p>
-</blockquote>
-
-<pre><code class="language-objectivec">//flag的类型
-DISPATCH_ENUM(dispatch_block_flags, unsigned long,
-    DISPATCH_BLOCK_BARRIER = 0x1,
-    /**
-    当在一个DISPATCH_QUEUE_CONCURRENT的queue中执行dispatch block时
-    表明这个block是barrier，即使不使用dispatch_barrier_async函数也可以在起到栅栏作用
-    在直接执行dispatch block时，这个flags无效
-    */
-    DISPATCH_BLOCK_DETACHED = 0x2,
-    /**
-    将dispatch block与当前执行的context(上下文)分离
-    */
-    DISPATCH_BLOCK_ASSIGN_CURRENT = 0x4,
-    /**
-    指定dispatch block使用当前执行的context
-    */
-    DISPATCH_BLOCK_NO_QOS_CLASS = 0x8,
-    /**
-    表示不为block分配QoS类
-    直接执行block，则使用调用线程的QoS
-    如果给该block分配了特定QoS类，则该flag设置无效，忽略
-    */
-    DISPATCH_BLOCK_INHERIT_QOS_CLASS = 0x10,
-    /**
-        Queue的QoS类优先于block的QoS类，只有当队列没有QoS时才会使用block的QoS
-        在直接调用block时，该flags值无效
-        将block提交到queue中异步执行时，该值为默认值
-        当设置了DISPATCH_BLOCK_ENFORCE_QOS_CLASS时，该default flag被忽略
-    */
-    DISPATCH_BLOCK_ENFORCE_QOS_CLASS = 0x20,
-    /**
-        表示当block的QoS类优先级高于Queue的QoS类时，优先选择block的QoS类
-        当直接执行block或者将block提交到Queue中进行同步执行时，此为默认值
-    */
-);
-</code></pre>
-
-<blockquote>
-<p><code>DISPATCH_BLOCK_BARRIER</code>即在自己创建的并行队列中 做栅栏block</p>
-
-<p><code>DISPATCH_BLOCK_DETACHED</code>、<code>DISPATCH_BLOCK_ASSIGN_CURRENT</code>、<code>DISPATCH_BLOCK_NO_QOS_CLASS</code>用于<code>dispatch_block_create</code>函数，而在<code>dispatch_block_create_with_qos_class</code>中指定了QoS类，该flag就失效了</p>
-</blockquote>
-
-<p><a href="https://developer.apple.com/library/archive/documentation/Performance/Conceptual/power_efficiency_guidelines_osx/RelatedDocuments.html#//apple_ref/doc/uid/TP40013929-CH20-SW16">Quality of Service Classes (QoS).</a></p>
-
-<pre><code class="language-objectivec">__QOS_ENUM(qos_class, unsigned int,
-    QOS_CLASS_USER_INTERACTIVE = 0x21,
-        /**
-          表示任务需要被立即执行 响应事件更新UI 用来处理主事件循环、视图绘制、动画等
-        */
-    QOS_CLASS_USER_INITIATED = 0x19,
-        /**
-          表示任务由UI发起异步任务。等待结果
-        */
-    QOS_CLASS_DEFAULT = 0x15,
-        /**
-          默认优先级
-        */
-    QOS_CLASS_UTILITY = 0x11,
-        /**
-          表示需要长时间运行任务，伴有进度指示器；用来做计算、I/O,网络，持续数据填充等
-        */
-    QOS_CLASS_BACKGROUND = 0x09,
-        /**
-          表示用户不需要察觉的任务，用来预处理加载
-        */
-    QOS_CLASS_UNSPECIFIED = 0x00,
-        /**
-          未指明
-        */
-);
-</code></pre>
-
-<h4 id="toc_2">dispatch_block_create</h4>
-
-<pre><code class="language-objectivec">dispatch_block_t dispatch_block_create(dispatch_block_flags_t flags, dispatch_block_t block);
-//flags 设置block的标记 必须为有效的位标记，否则返回NULL 与上面的flag相同
-//block设置具体任务 block将会copy到新的dispatch block中
-</code></pre>
-
-<blockquote>
-<p>当返回的dispath block被提交到queue中执行时，block与当前提交时的QoS类相关联，除非有以下flags在创建block时指定了QoS类(或者不指定QoS类):<br/>
-<code>DISPATCH_BLOCK_ASSIGN_CURRENT</code><br/>
-<code>DISPATCH_BLOCK_NO_QOS_CLASS</code><br/>
-<code>DISPATCH_BLOCK_DETACHED</code></p>
-
-<p>当dispatch block在queue中执行时，则执行它的QoS类取决于分配给bloc的QoS，queue的QoS或者flags共同决定:<br/>
-<code>DISPATCH_BLOCK_INHERIT_QOS_CLASS</code>(异步执行默认值)<br/>
-<code>DISPATCH_BLOCK_INHERIT_QOS_CLASS</code>(同步执行默认值)</p>
-</blockquote>
-
-<h2 id="toc_3">dispatch_block_perform</h2>
-
-<pre><code class="language-objectivec">void dispatch_block_perform(dispatch_block_flags_t flags, dispatch_block_t block);
-</code></pre>
-
-<p>通过指定<code>flag</code>和block，<strong>同步</strong>执行该block，并且release生成的dispatchBlock</p>
-
-<p>这个函数相当于下面这段代码:<br/>
-并且与下面这段代码相比，不需要将block copy到堆上开辟新的内存，在内部更高效的实现</p>
-
-<pre><code class="language-objectivec">dispatch_block_t b = dispatch_block_create(flags, block);
-b();
-Block_release(b);
-</code></pre>
-
-<h2 id="toc_4">dispatch_block_wait</h2>
-
-<p><strong>同步</strong>等待dispatch Block执行完成 或者 超时<br/>
-会阻塞当前线程 </p>
-
-<pre><code class="language-obj">long dispatch_block_wait(dispatch_block_t block, dispatch_time_t timeout);
-//block: 应该为dispatch_block_create 或者dispatch_block_create_with_qos_class 创建的block
-//超时时间:  
-//返回值: 如果执行block时间小于超时时间返回0，否则返回非0
-</code></pre>
-
-<p><strong>同一个block只会被等待一次，执行多次，也只能同时被一个等待</strong></p>
-
-<blockquote>
-<ol>
-<li>dispatch_block_wait 只会监听第一个block执行情况，如果已经执行过一次了，这个函数就会立即返回</li>
-<li>请使用<code>dispatch_group_wait</code>监听统一block的多次执行</li>
-<li>不能在多线程中同时执行该函数等待同一个block返回，因为block只能等待一次</li>
-<li>如果该函数返回超时，则这次等待不算，即还可以再次等待block完成，否则只能等待一次</li>
-<li>提交到queue执行block即使立即用<code>dispatch_block_cancel</code>使其不执行，这也算执行过一次了</li>
-</ol>
-</blockquote>
-
-<h2 id="toc_5">dispatch_block_notify</h2>
-
-<p>监听block执行完成，将要执行的block放入queue指定queue中执行</p>
-
-<pre><code class="language-objectivec">void dispatch_block_notify(dispatch_block_t block, dispatch_queue_t queue, dispatch_block_t notification_block);
-//block: 监听的block  应该为dispatch_block_create 或者dispatch_block_create_with_qos_class 创建的block
-//queue
-//notification_block: 当监听的block执行完成 执行的block
-</code></pre>
-
-<blockquote>
-<ol>
-<li>当监听的block已经完成 该监听block会立即执行</li>
-<li>无法监听相同block的多次执行的，请使用<code>dispatch_group_notify</code></li>
-<li><strong>block可以执行一次 监听多次</strong></li>
-<li>如果多个监听统一block执行，不能预期监听的block执行顺序</li>
-<li>提交到queue执行block即使立即用<code>dispatch_block_cancel</code>使其不执行，这也算执行过一次了</li>
-</ol>
-</blockquote>
-
-<h2 id="toc_6">dispatch_block_cancel</h2>
-
-<p>异步取消指定<code>dispatch block</code></p>
-
-<pre><code class="language-objectivec">void dispatch_block_cancel(dispatch_block_t block);
-//block： 应该使用dispatch_block_create 或者dispatch_block_create_with_qos_class 创建的block
-</code></pre>
-
-<p>对于所有未执行的block去 立即返回并不执行，但是对于那些已经在执行的 则没有影响</p>
-
-<p>注意: 确保可能被取消的block不持有任何需要执行block才会释放的资源，例如malloc内存，否则由于永远不执行block块导致内存泄漏</p>
-
-<blockquote>
-<p>已经被cancel的block无法再执行</p>
-</blockquote>
-
-<h4 id="toc_7">dispatch_block_testcancel</h4>
-
-<p>测试是否这个block已经被取消</p>
-
-<pre><code class="language-objectivec">long dispatch_block_testcancel(dispatch_block_t block);
-//返回: 被取消的话返回非0，否则返回0
 </code></pre>
 
 
@@ -322,8 +253,10 @@ Block_release(b);
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -335,11 +268,9 @@ Block_release(b);
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -424,31 +355,31 @@ Block_release(b);
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

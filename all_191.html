@@ -82,172 +82,95 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15553153173429.html">Cocoa基本内存管理规则</a></h1>
-			<p class="meta"><time datetime="2019-04-15T16:01:57+08:00" 
-			pubdate data-updated="true">2019/4/15</time></p>
+		  	<h1 class="entry-title"><a href="15017615739867.html">下标</a></h1>
+			<p class="meta"><time datetime="2017-08-03T19:59:33+08:00" 
+			pubdate data-updated="true">2017/8/3</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/MemoryMgmt/Articles/MemoryMgmt.html">官方文档地址</a></p>
+		  	<p>下标可以定义在类、结构体和枚举中，用于访问集合、列表或序列中的元素</p>
 
-<h2 id="toc_0">基本内存管理规则</h2>
+<p>一个类型可以定义多个下标.通过不同索引类型进行重载.下标不限于一维</p>
 
-<p>内存管理是基于对象所有权进行管理的，任一对象都可能有1个或者多个持有者，只要至少有一个持有者，该对象就会一直存在，否则加入没有了持有者，运行时系统就会将其自动销毁，为确保你可以清楚管理自己持有对象，<code>Cocoa</code>设置了基本的内存分配原则:</p>
+<h2 id="toc_0">下标语法</h2>
 
-<h3 id="toc_1">自己生成的对象，自己持有</h3>
+<p>通过在实例名称后的方括号中传入一个或多个索引值来对实例进行存取</p>
 
-<pre><code class="language-text">当你使用`alloc`、`new`、`copy`、`mutableCopy`开头的方法创建一个对象时
+<p>定义下标使用<code>subscript</code>关键字,指定一个或者多个输入参数和返回类型<br/>
+下标可以设置为读写或者只读,通过是<code>getter</code>或者<code>setter</code>实现</p>
 
-alloc或者new就自己生成对象并持有
-copy方法利用基于`NSCopying`协议约定，由各类实现`copyWithZone:`方法生成并持有对象副本；mutableCopy方法与其类似，只是其利用基于`NSMutableCopying`协议约定，由各类实现`mutableCopyWithZone:`方法生成并持有对象的副本。而两者区别在于：copy生成的时可变对象，而mutableCopy生成了可变更对象。虽然生成的是副本，但是仍然是生成并持有对象
-</code></pre>
-
-<h3 id="toc_2">非自己生成的对象，自己也可以使用<code>retain</code>持有</h3>
-
-<pre><code class="language-text">用除了上面的方法外生成的对象，所以并非自己生成的对象持有，可以使用retain进行持有
-
-为了保证接收到的对象在接收到的方法中保持有效，并且该方法也可以安全的将对象返回给其调用者。通常需要在以下两种情况下`retain`:
-1. 在访问器方法和初始化方法实现中，对想要作为属性存储的对象进行持有
-2. 防止对象因为其他操作的副作用而失效(例如从数组移除或父对象被删除)
-</code></pre>
-
-<h3 id="toc_3">当你不再需要该对象，释放</h3>
-
-<pre><code class="language-text">自己持有的对象，当不再需要时需要，通过`release`或者`autorelease`方法放弃对象的持有权
-</code></pre>
-
-<h3 id="toc_4">非自己持有的对象无法释放</h3>
-
-<p>例如:</p>
-
-<pre><code class="language-objectivec">id obj = [NSMutableArray array];
-//释放了非自己持有的对象
-[obj release];
-</code></pre>
-
-<h2 id="toc_5">内存管理方法的实现</h2>
-
-<p>苹果管理对象内存引用计数的方法大概是通过散列表(引用计数表)的方式，这张表的键位内存块地址的散列值(hash值)，而值即为该对象内存的引用计数</p>
-
-<p>而至于<code>retainCount/retain/release</code>方法实现是通过CoreFoundation中的<code>__CFDoExternRefOperation（）</code>函数，通过不同的操作将表中对象内存地址对应的引用计数进行操作</p>
-
-<h2 id="toc_6">示例</h2>
-
-<h4 id="toc_7">0.可以通过retainCount获取对象引用计数</h4>
-
-<pre><code class="language-objectivec">//可以通过retainCount获取对象引用计数
-id obj = [[NSObject alloc] init];
-NSLog(@&quot;%ld&quot;, [obj retainCount]);
-</code></pre>
-
-<h4 id="toc_8">1.不在需要时使用release释放</h4>
-
-<pre><code class="language-objectivec">//自己生成持有的对象 自己释放
-{
-    id obj = [[NSObject alloc] init];
-    [obj release];
-}
-//非自己生成持有的对象，自己释放
-{
-    id array = [NSMutableArray array];
-    [array retain];
-    [array release];
+<pre><code class="language-swift">subscript(index: Int) -&gt; Int {
+    get {
+        // 返回一个适当的 Int 类型的值
+    }
+    set(newValue) {
+        // 执行适当的赋值操作
+    }
 }
 </code></pre>
 
-<h4 id="toc_9">2. 使用autorelease来延时释放</h4>
+<p>可以不指定<code>setter</code>的参数,默认提供<code>newValue</code></p>
 
-<p>当需要用某个方法生成对象，并返回给调用方:</p>
+<pre><code class="language-swift">struct TimesTable {
+    let multiplier: Int
+    subscript(index: Int) -&gt; Int {
+        return multiplier * index
+    }
+}
+let threeTimesTable = TimesTable(multiplier: 3)
+print(&quot;six times three is \(threeTimesTable[6])&quot;)
+// 打印 &quot;six times three is 18&quot;
+</code></pre>
 
-<pre><code class="language-objectivec">
-- (id)allocObject {
-    id obj = [[NSObject alloc] init];
-    return obj;
+<p>定义一个数学公式结构体,只读的下标语法</p>
+
+<h2 id="toc_1">下标用法</h2>
+
+<pre><code class="language-swift">//字典的下标语法
+var numberOfLegs = [&quot;spider&quot;: 8, &quot;ant&quot;: 6, &quot;cat&quot;: 4]
+numberOfLegs[&quot;bird&quot;] = 2
+</code></pre>
+
+<h2 id="toc_2">下标选项</h2>
+
+<p>下标可以使用变量参数和可变参数,但不能使用输入输出参数,也不能给参数设置默认值</p>
+
+<p>下标的重载:<br/>
+类和结构体可以根据自身需要提供多个下标实现,通过入参和类型进行区分</p>
+
+<pre><code class="language-swift">struct Matrix {
+    let rows: Int, columns: Int
+    var grid: [Double]
+    init(rows: Int, columns: Int) {
+        self.rows = rows
+        self.columns = columns
+        //通过传入数组长度和初始值0.0到数组的构造器，将矩阵中每个位置的值初始化为0.0
+        grid = Array(count: rows * columns, repeatedValue: 0.0)
+    }
+    func indexIsValidForRow(row: Int, column: Int) -&gt; Bool {
+        return row &gt;= 0 &amp;&amp; row &lt; rows &amp;&amp; column &gt;= 0 &amp;&amp; column &lt; columns
+    }
+    subscript(row: Int, column: Int) -&gt; Double {
+        get {
+            //断言语句
+            assert(indexIsValidForRow(row, column: column), &quot;Index out of range&quot;)
+            return grid[(row * columns) + column]
+        }
+        set {
+            //断言语句
+            assert(indexIsValidForRow(row, column: column), &quot;Index out of range&quot;)
+            grid[(row * columns) + column] = newValue
+        }
+    }
 }
 </code></pre>
 
-<p>因为调用方法名满足以<code>alloc</code>开头条件，因此返回生成并持有的对象，就可以让调用方也持有该对象</p>
-
-<p>那么类似[NSMutableArray Array]生成对象，但是不持有对象是如何实现的：</p>
-
-<pre><code class="language-objectivec">- (NSString *)fullName {
-    NSString *string = [[[NSString alloc] initWithFormat:@&quot;%@ %@&quot;,
-                                          self.firstName, self.lastName] autorelease];
-    return string;
-}
+<pre><code class="language-swift">var matrix = Matrix(rows: 2, columns: 2)
+//下标入参用逗号进行分割
+matrix[0, 1] = 1.5 //将下标为(0,1)位置设置为1.5
 </code></pre>
 
-<p>根据内存管理规则，你必须释放<code>alloc</code>对象，但是如果直接<code>release</code>，string就会在返回前被deallocated(方法就会返回一个无效对象),因此我们可以使用<code>autorelease</code>,表示想要释放对象，但是允许方法调用者在释放之前使用方法的返回值</p>
-
-<blockquote>
-<p><code>autorelease</code>会使对象继续存在 但是自己并不持有对象<br/>
-这种方法的命名开头不能为<code>alloc/mew/copy/mutablerCopy</code></p>
-</blockquote>
-
-<p>还可以这么写:</p>
-
-<pre><code class="language-objectivec">- (NSString *)fullName {
-    NSString *string = [NSString stringWithFormat:@&quot;%@ %@&quot;,
-                                 self.firstName, self.lastName];
-    return string;
-}
-</code></pre>
-
-<p>此时<code>string</code>对象自己并不持有，因此也不负责释放，可以安全的返回给方法的调用者</p>
-
-<h4 id="toc_10">3.你不持有通过引用返回的对象</h4>
-
-<p>在<code>cocoa</code>方法中一些对象通过<strong>引用</strong>返回(即这些方法有参数为<code>class **</code>或者<code>id *</code>),例如常用的<code>NSError</code>对象</p>
-
-<pre><code class="language-objectivec">NSString *fileName = &lt;#Get a file name#&gt;;
-NSError *error;
-NSString *string = [[NSString alloc] initWithContentsOfFile:fileName
-                        encoding:NSUTF8StringEncoding error:&amp;error];
-if (string == nil) {
-    // Deal with error...
-}
-// ...
-[string release];
-</code></pre>
-
-<p>当你调用这些方法时，你并不创建<code>NSError</code>对象，你并不持有该对象，因此也无需release</p>
-
-<h3 id="toc_11">使用dealloc放弃对象的所有权</h3>
-
-<p><code>NSObject</code>类中定义了<code>dealloc</code>方法，当对象没有了持有者或者需要被回收时，就会调用该方法.其作用是释放对象内存，并且处置其拥有的资源，包括释放其持有的所有对象</p>
-
-<pre><code class="language-objectivec">@interface Person : NSObject
-@property (retain) NSString *firstName;
-@property (retain) NSString *lastName;
-@property (assign, readonly) NSString *fullName;
-@end
- 
-@implementation Person
-// ...
-- (void)dealloc
-    [_firstName release];
-    [_lastName release];
-    [super dealloc];
-}
-@end
-</code></pre>
-
-<blockquote>
-<ol>
-<li>不要主动调用另外一个对象的dealloc方法</li>
-<li>在dealloc方法后必须主动调用super(MRC环境下)</li>
-<li>不要将系统资源的管理与对象声明周期相关联</li>
-<li>当应用被杀死时，对象不会收到<code>dealloc</code>方法，因为应用进程内存都会在退出时进行清理</li>
-</ol>
-</blockquote>
-
-<h3 id="toc_12">Core Foundation的内存管理规则比较</h3>
-
-<p><code>Core Foundation</code>对象的<a href="https://developer.apple.com/library/archive/documentation/CoreFoundation/Conceptual/CFMemoryMgmt/CFMemoryMgmt.html#//apple_ref/doc/uid/10000127i">内存管理规则</a>和Cocoa相似，但是其命名约定是不同的,特别是Core Foundation的Create Rule不适用于返回Objective-C对象的方法。<br/>
-例如：</p>
-
-<pre><code class="language-objectivec">MyClass *myInstance = [MyClass createInstance];
-</code></pre>
+<p>通过断言,检查下标入参<code>row</code>和<code>colum</code>的值是否有效.定义方法<code>indexIsValidForRow(_:column:)</code>检查入参<code>row</code>和<code>columu</code>是否越界,断言会在下标月结</p>
 
 
 		</div>
@@ -270,8 +193,10 @@ if (string == nil) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -283,11 +208,9 @@ if (string == nil) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -372,31 +295,31 @@ if (string == nil) {
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

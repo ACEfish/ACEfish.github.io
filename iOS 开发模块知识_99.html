@@ -82,106 +82,207 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15539566553487.html">Target在build中的控制</a></h1>
-			<p class="meta"><time datetime="2019-03-30T22:37:35+08:00" 
-			pubdate data-updated="true">2019/3/30</time></p>
+		  	<h1 class="entry-title"><a href="15553988088853.html">ARC</a></h1>
+			<p class="meta"><time datetime="2019-04-16T15:13:28+08:00" 
+			pubdate data-updated="true">2019/4/16</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>在<code>Xcode</code>的<code>Project editor</code>中的<code>Build Setting</code>、<code>Build Phases</code>和<code>Build Rules</code>用来控制整个编译过程</p>
+		  	<p>在ARC有效的环境下，其内存管理规则和手动计数相同</p>
 
-<h2 id="toc_0">Build Phases</h2>
+<ul>
+<li>自己生成对象，自己持有</li>
+<li>非自己生成对象，自己也能持有</li>
+<li>自己持有的对象不再需要时释放</li>
+<li>非自己持有的对象无法释放</li>
+</ul>
 
-<p>构建可执行文件规则。</p>
+<h2 id="toc_0">所有权修饰符</h2>
 
-<p><code>Target Dependencies</code><br/>
-指定target的依赖项目，在targrt build之前需要先build的依赖</p>
+<p>OC中的变量类型有对象类型(即指向OC类的指针<code>NSObject *</code>)和<code>id</code>类型(用于隐藏对象类型类名部分，相当于C语言中的void *)</p>
 
-<p><code>Compile Source</code><br/>
-指定所有必须编译的文件,这些文件会根据<code>build Setting</code>和<code>Builsd Rules</code>里的设置来处理</p>
+<p>在ARC有效时，id类型和对象类型与C语言的其他类型不同，必须加上所有权修饰符</p>
 
-<p><code>Link Binary With Libraries</code><br/>
-列出所有的静态库和动态库，和编译生成文件进行链接</p>
+<ul>
+<li>__strong 修饰符</li>
+<li>__weak修饰符</li>
+<li>__unsafe __unretained修饰符</li>
+<li>__autoreleasing修饰符</li>
+</ul>
 
-<p><code>Copy Bundle Resources</code><br/>
-指定要copy的资源文件</p>
+<h3 id="toc_1">__strong修饰符</h3>
 
-<h2 id="toc_1">Build Rules</h2>
+<p>是id类型和对象类型的默认修饰符,即</p>
 
-<p>指定不同文件类型如何编译。每条build rule 指定了该类型怎么处理立即输出在哪。可以增加一条新规则对特定类型文件类型添加处理方法</p>
+<pre><code class="language-objectivec">id obj = [[NSObject alloc] init];
+//等效于
+id __strong obj = [[NSObject alloc] init];
+//或者
+__strong id obj = [[NSObject alloc] init];
+</code></pre>
 
-<h2 id="toc_2">Build Setting</h2>
-
-<p>在<code>build</code>的过程中各个阶段的选项的设置</p>
-
-<h2 id="toc_3">pbxproj工程文件</h2>
-
-<p><code>.xcodeproj</code>包中的工程文件<code>project.pbxproj</code>里包含了build过程中的设置.</p>
+<p>__strong修饰符的内存管理:</p>
 
 <ol>
-<li>在这个文件中，首先找到rootObject的值
-<code>
-rootObject = CFE011DA22409055007FEEDD /* Project object */;
-</code></li>
-<li>根据CFE011DA22409055007FEEDD代表的proect找到这个工程,这里面包括了部分这个工程的信息
-<code>
-/* Begin PBXProject section */<br/>
-    CFE011DA22409055007FEEDD /* Project object */ = {<br/>
-        isa = PBXProject;<br/>
-        attributes = {<br/>
-            LastUpgradeCheck = 1010;<br/>
-            ORGANIZATIONNAME = universalCertification;<br/>
-            TargetAttributes = {<br/>
-                CFE011E122409055007FEEDD = {<br/>
-                    CreatedOnToolsVersion = 10.1;<br/>
-                };<br/>
-            };<br/>
-        };<br/>
-        buildConfigurationList = CFE011DD22409055007FEEDD /* Build configuration list for PBXProject &quot;RSSReader&quot; */;<br/>
-        compatibilityVersion = &quot;Xcode 9.3&quot;;<br/>
-        developmentRegion = en;<br/>
-        hasScannedForEncodings = 0;<br/>
-        knownRegions = (<br/>
-            en,<br/>
-            Base,<br/>
-        );<br/>
-        mainGroup = CFE011D922409055007FEEDD;<br/>
-        productRefGroup = CFE011E322409055007FEEDD /* Products */;<br/>
-        projectDirPath = &quot;&quot;;<br/>
-        projectRoot = &quot;&quot;;<br/>
-        targets = (<br/>
-            CFE011E122409055007FEEDD /* RSSReader */,<br/>
-        );<br/>
-    };<br/>
-/* End PBXProject section */
-</code></li>
-<li>然后根据工程中的<code>targets</code>可以找到对应target
-<code>
-/* Begin PBXNativeTarget section */<br/>
-        CFE011E122409055007FEEDD /* RSSReader */ = {<br/>
-            isa = PBXNativeTarget;<br/>
-            buildConfigurationList = CFE011F822409056007FEEDD /* Build configuration list for PBXNativeTarget &quot;RSSReader&quot; */;<br/>
-            buildPhases = (<br/>
-                47F7B3ABDF3263B6EDCA68AD /* [CP] Check Pods Manifest.lock */,<br/>
-                CFE011DE22409055007FEEDD /* Sources */,<br/>
-                CFE011DF22409055007FEEDD /* Frameworks */,<br/>
-                CFE011E022409055007FEEDD /* Resources */,<br/>
-            );<br/>
-            buildRules = (<br/>
-            );<br/>
-            dependencies = (<br/>
-            );<br/>
-            name = RSSReader;<br/>
-            productName = RSSReader;<br/>
-            productReference = CFE011E222409055007FEEDD /* RSSReader.app */;<br/>
-            productType = &quot;com.apple.product-type.application&quot;;<br/>
-        };<br/>
-/* End PBXNativeTarget section */
-</code></li>
-<li>可以根据这些信息查看更详细的编译信息<br/>
-比如:
-<code>buildConfigurationList</code>指向了debug和release的详细配置信息</li>
+<li><code>__strong</code>修饰符的变量赋值对象，即可完成对自己生成或非自己生成对象的强引用</li>
+<li>当变量超出作用域被废弃、变量所属对象废弃(赋值nil)或者变量赋值即会释放对原有对象的强引用，相当于对对象执行release操作</li>
 </ol>
+
+<p>而当对象没有了所有者 就会被销毁</p>
+
+<p>示例如下:</p>
+
+<pre><code class="language-objectivec">//1.
+{
+    //取得非自己生成并持有的对象
+    id __strong obj = [NSMutableArray array];
+    //因为obj为强引用 所以自己持有对象
+}
+//此时变量obj超出作用域被废弃时，强引用失效，所以自动释放自己持有的对象
+
+//2.
+{
+    //取得自己生成并持有的对象
+    id __strong obj = [[NSObject alloc] init];
+    //因为obj为强引用 所以自己持有对象
+}
+/*
+* 此时变量obj超出作用域，强引用失效，所以自动释放自己持有的对象
+* 对象所有者不存在，因此废弃该对象
+*/ 
+
+//3. 
+
+id __strong obj0 = [[NSObject alloc] init];
+//obj0强引用对象A
+id __strong obj1 = [[NSObject alloc] init];
+//obj1强引用对象B
+obj0 = 0bj1;
+//obj0强引用对象B，此时对对象A强引用失效，对象A没有所有者因此废弃对象A
+obj0 = nil;
+//因为obj0被赋值nil，因此其对对象B的强引用失效 此时对象B的强引用只剩下obj1
+</code></pre>
+
+<blockquote>
+<p>__ strong、__weak、__autoreleasing修饰符，会将修饰符修饰的变量自动初始化为nil</p>
+</blockquote>
+
+<h3 id="toc_2">__weak修饰符</h3>
+
+<p>主要用来避免使用强引用导致的循环引用</p>
+
+<p><code>__weak</code>提供弱引用，并不持有对象实例</p>
+
+<p>错误使用:</p>
+
+<pre><code class="language-objectivec">id __weak obj = [[NSObject alloc] init]; //编译器会报警高
+//这种情况下 obj并不持有生成的对象，而是持有对象的弱引用，所以对象会立即释放
+</code></pre>
+
+<p>正确使用</p>
+
+<pre><code class="language-objectivec">{
+    id __strong obj = [[NSObject alloc] init];
+    id __weak obj1 = obj;
+}
+</code></pre>
+
+<p><code>__weak</code>修饰符修饰的变量当持有某个对象的弱引用时，若该对象被废弃(没有了持有者)，则弱引用<strong>自动失效并处于值为nil</strong>状态</p>
+
+<h3 id="toc_3">__ unsafe__retained修饰符</h3>
+
+<p>是不安全的修饰符。因为<code>__weak</code>只能用在iOS5之上的版本，所以在iOS4就只能使用<code>__unsafe__retained</code>修饰符</p>
+
+<p><strong><code>__unsafe__retaine</code>d变量修饰的对象不属于编译器的内存管理对象</strong></p>
+
+<pre><code class="language-objectivec">//__unsafe__retained与__weak类似，并不持有生成对象所以对象会立即释放
+id __weak obj = [[NSObject alloc] init]; //编译器会报警高
+</code></pre>
+
+<p><strong>unsafe</strong>retained变量修饰的对象当销毁时不会自动置nil，因此有可能访问悬空指针</p>
+
+<p>因此，不要使用这个修饰符</p>
+
+<h3 id="toc_4">__autoreleasing修饰符</h3>
+
+<pre><code class="language-objectivec">//非ARC环境下
+NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+id obj = [[NSObject alloc] init]; 
+[obj autorelease];
+[pool drain];
+//ARC环境下
+@autoreleasepool {
+    id __autoreleasing obj = [[NSObject alloc] init];
+}
+</code></pre>
+
+<blockquote>
+<p>@autoreleasepool {}在非ARC环境下也能使用 推荐@autoreleasepool来表示自动释放池，提高程序的可读性</p>
+</blockquote>
+
+<p>在平常使用中 我们通常不需要主动指定<code>__autorelease</code>修饰符,例子如下：</p>
+
+<h4 id="toc_5">1. 编译器会自动将返回值注册到autorelease pool</h4>
+
+<p>编译器会检查方法名，如果使用<code>alloc/new/copy/mutableCopy</code>以外开头的方法，则自动将返回值注册到`autorelease pool中</p>
+
+<pre><code class="language-objectivec">+ (id)array {
+    id obj = [[NSMutableArray alloc] init];
+    return obj;
+}
+//obj没有显式指定修饰符，因此为__strong,由于return会使对象变量超出作用域，所以自己持有的强引用被释放，但该函数以对象作为返回值，编译器会自动帮其注册到autorelease pool中
+</code></pre>
+
+<h4 id="toc_6">2. 访问__weak修饰的变量一定要访问注册的到autoreleapool的对象</h4>
+
+<p>因为<code>__weak</code>只持有对象弱引用，在访问过程中，对象有可能销毁，而把对象注册到<code>autorelease pool</code>就能保证对象在访问结束前不会被销毁</p>
+
+<pre><code class="language-objectivec">id __weak obj0 = obj1;
+NSLog(@&quot;class = %@&quot;, [obj0 class]);
+
+//等效于
+id __weak obj0 = obj1;
+id __autoreleasing tmp = obj1;
+NSLog(@&quot;class = %@&quot;, [tmp class]);
+</code></pre>
+
+<h4 id="toc_7">3. id的指针或者对象指针会默认加上__autoreleasing修饰符</h4>
+
+<p>id的指针<code>id *obj</code>和<code>NSObject **obj</code>在没有显式指定时会被附加上<code>__autoreleasing</code>修饰符</p>
+
+<p>例如:</p>
+
+<pre><code class="language-obj"> - (nullable instancetype)dataWithContentsOfFile:(NSString *)path ... error:(NSError **)errorPtr;
+//相当于
+- (nullable instancetype)dataWithContentsOfFile:(NSString *)path... error:(NSError * __autoreleasing *)errorPtr;
+</code></pre>
+
+<p>使用__autoreleasing修饰的变量作为对象取得参数就和用非自己生成对象方法取得返回值的对象完全一样，会注册到<code>autorelease pool</code>中</p>
+
+<pre><code class="language-objectivec">//源码应该类似这个样子
+- (nullable instancetype)dataWithContentsOfFile:(NSString *)path... error:(NSError * __autoreleasing *)errorPtr {
+    *error = [[NSError alloc] initWithDomain:MyAppDomin code:errorCode userInfo:nil];
+}
+</code></pre>
+
+<p>在使用过程中应该注意，保持赋值互相对象的修饰符一致:</p>
+
+<pre><code class="language-objectivec">NSError * __autoreleasing error;//修改修饰符为__autoreleasing保持一致进行赋值
+NSError **pError = &amp;error;
+//或者
+NSError * error;
+NSError * __strong *pError = &amp;error;
+</code></pre>
+
+<p>在下面的NSError **参数赋值了一个__strong对象变量也没报错，是因为编译器自动帮我们做了转换</p>
+
+<pre><code class="language-objectivec">NSError * error;
+    id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;error];
+//编译器帮我们转化为了
+NSError __strong *error;
+NSError __autoreleasing *tmp = error;
+id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;tmp];
+</code></pre>
 
 
 		</div>
@@ -204,8 +305,10 @@ rootObject = CFE011DA22409055007FEEDD /* Project object */;
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -217,11 +320,9 @@ rootObject = CFE011DA22409055007FEEDD /* Project object */;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -306,31 +407,31 @@ rootObject = CFE011DA22409055007FEEDD /* Project object */;
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

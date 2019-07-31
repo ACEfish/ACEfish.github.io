@@ -82,24 +82,100 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15541369631882.html">线程死锁</a></h1>
-			<p class="meta"><time datetime="2019-04-02T00:42:43+08:00" 
-			pubdate data-updated="true">2019/4/2</time></p>
+		  	<h1 class="entry-title"><a href="15559241621683.html">Crash收集</a></h1>
+			<p class="meta"><time datetime="2019-04-22T17:09:22+08:00" 
+			pubdate data-updated="true">2019/4/22</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>死锁:是指两个或者两个以上线程在执行过程中，因为争夺同一资源导致互相等待的现象</p>
+		  	<h2 id="toc_0">异常</h2>
 
-<h2 id="toc_0">产生死锁的四个必要条件:</h2>
+<p><img src="media/15559241621683/15559253895369.jpg" alt="" style="width:300px;"/></p>
 
-<ol>
-<li>互斥条件：一个资源每次只能被一个进程使用</li>
-<li>占有且等待： 一个进程因为请求资源而阻塞时，对已获得的资源保持不放</li>
-<li>不可强行占有：进程已获得的资源，在使用完成之前不能强行剥夺</li>
-<li>循环等待条件： 若干进程之间形成一种头尾相接的循环等待资源关系</li>
-</ol>
+<h3 id="toc_1">Mach异常</h3>
 
-<p>这四个条件是产生死锁的必要条件，只要出现死锁 这四个条件必然成立</p>
+<p>Mach是XUN的内核核心，Mach异常是指最底层的内核级别异常，定义在<code>&lt;mach/exception_types.h&gt;</code>中。每个<code>thread</code>、<code>task</code>、<code>host</code>都有一个异常端口数组，Mach暴露部分API给用户，开发者可以通过Mach API设置thread、task、host的异常端口，来捕获Mach异常，抓取Crash事件</p>
+
+<h4 id="toc_2">收集Mach异常</h4>
+
+<p><img src="media/15559241621683/15559257997544.jpg" alt="" style="width:300px;"/></p>
+
+<h3 id="toc_3">Unix信号</h3>
+
+<p>所有的Mach异常都在host层被<code>ux_exception</code>转换为相应的unix信号，并通过<code>threadsignal</code>将信号投递到出错的线程。iOS的<code>POSIX API</code>就是通过Mach之上的BSD层实现的</p>
+
+<p>对于信号的说明可以参考<a href="http://www.iosxxx.com/blog/2015-08-29-iosyi-chang-bu-huo.html">iOS异常捕获</a></p>
+
+<h4 id="toc_4">收集Unix异常信号</h4>
+
+<p>收集<code>signal</code>方法</p>
+
+<pre><code class="language-objectivec">static void installSignalHandle() {
+    //previousSignalHandler 用于存储其它对signal的处理
+    if(previousSignalHandler == NULL)
+    {
+        previousSignalHandler = malloc(sizeof(*previousSignalHandler));
+    }
+    
+    struct sigaction action = {{0}};
+    action.sa_flags = SA_SIGINFO | SA_ONSTACK;
+#if KSCRASH_HOST_APPLE &amp;&amp; defined(__LP64__)
+    action.sa_flags |= SA_64REGSET;
+#endif
+    sigemptyset(&amp;action.sa_mask);
+    action.sa_sigaction = &amp;handleSignal;
+    // 设置对信号 SIGSEGV 的处理action 
+    sigaction(SIGSEGV, &amp;action, previousSignalHandler);
+}
+
+void handleSignal(int sigNum, siginfo_t* signalInfo, void* userContext) {
+    //对捕获的异常进行处理。比如堆栈、符号化等
+    
+    //
+    uninstallSignalHandler();
+    //重启信号 以让其他handle进行处理
+    raise(sigNum);
+}
+
+static void uninstallSignalHandler(void)
+{
+    //将信号处理action设置为之前的动作
+    sigaction(SIGSEGV, previousSignalHandler, NULL);
+}
+</code></pre>
+
+<h3 id="toc_5">NSException</h3>
+
+<p>对于应用级别的异常，是由<code>NSException</code>导致程序crash的。是由iOS库或者第三方库的Runtime时出错而抛出的异常</p>
+
+<pre><code class="language-objectivec">//注册异常处理函数
+NSSetUncaughtExceptionHandler(&amp;uncaught_exception_handler);
+//获取之前的异常处理步骤
+lastExceptionHandle = NSGetUncaughtExceptionHandler();
+
+//异常处理函数
+static void uncaught_exception_handler (NSException *exception) {
+    //对捕获的异常进行处理。比如堆栈、符号化等
+
+    //将异常信息传递给之前的处理handle
+    lastExceptionHandle(exception);
+}
+</code></pre>
+
+<h3 id="toc_6">总结</h3>
+
+<p>iOS自带的<code>Apple Crash Report</code>记录了设备的Crash日志，通常会包含两个元素：Mach 异常 和 Unix 信号。</p>
+
+<pre><code class="language-objectivec">Exception Type:         EXC_BAD_ACCESS (SIGSEGV)    
+Exception Subtype:      KERN_INVALID_ADDRESS at 0x041a6f3
+</code></pre>
+
+<p><code>EXC_BAD_ACCESS (SIGSEGV)</code>表示的意思是：Mach 层的<code>EXC_BAD_ACCESS</code>异常，在 host 层被转换成<code>SIGSEGV</code>信号投递到出错的线程</p>
+
+<p><strong>当错误发生时候，先在最底层产生Mach异常</strong>；Mach异常在host层被转换为相应的Unix Signal; 在OC层如果有对应的NSException（OC异常），就转换成OC异常，OC异常可以在OC层得到处理；如果OC异常一直得不到处理，程序会强行发送SIGABRT信号中断程序。在OC层如果没有对应的NSException，就只能让Unix标准的signal机制来处理了</p>
+
+<p>捕获Mach和Unix信号都可以捕获到crash信号，<strong>这两种方式优先选择Mach异常</strong>: <br/>
+因为Mach异常优先于Unix信号处理发生，如果Mach异常的handle让程序exit了，那么Unix信号就到不了这个进程了</p>
 
 
 		</div>
@@ -122,8 +198,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -135,11 +213,9 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -224,31 +300,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

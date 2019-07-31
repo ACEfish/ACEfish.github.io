@@ -82,274 +82,75 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15459662586152.html">ReactiveObjC</a></h1>
-			<p class="meta"><time datetime="2018-12-28T11:04:18+08:00" 
-			pubdate data-updated="true">2018/12/28</time></p>
+		  	<h1 class="entry-title"><a href="15537578174693.html">本地持久化</a></h1>
+			<p class="meta"><time datetime="2019-03-28T15:23:37+08:00" 
+			pubdate data-updated="true">2019/3/28</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">基础知识</h2>
+		  	<p>文章看自<a href="https://casatwy.com/iosying-yong-jia-gou-tan-kai-pian.html">这里</a></p>
 
-<p>常用的 <code>RACSignal</code>为冷信号  <code>RACSubject</code>为热信号<br/>
-冷信号 即为订阅之后才开始执行的消息，订阅几次 就执行几次<br/>
-热信号 为创建信号就开始执行的消息 无需订阅</p>
+<p>model和model层的区别，model可以称为dataModel 只是业务数据建模形式的一种<br/>
+<img src="media/15537578174693/15537578741705.jpg" alt="" style="width:1109px;"/></p>
 
-<h2 id="toc_1">常用类</h2>
+<p><a href="https://github.com/casatwy/CTPersistance">参考CTPersistance的持久层和业务层交互</a><br/>
+<img src="media/15537578174693/15537586256064.jpg" alt="" style="width:1176px;"/></p>
 
-<h3 id="toc_2">RCASignal信号</h3>
+<p>dataCenter协调持久层和业务层，他通过调用持久层的弱业务逻辑，来给业务层提供强业务逻辑数据</p>
 
-<pre><code class="language-objectivec">//1.创建信号 
+<p>Virtual Record就是前面提到的一个既能够被业务层理解，也能够被持久层理解的数据载体。Virtual Record事实上并不是一个对象，它只是一个protocol，这就是它Virtual的原因。一个对象只要实现了Virtual Record，它就可以直接被持久层当作Record进行操作，所以它也是一个Record。连起来就是Virtual Record了。所以，Virtual Record的实现者可以是任何对象，这个对象一般都是业务层对象。</p>
 
-//可以在创建信号中立即发送信号 但是不能在block结束返回前销毁该信号
-RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
-        [subscriber sendNext:@&quot;发送的消息内容&quot;];
-        return nil;
-}];
-//立即发送给定的错误信息
-NSError *error = [[NSError alloc] init];
-[RACSignal error:error];
-//返回一个信号 该信号立即发送给定值 然后 complete
-[RACSignal return:@&quot;value&quot;];
-//返回信号 该信号直接 complete
-[RACSignal empty];
+<p>datacenter一般被Controller持有，因此不适合作为单例，datacenter可以根据业务作出分化，每个业务提供一个dataCenter然后在相关controller下去调度</p>
 
-//2.信号处理
+<p>通过dataCenter可以将强业务逻辑和若业务逻辑区分开</p>
 
-//2.1 concat 返回一个信号signal3 当signal1 complete时订阅信号就signal2信号变化 我们可以通过订阅 signal3 来收到信号两个信号的值变化
-RACSignal *signal3 = [signal1 concat:signal2]
+<h3 id="toc_0">总结</h3>
 
-//2.2  flattenMap 串联信号 当收到第一个消息的值变化时 开始执行第二个信号 此时我们订阅信号2  只会收到信号2值改变信号
-RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(10 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            [subscriber sendNext:@&quot;发送的消息内容&quot;];
-        });
-        return nil;
-    }];
-RACSignal *signal2 = [signal flattenMap:^__kindof RACSignal * _Nullable(id  _Nullable value) {
-    return  [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
-        [subscriber sendNext:@&quot;signal2 发送的消息内容&quot;];
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            [subscriber sendNext:@&quot;signal2 3秒后发送的消息内容&quot;];
-        });
-        return nil;
-    }];
-}];
+<p>在交互方案设计中，需要区别强业务逻辑和弱业务逻辑，把传统的dataModel区分为Table和Record，由DataCenter去实现强业务，Table去实现弱业务。由于DataCenter是强业务相关，所以在实际编码中，业务工程师负责创建DataCenter，并向业务层提供业务友好的方法，然后再在DataCenter中操作Table来完成业务层交付的需求</p>
 
-//2.2 map 对信号1中收到的值进行处理返回信号2 
-RACSignal *signal2 = [signal map:^id _Nullable(NSString *  _Nullable value) {
-    return [value substringFromIndex:2];
-}];
+<p>在具体与业务层交互时，采用Virtual Record的设计思路来设计Record，由具体的业务对象来实现Virtual Record，以它作为DataCenter和业务层之间的数据媒介进行交互。而不是使用传统的数据模型来与业务层做交互。</p>
 
-//2.3 filter 过滤信号值
-RACSignal *signal2 = [signal filter:^BOOL(NSString *  _Nullable value) {
-    return YES;
-}];
+<h2 id="toc_1">数据同步方案</h2>
 
-//2.4 ignore 忽略特定值的信号
-RACSignal *signal2 = [signal ignore:@&quot;发送的消&quot;];
+<p><a href="https://casatwy.com/iosying-yong-jia-gou-tan-ben-di-chi-jiu-hua-fang-an-ji-dong-tai-bu-shu.html">自行参阅</a></p>
 
-//2.5 startwith: 将这个值 拼接到信号值开头 返回新的信号 
-RACSignal *signal2 = [signal startWith:@&quot;start with发送的消息内容&quot;];
+<h3 id="toc_2">单向数据同步</h3>
 
-//2.6 skip: 忽略开始的count个信号值改变
-RACSignal *signal2 = [signal skip:1];
+<p>主要针对消息类应用</p>
 
-//2.7 take: 返回一个只接收前count个信号的信号值改变  其后发送的信号会失败
-RACSignal *signal2 = [signal take:2];
+<ol>
+<li>改造的时候添加identifier(操作的唯一标识，而不是数据的唯一标识)，isDirty，isDeleted字段。如果在请求期间依旧允许对数据做操作，那么就要把identifier和primaryKey再放到一个新的表中</li>
+<li>每次生成数据之后对应生成一个identifier，然后只要是针对数据的操作，就修改一次isDirty或isDeleted，然后发起请求带上identifier和操作指令去告知服务器执行相关的操作。如果是复杂的同步方式，那么每一次修改数据时就新生成一次identifier，然后再发起请求带上相关数据告知服务器</li>
+<li>服务器根据请求包的identifier等数据执行操作，操作完毕回复给客户端确认</li>
+<li>收到服务器的确认包之后，根据服务器给到的identifier（有的时候也会有tablename，取决于你的具体实现）找到对应的记录，如果是删除操作，直接把数据删除就好。如果是插入和更新操作，就把isDirty置为NO。如果有额外的表记录了更新操作，直接把identifier对应的这个操作记录删掉就行。</li>
+</ol>
 
-//2.8  scanWithStart: reduce: 遍历信号1值变化 block中next即为信号1的信号值  
-//      running为累计值 初始为start值 
-RACSignal *signal2 = [signal scanWithStart:@&quot;1&quot; reduce:^NSString * _Nullable(NSString *  _Nullable running, NSString *  _Nullable next) {
-    running = [[NSMutableString stringWithFormat:@&quot;%@%@&quot;, running, next] copy];
-    return running;
-}];
+<h3 id="toc_3">双向数据同步</h3>
 
-//2.9 takeUntilBlock: 忽略这符合条件的信号以及之后的信号
-//     takeWhileBlock: 返回符合条件的信号值
-//      skipUntilBlock: 只返回符合条件以及之后的信号
-//      skipWhileBlock: 忽略符合条件的信号
-RACSignal *signal2 = [signal takeUntilBlock:^BOOL(NSString *  _Nullable x) {
-    return [x hasPrefix:@&quot;3秒&quot;];
-}];
+<p>主要针对笔记、日程类应用</p>
 
-//2.10 distinctUntilChanged 只返回值不一样的信号
-RACSignal *signal2 = [signal distinctUntilChanged];
+<h4 id="toc_4">封装操作对象</h4>
 
+<p>需要通过封装操作对象,封装的对象中需要有:</p>
 
-//3. 订阅
+<ol>
+<li>操作的唯一标识</li>
+<li>数据的唯一标识</li>
+<li>操作的类型</li>
+<li>具体的数据，主要是在Insert和Update的时候会用到</li>
+<li>操作的依赖标识</li>
+<li>用户执行这项操作时的时间戳</li>
+</ol>
 
-//subscribeNext： 订阅信号值改变  error 订阅错误信号 completed 订阅完成信号 
-RACDisposable *disposable = [signal3 subscribeNext:^(NSString *  _Nullable x) {
-    NSLog(@&quot;signal3收到订阅值:%@&quot;, x);
-} error:^(NSError * _Nullable error) {
-    NSLog(@&quot;signal3收到错误订阅:%@,&quot; error);
-} completed:^{
-    NSLog(@&quot;signal3收到成功订阅;&quot;);
-}];
+<h4 id="toc_5">增加待操作数据表和待同步数据表</h4>
 
-//取消订阅
-[disposable dispose];
+<h4 id="toc_6">拉去待执行列表实际</h4>
 
-
-</code></pre>
-
-<h3 id="toc_3">RACSubject信号</h3>
-
-<pre><code class="language-objectivec">//RACSubject 继承于 RACSignal 使用这个对象 可以直接发送和接收信号值改变  而不需要关心 创建信号和注销订阅问题
-RACSubject *subject = [RACSubject subject];
-
-[subject subscribeNext:^(NSString *x) {
-    NSLog(@&quot;接受新值%@&quot;, x);
-} completed:^{
-    NSLog(@&quot;接受完成情况&quot;);
-}];
-
-[subject sendNext:@&quot;新的值1&quot;];
-
-</code></pre>
-
-<h3 id="toc_4">RACTuple 元组</h3>
-
-<p>元组功能</p>
-
-<h3 id="toc_5">NSArray NSDictionary 集合操作</h3>
-
-<p>RAC扩展了NSArray 和  NSDictionary 拥有 <code>rac_sequence</code>(<code>RACSequence</code>类)属性</p>
-
-<h3 id="toc_6">RACSequence</h3>
-
-<pre><code class="language-objectivec">    //1. 获取一个 发送集合中值改变的信号
-    arr.rac_sequence.signal
-    //2. 用信号来遍历集合
-    [arr.rac_sequence.signal subscribeNext:^(id  _Nullable x) {
-        NSLog(@&quot;%@&quot;, x);
-    }];
-    //3. head
-    NSLog(@&quot;第一个元素%@&quot;, arr.rac_sequence.head);
-    //4. tail
-    NSLog(@&quot;除了第一个元素外的所有元素集合%@&quot;, arr.rac_sequence.tail);
-    
-    //5. 从左侧开始遍历 start: 累计的初始值 accumulator: 累计值 value:当前值 count: 最终值
-    NSNumber *count = [intArr.rac_sequence foldLeftWithStart:@(10) reduce:^NSNumber* (NSNumber *accumulator, NSNumber *value) {
-        NSLog(@&quot;%@--- %@&quot;, accumulator, value);
-
-        return @(accumulator.integerValue + value.integerValue);
-    }];
-    NSLog(@&quot;%@&quot;, count);
-    
-    //6. 同样可以从右边开始遍历
-    
-    //7. 遍历集合 判断是否存在符合条件 当遇到block返回YES 返回YES不再执行
-    BOOL exist = [intArr.rac_sequence any:^BOOL(NSNumber *value) {
-        return value.integerValue == 2;
-    }];
-    NSLog(@&quot;%@&quot;, exist ? @&quot;存在&quot; : @&quot;不存在&quot;); //存在
-    //8. 遍历集合 判断是否所有元素都满足条件
-    BOOL pass = [intArr.rac_sequence all:^BOOL(id  _Nullable value) {
-        return [value isKindOfClass:[NSNumber class]];
-    }];
-    NSLog(@&quot;%@&quot;, pass ? @&quot;通过&quot; : @&quot;不通过&quot;); //存在
-    //9. 遍历集合找到第一个符合条件的元素
-    id obj = [intArr.rac_sequence objectPassingTest:^BOOL(id  _Nullable value) {
-        if ([value isKindOfClass:[NSNumber class]]) {
-            NSNumber *value1 = (NSNumber *)value;
-            if (value1.integerValue % 3 == 0) {
-                return YES;
-            }
-        }
-        return NO;
-    }];
-    NSLog(@&quot;第一个通过测试的是%@&quot;, obj); //9
-    
-    //10. 用户动态生成sequenceh headblock和tailblock只会执行一次
-    //是惰性加载生成的
-    //必须保证headblock和tailblock是线程安全的
-    RACSequence *sequence = [RACSequence sequenceWithHeadBlock:^id _Nullable{
-        return @(11);
-    } tailBlock:^RACSequence * _Nonnull{
-        return [RACSequence sequenceWithHeadBlock:^id _Nullable{
-            return @(11);
-        } tailBlock:^RACSequence * _Nonnull{
-            return [RACSequence sequenceWithHeadBlock:^id _Nullable{
-                return @(22);
-            } tailBlock:^RACSequence * _Nonnull{
-                return @[@(33)].rac_sequence;
-            }];
-        }];
-    }];
-    
-    [sequence.signal subscribeNext:^(id  _Nullable x) {
-        NSLog(@&quot;%@&quot;, x);
-    }];
-</code></pre>
-
-<h3 id="toc_7">UI操作</h3>
-
-<h4 id="toc_8">UIControl</h4>
-
-<pre><code class="language-objectivec"> RACSignal *signal = [self.btn rac_signalForControlEvents:UIControlEventTouchUpInside];
-[signal subscribeNext:^(UIButton *  _Nullable x) {
-    NSLog(@&quot;&quot;);
-}];
-</code></pre>
-
-<h4 id="toc_9">UIButton</h4>
-
-<pre><code class="language-objectivec">//当 按钮被点击时 执行 command中的block
-self.btn.rac_command 
-</code></pre>
-
-<h4 id="toc_10">RACCommand</h4>
-
-<pre><code class="language-objectivec">//初始化command 用一个信号
-self.btn.rac_command = [[RACCommand alloc] initWithSignalBlock:^RACSignal * _Nonnull(id  _Nullable input) {
-        return [RACSignal empty];
-    }];
-    
-//executionSignals  属性为 command执行时的信号
-[self.btn.rac_command.executionSignals subscribeNext:^(RACSignal&lt;id&gt; * _Nullable x) {
-    NSLog(@&quot;信号值执行了&quot;);
-}];
-    
-</code></pre>
-
-<h4 id="toc_11">UITextfield</h4>
-
-<pre><code class="language-objectivec">//rac_textSignal 获取textfield内容改变信号
-[self.textfield.rac_textSignal subscribeNext:^(NSString * _Nullable x) {
-    NSLog(@&quot;输出内容%@&quot;, x);
-}];
-</code></pre>
-
-<h3 id="toc_12">NSNotification</h3>
-
-<pre><code class="language-objectivec">//通知事件 无需主动移除通知
-[[[NSNotificationCenter defaultCenter] rac_addObserverForName:@&quot;&quot; object:nil] subscribeNext:^(NSNotification * _Nullable x) {
-    
-}];
-</code></pre>
-
-<h3 id="toc_13">Delegate</h3>
-
-<pre><code class="language-objectivec">[[self.view rac_signalForSelector:@selector(nameBtnDidClick:)] subscribeNext:^(RACTuple * _Nullable x) {
-    
-}];
-</code></pre>
-
-<h3 id="toc_14">KVO</h3>
-
-<pre><code class="language-objectivec">//这样设置KVO 无需主动移除
-//监听btn frame变化 
-[[self.btn rac_valuesForKeyPath:@&quot;frame&quot; observer:self] subscribeNext:^(id  _Nullable x) {
-        
-}];
-
-//使用宏定义快捷设置KVO （推荐）
-[RACObserve(self.btn, frame) subscribeNext:^(id  _Nullable x) {
-    
-}];
-
-</code></pre>
+<ol>
+<li>每次要把本地数据丢到服务器去同步之前，都要拉取一次待执行列表，执行完毕之后再上传本地同步数据</li>
+<li>每次进入相关页面的时候都更新一次，看有没有新的操作</li>
+<li>对实时性要求比较高的，要么客户端本地起一个线程做轮询，要么服务器通过长链接将待执行操作推送过来</li>
+</ol>
 
 
 		</div>
@@ -372,8 +173,10 @@ self.btn.rac_command = [[RACCommand alloc] initWithSignalBlock:^RACSignal * _Non
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -385,11 +188,9 @@ self.btn.rac_command = [[RACCommand alloc] initWithSignalBlock:^RACSignal * _Non
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -474,31 +275,31 @@ self.btn.rac_command = [[RACCommand alloc] initWithSignalBlock:^RACSignal * _Non
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

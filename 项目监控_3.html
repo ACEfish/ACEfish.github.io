@@ -82,121 +82,19 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15559026860989.html">KSCrash</a></h1>
-			<p class="meta"><time datetime="2019-04-22T11:11:26+08:00" 
-			pubdate data-updated="true">2019/4/22</time></p>
+		  	<h1 class="entry-title"><a href="15560068598022.html">线程回溯和符号化</a></h1>
+			<p class="meta"><time datetime="2019-04-23T16:07:39+08:00" 
+			pubdate data-updated="true">2019/4/23</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>debug模式下,KSCrash的线程回调线程</p>
+		  	<h2 id="toc_0">参考资料:</h2>
 
-<pre><code class="language-javascript">&quot;backtrace&quot;: {
-                    &quot;contents&quot;: [
-                        {
-                            &quot;object_name&quot;: &quot;CoreFoundation&quot;,
-                            &quot;object_addr&quot;: 7134101504,
-                            &quot;symbol_name&quot;: &quot;&lt;redacted&gt;&quot;,
-                            &quot;symbol_addr&quot;: 7135249460,
-                            &quot;instruction_addr&quot;: 7135249688
-                        },
-                        ...
-                        {
-                            &quot;object_name&quot;: &quot;KSCrashLearnDemo&quot;,
-                            &quot;object_addr&quot;: 4367810560, //104578000
-                            &quot;symbol_name&quot;: &quot;-[ViewController testArrayRangeException:]&quot;,
-                            &quot;symbol_addr&quot;: 4367835524, //10457e184
-                            &quot;instruction_addr&quot;: 4367835696 //10457e230
-                        },
-                        ...
-                        ...
-                        {
-                            &quot;object_name&quot;: &quot;KSCrashLearnDemo&quot;,
-                            &quot;object_addr&quot;: 4367810560, //104578000
-                            &quot;symbol_name&quot;: &quot;main&quot;,
-                            &quot;symbol_addr&quot;: 4367835828, // 10457e2b4
-                            &quot;instruction_addr&quot;: 4367835952 // 10457e330
-                        },
-                        {
-                            &quot;object_name&quot;: &quot;libdyld.dylib&quot;,
-                            &quot;object_addr&quot;: 7129288704, // 1a8f05000
-                            &quot;symbol_name&quot;: &quot;&lt;redacted&gt;&quot;,
-                            &quot;symbol_addr&quot;: 7129295068,  //1a8f068dc
-                            &quot;instruction_addr&quot;: 7129295072 // 1a8f068e0
-                        }
-                    ],
-</code></pre>
+<p><a href="http://jianli2017.top/wiki/IOS/crash/1_system_Crash_Type/#%E7%BA%BF%E7%A8%8B%E5%9B%9E%E6%BA%AF">系统crash日志介绍</a></p>
 
-<p>对应用Xcode解析出来的crash文件</p>
+<p><a href="http://jianli2017.top/wiki/IOS/crash/2_Collection_Crash/#%E8%8E%B7%E5%8F%96%E6%9E%84%E6%9E%B6%E3%80%81%E9%95%9C%E5%83%8F%E5%8A%A0%E8%BD%BD%E5%9C%B0%E5%9D%80">收集崩溃日志方法</a></p>
 
-<pre><code class="language-text">Last Exception Backtrace:
-0   CoreFoundation                  0x1a94b4518 __exceptionPreprocess + 228
-...
-3   CoreFoundation                  0x1a93c2484 -[__NSArrayM setObject:atIndexedSubscript:] + 703
-4   KSCrashLearnDemo                0x10457e230 0x104578000 + 25136
-5   UIKitCore                       0x1d58eb230 -[UIApplication sendAction:to:from:forEvent:] + 95
-...
-22  KSCrashLearnDemo                0x10457e330 0x104578000 + 25392
-23  libdyld.dylib                   0x1a8f068e0 start + 3
-</code></pre>
-
-<h2 id="toc_0">KSCrash 学习知识点</h2>
-
-<h4 id="toc_1">1. 获取内存使用情况</h4>
-
-<pre><code class="language-objectivec">static bool VMStats(vm_statistics_data_t* const vmStats, vm_size_t* const pageSize)
-{
-    kern_return_t kr;
-    const mach_port_t hostPort = mach_host_self();
-    
-    if((kr = host_page_size(hostPort, pageSize)) != KERN_SUCCESS)
-    {
-        KSLOG_ERROR(@&quot;host_page_size: %s&quot;, mach_error_string(kr));
-        return false;
-    }
-    
-    mach_msg_type_number_t hostSize = sizeof(*vmStats) / sizeof(natural_t);
-    kr = host_statistics(hostPort,
-                         HOST_VM_INFO,
-                         (host_info_t)vmStats,
-                         &amp;hostSize);
-    if(kr != KERN_SUCCESS)
-    {
-        KSLOG_ERROR(@&quot;host_statistics: %s&quot;, mach_error_string(kr));
-        return false;
-    }
-    
-    return true;
-}
-
-static uint64_t freeMemory(void)
-{
-    vm_statistics_data_t vmStats;
-    vm_size_t pageSize;
-    if(VMStats(&amp;vmStats, &amp;pageSize))
-    {
-        return ((uint64_t)pageSize) * vmStats.free_count;
-    }
-    return 0;
-}
-
-static uint64_t usableMemory(void)
-{
-    vm_statistics_data_t vmStats;
-    vm_size_t pageSize;
-    if(VMStats(&amp;vmStats, &amp;pageSize))
-    {
-        return ((uint64_t)pageSize) * (vmStats.active_count +
-                                       vmStats.inactive_count +
-                                       vmStats.wire_count +
-                                       vmStats.free_count);
-    }
-    return 0;
-}
-</code></pre>
-
-<h2 id="toc_2">参考资料:</h2>
-
-<p><a href="http://jianli2017.top/wiki/IOS/crash/3_KSCrash_Analize/">KSCrash原理</a></p>
+<p><a href="http://foggry.com/blog/2015/08/10/ru-he-shou-dong-jie-xi-crashlogzhi-yuan-li-pian/">手动解析CrashLog之----原理篇</a></p>
 
 
 		</div>
@@ -219,8 +117,10 @@ static uint64_t usableMemory(void)
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -232,11 +132,9 @@ static uint64_t usableMemory(void)
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -321,31 +219,31 @@ static uint64_t usableMemory(void)
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  

@@ -82,93 +82,90 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15556458372058.html">内存监控</a></h1>
-			<p class="meta"><time datetime="2019-04-19T11:50:37+08:00" 
-			pubdate data-updated="true">2019/4/19</time></p>
+		  	<h1 class="entry-title"><a href="15542146663946.html">APP启动优化</a></h1>
+			<p class="meta"><time datetime="2019-04-02T22:17:46+08:00" 
+			pubdate data-updated="true">2019/4/2</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">基础概念和知识</h2>
-
-<h3 id="toc_1">物理内存和虚拟内存</h3>
-
-<p>因为CPU的寻址范围是有限的，取决于CPU的地址总线，例如在32位平台下，其寻址范围就是2^ 32即4G。但是如果每次开启一个线程都给4G内存空间，因为物理内存是有限的，会导致内存很快就分完了，这样的话没有分配资源的进程就只能等待已分配内存的进程执行完成才能执行</p>
-
-<p>因此提出了虚拟内存的概念，它利用磁盘空间虚拟出来一块逻辑内存，而这个用于虚拟内存的磁盘空间被称为交换空间，当内存不足时会使用交换分区的内存空间(即将暂时用不到的资源写入交换空间，将物理内存进行释放)</p>
-
-<p>此时我们给一个进程只需要分配4G的虚拟内存空间，它是一个连续的内存空间(虚拟上的)。此时进程要访问内存地址可能需要一下流程：</p>
+		  	<h2 id="toc_0">App启动主要包括三个阶段</h2>
 
 <ol>
-<li>访问地址空间上某一地址，需要把地址翻译为实际需要的物理地址</li>
-<li>虽然所有进程共享这一整块物理内存，每个进程只需要把目前需要的虚拟地址映射到物理内存</li>
-<li>进程需要知道哪些地址空间上的数据在物理内存上，哪些不在（可能这部分存储在磁盘上），还有在物理内存上的哪里，这就需要通过页表来记录</li>
-<li>页表的每一个表项分两部分，第一部分记录此页是否在物理内存上，第二部分记录物理内存页的地址（如果在的话）</li>
-<li>当进程访问某个虚拟地址的时候，就会先去看页表，如果发现对应的数据不在物理内存上，就会发生缺页异常</li>
-<li>缺页异常的处理过程，操作系统立即阻塞该进程，并将硬盘里对应的页换入内存，然后使该进程就绪，如果内存已经满了，没有空地方了，那就找一个页覆盖，至于具体覆盖的哪个页，就需要看操作系统的页面置换算法是怎么设计的了</li>
+<li>main()函数执行前</li>
+<li>main()函数执行后</li>
+<li>首屏渲染完成</li>
 </ol>
 
-<p><strong>因此进程工作流程为:</strong><br/>
-当进程创建时，内核会为进程分配4G虚拟内存，当进程还没开始时，这只是内存布局。实际上并不立即把内存对应位置的程序数据和代码(比如.text .data段)拷贝到物理内存中，只是建立好虚拟内存和磁盘文件之间的映射就好（叫做存储器映射）。这个时候数据和代码还是在磁盘上的。当运行到对应的程序时，进程去寻找页表，发现页表中地址没有存放在物理内存上，而是在磁盘上，于是发生缺页异常，于是将磁盘上的数据拷贝到物理内存中。</p>
+<h3 id="toc_1">main函数执行前</h3>
 
-<p>另外在进程运行过程中，要通过malloc来动态分配内存时，也只是分配了虚拟内存，即为这块虚拟内存对应的页表项做相应设置，当进程真正访问到此数据时，才引发缺页异常。</p>
+<ul>
+<li>加载可执行文件</li>
+<li>加载动态链接库</li>
+<li>Objc运行时的初始处理，包括Objc相关类的注册、category注册、selector唯一性检查等</li>
+<li>初始化，包括执行+load()方法，attribute((constructor))修饰的函数调用、创建C++静态全局变量</li>
+</ul>
 
-<p>可以认为虚拟空间都被映射到了磁盘空间中（事实上也是按需要映射到磁盘空间上，通过mmap，mmap是用来建立虚拟空间和磁盘空间的映射关系的）</p>
+<p>因此可做的优化:</p>
 
-<h2 id="toc_2">iOS内存是怎么工作的</h2>
+<ul>
+<li>减少动态库加载。每个库本身都有依赖关系,使用更少的动态库，如果使用的动态库数量较多，尽量将多个动态库合并。苹果支持做多可以支持6个非系统动态库合并为一个</li>
+<li>减少加载启动后不会去使用的类或者方法</li>
+<li>+load()方法内容可以放到首屏渲染完成后再执行，或者使用<code>+initialize()</code>方法替换。因为，在一个<code>+load()</code>方法中，进行运行时方法替换操作会带来4好眠的消耗，避免积少成多，对启动速度带来影响</li>
+<li>控制C++全局变量的数量</li>
+</ul>
 
-<p><strong>1. iOS怎么监测内存的</strong></p>
+<h3 id="toc_2">main函数执行后</h3>
 
-<p>iOS会开启一个优先级最高的线程<code>vm_pressure_monitor</code>来监控系统的内存压力情况，并通过一个堆栈来维护所有App的进程。另外，iOS还会维护一个内存快照表，用于保存每个进程内存也的消耗情况。当系统监测发现某个app内存有压力了，就会发出通知，内存有压力的App就会执行代理<code>didReceiveMemoryWarning</code>代理。通过这个代理，可以获得最后一个编写代码释放内存的机会。通过这段代码的执行，可以避免App被系统强杀</p>
+<p>main()执行后的阶段，从main()函数执行开始，到<code>appDelegate</code>中<code>didFinishLaunchingWithOptions</code>方法里首屏渲染相关方法执行完成</p>
 
-<p><strong>2. 为什么iOS上内存占用过大会被系统强杀呢</strong>?(在其他系统或者MacOS就不会)</p>
+<p>这个阶段主要为首页需要的业务代码，包括：</p>
 
-<p>上面提到了交换空间来作为虚拟内存，但是苹果公司考虑到手持设备的存储空间小的问题，并没有使用交换空间，这样虚拟内存就没法记录到外部存储。因此，苹果引入了MemoryStatus机制</p>
+<ul>
+<li>首屏初始化所需配置文件读写操作</li>
+<li>首屏列表大数据的读取</li>
+<li>首屏渲染的大量计算等</li>
+</ul>
 
-<p><code>MemoryStatus</code>机制的主要思路就是，在iOS系统上弹出尽可能多的内存供当前应用使用。因此其机制就是先强杀后台应用，如果内存还不够就强杀掉当前应用。<br/>
-<code>MemoryStatus</code>机制，会开启一个<code>memorystatus_jetsam_thread</code>线程。这个线程和内存压力监测线程<code>vm_pressure_monitor</code>没有联系，只负责强杀应用和记录日志，不会发送消息，所以内存压力检测线程无法获取到强杀应用的消息</p>
+<p>我们不应该把各种初始化都放在这个时候，应该只在这个时候放置首屏渲染必须的任务</p>
 
-<p><strong><em>3. 系统强杀App时，怎么判断优先级</em></strong><br/>
-iOS系统内核中有一个数组，专门用于维护线程优先级。优先级规定:内核占用线程的优先级最高，操作系统次之，App的优先级最后。并且前台App的优先级高于后台运次那个优先级；COU使用多的线程优先级降低</p>
+<h3 id="toc_3">首屏渲染完成后</h3>
 
-<p><strong>iOS系统在因为内存问题强杀掉App之前，至少有6秒钟时间用来做优先级判断。同时来生成<code>JetSamEvent</code>日志</strong></p>
+<p>非首屏其它业务模块的初始化，监听的注册、配置文件的读取等。即，截止到<code>didFinishLaunchingWithOptions</code>方法作用域执行收评渲染之后所有方法执行完成。</p>
 
-<h2 id="toc_3">获取内存</h2>
+<h2 id="toc_4">优化</h2>
 
-<p>获取当前进程占用内存:</p>
+<h3 id="toc_5">功能级别优化</h3>
 
-<pre><code class="language-objectivec">struct mach_task_basic_info info;
-mach_msg_type_number_t size = sizeof(info);
-kern_return_t kl = task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t)&amp;info, &amp;size);
-    
-NSString *memStr;
-if (kl == KERN_SUCCESS) {
-    memStr = [NSString stringWithFormat:@&quot;used %llu MB \n&quot;,info.resident_size / (1024 * 1024)];
-}
-NSLog(@&quot;%@&quot;, memStr);
+<p>main（）函数开始执行后，到首屏渲染完成前只处理首屏相关的业务，其他非首屏业务的初始化、监听注册、配置文件读取等都放到首屏渲染完成后去做</p>
 
-//
-struct mach_task_basic_info {
-    mach_vm_size_t  virtual_size;   //虚拟内存      mach_vm_size_t  resident_size;   //物理内存     mach_vm_size_t  resident_size_max;  /* maximum resident memory size (bytes) */
-    time_value_t    user_time;          /* total user run time for
-                                         *  terminated threads */
-    time_value_t    system_time;        /* total system run time for
-                                         *  terminated threads */
-    policy_t        policy;             /* default policy for new threads */
-    integer_t       suspend_count;      /* suspend count for task */
-};
-</code></pre>
+<h3 id="toc_6">方法级别的优化</h3>
 
-<p>这种方法检测到的物理内存值与<code>Xcode</code>或者<code>Instrument</code>值差异较大<br/>
-为与Xcode的内存值检测相同可以使用<code>task_vm_info</code>中的<code>phys_footprint</code>值</p>
+<p>即检查首屏渲染完成前主线程有哪些耗时的方法，将耗时方法滞后或者异步。</p>
 
-<pre><code class="language-objectivec">    struct task_vm_info info;
-    mach_msg_type_number_t size = sizeof(info);
-    kern_return_t kl = task_info(mach_task_self(), TASK_VM_INFO, (task_info_t) &amp;info, &amp;size);
-    NSString *memStr;
-    if (kl == KERN_SUCCESS) {
-        memStr = [NSString stringWithFormat:@&quot;used %llu MB \n&quot;,info.phys_footprint / (1024 * 1024)];
-}
-</code></pre>
+<blockquote>
+<p>常见的耗时方法通常是计算大量数据时，即加载、编辑、存储图片和文件等资源时，但是也有可能为其它方法类似load方法太多的堆积耗时</p>
+</blockquote>
+
+<h4 id="toc_7">1. 定时抓取主线程上的方法堆栈，计算一段时间内各个方法的耗时</h4>
+
+<p>Xcode中的Time Profiler就是这种方式</p>
+
+<p>这种方法需要考虑设置抓取的定时间隔，间隔长了会漏掉一些方法，导致检查出来耗时不准确；而设置的短了，抓取堆栈方法本身调用过多也会影响整体耗时，导致结果不准确</p>
+
+<p>一般将时间设置为0.01s，这样对整体耗时影响小，虽然此时很多耗时方法不准确了，但是因为整体耗时更加重要，这也是够用的</p>
+
+<h4 id="toc_8">2. 对obcc_msdSend方法进行hook掌握所有方法的执行耗时</h4>
+
+<p>hook <code>objc_msgSend</code>优点是非常精确，而缺点即只能针对OC方法，对C方法和block方法需要使用<code>libffi</code>的<code>ffi_call</code>来hook了，但是编写维护相关工具门槛较高</p>
+
+<p><strong>原理</strong>:<br/>
+OC中的每个对象都会指向一个类，每个类也都有一个方法类表，方法列表中的方法由<code>selector</code>函数指针<code>metadata</code>组成，objc_msgSend就是在运行时根据对象和方法的selector去找相应的函数指针，然后执行，然后执行，因此objc_msgSend是OC放大执行的必经之路<br/>
+objc_msgSend调用频率最高，本身是用汇编语言写的，可以提高app生命周期的性能，也可以实现未知参数跳转到任意函数指针的功能</p>
+
+<h2 id="toc_9">Hook objc_msgSend方法</h2>
+
+<p>Fackbook开源了一个库，可以再iOS上运行的Mach-O二进制文件中动态地重新绑定符号，<strong>fishhook</strong><a href="https://github.com/facebook/fishhook">源码地址</a></p>
+
 
 
 		</div>
@@ -191,8 +188,10 @@ struct mach_task_basic_info {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(150)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
 	        
@@ -204,11 +203,9 @@ struct mach_task_basic_info {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E4%BC%98%E5%8C%96.html">项目优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -293,31 +290,31 @@ struct mach_task_basic_info {
 	  
 	      
 		      <li class="post">
-		        <a href="15578383647199.html">RACSignal</a>
+		        <a href="15645543599204.html">AsyncDisplayKit</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15578193513091.html">RACStream</a>
+		        <a href="15644708593081.html">离屏渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15560883411509.html">MatrixiOS学习</a>
+		        <a href="15643878437057.html">渲染</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15559005276972.html">Mach-O文件结构</a>
+		        <a href="15611008346251.html">RACDelegateProxy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15556625620569.html">pod repo update</a>
+		        <a href="15609354619260.html">RACChannel</a>
 		      </li>
 	     
 	  
