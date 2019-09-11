@@ -82,134 +82,219 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14939015823586.html">高效绘图</a></h1>
-			<p class="meta"><time datetime="2017-05-04T20:39:42+08:00" 
-			pubdate data-updated="true">2017/5/4</time></p>
+		  	<h1 class="entry-title"><a href="15553988088853.html">ARC的修饰符</a></h1>
+			<p class="meta"><time datetime="2019-04-16T15:13:28+08:00" 
+			pubdate data-updated="true">2019/4/16</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</p>
-
-<p>关于绘制的性能<br/>
-提高绘制性能或者减少需要绘制的数量</p>
-
-<h3 id="toc_0">软件绘图</h3>
-
-<p>在<code>Core Animation</code>中的绘图通常是指<strong>软件绘图</strong><br/>
-在iOS中，软件绘图通常是由<code>Core Graphics</code>框架完成来完成。但是，在一些必要的情况下，相比<code>Core Animation</code>和<code>OpenGL</code>，<code>Core Graphics</code>要慢了不少。</p>
-
-<p>软件绘图不仅效率很低 而且很耗内存.CALayer只需要和自己相关的内存,只有他的寄宿图会消耗一点内存控件，即使直接赋给<code>contents</code>属性一张图片,也不需要增加额外的照片存储大小,如果相同的一张图片被多个图层作为<code>contents</code>属性，那么他们将会共用同一块内存，而不是复制内存块。</p>
-
-<p><strong>但是如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</strong></p>
-
-<p><strong>绘图代价很大，尽量避免重绘你的视图</strong></p>
-
-<h3 id="toc_1">矢量图形</h3>
-
-<p>我们用的矢量绘图包含:</p>
+		  	<p>在ARC有效的环境下，其内存管理规则和手动计数相同</p>
 
 <ul>
-<li>任意多边形</li>
-<li>斜线或曲线</li>
-<li>文本</li>
-<li>渐变</li>
+<li>自己生成对象，自己持有</li>
+<li>非自己生成对象，自己也能持有</li>
+<li>自己持有的对象不再需要时释放</li>
+<li>非自己持有的对象无法释放</li>
 </ul>
 
-<p>实现一个划线应用:将用户的触摸手势转换成一个 UIBezierPath 上的点，然后绘制成视图。</p>
+<h2 id="toc_0">所有权修饰符</h2>
 
-<p>1.用<code>Core Graphic</code>基于<code>drawRect</code>绘制</p>
+<p>OC中的变量类型有对象类型(即指向OC类的指针<code>NSObject *</code>)和<code>id</code>类型(用于隐藏对象类型类名部分，相当于C语言中的void *)</p>
 
-<pre><code class="language-objectivec">- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
+<p>在ARC有效时，id类型和对象类型与C语言的其他类型不同，必须加上所有权修饰符</p>
+
+<ul>
+<li>__strong 修饰符</li>
+<li>__weak修饰符</li>
+<li>__unsafe __unretained修饰符</li>
+<li>__autoreleasing修饰符</li>
+</ul>
+
+<h2 id="toc_1">__strong修饰符</h2>
+
+<p><code>__strong</code>修饰符是id类型和对象类型的默认修饰符,即</p>
+
+<pre><code class="language-objectivec">id obj = [[NSObject alloc] init];
+//等效于
+id __strong obj = [[NSObject alloc] init];
+//或者
+__strong id obj = [[NSObject alloc] init];
+</code></pre>
+
+<p>__strong修饰符的内存管理:</p>
+
+<ol>
+<li><code>__strong</code>修饰符的变量赋值对象，即可完成对自己生成或非自己生成对象的强引用</li>
+<li>当变量超出作用域被废弃、变量所属对象废弃(赋值nil)或者变量赋值即会释放对原有对象的强引用，相当于对对象执行release操作</li>
+</ol>
+
+<p>而当对象没有了所有者 就会被销毁</p>
+
+<p>示例如下:</p>
+
+<pre><code class="language-objectivec">//1.
 {
-    CGPoint point = [[touches anyObject] locationInView:self];
-    [self.path addLineToPoint:point];
-    [self setNeedsDisplay];
+    //取得非自己生成并持有的对象
+    id __strong obj = [NSMutableArray array];
+    //因为obj为强引用 所以自己持有对象
 }
-- (void)drawRect:(CGRect)rect
+//此时变量obj超出作用域被废弃时，强引用失效，所以自动释放自己持有的对象
+
+//2.
 {
-    [[UIColor clearColor] setFill];
-    [[UIColor redColor] setStroke];
-    [self.path stroke];
+    //取得自己生成并持有的对象
+    id __strong obj = [[NSObject alloc] init];
+    //因为obj为强引用 所以自己持有对象
+}
+/*
+* 此时变量obj超出作用域，强引用失效，所以自动释放自己持有的对象
+* 对象所有者不存在，因此废弃该对象
+*/ 
+
+//3. 
+
+id __strong obj0 = [[NSObject alloc] init];
+//obj0强引用对象A
+id __strong obj1 = [[NSObject alloc] init];
+//obj1强引用对象B
+obj0 = 0bj1;
+//obj0强引用对象B，此时对对象A强引用失效，对象A没有所有者因此废弃对象A
+obj0 = nil;
+//因为obj0被赋值nil，因此其对对象B的强引用失效 此时对象B的强引用只剩下obj1
+</code></pre>
+
+<p>OC的类成员变量和方法参数上也可以附有__strong修饰符的变量</p>
+
+<pre><code class="language-objectivec">@interface Test: NSObject 
+{
+    id __strong obj_;
+}
+
+- (void)setObject:(id __strong)obj；
+
+@implementation Test
+...
+@end
+</code></pre>
+
+<blockquote>
+<p>注意：</p>
+
+<p>__ strong、__weak、__autoreleasing修饰符，会将修饰符修饰的变量自动初始化为nil</p>
+</blockquote>
+
+<h2 id="toc_2">__weak修饰符</h2>
+
+<p>主要用来避免使用强引用导致的循环引用</p>
+
+<p>循环引用很容易发生内存泄漏，内存泄漏就是应当废弃的对象在吃啊出其生存周期后继续存在</p>
+
+<p><code>__weak</code>提供弱引用，并不持有对象实例</p>
+
+<p>错误使用:</p>
+
+<pre><code class="language-objectivec">id __weak obj = [[NSObject alloc] init]; //编译器会报警高
+//这种情况下 obj并不持有生成的对象，而是持有对象的弱引用，所以对象会立即释放
+</code></pre>
+
+<p>正确使用</p>
+
+<pre><code class="language-objectivec">{
+    id __strong obj = [[NSObject alloc] init];
+    id __weak obj1 = obj;
 }
 </code></pre>
 
-<p><code>[self setNeedsDisplay];</code>可以重绘视图,再次走<code>drawRect</code>方法,但是如果一直重绘而且绘制工作量增大就会导致帧数下降.</p>
+<p><code>__weak</code>修饰符修饰的变量当持有某个对象的弱引用时，若该对象被废弃(没有了持有者)，则弱引用<strong>自动失效并处于值为nil</strong>状态</p>
 
-<p>2.用<code>CAShaperLayer</code>绘制</p>
+<h2 id="toc_3">__ unsafe__unretained修饰符</h2>
 
-<pre><code class="language-objectivec">+ (Class)layerClass
-{
-    return [CAShapeLayer class];
+<p>是不安全的修饰符。因为<code>__weak</code>只能用在iOS5之上的版本，所以在iOS4就只能使用<code>__unsafe__retained</code>修饰符</p>
+
+<p><code>__unsafe__unretained</code>变量修饰的对象不属于编译器的内存管理对象</p>
+
+<pre><code class="language-objectivec">//__unsafe__retained与__weak类似，并不持有生成对象所以对象会立即释放
+id __weak obj = [[NSObject alloc] init]; //编译器会报警高
+</code></pre>
+
+<p><strong>unsafe</strong>retained变量修饰的对象当销毁时不会自动置nil，因此有可能访问悬空指针</p>
+
+<p>因此，不要使用这个修饰符</p>
+
+<h2 id="toc_4">__autoreleasing修饰符</h2>
+
+<p>在arc有效的情况下 即将autorelease方法变为``</p>
+
+<pre><code class="language-objectivec">//非ARC环境下
+NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+id obj = [[NSObject alloc] init]; 
+[obj autorelease];
+[pool drain];
+//ARC环境下
+@autoreleasepool {
+    id __autoreleasing obj = [[NSObject alloc] init];
 }
 </code></pre>
 
-<p><code>Core Animation</code>为这些图层类型提供了专门的类，并提供了硬件支持,比如<code>CAShapeLayer</code>可以绘制多边形，直线和曲线。 <code>CATextLayer</code>可以绘制文本。<code>CAGradientLayer</code>用来绘制渐变。这些总体上都比<code>Core Graphics</code>更快，同时他们也避免了创造一个寄宿图。(<strong>这些图层是CA提供的,而我们的绘图用的是CG</strong>)</p>
+<blockquote>
+<p>注意</p>
 
-<p>因此对于绘制矢量图层我们可以重写<code>UIView</code>的<code>layer</code>然后只需要将绘制的<code>path</code>赋值<code>CAShapeLayer</code>的<code>path</code>即可绘制，虽然性能依然下降但不明显几乎感觉不到帧率差异</p>
+<p>@autoreleasepool {}在非ARC环境下也能使用 推荐@autoreleasepool来表示自动释放池，提高程序的可读性</p>
+</blockquote>
 
-<h3 id="toc_2">脏矩形</h3>
+<p>就像我们几乎不显式的写<code>__strong</code>修饰符一样 我们也几乎不显式的附加<code>__autoreleasing</code>修饰符。编译器会自动帮我们添加<code>__autoreleasing</code>修饰符，例如以下情况：</p>
 
-<p>有时候我们没办法用<code>CAShapeLayer</code>等图层来代替<code>Core Graphics</code>，对于上面的例子,我们为了进一步提高性能,我们用一个“线刷”图片粘贴到用户手指触碰的地方</p>
-
-<p>我们如果在用户手指移动就重绘视图将图片粘贴到用户手指移动过的所有点,这样绘制越多就越慢,仍会引起性能问题</p>
-
-<p>为了减少不必要的绘制,Mac OS和iOS设备将会把屏幕区分为需要重绘的区域和不需要重绘的区域。<strong>那些需要重绘的部分被称作『脏区域』。</strong>为了方便我们通常指出包含需要重绘的视图的矩形位置,就是<strong>脏矩形</strong></p>
-
-<p>只改变了视图的部分区域的,重绘整个整个寄宿图就太浪费了,我们可以通过提供重绘区域.</p>
-
-<p>当检测到需要重绘的区域时通过<code>setNeedsDisplayInRect:</code>标记,这样就会在一次试图刷新时调用调用视图的<code>- drawRect:</code>（或图层代理的<code>- drawLayer:inContext:</code>方法）</p>
-
-<p>传入<code>- drawLayer:inContext:</code>的<code>CGContext</code>参数会自动被裁切以适应对应的矩形。为了确定矩形的尺寸大小，你可以用<code>CGContextGetClipBoundingBox()</code>方法来从上下文获得大小。调用<code>- drawRect()</code>会更简单，因为<code>CGRect</code>会作为参数直接传入。</p>
-
-<p>当然如果你的裁剪逻辑相当复杂,那还是是让<code>Core Graphics</code>来为你重绘吧，</p>
-
-<pre><code class="language-objectivec">- (void)addBrushStrokeAtPoint:(CGPoint)point
-{
-    //add brush stroke to array
-    [self.strokes addObject:[NSValue valueWithCGPoint:point]];
-    //set dirty rect
-    [self setNeedsDisplayInRect:[self brushRectForPoint:point]];
-}
-- (CGRect)brushRectForPoint:(CGPoint)point
-{
-    return CGRectMake(point.x - BRUSH_SIZE/2, point.y - BRUSH_SIZE/2, BRUSH_SIZE, BRUSH_SIZE);
-}
-- (void)drawRect:(CGRect)rect
-{
-    //redraw strokes
-    for (NSValue *value in self.strokes) {
-        //get point
-        CGPoint point = [value CGPointValue];
-        //get brush rect
-        CGRect brushRect = [self brushRectForPoint:point];
-        //only draw brush stroke if it intersects dirty rect
-        if (CGRectIntersectsRect(rect, brushRect)) {
-        //draw brush stroke
-        [[UIImage imageNamed:@&quot;Chalk.png&quot;] drawInRect:brushRect];
-        }
-    }
+<ol>
+<li><p>编译器会自动将返回值注册到autorelease pool</p>
+<p>编译器会检查方法名，如果使用<code>alloc/new/copy/mutableCopy</code>以外开头的方法，则自动将返回值注册到`autorelease pool中</p>
+<pre><code class="language-objectivec">+ (id)array {
+return [[NSMutableArray alloc] init]<br/>
+}<br/>
+//等效于<br/>
++ (id)array {<br/>
+id __strong obj = [[NSMutableArray alloc] init];<br/>
+return obj;<br/>
 }
 </code></pre>
-
-<h3 id="toc_3">异步绘制</h3>
-
-<p><code>UIKit</code>的单线程天性意味着寄宿图通畅要在主线程上更新，这意味着绘制会打断用户交互，甚至让整个<code>app</code>看起来处于无响应状态。</p>
-
-<p>为了可以避免用户等待绘制：</p>
-
-<h4 id="toc_4">CATiledLayer</h4>
-
-<p><code>CATiledLayer</code>除了将图层再次分割成独立更新的小块外<br/>
-<code>CATiledLayer</code>还有一个有趣的特性：在多个线程中为每个小块同时调用<code>- drawLayer:inContext:</code>方法。<br/>
-这就避免了阻塞用户交互而且能够利用多核心新片来更快地绘制。只有一个小块的<code>CATiledLayer</code>是实现异步更新图片视图的简单方法。</p>
-
-<h4 id="toc_5">drawsAsynchronously</h4>
-
-<p>苹果为<code>CALayer</code>引入了这个令人好奇的属性，<code>drawsAsynchronously</code>属性对传入<code>-drawLayer:inContext:</code>的<code>CGContext</code>进行改动，允许<code>CGContext</code>延缓绘制命令的执行以至于不阻塞用户交互。</p>
-
-<p>它与<code>CATiledLayer</code>使用的异步绘制并不相同。它自己的 <code>- drawLayer:inContext:</code>方法只会在主线程调用，但是<code>CGContext</code>并不等待每个绘制命令的结束。相反地，它会将命令加入队列，当方法返回时，在后台线程逐个执行真正的绘制。</p>
-
-<p>根据苹果的说法。这个特性在需要频繁重绘的视图上效果最好（比如我们的绘图应用，或者诸如UITableViewCell 之类的），对那些只绘制一次或很少重绘的图层内容来说没什么太大的帮助。</p>
+<p>obj由于return会使对象变量超出作用域，所以自己持有的强引用被释放，但该函数以对象作为返回值，编译器会自动帮其注册到autorelease pool中</p></li>
+<li><p>访问__weak修饰的变量一定要访问注册的到autoreleapool的对象</p>
+<p>因为<code>__weak</code>只持有对象弱引用，在访问过程中，对象有可能销毁，而把对象注册到<code>autorelease pool</code>就能保证对象在访问结束前不会被销毁</p>
+<pre><code class="language-objectivec">id __weak obj0 = obj1;
+NSLog(@&quot;class = %@&quot;, [obj0 class]);<br/>
+//等效于<br/>
+id __weak obj0 = obj1;<br/>
+id __autoreleasing tmp = obj1;<br/>
+NSLog(@&quot;class = %@&quot;, [tmp class]);
+</code></pre></li>
+<li><p>id的指针或者对象指针会默认加上__autoreleasing修饰符<br/>
+id的指针<code>id *obj</code>和<code>NSObject **obj</code>在没有显式指定时会被附加上<code>__autoreleasing</code>修饰符</p>
+<p>例如:</p>
+<pre><code class="language-obj"> - (nullable instancetype)dataWithContentsOfFile:(NSString *)path ... error:(NSError **)errorPtr;
+//相当于<br/>
+- (nullable instancetype)dataWithContentsOfFile:(NSString *)path... error:(NSError * __autoreleasing *)errorPtr;
+</code></pre>
+<p>使用__autoreleasing修饰的变量作为对象取得参数就和用非自己生成对象方法取得返回值的对象完全一样，会注册到<code>autorelease pool</code>中</p>
+<pre><code class="language-objectivec">//源码应该类似这个样子
+- (nullable instancetype)dataWithContentsOfFile:(NSString *)path... error:(NSError * __autoreleasing *)errorPtr {<br/>
+    *error = [[NSError alloc] initWithDomain:MyAppDomin code:errorCode userInfo:nil];<br/>
+}
+</code></pre>
+<p>在使用过程中应该注意，保持赋值互相对象的修饰符一致:</p>
+<pre><code class="language-objectivec">NSError * __autoreleasing error;//修改修饰符为__autoreleasing保持一致进行赋值
+NSError **pError = &amp;error;<br/>
+//或者<br/>
+NSError * error;<br/>
+NSError * __strong *pError = &amp;error;
+</code></pre>
+<p>在下面的NSError **参数赋值了一个__strong对象变量也没报错，是因为编译器自动帮我们做了转换</p>
+<pre><code class="language-objectivec">NSError * error;
+    id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;error];<br/>
+//编译器帮我们转化为了<br/>
+NSError __strong *error;<br/>
+NSError __autoreleasing *tmp = error;<br/>
+id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;tmp];
+</code></pre></li>
+</ol>
 
 
 		</div>
@@ -232,24 +317,24 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -269,10 +354,10 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -296,7 +381,7 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -307,7 +392,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -325,6 +410,15 @@ $(document).ready(function(event) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -334,31 +428,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

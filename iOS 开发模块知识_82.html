@@ -82,480 +82,453 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14896343426276.html">专用图层</a></h1>
-			<p class="meta"><time datetime="2017-03-16T11:19:02+08:00" 
-			pubdate data-updated="true">2017/3/16</time></p>
+		  	<h1 class="entry-title"><a href="14877303400153.html">类与对象</a></h1>
+			<p class="meta"><time datetime="2017-02-22T10:25:40+08:00" 
+			pubdate data-updated="true">2017/2/22</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>是Core Animation图层不仅仅能作用于图片和颜色而已。</p>
+		  	<h2 id="toc_0">Class</h2>
 
-<p>补充点:<br/>
-想UIView的图层上添加另外一个UIView的图层是会有两个UIVIew的（UIView的层级关系）<br/>
-像一个纯Layer上添加另外一个UIView的图层,就仅仅只是添加了这个视图的图层,这个视图不会在视图的层级关系中体现.</p>
+<p>Objective-C类是由Class类型来表示的，它实际上是一个指向<code>objc_class</code>结构体的指针。</p>
 
-<h3 id="toc_0">CAShapeLayer</h3>
-
-<p><code>CAShapeLayer</code> 是一个通过矢量图形而不是<code>bitmap</code>来绘制的图层子类.<br/><br/>
-即<code>CAShapeLayer</code>与<code>CGPath</code>搭配来绘制图形.与用<code>Core Graphics</code>直接向原始的<code>CALyer</code>的内容中绘制一个路径相比：  </p>
-
-<ul>
-<li>渲染快速（ CAShapeLayer 使用了硬件加速）</li>
-<li>高效使用内存（CAShapeLayer 不需要像普通 CALayer 一样创建一个寄宿图形）</li>
-<li>不会被图层边界剪裁掉（CAShapeLayer 可以在边界之外绘制）</li>
-<li>不会出现像素化（当你给 CAShapeLayer 做3D变换时，它不像一个有寄宿图的普通图层一样变得像素化）</li>
-</ul>
-
-<h4 id="toc_1">CGPath</h4>
-
-<p><code>CGPath</code>来创建形状,一定要闭合,可以设置一些属性lineWith、lineCap 、lineJoin等,但是一个图层只有一次机会设置,如果想要想用不同颜色或风格来绘制多个形状，就不得不为每个形状准备一个图层了。  </p>
-
-<pre><code class="language-objectivec">//create shape layer
-CAShapeLayer *shapeLayer = [CAShapeLayer layer];
-shapeLayer.strokeColor = [UIColor redColor].CGColor;
-shapeLayer.fillColor = [UIColor clearColor].CGColor;
-shapeLayer.lineWidth = 5;
-shapeLayer.lineJoin = kCALineJoinRound;
-shapeLayer.lineCap = kCALineCapRound;
-shapeLayer.path = path.CGPath;
+<pre><code class="language-objectivec">//定义为:
+typedef struct objc_class *Class;
 </code></pre>
 
-<h4 id="toc_2">圆角</h4>
+<p>在<code>objc/runtime.h</code>中objc_class结构体定义如下:<br/>
+Class 是指向类结构体的指针,NSObject 的class 方法就返回这样一个指向其类结构的指针。</p>
 
-<p>我们虽然可以用<code>CALayer</code>的<code>cornerRadius</code>可以设置圆角，但是我使用<code>CAShapeLayer</code>来单独指定每个角的形状.</p>
-
-<pre><code class="language-objectivec">CGRect rect = CGRectMake(50, 50, 100, 100);
-CGSize radii = CGSizeMake(20, 20);
-UIRectCorner corners = UIRectCornerTopRight | UIRectCornerBottomRight | UIRectCornerBottomLeft;
-//create path
-UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:rect byRoundingCorners:corners cornerRadii:radii];
-</code></pre>
-
-<p>然后我们可以通过这个图层路径绘制一个既有直角又有圆角的视图,如果我们想依照此图形来剪裁视图内容，我们可以把<strong><code>CAShapeLayer</code>作为视图的宿主图层</strong>，而不是添加一个子视图</p>
-
-<h3 id="toc_3">CATextLayer</h3>
-
-<p>如果我们想要在一个图层中显示文字,我们可以通过借助图层的代理,直接将字符串用<code>Core<br/>
-Graphics</code>写入图层的内容--&gt;这就是UILabel实现  </p>
-
-<p>如果不用上面的方式,我们还有比较简单的方式:<br/>
-<code>Core Animation</code>提供了一个<code>CALayer</code>的子类<code>CATextLayer</code>，它以图层的形式包含了<code>UILabel</code>几乎所有的绘制特性，并且额外提供了一些新的特性。而且<code>CATextLayer</code>也要比 <code>UILabel</code> 渲染得快得多</p>
-
-<pre><code class="language-objectivec">CATextLayer *textLayer = [[CATextLayer alloc] init];
-    textLayer.frame = self.textLayerView.bounds;
-    [self.textLayerView.layer addSublayer:textLayer];
-    //用retina屏进行渲染,否则文字会像素化
-    textLayer.contentsScale = [UIScreen mainScreen].scale;
-    //颜色 默认黑色
-    textLayer.foregroundColor = [UIColor yellowColor].CGColor;
-    
-    textLayer.alignmentMode = kCAAlignmentJustified;
-    
-    //这个属性为yes后为根据内容进行多行显示,Yes就是一行
-    textLayer.wrapped = NO;
-    
-    UIFont *font = [UIFont systemFontOfSize:15];
-    CFStringRef fontName = (__bridge CFStringRef)(font.fontName);
-    CGFontRef fontRef = CGFontCreateWithFontName(fontName);
-    textLayer.font = fontRef;
-    //字体大小是单独设置的
-    textLayer.fontSize = 10;
-    //设置显示字体
-    textLayer.string = @&quot;zhe shi yi ge textLayer&quot;;
-</code></pre>
-
-<p><code>CATextLayer</code> 的 <code>font</code> 属性不是一个 <code>UIFont</code> 类型，而是一个 <code>CFTypeRef</code> 类型。这样可以根据你的具体需要来决定字体属性应该是用 <code>CGFontRef</code> 类型还是 <code>CTFontRef</code> 类型（<code>Core Text</code>字体）。</p>
-
-<p>因为 <code>CTFontRef</code> 和 <code>CGFontRef</code> 并不像UIFont一样包含点大小，因此我们需要<strong>单独设置字体大小</strong>;</p>
-
-<p>CATextLayer 的<code>string</code>属性是<code>id</code>类型的，因此我们可以用<code>NSString</code>和<code>NSAttributedString</code>来指定文本。  <strong>注意</strong>， <code>NSAttributedString</code> 并不是 <code>NSString</code> 的子类。属性化字符串是iOS用来渲染字体风格的机制，它以特定的方式来决定指定范围内的字符串的原始信息，比如字体，颜色，字重，斜体等。</p>
-
-<h4 id="toc_4">富文本</h4>
-
-<p>iOS6之后，苹果给UILabel和UIKit添加直接的属性字符串支持.从iOS3.2开始 CATextLayer 就已<br/>
-经支持属性化字符串了(可以这样支持低版本 不过他吗太低了吧)。<br/><br/>
-我们可以看下CATextLayer的富文本:</p>
-
-<pre><code class="language-objectivec">//convert UIFont to a CTFont
-CFStringRef fontName = (__bridge CFStringRef)font.fontName;
-CGFloat fontSize = font.pointSize;
-CTFontRef fontRef = CTFontCreateWithName(fontName, fontSize, NULL);
-
-//set text attributes
-NSDictionary *attribs = @{(__bridge id)kCTForegroundColorAttributeName:(__bridge id)[UIColor blackColor].CGColor, 
-(__bridge id)kCTFontAttributeName: (__bridge id)fontRef};
-[string setAttributes:attribs range:NSMakeRange(0, [text length])];
-
-attribs = @{(__bridge id)kCTForegroundColorAttributeName: (__bridge id)[UIColor redColor].CGColor,
-(__bridge id)kCTUnderlineStyleAttributeName:@(kCTUnderlineStyleSingle),(__bridge id)kCTFontAttributeName: (__bridge id)fontRef};
-[string setAttributes:attribs range:NSMakeRange(6, 5)];
-//release the CTFont we created earlier
-CFRelease(fontRef);
-//set layer text
-textLayer.string = string;
-
-</code></pre>
-
-<h4 id="toc_5">行距和字距</h4>
-
-<p>由于绘制的实现机制不同（<code>Core Text</code>和<code>WebKit</code>），用 <code>CATextLayer</code> 渲染和用 <code>UILabel</code> 渲染出的文本行距和字距也不是不尽相同的。(影响不大)</p>
-
-<h4 id="toc_6">UILabel替代品</h4>
-
-<p>CATextLayer 比 UILabel 有着更好的性能表现,虽然UILabel很好用,但是如果我们非要找个UILabel替代品的话,有以下方法:</p>
-
-<ol>
-<li><p>继承 UILabel后添加一个子图层 CATextLayer 并重写显示文本的方法。<br/>
-但是仍然会有由<code>UILabel</code>的<code>-drawRect:</code>方法创建的空寄宿图。而且由于CALayer不能自动布局,我们不能根据内容自动方法图层.</p></li>
-<li><p>用 CATextLayer 作为宿主图层的 UILabel 子类<br/>
-每一个 <code>UIView</code> 都是寄宿在一个 <code>CALayer</code> 的示例上。这个图层是由视图自动创建和管理的，这个图层一旦被创建就无法替代,但是我们可以继承了<code>UIView</code>，重写其<code>+layerClass</code>UIView 会在初始化的时候调用 +layerClass 方法，然后用它的返回类型来创建宿主图层。</p></li>
-</ol>
-
-<p>把 CATextLayer 作为宿主图层的另一好处就是视图自动设置了 contentsScale 属性。</p>
-
-<p><strong>用 <code>+layerClass</code> 来创建基于不同图层的视图是一个简单可复用的方法</strong></p>
-
-<h3 id="toc_7">CATransformLayer</h3>
-
-<p>我们之前说过所有图层都把他的子图层平面化到一个场景中,因此没法做出3D的层级体系变换.<code>CALayer</code>中存在<code>CATransfromLayer</code>，它不同于一般图层，它不显示自己内容，只有当存在了一个能作用于子图层的变换它才真正存在。</p>
-
-<p>我们在前面创建过一个立方体的固体对象,但是因为这次我们是向CATransformLayer上添加图层，而不是之前的<code>contaninView</code>,我们<strong>不能向一个没有寄宿图的图层上添加有寄宿图图层</strong>(就是不能向一个不是UIVIew的Layer中添加另外一个UIView的layer，否则在视图体系中显示的添加的这个不是视图而是图层),因此我们选择向<code>CATransfromLayer</code>添加立方体图层.</p>
-
-<pre><code class="language-objectivec">//举一段代码栗子
-//create cube layer
-CATransformLayer *cube = [CATransformLayer layer];
-//add cube face 1（添加立方体的一个面）
-CATransform3D ct = CATransform3DMakeTranslation(0, 0, 50);
-//[self faceWithTransform:ct] 这个方法根据Transform3D返回了一个这种变换的图层
-[cube addSublayer:[self faceWithTransform:ct]];
-//添加6个面后
-...
-//center the cube layer within the container
-CGSize containerSize = self.containerView.bounds.size;
-cube.position = CGPointMake(containerSize.width / 2.0, containerSize.height / 2.0);
+<pre><code class="language-objectivec">truct objc_class {
+    Class isa  OBJC_ISA_AVAILABILITY;
+#if !__OBJC2__
+    Class super_class                       OBJC2_UNAVAILABLE;  // 父类
+    const char *name                        OBJC2_UNAVAILABLE;  // 类名
+    long version                            OBJC2_UNAVAILABLE;  // 类的版本信息，默认为0
+    long info                               OBJC2_UNAVAILABLE;  // 类信息，供运行期使用的一些位标识
+    long instance_size                      OBJC2_UNAVAILABLE;  // 该类的实例变量大小
+    struct objc_ivar_list *ivars            OBJC2_UNAVAILABLE;  // 该类的成员变量链表
+    struct objc_method_list **methodLists   OBJC2_UNAVAILABLE;  // 方法定义的链表
+    struct objc_cache *cache                OBJC2_UNAVAILABLE;  // 方法缓存
+    struct objc_protocol_list *protocols    OBJC2_UNAVAILABLE;  // 协议链表
+#endif
+} OBJC2_UNAVAILABLE;
 /**
-设置这个立方体的旋转（我们可以不用设置containerView的subTransform属性来进行立方体变换,而且可
-以有几个立方体就能变换几种）
+    1.isa：需要注意的是在Objective-C中，所有的类自身也是一个对象，这个对象的Class里面也有一个
+    isa指针，它指向metaClass(元类)
+    2.super_class：指向该类的父类，如果该类已经是最顶层的根类(如NSObject或NSProxy)，则
+    super_class为NULL。
+    3.cache：用于缓存最近使用的方法。一个接收者对象接收到一个消息时，它会根据isa指针去查找能够
+    响应这个消息的对象。在实际使用中，这个对象只有一部分方法是常用的，很多方法其实很少用或者根本
+    用不上。这种情况下，如果每次消息来时，我们都是methodLists中遍历一遍，性能势必很差。这时，
+    cache就派上用场了。在我们每次调用过一个方法后，这个方法就会被缓存到cache列表中，下次调用的
+    时候runtime就会优先去cache中查找，如果cache没有，才去methodLists中查找方法。这样，对于那
+    些经常用到的方法的调用，但提高了调用的效率。
+    4.version：我们可以使用这个字段来提供类的版本信息。这对于对象的序列化非常有用，它以让我们
+    识别出不同类定义版本中实例变量布局的改变。
+    5.方法链表里面存储的是Method 类型的,Method中含有SEL和IMP.一个方法 Method，其包含一个方
+    法选标 SEL – 表示该方法的名称，一个types – 表示该方法参数的类型，一个 IMP  - 指向该方法
+    的具体实现的函数指针。
 */
-cube.transform = transform;
-
-//设置contaninView的sublayerTransform保证透视和灭点
-CATransform3D pt = CATransform3DIdentity;
-pt.m34 = -1.0 / 500.0;
-self.containerView.layer.sublayerTransform = pt;
-//将不同形状的cube添加
-[self.containerView.layer addSublayer:cube1];
 </code></pre>
 
-<h3 id="toc_8">CAGradientLayer</h3>
-
-<p><code>CAGradientLayer</code>是用来生成两种或更多颜色平滑渐变的（绘制使用了硬件加速）.<br/>
-<code>CAGradientLayer</code>只适合做这种渐变没法定制,例如做环形渐变等,那样的话只能用<code>Core Graphic</code>了</p>
-
-<h4 id="toc_9">基础渐变</h4>
-
-<p>这是最简单的渐变,这些渐变色彩放在一个数组中，并赋给<code>colors</code>(<code>CGColorRef</code>类型)属性。</p>
-
-<p>CAGradientLayer 也有<code>startPoint</code>和<code>endPoint</code>属性，他们决定了渐变的方向。这两个参数是以单位坐标系进行的定义，所以左上角坐标是{0, 0}，右下角坐标是{1, 1}。</p>
-
-<pre><code class="language-objectivec">CAGradientLayer *gradientLayer = [CAGradientLayer layer];
-gradientLayer.frame = self.containerView.bounds;
-[self.containerView.layer addSublayer:gradientLayer];
-//set gradient colors
-gradientLayer.colors = @[(__bridge id)[UIColor redColor].CGColor, (__bridge id)[UIColor blueColor].CGColor];
-//set gradient start and end points
-gradientLayer.startPoint = CGPointMake(0, 0);
-gradientLayer.endPoint = CGPointMake(1, 1);
-</code></pre>
-
-<p><img src="media/14896343426276/14897191786083.jpg" alt=""/></p>
-
-<h4 id="toc_10">多重渐变</h4>
-
-<p><code>colors</code>属性是个数组,因此可以设置很多颜色的多重渐变.默认这些颜色在我们指定的空间是均匀渲染的,但是我们可以设置<code>location</code>属性来调整空间。<br/>
-<code>location</code>属性浮点型数组(以<code>NSNumber</code>包装),是以单位坐标(针对做渐变区域的单位坐标)系进行标定。0.0代表着渐变的开始，1.0代表着结束。<br/>
-<code>loaction</code>属性不一定非要设置,但是如果设置了,数组大小一定要与<code>colors</code>数组大小相同,否则会得到白色渐变.  </p>
-
-<pre><code class="language-objectivec">gradientLayer.colors = @[(__bridge id)[UIColor redColor].CGColor,(__bridge id)[UIColor blueColor].CGColor,(__bridge id)[UIColor greenColor].CGColor];
-/**
-    这个数组的意义是0.0-0.25为红色到黄色的渐变区域,0.25-0.5为黄色到绿色的渐变区域,
-    0.5之后为绿色的完全区域
-*/
-    gradientLayer.locations = @[@(0.1),@(0.5),@(0.9)];
-    gradientLayer.startPoint = CGPointMake(0.25, 0.25);
-    gradientLayer.endPoint = CGPointMake(0.5, 0.5);
-</code></pre>
-
-<p><img src="media/14896343426276/14897305344880.jpg" alt=""/></p>
-
-<h3 id="toc_11">CAReplicatorLayer</h3>
-
-<p><code>CAReplicatorLayer</code>的目的是为了高效生成许多相似的图层。它会绘制一个或多个图层的子图层，并在每个复制体上应用不同的变换。</p>
-
-<h4 id="toc_12">重复图层</h4>
-
-<p><code>instanceCount</code>属性指定了图层需要重复多少次<br/>
-<code>instanceTransform</code> 指定了一个 <code>CATransform3D</code> 3D变换，复制图层在被创建时产生的和上一个制图层的位移(位移的锚点是<code>CAReplicatorlayer</code>的中心点)<br/>
-<code>instanceDelay</code>在短时间内的复制延时,一般用在动画上(支持动画的延时)<br/>
- <code>preservesDepth</code>如果设置为YES,图层将保持于CATransformLayer类似的性质和相同的限制<br/>
- <code>instanceColor</code>设置这些复制图层的颜色,默认位白色(注意有可能会和要复制的图层的颜色冲突)<br/>
- 变换是逐步增加的，每个实例都是相对于前一实例布局。因此这些复制体最终不会出现在同一位置上</p>
-
-<pre><code class="language-objectivec">CAReplicatorLayer *replicator = [CAReplicatorLayer layer];
-replicator.frame = self.containerView.bounds;
-[self.containerView.layer addSublayer:replicator];
-//重复多少次
-replicator.instanceCount = 10;
-
-CATransform3D transform = CATransform3DIdentity;
-transform = CATransform3DTranslate(transform, 0, 200, 0);
-transform = CATransform3DRotate(transform, M_PI / 5.0, 0, 0, 1);
-transform = CATransform3DTranslate(transform, 0, -200, 0);
-replicator.instanceTransform = transform;
-
-replicator.instanceBlueOffset = -0.1;
-replicator.instanceGreenOffset = -0.1;
-
-CALayer *layer = [CALayer layer];
-layer.frame = CGRectMake(100.0f, 100.0f, 100.0f, 100.0f);
-layer.backgroundColor = [UIColor whiteColor].CGColor;
-[replicator addSublayer:layer];
-
-</code></pre>
-
-<p>由于我们设置了<code>instanceBlueOffset</code>和 <code>instanceGreenOffset</code>属性.的颜色也在变化.除了这两个还有<code>instanceBlueOffset</code> <code>instanceAlphaOffset</code>这都是改变某个颜色通道的值</p>
-
-<p><code>CAReplicatorLayer</code> 真正应用到实际程序上的场景比如：一个游戏中导弹的轨迹云，或者粒子爆炸（尽管iOS 5已经引入了 <code>CAEmitterLayer</code> ，它更适合创建任意的粒子效果）。除此之外，还有一个实际应用是：<code>反射</code>。</p>
-
-<h4 id="toc_13">反射</h4>
-
-<p>创建一个指定视图的镜像照片,我们只需要使用<code>CAReplicatorLayer</code>并用一个负比例变换创建一个复制图层即可.</p>
-
-<pre><code class="language-objectivec">+ (Class)layerClass
-{
-return [CAReplicatorLayer class];
-}
-- (void)setUp
-{
-//configure replicator
-CAReplicatorLayer *layer = (CAReplicatorLayer *)self.layer;
-layer.instanceCount = 2;
-//move reflection instance below original and flip vertically
-//核心代码是这个动画
-CATransform3D transform = CATransform3DIdentity;
-CGFloat verticalOffset = self.bounds.size.height + 2;
-transform = CATransform3DTranslate(transform, 0, verticalOffset, 0);
-transform = CATransform3DScale(transform, 1, -1, 0);
-layer.instanceTransform = transform;
-//reduce alpha of reflection layer
-layer.instanceAlphaOffset = -0.6;
-}
-- (id)initWithFrame:(CGRect)frame
-{
-//this is called when view is created in code
-if ((self = [super initWithFrame:frame])) {
-[self setUp];
-}
-return self;
-}
-- (void)awakeFromNib
-{
-//this is called when view is created from a nib
-[self setUp];
-}
-</code></pre>
-
-<p>这个镜像的是整个ReflectView视图内容(是视图层次)<br/>
-因为现在这个VIew的layer已经变为<code>CAReplicatorLayer</code>所以我们对这个layer本身改变什么是不会镜像的,当然如果add的Layer内容也会被镜像</p>
-
-<p>大神写的自适应渐变淡出效果的<a href="https://github.com/nicklockwood/ReflectionView">ReflectView</a></p>
-
-<h3 id="toc_14">CAScrollLayer</h3>
-
-<p>之前我们显示大图层中的一小部分是使用图层的<code>contentRect</code>属性,但是如果我们想要滑动可视区域的话这样就不是很好的办法.</p>
-
-<p><code>CALayey</code>提供了一个子类<code>CAScrollLayer</code>.<br/>
- <code>CAScrollLayer</code> 有一个 <code>-scrollToPoint:</code>方法，它自动适应 <code>bounds</code> 的原点以便图层内容现在滑动的地方。</p>
-
-<p>因为<code>Core Animation</code>是不处理用户输入的,所以<code>CAScrollLayer</code>并不负责将触摸事件转换为滑动事件，既不渲染滚动条，也不实现任何iOS指定行为例如滑动反弹.</p>
-
-<pre><code class="language-objectivec">//来用 CAScrollLayer 来常见一个基本的 UIScrollView 替代品
-+ (Class)layerClass
-{
-    return [CAScrollLayer class];
-}
-//添加平移手势
-//在平移手势中滚动视图
-CGPoint offset = self.bounds.origin;
-offset.x -= [recognizer translationInView:self].x;
-offset.y -= [recognizer translationInView:self].y;
-//scroll the layer
-[(CAScrollLayer *)self.layer scrollToPoint:offset];
-//reset the pan gesture translation
-[recognizer setTranslation:CGPointZero inView:self];
-//当然我们可以自己做边界检查
-</code></pre>
-
-<p>其实<strong><code>UIScrollView</code> 并没有用 <code>CAScrollLayer</code></strong>，事实上，就是简单的通过直接操作图层边界来实现滑动。</p>
-
-<p>那么这个<code>CAScrollLayer</code>的作用是什么呢?<br/>
-在<code>CAScrollerLayer</code>的头文件中有一个<code>CALayer (CALayerScrolling)</code>的扩展分类,实现了一些：</p>
-
-<pre><code class="language-objectivec">- (void)scrollPoint:(CGPoint)p;
-- (void)scrollRectToVisible:(CGRect)r;
-@property(readonly) CGRect visibleRect;
-</code></pre>
-
-<p>其实这些方法或者属性并不是给<code>CALayer</code>添加了滑动功能,事实上他们只是放置在<code>CAScrollLayer</code>中的图层的实用方法,<code>scrollPoint:</code>方法从图层树中查找并找到第一个可用的<code>CAScrollLayer</code>，然后滑动它使得指定点成为可视的。<code>scrollRectToVisible:</code>方法实现了同样的事情只不过是作用在一个矩形上的。<code>visibleRect</code> 属性决定图层（如果存在的话）的哪部分是当前的可视区域。当涉及到实现图层滑动的时候就可以用上了</p>
-
-<h3 id="toc_15">CATiledLayer</h3>
-
-<p>我们有可能会需要加载一张高像素图片,这时候我们不适合读取整张图片到内存中,因为载入大图会非常的慢,将会阻塞线程造成卡顿.<br/>
-能高效绘制在iOS上的图片也有一个大小限制。所有显示在屏幕上的图片最终都会被转化为<code>OpenGL</code>纹理，同时<code>OpenGL</code>有一个最大的纹理尺寸（通常是2048*2048，或4096*4096，这个取决于设备型号）。如果你想在单个纹理中显示一个比这大的图，即便图片已经存在于内存中了，你仍然会遇到很大的性能问题，因为<code>Core Animation</code>强制用CPU处理图片而不是更快的GPU</p>
-
-<p>这时候我们可以用<code>CATiledLayer</code>,它可以将大图分解成小片然后将他们单独按需载入<br/>
-<strong>CATiledLayer 很好地和 UIScrollView 集成在一起。</strong></p>
-
-<pre><code class="language-objectivec">- (void)viewDidLoad
-{
-    [super viewDidLoad];
-    //add the tiled layer
-    
+<pre><code class="language-objectivec">    NSArray *array = [[NSArray alloc] init];
+    其流程是：
+    1. `[NSArray alloc]`先被执行。因为NSArray没有`+alloc`方法，于是去父类NSObject去查找。
+    2. 检测NSObject是否响应`+alloc`方法，发现响应，于是检测NSArray类，并根据其所需的内存空间大小开始分配内存空间，然后把`isa`指针指向NSArray类。同时，`+alloc`也被加进cache列表里面。
+    3. 接着，执行`-init`方法，如果NSArray响应该方法，则直接将其加入`cache`；如果不响应，则去父类查找。
+    4. 在后期的操作中，如果再以`[[NSArray alloc] init]`这种方式来创建数组，则会直接从cache中取出相应的方法，直接调用。
+    //objc_object与id
+    `objc_object`是表示一个类的实例的结构体，它的定义如下(`objc/objc.h`)：
+    //objc
+    struct objc_object {
+        Class isa  OBJC_ISA_AVAILABILITY;
+    };
+    typedef struct objc_object *id;
     /**
-    CATiledLayer 很好地和 UIScrollView 集成在一起。除了设置图层和滑动视图边界
-    以适配整个图片大小，我们真正要做的就是实现 -drawLayer:inContext: 方法，当
-    需要载入新的小图时， CATiledLayer 就会调用到这个方法。
+    可以看到，这个结构体只有一个字体，即指向其类的isa指针。这样，当我们向一个Objective-C对象发
+    送消息时，运行时库会根据实例对象的isa指针找到这个实例对象所属的类。Runtime库会在类的方法列
+    表及父类的方法列表中去寻找与消息对应的selector指向的方法。找到后即运行这个方法。
+    当创建一个特定类的实例对象时，分配的内存包含一个objc_object数据结构，然后是类的实例变量的数
+    据。NSObject类的alloc和allocWithZone:方法使用函数`class_createInstance`来创建objc_object数据结构。
     */
-    
-    CATiledLayer *tileLayer = [CATiledLayer layer];
-    tileLayer.frame = CGRectMake(0, 0, 2048, 2048);
-    tileLayer.delegate = self; [self.scrollView.layer addSublayer:tileLayer];
-    //configure the scroll view
-    self.scrollView.contentSize = tileLayer.frame.size;
-    //draw layer
-    [tileLayer setNeedsDisplay];
-}
-- (void)drawLayer:(CATiledLayer *)layer inContext:(CGContextRef)ctx
-{
-    //determine tile coordinate
-    CGRect bounds = CGContextGetClipBoundingBox(ctx);
-    NSInteger x = floor(bounds.origin.x / layer.tileSize.width);
-    NSInteger y = floor(bounds.origin.y / layer.tileSize.height);
-    //load tile image
-    NSString *imageName = [NSString stringWithFormat: @&quot;Snowman_%02i_%02i&quot;, x, y];
-    NSString *imagePath = [[NSBundle mainBundle] pathForResource:imageName ofType:@&quot;jpg&quot;];
-    
-    UIImage *tileImage = [UIImage imageWithContentsOfFile:imagePath];
-    //draw tile
-    UIGraphicsPushContext(ctx);
-    [tileImage drawInRect:bounds];
-    UIGraphicsPopContext();
-}
 </code></pre>
 
-<p><code>CATiledLayer</code> 的默认以淡入的方式载入小图,可以用 <code>fadeDuration</code> 属性改变淡入时长或直接禁用<br/>
-掉。</p>
+<h4 id="toc_1">objc_cache</h4>
 
-<p><code>CATiledLayer</code> （不同于大部分的<code>UIKit</code> 和<code>Core Animation</code>方法）支持多线程绘制，<code>-drawLayer:inContext:</code>方法可以在多个线程中同时地并发调用，所以请小心谨慎地确保你在这个方法中实现的绘制代码是线程安全的。</p>
+<p>此处为上面所说的cache的<a href="http://southpeak.github.io/2014/10/25/objective-c-runtime-1/">demo</a>:为一个objc_cache结构体的指针</p>
 
-<p><strong>补充</strong><br/>
-我们在使用<code>CATiledLayer *tileLayer = [CATiledLayer layer];</code>时载入图片并不是以以Retina的分辨率显示,我们可以<code>tileLayer.contentsScale = [UIScreen mainScreen].scale;</code>我们只需要设<br/>
-置了<code>CATiledLayer</code>的<code>contentsScale</code>即可(因为size是以像素为单位的,所以改变了contentsScale 就自动有了默认的小图尺寸),而不需要手工更新小图的尺寸或是在<code>Retina</code>分辨率下指定一个不同的小图。</p>
-
-<p>我们需要做的是适应小图渲染代码以对应安排 <code>scale</code>的变化</p>
-
-<pre><code class="language-objectivec">CGRect bounds = CGContextGetClipBoundingBox(ctx);
-CGFloat scale = [UIScreen mainScreen].scale;
-NSInteger x = floor(bounds.origin.x / layer.tileSize.width * scale);
-NSInteger y = floor(bounds.origin.y / layer.tileSize.height * scale);
+<pre><code class="language-objectivec">struct objc_cache {
+    unsigned int mask /* total = mask + 1 */                 OBJC2_UNAVAILABLE;
+    /*
+    mask：一个整数，指定分配的缓存bucket的总数。在方法查找过程中，Objective-C runtime使用这
+    个字段来确定开始线性查找数组的索引位置。指向方法selector的指针与该字段做一个AND位操作
+    (index = (mask &amp; selector))。这可以作为一个简单的hash散列算法。
+    */
+    unsigned int occupied                                    OBJC2_UNAVAILABLE;
+    //occupied：一个整数，指定实际占用的缓存bucket的总数
+    Method buckets[1]                                        OBJC2_UNAVAILABLE;
+    /**
+        buckets：指向Method数据结构指针的数组。这个数组可能包含不超过mask+1个元素。需要注意的
+        是，指针可能是NULL，表示这个缓存bucket没有被占用，另外被占用的bucket可能是不连续的。
+        这个数组可能会随着时间而增长。
+    */
+};
 </code></pre>
 
-<h3 id="toc_16">CAEmitterLayer</h3>
+<h4 id="toc_2">元类(Meta Class)</h4>
 
-<p>iOS后引入了一个新的 <code>CALayer</code> 子类叫做 <code>CAEmitterLayer</code><br/>
-<code>CAEmitterLayer</code> 是一个高性能的粒子引擎，被用来创建实时例子动画如：烟雾，火，雨等等这些效果</p>
+<p>所有的类自身也是一个对象，我们可以向这个对象发送消息(即调用类方法)<br/>
+<code>NSArray *array = [NSArray array];</code><br/>
++array消息发送给了NSArray类，而这个NSArray也是一个对象。既然是对象，那么它也是一个objc_object指针，它包含一个指向其类的一个isa指针。那么这些就有一个问题了，这个isa指针指向什么呢？为了调用+array方法，这个类的isa指针必须指向一个包含这些类方法的一个objc_class结构体。这就引出了meta-class的概念<br/>
+<strong>meta-class是一个类对象的类</strong></p>
 
-<p><code>CAEmitterLayer</code>是很多<code>CAEmitterCell</code>的容器.这些<code>CAEmitierCell</code>定义了一个粒子效果.我们就是为不同的粒子效果定义一个或多个<code>CAEmitterCell</code>作为模版，同时<code>CAEmitterLayer</code>负责基于这些模版实例化一个粒子流。</p>
+<p>meta-class之所以重要，是因为它存储着一个类的所有类方法。每个类都会有一个单独的meta-class，因为每个类的类方法基本不可能完全相同。</p>
 
-<p><code>CAEmitterCell</code>它有一个<code>contents</code>属性可以定义为一个<code>CGImage</code>，还有一些可设置属性控制着表现和行为。<br/>
-举个栗子:</p>
+<p>因此:<code>objc_class</code> 的isa指向的是元类，<code>objc_object</code>的isa指向的是实例对象所属的类.当我们向一个对象发送消息时，runtime会在这个对象所属的这个类的方法列表中查找方法；而向一个类发送消息时，会在这个类的<code>meta-class</code>的方法列表中查找。<br/>
+补充:<br/>
+<code>meta-class</code>也是一个类，也可以向它发送一个消息，那么它的isa又是指向什么呢？为了不让这种结构无限延伸下去，Objective-C的设计者让所有的<code>meta-class</code>的isa指向<code>基类的meta-class</code>，以此作为它们的所属类。即，任何NSObject继承体系下的<code>meta-class</code>都使用NSObject的<code>meta-class</code>作为自己的所属类，而基类的<code>meta-class</code>的isa指针是指向它自己。这样就形成了一个完美的闭环。因此:<br/>
+<em>对NSObject继承体系来说，其实例方法对体系中的所有实例、类和meta-class都是有效的；而类方法对于体系内的所有类和meta-class都是有效的</em></p>
 
-<pre><code class="language-objectivec">- (void)viewDidLoad
-{
-    [super viewDidLoad];
-    //create particle emitter layer
-    CAEmitterLayer *emitter = [CAEmitterLayer layer];
-    emitter.frame = self.containerView.bounds;
-    [self.containerView.layer addSublayer:emitter];
-    //configure emitter
-    emitter.renderMode = kCAEmitterLayerAdditive;
-    emitter.emitterPosition = CGPointMake(emitter.frame.size.width / 2.0, emitter.frame.size.height / 2.0);
-    //create a particle template
-    CAEmitterCell *cell = [[CAEmitterCell alloc] init];
-    cell.contents = (__bridge id)[UIImage imageNamed:@&quot;Spark.png&quot;].CGImage;
-    cell.birthRate = 150;
-    cell.lifetime = 5.0;
-    cell.color = [UIColor colorWithRed:1 green:0.5 blue:0.1 alpha:1.0].CGColor;
-    cell.alphaSpeed = -0.4;
-    cell.velocity = 50;
-    cell.velocityRange = 50;
-    cell.emissionRange = M_PI * 2.0;
-    //add particle template to emitter
-    emitter.emitterCells = @[cell];
+<p>Demo:</p>
+
+<pre><code class="language-objectivec">void TestMetaClass(id self, SEL _cmd) {
+    NSLog(@&quot;This objcet is %p&quot;, self);
+    NSLog(@&quot;Class is %@, super class is %@&quot;, [self class], [self superclass]);
+    Class currentClass = [self class];
+    for (int i = 0; i &lt; 4; i++) {
+        NSLog(@&quot;Following the isa pointer %d times gives %p&quot;, i, currentClass);
+        currentClass = objc_getClass((__bridge void *)currentClass);
+    }
+    NSLog(@&quot;NSObject&#39;s class is %p&quot;, [NSObject class]);
+    NSLog(@&quot;NSObject&#39;s meta class is %p&quot;, objc_getClass((__bridge void *)[NSObject class]));
+}
+#pragma mark -
+@implementation Test
+- (void)ex_registerClassPair {
+    Class newClass = objc_allocateClassPair([NSError class], &quot;TestClass&quot;, 0);
+    class_addMethod(newClass, @selector(testMetaClass), (IMP)TestMetaClass, &quot;v@:&quot;);
+    objc_registerClassPair(newClass);
+    id instance = [[newClass alloc] initWithDomain:@&quot;some domain&quot; code:0 userInfo:nil];
+    [instance performSelector:@selector(testMetaClass)];
 }
 @end
+
+//运行结果
+2014-10-20 22:57:07.352 mountain[1303:41490] This objcet is 0x7a6e22b0
+2014-10-20 22:57:07.353 mountain[1303:41490] Class is TestStringClass, super class is NSError
+2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 0 times gives 0x7a6e21b0
+2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 1 times gives 0x0
+2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 2 times gives 0x0
+2014-10-20 22:57:07.353 mountain[1303:41490] Following the isa pointer 3 times gives 0x0
+2014-10-20 22:57:07.353 mountain[1303:41490] NSObject&#39;s class is 0xe10000
+2014-10-20 22:57:07.354 mountain[1303:41490] NSObject&#39;s meta class is 0x0
+//注意:我们在一个类对象调用class方法是无法获取meta-class，它只是返回类而已。
 </code></pre>
 
-<p><code>CAEMitterCell</code>的属性基本上可以分为三种：</p>
+<hr/>
 
-<ul>
-<li>这种粒子某一属性的初始值。比如，<code>color</code>属性指定了一个可以混合图片内容颜色的混合色。在示例中，我们将它设置为桔色。</li>
-<li>粒子某一属性的变化范围。比如<code>emissionRange</code>属性的值是2π，这意味着粒子可以从360度任意位置反射出来。如果指定一个小一些的值，就可以创造出一个圆锥形</li>
-<li>指定值在时间线上的变化。比如，在示例中，我们将<code>alphaSpeed</code>设置为-0.4，就是说例子的透明度每过一秒就是减少0.4，这样就有发射出去之后逐渐消失的效果。</li>
-</ul>
+<h2 id="toc_3">类与对象操作函数</h2>
 
-<p><code>CAEmitterLayer</code>的属性它自己控制着整个例子系统的位置和形状。一些属性比如 <code>birthRate</code>， <code>lifetime</code>和<code>celocity</code>，这些属性在<code>CAEmitterCell</code>中也有。这些属性会以相乘的方式作用在一起，这样你就可以用一个值来加速或者扩大整个例子系统。</p>
+<p>runtime提供的操作类的方法主要就是针对<code>objc_class</code>结构体中的各个字段的</p>
 
-<ul>
-<li><code>preservesDepth</code>，是否将3D例子系统平面化到一个图层（默认值）或者可以在3D空间中混合其他的图层</li>
-<li><code>renderMode</code>，控制着在视觉上粒子图片是如何混合的。示例中我们把它设置为<code>kCAEmitterLayerAdditive</code> ，它实现了这样一个效果：合并例子重叠部分的亮度使得看上去更亮。如果我们把它设置为默认的<code>kCAEmitterLayerUnordered</code>，效果就没那么好看了</li>
-</ul>
+<h4 id="toc_4">类名</h4>
 
-<p><strong>注意</strong><br/>
-之前我们学习了<code>CAReplicatorLayer</code> 它的真正应用到实际程序上的场景比如：一个游戏中导弹的轨迹云,或者反射等</p>
+<pre><code class="language-objectivec">// 获取类的类名
+const char * class_getName ( Class cls );
+//如果传入的cls为Nil，则返回一个字字符串。
+</code></pre>
 
-<h3 id="toc_17">CAEAGLLayer</h3>
+<h4 id="toc_5">父类(super_class)和元类(meta-class)</h4>
 
-<p>再议</p>
+<pre><code class="language-objectivec">// 获取类的父类
+Class class_getSuperclass ( Class cls );
+// 判断给定的Class是否是一个元类
+BOOL class_isMetaClass ( Class cls );
+</code></pre>
 
-<h3 id="toc_18">AVPlayerLayer</h3>
+<p><code>class_getSuperclass</code>函数，当cls为Nil或者cls为根类时，返回Nil。不过通常我们可以使用NSObject类的superclass方法来达到同样的目的。<br/>
+<code>class_isMetaClass</code>函数，如果是cls是元类，则返回YES；如果否或者传入的cls为Nil，则返回NO。</p>
 
-<p>它不是<code>Core Animation</code>框架的一部分，是在<code>AVFoundation</code>框架中的,但是它，提供了一个<code>CALayer</code> 子类来显示自定义的内容类型.</p>
+<h4 id="toc_6">实例变量大小(instance_size)</h4>
 
-<p><code>AVPlayerLayer</code> 是用来在iOS上播放视频的。他是高级接口例如<code>MPMoivePlayer</code>的底层实现，提供了显示视频的底层控制。</p>
+<pre><code class="language-objectivec">// 获取实例大小
+size_t class_getInstanceSize ( Class cls );
 
-<p><code>AVPlayerLayer</code>的使用相当简单：你可以用<code>+playerLayerWithPlayer:</code>方法创建一个已经绑定了视频播放器的图层，或者你可以先创建一个图层，然后用<code>player</code>属性绑定一个<code>AVPlayer</code>实例。</p>
+</code></pre>
 
-<pre><code class="language-objectivec">- (void)viewDidLoad
+<h4 id="toc_7">成员变量(ivars)及属性</h4>
+
+<p>在<code>objc_class</code>中，所有的成员变量、属性的信息是放在链表<code>ivars</code>中的。<code>ivars</code>是一个数组，数组中每个元素是指向Ivar(变量信息)的指针。runtime提供了丰富的函数来操作这一字段。大体上可以分为以下几类：</p>
+
+<ol>
+<li>成员变量操作函数，主要包含以下函数：</li>
+</ol>
+
+<pre><code class="language-objectivec">// 获取类中指定名称实例成员变量的信息
+Ivar class_getInstanceVariable ( Class cls, const char *name );
+// 获取类成员变量的信息:
+Ivar class_getClassVariable ( Class cls, const char *name );
+// 添加成员变量
+BOOL class_addIvar ( Class cls, const char *name, size_t size, uint8_t alignment, const char *types );
+// 获取整个成员变量列表(所有成员变量包括 属性创建的_成员变量 和直接_成员变量 创建；包括.h和.m中创建的)
+Ivar * class_copyIvarList ( Class cls, unsigned int *outCount );
+</code></pre>
+
+<p><code>class_getInstanceVariable</code>函数，它返回一个指向包含name指定的成员变量信息的objc_ivar结构体的指针(Ivar)。<br/>
+<code>class_getInstanceVariable</code>函数，它返回一个指向包含name指定的成员变量信息的objc_ivar结构体的指针(Ivar)。<br/>
+Objective-C不支持往已存在的类中添加实例变量，因此不管是系统库提供的提供的类，还是我们自定义的类，都无法动态添加成员变量。但如果我们<em>通过运行时来创建一个类</em>的话，又应该如何给它添加成员变量呢？这时我们就可以使用<code>class_addIvar</code>函数了。不过需要注意的是，这个方法只能在<code>objc_allocateClassPai</code>函数与<code>objc_registerClassPair</code>之间调用。另外，这个类也不能是元类。成员变量的按字节最小对齐量是<code>1&lt;&lt;alignment</code>。这取决于ivar的类型和机器的架构。如果变量的类型是指针类型，则传递<code>log2(sizeof(pointer_type))</code>。<br/>
+<code>class_copyIvarList</code>函数，它返回一个指向成员变量信息的数组，数组中每个元素是指向该成员变量信息的<code>objc_ivar</code>结构体的指针。这个数组不包含在父类中声明的变量。<code>outCount</code>指针返回数组的大小。需要注意的是，我们<code>必须使用free()</code>来释放这个数组。</p>
+
+<ol>
+<li>属性操作函数</li>
+</ol>
+
+<pre><code class="language-objectivec">// 获取指定的属性
+objc_property_t class_getProperty ( Class cls, const char *name );
+// 获取属性列表(获取所有属性包括.h和.m中的)
+objc_property_t * class_copyPropertyList ( Class cls, unsigned int *outCount );
+// 为类添加属性
+BOOL class_addProperty ( Class cls, const char *name, const objc_property_attribute_t *attributes, unsigned int attributeCount );
+// 替换类的属性
+void class_replaceProperty ( Class cls, const char *name, const objc_property_attribute_t *attributes, unsigned int attributeCount );
+
+</code></pre>
+
+<h4 id="toc_8">方法</h4>
+
+<pre><code class="language-objectivec">// 添加方法
+BOOL class_addMethod ( Class cls, SEL name, IMP imp, const char *types );
+// 获取实例方法
+Method class_getInstanceMethod ( Class cls, SEL name );
+// 获取类方法
+Method class_getClassMethod ( Class cls, SEL name );
+// 获取所有方法的数组(传入类获取所有实例方法包括.h和.m注意还有属性创建的方法以及.cxx_destruct(与dealloc有关)) 
+//（传入元类获取类方法）
+Method * class_copyMethodList ( Class cls, unsigned int *outCount );
+// 替代方法的实现
+IMP class_replaceMethod ( Class cls, SEL name, IMP imp, const char *types );
+// 返回方法的具体实现
+IMP class_getMethodImplementation ( Class cls, SEL name );
+IMP class_getMethodImplementation_stret ( Class cls, SEL name );
+// 类实例是否响应指定的selector
+BOOL class_respondsToSelector ( Class cls, SEL sel );
+
+IMP imp；
+imp();//即可执行这个方法
+
+</code></pre>
+
+<p>我们也可以将IMP转换为函数<br/>
+<code>void (* myMethodIMP)(id self, SEL _cmd) = (void *)imp;</code><br/>
+然后就可以通过执行函数来执行imp</p>
+
+<p><code>class_addMethod</code>的实现会覆盖父类的方法实现，但不会取代本类中已存在的实现，如果本类中包含一个同名的实现，则函数会返回NO。如果要修改已存在实现，可以使用<code>method_setImplementation</code>。一个Objective-C方法是一个简单的C函数，它至少包含两个参数–self和_cmd。所以，我们的实现函数(IMP参数指向的函数)至少需要两个参数，如下所示：</p>
+
+<pre><code class="language-objectivec">void myMethodIMP(id self, SEL _cmd)
 {
-    [super viewDidLoad];
-    //get video URL
-    NSURL *URL = [[NSBundle mainBundle] URLForResource:@&quot;Ship&quot; withExtension:@&quot;mp4&quot;];
-    //create player and player layer
-    AVPlayer *player = [AVPlayer playerWithURL:URL];
-    AVPlayerLayer *playerLayer = [AVPlayerLayer playerLayerWithPlayer:player];
-    //set player layer frame and attach it to our view
-    playerLayer.frame = self.containerView.bounds;
-    [self.containerView.layer addSublayer:playerLayer];
-    //play the video
-    [player play];
+    // implementation ....
 }
 </code></pre>
 
-<p><strong>注意</strong><br/>
-因为Core Animation并不支持自动大小和自动布局,因此我们要考虑<code>AVPlayerLayer</code>添加到自己创建的视图View而不是直接加到控制器的View</p>
+<p><strong>与成员变量不同的是，我们可以为类动态添加方法，不管这个类是否已存在。</strong><br/>
+参数types是一个描述传递给方法的参数类型的字符数组</p>
 
-<p>因为<code>AVPlayerLayer</code>是<code>CALayer</code>的子类，它继承了父类的所有特性。我们并不会受限于要在一个矩形中播放视频(我们可以对Layer进行3D，圆角，有色边框，蒙板，阴影等)。</p>
+<p><code>class_getInstanceMethod</code>、<code>class_getClassMethod函数</code>，与<code>class_copyMethodList</code>不同的是，这两个函数都会去搜索父类的实现</p>
+
+<p><code>class_copyMethodList</code>函数，返回包含所有实例方法的数组，如果需要获取类方法，则可以使用<code>class_copyMethodList(object_getClass(cls), &amp;count)</code>(一个类的实例方法是定义在元类里面)。该列表不包含父类实现的方法。outCount参数返回方法的个数。在获取到列表后，我们需要使用free()方法来释放它。</p>
+
+<p><code>class_replaceMethod</code>函数，该函数的行为可以分为两种：如果类中不存在name指定的方法，则类似于<code>class_addMethod</code>函数一样会添加方法；如果类中已存在name指定的方法，则类似于<code>method_setImplementation</code>一样替代原方法的实现。</p>
+
+<p><code>class_getMethodImplementation</code>函数，该函数在向类实例发送消息时会被调用，并返回一个指向方法实现函数的指针。这个函数会比<code>method_getImplementation(class_getInstanceMethod(cls, name))</code>更快。返回的函数指针可能是一个指向runtime内部的函数，而不一定是方法的实际实现。例如，如果类实例无法响应selector，则返回的函数指针将是运行时消息转发机制的一部分</p>
+
+<p><code>class_respondsToSelector</code>函数，我们通常使用NSObject类的<code>respondsToSelector:</code>或<code>instancesRespondToSelector:</code>方法来达到相同目的。</p>
+
+<h4 id="toc_9">协议(objc_protocol_list)</h4>
+
+<pre><code class="language-objectivec">// 添加协议
+BOOL class_addProtocol ( Class cls, Protocol *protocol );
+// 返回类是否实现指定的协议
+BOOL class_conformsToProtocol ( Class cls, Protocol *protocol );
+// 返回类实现的协议列表
+Protocol * class_copyProtocolList ( Class cls, unsigned int *outCount );
+</code></pre>
+
+<p><code>class_conformsToProtocol</code>函数可以使用NSObject类的<code>conformsToProtocol:</code>方法来替代。</p>
+
+<p><code>class_copyProtocolList</code>函数返回的是一个数组，在使用后我们需要使用<code>free()</code>手动释放。</p>
+
+<h4 id="toc_10">版本(version)</h4>
+
+<pre><code class="language-objectivec">// 获取版本号
+int class_getVersion ( Class cls );
+// 设置版本号
+void class_setVersion ( Class cls, int version );
+
+</code></pre>
+
+<h4 id="toc_11">其它</h4>
+
+<pre><code class="language-objectivec">Class objc_getFutureClass ( const char *name );
+void objc_setFutureClass ( Class cls, const char *name );
+//通常我们不直接使用这两个函数
+</code></pre>
+
+<p><strong>注意:</strong><br/>
+SEL :Defines an opaque type that represents a method selector 消息<br/>
+Method:An opaque type that represents a method in a class definition 方法<br/>
+IMP:A pointer to the start of a method implementation. 实现</p>
+
+<p>实例对象执行方法</p>
+
+<h2 id="toc_12">动态创建类和对象</h2>
+
+<h4 id="toc_13">动态创建类</h4>
+
+<pre><code class="language-objectivec">// 创建一个新类和元类 我们在创建类时候已经创建了元类
+Class objc_allocateClassPair ( Class superclass, const char *name, size_t extraBytes );
+// 销毁一个类及其相关联的类
+void objc_disposeClassPair ( Class cls );
+// 在应用中注册由objc_allocateClassPair创建的类
+void objc_registerClassPair ( Class cls );
+</code></pre>
+
+<p><code>objc_allocateClassPair</code>函数：如果我们要创建一个根类，则superclass指定为Nil。extraBytes通常指定为0，该参数是分配给类和元类对象尾部的索引ivars的字节数。<br/>
+使用步骤:<br/>
+为了创建一个新类，我们需要调用<code>objc_allocateClassPair</code>。然后使用诸如<code>class_addMethod</code>，<code>class_addIvar</code>等函数来为新创建的类添加方法、实例变量和属性等。完成这些后，我们需要调用<code>objc_registerClassPair</code>函数来注册类，之后这个新类就可以在程序中使用了</p>
+
+<p>实例方法和实例变量应该添加到类自身上，而类方法应该添加到类的元类上。</p>
+
+<p><code>objc_disposeClassPair</code>函数用于销毁一个类，不过需要注意的是，如果程序运行中还存在类或其子类的实例，则不能调用针对类调用该方法</p>
+
+<h4 id="toc_14">动态创建对象</h4>
+
+<pre><code class="language-objectivec">// 创建类实例```objc
+id class_createInstance ( Class cls, size_t extraBytes );
+// 在指定位置创建类实例
+id objc_constructInstance ( Class cls, void *bytes );
+// 销毁类实例
+void * objc_destructInstance ( id obj );
+</code></pre>
+
+<p><code>class_createInstance</code>函数：创建实例时，会在默认的内存区域为类分配内存。extraBytes参数表示分配的额外字节数。这些额外的字节可用于存储在类定义中所定义的实例变量之外的实例变量。<code>该函数在ARC环境下无法使用</code>。</p>
+
+<p>调用class_createInstance的效果与+alloc方法类似。不过在使用class_createInstance时，我们需要确切的知道我们要用它来做什么。</p>
+
+<pre><code class="language-objectivec">id theObject = class_createInstance(NSString.class, sizeof(unsigned));
+ 
+id str1 = [theObject init];
+NSLog(@&quot;%@&quot;, [str1 class]);
+id str2 = [[NSString alloc] initWithString:@&quot;test&quot;];
+NSLog(@&quot;%@&quot;, [str2 class]);
+
+//输出结果:
+2014-10-23 12:46:50.781 RuntimeTest[4039:89088] NSString
+2014-10-23 12:46:50.781 RuntimeTest[4039:89088] __NSCFConstantString
+/**
+使用class_createInstance函数获取的是NSString实例，而不是类簇中的默认占位符类__NSCFConstantString。
+*/
+</code></pre>
+
+<p><code>objc_constructInstance</code>函数：在指定的位置(bytes)创建类实例。</p>
+
+<p><code>objc_destructInstance</code>函数：销毁一个类的实例，但不会释放并移除任何与其相关的引用。</p>
+
+<h4 id="toc_15">实例操作函数</h4>
+
+<p>实例操作函数主要是针对我们创建的实例对象的一系列操作函数，我们可以使用这组函数来从实例对象中获取我们想要的一些信息，如实例对象中变量的值。</p>
+
+<ol>
+<li>针对整个对象进行操作的函数</li>
+</ol>
+
+<pre><code class="language-objectivec">// 返回指定对象的一份拷贝
+id object_copy ( id obj, size_t size );
+// 释放指定对象占用的内存
+id object_dispose ( id obj );
+</code></pre>
+
+<p>举个栗子:</p>
+
+<pre><code class="language-objectivec">//把对象a转换为其子类的对象b
+NSObject *a = [[NSObject alloc] init];
+id newB = object_copy(a, class_getInstanceSize(MyClass.class));
+//设置对象所属类
+object_setClass(newB, MyClass.class);
+object_dispose(a);
+</code></pre>
+
+<ol>
+<li>针对对象实例变量进行操作的函数</li>
+</ol>
+
+<pre><code class="language-objectivec">// 修改类实例的实例变量的值
+Ivar object_setInstanceVariable ( id obj, const char *name, void *value );
+// 获取对象实例变量的值
+Ivar object_getInstanceVariable ( id obj, const char *name, void **outValue );
+// 返回指向给定对象分配的任何额外字节的指针
+void * object_getIndexedIvars ( id obj );
+// 返回对象中实例变量的值
+id object_getIvar ( id obj, Ivar ivar );
+// 设置对象中实例变量的值
+void object_setIvar ( id obj, Ivar ivar, id value );
+</code></pre>
+
+<p>如果实例变量的Ivar已经知道，那么调用<code>object_getIvar</code>会比<code>object_getInstanceVariable</code>函数快，相同情况下，<code>object_setIvar</code>也比<code>object_setInstanceVariable</code>快</p>
+
+<ol>
+<li>针对对象的类进行操作的函数</li>
+</ol>
+
+<pre><code class="language-objectivec">// 返回给定对象的类名
+const char * object_getClassName ( id obj );
+// 返回对象的类
+Class object_getClass ( id obj );
+// 设置对象的类
+Class object_setClass ( id obj, Class cls );
+
+</code></pre>
+
+<h2 id="toc_16">获取类定义</h2>
+
+<p>Objective-C动态运行库会自动注册我们代码中定义的所有的类。我们也可以在运行时创建类定义并使用<code>objc_addClass</code>函数来注册它们。runtime提供了一系列函数来获取类定义相关的信息，这些函数主要包括：</p>
+
+<pre><code class="language-objectivec">// 获取已注册的类定义的列表
+int objc_getClassList ( Class *buffer, int bufferCount );
+// 创建并返回一个指向所有已注册类的指针列表
+Class * objc_copyClassList ( unsigned int *outCount );
+// 返回指定类的类定义
+Class objc_lookUpClass ( const char *name );
+Class objc_getClass ( const char *name );
+Class objc_getRequiredClass ( const char *name );
+// 返回指定类的元类
+Class objc_getMetaClass ( const char *name );
+</code></pre>
+
+<p><code>objc_getClassList</code>函数：获取已注册的类定义的列表。我们不能假设从该函数中获取的类对象是继承自NSObject体系的，所以在这些类上调用方法时，都应该先检测一下这个方法是否在这个类中实现。</p>
+
+<p>举个栗子：</p>
+
+<pre><code class="language-objectivec">int numClasses;
+Class * classes = NULL;
+numClasses = objc_getClassList(NULL, 0);
+if (numClasses &gt; 0) {
+    classes = malloc(sizeof(Class) * numClasses);
+    numClasses = objc_getClassList(classes, numClasses);
+    NSLog(@&quot;number of classes: %d&quot;, numClasses);
+    for (int i = 0; i &lt; numClasses; i++) {
+        Class cls = classes[i];
+        NSLog(@&quot;class name: %s&quot;, class_getName(cls));
+    }
+    free(classes);
+}
+//输出结果:
+
+</code></pre>
+
+<p>获取类定义的方法有三个：<code>objc_lookUpClass</code>, <code>objc_getClass</code>和<code>objc_getRequiredClass</code>。如果类在运行时未注册，则<code>objc_lookUpClass</code>会返回nil，而<code>objc_getClass</code>会调用类处理回调，并再次确认类是否注册，如果确认未注册，再返回nil。而<code>objc_getRequiredClass</code>函数的操作与<code>objc_getClass</code>相同，只不过如果没有找到类，则会杀死进程。</p>
+
+<p><code>objc_getMetaClass</code>函数：如果指定的类没有注册，则该函数会调用类处理回调，并再次确认类是否注册，如果确认未注册，再返回nil。不过，每个类定义都必须有一个有效的元类定义，所以这个函数总是会返回一个元类定义，不管它是否有效。</p>
 
 
 		</div>
@@ -578,24 +551,24 @@ NSInteger y = floor(bounds.origin.y / layer.tileSize.height * scale);
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -615,10 +588,10 @@ NSInteger y = floor(bounds.origin.y / layer.tileSize.height * scale);
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -642,7 +615,7 @@ NSInteger y = floor(bounds.origin.y / layer.tileSize.height * scale);
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -653,7 +626,7 @@ NSInteger y = floor(bounds.origin.y / layer.tileSize.height * scale);
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -671,6 +644,15 @@ NSInteger y = floor(bounds.origin.y / layer.tileSize.height * scale);
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -680,31 +662,31 @@ NSInteger y = floor(bounds.origin.y / layer.tileSize.height * scale);
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

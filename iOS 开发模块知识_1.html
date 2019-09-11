@@ -82,96 +82,139 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15644708593081.html">离屏渲染</a></h1>
-			<p class="meta"><time datetime="2019-07-30T15:14:19+08:00" 
-			pubdate data-updated="true">2019/7/30</time></p>
+		  	<h1 class="entry-title"><a href="15680125238227.html">AFNetworkReachabilityManager</a></h1>
+			<p class="meta"><time datetime="2019-09-09T15:02:03+08:00" 
+			pubdate data-updated="true">2019/9/9</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>学习自即刻团队的<a href="https://zhuanlan.zhihu.com/p/72653360">离屏渲染</a></p>
+		  	<h2 id="toc_0">AFNetworkReachabilityManager的使用</h2>
 
-<h2 id="toc_0">iOS渲染架构</h2>
+<h3 id="toc_1">初始化 AFNetworkReachabilityManager</h3>
 
-<p>在WWDC的Advanced Graphics and Animations for iOS Apps（WWDC14 419，关于UIKit和Core Animation基础的session在早年的WWDC中比较多）中有这样一张图：</p>
+<p>在初始化方法中使用<code>SCNetworkReachabilityCreateWithAddress</code>或者<code>SCNetworkReachabilityCreateWithName</code>生成一个<code>SCNetworkReachabilityRef</code>的引用</p>
 
-<p><img src="media/15644708593081/15644710697530.jpg" alt=""/></p>
+<pre><code class="language-objectivec">+ (instancetype)managerForDomain:(NSString *)domain {
+    SCNetworkReachabilityRef reachability = SCNetworkReachabilityCreateWithName(kCFAllocatorDefault, [domain UTF8String]);
+    AFNetworkReachabilityManager *manager = [[self alloc] initWithReachability:reachability];
+    CFRelease(reachability);
+    return manager;
+}
 
-<p>可以看到是CPU和GPU协作完成了渲染操作。CPU主要在Application这一层操作，之后在RenderServer线程，CoreAnimation会将具体操作转换成发送GPU的draw calls（以前是call OpenGL 现在有部分转为Metal）,进行渲染</p>
++ (instancetype)managerForAddress:(const void *)address {
+    SCNetworkReachabilityRef reachability = SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, (const struct sockaddr *)address);
+    AFNetworkReachabilityManager *manager = [[self alloc] initWithReachability:reachability];
+    CFRelease(reachability);
+    return manager;
+}
 
-<h2 id="toc_1">离屏渲染</h2>
+- (instancetype)initWithReachability:(SCNetworkReachabilityRef)reachability {
+    self = [super init];
+    if (!self) {
+        return nil;
+    }
 
-<p>当需要在屏幕上显示内容时，至少需要一块与屏幕像素数据量一样大的<code>frame buffer</code>，作为像素数据存储区域，而这也是GPU存储渲染结果的地方。如果有时因为面临限制，无法把渲染结果直接写入frame buffer，而是先暂存在另外的内存区域，之后在写入<code>frame buffer</code>，这个过程就被称为<strong>离屏渲染</strong></p>
+    _networkReachability = CFRetain(reachability);
+    self.networkReachabilityStatus = AFNetworkReachabilityStatusUnknown;
 
-<h3 id="toc_2">CPU&quot;离屏渲染&quot;？</h3>
-
-<p>在UIView中自己执行的drawRect方法，cpu会申请一块内存区域等待有可能到来的绘画操作。<br/>
-在CPU中进行的光栅化操作（如文字渲染、图片解码）等<br/>
-都无法直接绘制到GPU掌管的frame buffer，只能暂存在另外一块内存中<br/>
-这些发生在CPU中这些“离屏渲染”并不是真正意义上的，而是属于&quot;软件渲染&quot;范畴的</p>
-
-<h3 id="toc_3">GPU离屏渲染</h3>
-
-<p>我们知道，渲染主要由CoreAnimation的Render Server模块，通过调用显卡驱动提供的OpenGL/Metal接口执行。在执行渲染时，<code>Render Server</code>遵循画家算法，layer按照次序输出至frameBuffer，覆盖即刻得到最终的显示结果，然后交由GPU进行渲染显示到屏幕上</p>
-
-<p>但是有部分场景是无法这样实现的，因为GPU虽然可以按照画家算法进行输出，但是无法再某曾渲染完成后，再回头擦除或者改变其中的某部分。这就意味着，对于layer如果不能单词遍历就完成渲染，那就只能另开一块内存，借助这个临时中转区域来完成多次的修改/剪裁操作(这就是离屏渲染了)。</p>
-
-<h3 id="toc_4">常见离屏渲染场景</h3>
+    return self;
+}
+</code></pre>
 
 <ol>
-<li><strong>corenerRadus+clipsToBounds</strong>
-因为此时子layer也会被裁减，但是在没有统一组合后也是无法获得统一裁剪后的图像，因此需要开辟另外一块内存，在渲染和切角完成后，输出到frame buffer中<br/>
-注意如果没有clipsToBounds，也不会触发离屏渲染了</li>
-<li><strong>shadow</strong>
-原因其实与圆角差不多，在没有将画布上所有内容组合完成之前也是无法知道阴影形状的，因此需要额外的内存空间。<br/>
-当然，如果我们能在整个画布都没有渲染完成之前就知道阴影部分的形状（设置阴影的shadowPath），也可以绘制阴影而不触发离屏渲染</li>
-<li><p><strong>group opacity</strong><br/>
-此时的alpha并不是加到某一层，而是整个layer树，因此只能等渲染完成再加上alpha，最后和底下的其它layer相折叠，得到实际的颜色。因此这也是需要另外开辟存储空间的</p></li>
-<li><p><strong>mask</strong></p>
-<p>mask由layer和其上的子layer组合，而且可能有透明度，因此是会触发离屏渲染的</p></li>
-<li><p><strong>UIBlurEffect</strong><br/>
-<img src="media/15644708593081/15645419693084.jpg" alt="" style="width:500px;"/></p></li>
+<li>这两个方法通过 域名 或者有个 <code>sockaddr_in</code>指针 生成了一个<code>SCNetworkReachabilityRef</code></li>
+<li>调用<code>- [AFNetworkReachabilityManager initWithReachability:]</code>将生成的<code>SCNetworkReachabilityRef</code>传入</li>
+<li>设置默认<code>networkReachabilityStatus</code></li>
 </ol>
 
-<h3 id="toc_5">离屏渲染解决方案</h3>
+<h3 id="toc_2">监控网络状态</h3>
 
-<p>因为离屏渲染开销很大，特别是在滚动视图中，每帧都会触发cell的重绘，因此在无法避免时，就尽量降低性能影响，通过<code>CALayer</code>提供的<code>shouldRasterize</code>设置其为true后，<code>Render Server</code>会强制吧layer的渲染结果(包括其子layer，以及圆角、阴影、group opacity等等)保存在一块内存中，这样接下来就可以被复用，而不会再次离屏渲染了</p>
+<p>在初始化了manager之后，我们需要调用<code>startMonitoring</code>来开始监控网络状态</p>
 
-<p>注意:</p>
+<pre><code class="language-objectivec">- (void)startMonitoring {
+    [self stopMonitoring];
+    if (!self.networkReachability) {
+        return;
+    }
+    __weak __typeof(self)weakSelf = self;
+    AFNetworkReachabilityStatusBlock callback = ^(AFNetworkReachabilityStatus status) {
+        __strong __typeof(weakSelf)strongSelf = weakSelf;
 
-<ul>
-<li><code>shouldRasterize</code>主旨在于降低性能损失，但是至少会触发一次离屏渲染，如果layer本不复杂，也没有圆角 阴影等，打开这个只会没必要的多一次离屏渲染</li>
-<li>一旦缓存超过100ms没有被使用，会被自动废弃</li>
-<li>layer的内容必须是静态的，因为一旦发生变化缓存就失效了，就有需要重新离屏渲染，然后缓存，这就需要我们极力避免的情况</li>
-</ul>
+        strongSelf.networkReachabilityStatus = status;
+        if (strongSelf.networkReachabilityStatusBlock) {
+            strongSelf.networkReachabilityStatusBlock(status);
+        }
 
-<h3 id="toc_6">CPU渲染的使用</h3>
+    };
 
-<p>因为GPU对图形处理的更高性能，以及其更好的并行计算能里，我们倾向于让GPU完成渲染任务，而CPU有更多时间来处理复杂的app的复杂逻辑。</p>
+    SCNetworkReachabilityContext context = {0, (__bridge void *)callback, AFNetworkReachabilityRetainCallback, AFNetworkReachabilityReleaseCallback, NULL};
+    SCNetworkReachabilitySetCallback(self.networkReachability, AFNetworkReachabilityCallback, &amp;context);
+    SCNetworkReachabilityScheduleWithRunLoop(self.networkReachability, CFRunLoopGetMain(), kCFRunLoopCommonModes);
 
-<p>但是针对一些特殊情况，比如文字渲染(CoreText),图片渲染(ImageIO),因为此时GPU并不擅长此类工作，因为需要先由CPU处理好之后，将结果作为<a href="https://texturegroup.org/docs/automatic-layout-examples-2.html">texture</a>传给GPU.</p>
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0),^{
+        SCNetworkReachabilityFlags flags;
+        if (SCNetworkReachabilityGetFlags(self.networkReachability, &amp;flags)) {
+            AFPostReachabilityStatusChange(flags, callback);
+        }
+    });
+}
+</code></pre>
 
-<p>比如，我们可以使用<code>CoreGraphic</code>来给图形设置圆角(将圆角以外的部分设置为透明)，这样的话就全部由CPU完成，不再需要使用<code>corerRadius</code>。而且这样的话，我们也可以做到灵活控制裁剪和缓存的时机，避开CPU和GPU繁忙，平衡性能波动</p>
+<p>在该方法中创建了每次网络状态改变时的回调<code>AFNetworkReachabilityStatusBlock</code>，当回调发生时，重新设置status属性，调用设置的<code>networkReachabilityStatusBlock</code>属性</p>
 
-<p>注意：</p>
+<p>监控网络状态核心代码</p>
 
 <ol>
-<li>渲染不是CPU强项，调用CoreGraphics会消耗其相当一部分时间，因此通常将CPU渲染放在后台完成(AsyncDisplayKit的实现思想)。然后再回到主线程，将渲染结果传给CoreAnimation</li>
-<li>CPU渲染性能不够 只能渲染静态的元素，如文字、图片等</li>
-<li>渲染结果的bitmap数据量较大，占用较大内存，应该在使用完成后，及时释放，否则容易OOM</li>
-<li>使用CPU渲染就不要再触发离屏渲染了</li>
-<li>多使用Instuments工具测试性能</li>
-</ol>
-
-<h2 id="toc_7">即刻团队对即刻APP的优化</h2>
-
+<li><p>创建一个<code>SCNetworkReachabilityContext</code></p>
+<pre><code class="language-objectivec">typedef struct {
+    CFIndex     version;<br/>
+    void *      __nullable info;<br/>
+    const void  * __nonnull (* __nullable retain)(const void *info);<br/>
+    void        (* __nullable release)(const void *info);<br/>
+    CFStringRef __nonnull (* __nullable copyDescription)(const void *info);<br/>
+} SCNetworkReachabilityContext;<br/>
+SCNetworkReachabilityContext context = {<br/>
+ 0,<br/>
+ (__bridge void *)callback,<br/>
+ AFNetworkReachabilityRetainCallback, <br/>
+ AFNetworkReachabilityReleaseCallback, <br/>
+ NULL<br/>
+};
+</code></pre></li>
+<li><p>当目标状态改变时 调用传入的回调</p>
+<pre><code class="language-objectivec">SCNetworkReachabilitySetCallback(self.networkReachability, AFNetworkReachabilityCallback, &amp;context);
+static void AFNetworkReachabilityCallback(SCNetworkReachabilityRef __unused target, SCNetworkReachabilityFlags flags, void *info) {<br/>
+    AFPostReachabilityStatusChange(flags, (__bridge AFNetworkReachabilityStatusBlock)info);<br/>
+}<br/>
+static void AFPostReachabilityStatusChange(SCNetworkReachabilityFlags flags, AFNetworkReachabilityStatusBlock block) {<br/>
+    AFNetworkReachabilityStatus status = AFNetworkReachabilityStatusForFlags(flags);<br/>
+    dispatch_async(dispatch_get_main_queue(), ^{<br/>
+        if (block) {<br/>
+            block(status);<br/>
+        }<br/>
+        NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];<br/>
+        NSDictionary *userInfo = @{ AFNetworkingReachabilityNotificationStatusItem: @(status) };<br/>
+        [notificationCenter postNotificationName:AFNetworkingReachabilityDidChangeNotification object:nil userInfo:userInfo];<br/>
+    });<br/>
+}
+</code></pre>
 <ol>
-<li>即刻大量应用AsyncDisplayKit(Texture)作为主要渲染框架，对于文字和图片的异步渲染操作交由框架来处理。</li>
-<li>对于图片的圆角，统一采用“precomposite”的策略，也就是不经由容器来做剪切，而是预先使用CoreGraphics为图片裁剪圆角</li>
-<li>对于视频的圆角，由于实时剪切非常消耗性能，我们会创建四个白色弧形的layer盖住四个角，从视觉上制造圆角的效果</li>
-<li>对于view的圆形边框，如果没有backgroundColor，可以放心使用cornerRadius来做</li>
-<li>对于所有的阴影，使用shadowPath来规避离屏渲染</li>
-<li>对于特殊形状的view，使用layer mask并打开shouldRasterize来对渲染结果进行缓存</li>
-<li>对于模糊效果，不采用系统提供的UIVisualEffect，而是另外实现模糊效果（CIGaussianBlur），并手动管理渲染结果</li>
+<li>当网络状态改变时 会将<code>context</code>作为参数 回调<code>AFNetworkReachabilityCallback</code></li>
+<li>在<code>AFNetworkReachabilityCallback</code>中，将context中的block，以及作为状态的flags作为参数调用了 <code>AFPostReachabilityStatusChange</code>状态改变方法</li>
+<li>利用<code>AFNetworkReachabilityStatusForFlags</code>函数将flags转变为网络状态status</li>
+<li>在主线程中执行<code>block(status)</code> 并发送状态改变的通知</li>
+</ol></li>
+<li><p>在MainRunLoop中监控网络状态</p>
+<pre><code class="language-objectivec">SCNetworkReachabilityScheduleWithRunLoop(self.networkReachability, CFRunLoopGetMain(), kCFRunLoopCommonModes);
+</code></pre></li>
+<li><p>获取当前网络状态 调用callback</p>
+<pre><code class="language-objectivec"> dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0),^{
+    SCNetworkReachabilityFlags flags;<br/>
+    if (SCNetworkReachabilityGetFlags(self.networkReachability, &amp;flags)) {<br/>
+        AFPostReachabilityStatusChange(flags, callback);<br/>
+    }<br/>
+});
+</code></pre></li>
 </ol>
 
 
@@ -195,24 +238,24 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -232,10 +275,10 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -259,7 +302,7 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -270,7 +313,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -288,6 +331,15 @@ $(document).ready(function(event) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -297,31 +349,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

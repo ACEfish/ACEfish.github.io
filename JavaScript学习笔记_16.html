@@ -82,76 +82,156 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15471944229244.html">模块</a></h1>
-			<p class="meta"><time datetime="2019-01-11T16:13:42+08:00" 
-			pubdate data-updated="true">2019/1/11</time></p>
+		  	<h1 class="entry-title"><a href="15475281191214.html">Class</a></h1>
+			<p class="meta"><time datetime="2019-01-15T12:55:19+08:00" 
+			pubdate data-updated="true">2019/1/15</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">export 和 import</h2>
+		  	<p>class 并不是ES6的新的语法 而只是原有语法的语法糖，是一种特殊的函数（class的类型就是函数）</p>
 
-<p>一个模块导出(export)的变量才可以在另外一个变量中导入(import)</p>
+<p>class类只能使用<code>new</code>关键字来调用和初始化 </p>
 
-<p>导出可以使用 <code>export</code> 和 <code>export default</code></p>
-
-<pre><code class="language-javascript">//写法1
-const apiKey = &quot;abc123&quot;
-export apiKey
-
-//写法2
-export const apiKey = &quot;abc123&quot;
-
-//导出多个
-const apiKey = &quot;abc123&quot;
-const apiKey2 = &quot;&quot;
-export {apiKey, apiKey2} //导出多个用大括号 括起来
-
-//导出变量重命名
-const apiKey = &quot;abc123&quot;
-const apiKey2 = &quot;&quot;
-export {apiKey as key, apiKey2} //导出重命名 就需要
+<pre><code class="language-javascript">//ES6前
+function User(name, email) {
+    this.name = name
+    this.email = email
+    return this
+}
+User.prototype.info = function() {
+    console.log(`hi, i am ${this.name}`)
+}
+const lyy = new User(&quot;lyy&quot;, &quot;sina.com&quot;)
 </code></pre>
 
-<p>导入写法</p>
+<p>新的class写法</p>
 
-<pre><code class="language-javascript">//导入 export变量 必须用大括号括起来 并且名称与导出名称一致
-import {apiKey, apiKey2} from &quot;./config&quot;
-
-//导入时重命名
-import {apiKey as key, apiKey2} from &quot;./config&quot; //将导入的变量重命名使用
-
+<pre><code class="language-javascript">class User {
+    constructor(name, email) {
+        this.name = name
+        this.email = email
+    }
+    info() {
+        console.log(`hi, i am ${this.name}`)
+    }
+}
 </code></pre>
 
-<p>export default<br/>
-设置模块的默认导出</p>
+<h2 id="toc_0">特性</h2>
 
-<pre><code class="language-javascript">//
-export default const apiKey = &quot;abc123&quot;
-//
-const apiKey = &quot;abc123&quot;
-export default apiKey
+<h3 id="toc_1">静态方法</h3>
+
+<pre><code class="language-javascript">class User {
+    constructor(name, email) {
+        this.name = name
+        this.email = email
+    }
+    info() {
+        console.log(`hi, i am ${this.name}`)
+    }
+    static description() {
+        console.log(&quot;I am user&quot;)
+    }
+}
+User.description() //I am user
 </code></pre>
 
-<p>对于export default导出的变量导入时:</p>
+<h3 id="toc_2">Set和Get方法</h3>
 
-<pre><code class="language-javascript">export default const apiKey = &quot;abc123&quot;
+<pre><code class="language-javascript">class User {
+    constructor(name, email) {
+        this.name = name
+        this.email = email
+    }
+    set github(value) {
+        this.githubName = value
+    }
 
-//导入时 名字可以随意指定 而且不需要大括号
-import key from &quot;./config&quot; 
-
-//当export和export default导出的变量一起导入
-import key, {apiKey, apiKey2} from &quot;./config&quot; 
+    get github() {
+        return this.githubName
+    }
+}
 </code></pre>
 
-<p>export不止可以导出变量还可以导出函数 class等</p>
+<h3 id="toc_3">计算属性</h3>
 
-<pre><code class="language-javascript">export function sum(a, b) {
-    return a+b
+<p>类似对象章节的写法 使用<code>[ ]</code>来写计算属性</p>
+
+<pre><code class="language-javascript">let methodName = &quot;info&quot;
+class User {
+    constructor(name, email) {
+        this.name = name
+        this.email = email
+    }
+    //计算属性 此时方法名为 info() {}
+    [methodName]() {
+        console.log(`hi, i am ${this.name}`)
+    }
+}
+</code></pre>
+
+<h2 id="toc_4">类的继承</h2>
+
+<p>ES6中通过<code>extends</code>关键字来实现继承</p>
+
+<pre><code class="language-javascript">class Animal {
+    constructor(name) {
+        this.name = name
+        this.belly = []
+    }
+
+    eatFood(food) {
+        this.belly.push(food)
+    }
+
 }
 
-export default class {
-    
+//extends 关键字实现继承
+class Dog extends Animal {
+    constructor(name, age) {
+        //使用super关键字来继承父类的属性和方法
+        super(name)
+        this.age = age
+    }
+
+    bark() {
+        console.log(&quot;wang wang wang&quot;)
+    }
 }
+
+const huanhuan = new Dog(&quot;wtt&quot;, 23)
+</code></pre>
+
+<h2 id="toc_5">扩展内建对象</h2>
+
+<p>我们通过es6的类可以扩展 内建对象在原有功能的基础上实现自己需要的功能</p>
+
+<h2 id="toc_6">补充</h2>
+
+<h3 id="toc_7">ES5中的类和静态方法</h3>
+
+<pre><code class="language-javascript">function Person(name,age) {
+//构造函数里面的方法和属性
+      this.name=name;
+      this.age=age;
+      this.run=function(){
+           console.log(`${this.name}---${this.age}`)
+       }
+}
+//原型链上面的属性和方法可以被多个实例共享
+Person.prototype.sex=&#39;男&#39;;
+Person.prototype.work=function(){
+      console.log(`${this.name}---${this.age}---${this.sex}`);
+ }
+//静态方法
+Person.setName=function(){
+      console.log(&#39;静态方法&#39;);
+}
+var p=new Person(&#39;zhangsan&#39;,&#39;20&#39;);   /*实例方法是通过实例化来调用的，静态是通过类名直接调用*/
+p.run();
+p.work();
+
+Person.setName();  /*执行静态方法*/
 </code></pre>
 
 
@@ -175,24 +255,24 @@ export default class {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -212,10 +292,10 @@ export default class {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -239,7 +319,7 @@ export default class {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -250,7 +330,7 @@ export default class {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -268,6 +348,15 @@ export default class {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -277,31 +366,31 @@ export default class {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

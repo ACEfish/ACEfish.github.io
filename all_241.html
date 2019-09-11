@@ -82,160 +82,410 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14924196525709.html">性能调优</a></h1>
-			<p class="meta"><time datetime="2017-04-17T17:00:52+08:00" 
-			pubdate data-updated="true">2017/4/17</time></p>
+		  	<h1 class="entry-title"><a href="14976096897839.html">字符串和字符</a></h1>
+			<p class="meta"><time datetime="2017-06-16T18:41:29+08:00" 
+			pubdate data-updated="true">2017/6/16</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h3 id="toc_0">CPU &amp;&amp; GPU</h3>
+		  	<p>字符串是字符的集合,用<code>string</code>类型表示. 一个<code>String</code>的内容可以用许多方式读取，例如作为包括作为<code>Character</code>值的集合的方式</p>
 
-<p>绘图和动画处理方式:<code>CPU</code>(中央处理器)和<code>GPU</code>(图形处理器).<code>CPU</code>所做的工作都在软件层面，而<code>GPU</code>在硬件层面。</p>
+<p><code>Swift</code>的<code>String</code>和<code>Character</code>类型提供了快速和兼容<code>Unicode</code>的方式供代码使用。<br/>
+String 类型是一种快速、现代化的字符串实现。 每一个字符串都是由编码无关的<code>Unicode</code>字符组成，并支持访问字符的多种<code>Unicode</code>表示形式</p>
 
-<p>我们可以用<code>CPU</code>做任何事情，但是对于图像处理，使用硬件更快，因为<code>GPU</code>使用图像对高度并行浮点运算做了优化。但是<code>GPU</code>也不是无限制使用的,一旦资源用完的性能就下降了(即使CPU没有完全占用)</p>
+<blockquote>
+<p>注意</p>
 
-<p>我们的优化就是智能使用<code>GPU</code>和<code>CPU</code>使他们都不会超过负荷,我们需要先了解这两个处理器分配工作的逻辑</p>
+<p>Swift的String类型 与 Foundation的NSString类型可以无缝桥接。<br/>
+Foundation对String扩展，使其可以访问NSString类型中定义的方法。<br/>
+这意味着可以直接调用NSString方法，而无需进行任何类型转换</p>
+</blockquote>
 
-<h4 id="toc_1">动画的舞台</h4>
+<h2 id="toc_0">字符串字面量</h2>
 
-<p><strong>动画和屏幕上组合的图层实际上被一个单独的进程管理，而不是你的应用程序。这个进程就是所谓的渲染服务。</strong>在iOS6之后的版本中叫做<code>BackBoard</code>。</p>
+<pre><code class="language-swift">//someString 常量通过字符串字面量进行初始化
+let someString = &quot;Some string literal value&quot;
+</code></pre>
 
-<p>当运行一段动画时,整个过程会分为4个阶段：</p>
+<h3 id="toc_1">多行字符串字面量</h3>
 
-<ul>
-<li>布局 - 这是准备你的视图/图层的层级关系，以及设置图层属性（位置，背景色，边框等等）的阶段。</li>
-<li>显示 - 这是图层的寄宿图片被绘制的阶段。绘制有可能涉及你的<code>- drawRect:</code>和<code>-drawLayer:inContext:</code>方法的调用路径。</li>
-<li>准备 - 这是<code>Core Animation</code>准备发送动画数据到渲染服务的阶段。这同时也是<code>Core Animation</code>将要执行一些别的事务例如解码动画过程中将要显示的图片的时间点。</li>
-<li>提交 - 这是最后的阶段，<code>Core Animation</code>打包所有图层和动画属性，然后通过<code>IPC</code>（内部处理通信）发送到渲染服务进行显示。</li>
-</ul>
+<p>三个双引号包括这具有稳定属性的文本字符集合</p>
 
-<p>这些仅仅只是发生在应用程序内内,在动画在屏幕上显示之前仍然有其他工作，一旦打包的图层和动画到了渲染服务进程，他们会被<em>反序列化</em>形成一个叫做<strong>渲染树</strong>的图层树,使用这个树状结构，渲染服务对动画的每一帧做出如下工作：</p>
+<pre><code class="language-swift">let quotation = &quot;&quot;&quot;
+The White Rabbit put on his spectacles.  &quot;Where shall I begin,
+please your Majesty?&quot; he asked.
 
-<ul>
-<li>对所有的图层属性计算中间值，设置<code>OpenGL</code>几何形状（纹理化的三角形）来执行渲染</li>
-<li>在屏幕上渲染可见的三角形</li>
-</ul>
+&quot;Begin at the beginning,&quot; the King said gravely, &quot;and go on
+till you come to the end; then stop.&quot;
+&quot;&quot;&quot;
+</code></pre>
 
-<p>所以一共有六个阶段；最后两个阶段在动画过程中不停地重复。前五个阶段都在软件层面处理（通过CPU），只有最后一个被GPU执行。而且，你真正只能控制前两个阶段：布局和显示。Core Animation框架在内部处理剩下的事务，你也控制不了它。</p>
+<p>如果多行字符串中包含换行符的话，则多行字符串字面量也会包含换行符。<br/>
+可以通过在行末尾添加反斜杠<code>\</code>作为续行符</p>
 
-<p>我们<br/>
-<strong>在布局和显示阶段，可以决定哪些由CPU执行，哪些交给GPU去做。</strong></p>
+<h3 id="toc_2">字符串字面量的特殊字符</h3>
 
-<h4 id="toc_2">GPU相关操作</h4>
-
-<p>GPU为一个具体的任务做了优化：它用来采集图片和形状（三角形），运行变换，应用纹理和混合然后把它们输送到屏幕上。现代iOS设备上可编程的GPU在这些操作的执行上又很大的灵活性，但是<code>Core Animation</code>并没有暴露出直接的接口。除非你想绕开<code>Core Animation</code>并编写你自己的<code>OpenGL着色器</code>，从根本上解决硬件加速的问题，那么剩下的所有都还是需要在<code>CPU</code>的软件层面上完成。</p>
-
-<p>宽泛的说，<strong>大多数<code>CALayer</code>的属性都是用<code>GPU</code>来绘制</strong>。<br/>
-比如如果你设置图层背景或者边框的颜色，那么这些可以通过着色的三角板实时绘制出来。如果对一个<code>contents</code> 属性设置一张图片，然后裁剪它 - 它就会被纹理的三角形绘制出来，而不需要软件层面做任何绘制。</p>
-
-<p>但是有一些事情会降低（基于GPU）图层绘制:</p>
+<p>特殊字符主要有：</p>
 
 <ul>
-<li>太多的几何结构<br/>
-太多的几何结构就需要太多的三角板来做变换,并不是GPU处理不了这么多几何结构,而是显示之前通过IPC发送到渲染服务器(图层实际上是由很多小物体组成的特别重量级的对象)时，会引起CPU的瓶颈，这就限制了一次展示的图层个数</li>
-<li><p>重绘</p>
-<p>主要由重叠的半透明图层引起。GPU的填充比率（用颜色填充像素的比率）是有限的，所以需要避免重（每一帧用相同的像素填充多次）的发生。</p></li>
-<li><p>离屏绘制<br/>
-发生在当不能直接在屏幕上绘制，并且必须绘制到离屏图片的上下文中的时候。离屏绘制发生在基于CPU或者是GPU的渲染，或者是为离屏图片分配额外内存，以及切换绘制上下文，这些都会降低<code>GPU</code>性能。对于特定图层效果的使用，比如圆角，图层遮罩，阴影或者是图层光栅化都会强制<code>Core Animation</code>提前渲染图层的离屏绘制。但这不意味着你需要避免使用这些效果，只是要明白这会带来性能的负面影响。</p></li>
-<li><p>过大的图片<br/>
-如果视图绘制超出GPU支持的<code>2048x2048</code>或者<code>4096x4096</code>尺寸的纹理，就必须要用CPU在图层每次显示之前对图片预处理，同样也会降低性能。</p></li>
+<li>转义字符<code>\0</code>、反斜杠<code>\\</code>、水平制表符<code>\t</code>、换行符<code>\n</code>、回车符<code>\r</code>、双引号<code>&quot;</code>、单引号<code>\&#39;</code></li>
+<li>Unicode标量，写法为<code>\u{n}</code>(u为小写)，n为任意一到八位十六进制数且可用的unicode码</li>
 </ul>
 
-<h4 id="toc_3">CPU相关的操作</h4>
+<pre><code class="language-swift">let wiseWords = &quot;\&quot;Imagination is more important than knowledge\&quot; - Einstein&quot;
+// &quot;Imageination is more important than knowledge&quot; - Enistein
+let dollarSign = &quot;\u{24}&quot;             // $，Unicode 标量 U+0024
+let blackHeart = &quot;\u{2665}&quot;           // ♥，Unicode 标量 U+2665
+let sparklingHeart = &quot;\u{1F496}&quot;      // 💖，Unicode 标量 U+1F496
+</code></pre>
 
-<p>CPU的工作对于<code>Core Animation</code>发生在动画开始前。所以不会影响到帧率,但是会延时动画开始时间，让界面看起来比较迟钝</p>
+<p>由于多行字符串字面量使用了三个双引号，所以可以再多行字符串字面量直接使用双引号而不用加转义符。</p>
 
-<p>延迟动画的开始时间的CPU操作:</p>
+<pre><code class="language-swift">let threeDoubleQuotes = &quot;&quot;&quot;
+Escaping the first quote \&quot;&quot;&quot;
+Escaping all three quotes \&quot;\&quot;\&quot;
+&quot;&quot;&quot;
+</code></pre>
+
+<h3 id="toc_3">扩展字符串分隔符</h3>
+
+<p>将字符串文字放在扩展分隔符中，字符串的特殊字符会被直接包含而非转义后的效果<br/>
+如果想要在扩展分隔符中的文字有特殊效果，可以在转义字符后添加与其实位置个数相匹配的<code>#</code>符<br/>
+扩展分隔符也可以用于多行字符串文字</p>
+
+<pre><code class="language-swift">＃&quot;Line 1 \nLine 2&quot;＃  //打印的为\n而非换行符
+
+＃&quot;Line 1 \#nLine 2&quot;＃   //实现换行效果
+###&quot;Line1 \###nLine2&quot;### //实现换行效果
+
+let threeMoreDoubleQuotationMarks = #&quot;&quot;&quot;
+Here are three more double quotes: &quot;&quot;&quot;
+&quot;&quot;&quot;#
+</code></pre>
+
+<h2 id="toc_4">初始化空字符串</h2>
+
+<pre><code class="language-swift">var emptyString = &quot;&quot; // 空字符串字面量
+var anotherEmptyString = String() // 初始化方法
+
+
+if emptyString.isEmpty {
+print(&quot;Nothing to see here&quot;)
+}
+// 打印输出：&quot;Nothing to see here&quot;
+</code></pre>
+
+<h2 id="toc_5">字符串可变性</h2>
+
+<pre><code class="language-swift">//通过指定为变量使其可修改
+var variableString = &quot;Horse&quot;
+variableString += &quot; and carriage&quot;
+// variableString 现在为 &quot;Horse and carriage&quot;
+</code></pre>
+
+<p>与OC中的<code>NSString</code>和<code>NSMutableSting</code>确定是否可更改不同,<code>Swift</code>中类似其他值取决于其被定义为常量还是变量</p>
+
+<h2 id="toc_6">字符串是值类型</h2>
+
+<p><strong><code>Swift</code>的<code>String</code>类型是值类型</strong>。如果您<strong>创建了一个新的字符串，那么当其进行常量、变量赋值操作，或在函数/方法中传递时，会进行值拷贝。任何情况下，都会对已有字符串值创建新副本，并对该新副本进行传递或赋值操作</strong>。这样保证了在函数/方法中传递的是字符串的值不会被修改，除非你自己去修改它。</p>
+
+<blockquote>
+<p>在实际编译时，Swift 编译器会优化字符串的使用，使实际的复制只发生在绝对必要的情况下，这意味着您将字符串作为值类型的同时可以获得极高的性能。</p>
+
+<p>注意:</p>
+
+<p><code>Swift</code>的<code>String</code>是值类型而<code>NSString</code>是引用类型,<code>NSString</code>的意思是初始化了一个指针指向了这个字符串，但Swift <code>String</code>的意思则是把字符串字面量赋值给变量</p>
+</blockquote>
+
+<h2 id="toc_7">使用字符</h2>
+
+<p>可通过<code>for-in</code>循环来遍历字符串中的<code>characters</code> 属性来获取每一个字符的值</p>
+
+<pre><code class="language-swift">for character in &quot;Dog!?&quot;.characters {
+    print(character)
+}
+// 
+</code></pre>
+
+<pre><code class="language-swift">//声明一个Character类型
+let exclamationMark: Character = &quot;!&quot;
+
+//用character类型数组初始化字符串
+let catCharacters: [Character] = [&quot;C&quot;, &quot;a&quot;, &quot;t&quot;, &quot;!&quot;, &quot;?&quot;]
+let catString = String(catCharacters)
+print(catString)
+
+</code></pre>
+
+<h2 id="toc_8">连接字符串和字符</h2>
+
+<p>字符串可以通过加法相加在一起<br/>
+可以通过<code>+=</code>运算符将一个字符串添加到一个已经存在字符串变量上</p>
+
+<pre><code class="language-swift">let string1 = &quot;hello&quot;
+let string2 = &quot; there&quot;
+var welcome = string1 + string2
+
+var instruction = &quot;look over&quot;
+instruction += string2
+</code></pre>
+
+<p>可以用<code>append()</code>方法将一个字符附加到一个字符串变量的尾部</p>
+
+<pre><code class="language-swift">//初始化字符也是用双引号
+let exclamationMark: Character = &quot;!&quot;
+welcome.append(exclamationMark)
+// welcome 现在等于 &quot;hello there!&quot;
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>不能将一个字符串或者字符添加到字符变量上，因为字符变量只能包含一个字符</p>
+
+<p>初始化字符也是用双引号与c中使用单引号不同</p>
+</blockquote>
+
+<h2 id="toc_9">字符串插值</h2>
+
+<p>可以用以反斜线为前缀的圆括号将常量、变量或表达式插入字符串字面量或者多行字符串字面量之中</p>
+
+<pre><code class="language-swift">let multiplier = 3
+let message = &quot;\(multiplier) times 2.5 is \(Double(multiplier) * 2.5)&quot;
+// message 是 &quot;3 times 2.5 is 7.5&quot;
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>插值字符串中写在括号内的表达式不能包含非转义反斜杠 ()，并且不能包含回车或换行符。不过，插值字符串可以包含其他字面量。</p>
+</blockquote>
+
+<h2 id="toc_10">Unicode</h2>
+
+<p>Swift 的 String 和 Character 类型是完全兼容 Unicode 标准的。</p>
+
+<h3 id="toc_11">Unicode标量</h3>
+
+<p><code>Unicode</code>标量是对应字符或者修饰符的唯一的21位数字</p>
+
+<blockquote>
+<p>Unicode 码位(code poing) 的范围是 U+0000 到 U+D7FF 或者 U+E000 到 U+10FFFF<br/>
+Unicode 标量不包括 Unicode 代理项(surrogate pair) 码位，其码位范围是 U+D800 到 U+DFFF 。<br/>
+不是所有的21位<code>Unicode</code>标量都代表一个字符，因为有一些标量是留作未来分配的。</p>
+</blockquote>
+
+<h3 id="toc_12">可扩展的字形群集</h3>
+
+<p>每一个<code>Swift</code>的<code>Character</code>类型代表一个可扩展的字形群。一个可扩展的字形群是一个或多个可生成人类可读的字符 Unicode 标量的有序排列。</p>
+
+<pre><code class="language-swift">/*
+    字母 é 可以用单一的 Unicode 标量 é (U+00E9)来表示
+    一个标准的字母e(U+0065)加上一个急促重音的标量(U+0301)，这样一对标量就表示了同样的字母é 
+*/
+let eAcute: Character = &quot;\u{E9}&quot; // é
+let combinedEAcute: Character = &quot;\u{65}\u{301}&quot; // e 后面加上 ?
+// eAcute 是 é, combinedEAcute 是 é
+</code></pre>
+
+<p>因此我们可以用很多复杂的脚本字符来表示单一的Character值</p>
+
+<p>可扩展字形集是一个将许多复杂的脚本字符表示为单个字符值的灵活方式。</p>
+
+<p>例如</p>
+
+<pre><code class="language-swift">/*
+    可拓展的字符群集可以使包围记号的标量包围其他Unicode标量，作为一个单一的Character值
+*/
+let enclosedEAcute: Character = &quot;\u{20DD}&quot;//&quot;⃝&quot;
+let enclosedEAcute11: Character = &quot;\u{E9}\u{20DD}&quot;//é⃝
+</code></pre>
+
+<h2 id="toc_13">计算字符数量</h2>
+
+<p>通过字符串的<code>count</code>属性获取<code>Character</code>值的数量</p>
+
+<p>注意:<br/>
+我们在使用可拓展的字符群集作为<code>Character</code>值来连接或改变字符串时不一定会改变字符数量</p>
+
+<pre><code class="language-swift">var word = &quot;cafe&quot;//这时候字符数量是4
+word += &quot;\u{301}&quot; //这时候字符数量还是4 因为e和新增的字符组合为é
+
+let eAcute = &quot;\u{00E9}&quot; // é
+eAcute.characters.count //字符数量为1
+let combinedEAcute = &quot;\u{65}\u{301}&quot; //
+combinedEAcute.characters.count //字符数量为1
+
+</code></pre>
+
+<blockquote>
+<p>注意：</p>
+
+<p>可扩展的字形群集可以由多个Unicode标量组成。这意味着不同的字符以及相同字符的不同表示方式可能需要不同数量的内存空间来存储。所以Swift中的字符在一个字符串中并不一定占用相同的内存空间数量。因此，在没有获取字符串中的可扩展的字符群范围时，就不能计算出字符串的字符数量。如果在正在入里一个长字符串，需要注意count属性必须遍历全部的unicode标量，来确定字符串的字符数量</p>
+
+<p>另外需要注意的时通过count属性返回的字符数量并不总是与包括相同字符的NSString的Length属性相同。NSString的length属性是利用UTF-16表示的十六位代码单元数字，而不是Unicode可扩展字符群集。作为佐证，当一个 NSString 的 length 属性被一个Swift的 String 值访问时，实际上是调用了 <code>utf16Count</code></p>
+</blockquote>
+
+<h2 id="toc_14">访问和修改字符串</h2>
+
+<h3 id="toc_15">字符串索引</h3>
+
+<p><code>String.Index</code>对应着字符串中的每一个<code>Character</code>的位置</p>
+
+<p>因为字符串中每个<code>Character</code>是可扩展的字符群集,所以想要知道character的人确切位置就像从String开头遍历每一个Unicode标量直到结尾才行。因此，Swift字符串不能用整数做索引</p>
+
+<p><code>startIndex</code>属性可以获取一个<code>String</code>的第一个<code>Character</code>的索引<br/>
+<code>endIndex</code>属性可以可以获取<strong>最后一个<code>Character</code>的后一个位置的索引。</strong>因此<code>endIndex</code>属性不能作为一个字符串的有效下标。如果<code>String</code>是空串，<code>startIndex</code>和<code>endIndex</code>是相等的</p>
+
+<p>可以使用<code>String</code>的<code>index(before:)</code>或<code>index(after:)</code>来获取前一个或者后一个,或者用<code>index(:_offsetBy:)</code>取得对应偏移量的索引</p>
+
+<p>获取对应下标索引的字符:</p>
+
+<pre><code class="language-swift">let greeting = &quot;Guten Tag!&quot;
+greeting[greeting.startIndex]// G
+greeting[greeting.index(after: greeting.endIndex)]// !
+//当越界是或引发运行时的错误(可以在编译时就检测出来)
+</code></pre>
+
+<p>使用<code>characters</code>属性的<code>indices</code>属性会创建一个包含全部索引的范围(<code>Range</code>)，用来在一个字符串中访问单个字符</p>
+
+<pre><code class="language-swift">for index in greeting.characters.indices {
+    print(&quot;\(greeting[index]) &quot;, terminator: &quot;&quot;)
+}
+// 打印输出 &quot;G u t e n T a g ! &quot;
+</code></pre>
+
+<blockquote>
+<p>我们在上面在<code>String</code>中获取的index的方法,可以用于在任意一个确认的并遵循<code>Collection</code>协议的类型里面(例如Array、Dictionary、Set)</p>
+</blockquote>
+
+<h3 id="toc_16">插入和删除</h3>
+
+<p>调用<code>insert(_:at:)</code>方法可以在一个字符串的指定索引插入一个字符，调用<code>insert(contentsOf:at:)</code>方法可以在一个字符串的指定索引插入一个段字符串。</p>
+
+<pre><code class="language-swift">//注意必须是变量
+var welcome = &quot;hello&quot;
+welcome.insert(&quot;!&quot;, at: welcome.endIndex)
+// welcome 变量现在等于 &quot;hello!&quot;
+welcome.insert(contentsOf:&quot; there&quot;.characters, at: welcome.index(before: welcome.endIndex))
+// welcome 变量现在等于 &quot;hello there!&quot;
+</code></pre>
+
+<p>调用<code>remove(at:)</code>方法可以在一个字符串的指定索引删除一个字符，调用<code>removeSubrange(_:)</code>方法可以在一个字符串的指定索引删除一个子字符串。</p>
+
+<pre><code class="language-swift">welcome.remove(at: welcome.index(before: welcome.endIndex))
+// welcome 现在等于 &quot;hello there&quot;
+let range = welcome.index(welcome.endIndex, offsetBy: -6)..&lt;welcome.endIndex
+welcome.removeSubrange(range)
+// welcome 现在等于 &quot;hello&quot;
+</code></pre>
+
+<blockquote>
+<p><code>insert(_:at:)</code>、<code>insert(contentsOf:at:)</code>、<code>remove(at:)</code>和<code>removeSubrange(_:)</code>方法在任意一个确认的并遵循<code>RangeReplaceableCollection</code>协议的类型里面，如上文所示是使用在 <code>String</code>中，您也可以使用在<code>Array</code>、<code>Dictionary</code>和<code>Set</code>中。</p>
+</blockquote>
+
+<h3 id="toc_17">子字符串</h3>
+
+<pre><code class="language-swift">let greeting = &quot;Hello, world!&quot;
+let index = greeting.firstIndex(of: &quot;,&quot;) ?? greeting.endIndex
+let beginning = greeting[..&lt;index]
+// beginning 的值为 &quot;Hello&quot;
+
+// 把结果转化为 String 以便长期存储。
+let newString = String(beginning)
+</code></pre>
+
+<p>当从String中获取一个SubString实例。Swift中的SubString绝大部分函数和String相同，可以使用相同的方式去操作。但是，与String不同的是，SubString只适合短时间操作字符串。</p>
+
+<p>类似String，每个SubString也会在内存中保存字符集。而String和SubString的区别在性能优化上，SubString可以重用原String的内存空间或者另一个SubString的内存空间(String也有相同的优化，短时如果共享内存的话两者就会想等)。这对子字符串的优化意味着在修改String或者SubString之前都不需要去复制消耗内存。但是这也导致一个问题，因为SubString重用了原有内存的空间，原String的内存空间必须保留到SUbString不在使用为止</p>
+
+<p><img src="media/14976096897839/15650786814829.jpg" alt="" style="width:500px;"/></p>
+
+<h2 id="toc_18">比较字符串</h2>
+
+<h3 id="toc_19">字符串/字符相等</h3>
+
+<p>直接用 <code>==</code> 和 <code>!=</code>进行比较</p>
+
+<p>判断标准等于的标准是:当有同样的语义和外观,就被认为是相等的,即使他们的可扩展字形群集可能由不同的<code>Unicode</code>标量构成</p>
+
+<p>例如:<br/>
+((U+00E9)标准等于((U+0065)(U+0301))) (都是<code>é</code>表示的有效方式)<br/>
+U+0041(英语中的A)不等于U+0410(俄语中的A)尽管外观看着一样</p>
+
+<h3 id="toc_20">前缀/后缀</h3>
+
+<p>通过字符串的<code>hasPrefix(_:) / hasSuffix(_:)</code>方法来检查字符串是否用于特定前缀/后缀</p>
+
+<h2 id="toc_21">字符串的Unicode表示</h2>
+
+<p>当<code>Unicode</code>字符串写进文本文件或者其他存储时，<code>Unicode</code>会用几种<code>编码格式</code>编码(如：UTF-8 UTF-16 UTF-32) 每一个字符串中的小块编码都被称<code>代码单元</code></p>
+
+<p>除了前面说过的用<code>for-in</code>对字符串遍历,然后访问每个<code>character</code>值的方式外:<br/>
+其他三种<code>Unicode</code>兼容方式访问字符串</p>
 
 <ul>
-<li><p>布局计算:<br/>
-视图层级过于复杂,视图修改或者呈现时计算图层帧率会消耗一部分时间</p></li>
-<li><p>视图懒加载<br/>
-iOS只会当视图控制器的视图显示到屏幕上时才会加载它。这对内存使用和程序启动时间很有好处，但是当呈现到屏幕上之前，按下按钮导致的许多工作都会不能被及时响应。比如控制器从数据库中获取数据，或者视图从一个nib文件中加载，或者涉及IO的图片显示（见后续“IO相关操作”），都会比CPU正常操作慢得多。</p></li>
-<li><p>Core Graphics绘制</p>
-<p>如果对视图实现了 -drawRect: 方法，或者 CALayerDelegate 的 -drawLayer:inContext: 方法，那么在绘制任何东西之前都会产生一个巨大的性能开销。为了支持对图层内容的任意绘制，Core Animation必须创建一个内存中等大小的寄宿图片。然后一旦绘制结束之后，必须把图片数据通过IPC传到渲染服务器。在此基础上，Core Graphics绘制就会变得十分缓慢，所以在一个对性能十分挑剔的场景下这样做十分不好。</p></li>
-<li><p>解压图片<br/>
-PNG或者JPEG压缩之后的图片文件会比同质量的位图小得多。为了节省内存，iOS通常直到真正绘制的时候才去解码图片，根据你加载图片的方式，第一次对图层内容赋值的时候，或者把它绘制<code>Core Graphics</code>中,需要解压,这样对于比较大的图片会占用时间</p></li>
+<li>UTF-8 代码单元集合 (利用字符串的<code>utf8</code>属性进行访问)</li>
+<li>UTF-16 代码单元集合 (利用字符串的<code>utf16</code>属性进行访问)</li>
+<li>21位的Unicode标量值集合，也就是字符串的UTF-32编码格式 (利用字符串的<code>unicodeScalars</code>属性进行访问)</li>
 </ul>
 
-<p>当图层被成功打包，发送到渲染服务器之后，CPU仍然要做如下工作:<br/>
-为了显示屏幕上的图层，<code>Core Animation</code>必须对渲染树种的每个可见图层通过<code>OpenGL</code>循环转换成纹理三角板。由于GPU并不知晓<code>Core Animation</code>图层的任何结构，所以必须要由<code>CPU</code>做这些事情。CPU涉及的工作和图层个数成正比，所以如果在你的层级关系中有太多的图层，就会导致CPU每一帧的渲染，</p>
+<p>let dogString = &quot;Dog‼🐶&quot;(其中“!!”为U+203C 🐶为U+1F436)</p>
 
-<h4 id="toc_4">IO相关操作</h4>
+<h4 id="toc_22">UTF-8表示</h4>
 
-<p>上下文中的IO（输入/输出）指的是例如闪存或者网络接口的硬件访问。一些动画可能需要从闪存（甚至是远程URL）来加载。一个典型的例子就是两个视图控制器之间的过渡效果，这就需要从一个nib文件或者是它的内容中懒加载，或者一个旋转的图片，可能在内存中尺寸太大，需要动态滚动来加载。</p>
+<p>通过遍历<code>String</code>的<code>utf8</code>属性来访问它的<code>UTF-8</code>表示， 其为<code>String.UTF8View</code>类型的属性， <code>UTF8View</code>是无符号8位(UInt8)值的集合，每一个UInt8值都是一个字符的UTF-8表示</p>
 
-<p>IO比内存访问更慢，所以如果动画涉及到IO，就是一个大问题。总的来说，这就需要使用聪敏但尴尬的技术，也就是多线程，缓存和投机加载（提前加载当前不需要的资源，但是之后可能需要用到）。</p>
+<pre><code class="language-swift">for codeUnit in dogString.utf8 {
+    print(&quot;\(codeUnit) &quot;, terminator: &quot;&quot;)
+}
+print(&quot;&quot;)// 68 111 103 226 128 188 240 159 144 182
+/*
+前三个10进制 codeUnit 值 ( 68 , 111 , 103 ) 代表了字符 D 、 o 和 g ，它们的 UTF-8 表示与ASCII 表示相同。
+ 接下来的三个10进制 codeUnit 值 ( 226 , 128 , 188 ) 是 DOUBLE 
+EXCLAMATION MARK 的3字节 UTF-8 表示。 
+最后的四个 codeUnit 值 ( 240 , 159 , 144 , 182 ) 是 DOG FACE 的4字节UTF-8 表示。
+*/
+</code></pre>
 
-<h3 id="toc_5">测量，而不是猜测</h3>
+<blockquote>
+</blockquote>
 
-<p>有很多种诡计来优化动画，但如果盲目使用的话，可能会造成更多性能上的问题，而不是修复。<br/>
-我们需要正确测量性能</p>
+<h4 id="toc_23">UTF-16表示</h4>
 
-<h4 id="toc_6">真机测试，而不是模拟器</h4>
+<p>与utf-8类似,访问其utf-16属性,是<code>String.UTF16View</code>类型(<code>UInt16</code>值集合)</p>
 
-<ol>
-<li>真机</li>
-<li>性能测试一定要用发布配置，而不是调试模式。因为当用发布环境打包的时候，编译器会引入一系列提高性能的优化，例如去掉调试符号或者移除并重新组织代码。你也可以自己做到这些，例如在发布环境禁用NSLog语句。你只关心发布性能，那才是你需要测试的点。</li>
-<li>最好在你支持的设备中性能最差的设备上测试.可能的话，测试不同的设备和iOS版本，因为苹果在不同的iOS版本和设备中做了一些改变，这也可能影响到一些性能。</li>
-</ol>
+<pre><code class="language-swift">for codeUnit in dogString.utf16 {
+    print(&quot;\(codeUnit) &quot;, terminator: &quot;&quot;)
+}
+print(&quot;&quot;)
+// 68 111 103 8252 55357 56374
+</code></pre>
 
-<h4 id="toc_7">保持一致的帧率</h4>
+<h4 id="toc_24">Unicode标量表示</h4>
 
-<p>我们可以在程序中用<code>CADisplayLink</code>来测量帧率,在屏幕上显示出来,但是应用内的FPS并不能完全真实的测量出<code>Core Animation</code>性能,它仅仅测出应用内的帧率.但是我们知道很多动画都在应用外发生(在渲染服务器进程中处理),当然应用内的<code>FPS</code>可以对一些性能问题提供参考,发现问题后,我们可以通过<strong><code>Instruments</code>工具集</strong>获取更多数据.</p>
+<p>通过遍历<code>String</code>值的<code>unicodeScalars</code>属性来访问它的<code>Unicode</code>标量表示。为<code>UnicodeScalarView</code>类型的属性(<code>UnicodeScalar</code>类型的值的集合)。<br/>
+<code>UnicodeScalar</code>是21位的<code>Unicode</code>代码点,拥有一个<code>value</code>属性，可以返回对应的21位数值，用 UInt32 来表示：</p>
 
-<h3 id="toc_8">Instruments</h3>
+<pre><code class="language-swift">for scalar in dogString.unicodeScalars {
+    print(&quot;\(scalar.value) &quot;, terminator: &quot;&quot;)
+}
+print(&quot;&quot;)
+// 68 111 103 8252 128054
+</code></pre>
 
-<p><code>Instruments</code>中的<code>Leaks</code>工具来检测循环引用,</p>
+<blockquote>
+<p>我们平常代码中的Unicode编码就是这种21位<br/>
+UTF-32也是编码一样为21位，因此swift中的有了unicodeScalars属性也就没有utf32属性</p>
+</blockquote>
 
-<p>应该始终将程序设置成发布选项。幸运的是，配置文件默认就是发布选项，所以你不需要在分析的时候调整编译策略。</p>
+<p>每个<code>UnicodeScalar</code>值也可以用来构建一个新的<code>String</code>值</p>
 
-<p>工具:<br/>
-1.时间分析器(timer profile)-用来测量被方法/函数打断的CPU使用情况<br/>
-2.Core Animation - 用来调试各种Core Animation性能问题。<br/>
-3.OpenGL ES驱动 - 用来调试GPU性能问题,这个工具在编写<code>Open GL</code>代码的时候很有用，但有时也用来处理<code>Core Animation</code>的工作。</p>
-
-<h4 id="toc_9">时间分析器</h4>
-
-<p>检测CPU使用情况,告诉我们程序中那个方法消耗大量CPU时间.查看CPU时间对于判断性能是不是和CPU相关，以及定位到函数都很有帮助</p>
-
-<p>我们可以通过选择一些选项来定位到我们关心的方法:</p>
-
-<ul>
-<li>通过线程分离 - 这可以通过执行的线程进行分组。如果代码被多线程分离的话，那么就可以判断到底是哪个线程造成了问题。</li>
-<li>隐藏系统库 - 可以隐藏所有苹果的框架代码，来帮助我们寻找哪一段代码造成了性能瓶颈。</li>
-<li>只显示Obj-C代码 - - 隐藏除了<code>Objective-C</code>之外的所有代码。大多数内部的<code>Core Animation</code>代码都是用<code>C</code>或者<code>C++</code>函数，所以这对我们集中精力到我们代码中显式调用的方法就很有用。</li>
-</ul>
-
-<h4 id="toc_10">Core Animation</h4>
-
-<p>这个工具用来检测<code>Core Animation</code>性能。给我们提供了周期性FPS，并考虑到了发生在程序之外的动画</p>
-
-<p>提供的调试选项:</p>
-
-<ul>
-<li>Color Blended Layers - 这个选项基于渲染程度对屏幕中的混合区域进行绿到红的高亮（也就是多个半透明图层的叠加）。由于重绘的原因，混合对GPU性能会有影响，同时也是滑动或者动画帧率下降的罪魁祸首之一。</li>
-<li>ColorHitsGreenandMissesRed - 当使用<code>shouldRasterizep</code>属性的时候，耗时图层会被缓存,然后当做扁平化的图片呈现.当缓存再生时，这个选项用红色对栅格化图层进行了高亮。如果频繁再生就意味着栅格化可能会有负面的性能影响</li>
-<li>Color Copied Images - 有时候寄宿图片的生成意味着Core Animation被强制生成一些图片，然后发送到渲染服务器，而不是简单的指向原始指针。这个选项把这些图片渲染成蓝色。复制图片对内存和CPU使用来说都是一项非常昂贵的操作，所以应该尽可能的避免</li>
-<li>Color Immediately - 通常<code>Core Animation</code> <code>Instruments</code>以每毫秒10次的频率更新图层调试颜色，我们可以通过勾选这个选项来设置每帧都更新（可能影响性能）</li>
-<li>Color Misaligned Images - 会高亮那些被缩放或者拉伸以及没有正确对齐到像素边界的图片</li>
-<li>Color Offscreen-Rendered Yellow - 会把那些需要离屏渲染的图层高亮成黄色。这些图层很可能需要用<code>shadowPath</code>或者<code>shouldRasterize</code>来优化。</li>
-<li>Color OpenGL Fast Path Blue - 会对任何直接使用<code>OpenGL</code>绘制的图层进行高亮。</li>
-<li>Flash Updated Regions - 这个选项会对重绘的内容高亮成黄色（也就是任何在软件层面使用Core Graphics绘制的图层）。这种绘图速度很慢,频繁发生的话说明有个隐藏bug或者通过增加缓存或者使用替代方案会有提升性能的空间。</li>
-</ul>
-
-<h4 id="toc_11">OpenGL ES驱动</h4>
-
-<p><code>OpenGL ES</code>驱动工具可以帮你测量GPU的利用率，是一个很好的判断和GPU相关动画性能的指示器.它类似<code>Core Animation</code>也提供显示<code>FPS</code>的工具</p>
-
-<p>其侧边栏选项卡中和性能相关的有:</p>
-
-<ul>
-<li>Renderer Utilization - 如果这个值超过了~50%，就意味着你的动画可能对帧率有所限制，很可能因为离屏渲染或者是重绘导致的过度混合。</li>
-<li>Tiler Utilization - 如果这个值超过了~50%，就意味着你的动画可能限制于几何结构方面，也就是在屏幕上有太多的图层占用了。</li>
-</ul>
-
-<h4 id="toc_12">一个找到性能瓶颈的实例</h4>
+<pre><code class="language-swift">for scalar in dogString.unicodeScalars {
+    print(&quot;\(scalar) &quot;, terminator: &quot;&quot;)
+}
+// D o g !! 🐶
+</code></pre>
 
 
 		</div>
@@ -258,24 +508,24 @@ PNG或者JPEG压缩之后的图片文件会比同质量的位图小得多。为�
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -295,10 +545,10 @@ PNG或者JPEG压缩之后的图片文件会比同质量的位图小得多。为�
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -322,7 +572,7 @@ PNG或者JPEG压缩之后的图片文件会比同质量的位图小得多。为�
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -333,7 +583,7 @@ PNG或者JPEG压缩之后的图片文件会比同质量的位图小得多。为�
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -351,6 +601,15 @@ PNG或者JPEG压缩之后的图片文件会比同质量的位图小得多。为�
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -360,31 +619,31 @@ PNG或者JPEG压缩之后的图片文件会比同质量的位图小得多。为�
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

@@ -82,244 +82,104 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15331071952550.html">进程&&线程</a></h1>
-			<p class="meta"><time datetime="2018-08-01T15:06:35+08:00" 
-			pubdate data-updated="true">2018/8/1</time></p>
+		  	<h1 class="entry-title"><a href="15350923380421.html">CGColor</a></h1>
+			<p class="meta"><time datetime="2018-08-24T14:32:18+08:00" 
+			pubdate data-updated="true">2018/8/24</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<pre><code class="language-python">print(&#39;Process (%s) start...&#39; % os.getpid())
-# Only works on Unix/Linux/Mac:
-pid = os.fork()
-if pid == 0:
-    #子进程
-    print(&#39;I am child process (%s) and my parent is %s.&#39; % (os.getpid(), os.getppid()))
-else:
-    print(&#39;I (%s) just created a child process (%s).&#39; % (os.getpid(), pid))
-    
-# Process (28301) start...
-# I (28301) just created a child process (28302).
-# I am child process (28302) and my parent is 28301.
+		  	<p>定义颜色的组件，通过颜色空间来解释其颜色</p>
+
+<p><code>CGColorRef</code></p>
+
+<h2 id="toc_0">CGColor的Release和Retain</h2>
+
+<pre><code class="language-objectivec">void CGColorRelease(CGColorRef color);
+
+CGColorRef CGColorRetain(CGColorRef color);
 </code></pre>
 
-<h2 id="toc_0">multiprocessing（多进程）</h2>
+<h2 id="toc_1">创建颜色</h2>
 
-<p>因为在windows是没有<code>fork</code>调用的，所以为了跨平台支持,可以使用<code>multiprocessing</code>跨平台的多进程模块<br/>
-<code>multiprocessing</code>模块提供了一个<code>Process</code>类来代表一个进程对象</p>
-
-<pre><code class="language-python">
-from multiprocessing import Process
-import os
-
-def run_proc(name):
-    print(&#39;Run child process %s (%s)...&#39; % (name, os.getpid()))
-
-print(&quot;parent process %s&quot; % os.getpid())
-p=Process(target=run_proc, args=(&quot;test&quot;,)) #创建子进程
-print(&quot;child process will start&quot;)  
-p.start()# 启动子进程
-p.join() # 等待子进程结束后继续运行
-print(&quot;child process end&quot;)
-
-# parent process 28492
-# child process will start
-# Run child process test (28493)...
-# child process end
-
+<ol>
+<li><p>使用颜色空间和强度值列表(包括Alpha)创建颜色</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreate(CGColorSpaceRef space, const CGFloat *components);
+space: 颜色空间<br/>
+components: 描述颜色强度值的n+1个值的数组,n个值对应颜色空间的n歌颜色分量，后加alpha分量
 </code></pre>
-
 <blockquote>
-<p><code>join()</code>方法可以等待子进程结束后再继续往下运行，通常用于进程间的同步。</p>
-</blockquote>
-
-<h3 id="toc_1">Pool（进程池）</h3>
-
-<pre><code class="language-python">from multiprocessing import Pool
-import os, time, random
-
-def long_time_task(name):
-    print(&#39;Run task %s (%s)...&#39; % (name, os.getpid()))
-    start = time.time()
-    time.sleep(random.random() * 3)
-    end = time.time()
-    print(&#39;Task %s runs %0.2f seconds.&#39; % (name, (end - start)))
-
-if __name__==&#39;__main__&#39;:
-    print(&#39;Parent process %s.&#39; % os.getpid())
-    p = Pool(4) #设置同事可以执行4个进程
-    for i in range(5):
-        p.apply_async(long_time_task, args=(i,))
-    print(&#39;Waiting for all subprocesses done...&#39;)
-    p.close() # 调用close()之后就不能继续添加新的Process了
-    p.join()  # 对Pool对象调用join()会等待所有子进程执行完毕，在
-    print(&#39;All subprocesses done.&#39;)
+<p>需要调用CGColorRelease进行释放</p>
+</blockquote></li>
+<li><p>Copy已有颜色副本</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreateCopy(CGColorRef color);
 </code></pre>
-
-<h3 id="toc_2">subprocess 子进程</h3>
-
-<p><code>subprocess</code>模块 允许我们创建子进程,连接其输入、输出、错误通道</p>
-
-<pre><code class="language-python">import subprocess
-
-print(&#39;$ nslookup www.python.org&#39;)
-r = subprocess.call([&#39;nslookup&#39;, &#39;www.python.org&#39;])
-# 相当于在命令行执行  nslookup www.python.org
-print(&#39;Exit code:&#39;, r)
-
-
-# 子进程还需要输入，则可以通过communicate()方法输入：
-import subprocess
-
-print(&#39;$ nslookup&#39;)
-p = subprocess.Popen([&#39;nslookup&#39;], stdin=·, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-output, err = p.communicate(b&#39;set q=mx\npython.org\nexit\n&#39;)
-print(output.decode(&#39;utf-8&#39;))
-print(&#39;Exit code:&#39;, p.returncode)
-
-</code></pre>
-
-<h3 id="toc_3">进程间通信</h3>
-
-<p>进程间通信，可以通过<code>mutiprocessing</code>提供的<code>Queue</code>和<code>pipes</code>等方式交换数据</p>
-
-<pre><code class="language-python"># 一个queue 可以往里 读写数据 实现数据交换共享
-
-from multiprocessing import Process, Queue
-import os, time, random
-
-# 写数据进程执行的代码:
-def write(q):
-    print(&#39;Process to write: %s&#39; % os.getpid())
-    for value in [&#39;A&#39;, &#39;B&#39;, &#39;C&#39;]:
-        print(&#39;Put %s to queue...&#39; % value)
-        q.put(value)
-        time.sleep(random.random())
-
-# 读数据进程执行的代码:
-def read(q):
-    print(&#39;Process to read: %s&#39; % os.getpid())
-    while True:
-        value = q.get(True)
-        print(&#39;Get %s from queue.&#39; % value)
-
-if __name__==&#39;__main__&#39;:
-    # 父进程创建Queue，并传给各个子进程：
-    q = Queue()
-    pw = Process(target=write, args=(q,))
-    pr = Process(target=read, args=(q,))
-    # 启动子进程pw，写入:
-    pw.start()
-    # 启动子进程pr，读取:
-    pr.start()
-    # 等待pw结束:
-    pw.join()
-    # pr进程里是死循环，无法等待其结束，只能强行终止:
-    pr.terminate()
-</code></pre>
-
 <blockquote>
-<p>父进程所有Python对象都必须通过pickle序列化再传到子进程去</p>
-</blockquote>
-
-<h2 id="toc_4">多线程</h2>
-
-<p>我们通常使用<code>threading</code>模块操作线程</p>
-
-<p>启动线程: 就是将要执行的任务任务函数传入创建<code>Thread</code>实例，然后<code>start()</code>开始执行</p>
-
-<pre><code class="language-python">import time, threading
-
-# 新线程执行的代码:
-def loop():
-    print(&#39;thread %s is running...&#39; % threading.current_thread().name)
-    n = 0
-    while n &lt; 5:
-        n = n + 1
-        print(&#39;thread %s &gt;&gt;&gt; %s&#39; % (threading.current_thread().name, n))
-        time.sleep(1)
-    print(&#39;thread %s ended.&#39; % threading.current_thread().name)
-
-print(&#39;thread %s is running...&#39; % threading.current_thread().name)
-#
-t = threading.Thread(target=loop, name=&#39;LoopThread&#39;)
-t.start()
-t.join()
-print(&#39;thread %s ended.&#39; % threading.current_thread().name)
+<p>需要调用CGColorRelease进行释放</p>
+</blockquote></li>
+<li><p>创建通用灰度颜色空间颜色</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreateGenericGray(CGFloat gray, CGFloat alpha);
+gray:  A grayscale value (0.0 - 1.0).<br/>
+alpha:An alpha value (0.0 - 1.0).
+</code></pre></li>
+<li><p>创建通用RGB颜色空间颜色</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreateGenericRGB(CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha);
+red: A red component value (0.0 - 1.0).<br/>
+green: A green component value (0.0 - 1.0).<br/>
+blue: A blue component value (0.0 - 1.0).<br/>
+alpha: An alpha value (0.0 - 1.0)
+</code></pre></li>
+<li><p>创建通用CMYK颜色</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreateGenericCMYK(CGFloat cyan, CGFloat magenta, CGFloat yellow, CGFloat black, CGFloat alpha);
+cyan： 0.0=1.0<br/>
+magenta： 0.0=1.0<br/>
+yellow： 0.0=1.0<br/>
+black： 0.0=1.0<br/>
+alpha： 0.0=1.0
+</code></pre></li>
+<li><p>创建与现有颜色相同，alpha不同的颜色副本</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreateCopyWithAlpha(CGColorRef color, CGFloat alpha);
 </code></pre>
-
 <blockquote>
-<p><code>Python</code>的<code>threading</code>模块有个<code>current_thread()</code>函数，它永远返回当前线程的实例。主线程实例的名字叫<code>MainThread</code>，子线程的名字在创建时指定，我们用<code>LoopThread</code>命名子线程。名字仅仅在打印时用来显示，完全没有其他意义，如果不起名字Python就自动给线程命名为Thread-1，Thread-2</p>
-</blockquote>
-
-<h3 id="toc_5">Lock</h3>
-
-<p>避免多线程对数据读写的冲突，需要lock</p>
-
-<pre><code class="language-python">balance = 0
-lock = threading.Lock()
-
-def run_thread(n):
-    for i in range(100000):
-        # 先要获取锁:
-        lock.acquire() #当有多个线程执行时，只有一个县城能成功获取锁
-        try:
-            # 放心地改吧:
-            change_it(n)
-        finally:
-            # 改完了一定要释放锁:
-            lock.release()
+<p>需要调用CGColorRelease释放</p>
+</blockquote></li>
+<li><p>使用图案颜色空间、图案和强度值列表(包括alpha)创建颜色</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreateWithPattern(CGColorSpaceRef space, CGPatternRef pattern, const CGFloat *components);
 </code></pre>
-
-<h3 id="toc_6">多核问题</h3>
-
-<p>Python由于历史遗留问题,同一进程的不同线程其实只能用到一个cpu核,即使启动了多个线程</p>
-
 <blockquote>
-<p>Python的线程虽然是真正的线程，但解释器执行代码时，有一个GIL锁：Global Interpreter Lock，任何Python线程执行前，必须先获得GIL锁，然后，每执行100条字节码，解释器就自动释放GIL锁，让别的线程有机会执行。这个GIL全局锁实际上把所有线程的执行代码都给上了锁，所以，多线程在Python中只能交替执行，即使100个线程跑在100核CPU上，也只能用到1个核。</p>
+<p>需要调用CGColorRelease释放</p>
+</blockquote></li>
+<li><p>在不同颜色空间创建与颜色匹配的新颜色</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreateCopyByMatchingToColorSpace(CGColorSpaceRef, CGColorRenderingIntent intent, CGColorRef color, CFDictionaryRef options);
+CGColorSpaceRef: 目标颜色空间<br/>
+intent: 当颜色在新颜色色域之外时采用的模式<br/>
+color: 要转换的颜色<br/>
+options: NULL
+</code></pre></li>
+</ol>
 
-<p>Python虽然不能利用多线程实现多核任务，但可以通过多进程实现多核任务。多个Python进程有各自独立的GIL锁，互不影响。</p>
-</blockquote>
+<h2 id="toc_2">其他方法</h2>
 
-<h2 id="toc_7">ThreadLocal</h2>
-
-<p>多线程中，为不同线程绑定不同数据时,可以使用<code>ThreadLocal</code></p>
-
-<pre><code class="language-python">import threading
-
-# 创建全局ThreadLocal对象:
-local_school = threading.local()
-
-def process_student():
-    # 获取当前线程关联的student:
-    std = local_school.student
-    print(&#39;Hello, %s (in %s)&#39; % (std, threading.current_thread().name))
-
-def process_thread(name):
-    # 绑定ThreadLocal的student:
-    local_school.student = name
-    process_student()
-
-t1 = threading.Thread(target= process_thread, args=(&#39;Alice&#39;,), name=&#39;Thread-A&#39;)
-t2 = threading.Thread(target= process_thread, args=(&#39;Bob&#39;,), name=&#39;Thread-B&#39;)
-t1.start()
-t2.start()
-t1.join()
-t2.join()
-</code></pre>
-
-<p>每个线程可以读写<code>ThreadLocal</code>对象的属性,但是互不影响，只操作自己线程对应值，互不干扰，也不用管理锁的问题</p>
-
-<blockquote>
-<p>一个ThreadLocal变量虽然是全局变量，但每个线程都只能读写自己线程的独立副本，互不干扰。ThreadLocal解决了参数在一个线程中各个函数之间互相传递的问题。</p>
-</blockquote>
-
-<h3 id="toc_8">分布式进程</h3>
-
-<p>在<code>Thread</code>和<code>Process</code>中应该优先选择<code>Process</code>，因为其更稳定，而且可以分布到多台机器上，而<code>Thread</code>只能分不到同一台机器的多个CPU上</p>
-
-<p>在<code>mutiprocessing</code>的子模块<code>manager</code>支持把多进程分布到多台机器</p>
-
-<p>一个服务进程可以作为调度者，将任务分布到其他多个进程中，依靠网络通信。由于managers模块封装很好，不必了解网络通信的细节，就可以很容易地编写分布式多进程程序。</p>
+<ol>
+<li><p>判断两个颜色是否相同<br/>
+当两个颜色的颜色空间以及各个分量值相同时，相同</p>
+<pre><code class="language-objectivec">bool CGColorEqualToColor(CGColorRef color1, CGColorRef color2);
+</code></pre></li>
+<li><p>获取颜色的alpha</p>
+<pre><code class="language-objectivec">CGFloat CGColorGetAlpha(CGColorRef color);
+</code></pre></li>
+<li><p>获取颜色的颜色空间</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorGetColorSpace(CGColorRef color);
+</code></pre></li>
+<li><p>获取与颜色相关的n+1个分量值（包括alpha）</p>
+<pre><code class="language-objectivec">const CGFloat * CGColorGetComponents(CGColorRef color);
+</code></pre></li>
+<li><p>获取指定颜色的分享个数(包括alpha)</p>
+<pre><code class="language-objectivec">size_t CGColorGetNumberOfComponents(CGColorRef color);
+</code></pre></li>
+<li><p>获取与颜色图案空间相关的颜色图案</p>
+<pre><code class="language-objectivec">CGPatternRef CGColorGetPattern(CGColorRef color);
+</code></pre></li>
+</ol>
 
 
 		</div>
@@ -342,24 +202,24 @@ t2.join()
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -379,10 +239,10 @@ t2.join()
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -406,7 +266,7 @@ t2.join()
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -417,7 +277,7 @@ t2.join()
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -435,6 +295,15 @@ t2.join()
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -444,31 +313,31 @@ t2.join()
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

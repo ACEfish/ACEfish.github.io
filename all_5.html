@@ -82,110 +82,13 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15609234167437.html">RACMulticastConnection: NSObject</a></h1>
-			<p class="meta"><time datetime="2019-06-19T13:50:16+08:00" 
-			pubdate data-updated="true">2019/6/19</time></p>
+		  	<h1 class="entry-title"><a href="15669011764410.html"></a></h1>
+			<p class="meta"><time datetime="2019-08-27T18:19:36+08:00" 
+			pubdate data-updated="true">2019/8/27</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><code>RACMulticastConnection</code>用于信号的一对多传播</p>
-
-<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) RACSignal&lt;ValueType&gt; *signal;
-{
-RACSubject *_signal;
-}
-@property (nonatomic, readonly, strong) RACSignal *sourceSignal;
-
-</code></pre>
-
-<p>这个signal属性即为对外开发的信号，其实现是使用RACSubject对象，而<code>sourceSignal</code>即为订阅的原信号</p>
-
-<p>在初始化方法中初始化这两个对象:</p>
-
-<pre><code class="language-objectivec">- (instancetype)initWithSourceSignal:(RACSignal *)source subject:(RACSubject *)subject { 
-    _sourceSignal = source;
-    _signal = subject;
-}
-</code></pre>
-
-<h2 id="toc_0">使用</h2>
-
-<p>我们不应该直接初始化<code>RACMulticastConnection</code>对象  使用<code>RACSignal</code>的实例化方法初始化这个实例对象:</p>
-
-<pre><code class="language-objectivec">- (RACMulticastConnection *)publish {
-    RACSubject *subject = [RACSubject subject];
-    RACMulticastConnection *connection = [self multicast:subject];
-    return connection;
-}
-
-- (RACMulticastConnection *)multicast:(RACSubject *)subject {
-    RACMulticastConnection *connection = [[RACMulticastConnection alloc] initWithSourceSignal:self subject:subject];
-    return connection;
-}
-</code></pre>
-
-<p>可以很简单的看出来这两个方法只是简单的声明了<code>RACSubject</code>对象，并初始化一个<code>RACMulticastConnection</code>对象并返回</p>
-
-<h2 id="toc_1">connect &amp;&amp; autoconnect</h2>
-
-<p>具体信号的订阅是在connect方法中，只有执行了connect方法 才会订阅该信号 才能接收信号</p>
-
-<pre><code class="language-objectivec">- (RACDisposable *)connect {
-    self.serialDisposable.disposable = [self.sourceSignal subscribe:_signal];
-}
-</code></pre>
-
-<p><code>autoconnect</code>方法返回一个信号  当订阅了该信号时就会执行connect方法 订阅<code>sourceSignal</code>从而收到信号值</p>
-
-<pre><code class="language-objectivec">- (RACSignal *)autoconnect {
-
-    return [RACSignal
-        createSignal:^(id&lt;RACSubscriber&gt; subscriber) {
-            RACDisposable *subscriptionDisposable = [self.signal subscribe:subscriber];
-            [self connect];
-            }];
-        }]
-}
-</code></pre>
-
-<h2 id="toc_2">补充</h2>
-
-<p>当使用<code>publish</code>方法返回的<code>RACMulticastConnection</code>对象时，只有当<code>connect</code>之前订阅的才能收到消息，而在connect之后订阅的对象并不能收到消息</p>
-
-<p>因此此时我们可以使用<code>RACReplaySubject</code>对象，可以通过<code>[RACSignal replay]</code>方法实现</p>
-
-<pre><code class="language-objectivec">- (RACSignal *)replay {
-    RACReplaySubject *subject = [RACReplaySubject subject];
-    RACMulticastConnection *connection = [self multicast:subject];
-    [connection connect];
-    return connection.signal;
-}
-</code></pre>
-
-<p>除此之外 还有</p>
-
-<p>Capacity:1 的ReplaySubject</p>
-
-<pre><code class="language-objectivec">- (RACSignal *)replayLast {
-    RACReplaySubject *subject = [RACReplaySubject replaySubjectWithCapacity:1];
-    RACMulticastConnection *connection = [self multicast:subject];
-    [connection connect];
-    return connection.signal;
-}
-</code></pre>
-
-<p>只有在返回的信号在被第一次订阅时 才会执行connect方法</p>
-
-<pre><code class="language-objectivec">- (RACSignal *)replayLazily {
-    RACMulticastConnection *connection = [self multicast:[RACReplaySubject subject]];
-    return [RACSignal
-        defer:^{
-            [connection connect];
-            return connection.signal;
-        }];
-}
-</code></pre>
-
+		  	
 
 		</div>
 
@@ -207,24 +110,24 @@ RACSubject *_signal;
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -244,10 +147,10 @@ RACSubject *_signal;
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -271,7 +174,7 @@ RACSubject *_signal;
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -282,7 +185,7 @@ RACSubject *_signal;
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -300,6 +203,15 @@ RACSubject *_signal;
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -309,31 +221,31 @@ RACSubject *_signal;
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

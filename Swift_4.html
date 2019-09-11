@@ -82,184 +82,105 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15042587690391.html">扩展</a></h1>
-			<p class="meta"><time datetime="2017-09-01T17:39:29+08:00" 
-			pubdate data-updated="true">2017/9/1</time></p>
+		  	<h1 class="entry-title"><a href="15659410303124.html">不透明类型</a></h1>
+			<p class="meta"><time datetime="2019-08-16T15:37:10+08:00" 
+			pubdate data-updated="true">2019/8/16</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><strong>扩展</strong>就是为一个已有的类、结构体、枚举类型或者协议类型添加新功能</p>
+		  	<p>具有不透明返回类型的函数或方法会隐藏返回值的类型信息。此时，函数不再提供具体的类型作为返回类型，而是根据它支持的协议来描述返回值。</p>
+
+<p>在处理模块和调用代码之间关系时，异常类型信息非常有用，此时返回的底层数据类型仍然可以保持私有。而且不同于返回协议类型，不透明类型可以保证类型一致性--表一起能获取到类型信息，但是模块使用者却不能获取到</p>
+
+<h2 id="toc_0">不透明类型解决的问题</h2>
+
+<h2 id="toc_1">返回不透明类型</h2>
+
+<p>可以认为不透明类型和泛型相反。</p>
+
+<p>泛型允许调用一个方法，为这个方法的形参和返回值制定一个与实现无关的类型，例如</p>
+
+<pre><code class="language-swift">func max&lt;T&gt;(_ x: T, _ y: T) -&gt; T where T: Comparable { ... }
+</code></pre>
+
+<p>类型T由调用方法的代码决定，函数内部也要通过通用的方式写代码，才能应对调用者传入的各种类型</p>
+
+<p>返回不透明类型函数中，不透明类型允许函数实现时，选择一个与调用代码无关的返回类型，比如：下面例子返回了一个梯形，但是却没直接输出梯形的底层类型</p>
+
+<pre><code class="language-swift">struct Square: Shape {
+    var size: Int
+    func draw() -&gt; String {
+        let line = String(repeating: &quot;*&quot;, count: size)
+        let result = Array&lt;String&gt;(repeating: line, count: size)
+        return result.joined(separator: &quot;\n&quot;)
+    }
+}
+
+func makeTrapezoid() -&gt; some Shape {
+    let top = Triangle(size: 2)
+    let middle = Square(size: 2)
+    let bottom = FlippedShape(shape: top)
+    let trapezoid = JoinedShape(
+        top: top,
+        bottom: JoinedShape(top: middle, bottom: bottom)
+    )
+    return trapezoid
+}
+let trapezoid = makeTrapezoid()
+print(trapezoid.draw())
+</code></pre>
+
+<p>返回值定义为<code>some Shape</code>；因此，该函数返回遵循<code>Shape</code>协议的给定类型，而不需要指定任何具体类型。<br/>
+这样写<code>makeTrapezoid()</code>函数可以表明它公共接口的基本性质 --返回的是一个几何图形 -- 而不是部分的公共接口生成的特殊类型。</p>
+
+<p><code>makeTrapezoid()</code>函数可以返回任意它需要的类型，只要其遵循<code>Shape</code>协议即可，类似泛型函数的实现代码，其调用代码需要采用通用的方式，使其返回的任何<code>Shape</code>类型值都能被正常使用</p>
+
+<pre><code class="language-swift">//泛型和不透明类型相结合
+func flip&lt;T: Shape&gt;(_ shape: T) -&gt; some Shape {
+    return FlippedShape(shape: shape)
+}
+</code></pre>
 
 <blockquote>
-<p>类似OC中的分类功能,但是Swift中的分类没有名字</p>
+<p>注意:</p>
+
+<p>如果函数内部有多个地方返回不透明类型，那么需要保证返回的均为同一类型，否则会报错</p>
 </blockquote>
 
-<p><strong>Swift中的扩展可功能</strong>:</p>
+<h2 id="toc_2">不透明类型和协议类型区别</h2>
 
-<ul>
-<li>添加计算型属性和计算类型属性</li>
-<li>定义实例方法和类型方法</li>
-<li>提供新的构造器</li>
-<li>定义下标</li>
-<li>定义和使用新的嵌套类型</li>
-<li>使一个已有类型符合某个协议<br/>
-还可以对协议进行扩展、提供协议要求的实现，添加额外的功能，让符合协议的类型拥有这些功能</li>
-</ul>
+<p>虽然使用不透明类型作为函数返回值，看起来和返回协议类型非常相似，但这两者有一个主要区别，就在于是否需要保证类型一致性。</p>
 
-<blockquote>
-<p>扩展只能添加新的功能不能重写已有功能</p>
-</blockquote>
+<p>一个不透明类型只能对应一个具体的类型，即使函数调用者并不知道是哪种类型。<br/>
+协议类型可以对应多个类型，只要他们遵循同一协议<br/>
+不透明类型则比啊留了底层类型的唯一性，swift能够推断出来关联类型</p>
 
-<h2 id="toc_0">扩展语法</h2>
-
-<p>用关键字<code>extension</code>声明扩展:</p>
-
-<pre><code class="language-swift">extension SomeType {
-    // 为 SomeType 添加的新功能写到这里
+<pre><code class="language-swift">protocol Container {
+    associatedtype Item
+    var count: Int { get }
+    subscript(i: Int) -&gt; Item { get }
 }
+extension Array: Container { }
+
+// 错误：有关联类型的协议不能作为返回类型。
+func makeProtocolContainer&lt;T&gt;(item: T) -&gt; Container {
+    return [item]
+}
+
+// 错误：没有足够多的信息来推断 C 的类型。
+func makeProtocolContainer&lt;T, C: Container&gt;(item: T) -&gt; C {
+    return [item]
+}
+
+
+func makeOpaqueContainer&lt;T&gt;(item: T) -&gt; some Container {
+    return [item]
+}
+let opaqueContainer = makeOpaqueContainer(item: 12)
+let twelve = opaqueContainer[0]
+print(type(of: twelve))
+// 输出 &quot;Int&quot;
 </code></pre>
-
-<p>扩展一个已有类型,使其采纳一个或多个协议</p>
-
-<pre><code class="language-swift">extension SomeType: SomeProtocol, AnotherProctocol {
-    // 协议实现写到这里
-}
-</code></pre>
-
-<blockquote>
-<p>扩展一个已有实例的新功能,那么新功能对该类型所有实例都可用，不论创建时间</p>
-</blockquote>
-
-<h2 id="toc_1">计算型属性</h2>
-
-<pre><code class="language-swift">extension Double {
-    var km: Double { return self * 1_000.0 }
-    var m : Double { return self }
-    var cm: Double { return self / 100.0 }
-    var mm: Double { return self / 1_000.0 }
-    var ft: Double { return self / 3.28084 }
-}
-let oneInch = 25.4.mm
-print(&quot;One inch is \(oneInch) meters&quot;)
-    // 打印 “One inch is 0.0254 meters”
-let threeFeet = 3.ft
-print(&quot;Three feet is \(threeFeet) meters&quot;)
-    // 打印 “Three feet is 0.914399970739201 meters”
-</code></pre>
-
-<p>扩展<code>Double</code>类型,增加计算型属性,实现距离转换<br/>
-上面的属性是只读的计算型属性,省略了<code>get</code>关键字</p>
-
-<blockquote>
-<p>可以增加新的计算型属性,但是不能增加存储型属性，也不能为已有属性添加属性观察器</p>
-</blockquote>
-
-<h2 id="toc_2">构造器</h2>
-
-<p>扩展可以为已有类型添加新的构造器。<br/>
-扩展能为类添加新的便利构造器,但是不能为类添加新的指定构造器或者析构器</p>
-
-<blockquote>
-<p>如果使用扩展为一个“值类型”添加构造器,同时该值类型的原始实现没有定义定制构造器,且所有存储属性提供了默认值,我们可以在扩展的构造器中调用默认构造器和逐一成员构造器(当原始实现中有定制的构造器,就不能调用了)</p>
-</blockquote>
-
-<pre><code class="language-swift">struct Size {
-    var width = 0.0, height = 0.0
-}
-struct Point {
-    var x = 0.0, y = 0.0
-}
-struct Rect {
-    var origin = Point()
-    var size = Size()
-}
-</code></pre>
-
-<p>因为<code>Rect</code>没有指定构造器,存储属性也都有默认值,因此获得一个逐一成员构造器和默认构造器，</p>
-
-<pre><code class="language-swift">extension Rect {
-    init(center: Point, size: Size) {
-        let originX = center.x - (size.width / 2)
-        let originY = center.y - (size.height / 2)
-        //调用结构体的逐一成员构造器
-        self.init(origin: Point(x: originX, y: originY), size: size)
-    }
-}
-</code></pre>
-
-<h2 id="toc_3">方法</h2>
-
-<p>为已有类型添加新的实例方法和类型方法</p>
-
-<pre><code class="language-swift">extension Int {
-    func repetitions(task: () -&gt; Void) {
-        for _ in 0..&lt;self {
-            task()
-        }
-    }
-}
-//为Int类型添加一个名为`repetitions`的实例方法
-//这个方法接受一个`()-&gt;Void`类型的单参数，没有参数也没有返回值的函数
-</code></pre>
-
-<h3 id="toc_4">可变实例方法</h3>
-
-<p>扩展中添加的实例方法也可以修改该实例本身，对于值类型即结构体或者枚举修改<code>self</code>或其属性的方法就必须将该实例方法标注为<code>mutating</code>(类似原始实现)</p>
-
-<pre><code class="language-swift">extension Int {
-    mutating func square() {
-        self = self * self
-    }
-}
-</code></pre>
-
-<h2 id="toc_5">下标</h2>
-
-<p>扩展为已有类型添加下标.</p>
-
-<pre><code class="language-swift">extension Int {
-    subscript(digitIndex: Int) -&gt; Int {
-        var decimalBase = 1
-        for _ in 0..&lt;digitIndex {
-            decimalBase *= 10
-        }
-        return (self / decimalBase) % 10
-    }
-}
-746381295[0]
-// 返回 5
-746381295[1]
-// 返回 9
-//取的下标越界时自动用0补充
-746381295[9]
-// 返回 0，即等同于：
-0746381295[9]
-</code></pre>
-
-<p>上面的例子为<code>Int</code>增加下标方法，<code>[n]</code>返回十进制数字从右向左数的第<code>n</code>个数字</p>
-
-<h2 id="toc_6">嵌套类型</h2>
-
-<p>扩展可以为已有的类、结构体和枚举添加新的嵌套类型:</p>
-
-<pre><code class="language-swift">extension Int {
-    enum Kind {
-    case Negative, Zero, Positive
-    }
-    var kind: Kind {
-        switch self {
-        case 0:
-            return .Zero
-        case let x where x &gt; 0:
-            return .Positive
-        default:
-            return .Negative
-        }
-    }
-}
-</code></pre>
-
-<p>为<code>Int</code>添加了一个嵌套枚举,来表明特定整数的类型，即正数、负数或零</p>
 
 
 		</div>
@@ -282,24 +203,24 @@ struct Rect {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -319,10 +240,10 @@ struct Rect {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -346,7 +267,7 @@ struct Rect {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -357,7 +278,7 @@ struct Rect {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -375,6 +296,15 @@ struct Rect {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -384,31 +314,31 @@ struct Rect {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

@@ -82,197 +82,200 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15034731740974.html">错误处理</a></h1>
-			<p class="meta"><time datetime="2017-08-23T15:26:14+08:00" 
-			pubdate data-updated="true">2017/8/23</time></p>
+		  	<h1 class="entry-title"><a href="15042587690391.html">扩展</a></h1>
+			<p class="meta"><time datetime="2017-09-01T17:39:29+08:00" 
+			pubdate data-updated="true">2017/9/1</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><strong>错误处理</strong>就是响应错误以及从错误中回复的过程</p>
+		  	<p><strong>扩展</strong>可以为一个已有的类、结构体、枚举类型或者协议类型添加新功能</p>
 
-<p><code>Swift</code>提供了运行时对可恢复错误的抛出、捕获、传递和操作等的支持<br/>
-通常用来区分失败情况,让程序解决并处理某些错误，把解决不了的错误报告给用户</p>
-
-<h2 id="toc_0">表示并抛出错误</h2>
-
-<p><code>Swift</code>中 错误用符合<code>Error</code>协议的类型值来表示，这个空协议表明该类型可以用于错误处理</p>
-
-<p>通常用枚举类型来构建一组相关的错误状态,枚举的关联值可以提供错误状态的额外信息</p>
-
-<p>使用关键字<code>throw</code>关键字来抛出一个错误，表示有意外发生</p>
-
-<pre><code class="language-swift">enum VendingMachineError: Error {
-    case invalidSelection //选择无效
-    case insufficientFunds(coinsNeeded: Int) //金额不足
-    case outOfStock //缺货
-}
-
-throw VendingMachineError.insufficientFunds(coinsNeeded: 5)
-</code></pre>
-
-<h2 id="toc_1">处理错误</h2>
-
-<p><code>Swift</code>中有<code>4</code>种处理错误的方式<br/>
-1.把函数抛出的错误传递给调用此函数的代码<br/>
-2.用<code>do-catch</code>语句处理错误<br/>
-3.将错误作为可选类型处理<br/>
-4.断言此错误根本不会发生</p>
-
-<p>我们在调用一个能抛出错误的函数、方法或者构造器之前，用<code>try</code>关键字或者<code>try?</code><code>try!</code>这种变体关键字</p>
+<p>拥有不需要访问被扩展类型源代码就能完成扩展的能力(即逆向建模)</p>
 
 <blockquote>
-<p>与其他语言的<code>try</code>，<code>catch</code>和<code>throw</code>不同的是<code>swift</code>的错误挫力不涉及解除调用栈,因此其性能特性是可以和<code>return</code>语句相媲美的</p>
+<p>注意</p>
+
+<p>Swift的扩展和OC中的分类功能很相似,但是Swift中的分类是没有名字的</p>
 </blockquote>
 
-<h3 id="toc_2">用throwing函数传递错误</h3>
-
-<p>在函数声明的参数列表后加上<code>throws</code>关键字，表明可以抛出错误，这个函数就称为<code>throwing</code>函数<br/>
-如果这个函数指明了返回值类型，<code>throws</code>关键词需要写在箭头（<code>-&gt;</code>）的前面</p>
-
-<pre><code class="language-swift">func canThrowErrors() throws -&gt; String
-func cannotThrowErrors() -&gt; String
-</code></pre>
-
-<p><strong><code>throwing</code>函数可以在其内部抛出错误，并将错误传递到函数被调用时的作用域。</strong></p>
-
-<blockquote>
-<p>对于<code>throwing</code>函数可以传递错误,非<code>throwing</code>函数抛出的错误只能在函数内部处理</p>
-</blockquote>
-
-<pre><code class="language-swift">struct Item {
-    var price: Int
-    var count: Int
-}
-class VendingMachine {
-    var inventory = [
-                     &quot;Candy Bar&quot;: Item(price: 12, count: 7),
-                     &quot;Chips&quot;: Item(price: 10, count: 4),
-                     &quot;Pretzels&quot;: Item(price: 7, count: 11)
-                     ]
-    var coinsDeposited = 0
-    func dispenseSnack(snack: String) {
-        print(&quot;Dispensing \(snack)&quot;)
-    }
-    //throwing函数 会抛出VendingMachineError错误
-    func vend(itemNamed name: String) throws {
-        guard let item = inventory[name] else {
-            throw VendingMachineError.InvalidSelection
-        }
-        guard item.count &gt; 0 else {
-            throw VendingMachineError.OutOfStock
-        }
-        guard item.price &lt;= coinsDeposited else {
-            throw VendingMachineError.InsufficientFunds(coinsNeeded: item.price - coinsDeposited)
-        }
-        coinsDeposited -= item.price
-        var newItem = item
-        newItem.count -= 1
-        inventory[name] = newItem
-        print(&quot;Dispensing \(name)&quot;)
-    }
-}
-</code></pre>
-
-<p>使用了<code>guard</code>语句来提前退出方法，因为<code>throw</code>语句会立即退出方法，保证只有在满足所有条件时才成功卖出商品</p>
-
-<p><code>vend(itemNamed:)</code>会传递它抛出的所有错误,因此在跳用这个方法时，要么直接处理这些错误(<code>do-catch</code>语句,<code>try?</code>或<code>try!</code>)，要么将错误继续传递下去</p>
-
-<pre><code class="language-swift">let favoriteSnacks = [
-    &quot;Alice&quot;: &quot;Chips&quot;,
-    &quot;Bob&quot;: &quot;Licorice&quot;,
-    &quot;Eve&quot;: &quot;Pretzels&quot;,
-]
-func buyFavoriteSnack(person: String, vendingMachine: VendingMachine) throws {
-    let snackName = favoriteSnacks[person] ?? &quot;Candy Bar&quot;
-    try vendingMachine.vend(itemNamed: snackName)
-}
-//传似抛出的错误
-</code></pre>
-
-<p><code>buyFavoriteSnack</code>方法会查找某人最喜欢的零食，并通过调用<code>vend(itemNamed:)</code>方法尝试购买,通过在<code>vend(itemNamed:)</code>方法前加<code>try</code>关键字</p>
-
-<p><code>throwing</code>构造器和<code>throwing</code>一样可以传递错误</p>
-
-<pre><code class="language-swift">struct PurchasedSnack {
-    let name: String
-    init(name: String, vendingMachine: VendingMachine) throws {
-        try vendingMachine.vend(itemNamed: name)
-        self.name = name
-    }
-}
-</code></pre>
-
-<h3 id="toc_3">用Do-Catch处理错误</h3>
-
-<p><strong><code>do-catch</code>语句运行一段<code>闭包</code>代码来处理错误</strong></p>
-
-<p>在<code>do</code>语句抛出一个错误,与<code>catch</code>中的字句匹配</p>
-
-<pre><code class="language-swift">do {
-    try expression
-    statements
-} catch pattern 1 {
-    statements
-} catch pattern 2 where condition {
-    statements
-}
-</code></pre>
-
-<p><code>catch</code>后面写一个匹配模式来表明这个子句能处理什么样的错误.如果<code>catch</code>没有指定错误模式，那就可以匹配任何错误，并且把错误绑定到名字为<code>error</code>的局部变量</p>
-
-<p><code>catch</code>不必处理抛出的所有错误,错误可以传递到周围,但是必须被处理，可以使外围的<code>do-catch</code>语句 或者是一个<code>throwing</code>函数进行处理</p>
-
-<p>注意:<br/>
-在<code>do</code>语句中的<code>try</code>如果有抛出错误就立刻执行<code>catch</code>语句,并判断这个错误是否要被继续传递下去,否则执行<code>do</code>子句中余下的语句</p>
-
-<h3 id="toc_4">将错误转换成可选值</h3>
-
-<p>通过<code>try?</code>将错误转换为一个可选值,如果表达式有错误抛出,那么表达式的值就为<code>nil</code></p>
-
-<pre><code class="language-swift">func someThrowingFunction() throws -&gt; Int {
-    // ...
-}
-
-let x = try? someThrowingFunction()
-//等效于
-let y: Int?
-do {
-    y = try someThrowingFunction()
-} catch {
-    y = nil
-}
-</code></pre>
-
-<p>此时不论<code>someThrowingFunction()</code>返回值是什么类型,x，y就是该返回值类型的可选类型</p>
-
-<h3 id="toc_5">禁用错误传递</h3>
-
-<p>当我们确定知道某个<code>throwing</code>函数在运行时是不会抛出错误的,那么可以用<code>tr<br/>
-y!</code>来禁用错误传递，它会将调用包装在一个不会有错误抛出的运行时断言中</p>
-
-<h2 id="toc_6">指定清理操作</h2>
-
-<p><code>defer</code>语句在即将离开当前代码块时执行一系列语句，来执行一些必要的清理工作，而不管你是由于哪种方式离开代码块</p>
+<p><strong>Swift中的扩展可功能</strong>:</p>
 
 <ul>
-<li><code>defer</code>语句将代码执行延迟到当前作用域退出之前。</li>
-<li>该语句由<code>defer</code>关键字和要延时执行的语句组成(延迟执行的语句不能包含任何控制转移语句，或是抛出一个错误)。</li>
-<li>延时执行的操作会按照他们被指定时的顺序的相反顺序执行(第一条<code>defer</code>语句中的代码会在第二条<code>defer</code>语句中的代码被执行之后才执行)</li>
+<li>添加计算型属性和计算类型属性</li>
+<li>定义实例方法和类型方法</li>
+<li>提供新的构造器</li>
+<li>定义下标</li>
+<li>定义和使用新的嵌套类型</li>
+<li>使一个已有类型符合某个协议</li>
 </ul>
 
-<pre><code class="language-swift">func processFile(filename: String) throws {
-    if exists(filename) {
-        let file = open(filename)
-        defer {
-            close(file)
-        }
-        while let line = try file.readline() {
-            // 处理文件。
-        }
-        // close(file) 会在这里被调用，即作用域的最后。
+<p>在swift中，甚至可以对协议进行扩展、提供协议其需要的实现，或者添加额外的功能给遵循的类型所使用</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>扩展只能添加新的功能不能重写已有功能</p>
+</blockquote>
+
+<h2 id="toc_0">扩展语法</h2>
+
+<p>用关键字<code>extension</code>声明扩展:</p>
+
+<pre><code class="language-swift">extension SomeType {
+    // 为 SomeType 添加的新功能写到这里
+}
+</code></pre>
+
+<p>扩展一个已有类型,使其采纳一个或多个协议</p>
+
+<pre><code class="language-swift">extension SomeType: SomeProtocol, AnotherProctocol {
+    // 协议实现写到这里
+}
+</code></pre>
+
+<blockquote>
+<p>注意:</p>
+
+<p>对于一个现有类型，如果定义一个扩展来添加新的功能，那么这个类型的所有实例都可以使用这个新功能。包括那些在扩展定以前就存在的实例。</p>
+</blockquote>
+
+<h2 id="toc_1">计算型属性</h2>
+
+<pre><code class="language-swift">extension Double {
+    var km: Double { return self * 1_000.0 }
+    var m : Double { return self }
+    var cm: Double { return self / 100.0 }
+    var mm: Double { return self / 1_000.0 }
+    var ft: Double { return self / 3.28084 }
+}
+let oneInch = 25.4.mm
+print(&quot;One inch is \(oneInch) meters&quot;)
+    // 打印 “One inch is 0.0254 meters”
+let threeFeet = 3.ft
+print(&quot;Three feet is \(threeFeet) meters&quot;)
+    // 打印 “Three feet is 0.914399970739201 meters”
+</code></pre>
+
+<p>扩展<code>Double</code>类型,增加计算型属性,实现距离转换<br/>
+上面的属性是只读的计算型属性,省略了<code>get</code>关键字</p>
+
+<blockquote>
+<p>注意:</p>
+
+<p>可以增加新的计算型属性,但是不能增加存储型属性，也不能为已有属性添加属性观察器</p>
+</blockquote>
+
+<h2 id="toc_2">构造器</h2>
+
+<p>扩展可以为已有类型添加新的构造器。</p>
+
+<p>扩展能为<strong>类</strong>添加新的便利构造器,但是不能为类添加新的指定构造器或者析构器。指定构造器和析构器必须由类的原始实现提供</p>
+
+<blockquote>
+<p>注意:</p>
+
+<p>如果使用扩展给<strong>值类型</strong>添加构造器只适用于给所有的存储属性提供默认值，并且没有定义任何自定义构造器，那么你将可以在该值类型扩展的构造器中使用默认构造器和逐一成员构造器。但是如果将构造器写在值类型的原始视线中，那么就属于在扩展中添加构造器</p>
+
+<p>如果通过扩展提供一个新的构造器 那么有责任确保每个通过构造器创建的实例都是初始化完整的</p>
+</blockquote>
+
+<pre><code class="language-swift">struct Size {
+    var width = 0.0, height = 0.0
+}
+struct Point {
+    var x = 0.0, y = 0.0
+}
+struct Rect {
+    var origin = Point()
+    var size = Size()
+}
+</code></pre>
+
+<p>因为<code>Rect</code>没有指定构造器,存储属性也都有默认值,因此获得一个逐一成员构造器和默认构造器，</p>
+
+<pre><code class="language-swift">extension Rect {
+    init(center: Point, size: Size) {
+        let originX = center.x - (size.width / 2)
+        let originY = center.y - (size.height / 2)
+        //调用结构体的逐一成员构造器
+        self.init(origin: Point(x: originX, y: originY), size: size)
     }
 }
 </code></pre>
+
+<h2 id="toc_3">方法</h2>
+
+<p>为已有类型添加新的实例方法和类型方法</p>
+
+<pre><code class="language-swift">extension Int {
+    func repetitions(task: () -&gt; Void) {
+        for _ in 0..&lt;self {
+            task()
+        }
+    }
+}
+//为Int类型添加一个名为`repetitions`的实例方法
+//这个方法接受一个`()-&gt;Void`类型的单参数，没有参数也没有返回值的函数
+</code></pre>
+
+<h3 id="toc_4">可变实例方法</h3>
+
+<p>扩展中添加的实例方法也可以修改该实例本身，对于值类型即结构体或者枚举修改<code>self</code>或其属性的方法就必须将该实例方法标注为<code>mutating</code>(类似原始实现)</p>
+
+<pre><code class="language-swift">extension Int {
+    mutating func square() {
+        self = self * self
+    }
+}
+</code></pre>
+
+<h2 id="toc_5">下标</h2>
+
+<p>扩展为已有类型添加下标.</p>
+
+<pre><code class="language-swift">extension Int {
+    subscript(digitIndex: Int) -&gt; Int {
+        var decimalBase = 1
+        for _ in 0..&lt;digitIndex {
+            decimalBase *= 10
+        }
+        return (self / decimalBase) % 10
+    }
+}
+746381295[0]
+// 返回 5
+746381295[1]
+// 返回 9
+//取的下标越界时自动用0补充
+746381295[9]
+// 返回 0，即等同于：
+0746381295[9]
+</code></pre>
+
+<p>上面的例子为<code>Int</code>增加下标方法，<code>[n]</code>返回十进制数字从右向左数的第<code>n</code>个数字</p>
+
+<h2 id="toc_6">嵌套类型</h2>
+
+<p>扩展可以为已有的类、结构体和枚举添加新的嵌套类型:</p>
+
+<pre><code class="language-swift">extension Int {
+    enum Kind {
+    case Negative, Zero, Positive
+    }
+    var kind: Kind {
+        switch self {
+        case 0:
+            return .Zero
+        case let x where x &gt; 0:
+            return .Positive
+        default:
+            return .Negative
+        }
+    }
+}
+</code></pre>
+
+<p>为<code>Int</code>添加了一个嵌套枚举,来表明特定整数的类型，即正数、负数或零</p>
 
 
 		</div>
@@ -295,24 +298,24 @@ y!</code>来禁用错误传递，它会将调用包装在一个不会有错误�
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -332,10 +335,10 @@ y!</code>来禁用错误传递，它会将调用包装在一个不会有错误�
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -359,7 +362,7 @@ y!</code>来禁用错误传递，它会将调用包装在一个不会有错误�
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -370,7 +373,7 @@ y!</code>来禁用错误传递，它会将调用包装在一个不会有错误�
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -388,6 +391,15 @@ y!</code>来禁用错误传递，它会将调用包装在一个不会有错误�
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -397,31 +409,31 @@ y!</code>来禁用错误传递，它会将调用包装在一个不会有错误�
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

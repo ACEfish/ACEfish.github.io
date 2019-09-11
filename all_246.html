@@ -82,43 +82,216 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15547054235829.html">拾遗</a></h1>
-			<p class="meta"><time datetime="2019-04-08T14:37:03+08:00" 
-			pubdate data-updated="true">2019/4/8</time></p>
+		  	<h1 class="entry-title"><a href="15668021082247.html">Blocks的实现</a></h1>
+			<p class="meta"><time datetime="2019-08-26T14:48:28+08:00" 
+			pubdate data-updated="true">2019/8/26</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h3 id="toc_0">1.</h3>
+		  	<h2 id="toc_0">Block的实质</h2>
 
-<p>对于RunLoop。系统定义了其他mode，并且可以在其他mode中执行runLoop，以限制处理哪些源，定时器和观察器。 由于runLoop只是指定为字符串，因此您还可以定义自己的自定义模式以限制事件的处理</p>
+<p>通过<code>-rewrite-objc</code>将Block语法转为C++源代码</p>
 
-<h3 id="toc_1">2.Run loop并无并发</h3>
+<pre><code class="language-objectivec">//源代码
+void(^blk)(void) = ^{
+    printf(&quot;Block\n&quot;)
+}
+</code></pre>
 
-<p>Run loop并不像 GCD 或者操作队列那样是一种并发机制，因为它并不能并行执行任务。不过在<code>主 dispatch/operation</code>队列中， <code>run loop</code> 将直接配合任务的执行，它提供了一种异步执行代码的机制。</p>
+<ol>
+<li><p>block是&quot;带有自动变量值的匿名函数&quot;，</p>
+<pre><code class="language-objectivec">static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    printf(&quot;Block\n&quot;)<br/>
+}
+</code></pre>
+<p>可以看到其执行内容会按照普通的C函数处理，并且Block会根据所属的函数名(main函数)和该block出现的顺序值(为0)进行命名。并且其函数的执行参数即为<code>__cself</code>也就是指向该block的机构体的指针</p></li>
+<li><p>Block其实是<code>Object-C</code>对象</p>
+<p>block转换为结构体后其结构如下:</p>
+<pre><code class="language-objectivec">struct __main_block_impl_0 {
+    struct __block_impl impl;<br/>
+    struct __main_block_desc_0 *Desc;<br/>
+    //结构体初始化函数<br/>
+    __main_block_impl_0(void *fp, strct __main_block_desc_0, int flags=0) {<br/>
+        impl.isa = &amp; NSConcreatStackBlock;<br/>
+        impl.Flags = flags;<br/>
+        impl.FuncPtr = fp;<br/>
+        Desc = desc;<br/>
+    }<br/>
+}<br/>
+struct __block_impl {<br/>
+    void *isa;<br/>
+    int Flags;<br/>
+    int Reserved;<br/>
+    void *FunctionPtr;<br/>
+}<br/>
+struct __main_block_desc_0 {<br/>
+    unsigned long reserved; //今后版本升级所需的区域<br/>
+    unsigned long Block_size; //block的大小<br/>
+}
+</code></pre>
+<p>因此将block结构体展开的话，其初始化结构如下:</p>
+<pre><code class="language-objectivec">static struct __main_block_desc_0 __main_block_desc_0_DATA = {
+    0,<br/>
+    sizeof(struct __main_block_impl_0) //block大小<br/>
+}<br/>
+//初始化<br/>
+isa = &amp;_NSConcreatStackBlock;<br/>
+Flags=0;<br/>
+Reserved=0;<br/>
+FuncPtr=__main_block_func_0;<br/>
+Desc= &amp;__main_block_desc_0_DATA;
+</code></pre>
+<p>当执行该block时,即执行block中的FuncPtr函数，然后将block结构体指针作为参数传入：</p>
+<pre><code class="language-objectivec">((void(*)(struct __block_impl *))((struct __block_impl *)blk)-&gt;FuncPtr)((struct _block_impl*)blk)
+</code></pre>
+<blockquote>
+<p>注意</p>
+<p>对于<code>isa=&amp;_NSConcreatStackBlock;</code>因为block也是一个对象，因此与其它OC对象类型，其isa指针指向其类结构体，即block的类信息就放在<code>_NSConcreatStackBlock</code>中</p>
+</blockquote></li>
+</ol>
 
-<h3 id="toc_2">3.&quot;计时器&quot;的背后都是依靠runLoop来处理</h3>
+<h2 id="toc_1">截获自动变量</h2>
 
-<p>无论你什么时候设置<code>计时器</code>、使用<code>NSURLConnection</code>或者调用<code>performSelector:withObject:afterDelay:</code>，其实背后都是 run loop 在处理这些异步任务。</p>
+<p>所谓的&quot;截获自动变量值&quot;其实是在执行block时，Block语法表达式所使用的自动变量被保存到Block的结构体实例中</p>
 
-<h3 id="toc_3">4.commod mode</h3>
+<p>截获了自动变量的结构体</p>
 
-<p>CF中有一种特殊的“假”mode即common mode，允许你将一个item添加到多个mode中；如果要指定commod模式，使用<code>kCFRunLoopCommonModes</code>常量作为模式名； 一个mode可以通过<code>CFRunLoopAddCommonMode</code>将mode的名字添加到commonModes中，每个runLoop都有自己独立的common模式集。每当RunLoop内容发生变化时，RunLoop会自动将_commonModeItems里的item同步到有&quot;common&quot;标记的mode</p>
+<pre><code class="language-objectivec">struct __main_block_impl_0 {
+    struct __block_impl impl;
+    struct __main_block_desc_0 *Desc;
+    const char *fmt; //自动变量值
+    int val; //自动变量值
+        //结构体初始化函数
+     __main_block_impl_0(void *fp, strct __main_block_desc_0, const char*_fmt, int _val, int flags=0) : fmt(_fmt), val(_val) {
+        impl.isa = &amp; NSConcreatStackBlock;
+        impl.Flags = flags;
+        impl.FuncPtr = fp;
+        Desc = desc;
+    }
+}
+</code></pre>
 
-<h3 id="toc_4">5.Autorelease和runloop</h3>
+<blockquote>
+<p>注意</p>
 
-<p>因为苹果只在主线程注册了Observer的回调 因此也只在主线程有autoreleasePool了</p>
+<p>block只会捕获使用到的变量，表达式中没有使用到的变量不会被自动追加</p>
+</blockquote>
 
-<p>在主线程执行的代码，通常是写在诸如事件回调、Timer回调内的。这些回调会被 RunLoop 创建好的 AutoreleasePool 环绕着，所以不会出现内存泄漏，开发者也不必显示创建 Pool 了。</p>
+<h2 id="toc_2">__block说明符</h2>
 
-<p>通过RunLoopObserver在RunLoop两次Sleep间对AutoreleasePool进行了Pop和PUsh 将这次Loop中产生的Autorelease对象释放</p>
+<p>看到上面👆捕获变量的源码，可以看出来，block中捕获的自动变量仅捕获自动变量的值。因此在block内部重写该自动变量也不会改变原来捕获的自动变量值，因此，当我们给捕获的自动变量赋值时 就会产生编译错误</p>
 
-<h3 id="toc_5">6.更换Mode时 需要停止当前Loop(退出当前Loop，而不是RunLoop)，然后重启新的Loop</h3>
+<h3 id="toc_3">静态变量、静态全局变量、全局变量</h3>
 
-<h3 id="toc_6">7. GCD中 dispatch到main queue的block被分发到main RunLoop执行，也只有这种情况，会在runloop执行</h3>
+<p>我们可以在block中直接访问或修改静态全局变量/全局变量 这是没有任何改变的，因此可以在block转换后的函数中直接使用，而无需在结构体中保留、变量</p>
 
-<h3 id="toc_7">8. 计时器Timer的不准</h3>
+<p>但是对于静态变量，因为block转换后的函数已经在静态变量所处的函数之外，出了访问的作用域</p>
 
-<p>计时器不是实时机制，只有当RunLoop的其中一个循环模式正在运行，并且能够检查计时器的出发时间是否已经过去，才会触发。如果运行循环处于未监视的定时器的mode或者有个长时间回调，定时器不会被触发直到下次runLoop检查定时器。因此，定时器可能发射的时间是在计划时间之后的某个时间，但是重复的定时器按照计划时间重新即使而不是实际触发时间。一个计时器同时只能注册在一个runLoop中，尽管他可以在该runloop中添加到多个modes</p>
+<pre><code class="language-objectivec">//结构体中
+__main_block_impl_0 {
+    ...
+    int * static_val; //block内部保留 静态变量的指针地址
+}
+
+//执行函数
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    (*static_val) *= 3 //
+}
+</code></pre>
+
+<p>因此 block将静态变量的指针传递给<code>__main_block_impl_0</code>结构体的构造函数，并保留在结构体中，这是超出作用范围最简单的访问方法了</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>对于自动变量为什么没有采用类似静态变量的访问方式呢??<br/>
+Block可以截获超过作用域被截获的对象的自动变量，变量作用域结束的，原来的自动变量被废弃，因此block中超过变量作用域的对象就如同静态变量一样，无法通过指针进行访问了</p>
+</blockquote>
+
+<h3 id="toc_4">__block修饰符</h3>
+
+<p>在OC中存在以下几种存储域类说明符:</p>
+
+<ul>
+<li>typedef</li>
+<li>extern</li>
+<li>static</li>
+<li>auto</li>
+<li>register</li>
+</ul>
+
+<p><code>__block</code>就类似static、auto、register说明符，用于指定将变量设置到哪个存储区域中。(auto表示作为自动变量存储到栈中、static作为静态变量存储到数据区)</p>
+
+<pre><code class="language-objectivec">//源代码
+__block int val = 10
+void(^blk)(void) = ^{val = 1}
+</code></pre>
+
+<p>block结构体持有了指向__block变量结构体指针</p>
+
+<pre><code class="language-objectivec">struct __main_block_impl_0 {
+    struct __block_impl impl;
+    struct __main_block_desc_0 *Desc;
+    __Block_byref_val_0 *val;
+        //结构体初始化函数
+     __main_block_impl_0(void *fp, strct __main_block_desc_0, __Block_byref_val_0 *_val, int flags=0) : val(_val-&gt;_forwarding) {
+        impl.isa = &amp; NSConcreatStackBlock;
+        impl.Flags = flags;
+        impl.FuncPtr = fp;
+        Desc = desc;
+    }
+}
+</code></pre>
+
+<p>__block变量<br/>
+__block变量如同block一般变为<code>__Block_byref_val_0</code>结构体实例</p>
+
+<pre><code class="language-objectivec">struct __Block_byref_val_0 {
+    void *__isa;
+    __Block_byref_val_0 *__forwarding;
+    int __flags;
+    int __size;
+    int val; //相当于原自动变量
+}
+//其初始化
+__Block_byref_val_0 val = {
+    0,
+    &amp;val,
+    0,
+    sizeof(__Block_byref_val_0),
+    10
+}
+</code></pre>
+
+<p>结构体持有了相当持有原自动变量的成员变量,  <code>__Block_byref_val_0</code>结构体实例的成员变量<code>__forwarding</code>持有指向该实例自身的指针。通过 <code>__forwarding</code>访问成员变量val。(成员变量val相当于原自动变量)</p>
+
+<p>函数</p>
+
+<pre><code class="language-objectivec">^{val=1}
+    
+//源代码转换为
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    __Block_byref_val_0 *val = _cself-&gt;val;
+    
+    (val-&gt;__forwarding-&gt;val) = 1
+}
+</code></pre>
+
+<blockquote>
+<p>注意：</p>
+
+<ol>
+<li>为什么将__block变量写为单独的结构体而不写在block结构体中? 因是为了可以在多个block中使用相同的__block变量</li>
+<li>为了什么使用了__block变量 就可以改写值？  因为当变量添加了__block前缀，此时声明的就直接是一个结构体 我们之后访问、修改不论是在block内外 都是用的这个结构体</li>
+</ol>
+</blockquote>
+
+<p>本章忽略内容：</p>
+
+<ul>
+<li>Block超出变量作用域存在原因</li>
+<li><strong>block变量结构体成员</strong>forwading存在理由</li>
+</ul>
 
 
 		</div>
@@ -141,24 +314,24 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -178,10 +351,10 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -205,7 +378,7 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -216,7 +389,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -234,6 +407,15 @@ $(document).ready(function(event) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -243,31 +425,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

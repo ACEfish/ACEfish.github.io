@@ -82,132 +82,140 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15541213204265.html">dyld动态链接</a></h1>
-			<p class="meta"><time datetime="2019-04-01T20:22:00+08:00" 
-			pubdate data-updated="true">2019/4/1</time></p>
+		  	<h1 class="entry-title"><a href="14861704124969.html">iOS 滤镜</a></h1>
+			<p class="meta"><time datetime="2017-02-04T09:06:52+08:00" 
+			pubdate data-updated="true">2017/2/4</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>生成可执行文件后，就是在启动时进行动态链接了,进行符号和地址的绑定。首先会加载所依赖的<code>dylibs</code>，修正地址偏移，因为iOS会用 ASLR 来做地址偏移避免攻击，确定<code>Non-Lazy Pointer</code>地址进行符号地址绑定，加载所有类，最后执行<code>load</code>方法和<code>clang attribute</code> 的<code>constructor</code>修饰函数。</p>
+		  	<hr/>
 
-<p>每个函数、全局变量和类都是通过符号的形式来定义和使用的，当把目标文件链接为一个执行文件时，链接器在目标文件和动态库之间对符号做解析处理</p>
+<h3 id="toc_0">CIFilter实现滤镜效果</h3>
 
-<p>查看一个可链接文件的符号表<br/>
-<code>xcrun nm -nm SayHi.o</code></p>
+<p>参考网址:<a href="http://www.jianshu.com/p/98ba256b034a" title="CoreImage滤镜学习 - 简书">CoreImage滤镜学习</a> </p>
 
-<pre><code class="language-c">                 (undefined) external _OBJC_CLASS_$_Foo
-                 (undefined) external _objc_autoreleasePoolPop
-                 (undefined) external _objc_autoreleasePoolPush
-                 (undefined) external _objc_msgSend
-0000000000000000 (__TEXT,__text) external _main
+<h5 id="toc_1">CoreImage框架介绍</h5>
+
+<p>1.是一个图片框架 基于<code>OpenGL</code>顶层创建，底层用着色器来处理图像<br/><br/>
+2.利用GPU基于硬件加速来处理图像<br/><br/>
+3.CoreImage中有很多滤镜<br/><br/>
+4.它们能够一次给予一张图像或者视频帧多种视觉效果 -&gt; 滤镜链<br/><br/>
+5.滤镜可以连接起来组成一个滤镜链 把滤镜效果叠加起来处理图像</p>
+
+<h5 id="toc_2">CIFilter使用介绍</h5>
+
+<ol>
+<li><p><code>CIFilter</code>滤镜类中有很多的滤镜效果 这里不一一列举，可以按住command 点击CIFilter 进入接口文件 找到第128行-148行全部都是 效果分类  </p></li>
+<li><p>常用效果<br/><br/>
+我们使用时需要先找到需要的效果类型 比如我们使用<code>kCICategoryDistortionEffect</code>失真的效果类型，有了效果类型我们需要找到里面我们需要的效果.<br/><br/>
+<code>NSLog -&gt; [CIFilter filterNamesInCategory:刚才拷贝的分类];</code><br/><br/>
+比如<code>CIColorMonochrome </code>,然后就可以使用这个滤镜效果<br/><br/>
+<code>CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome”];</code><br/><br/>
+然后打印这个效果中包含了那些属性:<br/><br/>
+<code>NSLog(@&quot;%@&quot;,filter.attributes);</code><br/><br/>
+在里面我们可以看到好多属性，里面是多个字典的形式，找到我们想要修改的属性(key值) 然后在他对应的value里面查看一下他的属性类型，比如我们打印的CIColorMonochrome里面有一个inputColor，他是一个CIColor类型的，有默认值，这里我们写了一个CIColor来给他进行赋值.<br/><br/>
+赋值时需要用kvc的方式:<br/><br/>
+<code>[filter setValue:colorforKey:kCIInputColorKey];</code><br/><br/>
+<img src="media/14861704124969/DraggedImage.png" alt="DraggedImage"/></p></li>
+<li><p>实现滤镜效果代码<br/><br/>
+首先我们创建一个全局变量的UIImageView，然后让他初始化出来,这个就是我们要处理的图片 一般我们从手机相册中取出来:<br/><br/>
+ @interface ViewController ()&lt;UINavigationControllerDelegate,UIImagePickerControllerDelegate&gt;<br/>
+    {<br/>
+         UIImageView *imageView;<br/>
+    }<br/>
+    @end<br/>
+    然后我们需要从相册中取出一张图片,保存起来:<br/>
+    //跳转相册的触发方法<br/>
+    - (void)doit{<br/>
+    UIImagePickerController *vc = [[UIImagePickerController alloc]init];<br/>
+    vc.delegate = self;<br/>
+    [self presentViewController:vc animated:YES completion:nil];</p>
+<pre><code class="language-text">}
+//让图片显示在VC上面的方法<br/>
+- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary&lt;NSString *,id&gt; *)info<br/>
+{<br/>
+NSLog(@&quot;%@&quot;,info);<br/>
+//获得选中的图像<br/>
+UIImage *chooseImage = info[UIImagePickerControllerOriginalImage];<br/>
+//先是在试图空间上<br/>
+imageView.image = chooseImage;<br/>
+[self dismissViewControllerAnimated:YES completion:nil];<br/>
+}
 </code></pre>
-
-<ul>
-<li><code>OBJC_CLASS$_Foo</code>表示<code>Foo</code>的<code>OC</code>符号</li>
-<li><code>(undefined) external</code>表示未实现非私有，如果是私有就是<code>non-external</code></li>
-<li><code>external _main</code> 表示<code>main()</code>函数，处理<code>0</code>地址，将要到 <strong>TEXT,</strong>text section</li>
-</ul>
-
-<pre><code class="language-text">xcrun nm -nm Foo.o
+<p><strong>接下来就是对图片进行滤镜处理:</strong><br/>
+    - (void)addColorFilter{<br/>
+    //CIImage 保存图像数据的类<br/>
+    CIImage <em>inputImage = [CIImage imageWithCGImage:imageView.image.CGImage];<br/>
+    //先打印NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);进去找到需要设置的属性(查询效果分类中都有什么效果)  可以设置什么效果<br/>
+    //然后通过[CIFilter filterWithName:@&quot;&quot;];找到属性   具体效果的属性<br/>
+    //然后通过KVC的方式设置属性<br/>
+    NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);<br/>
+    /</em><br/>
+     1.查询 效果分类中 包含什么效果：filterNamesInCategory:<br/>
+     2.查询 使用的效果中 可以设置什么属性（KVC） attributes</p>
+<pre><code class="language-text"> 使用步骤
+ 1.需要添加滤镜的源图<br/>
+ 2.初始化一个滤镜 设置滤镜（根据查询到的属性来设置）<br/>
+ 3.把滤镜 输出的图像 和滤镜  合并 CIContext -&gt; 得到一个合成之后的图像<br/>
+ 4.展示<br/>
+ */<br/>
+//CIFilter 滤镜类  图片属性进行细节处理的类<br/>
+CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome&quot;];<br/>
+NSLog(@&quot;%@&quot;,filter.attributes);<br/>
+//这个属性是必须赋值的，假如你处理的是图片的话<br/>
+[filter setValue:inputImage forKey:kCIInputImageKey];<br/>
+CIColor *color = [CIColor colorWithRed:1.000 green:0.759 blue:0.592 alpha:1];<br/>
+[filter setValue:color forKey:kCIInputColorKey];<br/>
+//CIContext 上下文是实现对图像处理的具体对象 用来把滤镜和图片合成成为一张图片 滤镜对象输出的图像并不是合成之后的图像，需要使用图片处理的上下文 合并输出图像<br/>
+    CIContext *context = [CIContext contextWithOptions:nil];<br/>
+CIImage *outPutImage = filter.outputImage;<br/>
+//CGImageRef-&gt;图像中的数据<br/>
+    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+    imageView.image = [UIImage imageWithCGImage:image];<br/>
+ }
 </code></pre>
-
-<pre><code class="language-c">                 (undefined) external _NSLog
-                 (undefined) external _OBJC_CLASS_$_NSObject
-                 (undefined) external _OBJC_METACLASS_$_NSObject
-                 (undefined) external ___CFConstantStringClassReference
-                 (undefined) external __objc_empty_cache
-0000000000000000 (__TEXT,__text) non-external -[Foo say]
-0000000000000060 (__DATA,__objc_const) non-external l_OBJC_METACLASS_RO_$_Foo
-00000000000000a8 (__DATA,__objc_const) non-external l_OBJC_$_INSTANCE_METHODS_Foo
-00000000000000c8 (__DATA,__objc_const) non-external l_OBJC_CLASS_RO_$_Foo
-0000000000000110 (__DATA,__objc_data) external _OBJC_METACLASS_$_Foo
-0000000000000138 (__DATA,__objc_data) external _OBJC_CLASS_$_Foo
+<p>注意：<br/><br/>
+对滤镜进行赋值之后图片就有了，但是我们这个时候拿出这个图片的时候发现他并没有发生变化，因为它只是单一进行了滤镜处理，还没有和原图片进行一个糅合。使用CIContext找到上下文对他进行糅合：<br/><br/>
+//extent得到图像的尺寸    合并一个包含源图   滤镜效果的图片<br/>
+    //1 滤镜输出的图像    2.合成之后图像的尺寸   图像.extent<br/>
+    CGImageRef imageRef = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+注意:<br/><br/>
+假如你的图片消失了，请检查一下，第一步获取图片的时候一定要获得图片的CGImage再来来获取，不要直接使用imageView.image.CGImage。</p></li>
+<li><p>滤镜链:<br/><br/>
+在给一张图片添加多种滤镜效果的时候，我们把它称为<code>滤镜链</code>，我们再添加滤镜链的时候，就是把图片添加一层滤镜，然后，和原图片糅合处理，然后在处理之后的图片上再添加一层滤镜，并不是直接给一张图片添加了两层路径，所以称为滤镜链。<br/><br/>
+我们继续使用这个图片，在它添加第一层滤镜的时候做一些修改:  </p>
+<pre><code class="language-text">//上接给效果属性赋值
+//把下面注释的给注释掉，然后添加一个方法<br/>
+    //CIContext<br/>
+//    CIContext *context = [CIContext contextWithOptions:nil];<br/>
+CIImage *outPutImage = filter.outputImage;<br/>
+[self addFilterLinkerWithImage:outPutImage];<br/>
+//    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+//    imageView.image = [UIImage imageWithCGImage:image];<br/>
+//再次添加滤镜  -&gt;  形成滤镜链<br/>
+- (void)addFilterLinkerWithImage:(CIImage *)image<br/>
+{<br/>
+CIFilter *filter = [CIFilter filterWithName:@&quot;CISepiaTone&quot;];<br/>
+[filter setValue:image forKey:kCIInputImageKey];<br/>
+CIContext *context = [CIContext contextWithOptions:nil];<br/>
+CGImageRef resultImage = [context createCGImage:filter.outputImage fromRect:filter.outputImage.extent];<br/>
+imageView.image = [UIImage imageWithCGImage:resultImage];<br/>
+//把添加好滤镜效果的图片   保存到相册<br/>
+//不可以直接保存 outputImage  -&gt;  这是一个没有吧滤镜效果和源图合成的图像<br/>
+UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishSavingWithError:contextInfo:), nil);<br/>
+ }<br/>
+//保存图片回调<br/>
+- (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo<br/>
+{<br/>
+    NSLog(@&quot;保存成功&quot;);<br/>
+}
 </code></pre>
+<p>这样就是一个双重的滤镜效果,同时保存到了相册.</p></li>
+</ol>
 
-<p>undefine符号表示该文件类未实现的，所以在目标文件和<code>Function framework</code>动态库做链接处理时，链接器尝试解析所有的undefined符号</p>
+<hr/>
 
-<p>链接器通过动态库解析成符号会记录是通过哪个动态库解析的，路径也会一起记录。对比下a.out符号表，看看可执行文件是怎么解析符号的</p>
-
-<pre><code class="language-text">xcrun nm -nm a.out
-</code></pre>
-
-<pre><code class="language-c">                 (undefined) external _NSLog (from Foundation)
-                 (undefined) external _OBJC_CLASS_$_NSObject (from CoreFoundation)
-                 (undefined) external _OBJC_METACLASS_$_NSObject (from CoreFoundation)
-                 (undefined) external ___CFConstantStringClassReference (from CoreFoundation)
-                 (undefined) external __objc_empty_cache (from libobjc)
-                 (undefined) external _objc_autoreleasePoolPop (from libobjc)
-                 (undefined) external _objc_autoreleasePoolPush (from libobjc)
-                 (undefined) external _objc_msgSend (from libobjc)
-                 (undefined) external dyld_stub_binder (from libSystem)
-0000000100000000 (__TEXT,__text) [referenced dynamically] external __mh_execute_header
-0000000100000e90 (__TEXT,__text) external _main
-0000000100000f10 (__TEXT,__text) non-external -[Foo say]
-0000000100001130 (__DATA,__objc_data) external _OBJC_METACLASS_$_Foo
-0000000100001158 (__DATA,__objc_data) external _OBJC_CLASS_$_Foo
-</code></pre>
-
-<p>undefined 符号 有了更多信息，可以知道在哪个库能够找到<br/>
-通过otool可以找到所需要的库在哪</p>
-
-<pre><code class="language-text">xcrun otool -L a.out
-</code></pre>
-
-<pre><code class="language-text">a.out:
-    /System/Library/Frameworks/Foundation.framework/Versions/C/Foundation (compatibility version 300.0.0, current version 1349.25.0)
-    /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1238.0.0)
-    /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation (compatibility version 150.0.0, current version 1348.28.0)
-    /usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
-</code></pre>
-
-<p>dylib这种格式表示是动态链接的，即动态库，编译时不会被编译到执行文件中，在程序执行时才link，这样就不用算到包的大小中,而且也能够不更新执行程序就能更新库</p>
-
-<p>打印什么库被加载了</p>
-
-<pre><code class="language-text">(export DYLD_PRINT_LIBRARIES=; ./a.out )
-</code></pre>
-
-<pre><code class="language-text">dyld: loaded: /Users/didi/Downloads/./a.out
-dyld: loaded: /System/Library/Frameworks/Foundation.framework/Versions/C/Foundation
-dyld: loaded: /usr/lib/libSystem.B.dylib
-dyld: loaded: /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation
-…
-</code></pre>
-
-<p>因为Fundation库依赖一些其他库,其他库还会依赖更多，因此为了减少处理的时间,系统上的动态链接器会共享缓存,共享的缓存在<code>/var/db/dyld/</code>，这样，当加载Mach-O文件时动态链接器会先检查共享内存是否有。每个进程都会有自己地址空间映射这些共享缓存，可以优化启动速度</p>
-
-<h3 id="toc_0">dyld做了什么事情</h3>
-
-<ul>
-<li>kernel做启动程序初始准备,开始由dyld负责</li>
-<li>基于非常简单的原始栈为kernel设置进程来启动自身</li>
-<li>使用共享缓存来处理递归依赖带来的性能问题,ImageLoader会读取二进制文件,其中包含了我们的类,方法等各种符号</li>
-<li>立即绑定non-lazy的符号并设置用于lazy bind的必要表，将这些库link到执行文件里</li>
-<li>为可执行文件运行静态初始化</li>
-<li>设置参数到可执行文件的 main 函数并调用它</li>
-<li>在执行期间，<strong>通过绑定符号处理对<code>lazily-bound</code>符号存根的调用提供runtime动态加载服务(通过 dl*() 这个 API ），并为gdb和其它调试器提供钩子以获得关键信息。runtime会调用map_images做解析和处理,load_images来调用call_load_methods方法遍历所有加载了的Class，按照继承层级依次调用+load方法；</strong></li>
-<li>在main函数返回后运行 static terminator</li>
-<li>在某些情况下,一旦main函数返回就需要调用<code>libSystem</code>的_exit</li>
-</ul>
-
-<p>查看运行时的调用 map_images 和 调用 +load 方法的相关 runtime 处理可以通过 RetVal 的可debug 的 objc/runtime<a href="https://github.com/RetVal/objc-runtime">RetVal/objc-runtime: objc runtime 706</a> 来进行断点查看调用的runtime方法具体实现。在 debug-objc 下创建一个类，在 +load 方法里断点查看走到这里调用的堆栈如下：</p>
-
-<pre><code class="language-objectivec">0 +[someclass load]
-1  call_class_loads()
-2  ::call_load_methods
-3  ::load_images(const char *path __unused, const struct mach_header *mh)
-4  dyld::notifySingle(dyld_image_states, ImageLoader const*, ImageLoader::InitializerTimingList*)
-11 _dyld_start
-</code></pre>
-
-<p>在<code>load_images</code>方法里断点 p path 可以打印出所有加载的动态链接库，这个方法的<code>hasLoadMethods</code>用于快速判断是否有<code>+load</code>方法。</p>
-
-<p><code>prepare_load_methods</code>这个方法会获取所有类的列表然后收集其中的<code>+load</code>方法，在代码里可以发现<code>Class</code>的<code>+load</code>是先执行的，然后执行<code>Category</code>的<code>+load</code>方法。为什么这样做，原因可以通过<code>prepare_load_methods</code>这个方法看出，在遍历<code>Class</code>的<code>+load</code>方法时会执行<code>schedule_class_load</code>这个方法，这个方法会递归到根节点来满足<code>Class</code>收集完整关系树的需求。<br/>
-最后<code>call_load_methods</code>会创建一个<code>autoreleasePool</code>使用函数指针来动态调用类和<code>Category</code>的<code>+load</code>方法</p>
-
-<p>如果想了解<code>Cocoa</code>的<code>Fundation</code>库可以通过<a href="https://github.com/AaronYi/gnustep-base">GNUStep</a>源码来学习。比如 NSNotificationCenter 发送通知是按什么顺序发送的可以查看 NSNotificationCenter.m 里的 addObserver 方法和 postNotification 方法，看看观察者是怎么添加的和怎么被遍历通知到的</p>
-
-<p>dyld 是开源的： <a href="https://github.com/opensource-apple/dyld**">GitHub - opensource-apple/dyld</a></p>
+<h3 id="toc_3">系统自带简单的滤镜效果</h3>
 
 
 		</div>
@@ -230,24 +238,24 @@ dyld: loaded: /System/Library/Frameworks/CoreFoundation.framework/Versions/A/Cor
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -267,10 +275,10 @@ dyld: loaded: /System/Library/Frameworks/CoreFoundation.framework/Versions/A/Cor
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -294,7 +302,7 @@ dyld: loaded: /System/Library/Frameworks/CoreFoundation.framework/Versions/A/Cor
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -305,7 +313,7 @@ dyld: loaded: /System/Library/Frameworks/CoreFoundation.framework/Versions/A/Cor
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -323,6 +331,15 @@ dyld: loaded: /System/Library/Frameworks/CoreFoundation.framework/Versions/A/Cor
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -332,31 +349,31 @@ dyld: loaded: /System/Library/Frameworks/CoreFoundation.framework/Versions/A/Cor
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

@@ -82,127 +82,138 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15293961047296.html">组件属性一</a></h1>
-			<p class="meta"><time datetime="2018-06-19T16:15:04+08:00" 
-			pubdate data-updated="true">2018/6/19</time></p>
+		  	<h1 class="entry-title"><a href="15319012648780.html">高级特性</a></h1>
+			<p class="meta"><time datetime="2018-07-18T16:07:44+08:00" 
+			pubdate data-updated="true">2018/7/18</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">View</h2>
+		  	<h2 id="toc_0">切片</h2>
 
-<h3 id="toc_1">颜色与边框</h3>
+<p>list的切片</p>
+
+<pre><code class="language-python">listTest = list(range(100))
+
+listTest[:10]  # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+listTest[:10:2] #[0, 2, 4, 6, 8]
+listTest[-10:] # [90, 91, 92, 93, 94, 95, 96, 97, 98, 99]
+listTest[:] # 拷贝一个新的list 相当于深拷贝
+</code></pre>
+
+<p>元组:<br/>
+元组的切片结果 仍为不可变的元组</p>
+
+<pre><code class="language-python">(0, 1, 2, 3, 4, 5)[:3] #(0, 1, 2)
+</code></pre>
+
+<p>字符串也可看做一种list，可执行切片</p>
+
+<pre><code class="language-python">&#39;ABCDEFG&#39;[:3] #&#39;ABC&#39;
+&#39;ABCDEFG&#39;[::2] #&#39;ACEG&#39;
+</code></pre>
+
+<h2 id="toc_1">迭代</h2>
+
+<pre><code class="language-python">#遍历dict
+for key in dict2: #遍历所有键
+for key in dict2.values(): #遍历所有值
+for key in dict2.items(): #遍历所有键值对，返回为元组
+    print(key)
+</code></pre>
+
+<p>当遍历时需要下标时,用enumerate()方法可以获取索引</p>
+
+<pre><code class="language-python">for x, value in enumerate(dict2):
+    print(x, value)
+</code></pre>
+
+<h2 id="toc_2">列表生成器</h2>
+
+<pre><code class="language-python">L1=list(range(1,11))
+print(L1) #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+L2=[x*x for x in L1]
+print(L2) #[1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
+L3=[x*x for x in L1 if x%2 == 0]
+print(L3) # [4, 16, 36, 64, 100]
+L4=[str(x1)+str(x2) for x1 in list(range(3)) for x2 in list(range(3,6))]
+print(L4) # [&#39;03&#39;, &#39;04&#39;, &#39;05&#39;, &#39;13&#39;, &#39;14&#39;, &#39;15&#39;, &#39;23&#39;, &#39;24&#39;, &#39;25&#39;]
+</code></pre>
+
+<h2 id="toc_3">生成器 generator</h2>
+
+<p>在列表中一遍循环一边计算的机制,称为生成器：<code>generator</code></p>
+
+<p>创建生成器:</p>
 
 <ol>
-<li>backgroundColor: 背景颜色</li>
-<li>opacity: 0~1透明度</li>
-<li><p>borderStyle: 边框风格</p>
-<ul>
-<li>solid: default 实线边框</li>
-<li>dotted: 点状边框</li>
-<li>dashed: 虚线边框</li>
-</ul></li>
-<li><p>borderColor: 边框颜色,可以单独定义上下左右</p></li>
-<li><p>borderRadius: 定义圆角边框,可单独定义四个角</p></li>
+<li><p>方法一: 通过将列表生成器的<code>[]</code>改为<code>()</code></p>
+<pre><code class="language-python"> LI1=list(range(1,5))
+LI2=(x*x for x in LI1)<br/>
+#通过next()方法来获取生成器中的下一个值 直到最后一个元素抛出错误<br/>
+print(next(LI2))<br/>
+print(next(LI2))<br/>
+print(next(LI2))<br/>
+print(next(LI2))<br/>
+print(next(LI2)) # 抛出 StopIteration错误<br/>
+# 通过next()方法太麻烦,我们应该用 for 循环 不用关心StopIteration错误<br/>
+for x in LI2:<br/>
+    print(x)<br/>
+# 1<br/>
+# 4<br/>
+# 9<br/>
+# 16
+</code></pre></li>
+<li><p>方法二: 函数中包含<code>yield</code>关键字,为一个generator函数<br/>
+generator函数在遇到yield关键字时会中断，返回yeild后的值,next之后会继续执行,直到没有yeild就会报错<br/>
+当然也可以通过<code>for</code>循环来获取</p>
+<pre><code class="language-python">def my_generatorFuc():
+    print(&quot;step1&quot;)<br/>
+    yield (1)<br/>
+    print(&quot;step2&quot;)<br/>
+    yield (5)<br/>
+    print(&quot;step3&quot;)<br/>
+    yield(10)<br/>
+    return 100
+</code></pre></li>
 </ol>
 
 <blockquote>
-<p>大部分组件继承了View的属性</p>
+<p>采用<code>next()</code>可以当遇到<code>StopIteration</code>错误可以获取到<code>generator</code>函数的<code>return</code>值,返回值包含在<code>StopIteration</code>的<code>value</code>中<br/>
+采用<code>for</code>循环获取不到函数的返回值,因此需要捕获<code>StopIteration</code>错误</p>
 </blockquote>
 
-<h3 id="toc_2">视觉效果</h3>
+<h2 id="toc_4">迭代器</h2>
 
-<h4 id="toc_3">阴影</h4>
+<p> 对于可以用for循环的对象称为可迭代对象:<code>Iterable</code><br/>
+ 目前常用的可迭代对象有:<br/>
+ 1. list、tuple、dict、set、str<br/>
+ 2. generator:生成器和带<code>yield</code>的generator函数<br/>
+ <br/>
+ 可以被next()函数调用并不断返回下一个值的对象称为迭代器：<code>Iterator</code><br/>
+ 生成器都是迭代器,但是list、tuple、dict、set、str等是可迭代对象但不是迭代器<br/>
+ </p>
 
-<ol>
-<li>shadowColor</li>
-<li>shadowOffset</li>
-<li>shadowOpacity</li>
-<li>shadowRadius</li>
-</ol>
+<blockquote>
+<p><code>Iterator</code>对象表示的是一个数据流，是一个惰性序列,不能事先知道序列长度，只能通过需要是<code>next()</code>计算下一个序列值</p>
 
-<h4 id="toc_4">overflow</h4>
+<p><code>for</code>循环本质上是通过不停调用<code>next()</code>来实现的</p>
 
-<p>取值为 visible和hidden(默认),定义子组件产出父组件部分的是否显示，当设置为visible时，仅对ios平台有效,显示超出父组件部分</p>
+<p>list、tuple、dict、set、str等可迭代对象可以通过<code>iter()</code>函数获得一个<code>Iterator</code>对象</p>
+</blockquote>
 
-<h4 id="toc_5">elevation</h4>
-
-<p>Android平台特有效果,在组件周围渲染阴影</p>
-
-<h3 id="toc_6">变形</h3>
-
-<p>利用<code>transform</code>设置组件的变形,包括<code>translate</code>平移,<code>scale</code>缩放,<code>rotate</code>旋转,<code>skew</code>倾斜</p>
-
-<pre><code class="language-javascript">const styles = StyleSheet.create({
-    view1Style: {
-        ....
-        transform: [{scale:2}, {rotateZ:&quot;45deg&quot;}]
-    }
-})
-//Xdeg 表示角度 取值0-360
+<pre><code class="language-python">it = iter([1, 2, 3, 4, 5])
+# 循环:
+while True:
+    try:
+        # 获得下一个值:
+        x = next(it)
+    except StopIteration:
+        # 遇到StopIteration就退出循环
+        break
 </code></pre>
 
-<h3 id="toc_7">回调函数</h3>
-
-<p>回调函数命名 onB 即B事件发生的回调函数</p>
-
-<h4 id="toc_8">onLayOut</h4>
-
-<p>当View组件被加载或者改变布局时</p>
-
-<h4 id="toc_9">onTouchStart、onTouchMove、onTouchEnd</h4>
-
-<p>开始触摸事件、触摸点移动事件、触摸结束事件<br/>
-三个回调函数带一个event参数,</p>
-
-<pre><code class="language-javascript">//Event结构有用对象
-{
- timeStamp: aNumber, //时间戳
- nativeEvent: {
-    locationX: aNumber,
-    locationY: aNumber,
- }
-}
-</code></pre>
-
-<pre><code class="language-javascript">//示例 demo
-constructor(props) {
-        super(props)
-        this._onTouchStart = this._onTouchStart.bind(this)
-    }
-
-    _onTouchStart(event) {
-        console.log( event.nativeEvent.locationX)
-    }
-
-    render() {
-        return(
-            &lt;View style={styles.containStyle}&gt;
-                &lt;View style={styles.view1Style} onTouchStart={this._onTouchStart}&gt;
-
-                &lt;/View&gt;
-            &lt;/View&gt;
-        )
-    }
-</code></pre>
-
-<h4 id="toc_10">removeClippedSubviews</h4>
-
-<p>布尔属性，与性能有关的，属性为true将允许释放不在显示范围内的子组件，需要将overflow设置为hidden才会生效</p>
-
-<h3 id="toc_11">onLayOut</h3>
-
-<p>应用通过<code>Dimension</code>获取屏幕宽高，Dimensions.get(&#39;window&#39;).width/height,获取到的宽和高是实时屏幕的宽和高,当横置时宽大于高</p>
-
-<h3 id="toc_12">pointEvents</h3>
-
-<p>在RN中 触摸事件总是传递给最上层的组件，当被遮盖的组件需要向银行触摸事件，就需要从View继承的<code>pointEvents</code></p>
-
-<p>可以取值为<code>none</code> <code>box-none</code> <code>box-only</code> <code>auto</code></p>
-
-<p><strong>none:</strong> 发生在本组件和子组件的触摸事件交给本组件的父组件处理<br/>
-<strong>box-none:</strong> 本组件显示范围内，非子组件显示范围内的时间交给本组件父组件处理,子组件显示范围交给子组件处理<br/>
-<strong>box-only:</strong> 本组件显示范围内的所有触摸事件都交给本组件处理<br/>
-<strong>auto:</strong> 视组件不同而不同 不是所有组件都支持box-none和box-only</p>
+<p> <br/>
+ </p>
 
 
 		</div>
@@ -225,24 +236,24 @@ constructor(props) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -262,10 +273,10 @@ constructor(props) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -289,7 +300,7 @@ constructor(props) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -300,7 +311,7 @@ constructor(props) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -318,6 +329,15 @@ constructor(props) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -327,31 +347,31 @@ constructor(props) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

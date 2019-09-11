@@ -82,30 +82,44 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15541064037153.html">Swift编译流</a></h1>
-			<p class="meta"><time datetime="2019-04-01T16:13:23+08:00" 
+		  	<h1 class="entry-title"><a href="15541003911598.html">Clang库&&插件</a></h1>
+			<p class="meta"><time datetime="2019-04-01T14:33:11+08:00" 
 			pubdate data-updated="true">2019/4/1</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>Swift编译流和Clang一样都是编译前端，和 Clang 一样代码会被解析成语法数 AST，接下来会比 Clang 多一步，通过 SILGen 生成 SIL 这一次方便做些 Swift 特定的优化，SIL 会被传递给 IR 生成阶段生成 LLVM IR，最后由 LLVM 解决余下事情。</p>
+		  	<h2 id="toc_0">使用 libclang 来进行语法分析</h2>
 
-<pre><code class="language-swift">//生成程序
-swiftc toy.swift
+<p>使用<code>libclang</code>里面提供的方法对源文件进行语法分析，分析语法树，遍历语法树上每个节点。</p>
 
-//生成检查 AST
-swiftc -dump-ast toy.swift
+<h2 id="toc_1">LibTooling 对语法树完全的控制</h2>
 
-//可以还原之前函数名
-swiftc -emit-silgen toy.swift | xcrun swift-demangle
+<p>因为LibTooling能够完全控制语法树，那么就可以做很多事情了</p>
 
-//llvm ir 和汇编的生成
-swiftc -emit-ir toy.swift
-swiftc -emit-assembly toy.swift
+<ul>
+<li>可以改变clang生成代码的方式</li>
+<li>增加更强的类型检查</li>
+<li>按照自己的定义进行代码的检查分析</li>
+<li>对源码做任意类型分析，甚至重写程序</li>
+<li>给clang添加一些自定义的分析，创建自己的重构器</li>
+<li>基于现有代码做出大量的修改</li>
+<li>基于工程生成相关图形或文档</li>
+<li>检查命名是否规范，还能够进行语言的转换，比如把OC转为JS或者Swift</li>
+</ul>
 
-//生成可执行的脚本
-xcrun -sdk macosx swiftc toy.swift -o toy
-</code></pre>
+<p>官方有个文档开发者可以按照这个里面的说明去构造 LLVM，clang 和其工具： <a href="http://clang.llvm.org/docs/LibASTMatchersTutorial.html">Tutorial for building tools using LibTooling and LibASTMatchers — Clang 4.0 documentation</a></p>
+
+<h2 id="toc_2">Clang Plugin</h2>
+
+<p>通过自己写个插件，比如上面写的LibTooling的clang工具，可以将这个插件动态的加载到编译器中，对编译进行控制，可以再LLVM的目录看到一些范例<code>llvm/tools/clang/tools</code></p>
+
+<p>动态化方案<code>DynamicCocoa</code>中就是使用了一个将<code>OC</code>源码转<code>JS</code>的插件来进行代码的转换，这里整理了些利用clang转js的库 <a href="https://lmsgsendnilself.github.io/blog/2017/02/28/clangtojszi-yuan/">clangtojs资源 - Lmsgsendnilself</a> ，JSPatch 是直接手写 JS 而没有转换的过程，所以也就没有多出这一步，而鹅厂的OCS更猛，直接在端内写了个编译器。在 C 函数的调用上孙源有个<code>slides</code>可以看看：<a href="http://slides.com/sunnyxx/calling-conventions-in-cocoa#/">Calling Conventions in Cocoa by sunnyxx</a> bang 也有篇文章：<a href="http://blog.cnbang.net/tech/3219/">如何动态调用 C 函数 « bang’s blog </a></p>
+
+<ul>
+<li><a href="http://blog.cnbang.net/tech/2808/">JSPatch实现原理详解 « bang’s blog</a></li>
+</ul>
+
+<p>滴滴的王康在做瘦身时也实现了一个自定义的 clang 插件，具体自定义插件的实现可以查看他的这文章 <a href="https://mp.weixin.qq.com/s?__biz=MzUxMzcxMzE5Ng==&amp;mid=2247488360&amp;amp;idx=1&amp;amp;sn=94fba30a87d0f9bc0b9ff94d3fed3386&amp;source=41#wechat_redirect">《基于clang插件的一种iOS包大小瘦身方案》</a></p>
 
 
 		</div>
@@ -128,24 +142,24 @@ xcrun -sdk macosx swiftc toy.swift -o toy
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -165,10 +179,10 @@ xcrun -sdk macosx swiftc toy.swift -o toy
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -192,7 +206,7 @@ xcrun -sdk macosx swiftc toy.swift -o toy
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -203,7 +217,7 @@ xcrun -sdk macosx swiftc toy.swift -o toy
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -221,6 +235,15 @@ xcrun -sdk macosx swiftc toy.swift -o toy
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -230,31 +253,31 @@ xcrun -sdk macosx swiftc toy.swift -o toy
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

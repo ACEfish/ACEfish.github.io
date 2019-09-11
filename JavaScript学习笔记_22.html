@@ -82,76 +82,141 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15470311819265.html">解构</a></h1>
-			<p class="meta"><time datetime="2019-01-09T18:53:01+08:00" 
-			pubdate data-updated="true">2019/1/9</time></p>
+		  	<h1 class="entry-title"><a href="15470891496440.html">遍历</a></h1>
+			<p class="meta"><time datetime="2019-01-10T10:59:09+08:00" 
+			pubdate data-updated="true">2019/1/10</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">对象解构</h2>
+		  	<p>ES有新的遍历方式 <code>for of</code></p>
 
-<p>为了方便一次性取出对象中的多个值,而不需要一一的取值赋值</p>
+<pre><code class="language-javascript">const fruits = [&quot;apple&quot;, &quot;banana&quot;, &quot;orange&quot;, &quot;mango&quot;]
+fruits.describe = &quot;this is all describe&quot;
 
-<pre><code class="language-javascript">const fk = {
-    name: &quot;fankai&quot;,
-    age: 26,
-    family: {
-        farther: &quot;fkfarther&quot;,
-        mother: &quot;fkmother&quot;,
-        brother: &quot;lyy&quot;
-    }
+Array.prototype.firstName = function() {
+    return this[0]
 }
 </code></pre>
 
-<p>常用的对象解构</p>
+<h2 id="toc_0">常用遍历方式</h2>
 
-<pre><code class="language-javascript">const {name, age} = fk
-console.log(name) //fankai
-console.log(name) //26
+<ol>
+<li><p>for循环<br/>
+写法比较繁琐</p>
+<pre><code class="language-javascript">for (let index = 0; index &lt; fruits.length; index++) {
+    if(fruits[index] == &quot;banana&quot;) {<br/>
+        continue;<br/>
+    }<br/>
+    console.log(&quot;for循环&quot; + fruits[index])                <br/>
+}<br/>
+/*<br/>
+for循环apple<br/>
+for循环banana<br/>
+for循环orange<br/>
+for循环mango<br/>
+*/
+</code></pre></li>
+<li><p>for each</p>
+<p>可以使用箭头函数 写法便捷 但是不能使用continue 和 break</p>
+<pre><code class="language-javascript">fruits.forEach(fruit =&gt; {
+// if(fruit == &quot;banana&quot;) {<br/>
+//     continue;<br/>
+// }<br/>
+console.log(&quot;for each &quot;+fruit)<br/>
+});<br/>
+/*<br/>
+for each apple<br/>
+for each banana<br/>
+for each orange<br/>
+for each mango<br/>
+*/
+</code></pre></li>
+<li><p>for in</p>
+<p>forin 遍历获取的是key 需要额外取值value<br/>
+forin不仅仅可以遍历可迭代对象<br/>
+<strong>forin遍历可以获取对象的原型方法和对象方法、属性</strong></p>
+<pre><code class="language-javascript">for (const key in fruits) {
+    if(fruits[key] == &quot;banana&quot;) {<br/>
+        continue;<br/>
+    }<br/>
+    console.log(&quot;for in key &quot;+ key+ &quot; value &quot; + fruits[key])<br/>
+}<br/>
+/*<br/>
+for in key 0 value apple<br/>
+for in key 2 value orange<br/>
+for in key 3 value mango<br/>
+for in key describe value this is all describe<br/>
+for in key firstName value function() {<br/>
+    return this[0]<br/>
+}<br/>
+*/
+</code></pre>
+<p>forin遍历不可迭代对象</p>
+<pre><code class="language-javascript">const fankai = {
+    name: &quot;fankai&quot;,<br/>
+    age: 26<br/>
+}<br/>
+for (const value in fankai) {<br/>
+    console.log(value)<br/>
+}
+</code></pre></li>
+<li><p>for of</p>
+<p>遍历可迭代对象</p>
+<pre><code class="language-objectivec">for (const fruit of fruits) {
+    if(fruit == &quot;banana&quot;) {<br/>
+        continue;<br/>
+    }<br/>
+    console.log(&quot;for of &quot;+ fruit)<br/>
+}<br/>
+/**<br/>
+* for of apple<br/>
+* for of orange<br/>
+* for of mango<br/>
+*/
+</code></pre></li>
+</ol>
 
-//当变量已经被声明过
-let name
-//使用括号括起来 否则js会认为是语句
-({name, age} = fk)
+<h3 id="toc_1">for of</h3>
+
+<p>只能遍历可迭代对象<br/>
+可迭代对象就是部署了<code>iterable</code>接口 或者定义了<code>Symbol.iterator</code>方法的数据结构。<br/>
+<code>js</code>内置了一些带遍历器接口的数据结构,例如Array、map</p>
+
+<p>iterable接口 内置了<code>next</code>方法,调用该方法返回对象,该对象包含值<code>value</code>，以及是否遍历结束的标识<code>done</code>，value中包含了当前的索引以及索引对应的值</p>
+
+<p><img src="media/15470891496440/15471018365126.jpg" alt="" style="width:544px;"/></p>
+
+<p><code>entries()</code>可以获取包含数组的键值对</p>
+
+<pre><code class="language-javascript">//entries() 获取数组的可迭代对象 该对象包含数组的键值对(key/value)
+for (let [index, fruit] of fruits.entries()) {
+    console.log(index, fruit)
+}
 </code></pre>
 
-<p>使用与属性名不同的变量名</p>
+<h4 id="toc_2">for of 常用实例</h4>
 
-<pre><code class="language-javascript">const {farther: far, mother: mon, brother} = fk.family
-console.log(far)
-</code></pre>
+<p>for of循环遍历除了可以遍历数组外 还经常用于其他地方:</p>
 
-<p>当变量对应属性不存在时(即必须为undefined),使用默认值</p>
-
-<pre><code class="language-javascript">const {farther, sister = &quot;hava no sisiter&quot;} = fk.family
-console.log(sister) //hava no sisiter
-</code></pre>
-
-<h3 id="toc_1">数组解构</h3>
-
-<p>可以一次性从数组中取出多个值</p>
-
-<pre><code class="language-javascript">const numbers = [&quot;one&quot;, &quot;two&quot;, &quot;three&quot;, &quot;four&quot;]
-
-//数组解构
-const [a, b] = numbers
-console.log(a) //one
-console.log(b) //two
-
-//如果有可以用空,来越过数组中变量
-const [m, ,n] = numbers
-console.log(m) //one
-console.log(n) //three
-
-//...onthers 来获取剩下所有值
-const [c, ...others] = numbers
-console.log(c) //one
-console.log(others) //[&quot;two&quot;, &quot;three&quot;, &quot;four&quot;]
-
-//当不存在该值 即 该值为undefined时 使用默认值
-const [d, g, , ,f=&quot;five&quot;] = numbers
-console.log(f) //five
-</code></pre>
+<ol>
+<li><p>遍历方法参数<code>arguments</code></p>
+<pre><code class="language-javascript">function sum() {
+    for (const variable of arguments) {<br/>
+        console.log(variable)<br/>
+    }<br/>
+}
+</code></pre></li>
+<li><p>遍历字符串</p>
+<pre><code class="language-javascript">for (const char of &quot;object&quot;) {
+    console.log(char)<br/>
+}
+</code></pre></li>
+<li><p>遍历DOM元素</p>
+<pre><code class="language-javascript">const lis = document.querySelectorAll(&quot;li&quot;)
+for (const li of lis) {<br/>
+}
+</code></pre></li>
+</ol>
 
 
 		</div>
@@ -174,24 +239,24 @@ console.log(f) //five
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -211,10 +276,10 @@ console.log(f) //five
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -238,7 +303,7 @@ console.log(f) //five
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -249,7 +314,7 @@ console.log(f) //five
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -267,6 +332,15 @@ console.log(f) //five
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -276,31 +350,31 @@ console.log(f) //five
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

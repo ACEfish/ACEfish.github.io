@@ -82,122 +82,216 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15536896283260.html">网络层架构</a></h1>
-			<p class="meta"><time datetime="2019-03-27T20:27:08+08:00" 
-			pubdate data-updated="true">2019/3/27</time></p>
+		  	<h1 class="entry-title"><a href="15668021082247.html">Blocks的实现</a></h1>
+			<p class="meta"><time datetime="2019-08-26T14:48:28+08:00" 
+			pubdate data-updated="true">2019/8/26</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>文章看自<a href="https://casatwy.com/iosying-yong-jia-gou-tan-kai-pian.html">这里</a></p>
+		  	<h2 id="toc_0">Block的实质</h2>
 
-<h2 id="toc_0">网络层设计需要注意</h2>
+<p>通过<code>-rewrite-objc</code>将Block语法转为C++源代码</p>
 
-<h3 id="toc_1">1. 以什么样的方式将数据交付给业务层</h3>
-
-<p>Delegate block notification</p>
-
-<p>尽量不要使用notification，这要会导致可能的跨层访问导致耦合性增加；notification的一对多关系，导致问题难以追踪</p>
-
-<p>block比较难追踪、维护；block会延长对象的生命周期；</p>
-
-<p>在离散场景下，因为每次回调时做的任务，在每次回调时都是一致的，因此不要用block，使用delegate最好<br/>
-在集约型调用时，因为每次请求类型都不一样，回调做的业务也不一致，因此使用block较好</p>
-
-<p>在网络请求和网络层接受请求地方，采用block没问题，但是在获得数据交给业务方时，最好还是通过delegate去通知业务方,因为使用block的话 会导致调用请求的逻辑和获得结果的处理逻辑在同一个地方，代码变长，同时包含调用前和调用后的两部分逻辑，一次使用delegate，请求API地方只写请求的逻辑，在回调地方 只写回调的逻辑</p>
-
-<h3 id="toc_2">2.交付什么样的数给业务层</h3>
-
-<p>不要交付直接转换好的对象模型给业务层，可以交付json或者NSDictionary或者array，然后业务层通过特定的工具类转换为自己需要的数据(这个工具类可能是遵循了同一个协议的很多类，每个类有自己的转换方法，以及转换结果)</p>
-
-<p>如果直接下发模型给业务层，那么在API请求层可能会有很多转换性能消耗，而且需要引入很多模型类，导致维护灾难</p>
-
-<p>使用统一的工具类转换: 1. 可以使转换的逻辑集中，2. 将数据网络请求的数据直接转换为我们View需要展示的方便的数据，一步到位 3. 可以将业务数据和业务隔离，如果业务逻辑有修改，直接修改或者替换这个工具类即可，而UI有修改时，也不影响该转换工具类</p>
-
-<p>转化出来的数据是直接可用的数据，不限定于dictionary或者model，也可以是view或者tableCell等</p>
-
-<h3 id="toc_3">3.调用API应该是集约型还是离散型</h3>
-
-<p>集约型: 所有api调用的是同一个类<br/>
-离散型: 每一个请求api对应初始化一个请求类的对象</p>
-
-<p>推荐离散型原因:</p>
-
-<ol>
-<li>可以方便做到正在进行的请求的取消</li>
-<li>离散型可以针对不同的请求做不同的处理方式</li>
-<li>当请求的着陆点消失时，离散型可以直接在请求类中感知并取消请求<br/>
-如果是离散型的API调用，取消请求的代码写到APIManager里面就可以了，然后随着ViewController的回收进程，APIManager也会被跟着回收，这部分代码就得到了调用的机会。</li>
-<li>离散型的请求可以给业务方提供更灵活性</li>
-</ol>
-
-<p>综上，关于集约型的API调用和离散型的API调用，我倾向于这样：对外提供一个BaseAPIManager来给业务方做派生，在BaseManager里面采用集约化的手段组装请求，放飞请求，然而业务方调用API的时候，则是以离散的API调用方式来调用。如果你的App只提供了集约化的方式，而没有离散方式的通道，那么我建议你再封装一层，便于业务方使用离散的API调用方式来放飞请求。</p>
-
-<p>关于集约型的API调用和离散型的API调用，我倾向于这样：对外提供一个BaseAPIManager来给业务方做派生，在BaseManager里面采用集约化的手段组装请求，放飞请求，然而业务方调用API的时候，则是以离散的API调用方式来调用。</p>
-
-<p>当我们不得已要实现继承时，最好使用协议方式来规范子类的重载方法，使用IOP方式来限制派生类的重载</p>
-
-<p>总结</p>
-
-<ol>
-<li>使用delegate来做数据对接，仅在必要时采用Notification来做跨层访问</li>
-<li>提供reformer机制来处理网络层反馈的数据，这个机制很重要，好处极多</li>
-<li>网络层上部分使用离散型设计，下部分使用集约型设计</li>
-<li>设计合理的继承机制，让派生出来的APIManager受到限制，避免混乱</li>
-</ol>
-
-<h2 id="toc_4">网络层的安全</h2>
-
-<h2 id="toc_5">网络层优化方案</h2>
-
-<p>优化入手切点:</p>
-
-<ol>
-<li>针对链路建立环节的优化</li>
-<li>针对链路传输数据量的优化</li>
-<li>针对链路复用的优化</li>
-</ol>
-
-<h3 id="toc_6">针对链路建立环节的优化</h3>
-
-<p>请求建立的步骤：</p>
-
-<ol>
-<li>发起请求</li>
-<li>DNS解析得到域名</li>
-<li>根据IP进行3次或者4次(HTTPS)握手</li>
-</ol>
-
-<p>优化方案1.1： 缓存一些时效性比较长数据，减少请求发起的次数，将把API名字和参数拼成一个字符串然后取MD5作为key，存储对应数据； 清除数据策略:超时清理或者缓存数据过大清理，可以根据APP的操作日志决定；缓存可以存储在内存中，或者磁盘上<br/>
-优化方案1.2： 减少请求发起的次数；1）比如多次下拉刷新，在一次请求没落地前剩下的没必要继续请求发送了 2）而类似条件筛选的，就可以取消前面的发送的请求 3）对于某些请求，没必要频繁发送的，可以先在本地记录，等数据满多少条后，上传数据；app每次启动时，上传上次的一流数据</p>
-
-<p>优化方案2.1: 因为移动端的信号源常变，因此DNS链路的缓存经常变化，导致缓存的作用一般，另外因为很多应用app网络请求操作，属于你的app的DNS缓存很快被其他应用使用、覆盖，因此在解析DNS时，会耗费时间，优化方案就是：直接使用ip请求</p>
-
-<p>对于建立链接时候的第三步，国内的网络环境分北网通南电信（当然实际情况更复杂，这里随便说说），不同服务商之间的连接，延时是很大的，我们需要想办法让用户在最适合他的IP上给他提供服务，那么就针对我们绕过DNS服务的手段有一个额外要求：尽可能不要让用户使用对他来说很慢的IP。</p>
-
-<p>所以综上所述，方案就应该是这样：本地有一份IP列表，这些IP是所有提供API的服务器的IP，每次应用启动的时候，针对这个列表里的所有IP取ping延时时间，然后取延时时间最小的那个IP作为今后发起请求的IP地址。</p>
-
-<pre><code class="language-objectivec">针对建立连接的优化手段其实是跟DNS域名解析的优化手段是一样的。不过这需要你的服务器提供
-服务的网络情况要多，一般现在的服务器都是双网卡，电信和网通。由于中国特色的互联网ISP分
-布，南北网络之间存在瓶颈，而我们App针对链接的优化手段主要就是着手于如何减轻这个瓶颈对
-App产生的影响，所以需要维护一个IP列表，这样就能就近连接了，就起到了优化的效果。
-
-我们一般都是在应用启动的时候获得本地列表中所有IP的ping值，然后通过NSURLProtocol的
-手段将URL中的HOST修改为我们找到的最快的IP。另外，这个本地IP列表也会需要通过一个API
-来维护，一般是每天第一次启动的时候读一次API，然后更新到本地。
-
+<pre><code class="language-objectivec">//源代码
+void(^blk)(void) = ^{
+    printf(&quot;Block\n&quot;)
+}
 </code></pre>
 
-<h3 id="toc_7">针对链接复用的优化</h3>
+<ol>
+<li><p>block是&quot;带有自动变量值的匿名函数&quot;，</p>
+<pre><code class="language-objectivec">static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    printf(&quot;Block\n&quot;)<br/>
+}
+</code></pre>
+<p>可以看到其执行内容会按照普通的C函数处理，并且Block会根据所属的函数名(main函数)和该block出现的顺序值(为0)进行命名。并且其函数的执行参数即为<code>__cself</code>也就是指向该block的机构体的指针</p></li>
+<li><p>Block其实是<code>Object-C</code>对象</p>
+<p>block转换为结构体后其结构如下:</p>
+<pre><code class="language-objectivec">struct __main_block_impl_0 {
+    struct __block_impl impl;<br/>
+    struct __main_block_desc_0 *Desc;<br/>
+    //结构体初始化函数<br/>
+    __main_block_impl_0(void *fp, strct __main_block_desc_0, int flags=0) {<br/>
+        impl.isa = &amp; NSConcreatStackBlock;<br/>
+        impl.Flags = flags;<br/>
+        impl.FuncPtr = fp;<br/>
+        Desc = desc;<br/>
+    }<br/>
+}<br/>
+struct __block_impl {<br/>
+    void *isa;<br/>
+    int Flags;<br/>
+    int Reserved;<br/>
+    void *FunctionPtr;<br/>
+}<br/>
+struct __main_block_desc_0 {<br/>
+    unsigned long reserved; //今后版本升级所需的区域<br/>
+    unsigned long Block_size; //block的大小<br/>
+}
+</code></pre>
+<p>因此将block结构体展开的话，其初始化结构如下:</p>
+<pre><code class="language-objectivec">static struct __main_block_desc_0 __main_block_desc_0_DATA = {
+    0,<br/>
+    sizeof(struct __main_block_impl_0) //block大小<br/>
+}<br/>
+//初始化<br/>
+isa = &amp;_NSConcreatStackBlock;<br/>
+Flags=0;<br/>
+Reserved=0;<br/>
+FuncPtr=__main_block_func_0;<br/>
+Desc= &amp;__main_block_desc_0_DATA;
+</code></pre>
+<p>当执行该block时,即执行block中的FuncPtr函数，然后将block结构体指针作为参数传入：</p>
+<pre><code class="language-objectivec">((void(*)(struct __block_impl *))((struct __block_impl *)blk)-&gt;FuncPtr)((struct _block_impl*)blk)
+</code></pre>
+<blockquote>
+<p>注意</p>
+<p>对于<code>isa=&amp;_NSConcreatStackBlock;</code>因为block也是一个对象，因此与其它OC对象类型，其isa指针指向其类结构体，即block的类信息就放在<code>_NSConcreatStackBlock</code>中</p>
+</blockquote></li>
+</ol>
 
-<h2 id="toc_8">自己的一些思考</h2>
+<h2 id="toc_1">截获自动变量</h2>
+
+<p>所谓的&quot;截获自动变量值&quot;其实是在执行block时，Block语法表达式所使用的自动变量被保存到Block的结构体实例中</p>
+
+<p>截获了自动变量的结构体</p>
+
+<pre><code class="language-objectivec">struct __main_block_impl_0 {
+    struct __block_impl impl;
+    struct __main_block_desc_0 *Desc;
+    const char *fmt; //自动变量值
+    int val; //自动变量值
+        //结构体初始化函数
+     __main_block_impl_0(void *fp, strct __main_block_desc_0, const char*_fmt, int _val, int flags=0) : fmt(_fmt), val(_val) {
+        impl.isa = &amp; NSConcreatStackBlock;
+        impl.Flags = flags;
+        impl.FuncPtr = fp;
+        Desc = desc;
+    }
+}
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>block只会捕获使用到的变量，表达式中没有使用到的变量不会被自动追加</p>
+</blockquote>
+
+<h2 id="toc_2">__block说明符</h2>
+
+<p>看到上面👆捕获变量的源码，可以看出来，block中捕获的自动变量仅捕获自动变量的值。因此在block内部重写该自动变量也不会改变原来捕获的自动变量值，因此，当我们给捕获的自动变量赋值时 就会产生编译错误</p>
+
+<h3 id="toc_3">静态变量、静态全局变量、全局变量</h3>
+
+<p>我们可以在block中直接访问或修改静态全局变量/全局变量 这是没有任何改变的，因此可以在block转换后的函数中直接使用，而无需在结构体中保留、变量</p>
+
+<p>但是对于静态变量，因为block转换后的函数已经在静态变量所处的函数之外，出了访问的作用域</p>
+
+<pre><code class="language-objectivec">//结构体中
+__main_block_impl_0 {
+    ...
+    int * static_val; //block内部保留 静态变量的指针地址
+}
+
+//执行函数
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    (*static_val) *= 3 //
+}
+</code></pre>
+
+<p>因此 block将静态变量的指针传递给<code>__main_block_impl_0</code>结构体的构造函数，并保留在结构体中，这是超出作用范围最简单的访问方法了</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>对于自动变量为什么没有采用类似静态变量的访问方式呢??<br/>
+Block可以截获超过作用域被截获的对象的自动变量，变量作用域结束的，原来的自动变量被废弃，因此block中超过变量作用域的对象就如同静态变量一样，无法通过指针进行访问了</p>
+</blockquote>
+
+<h3 id="toc_4">__block修饰符</h3>
+
+<p>在OC中存在以下几种存储域类说明符:</p>
+
+<ul>
+<li>typedef</li>
+<li>extern</li>
+<li>static</li>
+<li>auto</li>
+<li>register</li>
+</ul>
+
+<p><code>__block</code>就类似static、auto、register说明符，用于指定将变量设置到哪个存储区域中。(auto表示作为自动变量存储到栈中、static作为静态变量存储到数据区)</p>
+
+<pre><code class="language-objectivec">//源代码
+__block int val = 10
+void(^blk)(void) = ^{val = 1}
+</code></pre>
+
+<p>block结构体持有了指向__block变量结构体指针</p>
+
+<pre><code class="language-objectivec">struct __main_block_impl_0 {
+    struct __block_impl impl;
+    struct __main_block_desc_0 *Desc;
+    __Block_byref_val_0 *val;
+        //结构体初始化函数
+     __main_block_impl_0(void *fp, strct __main_block_desc_0, __Block_byref_val_0 *_val, int flags=0) : val(_val-&gt;_forwarding) {
+        impl.isa = &amp; NSConcreatStackBlock;
+        impl.Flags = flags;
+        impl.FuncPtr = fp;
+        Desc = desc;
+    }
+}
+</code></pre>
+
+<p>__block变量<br/>
+__block变量如同block一般变为<code>__Block_byref_val_0</code>结构体实例</p>
+
+<pre><code class="language-objectivec">struct __Block_byref_val_0 {
+    void *__isa;
+    __Block_byref_val_0 *__forwarding;
+    int __flags;
+    int __size;
+    int val; //相当于原自动变量
+}
+//其初始化
+__Block_byref_val_0 val = {
+    0,
+    &amp;val,
+    0,
+    sizeof(__Block_byref_val_0),
+    10
+}
+</code></pre>
+
+<p>结构体持有了相当持有原自动变量的成员变量,  <code>__Block_byref_val_0</code>结构体实例的成员变量<code>__forwarding</code>持有指向该实例自身的指针。通过 <code>__forwarding</code>访问成员变量val。(成员变量val相当于原自动变量)</p>
+
+<p>函数</p>
+
+<pre><code class="language-objectivec">^{val=1}
+    
+//源代码转换为
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    __Block_byref_val_0 *val = _cself-&gt;val;
+    
+    (val-&gt;__forwarding-&gt;val) = 1
+}
+</code></pre>
+
+<blockquote>
+<p>注意：</p>
 
 <ol>
-<li><p>转化网络层下发数据的一些思考:<br/>
-业务层通过特定的工具类转换为自己需要的数据(这个工具类可能是遵循了同一个协议的很多类，每个类有自己的转换方法，以及转换结果)</p></li>
-<li><p>使用离散型请求，关于多模块共享数据</p>
-<p>我们可以使用离散型请求，在业务层获取到数据后，如果该数据需要共享，则可以业务层告诉一个共享模块(单例模块)，将此数据存储（此共享模块数据Model层，提供数据的存。取、删、该等功能）</p></li>
-<li></li>
+<li>为什么将__block变量写为单独的结构体而不写在block结构体中? 因是为了可以在多个block中使用相同的__block变量</li>
+<li>为了什么使用了__block变量 就可以改写值？  因为当变量添加了__block前缀，此时声明的就直接是一个结构体 我们之后访问、修改不论是在block内外 都是用的这个结构体</li>
 </ol>
+</blockquote>
+
+<p>本章忽略内容：</p>
+
+<ul>
+<li>Block超出变量作用域存在原因</li>
+<li><strong>block变量结构体成员</strong>forwading存在理由</li>
+</ul>
 
 
 		</div>
@@ -220,24 +314,24 @@ App产生的影响，所以需要维护一个IP列表，这样就能就近连接
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -257,10 +351,10 @@ App产生的影响，所以需要维护一个IP列表，这样就能就近连接
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -284,7 +378,7 @@ App产生的影响，所以需要维护一个IP列表，这样就能就近连接
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -295,7 +389,7 @@ App产生的影响，所以需要维护一个IP列表，这样就能就近连接
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -313,6 +407,15 @@ App产生的影响，所以需要维护一个IP列表，这样就能就近连接
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -322,31 +425,31 @@ App产生的影响，所以需要维护一个IP列表，这样就能就近连接
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

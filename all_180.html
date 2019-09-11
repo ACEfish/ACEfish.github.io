@@ -82,249 +82,127 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14894054496048.html">变换</a></h1>
-			<p class="meta"><time datetime="2017-03-13T19:44:09+08:00" 
-			pubdate data-updated="true">2017/3/13</time></p>
+		  	<h1 class="entry-title"><a href="15660380397380.html">内存安全</a></h1>
+			<p class="meta"><time datetime="2019-08-17T18:33:59+08:00" 
+			pubdate data-updated="true">2019/8/17</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h3 id="toc_0">仿射变换</h3>
+		  	<p>默认情况下，<code>Swift</code>会阻止代码里的不安全行为。例如，变量在使用前完成初始化，在内存回收后无法被访问，并且数组的索引会做越界检查。</p>
 
-<p><code>UIView</code>的<code>transform</code>属性是一个<code>CGAffineTransform</code>类型，用于二维空间的旋转，缩放和平移.  </p>
+<p>因为<code>Swift</code>管理内存，大部分时间 并不需要考虑内存访问的事情。然而，理解潜在冲突也是很重要的，可以避免写出访问冲突的代码。如果代码确实存在冲突，那在编译时或者运行时会得到错误。</p>
 
-<p><code>CGAffineTransform</code>是一个可以和二维空间向量（例如 CGPoint ）做乘法的3X2的矩阵；</p>
+<h2 id="toc_0">理解内存访问冲突</h2>
 
-<p><img src="media/14894054496048/14894062959368.jpg" alt=""/></p>
+<p>内存的访问，会发生在你给变量赋值，或者传递参数给函数时。<br/>
+而内存的访问冲突发生在代码多个访问同时访问同一个内存地址，造成的不可预计或者不一致的行为。</p>
 
-<p>上图中的灰色数值只是为了保证<code>左边列数与右边行数相同</code>可以做矩阵运算，其计算结果不保留也没有任何意义  </p>
+<h2 id="toc_1">内存访问性质</h2>
 
-<h4 id="toc_1">CGAffineTransform</h4>
-
-<pre><code class="language-objectivec">CGAffineTransformMakeRotation(CGFloat angle)
-CGAffineTransformMakeScale(CGFloat sx, CGFloat sy)
-CGAffineTransformMakeTranslation(CGFloat tx, CGFloat ty)
-/**
-旋转和缩放变换都可以很好解释--分别旋转或者缩放一个向量的值。平移变换是指
-每个点都移动了向量指定的x或者y值--所以如果向量代表了一个点，那它就平移了
-这个点的距离。
-*/
-</code></pre>
-
-<p><strong>注意</strong><br/><br/>
-<code>UIView</code>可以通过设置<code>tranform</code>属性变换,它只是封装了内部的图层变换  </p>
-
-<p><code>CALayer</code>也有<code>transfrom</code>属性，它的类型是<code>CATransfrom3D</code>并不是<code>CGAffiTransfrom</code>  </p>
-
-<p><code>CALayer</code>对应UIView的<code>transform</code>属性的是<code>affineTransform</code>  </p>
-
-<p><code>CGAffiTransfrom</code>一看名字就是基于<code>Core Graphics</code>的</p>
-
-<pre><code class="language-objectivec">#define RADIANS_TO_DEGREES(x) ((x)/M_PI*180.0)
-//一个pi代表180°
-CGAffineTransform transform = CGAffineTransformMakeRotation(M_PI_4);
-self.layerView.layer.affineTransform = transform;
-</code></pre>
-
-<h4 id="toc_2">混合变换</h4>
-
-<p><code>Core Graphics</code>提供了可在一个一个变换基础上做其他变化的函数  </p>
-
-<pre><code class="language-objectivec">CGAffineTransformRotate(CGAffineTransform t, CGFloat angle)
-CGAffineTransformScale(CGAffineTransform t, CGFloat sx, CGFloat sy)
-CGAffineTransformTranslate(CGAffineTransform t, CGFloat tx, CGFloat ty)
-</code></pre>
-
-<p>还有一个例外的：<br/><br/>
-<code>CGAffineTransformIdentity</code>这是一个什么都不做的变换, <code>CGAffineTransform</code> 类型的空值,即单位矩阵。</p>
-
-<pre><code class="language-objectivec">//要混合两个已经存在的变换矩阵，做一个新的变换
-CGAffineTransformConcat(CGAffineTransform t1, CGAffineTransform t2);
-</code></pre>
-
-<p><strong>注意</strong><br/><br/>
-当我们按顺序进行一些列变换的时候，变换的顺序是会影响结果的，比如旋转之后的平移和平移之后的旋<br/>
-转结果可能不同。</p>
-
-<h3 id="toc_3">3D变换</h3>
-
-<p><code>CGAffineTransform</code> 类型属于<code>Core Graphics</code>框架.因为<code>Core Graphics</code>是一套2D绘图的API，因此仅仅对2D变换有效.  </p>
-
-<p>CALayer的<code>transform</code>属性(<code>CATransform3D</code>类型),可以让图层进行3D移动或者旋转  </p>
-
-<p>和CGAffiTranform类似,<code>CATransform3D</code>也是一个矩阵（在3维空间做变换的4*4矩阵）  </p>
-
-<p><img src="media/14894054496048/14894686780778.jpg" alt=""/></p>
-
-<p><code>Core  Animation</code>框架也有为我们提供一系列方法来创建和组合<code>CATransform3D</code>类型的矩阵，与CGAffiTransform不同的是其平移和缩放多了参数<code>z</code> 旋转 多了<code>x.y.z</code></p>
-
-<pre><code class="language-objectivec">CATransform3DMakeRotation(CGFloat angle, CGFloat x, CGFloat y, CGFloat z)
-CATransform3DMakeScale(CGFloat sx, CGFloat sy, CGFloat sz)
-CATransform3DMakeTranslation(Gloat tx, CGFloat ty, CGFloat tz)
-</code></pre>
-
-<p>举个栗子:  </p>
-
-<pre><code class="language-objectivec">//绕Y轴旋转45度
-CATransform3D transform = CATransform3DMakeRotation(M_PI_4, 0, 1, 0);
-self.layerView.layer.transform = transform;
-</code></pre>
-
-<p><img src="media/14894054496048/14894705472205.jpg" alt=""/></p>
-
-<p><strong>这样的效果看起来并没有旋转而只是水平方向的压缩,这是因为我们用斜的视角看它，并不是透视</strong></p>
-
-<h4 id="toc_4">透视投影</h4>
-
-<p>我们在上面做的变换是等距投影：远处的物体和近处的物体保持同样的缩放比例  </p>
-
-<p>正常情况是物体远离我们由于视角原因会变小才对  我们需要引入<code>投影变换（z变换）</code>来对矩阵做一些修改，<code>Core Animation</code>并没有提供<code>透视变换</code>函数，我们需要手动改动矩阵(easy):  </p>
-
-<p><img src="media/14894054496048/14894710925730.jpg" alt=""/></p>
-
-<p>**m34 默认为0，我们可以设置其为<code>-1/d</code>来应用透视效果(d为视角和屏幕距离,估算测试一下就ok了,大概500-1000,值越小透视效果越明显但是太小会失真，太大又几乎失去透视效果) **</p>
-
-<p>举个栗子:</p>
-
-<pre><code class="language-objectivec">CATransform3D transform = CATransform3DIdentity;
-//apply perspective  我曹 真的直接m34就行了
-transform.m34 = - 1.0 / 500.0;
-//rotate by 45 degrees along the Y axis
-transform = CATransform3DRotate(transform, M_PI_4, 0, 1, 0);
-//apply to layer
-self.layerView.layer.transform = transform;
-</code></pre>
-
-<h4 id="toc_5">灭点</h4>
-
-<p>在透视绘图时我们说当远离视角的物体会变小,当远到一个极限的时候就会变陈一个点,最终所有物体都会汇聚消失在这同一个点.  即<strong>灭点</strong></p>
-
-<p>在现实中，这个点通常是视图的中心,或者至少是包含所有3D对象的视图中心 </p>
-
-<p><code>Core Animation</code>定义了这个点位于变换图层的<code>anchorPoint</code>（通常位于图层中心，但也有例外）<br/><br/>
-这就是说，当图层发生变换时，这个点永远位于图层变换之前<code>anchorPoint</code>的位置。</p>
-
-<p><img src="media/14894054496048/14894744252171.jpg" alt=""/></p>
-
-<p><strong>注意</strong><br/><br/>
-当改变一个图层的<code>position</code>，你也改变了它的灭点，做3D变换的时候要时刻记住这一点，当你视图通过调整 <code>m34</code> 来让它更加有3D效果，应该首先把它放置于屏幕中央，然后通过平移来把它移动到指定位置（做平移变换是不会改变position的）（而不是直接改变它的<code>position</code>）灭点会处于变化之前的位置,这样的话就能保证所有的3D图层都共享一个灭点。</p>
-
-<h4 id="toc_6">sublayerTransform</h4>
-
-<p>根据上面知识,如果我们多个视图做3D变换,我们需要分别改变其M34并且确保在变换前同一个<code>position</code>,而且我们不能直接在xib中摆放视图,这样就很麻烦了   </p>
-
-<p>CALayer有个属性<code>sublayerTransform</code>.也是<code>CATransform3D</code>类型的,但是它会影响到所有子图层,即我们可以通过设置图层的这个属性来使所有子视图做同样的变换，而且确保了所有子图层灭点在容器图层的中点处.</p>
-
-<p><strong>容器图层做变换时其上图层也都会做变换的,只不过我们如果不设置容器图层的<code>sublayerTransform</code>属性的话，子图层要在做3D变换的话还要再设置m34而且要保证灭点，也就是这个属性作用就只是保证其上的子图层的m34和灭点与父图层一致</strong><br/>
-<strong>这个属性对于容器视图来说与transform属性没有什么区别，都是做一个变换</strong></p>
-
-<p><strong>注意</strong><br/><br/>
-我们通常设置最大视图的<code>sublayerTransform</code>为<code>CATransform3DIdentity;</code> 这样在其上的子视图可以随意进行3D变换都可保证其灭点位置在同一个位置.  </p>
-
-<h4 id="toc_7">背面</h4>
-
-<p>因为我们做的变换是透视的，我们可以从背面观察这张图像，发现其背面为正面图片的镜像图片,可以知道图层是<code>双面绘制的</code><br/>
-有时候我们是永远都看不到图层的背面,所以我们没必要浪费<code>CPU</code>来绘制  </p>
-
-<p><code>CALayer</code>有一个叫做 <code>doubleSided</code> 的属性来控制图层的背面是否要被绘制。<code>BOOL</code>类型,当设置为NO时，如果图层正面从视角中消失，这个图层将不会被绘制.</p>
-
-<p><img src="media/14894054496048/14895754324911.jpg" alt=""/></p>
-
-<h4 id="toc_8">扁平化图层</h4>
-
-<p>我们在做二维变换（用CATranform3D绕z轴旋转也是二维变换）知道当我们做个相反变换的时候是可以将图层或视图恢复原状的。</p>
-
-<p><img src="media/14894054496048/14895772744163.jpg" alt=""/><br/>
-如上图,外部图层旋转45度后内部图层反向旋转45度是可以恢复正常状态的  </p>
-
-<p>那么对于3D变换：</p>
-
-<p>我们将外面图层绕Y旋转,然后将内图层绕Y反向旋转<br/><br/>
-结果:<br/>
-<img src="media/14894054496048/14895796219311.jpg" alt=""/></p>
-
-<p>我们可以看到,内部的图层仍然向左侧旋转，并且发生了扭曲。</p>
-
-<p>这是因为<code>Core Animation</code>内的图层并不都存在同一个3D空间.<strong>每个图层的3D场景其实是扁平化的</strong>，你所看到的3D场景只是绘制在图层表面。</p>
-
-<p>也是因为如此:用<code>Core Animation</code>创建非常复杂的3D场景变得十分困难。你不能够使用图层树去创建一个3D结构的层级关系--在相同场景下的任何3D表面必须和同样的图层保持一致，这是因为每个的父视图都把它的子视图扁平化了。在之后我们会用<code>CATransformLayer</code>的子类来解决这个问题</p>
-
-<h3 id="toc_9">固体对象</h3>
-
-<p>一个固态的3D对象  </p>
-
-<p>我们来创建一个固体对象:</p>
-
-<pre><code class="language-objectivec">//创建固体对象
-
-- (void)three_dimensionaObject {
-    CATransform3D perspective = CATransform3DIdentity;
-    perspective.m34 = -1.0 / 500.0;
-    perspective = CATransform3DRotate(perspective, -M_PI_4, 1, 0, 0);
-    perspective = CATransform3DRotate(perspective, -M_PI_4, 0, 1, 0);
-    self.containView.layer.sublayerTransform = perspective;
-    //add cube face 1
-    CATransform3D transform = CATransform3DMakeTranslation(0, 0, 100);
-    [self addFaceWith:0 transform:transform];
-    
-    transform = CATransform3DMakeTranslation(100, 0, 0);
-    transform = CATransform3DRotate(transform, M_PI_2, 0, 1, 0);
-    [self addFaceWith:1 transform:transform];
-    
-    transform = CATransform3DMakeTranslation(-100, 0, 0);
-    transform = CATransform3DRotate(transform, -M_PI_2, 0, 1, 0);
-    [self addFaceWith:2 transform:transform];
-    
-    transform = CATransform3DMakeTranslation(0, 100, 0);
-    transform = CATransform3DRotate(transform, -M_PI_2, 1, 0, 0);
-    [self addFaceWith:3 transform:transform];
-    
-    transform = CATransform3DMakeTranslation(0, -100, 0);
-    transform = CATransform3DRotate(transform, M_PI_2, 1, 0, 0);
-    [self addFaceWith:4 transform:transform];
-    
-    transform = CATransform3DMakeTranslation(0, 0, -100);
-    [self addFaceWith:5 transform:transform];
-}
-
-- (void)addFaceWith:(NSInteger)index transform:(CATransform3D)transform {
-    UIView *layV = [self.layViewCollection objectAtIndex:index];
-    [self.containView addSubview:layV];
-    CGSize containerSize = self.containView.bounds.size;
-    layV.center = CGPointMake(containerSize.width / 2.0, containerSize.height/2);
-    layV.bounds = CGRectMake(0, 0, 200, 200);
-    layV.layer.transform = transform;
-}
-</code></pre>
-
-<h4 id="toc_10">光亮和阴影</h4>
-
-<p>由于我们只是简单几个图层的拼接,所以这个立体对光线并没有概念(没有棱角).我们需要自己做这个立体的阴影效果.  </p>
+<p>内存访问冲突会发生在以下两个访问符合情况时:</p>
 
 <ul>
-<li>我们可以直接以通过改变每个面的背景颜色或者直接用带光亮效果的图片来调整。<br/></li>
-<li>如果需要动态地创建光线效果，可以根据每个视图的方向应用不同的alpha值做出半透明的阴影图层.但为了计算阴影图层的不透明度，你需要得到每个面的正太向量（垂直于表面的向量），然后根据一个想象的光源计算出两个向量叉乘结果。叉乘代表了光源和图层之间的角度，从而决定了它有多大程度上的光亮。</li>
+<li>至少有一个是写访问</li>
+<li>访问的是统一存储地址</li>
+<li>访问在时间线上部分重叠</li>
 </ul>
 
-<p>为了达到第二种效果:<br/><br/>
-我们这里用<code>GLKit框架</code>来做向量的计算.(需要引入<code>GLKit</code>库来运行代码)每个面的<code>CATransform3D</code>都被转换成<code>GLKMatrix4</code>，然后通过<code>GLKMatrix4GetMatrix3</code>函数得出一个3×3的旋转矩阵。这个旋转矩阵指定了图层的方向，然后可以用它来得到正太向量的值</p>
+<p>内存的访问时长，要么是瞬时的，要么是长期的。主要区别在于，别的代码有没有可能在访问期间同时访问，也就是时间线上的重叠。一个长期访问可以被别的长期或者瞬时访问重叠</p>
 
-<h4 id="toc_11">点击事件</h4>
+<p>重叠访问主要出现在使用<code>in-out</code>参数的函数或方法  或者结构体的<code>mutating</code>方法里。</p>
 
-<p><img src="media/14894054496048/14896328584294.jpg" alt=""/></p>
+<h2 id="toc_2">In-Out参数的访问冲突</h2>
 
-<p>我们对于上面的固体对象,并不能点击3触发事件,这是因为我们添加视图时4.5.6是在3之前添加的,点击事件的处理由视图在父视图中的顺序决定，而不是3D空间的z轴顺序.因此即使我们此时看不到4.5.6,但是荏苒会拦截点击事件.  </p>
+<p>一个函数会对它所有的in-out参数进行长期写访问。in-out参数的写访问会在所有非in-out参数处理完成后开始，直到函数执行完毕位置。如果有多个in-out参数，则写访问开始的顺序和参数顺序一致。</p>
 
-<p><code>doubleSided</code>属性可以控制是否绘制视图后面的内容,但是设置这个属性为NO不起作用，因为即使背对相机而隐藏的视图仍然会响应点击事件(这和通过设置 hidden 属性或者设置 alpha 为0而隐藏的视图不同，那两种方式将不会响应事件).</p>
+<ol>
+<li><p>不能在访问以in-out形式传入后的原变量，即使作用域原则和访问权限允许--任何访问原变量的行为都会造成冲突<br/>
+<img src="media/15660380397380/15661846253994.jpg" alt="" style="width:600px;"/></p>
+<p>解决方案是 显示的拷贝一份<code>stepSize</code>：</p>
+<pre><code class="language-swift">// 显式拷贝
+var copyOfStepSize = stepSize<br/>
+increment(&amp;copyOfStepSize)<br/>
+// 更新原来的值<br/>
+stepSize = copyOfStepSize<br/>
+// stepSize 现在的值是 2
+</code></pre></li>
+<li><p>当向同一函数的多个in-out参数里传入同一个变量也会产生冲突，</p>
+<pre><code class="language-swift">func balance(_ x: inout Int, _ y: inout Int) {
+let sum = x + y<br/>
+x = sum / 2<br/>
+y = sum - x<br/>
+}<br/>
+var playerOneScore = 42<br/>
+var playerTwoScore = 30<br/>
+balance(&amp;playerOneScore, &amp;playerTwoScore)  // 正常<br/>
+balance(&amp;playerOneScore, &amp;playerOneScore)<br/>
+// 错误：playerOneScore 访问冲突
+</code></pre>
+<p>将 playerOneScore 作为参数同时传入就会产生冲突，因为它会发起两个写访问，同时访 问同一个的存储地址</p></li>
+</ol>
 
-<p>我们正确方式是:</p>
+<blockquote>
+<p>注意:</p>
+
+<p>因为操作符也是函数，它们也会对in-out参数进行长期访问</p>
+</blockquote>
+
+<h3 id="toc_3">方法里self的访问冲突</h3>
+
+<p>一个结构体的<code>mutating</code>方法会在调用期间对<code>self</code>进行写访问</p>
+
+<pre><code class="language-swift">extension Player {
+    mutating func shareHealth(with teammate: inout Player) {
+        balance(&amp;teammate.health, &amp;health)
+    }
+}
+
+var oscar = Player(name: &quot;Oscar&quot;, health: 10, energy: 10)
+var maria = Player(name: &quot;Maria&quot;, health: 5, energy: 10)
+oscar.shareHealth(with: &amp;maria)  // 正常
+</code></pre>
+
+<p><img src="media/15660380397380/15661951218602.jpg" alt="" style="width:600px;"/></p>
+
+<p>但是当如果</p>
+
+<pre><code class="language-swift">oscar.shareHealth(with: &amp;oscar)
+// 错误：oscar 访问冲突
+</code></pre>
+
+<p>因为 mutating方法在调用期间需要对self发起访问，而同时in-out参数也需要写访问。在方法里，<code>self</code>和<code>teammate</code>指向统一存储地址。对同一块内存进行访问，并且重叠，就会产生冲突。</p>
+
+<h2 id="toc_4">属性的访问冲突</h2>
+
+<p>结构体、元组和枚举都是值类型，由多个独立的值构成，所以修改值的一部分都是对于整个值的修改，意味着其中一个属性的读和写访问都需要访问整一个值。</p>
+
+<ol>
+<li><p>对元组元素的写访问重写会产生冲突</p>
+<pre><code class="language-swift">var playerInformation = (health: 10, energy: 20)
+balance(&amp;playerInformation.health, &amp;playerInformation.energy)<br/>
+// 错误：playerInformation 的属性访问冲突
+</code></pre>
+<p>所以，在任何情况下，对于元组元素的写访问都需要对整个元组发起写访问。</p></li>
+<li><p>对存储在全局变量的结构体属性写访问重叠</p>
+<pre><code class="language-swift">var holly = Player(name: &quot;Holly&quot;, health: 10, energy: 10)
+balance(&amp;holly.health, &amp;holly.energy)  // 错误
+</code></pre>
+<p>大多数对于结构体属性的访问都会安全的重叠。例如，将上面例子的变量改为本地变量而非全局变量，编译器即可保证其是安全的</p>
+<pre><code class="language-swift">func someFunction() {
+    var oscar = Player(name: &quot;Oscar&quot;, health: 10, energy: 10)<br/>
+    balance(&amp;oscar.health, &amp;oscar.energy)  // 正常<br/>
+}
+</code></pre>
+<p>此时编译器可以保证内存安全，因为两个存储尚需经任何情况下都不会互相影响。</p></li>
+</ol>
+
+<p>限制结构体属性的重叠访问对于保证内存安全不是必要的。保证内存安全是必要的，但因为访问独占权的要求比内存安全还要更严格——意味着即使有些代码违反了访问独占权的原则，也是内存安全的，所以如果编译器可以保证这种非专属的访问是安全的，那 Swift 就会允许这种行为的代码运行。特别是当你遵循下面的原则时，它可以保证结构体属性的重叠访问是安全的：</p>
 
 <ul>
-<li>把除了表面3的其他视图 userInteractionEnabled 属性都设置成 NO 来禁止事件传递</li>
-<li>简单通过代码把视图3覆盖在视图6上</li>
-<li>等等</li>
+<li>你访问的是实例的存储属性，而不是计算属性或类的属性</li>
+<li>结构体是本地变量的值，而非全局变量</li>
+<li>结构体要么没有被闭包捕获，要么只被非逃逸闭包捕获了</li>
 </ul>
-
-<p><strong>视图中图层添加的层级顺序会比屏幕上显示的顺序更有意义</strong></p>
 
 
 		</div>
@@ -347,24 +225,24 @@ self.layerView.layer.transform = transform;
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -384,10 +262,10 @@ self.layerView.layer.transform = transform;
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -411,7 +289,7 @@ self.layerView.layer.transform = transform;
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -422,7 +300,7 @@ self.layerView.layer.transform = transform;
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -440,6 +318,15 @@ self.layerView.layer.transform = transform;
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -449,31 +336,31 @@ self.layerView.layer.transform = transform;
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

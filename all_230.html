@@ -82,147 +82,122 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14873831706932.html">OCMock</a></h1>
-			<p class="meta"><time datetime="2017-02-18T09:59:30+08:00" 
-			pubdate data-updated="true">2017/2/18</time></p>
+		  	<h1 class="entry-title"><a href="14905958336865.html">图层时间</a></h1>
+			<p class="meta"><time datetime="2017-03-27T14:23:53+08:00" 
+			pubdate data-updated="true">2017/3/27</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h3 id="toc_0">Mock介绍</h3>
+		  	<p>我们可以用<code>CAAnimation</code>和它的子类实现的多种图层动画。但是动画是需要持续时间的,因此我们来学习一下计时的<code>CAMediaTiming</code>，跟踪时间。</p>
 
-<p>对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。</p>
+<h3 id="toc_0">CAMediaTiming 协议</h3>
 
-<h3 id="toc_1">OCMock介绍</h3>
+<p><code>CAMediaTiming</code> 协议定义了<strong>在一段动画内用来控制逝去时间的属性的集合</strong>。<code>CALayer</code> 和<code>CAAnimation</code>都实现了这个协议，所以时间可以被任意基于一个图层或者一段动画的类控制。</p>
 
-<p><a href="http://ocmock.org/features/">官方网站</a><br/>
-根据要mock的对象的class来创建一个对应的对象，并且设置好该对象的属性和调用预定方法后的动作（例如返回一个值，调用代码块，发送消息等等），然后将其记录到一个数组中，接下来开发者主动调用该方法，最后做一个verify（验证），从而判断该方法是否被调用，或者调用过程中是否抛出异常等。</p>
+<h4 id="toc_1">持续和重复</h4>
 
-<h4 id="toc_2">1.OCMock中简单使用</h4>
+<p><code>duration</code>(<code>CAMediaTiming</code>的属性之一)是<code>CFTimeInterval</code>类型(双精度浮点型),对将要进行的动画的一次迭代指定了时间。<br/>
+<code>repeatCount</code>(<code>CAMediaTiming</code>的属性之一)，代表动画重复的迭代次数。<br/>
+通过上面两个属性我们可以创建重复动画</p>
 
-<ol>
-<li><p>class mock一个对象</p>
-<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
-//创建mock object当做类的实例
-</code></pre></li>
-<li><p>Stubbing methods that return objects</p>
-<pre><code class="language-object-c">/**
-意的就是有参数的方法，参数是可以具体指定的，也就是说只有满足你指定的具体参数的调用才会被mock指定的返回值。例子中的[OCMArg any]是指任意参数。<br/>
-*/<br/>
-//没有参数的方法<br/>
-OCMStub([mockClass someMethod]).andReturn(anObject);<br/>
-//有参数的方法<br/>
-OCMStub([mockClass someMethod:[OCMArg any]]).andReturn(anObject);
-</code></pre>
-<p>注意:<br/>
-<strong>OCMock会在mock实例上没有找到相同名字的实例方法的时候去找同名的类方法。</strong></p></li>
-<li><p>Verify-after-running<br/>
-有些时候需要验证我们执行的代码流程是否调用了某个外部的方法，这个时候用OCMock就比较简单来实现。如果没有调用过这个方法的话，会立即抛一个异常出来。</p>
-<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
-//...<br/>
-//some code<br/>
-//...<br/>
-OCMVerify([mockClass someMethod]);
-</code></pre></li>
-<li><p>验证mock方法没有被调用<br/>
-验证代码没有调用某个方法<br/>
-如果方法被调用了，就将isCalled设置为YES，这样最后assert的时候就会报错。</p>
-<pre><code class="language-object-c">static BOOL isCalled = false;
-id mockClass = OCMClassMock([SomeClass class]);<br/>
-OCMStub([mockClass someMethod]).andDo(^(NSInvocation *invocation){<br/>
-isCalled = YES;<br/>
-});<br/>
-//...<br/>
-//some code<br/>
-//...<br/>
-XCTAssertFalse(isCalled);
-</code></pre></li>
-<li><p>验证mock方法传入的参数<br/>
-验证传递给外部调用的参数是否符合预期</p>
-<pre><code class="language-objec-c">id mockClass = OCMClassMock([SomeClass class]);
-OCMStub([mockClass someMethod:[OCMArg checkWithBlock:^BOOL(id obj) {<br/>
-//...<br/>
-//some code<br/>
-//...<br/>
-return YES;<br/>
-]]);
-</code></pre></li>
-<li><p>mock单例</p>
-<p>如果我们mock的类是个单例的话，那么使用之前的方法进行mock是不会生效的。不过OCMock提供了一个很简单的解决方法，那就是调用单例返回mock</p>
-<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
-OCMStub([mockClass instanceMethod]).andReturn(mockClass);
-</code></pre></li>
-<li><p>The any constraint</p>
-<pre><code class="language-object-c">OCMStub([mock someMethodWithAnArgument:[OCMArg any]])
-OCMStub([mock someMethodWithPointerArgument:[OCMArg anyPointer]])<br/>
-OCMStub([mock someMethodWithSelectorArgument:[OCMArg anySelector]])
-</code></pre></li>
-<li><p>处理block参数<br/>
-OCMock也可以处理block回调参数。block回调通常用于网络代码，数据库代码，或者在任何异步操作中。在这个例子中，思考下下面的方法：<br/>
-<code>- (void)downloadWeatherDataForZip:(NSString *)zip callback:(void (^)(NSDictionary *response))callback;</code></p></li>
-</ol>
+<p>创建重复动画的另外方式:<br/>
+<code>repeatDuration</code>属性。它让动画重复一个指定的时间，而不是指定次数。如果我们将 <code>repeatDuration</code>设置为<code>INFINITY</code>(无限大)动画无限循环播放，设置<code>repeatCount</code>为<code>INFINITY</code>也有同样的效果。(但是<strong>这两个属性我们只能设置一个</strong>)<br/>
+<code>autoreverses</code>属性,设置是否在每次间隔交替循环过程中自动回放（常用于播放非循环动画）。</p>
 
-<p>在这个例子中，我们有一个下载天气压缩数据的方法，并且把下载下来的dictionary代理到一个block的回调中。在测试中，我们通过预定义的天气数据来测试回调处理。这也是明智的测试失败场景。你永远不会知道网络上会返回你什么东西！</p>
+<h4 id="toc_2">相对时间</h4>
 
-<pre><code class="language-object">OCMStub([groupModelMock downloadWeatherDataForZip:@&quot;80304&quot; callback:[OCMArg any]]]).andDo(^(NSInvocation *invocation){
-        //2. declare a block with same signature
-        void (^weatherStubResponse)(NSDictionary *dict);
-        //3. link argument 3 with with our block callback
-        [invoke getArgument:&amp;weatherStubResponse atIndex:3];
-        //4. invoke block with pre-defined input
-        NSDictionary *testResponse = @{@&quot;high&quot;: 43 , @&quot;low&quot;: 12};
-        weatherStubResponse(groupMemberMock);
-    });
-    /**
-        1.这个mock对象使用带NSInvocation参数的“andDo”方法。一个NSInvocation对象代表一
-        个‘objectivetified’（实在不知道这个什么鬼）表现的方法调用。通过这个NSinvocation对
-        象，使得拦截传递给我们的方法的block参数变得可能。
-        2.用与我们测试的方法中相同的方法签名声明一个block参数。
-        3.NSInvocation实例方法&quot;getArgument:atIndex:&quot;将赋值后的块函数传递都原始函数中定义
-        的块函数中。注意：在Objective-C中，传递给任意方法的前两个参数都是“self”和“_cmd”.这是
-        一个运行时的小功能以及用下标来获取NSInvocation参数时我们需要考虑的东西。
-        4.最后，传递这个回调的预定义字典。
-    */
+<p><code>beginTime</code>指定了动画开始之前的的延迟时间（默认是0即立刻执行）。<br/>
+设置beginTime属性为：要延迟的时间（单位为秒）+ CACurrentMediaTime(); </p>
+
+<p><code>speed</code>是一个时间的倍数，默认<code>1.0</code>，减少它会减慢图层/动画的时间，增加它会加快速度。如果2.0的速度，那么对于一个 duration 为1的动画，实际上在0.5秒的时候就已经完成了。</p>
+
+<p><code>timeOffset</code>和<code>beginTime</code>类似，但是和增加<code>beginTime</code>导致的延迟动画不同，增加<code>timeOffset</code>只是让动画快进到某一点，例如，对于一个持续1秒的动画来说，设置<code>timeOffset</code>为0.5意味着动画将从一半的地方开始。<br/>
+和<code>beginTime</code>不同的是，<code>timeOffset</code>并不受 <code>speed</code> 的影响。所以如果你把<code>speed</code> 设为2.0，把 <code>timeOffset</code> 设置为0.5，那么你的动画将从动画最后结束的地方开始，因为1秒的动画实际上被缩短到了0.5秒。然而即使使用了 <code>timeOffset</code>让动画从结束的地方开始，它仍然播放了一个完整的时长，这个动画仅仅是循环了一圈，然后从头开始播放。</p>
+
+<h4 id="toc_3">fillMode</h4>
+
+<p><code>fillMode</code> 属性是一个<code>NSString</code>类型，接受以下常量:</p>
+
+<pre><code class="language-objectivec">kCAFillModeForwards
+kCAFillModeBackwards
+kCAFillModeBoth
+kCAFillModeRemoved//默认
 </code></pre>
 
-<h4 id="toc_3">2.OCMock简单示例</h4>
+<p>默认是 <code>kCAFillModeRemoved</code>，当动画不再播放的时候就显示图层模型指定的值</p>
 
-<p><img src="media/14873831706932/14873839517952.png" alt=""/></p>
+<p>向前，向后或者即向前又向后去填充动画状态，使得动画在开始前或者结束后仍然保持开始和结束那一刻的值。<br/>
+这就对避免在动画结束的时候急速返回提供另一种方案。但是，需要把 removeOnCompletion 设置为 NO ，另外需要给动画添加一个非空的键，于是可以在不需要动画的时候把它从图层上移除.</p>
 
-<p>示例2：</p>
+<h3 id="toc_4">层级关系时间</h3>
 
-<pre><code class="language-object-c">- (void)testStrictMock3{
+<p>动画时间也是有层级关系的,每个动画和图层在时间上都有它自己的层级概念,相对于父图层.对图层调整时间将会影响到它本身和子图层的动画，但不会影响到父图层（图层的时间属性）。类似的使用<code>CAAnimationGroup</code>时将动画都被按照层级组合.(CAAnimationGroup将动画层级组合)（动画属性）</p>
 
-    id classMock = OCMClassMock([TweetView class]);
+<p>对<code>CALayer</code>或者 <code>CAGroupAnimation</code> 调整 <code>duration</code> 和 <code>repeatCount / repeatDuration</code> 属性并不会影响到子动画。但是 <code>beginTime</code>， <code>timeOffset</code> 和 <code>speed</code> 属性将会影响到子动画。<code>beginTime</code>指定了父图层开始动画（或者组合关系中的父动画）和对象将要开始自己动画之间的偏移。调整<code>CALayer</code> 和<code>CAGroupAnimation</code>的 <code>speed</code> 属性将会对动画以及子动画速度应用一个缩放的因子。</p>
 
-    //设置期望或预设，这个classMock需要执行addTweet方法且参数不为nil。  不然的话会抛出异常
-    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
-    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
+<h4 id="toc_5">全局时间和本地时间</h4>
 
-    /* 如果不执行以下代码的话会抛出异常 */
-    Tweet *testTweet = [[Tweet alloc] init];
-    testTweet.userName = @&quot;齐滇大圣&quot;;
-    [classMock addTweet:testTweet];
+<p>全局时间:<br/>
+CoreAnimation有一个全局时间的概念，也就是所谓的马赫时间（“马赫”实际上是iOS和Mac OS系统内核的命名）（返回了设备自从上次启动后的秒数）。马赫时间在设备上所有进程都是全局的--但是在不同设备上并不是全局的.</p>
 
-    OCMVerifyAll(classMock);
+<pre><code class="language-objectivec">//CACurrentMediaTime 函数来访问马赫时间
+CFTimeInterval time = CACurrentMediaTime();
+</code></pre>
+
+<p>这个值我们并不关心,但是它对我们的对时间实测提供了一个基准,可以提供相对值.</p>
+
+<p><strong>注意</strong><br/>
+当设备休眠的时候马赫时间会暂停，也就是所有的<code>CAAnimations</code>（基于马赫时间）同样也会暂停。因此马赫时间对长时间测量并不有用。比如用 CACurrentMediaTime 去更新一个实时闹钟并不明智。</p>
+
+<p>本地时间:<br/>
+每个 CALayer 和 CAAnimation 实例都有自己本地时间的概念，是根据父图层/动画层级关系中的 beginTime ， timeOffset 和 speed 属性计算出来的.</p>
+
+<p>类似坐标系转换：</p>
+
+<pre><code class="language-objectivec">- (CFTimeInterval)convertTime:(CFTimeInterval)t fromLayer:(CALayer *)layer;
+- (CFTimeInterval)convertTime:(CFTimeInterval)t toLayer:(CALayer *)layer;
+</code></pre>
+
+<h4 id="toc_6">暂停，倒回和快进</h4>
+
+<p>设置动画的<code>speed</code>属性为0可以暂停动画，但在动画被添加到图层之后不太可能再修改它了，所以不能对正在进行的动画使用这个属性(注意这是动画的speed属性)。</p>
+
+<p>如果移除图层正在进行的动画，图层将会急速返回动画之前的状态。但如果在动画移除之前拷贝呈现图层到模型图层，动画将会看起来暂停在那里。但是不好的地方在于不能再恢复动画了。<br/>
+给图层添加一个<code>CAAnimation</code>实际上是给动画对象做了一个不可改变的拷贝，所以对原始动画对象属性的改变对真实的动画并没有作用。相反，直接用 <code>- animationForKey:</code> 来检索图层正在进行的动画可以返回正确的动画对象，但是修改它的属性将会抛出异常。</p>
+
+<p>暂停的方法：<br/>
+可以利用<code>CAMediaTiming</code>来暂停图层本身。如果把图层的 <code>speed</code> 设置成0，它会暂停任何添加到图层上的动画。类似的，设置<code>speed</code> 大于1.0将会快进，设置成一个负值将会倒回动画。</p>
+
+<p>通过增加主窗口图层的speed，可以暂停整个应用程序的动画.我们可以利用改变speed来加速所有视图动画来进行自动化测试.</p>
+
+<pre><code class="language-objectivec">self.window.layer.speed = 100;
+</code></pre>
+
+<h3 id="toc_7">手动动画</h3>
+
+<p>我们可以通过设置动画<code>speed</code>属性为0,禁用动画的自动播放,然后通过设置<code>timeOffset</code>来显示动画序列.这样就可以运用手势来控制动画.</p>
+
+<p>例如:</p>
+
+<pre><code class="language-objectivec">//设置平移手势
+- (void)pan:(UIPanGestureRecognizer *)pan
+{
+    //get horizontal component of pan gesture
+    CGFloat x = [pan translationInView:self.view].x;
+    //convert from points to animation duration //using a reasonable scale factor
+    x /= 200.0f;
+    //update timeOffset and clamp result
+    CFTimeInterval timeOffset = self.doorLayer.timeOffset;
+    timeOffset = MIN(0.999, MAX(0.0, timeOffset - x));
+    self.doorLayer.timeOffset = timeOffset;
+    //reset pan gesture
+    [pan setTranslation:CGPointZero inView:self.view];
 }
 </code></pre>
 
-<p>这表示一种友好的mock，不会在没有OCMExpect或OCMStub设置类的所有方法时抛出异常。以上代码把OCMExpect和OCMStub注释掉时不会报错。</p>
+<p>其实如果是这样的话,对于比较复杂的动画我们可以这样的方法,但是对于比较简单图层我们完全可以直接用移动手势来设置图层<code>transform</code>,</p>
 
-<p>还有一种表示严格的mock：OCMStrictClassMock，如果把OCMExpect和OCMStub注释掉时会报错，它要求你执行类中的所有方法，所以比较适合用来测试必须实现的方法，代码如下：</p>
-
-<pre><code class="language-object-c">- (void)testStrictMock3{
-    id classMock = OCMStrictClassMock([TweetView class]);
-    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
-    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
-
-    Tweet *testTweet = [[Tweet alloc] init];
-    testTweet.userName = @&quot;齐滇大圣&quot;;
-    [classMock addTweet:testTweet]; 
-
-    OCMVerifyAll(classMock);
-}
-</code></pre>
+<p>w</p>
 
 
 		</div>
@@ -245,24 +220,24 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -282,10 +257,10 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -309,7 +284,7 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -320,7 +295,7 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -338,6 +313,15 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -347,31 +331,31 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

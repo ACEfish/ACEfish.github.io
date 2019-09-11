@@ -82,146 +82,51 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15560067896432.html">崩溃日志信息以及符号化</a></h1>
-			<p class="meta"><time datetime="2019-04-23T16:06:29+08:00" 
-			pubdate data-updated="true">2019/4/23</time></p>
+		  	<h1 class="entry-title"><a href="15668020933125.html">Blocks</a></h1>
+			<p class="meta"><time datetime="2019-08-26T14:48:13+08:00" 
+			pubdate data-updated="true">2019/8/26</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>我们采集到的崩溃日志，主要包含以下内容:</p>
+		  	<h2 id="toc_0">Block语法</h2>
 
-<ul>
-<li>进程信息: 崩溃进程的相关信息，比如崩溃报告唯一标识符、唯一键值、设备标识</li>
-<li>基本信息: 崩溃发生的日期、iOS版本</li>
-<li>异常信息: 异常类型、异常编码、异常的线程</li>
-<li>线程回溯: 奔溃是的方法调用栈</li>
-<li>进程状态: 闪退时寄存器中的值</li>
-<li>二级制映像: 闪退时已经加载的二进制文件</li>
-</ul>
+<h3 id="toc_1">block表达式</h3>
 
-<p>通常我们分析日志信息先看异常信息，分析出问题的线程，然后在回溯中找到对应线程，查看符号化后的方法调用栈，分析问题</p>
+<p><code>^ 返回值类型 参数列表 表达式</code></p>
 
-<h3 id="toc_0">异常类型</h3>
-
-<p>常用的有:</p>
-
-<p>EXC_CRASH<br/>
-EXC_BAD_ACCESS (SIGSEGV)<br/>
-NSRangeException<br/>
-NSZombie<br/>
-等</p>
-
-<h3 id="toc_1">异常编码</h3>
-
-<p>在App被系统杀掉的情况 可以通过查看异常编码，可以查看完整的<a href="https://en.wikipedia.org/wiki/Hexspeak">异常编码信息</a></p>
-
-<p>常用的就一下几种:</p>
-
-<ul>
-<li>0x8badf00d 表示app长时间无响应被watchdog杀掉</li>
-<li>0xdeadfa11 表示app被用户强制退出</li>
-<li>0xc00010ff 表示app因为运行设备温度过高被杀</li>
-</ul>
-
-<h2 id="toc_2">获取日志</h2>
-
-<p>常用的获取crash日志信息方式有以下几种</p>
-
-<h3 id="toc_3">1. 系统自带</h3>
-
-<p>当一个app崩溃时，iOS系统自带的CrashReporter会创建一份crash日志保存在设备上。如果能拿到Crash的手机，就可以通过Xcode或symbolicatecrash符号化Crash日志。<strong>如果设备上的Crash 日志超过了一定数量，可能保存不了Crash日志</strong></p>
-
-<h4 id="toc_4">使用Xcode导出日志</h4>
-
-<p>在Xcode-&gt;Window菜单-&gt;Devices，弹出的设备面板，选择崩溃的设备 -&gt; 选择右侧的View Device Logs-&gt;选中导出的日志，右击，选中export log, 导出.crash后缀的崩溃日志<br/>
-<img src="media/15560067896432/15560087186815.jpg" alt="" style="width:825px;"/></p>
-
-<h4 id="toc_5">2. 第三方SDK</h4>
-
-<p>例如友盟、bugly等</p>
-
-<h4 id="toc_6">3. 开源框架</h4>
-
-<p>常用的有<code>KSCrash</code></p>
-
-<h4 id="toc_7">4. 自己收集和符号化程序</h4>
-
-<h2 id="toc_8">解析日志</h2>
-
-<h3 id="toc_9">DWARF简介</h3>
-
-<p>DWARF（DebuggingWith Arbitrary Record Formats），是ELF和Mach-O等文件格式中用来存储和处理调试信息的标准格式，.dSYM中真正保存符号表数据的是DWARF文件。</p>
-
-<p>保存在DAWARF中的信息是高度压缩的，可以通过dwarfdump命令从中提取出可读信息</p>
-
-<h3 id="toc_10">什么是符号表</h3>
-
-<p>iOS符号表用来将堆栈信息对应到源码信息，常用来帮助还原crash的堆栈信息，来快速定位出错的代码位置</p>
-
-<p>符号表是debug的产物，使用archive模式打包，符号表会被裁减掉，这也增加了应用安全，提高逆向的难度。我们可以在xcode选项中配置为不裁剪，但是这会让打包的IPA变大:<br/>
-<img src="media/15560067896432/15560199675296.jpg" alt="" style="width:926px;"/></p>
-
-<p><strong>Archive时文件中虽然没有符号表，但是生成了一个dSYM符号文件</strong>，通常名称为<code>xxx.app.dSYM</code><br/>
-Xcode Release编译默认会生成dSYM文件，而debug编译默认不会生成,对应的Xcode配置如下：<br/>
-<code>XCode -&gt; Build Settings -&gt; Code Generation -&gt; Generate Debug Symbols -&gt; Yes</code><br/>
-<code>XCode -&gt; Build Settings -&gt; Build Option -&gt; Debug Information Format -&gt; DWARF with dSYM File</code><br/>
-<img src="media/15560067896432/15560166666589.jpg" alt="" style="width:557px;"/><br/>
-<img src="media/15560067896432/15560215274669.jpg" alt="" style="width:719px;"/></p>
-
-<p>每次构建都会生成不同的符号表，每个符号表都有不同的UUID<br/>
-查看dSYM文件的UUID</p>
-
-<pre><code class="language-linux">xcrun dwarfdump --uuid &lt;dSYM文件&gt;
+<pre><code class="language-objectivec">^void(void){
+    printf(&quot;Blocks\n&quot;)
+}
 </code></pre>
 
-<p>因此发布的app，在crash后并不能在设备上完成符号化工作，只能返回带地址的日志信息，需要我们自己进行符号化解析</p>
+<p>其中返回值类型和参数列表均可省略</p>
 
-<h4 id="toc_11">用Xcode解析日志</h4>
+<h3 id="toc_2">block类型</h3>
 
-<p>当<code>crash log</code>和<code>DSYM或者App</code>携带的UUID一致时(crash log的UUID指的是镜像的UUID)，Xcode可以将日志中的地址信息符号化为代码中的符号</p>
+<p><code>返回值类型(^变量名)参数列表</code></p>
 
-<ul>
-<li>如果该App是由自己电脑编译生成的，Xcode根据spotlight自动找到对应的符号文件</li>
-<li><p>如果不是自己电脑编译生成的，只需要将.app和dSYM放入同一文件夹，然后手动生成索引。</p>
-<pre><code class="language-objectivec">//mdimport命令: 导入文件到datasource,这样Xcode也能找到符号文件
-mdimport pathName
+<pre><code class="language-objectivec">//例如
+int(^blk)(int) = ^(int count){return count+1}
+//赋值
+int(^blk1)(int) = blk
 </code></pre>
-<p><code>Xcode</code>能根据UUID找到对应的符号文件，就能通过Xode的<code>Xcode-&gt;Devices-&gt;View Device Logs</code>自动解析解析崩溃日志</p></li>
-</ul>
 
-<h4 id="toc_12">symbolicatecrash</h4>
+<p>使用typedef声明block类型变量<br/>
+<code>typedef int (^blk_t)(int)</code></p>
 
-<p>symbolicatecrash是Xcode自带的一个分析工具，可以通过机器上的崩溃日志和应用的.dSYM文件定位发生崩溃的位置，把crash日志中的一堆地址替换成代码相应位置。</p>
+<h3 id="toc_3">截获自动变量值</h3>
 
-<p>步骤:</p>
+<p>在Blocks中，block表达式回拨或所使用的自动变量的值，即保存了该自动变量的瞬间值。</p>
 
-<ol>
-<li><p>找到symbolicatecrash文件位置</p>
-<pre><code class="language-linx">find /Applications/Xcode.app -name symbolicatecrash -type f
-</code></pre>
-<p>将找到的文件拷贝到自己创建的文件夹中</p></li>
-<li><p>从Xcode的Archive中找到.dSYM文件和.app文件拷贝到自己创建的文件夹中</p></li>
-<li><p>在终端执行命令</p>
-<pre><code class="language-linux">./symbolicatecrash ./*.crash ./*.app.dSYM &gt; symbol.crash
-</code></pre>
-<blockquote>
-<p>如果这一步出现<code>DEVELOPER_DIR</code>错误 就需要先执行命令</p>
-<pre><code class="language-linix">export DEVELOPER_DIR=&quot;/Applications/XCode.app/Contents/Developer&quot;
-</code></pre>
-</blockquote></li>
-<li><p>在symbol.crash中查看符号化后崩溃信息</p></li>
-</ol>
+<h3 id="toc_4">__block说明符</h3>
 
-<h4 id="toc_13">atos命令</h4>
+<p>自动变量值捕获只能保存其瞬间值，但是保存后并不能改写该值了。</p>
 
-<p>这是更常用的命令</p>
+<p>如果想在block语法的表达式中将值赋给在Block语法外声明的自动变量，需要在该自动变量前添加<code>__block</code>修饰符</p>
 
-<pre><code class="language-objectivec">//loadAddress：进程加载地址
-//architecture： 架构常用的有arm64或者armv7
-atos [-o AppName.app/AppName] [-l loadAddress] [-arch architecture]
-atos -o Your.app.dSYM/Contents/Resources/DWARF/Your -arch armv7 -l 0xa2000 0x000f0846
+<h3 id="toc_5">截获对象</h3>
 
-</code></pre>
+<p>当截获的为<code>OC</code>的对象时，其实是截获的为对象的指针，因此我们可以在不修改指针的情况下修改该对象内容，而不需要添加<code>__block</code>修饰符</p>
 
 
 		</div>
@@ -244,24 +149,24 @@ atos -o Your.app.dSYM/Contents/Resources/DWARF/Your -arch armv7 -l 0xa2000 0x000
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -281,10 +186,10 @@ atos -o Your.app.dSYM/Contents/Resources/DWARF/Your -arch armv7 -l 0xa2000 0x000
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -308,7 +213,7 @@ atos -o Your.app.dSYM/Contents/Resources/DWARF/Your -arch armv7 -l 0xa2000 0x000
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -319,7 +224,7 @@ atos -o Your.app.dSYM/Contents/Resources/DWARF/Your -arch armv7 -l 0xa2000 0x000
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -337,6 +242,15 @@ atos -o Your.app.dSYM/Contents/Resources/DWARF/Your -arch armv7 -l 0xa2000 0x000
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -346,31 +260,31 @@ atos -o Your.app.dSYM/Contents/Resources/DWARF/Your -arch armv7 -l 0xa2000 0x000
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

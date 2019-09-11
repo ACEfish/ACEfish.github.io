@@ -82,145 +82,23 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14968918049808.html">NSURL</a></h1>
-			<p class="meta"><time datetime="2017-06-08T11:16:44+08:00" 
-			pubdate data-updated="true">2017/6/8</time></p>
+		  	<h1 class="entry-title"><a href="15077234771115.html">ARKit</a></h1>
+			<p class="meta"><time datetime="2017-10-11T20:04:37+08:00" 
+			pubdate data-updated="true">2017/10/11</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>URL(统一资源定位符) 是一种 URI，URN(统一资源名称) 也是一种 URI，所以 URI (统一资源标志符)可被视为定位符，名称或两者兼备</p>
+		  	<p>AR即虚拟现实增强技术</p>
 
-<h2 id="toc_0">URL Encode</h2>
+<p><code>ARKit</code>是基于苹果的游戏引擎3D(SceneKit)和2D的(SpriktKit)</p>
 
-<p><a href="http://www.jianshu.com/p/38f5f53dfbad">[iOS-Foundation] NSURL</a><br/>
-<code>URL</code>采用<code>ASCII</code>编码格式，所以不支持如中文等非<code>ASCII</code>码字符，另外<code>URL</code>中保留的分隔符号(?、&amp;、=等)也无法作为内容，否则会引起歧义。<br/>
-这就需要通过编码，用安全的字符来表示这些不符合要求的字符，格式是%加两位安全字符，所以 URL 编码也称为百分号编码。</p>
+<p>注意:需要A9处理器的的iOS11以上的系统</p>
 
-<pre><code class="language-objectivec">//Encode编码
-NSString *urlString = @&quot;?&quot;;
-NSString *encodedString = [urlString stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLHostAllowedCharacterSet]];
-//encodedString值为 %3F
-//替换不符合要求UTF-8编码为百分号编码字符
-@interface NSCharacterSet (NSURLUtilities)
-+ (NSCharacterSet *)URLUserAllowedCharacterSet;
-+ (NSCharacterSet *)URLPasswordAllowedCharacterSet;
-+ (NSCharacterSet *)URLHostAllowedCharacterSet;
-+ (NSCharacterSet *)URLPathAllowedCharacterSet;
-+ (NSCharacterSet *)URLQueryAllowedCharacterSet;
-+ (NSCharacterSet *)URLFragmentAllowedCharacterSet;
-@end
-</code></pre>
+<p>增强现实的目标是往真实世界中的特定点插入虚拟内容，并且在真实世界中移动时还能对此虚拟内容保持追踪。ARKit 的基本流程包括从 iOS 设备摄像头中读取视频帧，对每一帧的图片进行处理并获得特征点。特征有很多很多，但我们需要从图片中找出能在多个帧中都被追踪到的特征。特征可能是物体的某个角，或是有纹理的织物的某条边等等。有很多种方式可以生成这些特征，可以在网上了解更多（例如搜索 SIFT）但目前我们只需知道，每张图片里会产生多个唯一标识的特征就足够了。</p>
 
-<pre><code class="language-objectivec">//Unencode解码
-+ (NSString *)decodeURLString:(NSString *)URLString {
-    // 有时从服务端获取的 URL 中，空格被编码为+, 
-    // 而方法- stringByRemovingPercentEncoding只替换百分号编码，
-    // 所以要在执行该方法前，先将`+`替换掉(真正的加号字符是被百分号编码的)
-    NSString *result = [URLString stringByReplacingOccurrencesOfString:@&quot;+&quot; withString:@&quot; &quot;];
-    //替换所有百分号编码为UTF-8编码字符
-    result = [result stringByRemovingPercentEncoding];
-    return result;
-}
-</code></pre>
+<p>获得某张图片的特征后，就可以从多个帧中追踪这些特征，随着用户在世界中移动，就可以利用相应的特征点来估算 3D 世界信息，例如当前摄像头的位置和特征的位置。用户移动地越多，就会获得越多的特征，并优化这些估算的 3D 世界信息。</p>
 
-<h2 id="toc_1">NSURL</h2>
-
-<p><a href="https://developer.apple.com/documentation/foundation/nsurl?preferredLanguage=occ">NSURL苹果官方文档</a></p>
-
-<p>我们通过<code>NSURL</code>对象来构建一个资源定位符。对于本地文件的资源定位符,我们可以直接操作这些问价你的属性（比如修改文件的的最后修改日期）,对于远程资源我们可以将<code>NSURL</code>对象传递给其他API来获取内容,<a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/URLLoadingSystem/URLLoadingSystem.html#//apple_ref/doc/uid/10000165i">Next About the URL Loading System</a></p>
-
-<p><code>URL</code>对象是指向本地文件的首选方案,大多数进行文件数据读写对象都接受一个<code>NSURL</code>对象而不是一个文件路径.例如：可以用文件<code>NSURL</code>获取<code>NSString</code>  <code>initWithContentsOfURL:encoding:error:</code>,获取<code>data</code>  <code>initWithContentsOfURL:options:error:</code></p>
-
-<p>你也可以用url资源定位符进行需要的操作,例如在<code>macOS</code>的<code>NSWorkspace</code>类和<code>iOS</code>的<code>UIApplication</code>类提供的<code>OpenURL:</code>方法来打开一个指定的URL位置</p>
-
-<p>此外,我们可以通过使用粘贴板来对<code>NSURL</code>对象进行引用（AppKit框架的一部分）</p>
-
-<p><code>NSURL</code>对应<code>Core Foundation</code>中的<a href="https://developer.apple.com/documentation/corefoundation/cfurlref?language=objc">CFURLRef</a>,我们可以查看<a href="https://developer.apple.com/library/content/documentation/General/Conceptual/CocoaEncyclopedia/Toll-FreeBridgin/Toll-FreeBridgin.html#//apple_ref/doc/uid/TP40010810-CH2">Toll-Free Bridging</a>来获取更多类似的与<code>Core Foundation</code>相对应的信息</p>
-
-<p>补充：<br/>
-Swift提供了<a href="https://developer.apple.com/documentation/foundation/url?language=objc">URL</a>结构，负责连接<code>NSURL</code>类，可以在<a href="https://developer.apple.com/library/content/documentation/Swift/Conceptual/Swift_Programming_Language/ClassesAndStructures.html#//apple_ref/doc/uid/TP40014097-CH13"> Classes and Structures</a>中查看更多信息</p>
-
-<h3 id="toc_2">URL结构</h3>
-
-<p>一个<code>NSURL</code>对象由两部分组成:一部分是可能为<code>nil</code>的<code>base URL</code>和一部分与<code>base URL</code>有相对关系的字符串<code>relativeString</code>。如果一个<code>NSURL</code>对象没有<code>base</code>部分只有<code>string</code>部分那么它被认为是绝对地址,否则为相对的.</p>
-
-<pre><code class="language-objectivec">//file:///path/to/user/ as the base URL and folder/file.html
-/**
-    我们指定 file:///path/to/user/ 为baseURL folder/file 为字符串部分
-*/
-NSURL *baseURL = [NSURL fileURLWithPath:@&quot;file:///path/to/user/&quot;];
-NSURL *URL = [NSURL URLWithString:@&quot;folder/file.html&quot; relativeToURL:baseURL];
-NSLog(@&quot;absoluteURL = %@&quot;, [URL absoluteURL]);//file:///path/to/user/ as the base URL and folder/file.html
-/**
-    这个URL的
-    absoluteString:  file:///file:/path/to/folder/file.html
-    baseURL:  file:///file:/path/to/user
-    relativeString： folder/file.html
-*/
-</code></pre>
-
-<p>对于一个<code>URL</code>我们可以将其分为很多部分,例如一个url如下：<br/>
-<code>https://johnny:p4ssw0rd@www.example.com:443/script.ext;param=value?query=value#ref</code></p>
-
-<table>
-<thead>
-<tr>
-<th>Component</th>
-<th>Value</th>
-</tr>
-</thead>
-
-<tbody>
-<tr>
-<td>scheme</td>
-<td>https</td>
-</tr>
-<tr>
-<td>user</td>
-<td>johnny</td>
-</tr>
-<tr>
-<td>password</td>
-<td>p4ssw0rd</td>
-</tr>
-<tr>
-<td>host</td>
-<td><a href="http://www.example.com">www.example.com</a></td>
-</tr>
-<tr>
-<td>port</td>
-<td>443</td>
-</tr>
-<tr>
-<td>path</td>
-<td>/script.ext</td>
-</tr>
-<tr>
-<td>pathExtension</td>
-<td>ext</td>
-</tr>
-<tr>
-<td>pathComponents</td>
-<td>[&quot;/&quot;, &quot;script.ext&quot;]</td>
-</tr>
-<tr>
-<td>parameterString</td>
-<td>param=value</td>
-</tr>
-<tr>
-<td>query</td>
-<td>query=value</td>
-</tr>
-<tr>
-<td>fragment</td>
-<td>ref</td>
-</tr>
-</tbody>
-</table>
-
-<p><code>NSURL</code>也提供了很多属性让我们来获取每部分</p>
-
-<h3 id="toc_3">书签以及安全范围</h3>
+<p>至于平面检测，就是在获得一定数量的 3D 特征点后，尝试在这些点中安装一些平面，然后根据尺度、方向和位置找出最匹配的那个。ARKit 会不断分析 3D 特征点并在代码中报告找到的平面。</p>
 
 
 		</div>
@@ -243,24 +121,24 @@ NSLog(@&quot;absoluteURL = %@&quot;, [URL absoluteURL]);//file:///path/to/user/ 
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -280,10 +158,10 @@ NSLog(@&quot;absoluteURL = %@&quot;, [URL absoluteURL]);//file:///path/to/user/ 
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -307,7 +185,7 @@ NSLog(@&quot;absoluteURL = %@&quot;, [URL absoluteURL]);//file:///path/to/user/ 
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -318,7 +196,7 @@ NSLog(@&quot;absoluteURL = %@&quot;, [URL absoluteURL]);//file:///path/to/user/ 
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -336,6 +214,15 @@ NSLog(@&quot;absoluteURL = %@&quot;, [URL absoluteURL]);//file:///path/to/user/ 
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -345,31 +232,31 @@ NSLog(@&quot;absoluteURL = %@&quot;, [URL absoluteURL]);//file:///path/to/user/ 
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

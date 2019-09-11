@@ -82,172 +82,58 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15553153173429.html">Cocoa基本内存管理规则</a></h1>
-			<p class="meta"><time datetime="2019-04-15T16:01:57+08:00" 
-			pubdate data-updated="true">2019/4/15</time></p>
+		  	<h1 class="entry-title"><a href="15541067561617.html">Link Map File && dSYM</a></h1>
+			<p class="meta"><time datetime="2019-04-01T16:19:16+08:00" 
+			pubdate data-updated="true">2019/4/1</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/MemoryMgmt/Articles/MemoryMgmt.html">官方文档地址</a></p>
+		  	<p>学习自 <a href="https://github.com/ming1016/study/wiki/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90-iOS-%E7%BC%96%E8%AF%91-Clang---LLVM">深入剖析iOS编译</a></p>
 
-<h2 id="toc_0">基本内存管理规则</h2>
+<h2 id="toc_0">编译后生成的二进制内容 Link Map File</h2>
 
-<p>内存管理是基于对象所有权进行管理的，任一对象都可能有1个或者多个持有者，只要至少有一个持有者，该对象就会一直存在，否则加入没有了持有者，运行时系统就会将其自动销毁，为确保你可以清楚管理自己持有对象，<code>Cocoa</code>设置了基本的内存分配原则:</p>
+<p>在<code>build Setting</code>里设置<code>Write Link Map File</code>为Yes后，每次编译都会在指定目录生成这样一个文件。文件内容包含了<code>Object files</code>，<code>Sections</code>，<code>Symbols</code></p>
 
-<h3 id="toc_1">自己生成的对象，自己持有</h3>
+<h3 id="toc_1">Object files</h3>
 
-<pre><code class="language-text">当你使用`alloc`、`new`、`copy`、`mutableCopy`开头的方法创建一个对象时
+<p>这部分内容都是.m编译后的.o和需要link的.a文件。前面是文件编号，后面是文件路径</p>
 
-alloc或者new就自己生成对象并持有
-copy方法利用基于`NSCopying`协议约定，由各类实现`copyWithZone:`方法生成并持有对象副本；mutableCopy方法与其类似，只是其利用基于`NSMutableCopying`协议约定，由各类实现`mutableCopyWithZone:`方法生成并持有对象的副本。而两者区别在于：copy生成的时可变对象，而mutableCopy生成了可变更对象。虽然生成的是副本，但是仍然是生成并持有对象
+<pre><code class="language-c">[  2] /Users/fish/Library/Developer/Xcode/DerivedData/RSSReader-dguiqpuhzqvuwbewcrithsiyuewj/Build/Intermediates.noindex/RSSReader.build/Debug-iphonesimulator/RSSReader.build/Objects-normal/x86_64/UIView+Extension.o
+...
+...
+...
+[160] /Users/fish/Library/Developer/Xcode/DerivedData/RSSReader-dguiqpuhzqvuwbewcrithsiyuewj/Build/Products/Debug-iphonesimulator/libPods-RSSReader.a(Pods-RSSReader-dummy.o)
 </code></pre>
 
-<h3 id="toc_2">非自己生成的对象，自己也可以使用<code>retain</code>持有</h3>
+<h3 id="toc_2">Sections</h3>
 
-<pre><code class="language-text">用除了上面的方法外生成的对象，所以并非自己生成的对象持有，可以使用retain进行持有
+<p>描述每个Section在可执行文件中的位置和大小。每个Section的Segment类型分为__TEXT代码段和__DATA数据段两种</p>
 
-为了保证接收到的对象在接收到的方法中保持有效，并且该方法也可以安全的将对象返回给其调用者。通常需要在以下两种情况下`retain`:
-1. 在访问器方法和初始化方法实现中，对想要作为属性存储的对象进行持有
-2. 防止对象因为其他操作的副作用而失效(例如从数组移除或父对象被删除)
-</code></pre>
+<p><img src="media/15541067561617/15541075745329.jpg" alt="" style="width:698px;"/><br/>
+.data数据段里面保存的都是初始化过的全局静态变量和局部静态变量。.rodata段存放的是只读数据，一般都是const修饰的变量和字符串常量。.bss段存放的是未初始化的全局变量和局部静态变量。代码段就在.text段。</p>
 
-<h3 id="toc_3">当你不再需要该对象，释放</h3>
+<h3 id="toc_3">Symbols</h3>
 
-<pre><code class="language-text">自己持有的对象，当不再需要时需要，通过`release`或者`autorelease`方法放弃对象的持有权
-</code></pre>
+<p>symbols对Sections进行了再划分。这里会描述所有的method、ivar和字符串，以及对应的地址、大小、文件编号信息等</p>
 
-<h3 id="toc_4">非自己持有的对象无法释放</h3>
+<p><img src="media/15541067561617/15541077442023.jpg" alt="" style="width:650px;"/><br/>
+<img src="media/15541067561617/15541077540760.jpg" alt="" style="width:732px;"/></p>
 
-<p>例如:</p>
+<h2 id="toc_4">每次编译后生成的dSYM文件</h2>
 
-<pre><code class="language-objectivec">id obj = [NSMutableArray array];
-//释放了非自己持有的对象
-[obj release];
-</code></pre>
+<p>在每次编译后都会生成dSYM文件，程序在执行中通过地址来调用方法函数，而dSYM文件里存储了函数地址映射，这样调用栈里的地址可以通过dSYM这个映射表获取具体函数的位置。常用来处理crash时获取到的调用栈.crash文件，将其符号化</p>
 
-<h2 id="toc_5">内存管理方法的实现</h2>
+<p>可以通过 Xcode 进行符号化，将 .crash 文件，.dSYM 和 .app 文件放到同一个目录下，打开 Xcode 的 Window 菜单下的 organizer，再点击 Device tab，最后选中左边的 Device Logs。选择 import 将 .crash 文件导入就可以看到 crash 的详细 log 了。</p>
 
-<p>苹果管理对象内存引用计数的方法大概是通过散列表(引用计数表)的方式，这张表的键位内存块地址的散列值(hash值)，而值即为该对象内存的引用计数</p>
+<p>还可以通过命令行工具 symbolicatecrash 来手动符号化 crash log。同样先将 .crash 文件，.dSYM 和 .app 文件放到同一个目录下，然后输入下面的命令</p>
 
-<p>而至于<code>retainCount/retain/release</code>方法实现是通过CoreFoundation中的<code>__CFDoExternRefOperation（）</code>函数，通过不同的操作将表中对象内存地址对应的引用计数进行操作</p>
-
-<h2 id="toc_6">示例</h2>
-
-<h4 id="toc_7">0.可以通过retainCount获取对象引用计数</h4>
-
-<pre><code class="language-objectivec">//可以通过retainCount获取对象引用计数
-id obj = [[NSObject alloc] init];
-NSLog(@&quot;%ld&quot;, [obj retainCount]);
-</code></pre>
-
-<h4 id="toc_8">1.不在需要时使用release释放</h4>
-
-<pre><code class="language-objectivec">//自己生成持有的对象 自己释放
-{
-    id obj = [[NSObject alloc] init];
-    [obj release];
-}
-//非自己生成持有的对象，自己释放
-{
-    id array = [NSMutableArray array];
-    [array retain];
-    [array release];
-}
-</code></pre>
-
-<h4 id="toc_9">2. 使用autorelease来延时释放</h4>
-
-<p>当需要用某个方法生成对象，并返回给调用方:</p>
-
-<pre><code class="language-objectivec">
-- (id)allocObject {
-    id obj = [[NSObject alloc] init];
-    return obj;
-}
-</code></pre>
-
-<p>因为调用方法名满足以<code>alloc</code>开头条件，因此返回生成并持有的对象，就可以让调用方也持有该对象</p>
-
-<p>那么类似[NSMutableArray Array]生成对象，但是不持有对象是如何实现的：</p>
-
-<pre><code class="language-objectivec">- (NSString *)fullName {
-    NSString *string = [[[NSString alloc] initWithFormat:@&quot;%@ %@&quot;,
-                                          self.firstName, self.lastName] autorelease];
-    return string;
-}
-</code></pre>
-
-<p>根据内存管理规则，你必须释放<code>alloc</code>对象，但是如果直接<code>release</code>，string就会在返回前被deallocated(方法就会返回一个无效对象),因此我们可以使用<code>autorelease</code>,表示想要释放对象，但是允许方法调用者在释放之前使用方法的返回值</p>
-
-<blockquote>
-<p><code>autorelease</code>会使对象继续存在 但是自己并不持有对象<br/>
-这种方法的命名开头不能为<code>alloc/mew/copy/mutablerCopy</code></p>
-</blockquote>
-
-<p>还可以这么写:</p>
-
-<pre><code class="language-objectivec">- (NSString *)fullName {
-    NSString *string = [NSString stringWithFormat:@&quot;%@ %@&quot;,
-                                 self.firstName, self.lastName];
-    return string;
-}
-</code></pre>
-
-<p>此时<code>string</code>对象自己并不持有，因此也不负责释放，可以安全的返回给方法的调用者</p>
-
-<h4 id="toc_10">3.你不持有通过引用返回的对象</h4>
-
-<p>在<code>cocoa</code>方法中一些对象通过<strong>引用</strong>返回(即这些方法有参数为<code>class **</code>或者<code>id *</code>),例如常用的<code>NSError</code>对象</p>
-
-<pre><code class="language-objectivec">NSString *fileName = &lt;#Get a file name#&gt;;
-NSError *error;
-NSString *string = [[NSString alloc] initWithContentsOfFile:fileName
-                        encoding:NSUTF8StringEncoding error:&amp;error];
-if (string == nil) {
-    // Deal with error...
-}
-// ...
-[string release];
-</code></pre>
-
-<p>当你调用这些方法时，你并不创建<code>NSError</code>对象，你并不持有该对象，因此也无需release</p>
-
-<h3 id="toc_11">使用dealloc放弃对象的所有权</h3>
-
-<p><code>NSObject</code>类中定义了<code>dealloc</code>方法，当对象没有了持有者或者需要被回收时，就会调用该方法.其作用是释放对象内存，并且处置其拥有的资源，包括释放其持有的所有对象</p>
-
-<pre><code class="language-objectivec">@interface Person : NSObject
-@property (retain) NSString *firstName;
-@property (retain) NSString *lastName;
-@property (assign, readonly) NSString *fullName;
-@end
- 
-@implementation Person
-// ...
-- (void)dealloc
-    [_firstName release];
-    [_lastName release];
-    [super dealloc];
-}
-@end
+<pre><code class="language-objectivec">export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+symbolicatecrash appName.crash appName.app &gt; appName.log
 </code></pre>
 
 <blockquote>
-<ol>
-<li>不要主动调用另外一个对象的dealloc方法</li>
-<li>在dealloc方法后必须主动调用super(MRC环境下)</li>
-<li>不要将系统资源的管理与对象声明周期相关联</li>
-<li>当应用被杀死时，对象不会收到<code>dealloc</code>方法，因为应用进程内存都会在退出时进行清理</li>
-</ol>
+<p>debug环境默认不生成dsym文件，release环境才会生成</p>
 </blockquote>
-
-<h3 id="toc_12">Core Foundation的内存管理规则比较</h3>
-
-<p><code>Core Foundation</code>对象的<a href="https://developer.apple.com/library/archive/documentation/CoreFoundation/Conceptual/CFMemoryMgmt/CFMemoryMgmt.html#//apple_ref/doc/uid/10000127i">内存管理规则</a>和Cocoa相似，但是其命名约定是不同的,特别是Core Foundation的Create Rule不适用于返回Objective-C对象的方法。<br/>
-例如：</p>
-
-<pre><code class="language-objectivec">MyClass *myInstance = [MyClass createInstance];
-</code></pre>
 
 
 		</div>
@@ -270,24 +156,24 @@ if (string == nil) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -307,10 +193,10 @@ if (string == nil) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -334,7 +220,7 @@ if (string == nil) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -345,7 +231,7 @@ if (string == nil) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -363,6 +249,15 @@ if (string == nil) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -372,31 +267,31 @@ if (string == nil) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

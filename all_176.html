@@ -82,72 +82,140 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15042543172572.html">嵌套类型</a></h1>
-			<p class="meta"><time datetime="2017-09-01T16:25:17+08:00" 
-			pubdate data-updated="true">2017/9/1</time></p>
+		  	<h1 class="entry-title"><a href="14861704124969.html">iOS 滤镜</a></h1>
+			<p class="meta"><time datetime="2017-02-04T09:06:52+08:00" 
+			pubdate data-updated="true">2017/2/4</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><strong>嵌套类型:</strong>在支持的类型中定义嵌套的枚举、类和结构体</p>
+		  	<hr/>
 
-<p>要在一个类型中嵌套另一个类型,将嵌套类型的定义写在其外部类型的<code>{}</code>内，而且可以根据需要定义多级嵌套</p>
+<h3 id="toc_0">CIFilter实现滤镜效果</h3>
 
-<h2 id="toc_0">嵌套类型实践</h2>
+<p>参考网址:<a href="http://www.jianshu.com/p/98ba256b034a" title="CoreImage滤镜学习 - 简书">CoreImage滤镜学习</a> </p>
 
-<pre><code class="language-swift">struct BlackjackCard {
-    //嵌套的 Suit 枚举//牌的花色
-    enum Suit: Character {
-        case Spades = &quot;块&quot;, Hearts = &quot;心&quot;, Diamonds = &quot;*&quot;, Clubs = &quot;额&quot;
-    }
-    //嵌套的 Rank 枚举
-    enum Rank: Int {
-        case Two = 2, Three, Four, Five, Six, Seven, Eight, Nine, Ten
-        case Jack, Queen, King, Ace
-        struct Values {//用于反应Ace有两种值，而其他只有一个
-            let first: Int, second: Int?
-        }
-        var values: Values {
-            switch self {
-                case .Ace:
-                    return Values(first: 1, second: 11)
-                case .Jack, .Queen, .King:
-                    return Values(first: 10, second: nil)
-                default:
-                    return Values(first: self.rawValue, second: nil)
-            }
-        }
-    }
-    // BlackjackCard 的属性和方法
-    let rank: Rank, suit: Suit
-    var description: String {
-        var output = &quot;suit is \(suit.rawValue),&quot;
-        output += &quot; value is \(rank.values.first)&quot;
-        if let second = rank.values.second {
-            output += &quot; or \(second)&quot;
-        }
-        return output
-    }
+<h5 id="toc_1">CoreImage框架介绍</h5>
+
+<p>1.是一个图片框架 基于<code>OpenGL</code>顶层创建，底层用着色器来处理图像<br/><br/>
+2.利用GPU基于硬件加速来处理图像<br/><br/>
+3.CoreImage中有很多滤镜<br/><br/>
+4.它们能够一次给予一张图像或者视频帧多种视觉效果 -&gt; 滤镜链<br/><br/>
+5.滤镜可以连接起来组成一个滤镜链 把滤镜效果叠加起来处理图像</p>
+
+<h5 id="toc_2">CIFilter使用介绍</h5>
+
+<ol>
+<li><p><code>CIFilter</code>滤镜类中有很多的滤镜效果 这里不一一列举，可以按住command 点击CIFilter 进入接口文件 找到第128行-148行全部都是 效果分类  </p></li>
+<li><p>常用效果<br/><br/>
+我们使用时需要先找到需要的效果类型 比如我们使用<code>kCICategoryDistortionEffect</code>失真的效果类型，有了效果类型我们需要找到里面我们需要的效果.<br/><br/>
+<code>NSLog -&gt; [CIFilter filterNamesInCategory:刚才拷贝的分类];</code><br/><br/>
+比如<code>CIColorMonochrome </code>,然后就可以使用这个滤镜效果<br/><br/>
+<code>CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome”];</code><br/><br/>
+然后打印这个效果中包含了那些属性:<br/><br/>
+<code>NSLog(@&quot;%@&quot;,filter.attributes);</code><br/><br/>
+在里面我们可以看到好多属性，里面是多个字典的形式，找到我们想要修改的属性(key值) 然后在他对应的value里面查看一下他的属性类型，比如我们打印的CIColorMonochrome里面有一个inputColor，他是一个CIColor类型的，有默认值，这里我们写了一个CIColor来给他进行赋值.<br/><br/>
+赋值时需要用kvc的方式:<br/><br/>
+<code>[filter setValue:colorforKey:kCIInputColorKey];</code><br/><br/>
+<img src="media/14861704124969/DraggedImage.png" alt="DraggedImage"/></p></li>
+<li><p>实现滤镜效果代码<br/><br/>
+首先我们创建一个全局变量的UIImageView，然后让他初始化出来,这个就是我们要处理的图片 一般我们从手机相册中取出来:<br/><br/>
+ @interface ViewController ()&lt;UINavigationControllerDelegate,UIImagePickerControllerDelegate&gt;<br/>
+    {<br/>
+         UIImageView *imageView;<br/>
+    }<br/>
+    @end<br/>
+    然后我们需要从相册中取出一张图片,保存起来:<br/>
+    //跳转相册的触发方法<br/>
+    - (void)doit{<br/>
+    UIImagePickerController *vc = [[UIImagePickerController alloc]init];<br/>
+    vc.delegate = self;<br/>
+    [self presentViewController:vc animated:YES completion:nil];</p>
+<pre><code class="language-text">}
+//让图片显示在VC上面的方法<br/>
+- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary&lt;NSString *,id&gt; *)info<br/>
+{<br/>
+NSLog(@&quot;%@&quot;,info);<br/>
+//获得选中的图像<br/>
+UIImage *chooseImage = info[UIImagePickerControllerOriginalImage];<br/>
+//先是在试图空间上<br/>
+imageView.image = chooseImage;<br/>
+[self dismissViewControllerAnimated:YES completion:nil];<br/>
 }
 </code></pre>
-
-<p><code>BlackjackCard</code>结构体有默认的成员构造器,可以用默认构造器去初始化常量:</p>
-
-<pre><code class="language-swift">/**
-尽管Rank和Suit嵌套在BlackjackCard中,类型可以从上下文推断出来,
-因此可以用`.Ace 和.Spades`引用枚举实例
-*/
-let theAceOfSpades = BlackjackCard(rank: .Ace, suit: .Spades)
-print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
-// 打印 “theAceOfSpades: suit is ?, value is 1 or 11”
+<p><strong>接下来就是对图片进行滤镜处理:</strong><br/>
+    - (void)addColorFilter{<br/>
+    //CIImage 保存图像数据的类<br/>
+    CIImage <em>inputImage = [CIImage imageWithCGImage:imageView.image.CGImage];<br/>
+    //先打印NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);进去找到需要设置的属性(查询效果分类中都有什么效果)  可以设置什么效果<br/>
+    //然后通过[CIFilter filterWithName:@&quot;&quot;];找到属性   具体效果的属性<br/>
+    //然后通过KVC的方式设置属性<br/>
+    NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);<br/>
+    /</em><br/>
+     1.查询 效果分类中 包含什么效果：filterNamesInCategory:<br/>
+     2.查询 使用的效果中 可以设置什么属性（KVC） attributes</p>
+<pre><code class="language-text"> 使用步骤
+ 1.需要添加滤镜的源图<br/>
+ 2.初始化一个滤镜 设置滤镜（根据查询到的属性来设置）<br/>
+ 3.把滤镜 输出的图像 和滤镜  合并 CIContext -&gt; 得到一个合成之后的图像<br/>
+ 4.展示<br/>
+ */<br/>
+//CIFilter 滤镜类  图片属性进行细节处理的类<br/>
+CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome&quot;];<br/>
+NSLog(@&quot;%@&quot;,filter.attributes);<br/>
+//这个属性是必须赋值的，假如你处理的是图片的话<br/>
+[filter setValue:inputImage forKey:kCIInputImageKey];<br/>
+CIColor *color = [CIColor colorWithRed:1.000 green:0.759 blue:0.592 alpha:1];<br/>
+[filter setValue:color forKey:kCIInputColorKey];<br/>
+//CIContext 上下文是实现对图像处理的具体对象 用来把滤镜和图片合成成为一张图片 滤镜对象输出的图像并不是合成之后的图像，需要使用图片处理的上下文 合并输出图像<br/>
+    CIContext *context = [CIContext contextWithOptions:nil];<br/>
+CIImage *outPutImage = filter.outputImage;<br/>
+//CGImageRef-&gt;图像中的数据<br/>
+    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+    imageView.image = [UIImage imageWithCGImage:image];<br/>
+ }
 </code></pre>
-
-<h2 id="toc_1">引用嵌套类型</h2>
-
-<p>在嵌套类型的类型名前加上外部类型的类型名作为前缀:</p>
-
-<pre><code class="language-swift">let heartsSymbol = BlackjackCard.Suit.Hearts.rawValue
-//红心符号
+<p>注意：<br/><br/>
+对滤镜进行赋值之后图片就有了，但是我们这个时候拿出这个图片的时候发现他并没有发生变化，因为它只是单一进行了滤镜处理，还没有和原图片进行一个糅合。使用CIContext找到上下文对他进行糅合：<br/><br/>
+//extent得到图像的尺寸    合并一个包含源图   滤镜效果的图片<br/>
+    //1 滤镜输出的图像    2.合成之后图像的尺寸   图像.extent<br/>
+    CGImageRef imageRef = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+注意:<br/><br/>
+假如你的图片消失了，请检查一下，第一步获取图片的时候一定要获得图片的CGImage再来来获取，不要直接使用imageView.image.CGImage。</p></li>
+<li><p>滤镜链:<br/><br/>
+在给一张图片添加多种滤镜效果的时候，我们把它称为<code>滤镜链</code>，我们再添加滤镜链的时候，就是把图片添加一层滤镜，然后，和原图片糅合处理，然后在处理之后的图片上再添加一层滤镜，并不是直接给一张图片添加了两层路径，所以称为滤镜链。<br/><br/>
+我们继续使用这个图片，在它添加第一层滤镜的时候做一些修改:  </p>
+<pre><code class="language-text">//上接给效果属性赋值
+//把下面注释的给注释掉，然后添加一个方法<br/>
+    //CIContext<br/>
+//    CIContext *context = [CIContext contextWithOptions:nil];<br/>
+CIImage *outPutImage = filter.outputImage;<br/>
+[self addFilterLinkerWithImage:outPutImage];<br/>
+//    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+//    imageView.image = [UIImage imageWithCGImage:image];<br/>
+//再次添加滤镜  -&gt;  形成滤镜链<br/>
+- (void)addFilterLinkerWithImage:(CIImage *)image<br/>
+{<br/>
+CIFilter *filter = [CIFilter filterWithName:@&quot;CISepiaTone&quot;];<br/>
+[filter setValue:image forKey:kCIInputImageKey];<br/>
+CIContext *context = [CIContext contextWithOptions:nil];<br/>
+CGImageRef resultImage = [context createCGImage:filter.outputImage fromRect:filter.outputImage.extent];<br/>
+imageView.image = [UIImage imageWithCGImage:resultImage];<br/>
+//把添加好滤镜效果的图片   保存到相册<br/>
+//不可以直接保存 outputImage  -&gt;  这是一个没有吧滤镜效果和源图合成的图像<br/>
+UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishSavingWithError:contextInfo:), nil);<br/>
+ }<br/>
+//保存图片回调<br/>
+- (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo<br/>
+{<br/>
+    NSLog(@&quot;保存成功&quot;);<br/>
+}
 </code></pre>
+<p>这样就是一个双重的滤镜效果,同时保存到了相册.</p></li>
+</ol>
+
+<hr/>
+
+<h3 id="toc_3">系统自带简单的滤镜效果</h3>
 
 
 		</div>
@@ -170,24 +238,24 @@ print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -207,10 +275,10 @@ print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -234,7 +302,7 @@ print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -245,7 +313,7 @@ print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -263,6 +331,15 @@ print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -272,31 +349,31 @@ print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

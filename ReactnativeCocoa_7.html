@@ -82,68 +82,83 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15529084547270.html">ReactObjc常用</a></h1>
-			<p class="meta"><time datetime="2019-03-18T19:27:34+08:00" 
-			pubdate data-updated="true">2019/3/18</time></p>
+		  	<h1 class="entry-title"><a href="15578193513091.html">RACStream</a></h1>
+			<p class="meta"><time datetime="2019-05-14T15:35:51+08:00" 
+			pubdate data-updated="true">2019/5/14</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">常用信号</h2>
+		  	<p><code>RACStream</code>是继承自NSObject最基础的类，其它的子类例如<code>RCSignal</code>、<code>RACSequence</code>均继承自该类</p>
 
-<pre><code class="language-objectivec">//按钮点击事件信号
-RACSignal *controlUpdate = [myButton rac_signalForControlEvents:UIControlEventTouchUpInside];
+<p><code>RACStream</code>作为一个抽象类存在，本身并不提供任何方法的实现，内部方法均为抽象方法，在调用时抛出异常</p>
 
-//监测textField改变信号
-RACSignal *textChange = [myTextField rac_textSignal];
-
-//alertView UIActionSheet UIImagePickerControl 监测信号
-//例如对alertView  UIActionSheet 等监测返回的就是点击的按钮index
-RACSignal *alertButtonClicked = [myAlertView rac_buttonClickedSignal];
-
-//监测对象某个事件的执行
-RACSignal *viewAppeared = [self rac_signalForSelector:@selector(viewDidAppear:)];
+<pre><code class="language-objectivec">+ (__kindof RACStream *)empty {
+    NSString *reason = [NSString stringWithFormat:@&quot;%@ must be overridden by subclasses&quot;, NSStringFromSelector(_cmd)];
+    @throw [NSException exceptionWithName:NSInternalInconsistencyException reason:reason userInfo:nil];
+}
+- (__kindof RACStream *)bind:(RACStreamBindBlock (^)(void))block
+// return 根据该value 返回一个RACStream对象
++ (__kindof RACStream *)return:(id)value
+- (__kindof RACStream *)concat:(RACStream *)stream
+- (__kindof RACStream *)zipWith:(RACStream *)stream
 
 </code></pre>
 
-<h2 id="toc_1">UI控件展示与对象属性的绑定</h2>
+<p>但是在RACStream的Operations分类<code>RACStream (Operations)</code>提供了更丰富的方法</p>
 
-<pre><code class="language-objectivec">//将label内容与model属性绑定  之后当model属性改变即会改变label内容，
-//RACObserve 是采用了KVO方式，因此改变userFullName属性方法需要出发setter方法 
-RAC(self.userNameLabel, text) = RACObserve(self.viewModel, userFullName);
+<pre><code class="language-objectivec">//对信号的值进行map映射
+- (__kindof RACStream *)flattenMap:(__kindof RACStream * (^)(id value))block {
+    Class class = self.class;
 
-//当要赋值的属性类型不一致时，可以使用map将属性调整一致
-RAC(self.countLabel, text) = [RACObserve(cellVM, count) map:^id _Nullable(NSNumber *  _Nullable value) {
-    return value.stringValue;
-}];
+    return [[self bind:^{
+        return ^(id value, BOOL *stop) {
+            id stream = block(value) ?: [class empty];
+            NSCAssert([stream isKindOfClass:RACStream.class], @&quot;Value returned from -flattenMap: is not a stream: %@&quot;, stream);
 
-//将UI控件内容绑定到对象属性
-//将Textfield内容绑定到self.viewModel的userName属性 
-//rac_textSignal默认检测textEditingEvent 因此代码级别改变Textfield内容不会触发此信号
-RAC(self.viewModel, username) = [myTextfield rac_textSignal];
-</code></pre>
+            return stream;
+        };
+    }] setNameWithFormat:@&quot;[%@] -flattenMap:&quot;, self.name];
+}
+- (__kindof RACStream *)flatten
+- (__kindof RACStream *)map:(id (^)(id value))block
+- (__kindof RACStream *)mapReplace:(id)object
 
-<h2 id="toc_2">UI事件与对象数据绑定</h2>
+//根据规则过滤
+- (__kindof RACStream *)filter:(BOOL (^)(id value))block
+- (__kindof RACStream *)ignore:(id)value
 
-<pre><code class="language-objectivec">//订阅数据改变的信号 当数据信号改变时刷新tableView 这样之后我们只需要改变数据即可 无需手动调用tableView刷新事件
-//因为这里tableView的刷新绑定两个属性 因此我们需要对这两个信号执行merge
-//因为多个信号 同时改变的话可能会导致多次刷新 因此`bufferWithTime`
-//设置在指定时间内只执行一次 当设置为0时 在下次屏幕刷新之前(即一个runloop中) 只执行一次 而不会多次刷新
-@weakify(self);
-[[[RACSignal merge:@[RACObserve(self.viewModel, tweets),
-                    RACObserve(self.viewModel, allTweetsLoaded)]]
-bufferWithTime:0 onScheduler:[RACScheduler mainThreadScheduler]]
-subscribeNext:^(id value) {
-    @strongify(self);
-    [self.tableView reloadData];
-}];
+//对RACTuple中每个值进行处理 
+- (__kindof RACStream *)reduceEach:(RACReduceBlock)reduceBlock
 
+//将RACStream 前拼上一个新的值
+- (__kindof RACStream *)startWith:(id)value
 
-//按钮点击事件
-[[self.goButton rac_signalForControlEvents:UIControlEventTouchUpInside]
-subscribeNext: ^(id value) {
-    @strongify(self);
-    [self.viewModel getTweetsForCurrentUsername];
-}];
+//跳过固定个数的值
+- (__kindof RACStream *)skip:(NSUInteger)skipCount
+//接收前固定个数的值
+- (__kindof RACStream *)take:(NSUInteger)count
+
+//将一组Stream按照block的规则合并为一个  
++ (__kindof RACStream *)join:(id&lt;NSFastEnumeration&gt;)streams block:(RACStream * (^)(id, id))block
++ (__kindof RACStream *)zip:(id&lt;NSFastEnumeration&gt;)streams
++ (__kindof RACStream *)zip:(id&lt;NSFastEnumeration&gt;)streams reduce:(RACGenericReduceBlock)reduceBlock
+
+//一组Stream contact(连接)
++ (__kindof RACStream *)concat:(id&lt;NSFastEnumeration&gt;)streams
+
+//用初始值开始reduce 返回每次block之后的结果
+- (__kindof RACStream *)scanWithStart:(id)startingValue reduceWithIndex:(id (^)(id, id, NSUInteger))reduceBlock
+
+//忽略不符合条件的
+- (__kindof RACStream *)takeUntilBlock:(BOOL (^)(id x))predicate
+- (__kindof RACStream *)takeWhileBlock:(BOOL (^)(id x))predicate
+
+//忽略不符合条件的 直到第一个符合条件的
+- (__kindof RACStream *)skipUntilBlock:(BOOL (^)(id x))predicate
+- (__kindof RACStream *)skipWhileBlock:(BOOL (^)(id x))predicate
+
+//忽略未改变值的改变
+- (__kindof RACStream *)distinctUntilChanged
 </code></pre>
 
 
@@ -167,24 +182,24 @@ subscribeNext: ^(id value) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -204,10 +219,10 @@ subscribeNext: ^(id value) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -231,7 +246,7 @@ subscribeNext: ^(id value) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -242,7 +257,7 @@ subscribeNext: ^(id value) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -260,6 +275,15 @@ subscribeNext: ^(id value) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -269,31 +293,31 @@ subscribeNext: ^(id value) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

@@ -82,228 +82,219 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15548054751703.html">GCD的常用功能</a></h1>
-			<p class="meta"><time datetime="2019-04-09T18:24:35+08:00" 
-			pubdate data-updated="true">2019/4/9</time></p>
+		  	<h1 class="entry-title"><a href="15553988088853.html">ARC的修饰符</a></h1>
+			<p class="meta"><time datetime="2019-04-16T15:13:28+08:00" 
+			pubdate data-updated="true">2019/4/16</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">1. dispatch_after</h2>
+		  	<p>在ARC有效的环境下，其内存管理规则和手动计数相同</p>
 
-<p>等待特定时间，<strong>异步</strong>的添加执行block到特定queue中</p>
+<ul>
+<li>自己生成对象，自己持有</li>
+<li>非自己生成对象，自己也能持有</li>
+<li>自己持有的对象不再需要时释放</li>
+<li>非自己持有的对象无法释放</li>
+</ul>
 
-<pre><code class="language-objectivec">void dispatch_after(dispatch_time_t when, dispatch_queue_t queue, dispatch_block_t block);
-//when： 时间，dispatch_time_t或者dispatch_walltime
-//queue: 执行的queue 被系统retain直到block完成
-//block: 函数内部帮助调用者适时执行Block_copy and Block_release
+<h2 id="toc_0">所有权修饰符</h2>
+
+<p>OC中的变量类型有对象类型(即指向OC类的指针<code>NSObject *</code>)和<code>id</code>类型(用于隐藏对象类型类名部分，相当于C语言中的void *)</p>
+
+<p>在ARC有效时，id类型和对象类型与C语言的其他类型不同，必须加上所有权修饰符</p>
+
+<ul>
+<li>__strong 修饰符</li>
+<li>__weak修饰符</li>
+<li>__unsafe __unretained修饰符</li>
+<li>__autoreleasing修饰符</li>
+</ul>
+
+<h2 id="toc_1">__strong修饰符</h2>
+
+<p><code>__strong</code>修饰符是id类型和对象类型的默认修饰符,即</p>
+
+<pre><code class="language-objectivec">id obj = [[NSObject alloc] init];
+//等效于
+id __strong obj = [[NSObject alloc] init];
+//或者
+__strong id obj = [[NSObject alloc] init];
 </code></pre>
 
-<h3 id="toc_1">dispatch_after_f</h3>
-
-<pre><code class="language-objectivec">void dispatch_after_f(dispatch_time_t when, dispatch_queue_t queue, void *context, dispatch_function_t work);
-</code></pre>
-
-<h2 id="toc_2">2. dispatch_apply</h2>
-
-<p><strong>同步</strong>的在指定的queue中执行指定次数 的block，可用来进行更有性能的迭代<br/>
-此方法将block提交到指定的queue中执行 并且<strong>等所有迭代完成后</strong>才会返回；<br/>
-如果目标队列是<code>dispatch_get_global_queue</code>迭代并发执行，因此应该保证block是<strong>可重入</strong>安全的，可以作为有效的并行for循环</p>
-
-<pre><code class="language-objectivec">void dispatch_apply(size_t iterations, dispatch_queue_t queue, void (^block)(size_t));
-//iterations: 执行几次
-//block: 执行事件 参数为当前执行次数
-</code></pre>
-
-<blockquote>
-<p>dispatch_apply 和 dispatch_apply_f 是同步函数,会阻塞当前线程直到所有循环迭代执行完成。</p>
-</blockquote>
-
-<h3 id="toc_3">dispatch_apply_f</h3>
-
-<p>将函数多次执行</p>
-
-<pre><code class="language-objectivec">void dispatch_apply_f(size_t iterations, dispatch_queue_t queue, void *context, void (*work)(void *, size_t));
-</code></pre>
-
-<h2 id="toc_4">3.dispatch_once</h2>
-
-<p>在应用程序的生命周期内 只执行一次block内容<br/>
-常用来初始化程序的单例数据<br/>
-当多线程执行时，其内部会保证同步执行等待block完成</p>
-
-<pre><code class="language-objectivec">void dispatch_once(dispatch_once_t *predicate, dispatch_block_t block);
-//predicate： dispatch_once_t指针 用来标记block是否已经被执行
-//
-</code></pre>
-
-<h4 id="toc_5">dispatch_once_t</h4>
-
-<p>必须保证为全局或者静态变量，如果该值动态或者自动存储将会发生无法预知事件</p>
-
-<h3 id="toc_6">dispatch_once_f</h3>
-
-<pre><code class="language-objectivec">void dispatch_once_f(dispatch_once_t *predicate, void *context, dispatch_function_t function);
-</code></pre>
-
-<h2 id="toc_7">4.dispatch_barrier</h2>
-
-<p>当执行到barrier block 其并不会立即执行，而是等待当前正在执行的所有block完成后才会执行，而所有在barrier block后的block会等待barrier block执行完成后才执行</p>
-
-<p>注意:<br/>
-<strong>使用的queue应该为concurrent队列，并且使用<code>dispatch_queue_create</code>函数创建的</strong></p>
-
-<h3 id="toc_8">dispatch_barrier_async</h3>
-
-<p>提交一个异步执行的barrier block并立即返回</p>
-
-<pre><code class="language-objectivec">void dispatch_barrier_async(dispatch_queue_t queue, dispatch_block_t block);
-//queue: barrier block执行的队列，系统持有该队列直到block执行完成
-//block：barrier block，这个block会被copy 和 retain直到执行完成
-</code></pre>
-
-<p><strong>dispatch_barrier_async_f</strong></p>
-
-<pre><code class="language-objectivec">void dispatch_barrier_async_f(dispatch_queue_t queue, void *context, dispatch_function_t work);
-</code></pre>
-
-<h3 id="toc_9">dispatch_barrier_sync</h3>
-
-<p><strong>同步</strong>提交一个barrier block并等待block执行完成，会阻塞当前线程</p>
-
-<pre><code class="language-objectivec">void dispatch_barrier_sync(dispatch_queue_t queue, dispatch_block_t block);
-//queue: barrier block执行的队列
-//block：barrier block，
-</code></pre>
-
-<blockquote>
-<p>与<code>dispatch_barrier_async</code>不同，因为是函数是同步执行的，因此queue不会被retain，block也不会进行copy</p>
-</blockquote>
-
-<p><strong>dispatch_barrier_sync_f</strong></p>
-
-<pre><code class="language-objectivec">void dispatch_barrier_sync_f(dispatch_queue_t queue, void *context, dispatch_function_t work);
-</code></pre>
-
-<h2 id="toc_10">5. dispatch_group_t</h2>
+<p>__strong修饰符的内存管理:</p>
 
 <ol>
-<li><p>group中的queue可以执行在不同queue，group中的blocks互相独立</p></li>
-<li><p><code>dispatch_group</code>一直追踪group内的未完成的block的数量，并且GCD会retain该group直到与其关联的所有block完成</p></li>
+<li><code>__strong</code>修饰符的变量赋值对象，即可完成对自己生成或非自己生成对象的强引用</li>
+<li>当变量超出作用域被废弃、变量所属对象废弃(赋值nil)或者变量赋值即会释放对原有对象的强引用，相当于对对象执行release操作</li>
 </ol>
 
-<p><strong>group 主要做的事情就是计算内部未完成blocks的数量</strong><br/>
-加到group中的block即会立即执行</p>
+<p>而当对象没有了所有者 就会被销毁</p>
 
-<h3 id="toc_11">dispatch_group_create</h3>
+<p>示例如下:</p>
 
-<pre><code class="language-objectivec">dispatch_group_t dispatch_group_create(void);
+<pre><code class="language-objectivec">//1.
+{
+    //取得非自己生成并持有的对象
+    id __strong obj = [NSMutableArray array];
+    //因为obj为强引用 所以自己持有对象
+}
+//此时变量obj超出作用域被废弃时，强引用失效，所以自动释放自己持有的对象
+
+//2.
+{
+    //取得自己生成并持有的对象
+    id __strong obj = [[NSObject alloc] init];
+    //因为obj为强引用 所以自己持有对象
+}
+/*
+* 此时变量obj超出作用域，强引用失效，所以自动释放自己持有的对象
+* 对象所有者不存在，因此废弃该对象
+*/ 
+
+//3. 
+
+id __strong obj0 = [[NSObject alloc] init];
+//obj0强引用对象A
+id __strong obj1 = [[NSObject alloc] init];
+//obj1强引用对象B
+obj0 = 0bj1;
+//obj0强引用对象B，此时对对象A强引用失效，对象A没有所有者因此废弃对象A
+obj0 = nil;
+//因为obj0被赋值nil，因此其对对象B的强引用失效 此时对象B的强引用只剩下obj1
 </code></pre>
+
+<p>OC的类成员变量和方法参数上也可以附有__strong修饰符的变量</p>
+
+<pre><code class="language-objectivec">@interface Test: NSObject 
+{
+    id __strong obj_;
+}
+
+- (void)setObject:(id __strong)obj；
+
+@implementation Test
+...
+@end
+</code></pre>
+
+<blockquote>
+<p>注意：</p>
+
+<p>__ strong、__weak、__autoreleasing修饰符，会将修饰符修饰的变量自动初始化为nil</p>
+</blockquote>
+
+<h2 id="toc_2">__weak修饰符</h2>
+
+<p>主要用来避免使用强引用导致的循环引用</p>
+
+<p>循环引用很容易发生内存泄漏，内存泄漏就是应当废弃的对象在吃啊出其生存周期后继续存在</p>
+
+<p><code>__weak</code>提供弱引用，并不持有对象实例</p>
+
+<p>错误使用:</p>
+
+<pre><code class="language-objectivec">id __weak obj = [[NSObject alloc] init]; //编译器会报警高
+//这种情况下 obj并不持有生成的对象，而是持有对象的弱引用，所以对象会立即释放
+</code></pre>
+
+<p>正确使用</p>
+
+<pre><code class="language-objectivec">{
+    id __strong obj = [[NSObject alloc] init];
+    id __weak obj1 = obj;
+}
+</code></pre>
+
+<p><code>__weak</code>修饰符修饰的变量当持有某个对象的弱引用时，若该对象被废弃(没有了持有者)，则弱引用<strong>自动失效并处于值为nil</strong>状态</p>
+
+<h2 id="toc_3">__ unsafe__unretained修饰符</h2>
+
+<p>是不安全的修饰符。因为<code>__weak</code>只能用在iOS5之上的版本，所以在iOS4就只能使用<code>__unsafe__retained</code>修饰符</p>
+
+<p><code>__unsafe__unretained</code>变量修饰的对象不属于编译器的内存管理对象</p>
+
+<pre><code class="language-objectivec">//__unsafe__retained与__weak类似，并不持有生成对象所以对象会立即释放
+id __weak obj = [[NSObject alloc] init]; //编译器会报警高
+</code></pre>
+
+<p><strong>unsafe</strong>retained变量修饰的对象当销毁时不会自动置nil，因此有可能访问悬空指针</p>
+
+<p>因此，不要使用这个修饰符</p>
+
+<h2 id="toc_4">__autoreleasing修饰符</h2>
+
+<p>在arc有效的情况下 即将autorelease方法变为``</p>
+
+<pre><code class="language-objectivec">//非ARC环境下
+NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+id obj = [[NSObject alloc] init]; 
+[obj autorelease];
+[pool drain];
+//ARC环境下
+@autoreleasepool {
+    id __autoreleasing obj = [[NSObject alloc] init];
+}
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>@autoreleasepool {}在非ARC环境下也能使用 推荐@autoreleasepool来表示自动释放池，提高程序的可读性</p>
+</blockquote>
+
+<p>就像我们几乎不显式的写<code>__strong</code>修饰符一样 我们也几乎不显式的附加<code>__autoreleasing</code>修饰符。编译器会自动帮我们添加<code>__autoreleasing</code>修饰符，例如以下情况：</p>
 
 <ol>
-<li>group对象会维持内部未完成block的数量，<code>dispatch_group_notify</code> and <code>dispatch_group_wait</code>使用这个count来决定何时group完成</li>
+<li><p>编译器会自动将返回值注册到autorelease pool</p>
+<p>编译器会检查方法名，如果使用<code>alloc/new/copy/mutableCopy</code>以外开头的方法，则自动将返回值注册到`autorelease pool中</p>
+<pre><code class="language-objectivec">+ (id)array {
+return [[NSMutableArray alloc] init]<br/>
+}<br/>
+//等效于<br/>
++ (id)array {<br/>
+id __strong obj = [[NSMutableArray alloc] init];<br/>
+return obj;<br/>
+}
+</code></pre>
+<p>obj由于return会使对象变量超出作用域，所以自己持有的强引用被释放，但该函数以对象作为返回值，编译器会自动帮其注册到autorelease pool中</p></li>
+<li><p>访问__weak修饰的变量一定要访问注册的到autoreleapool的对象</p>
+<p>因为<code>__weak</code>只持有对象弱引用，在访问过程中，对象有可能销毁，而把对象注册到<code>autorelease pool</code>就能保证对象在访问结束前不会被销毁</p>
+<pre><code class="language-objectivec">id __weak obj0 = obj1;
+NSLog(@&quot;class = %@&quot;, [obj0 class]);<br/>
+//等效于<br/>
+id __weak obj0 = obj1;<br/>
+id __autoreleasing tmp = obj1;<br/>
+NSLog(@&quot;class = %@&quot;, [tmp class]);
+</code></pre></li>
+<li><p>id的指针或者对象指针会默认加上__autoreleasing修饰符<br/>
+id的指针<code>id *obj</code>和<code>NSObject **obj</code>在没有显式指定时会被附加上<code>__autoreleasing</code>修饰符</p>
+<p>例如:</p>
+<pre><code class="language-obj"> - (nullable instancetype)dataWithContentsOfFile:(NSString *)path ... error:(NSError **)errorPtr;
+//相当于<br/>
+- (nullable instancetype)dataWithContentsOfFile:(NSString *)path... error:(NSError * __autoreleasing *)errorPtr;
+</code></pre>
+<p>使用__autoreleasing修饰的变量作为对象取得参数就和用非自己生成对象方法取得返回值的对象完全一样，会注册到<code>autorelease pool</code>中</p>
+<pre><code class="language-objectivec">//源码应该类似这个样子
+- (nullable instancetype)dataWithContentsOfFile:(NSString *)path... error:(NSError * __autoreleasing *)errorPtr {<br/>
+    *error = [[NSError alloc] initWithDomain:MyAppDomin code:errorCode userInfo:nil];<br/>
+}
+</code></pre>
+<p>在使用过程中应该注意，保持赋值互相对象的修饰符一致:</p>
+<pre><code class="language-objectivec">NSError * __autoreleasing error;//修改修饰符为__autoreleasing保持一致进行赋值
+NSError **pError = &amp;error;<br/>
+//或者<br/>
+NSError * error;<br/>
+NSError * __strong *pError = &amp;error;
+</code></pre>
+<p>在下面的NSError **参数赋值了一个__strong对象变量也没报错，是因为编译器自动帮我们做了转换</p>
+<pre><code class="language-objectivec">NSError * error;
+    id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;error];<br/>
+//编译器帮我们转化为了<br/>
+NSError __strong *error;<br/>
+NSError __autoreleasing *tmp = error;<br/>
+id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;tmp];
+</code></pre></li>
 </ol>
-
-<h3 id="toc_12">dispatch_group_async</h3>
-
-<p>将一个<code>block</code>提交到<code>queue</code>中执行，并与group关联</p>
-
-<pre><code class="language-objectivec">void dispatch_group_async(dispatch_group_t group, dispatch_queue_t queue, dispatch_block_t block);
-//group： 与block关联的group 被系统持有直到block完成
-// queue: block异步执行的队列，被系统持有直到block完成
-// block: 异步执行，该函数会帮助调用者对block执行Block_copy and Block_release操作
-</code></pre>
-
-<p>group可以用来等待block执行完成</p>
-
-<h4 id="toc_13">dispatch_group_async_f</h4>
-
-<pre><code class="language-objectivec">void dispatch_group_async_f(dispatch_group_t group, dispatch_queue_t queue, void *context, dispatch_function_t work);
-</code></pre>
-
-<h3 id="toc_14">dispatch_group_enter &amp;&amp; dispatch_group_leave</h3>
-
-<pre><code class="language-objectivec">//明确指示有一个block进入group,将group内未完成的blocks计数加一
-void dispatch_group_enter(dispatch_group_t group);
-</code></pre>
-
-<pre><code class="language-objectivec">//明确指示有一个block已经完成，group未完成计数减1
-void dispatch_group_leave(dispatch_group_t group);
-</code></pre>
-
-<blockquote>
-<p>可以使用这个函数 将一个block同时与多个group关联</p>
-</blockquote>
-
-<h3 id="toc_15">dispatch_group_wait</h3>
-
-<p>同步的阻塞当前线程等待group中所有block完成，直到全部完成或者timeout</p>
-
-<pre><code class="language-objectivec">long dispatch_group_wait(dispatch_group_t group, dispatch_time_t timeout);
-//返回值： 0表示成功执行所有block，非0表示超时
-</code></pre>
-
-<ol>
-<li>当group为空时，立即返回</li>
-</ol>
-
-<blockquote>
-<p>一个group虽然可以wait多次，但是只wait从监测那一刻之前，group中的block完成状态，而在等待过程添加的block本次并不会监测</p>
-</blockquote>
-
-<h3 id="toc_16">dispatch_group_wait</h3>
-
-<p>异步等待group中的task执行完成，调用block在指定queue中执行</p>
-
-<pre><code class="language-objectivec">void dispatch_group_notify(dispatch_group_t group, dispatch_queue_t queue, dispatch_block_t block);
-//group: 等待的group，系统retaingroup直到block运行完成
-//queue: group完成，block执行的queue，系统持有该queue直到block运行完成
-//block: group完成后放入queue中执行的block,函数会帮助调用Block_copy and Block_release
-</code></pre>
-
-<blockquote>
-<p>当group为空时，立即返回<br/>
-当notify block运行完成后，group为空</p>
-</blockquote>
-
-<h2 id="toc_17">dispatch_time_t</h2>
-
-<pre><code class="language-objectivec">typedef uint64_t dispatch_time_t
-</code></pre>
-
-<p>常用的time常量</p>
-
-<pre><code class="language-objectivec">//立即发生时间
-DISPATCH_TIME_NOW
-//无限远的时间
-DISPATCH_TIME_FOREVER
-</code></pre>
-
-<h3 id="toc_18">dispatch_time</h3>
-
-<p>创建一个时间</p>
-
-<pre><code class="language-objectivec">dispatch_time_t dispatch_time(dispatch_time_t when, int64_t delta);
-
-//int64_t delta: 纳秒数
-</code></pre>
-
-<blockquote>
-<p><code>dispatch_time</code>的默认时钟是基于<code>mach_absolute_time.</code></p>
-</blockquote>
-
-<h3 id="toc_19">dispatch_walltime</h3>
-
-<p>根据<code>wall clock</code>创建一个绝对的时间</p>
-
-<pre><code class="language-objectivec">dispatch_time_t dispatch_walltime(const struct timespec *when, int64_t delta);
-//when:结构体，创建的是绝对时间；传NULL表示当前时间
-</code></pre>
-
-<p><code>wall clock</code>基于<code>gettimeofday(_:_:)</code></p>
-
-<blockquote>
-<p>与<code>dispatch_time</code>区别：<code>dispatch_time</code>会在设备休眠(关机)时停止运行，<code>dispatch_walltime</code>会继续运行；即<code>dispatch_time</code>是设备运行的一段时间后某个时间点，而<code>dispatch_walltime</code>是绝对时间，与设备运行状态无关</p>
-</blockquote>
 
 
 		</div>
@@ -326,24 +317,24 @@ DISPATCH_TIME_FOREVER
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -363,10 +354,10 @@ DISPATCH_TIME_FOREVER
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -390,7 +381,7 @@ DISPATCH_TIME_FOREVER
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -401,7 +392,7 @@ DISPATCH_TIME_FOREVER
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -419,6 +410,15 @@ DISPATCH_TIME_FOREVER
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -428,31 +428,31 @@ DISPATCH_TIME_FOREVER
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

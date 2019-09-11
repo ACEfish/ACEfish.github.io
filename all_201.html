@@ -82,198 +82,216 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15553160787382.html">内存管理实践</a></h1>
-			<p class="meta"><time datetime="2019-04-15T16:14:38+08:00" 
-			pubdate data-updated="true">2019/4/15</time></p>
+		  	<h1 class="entry-title"><a href="15017296324997.html">方法</a></h1>
+			<p class="meta"><time datetime="2017-08-03T11:07:12+08:00" 
+			pubdate data-updated="true">2017/8/3</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>尽管内存管理规则是简单的，但是我们可以通过一些实用的步骤来使内存管理更加稳健、高效</p>
+		  	<p><code>类、结构体、枚举</code>都可以定义实例方法，实例方法为给定类型实例封装了具体的任务和功能</p>
 
-<h2 id="toc_0">使用访问器方法来简化内存管理</h2>
+<p><code>类、结构体、枚举</code>也可定义类型方法,类型方法与类型本身关联（与OC中类似）</p>
 
-<p>假如类有一个对象属性时，我们需要确保赋值给属性的对象不会被<code>deallocted</code>，因此需要持有该对象而且需要释放当前属性对象；我们应该使用访问器方法来避免在代码中大量使用<code>release</code>和<code>retain</code>方法</p>
+<h2 id="toc_0">实例方法</h2>
 
-<pre><code class="language-objectivec">@interface Counter : NSObject
-@property (nonatomic, retain) NSNumber *count;
-@end;
+<p>实例方法提供访问和修改实例属性的方法或提供与实例目的相关的功能，并以此来支撑实例的功能。<br/>
+<strong>实例方法的语法与函数完全一致</strong></p>
 
-//get访问器方法 只需要直接返回该对象，无需retain或者release
-- (NSNumber *)count {
-    return _count;
+<p>实例方法能够隐式访问它所属类型的所有的其他实例方法和属性</p>
+
+<pre><code class="language-swift">class Counter {
+    var count = 0
+    func increment() {
+        count += 1
+    }
+    func increment(by amount: Int) {
+        count += amount
+    }
+    func reset() {
+        count = 0
+    }
 }
 
-//set访问器方法，需要先持有newCount 释放oldCount的持有权
-- (void)setCount:(NSNumber *)newCount {
-    [newCount retain];
-    [_count release];
-    // Make the new assignment.
-    _count = newCount;
+let counter = Counter()
+// 初始计数值是0
+counter.increment()
+// 计数值现在是1
+counter.increment(by: 5)
+// 计数值现在是6
+counter.reset()
+// 计数值现在是0
+</code></pre>
+
+<h3 id="toc_1">self属性</h3>
+
+<p>与OC类似,<code>self</code>等同于该类型的实例本身</p>
+
+<pre><code class="language-swift">//所以我们可以这么写
+func increment() {
+    self.count += 1
+}
+</code></pre>
+
+<p>其实没必要写<code>self</code>，使用已知的属性名或者方法名 <code>swift</code>会假定你使用的是当前实例属性或者方法</p>
+
+<p>我们使用的主要场景:<br/>
+实例方法的某个<code>参数名称</code>与实例的某个<code>属性名称</code>相同的时候,此时优先使用参数名,因此我们通过<code>self</code>属性来进行区分使用属性</p>
+
+<pre><code class="language-swift">struct Point {
+    var x = 0.0, y = 0.0
+    func isToTheRightOfX(_ x: Double) -&gt; Bool {
+        return self.x &gt; x//用self来区分属性
+    }
+}
+
+let somePoint = Point(x: 4.0, y: 5.0)
+
+if somePoint.isToTheRightOfX(1.0) {
+    print(&quot;This point is to the right of the line where x == 1.0&quot;)
+}
+// 打印 &quot;This point is to the right of the line where x == 1.0&quot;
+</code></pre>
+
+<h3 id="toc_2">实例方法中修改值类型</h3>
+
+<p>结构体和枚举是值类型。默认情况下，值类型的属性不能在它的实例方法中被修改</p>
+
+<p>我们可以通过给这个实例方法选择<code>可变(mutating)</code>行为，就可以在方法内部修改改变它的属性;这个方法做的任何改变都会在方法执行结束时写回到原始结构中。方法还可以给它隐含的<code>self</code>属性赋予一个全新的实例，这个新实例在方法结束时会替换现存实例</p>
+
+<pre><code class="language-swift">struct Point {
+    var x = 0.0, y = 0.0
+    mutating func moveByX(deltaX: Double, y deltaY: Double) {
+        x += deltaX
+        y += deltaY
+    }
+}
+var somePoint = Point(x: 1.0, y: 1.0)
+somePoint.moveByX(2.0, y: 3.0)
+print(&quot;The point is now at (\(somePoint.x), \(somePoint.y))&quot;)
+// 打印 &quot;The point is now at (3.0, 4.0)&quot;
+</code></pre>
+
+<p>注意:<br/>
+不能在结构体类型的常量上调用可变方法，因为其属性不能被改变，即使属性是变量属性</p>
+
+<h3 id="toc_3">在可变方法中给self赋值</h3>
+
+<p>可以在可变方法中给隐含属性<code>self</code>赋予一个新的实例</p>
+
+<pre><code class="language-swift">struct Point1 {
+    var x = 0.0, y = 0.0
+    mutating func moveBy(x deltaX: Double, y deltaY: Double) {
+        self = Point1(x: x + deltaX, y: y + deltaY)
+    }
+}
+</code></pre>
+
+<p>创建一个新的结构体实例赋值给self，替换现在的实例</p>
+
+<p>枚举的可变方法，定义了一个三态开关状态枚举,通过调用<code>next()</code>进行切换状态</p>
+
+<pre><code class="language-swift">enum TriStateSwitch {
+    case Off, Low, High
+    mutating func next() {
+        switch self {
+        case .Off:
+            self = .Low
+        case .Low:
+            self = .High
+        case .High:
+            self = .Off
+        }
+    }
+}
+var ovenLight = TriStateSwitch.Low
+ovenLight.next()
+// ovenLight 现在等于 .High
+ovenLight.next()
+// ovenLight 现在等于 .Off
+</code></pre>
+
+<h2 id="toc_4">类型方法</h2>
+
+<p>定义在类型本身上的方法,即为类型方法<br/>
+通过在方法<code>func</code>前加关键字<code>static</code>，来指定类型方法.类还可以用关键字<code>class</code>来指定，从而允许子类重写父类的方法实现</p>
+
+<pre><code class="language-swift">class CustomClass{
+    class func method1() {
+        print(&quot;父方法&quot;)
+    }
+}
+
+class CustomSubClass: CustomClass{
+    //子类重写父类静态方法
+    override class func method1() {
+        print(&quot;子方法&quot;)
+    }
 }
 </code></pre>
 
 <blockquote>
-<p>因为在OC中是可以给nil发送消息的，因此即使newCount为空也是有效的<br/>
-必须先retain后release，因为避免两个count为同一个对象，导致对象不经意间被释放</p>
+<p>注意:</p>
+
+<p>在<code>oc</code>中只能为类定义类型方法<br/>
+在<code>swift</code>中可以为类,结构体,枚举定义类方法</p>
 </blockquote>
 
-<h3 id="toc_1">使用访问器方法设置属性值</h3>
+<p>类型方法在类型上通过点语法调用<br/>
+在类型方法中,<code>self</code>指向类型本身,同样的可以用其来区分同样的类型属性和类型方法参数</p>
 
-<p>假如想要重置属性值可以使用以下两种方法</p>
+<p>在类型方法体中可以调用本类中类型属性或的其他类型方法,调用是可以直接通过类型方法名称或者类型属性名称进行调用,而不用在前面添加类型名称</p>
 
-<pre><code class="language-objectivec">//因为使用alloc 所以需要release
-- (void)reset {
-    NSNumber *zero = [[NSNumber alloc] initWithInteger:0];
-    [self setCount:zero];
-    [zero release];
-}
-
-- (void)reset {
-    NSNumber *zero = [NSNumber numberWithInteger:0];
-    [self setCount:zero];
-}
-</code></pre>
-
-<p>以上两种方法都使用了set访问器方法</p>
-
-<p>应该尽量避免下面的写法,虽然其在简单情况下也会正常，但是这样做很容易导致出错</p>
-
-<pre><code class="language-objectivec">- (void)reset {
-    NSNumber *zero = [[NSNumber alloc] initWithInteger:0];
-    [_count release];
-    _count = zero;
-}
-</code></pre>
-
-<blockquote>
-<p>假如你使用KVO，这样写是不符合KVO标准的</p>
-</blockquote>
-
-<h3 id="toc_2">不要在初始化方法和dealloc方法中使用访问器方法</h3>
-
-<p><strong>唯一不应该使用访问器方法设置实例变量的地方就是在初始化方法和dealloc方法中</strong></p>
-
-<pre><code class="language-objectivec">- init {
-    self = [super init];
-    if (self) {
-        _count = [[NSNumber alloc] initWithInteger:0];
+<pre><code class="language-swift">//检测玩家等级的结构体
+struct LevelTracker {
+    static var highestUnlockedLevel = 1
+    var currentLevel = 1
+    static func unlock(_ level: Int) {
+        if level &gt; highestUnlockedLevel { highestUnlockedLevel = level }
     }
-    return self;
-}
-
-- initWithCount:(NSNumber *)startingCount {
-    self = [super init];
-    if (self) {
-        _count = [startingCount copy];
+    static func isUnlocked(_ level: Int) -&gt; Bool {
+        return level &lt;= highestUnlockedLevel
     }
-    return self;
+    //因为允许在调用 advance(to:) 时候忽略返回值，不会产生编译警告，所以函数被标注为 @discardableResult 属性
+    @discardableResult 
+    mutating func advance(to level: Int) -&gt; Bool {
+        if LevelTracker.isUnlocked(level) {
+            currentLevel = level
+            return true
+        } else {
+            return false
+        }
+    }
 }
 </code></pre>
 
-<p>因为<code>Counter Class</code>有一个实例变量对象，所以必须完成<code>dealloc</code>方法来释放所有的实例变量对象</p>
-
-<pre><code class="language-objectivec">- (void)dealloc {
-    [_count release];
-    [super dealloc];
+<pre><code class="language-swift">//玩家类
+class Player {
+    var tracker = LevelTracker()
+    let playerName: String
+    func complete(level: Int) {
+        LevelTracker.unlock(level + 1)
+        tracker.advance(to: level + 1)
+    }
+    init(name: String) {
+        playerName = name
+    }
 }
 </code></pre>
 
-<h2 id="toc_3">使用弱引用避免循环引用</h2>
+<pre><code class="language-swift">var player = Player(name: &quot;Argyrios&quot;)
+player.complete(level: 1)
+print(&quot;highest unlocked level is now \(LevelTracker.highestUnlockedLevel)&quot;)
+// 打印 &quot;highest unlocked level is now 2&quot;
 
-<p>当retain一个对象时就对该对象创建一个<em>强引用</em>。一个对象在它的所有的强引用被释放前不会被<code>deallocated</code>。因此，假如两个对象互相引用(或者引用链最后一个对象又引用第一个对象)就有可能造成循环引用</p>
-
-<p>解决循环引用就是使用<em>弱引用</em>，弱引用中源对象并不持有引用对象；因此按照Cocoa惯例:&quot;父对象&quot;强引用他的&quot;子对象&quot;，而&quot;子对象&quot;弱引用&quot;父对象&quot;<br/>
-<img src="media/15553160787382/15553237100030.jpg" alt="" style="width:300px;"/></p>
-
-<p>常用的弱引用:  table data sources、视图、notication observers、delegate等</p>
-
-<p>使用弱引用需要注意，避免向已经<code>deallocated</code>的对象发送消息，否则会引起崩溃；因此弱引用对象使用时一般知道另外对象对其的弱引用，并在对象deallocated时通知两外一个对象。例如，向<code>notification center</code>注册接收对象时，通知中心会保留对该对象的弱引用，来在通知时给其发送通知消息。而在<code>deallocated</code>后，向<code>notification center</code>注销该对象，避免再次向其发送消息; 同样的，当取消分配的delegate时，需要<code>setDelegate：</code>为<code>nil</code>，这些消息常在<code>deallco</code>方法中发送。</p>
-
-<h2 id="toc_4">避免正在使用的对象内存销毁</h2>
-
-<p>我们在使用内存规则时保证对象在使用时是有效的，但是注意在以下两种情况可能导致出现异常情况:</p>
-
-<ol>
-<li><p>当一个对象从集合中移除</p>
-<pre><code class="language-objectivec">heisenObject = [array objectAtIndex:n];
-[array removeObjectAtIndex:n];<br/>
-//heisenObject 此时可能已经无效了
-</code></pre>
-<p>当对象从集合汇总移除时，会发送一个<code>release</code>消息，此时如果集合是该对象唯一持有者，该对象就会被销毁</p></li>
-<li><p>当&quot;父对象&quot;被销毁时</p>
-<pre><code class="language-objectivec">id parent = &lt;#create a parent object#&gt;;
-// ...<br/>
-heisenObject = [parent child] ;<br/>
-[parent release]; // Or, for example: self.parent = nil;<br/>
-// heisenObject could now be invalid.
-</code></pre>
-<p>当使用子对象时，其父对象被释放导致被销毁，那么子对象也会被释放，而如果其父对象是其唯一的持有者，那么子对象也会被同时销毁</p></li>
-</ol>
-
-<p>为了避免出现以上两种情况，应该在收到该对象时retain，而在不再使用时release</p>
-
-<pre><code class="language-objectivec">heisenObject = [[array objectAtIndex:n] retain];
-[array removeObjectAtIndex:n];
-// Use heisenObject...
-[heisenObject release];
-</code></pre>
-
-<h2 id="toc_5">不要在dealloc中管理稀缺系统资源</h2>
-
-<p>不应该在<code>dealloc</code>中管理稀缺资源，例如文件描述符、网络连接以及缓冲区和缓存。更不应该在你认为dealloc将调用是调用dealloc方法，因为dealloc的调用可能会因为bug或者应用终止而导致延迟或者不调用</p>
-
-<p>相反，可以设计一个类，在不再需要这些稀缺系统资源时，进行“清理”。</p>
-
-<p>在dealloc中进行资源管理可能会导致以下问题:</p>
-
-<ol>
-<li><p>视图拆除的顺序的依赖性<br/>
-对象视图拆除机制本质上是无序的。虽然我们经常会获得期待的拆除顺序，但是这会给项目带来脆弱性。例如如果对象因为意外autorelease而不是release，拆除顺序就有可能改变</p></li>
-<li><p>稀缺资源的未回收<br/>
-内存管理时，内存泄漏是应该修复的错误，但是通常不会立刻致命。但是如果是该释放的资源没有立即释放就有可能遇到更严重的问题。例如，用完了文件描述符导致应用无法再存储数据</p></li>
-<li><p>清理逻辑在错误的线程中执行</p>
-<p>如果<strong>一个对象意外的autorelease，它将会在释放时碰巧遇到的任何线程的自动释放池中释放</strong>。而这对于那些只能在某个线程中释放的资源，是很致命的</p></li>
-</ol>
-
-<h2 id="toc_6">集合持有它所包含的元素对象</h2>
-
-<p>将对象添加到集合中，集合就会持有该对象，即强引用该对象。而当集合中移除对象或者该集合本身被释放，集合将release该对象。因此，例如，假如你想要创建一组数组集合，可以这么做:</p>
-
-<pre><code class="language-objectivec">NSMutableArray *array = &lt;#Get a mutable array#&gt;;
-NSUInteger i;
-// ...
-for (i = 0; i &lt; 10; i++) {
-    NSNumber *convenienceNumber = [NSNumber numberWithInteger:i];
-    [array addObject:convenienceNumber];
+player = Player(name: &quot;Beto&quot;)
+if player.tracker.advance(to: 6) {
+print(&quot;player is now on level 6&quot;)
+} else {
+print(&quot;level 6 has not yet been unlocked&quot;)
 }
+// 打印 &quot;level 6 has not yet been unlocked&quot;
+
 </code></pre>
-
-<p>这样写，因为不是alloc调用的的，因此不必release。而我们也必要retain数字对象，因为数组会对其进行retain</p>
-
-<pre><code class="language-objectivec">NSMutableArray *array = &lt;#Get a mutable array#&gt;;
-NSUInteger i;
-// ...
-for (i = 0; i &lt; 10; i++) {
-    NSNumber *allocedNumber = [[NSNumber alloc] initWithInteger:i];
-    [array addObject:allocedNumber];
-    [allocedNumber release];
-}
-</code></pre>
-
-<p>在这个例子中，for循环中，因为是<code>allocNumber</code>产生的对象因此需要release进行平衡</p>
-
-<h2 id="toc_7">使用引用计数来进行持有策略</h2>
-
-<p>引用计数，通常在retain后称为保留计数，每个对象都有一个保留计数</p>
-
-<ul>
-<li>创建对象时，保留计数为1</li>
-<li>向对象发送保留消息，其保留计数加1</li>
-<li>向对象发送释放消息，保留计数减1</li>
-<li>向对象发送自动释放消息，保留计数在当前自动释放池末尾，保留计数减1</li>
-<li>当保留计数为0，则将其<code>deallocated</code>即销毁对象释放内存<br/>
-</li>
-</ul>
 
 
 		</div>
@@ -296,24 +314,24 @@ for (i = 0; i &lt; 10; i++) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -333,10 +351,10 @@ for (i = 0; i &lt; 10; i++) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -360,7 +378,7 @@ for (i = 0; i &lt; 10; i++) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -371,7 +389,7 @@ for (i = 0; i &lt; 10; i++) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -389,6 +407,15 @@ for (i = 0; i &lt; 10; i++) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -398,31 +425,31 @@ for (i = 0; i &lt; 10; i++) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

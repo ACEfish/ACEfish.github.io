@@ -82,63 +82,103 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15487438082937.html">ProTypes验证器</a></h1>
-			<p class="meta"><time datetime="2019-01-29T14:36:48+08:00" 
+		  	<h1 class="entry-title"><a href="15487460996181.html">Refs</a></h1>
+			<p class="meta"><time datetime="2019-01-29T15:14:59+08:00" 
 			pubdate data-updated="true">2019/1/29</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>虽然js扩展中有对类型检查,但是我们可以利用JS内置的类型检查功能<br/>
-我们可以通过配置类型的<code>proTypes</code>属性，来对类型做检查或者限制<br/>
-<code>PropTypes</code>包含一整套的验证器，当传递了无效值时会打印警告(由于性能原因只会在开发模式下进行检查)</p>
+		  	<p>在React中我们的数据流是从上至下，通过传递给子组件<code>props</code>来重新渲染它</p>
 
-<h2 id="toc_0">限制props类型</h2>
+<p>但是，有时候我们需要获取某些组件或者DOM元素，强制修改,这时我们可以使用<code>Refs</code></p>
 
-<pre><code class="language-javascritp">import PropTypes from &quot;prop-types&quot;
+<p>我们应该使用声明式实现，避免使用<code>refs</code>，尽量只在一下几种情况下使用:</p>
 
-class Greeting extends React.Component {
+<ul>
+<li>处理焦点、文本选择或媒体控制</li>
+<li>触发强制动画</li>
+<li>集成第三方 DOM 库</li>
+</ul>
+
+<h2 id="toc_0">添加Ref</h2>
+
+<pre><code class="language-javascript">import React from &quot;react&quot;
+
+class CustomTextInput extends React.Component {
+
+    constructor(props) {
+        super(props)
+        this.focus = this.focus.bind(this)
+    }
+
+    focus() {
+        this.textInput.focus()
+    }
+
     render() {
-        console.log(Greeting.propTypes)
         return(
-            &lt;h1&gt;Hello, {this.props.name}&lt;/h1&gt;
+            &lt;div&gt;
+                //通过ref设置textInput 为此DOM元素
+                &lt;input type=&quot;text&quot; ref={input =&gt; this.textInput = input} &gt;&lt;/input&gt;
+                &lt;input type=&quot;button&quot; value=&quot;获得焦点&quot; onClick={this.focus} &gt;&lt;/input&gt;
+            &lt;/div&gt;
+        )
+    }
+
+}
+
+export default  CustomTextInput
+</code></pre>
+
+<p><code>ref={input =&gt; this.textInput = input}</code>  ref属性 会在DOM元素加载时将此元素传入ref,卸载时传入null</p>
+
+<blockquote>
+<p>这种声明方式只对DOM元素和用class声明的组件有效<br/>
+在函数式组件上，因为没有实例，所以不能使用ref属性</p>
+</blockquote>
+
+<h2 id="toc_1">对父组件暴露DOM节点</h2>
+
+<p>当我们想要向从父组件访问子组件节点时,我们可以将传递给子组件一个特殊的函数属性,然后将这个函数属性作为ref属性传入子节点，可以通过这个函数将子节点赋值给父节点的属性</p>
+
+<pre><code class="language-javascript">class CustomTextInput extends React.Component {
+    render() {
+        return(
+            &lt;div&gt;
+                &lt;input type=&quot;text&quot; ref={this.props.inputRef} &gt;&lt;/input&gt;
+            &lt;/div&gt;
+        )
+    }
+
+}
+
+class ParentCompnent extends React.Component {
+    constructor(props) {
+        super(props)
+        this.focus = this.focus.bind(this)
+    }
+
+    focus() {
+        this.textInput.focus()
+    }
+    render() {
+        return(
+            &lt;div&gt;
+                &lt;input type=&quot;button&quot; value=&quot;获得焦点&quot; onClick={this.focus} &gt;&lt;/input&gt;
+                &lt;CustomTextInput inputRef={refCom =&gt; this.textInput = refCom}&gt;&lt;/CustomTextInput&gt;
+            &lt;/div&gt;
         )
     }
 }
 
-//对Greeting的propTypes进行限制检查,name属性只能传的值限制为string类型
-Greeting.propTypes = {
-    name: PropTypes.string
-}
-
-export default Greeting
+export default  ParentCompnent
 </code></pre>
 
-<p>除了string类型 还有 number、array、bool、func等,具体可查看<a href="https://reactjs.org.cn/doc/typechecking-with-proptypes.html">React中文网</a></p>
+<p><code>&lt;CustomTextInput inputRef={refCom =&gt; this.textInput = refCom}&gt;&lt;/CustomTextInput&gt;</code>设置子组件的ref属性回调此函数，将子组件设置为父组件的<code>this.textInput</code>属性</p>
 
-<h2 id="toc_1">限制单个子代</h2>
-
-<pre><code class="language-javascript">
-</code></pre>
-
-<h2 id="toc_2">设置属性的默认值</h2>
-
-<pre><code class="language-javascript">class Greeting extends React.Component {
-    render() {
-        console.log(Greeting.propTypes)
-        return(
-            &lt;h1&gt;Hello, {this.props.name}&lt;/h1&gt;
-        )
-    }
-}
-
-Greeting.propTypes = {
-    name: PropTypes.string
-}
-//设置默认值
-Greeting.defaultProps = {
-    name: &quot;stranger&quot;
-}
-</code></pre>
+<blockquote>
+<p>如果有更深的层级结构 我们只需要一级一级传递即可</p>
+</blockquote>
 
 
 		</div>
@@ -161,24 +201,24 @@ Greeting.defaultProps = {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -198,10 +238,10 @@ Greeting.defaultProps = {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -225,7 +265,7 @@ Greeting.defaultProps = {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -236,7 +276,7 @@ Greeting.defaultProps = {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -254,6 +294,15 @@ Greeting.defaultProps = {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -263,31 +312,31 @@ Greeting.defaultProps = {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

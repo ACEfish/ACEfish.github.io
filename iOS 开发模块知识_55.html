@@ -82,29 +82,255 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15446723749030.html">基础</a></h1>
-			<p class="meta"><time datetime="2018-12-13T11:39:34+08:00" 
-			pubdate data-updated="true">2018/12/13</time></p>
+		  	<h1 class="entry-title"><a href="15535750586068.html">Cocoapods使用</a></h1>
+			<p class="meta"><time datetime="2019-03-26T12:37:38+08:00" 
+			pubdate data-updated="true">2019/3/26</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">常见编程风格</h2>
+		  	<h2 id="toc_0">基础使用</h2>
 
-<p>目前已知常用的编程风格:</p>
+<h3 id="toc_1">创建一个Cocoapods管理的Xcode项目</h3>
 
 <ol>
-<li><p>面向过程</p></li>
-<li><p>面向对象</p></li>
-<li><p>链式编程<br/>
-将多个操作通过 . 连接起来 增加代码的可读性<br/>
-例如: masonry框架</p></li>
-<li><p>响应式编程<br/>
-不考虑事件发生顺序 只考虑结果 发生的事件像流一样传播出去，我们关注数据流和变化传播<br/>
-例如: KVO运用</p></li>
-<li><p>函数式编程<br/>
-将操作写成一系列嵌套的函数或者方法调用，将其他函数作为参数</p>
-<p>其在OC中实质即:向方法中传入block，方法中嵌套block调用，对代码进行聚合管理</p></li>
+<li>创建一个Xcode项目</li>
+<li>打开终端,<code>cd</code>到工程目录下,使用<code>pod init</code>命令，会初始化一个Podfile的文件</li>
+<li>打开Podfile文件， 第一行指定我们使用的平台以及版本，例如:<code>platform :ios, &#39;9.0&#39;</code>，指定支持iOS9之后</li>
+<li><p>为了使cocoapods关联我们指定的项目，我们需要添加<code>target &#39;$TARGET_NAME&#39; do  end</code>，在end前pod要添加的库名即可</p>
+<pre><code class="language-objectivec">target &#39;MyApp&#39; do
+    pod &#39;ObjectiveSugar&#39;<br/>
+end
+</code></pre></li>
+<li><p>保存修改的Podfile文件，执行<code>pod install</code>命令即可</p></li>
 </ol>
+
+<blockquote>
+<p>当需要像一个已经存在的<code>xcworkspace</code>中集成cocoapod功能时,只需要在目标块外部添加一行来指定workspace即可：<code>workspace &#39;MyWorkspace&#39;</code></p>
+</blockquote>
+
+<h2 id="toc_2">cocoapod做了哪些事情</h2>
+
+<ol>
+<li>cocoapod创建了一个<code>workspace</code></li>
+<li>将我们的工程添加到该workspace，</li>
+<li>添加需要的静态库到该workspace</li>
+<li>pod库之后都会打包成libPods.a，将该文件link到工程</li>
+<li>pod库的编译依赖参数等变为库的.xcconfig文件，根据该文件向项目中添加<code>Xcode configuration</code>设置在编译时的依赖参数</li>
+<li>改变项目 target configurations基于Cocoapods</li>
+<li>添加工程执行script为Pods-resources.sh的bash脚本,然后在每次编译时将pod库中的资源文件复制</li>
+</ol>
+
+<blockquote>
+<p>cocopods最后会将每个pod库打包成.a文件链接到工程、并将pod工程打包成libPods-[ProjectName].a链接到工程</p>
+
+<h2 id="toc_3">pod install &amp;&amp; pod update</h2>
+</blockquote>
+
+<h3 id="toc_4">pod install</h3>
+
+<p><code>pod install</code>只在我们每次修改了podfile文件，增加、删除、修改了依赖库时，才需要执行该命令来检索指定库<br/>
+当执行pod install后，会将我们使用的库的版本号写入<code>podfile.lock</code>文件中，此文件用来追踪我们使用的pod库的版本号<br/>
+执行pod install,会下载<code>Podfile.lock</code>文件中已存在的pod库的指定版本，或者不在podfile.lock中的pod库的合适版本</p>
+
+<h3 id="toc_5">pod outdated</h3>
+
+<p>此命令会根据podfile.lock中的版本，列出所有有较新版本的pod库，这就是我们执行<code>pod update</code>或者 <code>pod update PODNAME</code>会更新的版本内容(这些写版本也是会受限于我们的podfile中设置的pod库版本号 <code>pod &#39;MyPod&#39;, &#39;~&gt;x.y&#39;</code>)</p>
+
+<h3 id="toc_6">pod outdated</h3>
+
+<p>会检索比podfile.lock中版本更新的库，并更新（只要该版本符合podfile中版本的限制）<br/>
+<code>pod update PODNAME</code> 更新一个<br/>
+<code>pod update</code> 更新所有</p>
+
+<blockquote>
+<p>因为podfile.lock是记录我们pod库版本的，因此我们需要向远程仓库中commit、push该文件</p>
+</blockquote>
+
+<h2 id="toc_7">Podfile</h2>
+
+<p>一个比较复杂的podfile文件如下</p>
+
+<pre><code class="language-ruby">source &#39;https://github.com/CocoaPods/Specs.git&#39;
+source &#39;https://github.com/Artsy/Specs.git&#39;
+
+platform :ios, &#39;9.0&#39;
+inhibit_all_warnings!
+
+target &#39;MyApp&#39; do
+  pod &#39;GoogleAnalytics&#39;, &#39;~&gt; 3.1&#39;
+
+  # Has its own copy of OCMock
+  # and has access to GoogleAnalytics via the app
+  # that hosts the test target
+
+  target &#39;MyAppTests&#39; do
+    inherit! :search_paths
+    pod &#39;OCMock&#39;, &#39;~&gt; 2.0.1&#39;
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    puts target.name
+  end
+end
+</code></pre>
+
+<p>具体用法可以查看<a href="https://guides.cocoapods.org/syntax/podfile.html#podfile">cocoapod官网</a>,下面为部分用法解析:</p>
+
+<h3 id="toc_8">多个Target共享pod库</h3>
+
+<p>使用<code>abstract_target</code>来使多个目标共享pod<br/>
+abstract_target是抽象对象，只是为了让方便继承，并不存在实际该target</p>
+
+<pre><code class="language-ruby"># 并没有名为&#39;Shows&#39;的目标工程
+abstract_target &#39;Shows&#39; do
+  pod &#39;ShowsKit&#39;
+  pod &#39;Fabric&#39;
+
+  # &#39;ShowsiOS’工程包含&#39;ShowsKit&#39;和&#39;Fabric&#39;pod库的拷贝
+  target &#39;ShowsiOS&#39; do
+    pod &#39;ShowWebAuth&#39;
+  end
+
+  # &#39;ShowsTV’工程包含&#39;ShowsKit&#39;和&#39;Fabric&#39;pod库的拷贝
+  target &#39;ShowsTV&#39; do
+    pod &#39;ShowTVAuth&#39;
+  end
+end
+</code></pre>
+
+<p>可以简写为 和我们上面复杂的的Podfile 例子一样了</p>
+
+<pre><code class="language-ruby">pod &#39;ShowsKit&#39;
+pod &#39;Fabric&#39;
+
+target &#39;ShowsiOS&#39; do
+  pod &#39;ShowWebAuth&#39;
+end
+
+target &#39;ShowsTV&#39; do
+  pod &#39;ShowTVAuth&#39;
+end
+</code></pre>
+
+<h3 id="toc_9">指定版本</h3>
+
+<ul>
+<li><p>指定特别的版本</p>
+<ul>
+<li><code>pod &#39;SSZipArchive&#39;</code>   用最新的pod库版本</li>
+<li><code>pod &#39;Objection&#39;, &#39;0.9&#39;</code>  指定使用的为特定的pod库版本</li>
+<li><code>pod &#39;Objection&#39;, &#39;&gt;0.1&#39;</code> 指定任何大于0.1的版本</li>
+<li><code>pod &#39;Objection&#39;, &#39;&gt;=0.1&#39;</code> 指定任何大于或等于0.1的版本</li>
+<li><code>pod &#39;Objection&#39;, &#39;&lt;0.1&#39;</code> 指定任何小于0.1的版本</li>
+<li><code>pod &#39;Objection&#39;, &#39;&lt;=0.1&#39;</code> 指定任何小于或等于0.1的版本</li>
+<li><code>pod &#39;Objection&#39;, &#39;~&gt;0.1.2&#39;</code> 指定版本在0.1.2到0.2之间 不包括0.2</li>
+<li><code>pod &#39;Objection&#39;, &#39;~&gt;0.1&#39;</code> 指定版本在0.1.2到1.0之间 不包括1.0</li>
+</ul></li>
+</ul>
+
+<h3 id="toc_10">指定pod的来源</h3>
+
+<h4 id="toc_11">指定pod来源为本地文件</h4>
+
+<p>常用于pod发布之前的本地调试</p>
+
+<pre><code class="language-ruby"># 
+pod &#39;Alamofire&#39;, :path =&gt; &#39;~/Documents/Alamofire&#39;
+#Pod文件的podspec应该位于指定的文件夹中
+</code></pre>
+
+<h4 id="toc_12">自定义pod的git分支或版本</h4>
+
+<p>有时候对于我们自己创建的pod库，我们可能需要pod特定版本或者指定分支<br/>
+此时，在该库的根目录中应该包含podspec文件</p>
+
+<pre><code class="language-ruby"># pod git 上master分支的版本
+pod &#39;Alamofire&#39;, :git =&gt; &#39;https://github.com/Alamofire/Alamofire.git&#39;
+
+# pod dev分支的版本库
+pod &#39;Alamofire&#39;, :git =&gt; &#39;https://github.com/Alamofire/Alamofire.git&#39;, :branch =&gt; &#39;dev&#39;
+
+# pod 指定tag的库
+pod &#39;Alamofire&#39;, :git =&gt; &#39;https://github.com/Alamofire/Alamofire.git&#39;, :tag =&gt; &#39;3.1.1&#39;
+
+# pod 指定commit号版本
+pod &#39;Alamofire&#39;, :git =&gt; &#39;https://github.com/Alamofire/Alamofire.git&#39;, :commit =&gt; &#39;0f506b1c45&#39;
+</code></pre>
+
+<h4 id="toc_13">指定特定的源</h4>
+
+<p>通常我们会在全局范围搜索指定的库，当指定了该项后，我们对此pod库将只搜索指定的源</p>
+
+<pre><code class="language-ruby">pod &#39;PonyDebugger&#39;, :source =&gt; &#39;https://github.com/CocoaPods/Specs.git&#39;
+</code></pre>
+
+<h4 id="toc_14">安装子pod库</h4>
+
+<p>我们通常在安装pod时 会安装定义在其中的所有的Subspecs<br/>
+我们可以通过此方法安装其中子库</p>
+
+<pre><code class="language-ruby">pod &#39;QueryKit/Attribute&#39;
+
+pod &#39;QueryKit&#39;, :subspecs =&gt; [&#39;Attribute&#39;, &#39;QuerySet&#39;]
+</code></pre>
+
+<h4 id="toc_15">对于没有podspec的库，从spec集合库外其他获取</h4>
+
+<p>假如可以从其它来源,例如http请求，获取到podspec</p>
+
+<pre><code class="language-ruby">pod &#39;JSONKit&#39;, :podspec =&gt; &#39;https://example.com/JSONKit.podspec&#39;
+</code></pre>
+
+<h3 id="toc_16">install！</h3>
+
+<p>生命安装期间使用的安装方法或选项， 一般情况下，不需要特殊指定，使用默认的就行</p>
+
+<h3 id="toc_17">abstract!</h3>
+
+<p>指定当前目标是抽象的，因此不会链接到xcode目标</p>
+
+<h3 id="toc_18">inherit!</h3>
+
+<p>设置子target继承父target的继承模式， :none表示不继承任何 :search_path之继承父的searchPath</p>
+
+<pre><code class="language-ruby">target &#39;App&#39; do
+  target &#39;AppTests&#39; do
+    inherit! :search_paths
+  end
+end
+</code></pre>
+
+<h3 id="toc_19">工程配置</h3>
+
+<h4 id="toc_20">inhibit_all_warnings!</h4>
+
+<p>禁止所有cocoapods的warning，可以被子target继承或重定义,通过这句话可以禁止pod的库中的所有警告</p>
+
+<pre><code class="language-ruby"># 禁用特定库的warning  
+pod &#39;SSZipArchive&#39;, :inhibit_warnings =&gt; true
+</code></pre>
+
+<h4 id="toc_21">use_frameworks!</h4>
+
+<p>使用framework代替静态库 常用与swift项目</p>
+
+<h3 id="toc_22">Source</h3>
+
+<p>Source是用来 从给定的source列表检索指定pod库的specs</p>
+
+<p>我们可以指定specs位置</p>
+
+<pre><code class="language-ruby"># 这是自定义源 源的顺序与pod库顺序相关 pod库将使用第一个找到该库的源的版本
+source &#39;https://github.com/artsy/Specs.git&#39;
+# 这是官方源 其实隐含包括的 当使用自定义source时 就需要显示指定官方源
+source &#39;https://github.com/CocoaPods/Specs.git&#39;
+</code></pre>
+
+<h3 id="toc_23">Hooks</h3>
+
+<p>Hooks 包括 plugin pre_install post_install 等 会在安装pod库的进程中调用进行一些处理，<a href="https://guides.cocoapods.org/syntax/podfile.html#group_hooks">详情</a></p>
 
 
 		</div>
@@ -127,24 +353,24 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -164,10 +390,10 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -191,7 +417,7 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -202,7 +428,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -220,6 +446,15 @@ $(document).ready(function(event) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -229,31 +464,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

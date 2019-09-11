@@ -82,258 +82,121 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15329386758024.html">IO编程</a></h1>
-			<p class="meta"><time datetime="2018-07-30T16:17:55+08:00" 
-			pubdate data-updated="true">2018/7/30</time></p>
+		  	<h1 class="entry-title"><a href="15350771796806.html">CGColorSpace</a></h1>
+			<p class="meta"><time datetime="2018-08-24T10:19:39+08:00" 
+			pubdate data-updated="true">2018/8/24</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<pre><code class="language-python">f = open(&#39;/Users/fish/Desktop/readme.txt&#39;, &#39;r&#39;)
-content=f.read() 
-print(content)
-f.close()
+		  	<p>表示指定的颜色值</p>
+
+<pre><code class="language-objectivec">CGColorSpaceRef
+//一个配置文件，指定如何解释显示的颜色值。
 </code></pre>
 
-<p>文件使用完必须关闭，文件对象会占用系统资源，操作系统同时能打开文件数量也是有限的<br/>
-为了保证每次不论是否文件读碟出现<code>IOError</code>出错 都能正确关闭文件，通常这么写:</p>
-
-<pre><code class="language-python">try:
-    f = open(&#39;/path/to/file&#39;, &#39;r&#39;)
-    print(f.read())
-finally:
-    if f:
-        f.close()
-
-# 使用 python的with语句来自动帮我们调用close()方法
-#与try...finall..效果相同代码更简洁
-
-with open(&#39;/path/to/file&#39;, &#39;r&#39;) as f:
-    print(f.read())
-</code></pre>
-
-<p><code>read()</code>方法会一次性读取全部内容,如果文件过大会挑战内存<br/>
-<code>read(size)</code>每次最多读取size字节的内容<br/>
-<code>readline()</code>每次读取一行内容<br/>
-<code>readlines()</code>一次性读取所有行,返回一个<code>list</code></p>
-
-<blockquote>
-<p>类似文件这种 open()函数返回可以read()的对象，均称为 file-like Object，除此之外还有内存的字节流、网络流、自定义流</p>
-</blockquote>
-
-<h3 id="toc_0">二进制文件</h3>
-
-<p>默认读取的为UTF-8编码的文本文件,如果为二进制文件,需要用<code>rb</code>模式打开</p>
-
-<pre><code class="language-python">&gt;&gt;&gt; f = open(&#39;/Users/michael/test.jpg&#39;, &#39;rb&#39;)
-&gt;&gt;&gt; f.read()
-# b&#39;\xff\xd8\xff\xe1\x00\x18Exif\x00\x00...&#39; # 十六进制表示的字节
-</code></pre>
-
-<h3 id="toc_1">其它编码格式</h3>
-
-<p>对于非<code>UTF-8</code>编码的文本文件,需要<code>open()</code>函数需要传入<code>encoding</code>参数</p>
-
-<pre><code class="language-python">f = open(&#39;/Users/michael/gbk.txt&#39;, &#39;r&#39;, encoding=&#39;gbk&#39;)
-</code></pre>
-
-<p>当编码不规范，文本中夹杂着非法编码字符时，会发生转码错误(<code>UnicodeDecodeError</code>)，此时可以通过加入参数<code>errors</code>来指定处理方式，常用的为直接忽略</p>
-
-<pre><code class="language-python">f = open(&#39;/Users/michael/gbk.txt&#39;, &#39;r&#39;, encoding=&#39;gbk&#39;, errors=&#39;ignore&#39;)
-</code></pre>
-
-<h3 id="toc_2">写文件</h3>
-
-<p>写文件也是调用<code>open()</code>函数 只是传入的标识符为<code>w</code>或者<code>wb</code>表示写文本文件或写二进制文件</p>
-
-<pre><code class="language-python">f3 = open(&#39;/Users/fish/Desktop/readme.txt&#39;, &#39;wb&#39;)
-f3.write(b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;)
-f3.close()
-</code></pre>
-
-<blockquote>
-<p>与读文件相同要记得调用<code>close()</code>方法,否则可能有部分未写入</p>
-</blockquote>
-
-<p>与读文件相同,可以通过<code>with</code>语句 确保自动调用close()方法</p>
-
-<pre><code class="language-python">with open(&#39;/Users/michael/test.txt&#39;, &#39;w&#39;) as f:
-    f.write(&#39;Hello, world!&#39;)
-</code></pre>
-
-<blockquote>
-<p>通过<code>encoding</code>参数将字符转为指定编码<br/>
-<code>w</code>默认为覆盖模式 <code>a</code>是append模式</p>
-</blockquote>
-
-<h2 id="toc_3">StringIO 和 BytesIO</h2>
-
-<p>内存中进行读写</p>
-
-<pre><code class="language-python">from io import StringIO
-
-f4=StringIO(&quot;初始\n 字符串&quot;)
-f4.write(&quot;hello,&quot;)
-f4.write(&quot; &quot;)
-f4.write(&quot;world!&quot;)
-
-print(f4.getvalue())  # getvalue()方法用于获得写入后的内容
-#hello, world!
-
-from io import BytesIO
-f5=BytesIO()
-f5.write(&quot;中文&quot;.encode(&quot;utf-8&quot;))
-print(f5.getvalue())
-# b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;
-</code></pre>
-
-<p>要读取StringIO，可以用一个str初始化StringIO，然后，像读文件一样读取：<br/>
-和StringIO类似，可以用一个bytes初始化BytesIO，然后，像读文件一样读取：</p>
-
-<pre><code class="language-python">from io import StringIO
-f = StringIO(&#39;Hello!\nHi!\nGoodbye!&#39;)
-while True:
-     s = f.readline()
-     if s == &#39;&#39;:
-         break
-     print(s.strip())
-
-# Hello!
-# Hi!
-# Goodbye!
-
-from io import BytesIO
-f = BytesIO(b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;)
-f.read()
-# b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;
-
-</code></pre>
-
-<h2 id="toc_4">操作文件和目录</h2>
-
-<p>操作文件和目录<br/>
-通过<code>os</code>模块提供的功能</p>
-
-<pre><code class="language-python">import os
-os.name # posix 操作系统类型(posix表示是Linux、Unix、Mac OS，nt表示是Windows)
-
-os.uname() #查看详细的系统信息
-#posix.uname_result(sysname=&#39;Darwin&#39;, nodename=&#39;fishdeMacBook-Pro.local&#39;, release=&#39;17.5.0&#39;, version=&#39;Darwin Kernel Version 17.5.0: Fri Apr 13 19:32:32 PDT 2018; root:xnu-4570.51.2~1/RELEASE_X86_64&#39;, machine=&#39;x86_64&#39;)
-</code></pre>
-
-<h3 id="toc_5">环境变量</h3>
-
-<pre><code class="language-python">os.environ #操作系统定义的全部环境变量
-os.environ.get(&quot;PATH&quot;) # 获取某个环境变量值
-os.environ.get(&#39;x&#39;, &#39;default&#39;) # 
-</code></pre>
-
-<h3 id="toc_6">操作文件和目录</h3>
-
-<p>操作文件和目录的函数 在<code>os</code>和<code>os.path</code>中</p>
-
-<pre><code class="language-python">import os
-
-currentPath=os.path.abspath(&quot;.&quot;)  # .表示当前路径
-print(currentPath) # /Users/fish/Desktop/LYY/Python
-
-joinDir=os.path.join(&quot;/Users/fish/Desktop&quot;, &quot;testDir&quot;) #在目录下新建目录 获取新目录路径
-print(joinDir) # /Users/fish/Desktop/testDir
-
-splitDir=os.path.split(&quot;/Users/fish/Desktop/testDir&quot;)
-print(splitDir) #(&#39;/Users/fish/Desktop&#39;, &#39;testDir&#39;)  获取最后一部分文件或目录
-splitext=os.path.splitext(&quot;/Users/fish/Desktop/testDir&quot;) #获取扩展名 如果最后一部分为目录 则为空
-print(splitext) # (&#39;/Users/fish/Desktop/testDir/readme&#39;, &#39;.txt&#39;)
-
-os.mkdir(&quot;/Users/fish/Desktop/testDir2&quot;) #新建目录
-os.rmdir(&quot;/Users/fish/Desktop/testDir2&quot;) #删除目录
-
-os.path.join(&quot;/Users/fish/Desktop&quot;, &quot;readme.txt&quot;)
-os.rename(&#39;/Users/fish/Desktop/readme.txt&#39;, &#39;/Users/fish/Desktop/readme.py&#39;)  # 重命名文件
-os.remove(&#39;/Users/fish/Desktop/readme.py&#39;) # 删除文件
-
-dirlist=os.listdir(&quot;.&quot;) #获取当前目录下的所有文件夹列表
-os.path.isdir(&quot;.&quot;) # 判断是否为文件夹目录
-
-</code></pre>
-
-<p>当合并路径时,不要直接拼接字符串，通过<code>os.path.join()</code>函数可以正确处理不用操作系统的路径分隔符.<br/>
-同理，拆分字符串时通过<code>os.path.split()</code>函数，可以把路径拆分为两部分，后一部分总是最后级别的目录或文件名<br/>
-<code>os.path.splitext()</code>可以直接让你得到文件扩展名</p>
-
-<blockquote>
-<p>在<code>os</code>模块中并没有复制文件函数,可以再<code>shutil</code>模块中提供了<code>copyfile()</code>函数等使用的文件操作函数</p>
-</blockquote>
-
-<h2 id="toc_7">序列化</h2>
-
-<p>Python通过<code>pickle</code>模块实现序列化</p>
-
-<pre><code class="language-python">import pickle
-#序列化
-dict1=dict(name=&quot;Bob&quot;, age=24, score=88)
-data=pickle.dumps(dict1)
-print(data) #b&#39;\x80\x03}q\...\x04KXu.&#39;
-
-#直接将序列化的内容写入文件
-file1=open(&quot;/Users/fish/Desktop/readme.txt&quot;, &quot;wb&quot;)
-pickle.dump(dict1, file1)
-file1.close()
-
-#  将文件从磁盘读到内存后使用pickle.loads()方法反序列化出对象， 
-#  也可以直接用pickle.load()方法从一个file-like Object中直接反序列化出对象
-file2=open(&quot;/Users/fish/Desktop/readme.txt&quot;, &quot;rb&quot;)
-dict2=pickle.load(file2)
-file2.close()
-print(dict2) #{&#39;name&#39;: &#39;Bob&#39;, &#39;age&#39;: 24, &#39;score&#39;: 88}
-
-
-</code></pre>
-
-<h3 id="toc_8">JSON</h3>
-
-<p>dict可以转为json序列化</p>
-
-<pre><code class="language-python">import json
-print(json.dumps(dict1)) # {&quot;name&quot;: &quot;Bob&quot;, &quot;age&quot;: 24, &quot;score&quot;: 88}
-
-file1=open(&quot;/Users/fish/Desktop/readme.txt&quot;, &quot;w&quot;)
-json.dump(dict1, file1)
-file1.close()  # 文件内容为 {&quot;name&quot;: &quot;Bob&quot;, &quot;age&quot;: 24, &quot;score&quot;: 88}
-</code></pre>
-
-<p>将class 序列化为 json</p>
-
-<pre><code class="language-python">import json
-
-#序列化  原理是先将class转为dict 然后将dict序列化json
-
-class Student(object):
-    def __init__(self, name, age, score):
-        self.name = name
-        self.age = age
-        self.score = score
-
-s = Student(&#39;Bob&#39;, 20, 88)
-
-#专门写一个转换函数 将 class 转为json
-def student2dict(std):
-    return {
-        &#39;name&#39;: std.name,
-        &#39;age&#39;: std.age,
-        &#39;score&#39;: std.score
-    }
-# 传入更多参数来 指定序列化规则
-print(json.dumps(s, default=student2dict))  #{&quot;age&quot;: 20, &quot;name&quot;: &quot;Bob&quot;, &quot;score&quot;: 88}
-
-# 可以这么写 对大多数class都有__dict__属性来存储实例变量(__slots__除外)
-print(json.dumps(s, default=lambda obj: obj.__dict__))
-
-# 反序列化  原理为将json反序列化为dict 然后转为 class实例
-
-def dict2student(d):
-    return Student(d[&#39;name&#39;], d[&#39;age&#39;], d[&#39;score&#39;])
-json_str = &#39;{&quot;age&quot;: 20, &quot;score&quot;: 88, &quot;name&quot;: &quot;Bob&quot;}&#39;
-print(json.loads(json_str, object_hook=dict2student))
+<h2 id="toc_0">概述</h2>
+
+<p>颜色空间是多维的，每个维度表示特定的颜色分量。例如，RGB颜色空间的颜色有R,G,B三个三个维度.颜色空间的的每个维度强度由浮点值表示，其范围和含义取决于所讨论的颜色空间</p>
+
+<p>我们通过正确指定的颜色空间可以确保图像具有一致的外观</p>
+
+<p><code>Core Graphics</code>支持多种颜色空间：</p>
+
+<ol>
+<li>与设备无关的颜色空间: 校准的色彩空间。 确保在不同设备上现实的颜色相同,</li>
+<li>与设备相关的颜色空间: 依赖于设备的颜色空间与特定设备的颜色表示系统相关联。</li>
+<li>特殊的颜色空间: 使用索引和对应的基色空间 索引颜色空间包含了最多256个颜色表以及每个颜色表的条目都制定基色空间的一种颜色</li>
+</ol>
+
+<h3 id="toc_1">创建与设备无关的颜色空间</h3>
+
+<p>为了创建与设备无关的颜色空间，我们需要提供白色参考点，黑色参考点以及特殊设备的gamma值</p>
+
+<ol>
+<li><p>创建标准的灰度色彩空间</p>
+<p><code>CGColorSpaceCreateCalibratedGray</code></p>
+<p>创建与设备无关的灰度颜色空间，表示相对于参考白点的颜色</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateCalibratedGray(const CGFloat *whitePoint, const CGFloat *blackPoint, CGFloat gamma);
+whitePoint :   3个数字的数组,制定了在CIE 1931 XYZ-space颜色系统中漫反射白点的3刺激值 (对色彩学不熟悉)<br/>
+blackPoint :   3个数字的数组,制定了在CIE 1931 XYZ-space颜色系统中漫反射黑点的3刺激值 <br/>
+gamma ： 适合于成像设备的伽马值。<br/>
+返回一个新的灰色色彩空间,需要主动调用`CGColorSpaceRelease`来释放
+</code></pre></li>
+<li><p>创建校准的RGB颜色空间<br/>
+<code>CGColorSpaceCreateCalibratedRGB</code></p>
+<p>创建与设备无关的RGB颜色空间，表示相对于参考白点的颜色。 此白点基于输出设备可以生成的最白光。 与设备无关的颜色空间中的颜色在不同设备上显示时应该相同，只要设备的功能允许。<br/>
+对于需要详细伽玛的色彩空间，例如sRGB或ITU-R BT.709中使用的分段传递函数，可以使用函数<code>CGColorSpaceCreateICCBased</code>，因为它可以准确地表示这些伽玛曲线。</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateCalibratedRGB(const CGFloat *whitePoint, const CGFloat *blackPoint, const CGFloat *gamma, const CGFloat *matrix);
+whitePoint：<br/>
+blackPoint<br/>
+gamma: 一个由3个数字组成的数组，用于指定颜色空间的红色，绿色和蓝色分量的伽玛值。<br/>
+matrix： 9个数字的数组，指定相对于最终XYZ表示的颜色空间的伽马修改的RGB值的线性解释。<br/>
+返回一个新的RGB色彩空间,需要主动调用`CGColorSpaceRelease`来释放
+</code></pre></li>
+<li><p>创建根绝ICC颜色配置文件的规范<br/>
+<code>CGColorSpaceCreateICCBased</code></p>
+<p>根据ICC颜色配置文件创建基于ICC的色彩空间</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateICCBased(size_t nComponents, const CGFloat *range, CGDataProviderRef profile, CGColorSpaceRef alternate);
+</code></pre></li>
+<li><p>创建根据 CIE L<em>a</em>b标准与人类感知相关颜色</p>
+<p><code>CGColorSpaceCreateLab</code><br/>
+<code>CIE L * a * b</code>*空间是Munsell颜色表示系统（一种通过色调，值和饱和度或“色度”值指定颜色的系统）的非线性变换，旨在将感知色差与定量距离相匹配 在色彩空间。 L *分量表示亮度值，a *分量表示从绿色到红色的值，b *分量表示从蓝色到黄色的值。 这大致对应于人脑被认为解码颜色的方式。 与设备无关的颜色空间中的颜色在不同设备上显示时应该相同，只要设备的功能允许。</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateLab(const CGFloat *whitePoint, const CGFloat *blackPoint, const CGFloat *range);
+whitePoint:<br/>
+blackPoint:<br/>
+range:一个由4个数字组成的数组，用于指定颜色空间的a *和b *组件的有效值范围。 a *组件表示从绿色到红色的值，b *组件表示从蓝色到黄色的值。
+</code></pre></li>
+</ol>
+
+<h2 id="toc_2">创建通用或者与设备相关的颜色空间</h2>
+
+<p>当在不同的输出设备上显示时，设备颜色空间中的颜色经常显得不同。 因此，在保持颜色很重要时，不建议使用设备颜色空间</p>
+
+<ol>
+<li><p>CMYK颜色空间</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateDeviceCMYK(void);
+使用完后需要主动调用CGColorSpaceRelease进行释放
+</code></pre></li>
+<li><p>灰度颜色空间</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateDeviceGray(void);
+</code></pre></li>
+<li><p>RGB颜色空间</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateDeviceRGB(void);
+</code></pre></li>
+<li><p>特定平台的颜色空间</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateWithPlatformColorSpace(const void *ref);
+platformColorSpace：指向特定于平台的颜色空间的通用指针。 在macOS中，传递CMProfileRef-a ColorSync配置文件。 Quartz仅在函数调用期间使用此指针（和基础信息）
+</code></pre></li>
+</ol>
+
+<h2 id="toc_3">创建特殊颜色空间</h2>
+
+<ol>
+<li><p>创建索引颜色空间，由颜色查找表指定的颜色组成。</p>
+<p>索引颜色空间包含最多255个条目的颜色表，以及颜色表条目映射到的基色空间。 颜色表中的每个条目都指定基色空间中的一种颜色。 索引颜色空间中的值被视为颜色空间的颜色表的索引。 表中的数据采用网格格式。 （例如，对于RGB颜色空间，值为R，G，B，R，G，B等。）</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateIndexed(CGColorSpaceRef baseSpace, size_t lastIndex, const unsigned char *colorTable);
+baseSpace:颜色索引表基于的 基色颜色空间<br/>
+lastIndex: 索引表的最大下标值 必须&lt;=255<br/>
+colorTable: m *（lastIndex + 1）个字节的数组，其中m是基色空间中的颜色分量数。 每个字节是0到255范围内的无符号整数，它被缩放到基色空间中相应颜色分量的范围。
+</code></pre></li>
+<li><p>创建图案颜色空间</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreatePattern(CGColorSpaceRef baseSpace);
+baseSpace:对于蒙版图案，底层颜色空间指定要通过蒙版绘制的颜色。 对于彩色图案，您应该传递NULL。
+</code></pre></li>
+<li><p>创建指定类型的Quartz颜色空间</p>
+<p>我们可以使用此函数创建通用的颜色空间等,查看<a href="https://developer.apple.com/documentation/coregraphics/cgcolorspace/color_space_names?language=objc">Color Space Name</a></p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorSpaceCreateWithName(CFStringRef name);
+name：颜色空间名称
+</code></pre></li>
+</ol>
+
+<h2 id="toc_4">颜色空间的引用和释放</h2>
+
+<pre><code class="language-objectivec">//减少颜色空间的引用计数
+void CGColorSpaceRelease(CGColorSpaceRef space);
+
+//增加颜色空间的引用计数
+CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space);
 
 </code></pre>
 
@@ -358,24 +221,24 @@ print(json.loads(json_str, object_hook=dict2student))
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -395,10 +258,10 @@ print(json.loads(json_str, object_hook=dict2student))
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -422,7 +285,7 @@ print(json.loads(json_str, object_hook=dict2student))
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -433,7 +296,7 @@ print(json.loads(json_str, object_hook=dict2student))
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -451,6 +314,15 @@ print(json.loads(json_str, object_hook=dict2student))
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -460,31 +332,31 @@ print(json.loads(json_str, object_hook=dict2student))
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

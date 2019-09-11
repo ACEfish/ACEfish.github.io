@@ -82,95 +82,58 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15471197068949.html">Promise</a></h1>
-			<p class="meta"><time datetime="2019-01-10T19:28:26+08:00" 
-			pubdate data-updated="true">2019/1/10</time></p>
+		  	<h1 class="entry-title"><a href="15471899651568.html">Symbol</a></h1>
+			<p class="meta"><time datetime="2019-01-11T14:59:25+08:00" 
+			pubdate data-updated="true">2019/1/11</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">Promise 写法</h2>
+		  	<p>是js中继<code>Number</code> <code>String</code> <code>Boolean</code> <code>Undefined</code> <code>Object</code> <code>Function</code>之后推出的第七种数据类型 <code>Symbol</code></p>
 
-<pre><code class="language-javascript">//构造一个Promise
-const promise = new Promise((resolve, reject) =&gt; {
-    // resolve 或者  reject只返回一个 一次 然后就会停止监听了
-    // setTimeout(() =&gt; {
-    //     resolve(&quot;这是返回的结果&quot;)
-        
-    // }, 2000);
-    setTimeout(() =&gt; {
-     reject(Error(&quot;这是错误的信息结果&quot;))
-    }, 3000);
-})
-//监听这个promise返回结果
-promise.then(result =&gt; {
-    console.log(result)
-}).catch(err =&gt; {
-    console.log(err)
-})
+<p>Symbol生成唯一的值 为了防止命名冲突</p>
+
+<h2 id="toc_0">构造</h2>
+
+<p><code>Symbol(str)</code> str为了标识我们生成唯一值 可以省略</p>
+
+<pre><code class="language-javascript">const students = {
+    wx : &quot;钻一&quot;,
+    //利用计算属性 生成属性名 防止冲突
+    [Symbol(&quot;lyy&quot;)] : &quot;最强王者&quot;,
+    [Symbol(&quot;fk&quot;)] : &quot;白金&quot;,
+    [Symbol(&quot;tt&quot;)] : &quot;黑铁&quot;,
+}
 </code></pre>
 
-<blockquote>
-<p>Promise 的then方法参数为两个，第一个回调函数为result回调，第二个为error的回调函数</p>
+<h2 id="toc_1">特点</h2>
 
-<p>在Promise的.then中return的值默认即为返回一个Promise.resolve 我们可以通过继续.then来获取这个返回的值</p>
-</blockquote>
+<h3 id="toc_2">对象属性遍历</h3>
 
-<p><img src="media/15471197068949/2181551322657_.pic_hd.jpg" alt="2181551322657_.pic_hd"/></p>
+<p>用symbol生成的对象属性 ，使用<code>for in</code>、 <code>Object.getOwnPropertyNames()</code> 、 <code>Object.keys()</code>无法遍历获取,只能使用<code>Object.getOwnPropertySymbols()</code>获取属性</p>
 
-<p><img src="media/15471197068949/2191551324230_.pic_hd.jpg" alt="2191551324230_.pic_hd"/></p>
+<pre><code class="language-javascript">for (const key in students) {
+    console.log(key)
+}
+//wx
 
-<h3 id="toc_1">Promise实例</h3>
+console.log(Object.keys(students)) //[&quot;wx&quot;]
 
-<h4 id="toc_2">Promise链式调用</h4>
+console.log(Object.getOwnPropertyNames(students)) //[&quot;wx&quot;]
 
-<h4 id="toc_3">多个Promise</h4>
+console.log(Object.getOwnPropertySymbols(students)) // [Symbol(lyy), Symbol(fk), Symbol(tt)]
 
-<ol>
-<li><p>Promise.all()<br/>
-参数为promise对象数组 只有当数组中的promise都resolve 才then结果为按顺序请求数组中的promise的resove，否则只要有一个请求reject 执行catch方法不再等待其他请求结果</p>
-<pre><code class="language-javascript">const userPromise = new Promise((resolve, reject) =&gt; {
-    setTimeout(() =&gt; {<br/>
-        resolve(&quot;这是user请求&quot;)<br/>
-    }, 1000);<br/>
-})<br/>
-const namePromise = new Promise((resolve, reject) =&gt; {<br/>
-    setTimeout(() =&gt; {<br/>
-        resolve(&quot;这是name请求&quot;)<br/>
-    }, 2000);<br/>
-})<br/>
-Promise.all([userPromise, namePromise])<br/>
-.then(response =&gt; {<br/>
-    console.log(response)<br/>
-    //[&quot;这是user请求&quot;, &quot;这是name请求&quot;]<br/>
-})<br/>
-.catch(err =&gt; {<br/>
-    console.log(err)<br/>
-})
-</code></pre></li>
-<li><p>Promise.race()</p>
-<p>参数为promise对象数组，只会返回该数组中请求最快完成的resolve或者reject结果</p>
-<pre><code class="language-javascript">const userPromise = new Promise((resolve, reject) =&gt; {
-    setTimeout(() =&gt; {<br/>
-        resolve(&quot;这是user请求&quot;)<br/>
-        // reject(&quot;user请求失败&quot;)<br/>
-    }, 1000);<br/>
-})<br/>
-const namePromise = new Promise((resolve, reject) =&gt; {<br/>
-    setTimeout(() =&gt; {<br/>
-        // resolve(&quot;这是name请求&quot;)<br/>
-        reject(&quot;name请求失败&quot;)<br/>
-    }, 2000);<br/>
-})<br/>
-Promise.race([userPromise, namePromise])<br/>
-.then(response =&gt; {<br/>
-    console.log(response)<br/>
-    //这是user请求<br/>
-})<br/>
-.catch(err =&gt; {<br/>
-    console.log(err)<br/>
-})
-</code></pre></li>
-</ol>
+</code></pre>
+
+<h2 id="toc_3">Symbol.for()</h2>
+
+<p>Symbol.for(str)查找其它用Symbol.for(str)生成的唯一值,如果存在就用返回已存在的唯一值，不存在就生成新的唯一值</p>
+
+<pre><code class="language-javascript">const students = {
+    [Symbol.for(&quot;lyy&quot;)] : &quot;最强王者&quot;,
+}
+
+console.log(students[Symbol.for(&quot;lyy&quot;)]) //最强王者
+</code></pre>
 
 
 		</div>
@@ -193,24 +156,24 @@ Promise.race([userPromise, namePromise])<br/>
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -230,10 +193,10 @@ Promise.race([userPromise, namePromise])<br/>
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -257,7 +220,7 @@ Promise.race([userPromise, namePromise])<br/>
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -268,7 +231,7 @@ Promise.race([userPromise, namePromise])<br/>
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -286,6 +249,15 @@ Promise.race([userPromise, namePromise])<br/>
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -295,31 +267,31 @@ Promise.race([userPromise, namePromise])<br/>
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

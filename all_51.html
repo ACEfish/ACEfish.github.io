@@ -82,44 +82,65 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15527263519137.html">iOS视图约束</a></h1>
-			<p class="meta"><time datetime="2019-03-16T16:52:31+08:00" 
-			pubdate data-updated="true">2019/3/16</time></p>
+		  	<h1 class="entry-title"><a href="15537640909732.html">MVVM的思考</a></h1>
+			<p class="meta"><time datetime="2019-03-28T17:08:10+08:00" 
+			pubdate data-updated="true">2019/3/28</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">自动约束方法</h2>
+		  	<p>MVC总结</p>
+
+<p>M应该做的事：</p>
+
+<ul>
+<li>给ViewController提供数据</li>
+<li>给ViewController存储数据提供接口</li>
+<li>响应数据请求一般来是ViewController的</li>
+<li>提供经过抽象的业务基本组件，供Controller调度(比如常用的dataModel)</li>
+</ul>
+
+<blockquote>
+<p>M不应该这是dataModel 而是整个Model层</p>
+</blockquote>
+
+<p>C应该做的事：</p>
+
+<ul>
+<li>管理View Container的生命周期</li>
+<li>负责生成所有的View实例，并放入View Container</li>
+<li>监听来自View与业务有关的事件来操作View或者model</li>
+</ul>
+
+<p>V应该做的事：</p>
+
+<ul>
+<li>响应与业务无关的事件，并因此引发动画效果，点击反馈（如果合适的话，尽量还是放在View去做）等。</li>
+<li>界面元素表达</li>
+</ul>
+
+<h2 id="toc_0">MVVM要考虑的问题</h2>
 
 <ol>
-<li><p>updateConstraintsIfNedded<br/>
-触发开始约束更新<br/>
-当有新的布局时，系统调用此方法确保视图和子视图约束信息的更新，系统会自动调用这方法，我们也可以手动调用此方法，来检查最新的约束条件</p></li>
-<li><p>updateConstraints<br/>
-更新约束<br/>
-我们可以通过重写此方法来设置自己的约束，系统在调用layOut布局之前，回调用这个方法，确认在视图的约束<br/>
-当我们的视图有约束变化或者失效，我们可以改变这些约束然后调用<code>setNeedUpdateConstraints</code>标记约束需要更新<br/>
-需要在此方法最后调用<code>super updateConstraints</code></p></li>
-<li><p>-（BOOL）neddUpdateConstrains<br/>
-调用此方法根据此方法的返回 决定是否需要更新约束</p></li>
-<li><p>setNeedsUpdateConstraints<br/>
-当视图需要更新时 我们可以调用此方法，然后在系统决定更新时机</p></li>
+<li>MVVM具体应该怎么写 各个部分应该负责那些事儿不 </li>
+<li>View和VM是否不应该持有 </li>
+<li>网络请求应该写在什么地方，请求是否应该放在C中</li>
+<li>MVVM中的数据流应该怎么流动 </li>
+<li>VM应该和M直接交互吗？还是需要通过C调度，VM和M直接交互会不会导致VM和具体业务产生强烈耦合，导致VM的可移植性降低？ </li>
+<li>M中放置对数据的增、删、改、查</li>
+<li>VM是不是只做抽象数据和形象数据的转化，即可能将查到的数据转化为View展示需要的形式（即数据转换），而不应该对后台数据做任何处理 ，因为这是M应该做的事</li>
+<li>VM只处理View需要展示的数据</li>
 </ol>
 
-<h2 id="toc_1">updateConstranins和layOut方法联系</h2>
+<h2 id="toc_1">MVVM学习</h2>
 
-<p>AutoLayout在更新显示view之前，会先调用updateContrains和layingOutView，layout和依赖于Contrains，而view的最终显示依赖于layout</p>
+<p>本文来自<a href="https://draveness.me/mvx">浅谈 MVC、MVP 和 MVVM 架构模式</a></p>
 
-<p>第一步：update constrains 进行视图的约束，从俯视图到子视图更新约束信息，可以通过调用<code>setNeedsUpdateConstraints</code>来触发此步骤. 而当我们做出一些改变约束的事情事，可以调用<code>updateConstraintsIfNedded</code>来通知约束改变，可以在<code>updateConstraints</code>方法中重写或者补充一些视图的约束</p>
+<p>MVP是MVC变种，采用了Presenter将视图和模型进行了解耦，采用了监督控制器，将视图层和模型层的一些属性进行了绑定</p>
 
-<p>第二步: lauout 根据上一步的约束结果，从父视图到子视图来设置视图的bounds frame等 确定试图位置，与constrains类似 有<code>setNeedLayout</code> <code>layoutIfNeeded</code> <code>layoutSubviews</code>方法</p>
+<p>MVVM 采用了PresentModel理念，PM即将视图的所有全部状态和行为抽象为一个模型，为视图层提供了一个接口，PM通过引入展示模型，将模型层中的数据和复杂的业务逻辑封装为简单的数据并暴露给视图，让视图和展示模型中的属性进行同步。<br/>
+展示模型PM中包含所有的视图渲染需要的动态信息，包括视图的内容（text、color）、组件是否启用（enable），除此之外还会将一些方法暴露给视图用于某些事件的响应</p>
 
-<p>第三步: 此步骤时 把view展示在屏幕上 此步骤可以通过<code>setNeedDisplay</code>来触发</p>
-
-<p>这三个步骤互相依赖，每一步的触发都依赖于上一步</p>
-
-<h2 id="toc_2">补充</h2>
-
-<p><code>UIViewController</code>中有<code>- (void)updateViewConstraints</code>默认实现是调用UIView的<code>uodateConstraints</code></p>
+<p>在PM模式中，同一个展示模型可以与多个领域对象交互，多个视图可以使用相同的展示模型，但是每一个视图只能持有一个展示模型。</p>
 
 
 		</div>
@@ -142,24 +163,24 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -179,10 +200,10 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -206,7 +227,7 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -217,7 +238,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -235,6 +256,15 @@ $(document).ready(function(event) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -244,31 +274,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

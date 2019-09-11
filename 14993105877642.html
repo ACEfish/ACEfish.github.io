@@ -85,13 +85,13 @@ $(document).ready(function(event) {
 				<p class="meta"><time datetime="2017-07-06T11:09:47+08:00" pubdate data-updated="true">2017/7/6</time></p>
 			 </header>
 		  	<div class="entry-content">
-			  	<p>闭包是自包含的函数代码块,可以在代码中被传递和使用</p>
+			  	<p>闭包是自包含的函数代码块,可以在代码中被传递和使用<br/>
+<code>Swift</code>中的闭包与<code>C</code>和<code>Objective-C</code>中的代码块（<code>blocks</code>）以及其他一些编程语言中的匿名函数比较相似</p>
 
 <p><strong>闭包可以捕获和存储其所在上下文中任意常量和变量的引用。被称为包裹常量和变量。 Swift 会为你管理在捕获过程中涉及到的所有内存操作。</strong></p>
 
 <blockquote>
-<p><code>Swift</code>中的闭包与<code>C</code>和<code>Objective-C</code>中的代码块（<code>blocks</code>）以及其他一些编程语言中的匿名函数比较相似<br/>
-在函数章节中介绍的全局和嵌套函数实际上也是特殊的闭包</p>
+<p>在函数章节中介绍的全局和嵌套函数实际上也是特殊的闭包</p>
 </blockquote>
 
 <p>闭包的形式：</p>
@@ -174,6 +174,12 @@ reversedNames = names.sorted(by: { s1, s2 in s1 &gt; s2 } )
 reversedNames = names.sorted(by: { $0 &gt; $1 } )
 </code></pre>
 
+<blockquote>
+<p>注意</p>
+
+<p>只有在必要中</p>
+</blockquote>
+
 <h3 id="toc_6">运算符方法</h3>
 
 <p><code>Swift</code>的<code>String</code>类型定义了关于大于号<code>（ &gt; ）</code>的字符串实现，其作为一个函数接受两个<code>String</code>类型的参数并返回<code>Bool</code>类型的值。而这正好与<code>sorted(by:)</code>方法的参数需要的函数类型相符合。因此，你可以简单地传递一个大于号，Swift 可以自动推断出你想使用大于号的字符串函数实现：</p>
@@ -183,7 +189,8 @@ reversedNames = names.sorted(by: { $0 &gt; $1 } )
 
 <h2 id="toc_7">尾随闭包</h2>
 
-<p>如果要将一个很长的闭包作为函数最后一个参数,为了增强代码的可读性,我们可以使用<code>尾随闭包</code>的方式来调用函数</p>
+<p>如果要将一个很长的闭包作为函数最后一个参数,可以使用<code>尾随闭包</code>的方式来调用函数<br/>
+尾随闭包是书写在函数圆括号之后的闭包表达式，使用尾随闭包可以不用写出它的参数标签</p>
 
 <pre><code class="language-swift">func someFunctionThatTakesAClosure(closure: () -&gt; Void) {
     // 函数体部分
@@ -219,7 +226,7 @@ let strings = numbers.map {
 
 <h2 id="toc_8">值捕获</h2>
 
-<p>闭包可以在被定义的上下文捕获常量或变量</p>
+<p>闭包可以在被定义的上下文捕获常量或变量,即使定义这些常量和变量的原作用域已经不存在，闭包仍然可以在闭包函数体内引用和修改这些值</p>
 
 <p>最简单的捕获值的闭包形式是嵌套函数</p>
 
@@ -233,11 +240,16 @@ let strings = numbers.map {
 }
 </code></pre>
 
-<p><code>makeIncrementer</code>的返回类型是<code>() -&gt; Int</code>说明要返回一个函数<br/>
-对于嵌套函数<code>incrementer()</code>并没有参数，而是捕获了<code>runningTotal</code>和<code>amount</code>变量的引用.捕获引用保证了<code>runningTotal</code>和<code>amount</code>变量在调用完<code>makeIncrementer</code>后不会消失，并且保证了在下一次执行<code>incrementer</code>函数时，<code>runningTotal</code>依旧存在。</p>
+<p><code>makeIncrementer</code>的返回类型是<code>() -&gt; Int</code>说明要返回一个函数</p>
+
+<p>对于嵌套函数<code>incrementer()</code>并没有参数，而是捕获了<code>runningTotal</code>和<code>amount</code>变量的引用.捕获引用保证了<code>runningTotal</code>和<code>amount</code>变量在调用完<code>makeIncrementer</code>后不会消失，并且保证了在下一次执行<code>incrementer</code>函数时，<code>runningTotal</code>依旧存在。</p>
 
 <blockquote>
-<p>如果一个值不会被闭包改变，或者在闭包创建后不会改变，Swift 可能会改为捕获并保存一份对值的拷贝。 Swift 也会负责被捕获变量的所有内存管理工作，包括释放不再需要的变量。</p>
+<p>注意</p>
+
+<p>为了优化，如果一个值不会被闭包改变，或者在闭包创建后不会改变，Swift 可能会改为捕获并保存一份对值的拷贝。</p>
+
+<p>Swift 也会负责被捕获变量的所有内存管理工作，包括释放不再需要的变量。</p>
 </blockquote>
 
 <pre><code class="language-swift">let incrementByTen = makeIncrementor(forIncrement: 10)
@@ -252,16 +264,13 @@ incrementByTen()// 返回的值为30
 
 <p><code>函数</code>和<code>闭包</code>都是引用类型，因此我们设置的常量或者变量是设置的对应函数或闭包的引用，而不是闭包内容本身</p>
 
-<blockquote>
-</blockquote>
-
 <h2 id="toc_10">逃逸闭包</h2>
 
 <p>将闭包作为参数传递到另一个函数中,但是这个闭包在函数返回后才执行,则这个闭包从函数中<code>逃逸</code>，我们可以通过在函数名之前标注<code>@escaping</code>表示这个闭包允许<code>逃逸</code></p>
 
-<p>一种能使闭包“逃逸”出函数的方法是，将这个闭包保存在一个函数外部定义的变量中,此时必须闭包是可逃逸的否则函数的作用域结束，这个外部变量保存的闭包。。。会导致编译错误</p>
+<p>一种能使闭包“逃逸”出函数的方法是，将这个闭包保存在一个函数外部定义的变量中。例如：逃逸闭包我们常用于在一个函数需要异步执行操作,通常会让函数返回,在异步操作完成后再调用执行这个闭包,因为闭包需要在函数返回之后被调用,所以需要逃逸闭包</p>
 
-<p>逃逸闭包我们常用于在一个函数需要异步执行操作,通常会让函数返回,在异步操作完成后再调用执行这个闭包,因为闭包需要在函数返回之后被调用,所以需要逃逸闭包</p>
+<p>逃逸闭包必须将函数参数标记为<code>@escaping</code>，否则会得到一个编译错误</p>
 
 <pre><code class="language-swift">var completionHandlers: [() -&gt; Void] = []
 func someFunctionWithEscapingClosure(completionHandler: @escaping () -&gt; Void) {
@@ -274,7 +283,9 @@ func someFunctionWithNonescapingClosure(closure: () -&gt; Void) {
 class SomeClass {
     var x = 10
     func doSomething() {
+        //逃逸闭包
         someFunctionWithEscapingClosure { self.x = 100 }
+        //非逃逸闭包
         someFunctionWithNonescapingClosure { x = 200 }
     }
 }
@@ -286,13 +297,33 @@ completionHandlers.first?()
 print(instance.x)
 </code></pre>
 
+<p><strong>在逃逸闭包中 你需要显式的引用<code>self</code></strong></p>
+
 <h2 id="toc_11">自动闭包</h2>
 
 <p>一种自动创建的闭包，用于包装传递给函数作为参数的表达式。不接受任何参数，当它被调用的时候，会返回被包装在其中的表达式的值。这样帮我们省略掉花括号,用一个普通表达式代替显式的闭包</p>
 
 <p>我们经常会调用采用自动闭包的函数，但是很少去实现这样的函数。举个例子来说，<code>assert(condition:message:file:line:)</code>函数接受自动闭包作为它的<code>condition</code>参数和 <code>message</code>参数；它的<code>condition</code>参数仅会在<code>debug</code>模式下被求值，它的<code>message</code>参数仅当 <code>condition</code>参数为<code>false</code>时被计算求值。</p>
 
-<p><strong>自动闭包让你能够延迟求值，因为直到你调用这个闭包，代码段才会被执行。</strong></p>
+<p>自动闭包让你能够延迟求值，因为直到你调用这个闭包，代码段才会被执行。</p>
+
+<pre><code class="language-swift">var customersInLine = [&quot;Chris&quot;, &quot;Alex&quot;, &quot;Ewa&quot;, &quot;Barry&quot;, &quot;Daniella&quot;]
+print(customersInLine.count)
+// 打印出“5”
+
+//这句返回一个闭包 因此不会立即执行删除操作
+//customerProvider 的 类型并不是 String  而是 （）=&gt;String
+let customerProvider = { customersInLine.remove(at: 0) }
+print(customersInLine.count)
+// 打印出“5”
+//执行闭包
+print(&quot;Now serving \(customerProvider())!&quot;)
+// Prints &quot;Now serving Chris!&quot;
+print(customersInLine.count)
+// 打印出“4”
+</code></pre>
+
+<p>当使用<code>@autoclosure</code>标记为接收自动闭包，此时可以将该函数当做接受String类型参数的函数来调用</p>
 
 <pre><code class="language-swift">// customersInLine is [&quot;Alex&quot;, &quot;Ewa&quot;, &quot;Barry&quot;, &quot;Daniella&quot;]
 //未使用自动闭包
@@ -310,8 +341,9 @@ serve(customer: customersInLine.remove(at: 0))
 </code></pre>
 
 <blockquote>
-<p>过度使用 autoclosures 会让你的代码变得难以理解。上下文和函数名应该能够清晰地表明求值是被延迟<br/>
-执行的</p>
+<p>注意</p>
+
+<p>过度使用 autoclosures 会让你的代码变得难以理解。上下文和函数名应该能够清晰地表明求值是被延迟执行的</p>
 </blockquote>
 
 <pre><code class="language-swift">//可以通过同时加上@autoclosure @escaping 自动闭包可以“逃逸”
@@ -366,24 +398,24 @@ func collectCustomerProviders(_ customerProvider: @autoclosure @escaping () -&gt
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -403,10 +435,10 @@ func collectCustomerProviders(_ customerProvider: @autoclosure @escaping () -&gt
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -430,7 +462,7 @@ func collectCustomerProviders(_ customerProvider: @autoclosure @escaping () -&gt
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -441,7 +473,7 @@ func collectCustomerProviders(_ customerProvider: @autoclosure @escaping () -&gt
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -459,6 +491,15 @@ func collectCustomerProviders(_ customerProvider: @autoclosure @escaping () -&gt
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -468,31 +509,31 @@ func collectCustomerProviders(_ customerProvider: @autoclosure @escaping () -&gt
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

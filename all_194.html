@@ -82,64 +82,30 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15541023147431.html">LLVM Backend</a></h1>
-			<p class="meta"><time datetime="2019-04-01T15:05:14+08:00" 
-			pubdate data-updated="true">2019/4/1</time></p>
+		  	<h1 class="entry-title"><a href="15025006795297.html">析构过程</a></h1>
+			<p class="meta"><time datetime="2017-08-12T09:17:59+08:00" 
+			pubdate data-updated="true">2017/8/12</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>整个编译流程中 LLVM Backend的位置<br/>
-<img src="media/15541023147431/15541023747982.jpg" alt="" style="width:707px;"/></p>
+		  	<p>只适用类类型,当类的实例被释放时,析构器会被立即调用。<br/>
+<code>deinit</code>关键字标示析构器</p>
 
-<p>LLVM Backend的流程图<br/>
-<img src="media/15541023147431/15541050358473.jpg" alt="" style="width:715px;"/></p>
+<h2 id="toc_0">析构过程原理</h2>
 
-<h3 id="toc_0">CodeGen 阶段</h3>
+<p>自动释放不需要的实例来释放资源,通过自动引用计数来管理内存。实例被释放时会自动清理,但是使用自己的资源需要进行额外的清理(比如自己打开一个文件管理类，需要在类被释放前手动关闭该文件).</p>
 
-<ul>
-<li>Instruction Selection 指令选择：将IR转化成目标平台指令组成的定向非循环图 DAG（Directed Acyclic Graph）</li>
-<li>Scheduling and Formation 调度与排序：读取 DAG，将 DAG 的指令排成 MachineInstr 的队列</li>
-<li>SSA 优化：多个基于 SSA（Static Single Assignment） 的 Pass 组成。比如 modulo-scheduling 和 peephole optimization 都是在这个阶段完成的</li>
-<li>Register allocation 寄存器分配：将 Virtual Register 映射到 Physical Register 或内存上 Prolog / Epilog 生成</li>
-<li>确定所需堆栈大小：Machine Code</li>
-<li>晚期优化：最后一次优化机会</li>
-<li>Code Emission：输出代码，可以选择汇编或者二进制机器码。</li>
-</ul>
+<p>在类的定义中,每个类最多只能有一个析构器,不带任何参数</p>
 
-<h3 id="toc_1">SelectionDAG</h3>
+<pre><code class="language-swift">deinit {
+    // 执行析构过程
+}
+</code></pre>
 
-<ul>
-<li>构建最初的 DAG：把 IR 里的 add 指令转成 SelectionDAG 的 add 节点</li>
-<li>优化构建好的 DAG：把一些平台支持的 meta instructions 比如 Rotates，div / rem 指令识别出</li>
-<li>Legalization SelectionDAG 类型：比如某些平台只有64位浮点和32位整数运算指令，那么就需要把所有 f32 都提升到 f64，i1/i8/i16 都提升到 i32，同时还要把 i64 拆分成两个 i32 来存储，操作符的合法化，比如 SDIV 在 x86 上回转成 SDIVREM。这个过程结果可以通过 llc -view-dag-combine2-dags sum.ll 看到</li>
-<li>指令选择 instruction selector（ISel）：将平台无关的 DAG 通过 TableGen 读入 .tb 文件并且生成对应的模式匹配代码从而转成平台相关的 DAG</li>
-<li>SelectionDAG Scheduling and Formation：因为 CPU 是没法执行 DAG，所以需要将指令从 DAG 中提取依据一定规则比如 minimal register pressure 或隐藏指令延迟重排成指令队列。（DAG -&gt; linear list（SSA form） -&gt; MachineInstr -&gt; MC Layer API MCInst MCStreamr -&gt; MCCodeEmitter -&gt; Binary Instr）</li>
-</ul>
+<p>析构器在实例被释放前被调用,不能主动调用析构器。子类继承了父类的析构器，并且在子类析构器实现的最后，父类的析构器会被自动调用。</p>
 
-<h3 id="toc_2">Register Allocation 寄存器分配</h3>
-
-<h4 id="toc_3">寄存器在 LLVM 中的表达</h4>
-
-<p>物理寄存器在 LLVM 里均有 1 - 1023 范围内的编号。</p>
-
-<h4 id="toc_4">虚拟寄存器到物理寄存器的映射</h4>
-
-<p>直接映射使用 TargetRegisterInfo 和 MachineOperand 中的 API。间接映射的API用 VirtRegMap 以正确插入读写指令实现内存调度</p>
-
-<h4 id="toc_5">LLVM 自带的寄存器分配算法</h4>
-
-<p><code>llc -regalloc=Greedy add.bc -o ln.s</code></p>
-
-<ul>
-<li>Fast - debug 默认，尽可能保存寄存器。</li>
-<li>Basic - 增量分配</li>
-<li>Greedy - LLVM 默认寄存器分配算法，对 Basic 算法变量生存期进行分裂进行高度优化</li>
-<li>PBQP - 将寄存器分配描述成分区布尔二次规划</li>
-</ul>
-
-<h3 id="toc_6">Code Emission</h3>
-
-<p><img src="media/15541023147431/15541063937960.jpg" alt="" style="width:706px;"/></p>
+<p>直到实例的析构器被调用后，实例才会被释放,所以析构器可以访问实例的所有属性，并且可以根据那些属<br/>
+性可以修改它的行为(比如查找一个需要被关闭的文件)</p>
 
 
 		</div>
@@ -162,24 +128,24 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -199,10 +165,10 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -226,7 +192,7 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -237,7 +203,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -255,6 +221,15 @@ $(document).ready(function(event) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -264,31 +239,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

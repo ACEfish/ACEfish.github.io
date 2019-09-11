@@ -82,48 +82,99 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15536896276061.html">架构</a></h1>
-			<p class="meta"><time datetime="2019-03-27T20:27:07+08:00" 
+		  	<h1 class="entry-title"><a href="15536843996723.html">View层的架构</a></h1>
+			<p class="meta"><time datetime="2019-03-27T18:59:59+08:00" 
 			pubdate data-updated="true">2019/3/27</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">好的架构需要解决的问题</h2>
+		  	<p>文章看自<a href="https://casatwy.com/iosying-yong-jia-gou-tan-kai-pian.html">这里</a></p>
+
+<h2 id="toc_0">View层组织注意事项</h2>
+
+<ol>
+<li><p><code>ViewController</code>中的书写规范</p>
+<ul>
+<li>在<code>viewDidLoad</code>中做<code>addSubViews</code>和布局</li>
+<li>getter和setter放到最后避免影响业务逻辑阅读</li>
+<li>将代理都写到一个delegate区域中，并且加上对应protocol名字</li>
+<li>为按钮点击事件等，单独开一个<code>event response</code>的区域</li>
+</ul></li>
+<li><p>建议使用全代码 不使用xib或者storyboard</p></li>
+<li><p>不建议统一派生<code>ViewController</code>，可以使用<code>AOP</code>或者使用NSObject的load函数(在应用启动时自动监听)，实现要实现的功能 --- 尽量不要使用继承</p></li>
+<li><p>能不放在Controller中做的事情就尽量不要放在Controller中做</p></li>
+</ol>
+
+<h2 id="toc_1">View层应避免</h2>
+
+<ol>
+<li>代码不规范导致混乱</li>
+<li>过多继承导致复杂的依赖关系</li>
+<li>横向依赖</li>
+<li>架构设计失去传承</li>
+</ol>
+
+<h2 id="toc_2">制作好的View架构</h2>
+
+<p>要做一个View层架构，主要就是从以下三方面入手：</p>
+
+<p>制定良好的规范<br/>
+选择好合适的模式（MVC、MVCS、MVVM、VIPER）<br/>
+根据业务情况针对ViewController做好拆分，提供一些小工具方便开发</p>
+
+<h2 id="toc_3">MVC MVVM等设计模式</h2>
+
+<p>这些设计模式其实是 规定了架构中的3个角色:数据管理者，数据加工者，数据展示者,之间的数据如何交换</p>
+
+<h3 id="toc_4">对mvc的一些总结</h3>
+
+<p>M应该做的事：</p>
 
 <ul>
-<li>可以方便的调用网络API，保证各种网络环境都能体验良好</li>
-<li>有效的组织页面代码，减少业务代码的耦合度，和复杂度，提高开发效率</li>
-<li>合理安排本地数据的存储，减少性能消耗</li>
-<li>可以动态化部署，不发版本就修复bug</li>
-<li>方便收集用户数据</li>
-<li>合理组织和划分模块</li>
-<li>自动化打包和提供QA测试工具</li>
-<li>可以打点 跑单元测试 跑性能测试 （先测量后优化）</li>
+<li>给ViewController提供数据</li>
+<li>给ViewController存储数据提供接口</li>
+<li>响应数据请求一般来时C的</li>
+<li>提供经过抽象的业务基本组件，供Controller调度</li>
 </ul>
 
-<h2 id="toc_1">好的架构的特点</h2>
+<blockquote>
+<p>M不应该这是dataModel 而是整个Model层</p>
+</blockquote>
+
+<p>C应该做的事：</p>
 
 <ul>
-<li>代码整洁，分类明确，没有common等</li>
-<li>代码明确 不许文档就能读懂使用</li>
-<li>思路和方法统一，不要多元和善变</li>
-<li>不要有横向依赖，尽量不要有跨层访问</li>
-<li>该限制的要限制，该灵活的需要灵活</li>
-<li>易测试 易拓展</li>
-<li>保持一定超前性  不论是技术或者产品设计</li>
-<li>接口少 接口参数少</li>
-<li>高性能（）</li>
+<li>管理View Container的生命周期</li>
+<li>负责生成所有的View实例，并放入View Container</li>
+<li>监听来自View与业务有关的事件，通过与Model的合作，来完成对应事件的业务。</li>
 </ul>
 
-<h2 id="toc_2">架构分层</h2>
+<p>V应该做的事：</p>
 
-<p>模块关系逻辑上的分层: 这是从模块的功能划分上来说的<br/>
-三层架构（用的更多）: 展现层（数据展示者）、业务层（数据加工者）、数据层（数据管理者）<br/>
-四层架构: 展现层、业务层、网络层、本地数据层</p>
+<ul>
+<li>响应与业务无关的事件，并因此引发动画效果，点击反馈（如果合适的话，尽量还是放在View去做）等。</li>
+<li>界面元素表达</li>
+</ul>
 
-<p>数据流动架构分层有MVC或者MVVM等等</p>
+<h2 id="toc_5">MVVM</h2>
 
-<p>这两种只是从不同的角度描述架构分层的问题 并没有什么具体联系</p>
+<p>MVVM把数据加工的任务从Controller中解放了出来，使得Controller只需要专注于数据调配的工作，ViewModel则去负责数据加工并通过通知机制让View响应ViewModel的改变。</p>
+
+<p>MVVM是基于胖Model的架构思路建立的，然后在胖Model中拆出两部分：Model和ViewModel。</p>
+
+<p>MVVM<br/>
+viewmodel需要做的就是将json等数据转换为能给view用的model<br/>
+Model层 这里的model层包括数据model层、网络请求层、数据存储层、</p>
+
+<p>C负责View和ViewModel数据的绑定</p>
+
+<p>MVVM就是讲MVC的C中的数据处理逻辑抽出来了</p>
+
+<blockquote>
+<p>对于API的调用应该放在VM还是C中，看情况而定，如果你的请求独立于C，请求时不需要再联系ViewController就可以放在VM中，否则的话在VM中调用逻辑混乱，最好放在C中</p>
+
+<p>RAC的目的1：View并不适合直接持有ViewModel。第二个目的就在于，ViewModel有可能并不是只服务于特定的一个View，使用更加松散的绑定关系能够降低ViewModel和View之间的耦合度</p>
+</blockquote>
 
 
 		</div>
@@ -146,24 +197,24 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -183,10 +234,10 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -210,7 +261,7 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -221,7 +272,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -239,6 +290,15 @@ $(document).ready(function(event) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -248,31 +308,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

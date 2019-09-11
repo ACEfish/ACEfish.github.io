@@ -82,14 +82,61 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15553079699012.html">dealloc何时调用</a></h1>
-			<p class="meta"><time datetime="2019-04-15T13:59:29+08:00" 
-			pubdate data-updated="true">2019/4/15</time></p>
+		  	<h1 class="entry-title"><a href="15555568072278.html">后台任务超时崩溃</a></h1>
+			<p class="meta"><time datetime="2019-04-18T11:06:47+08:00" 
+			pubdate data-updated="true">2019/4/18</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>参考资料:<br/>
-<a href="https://zhongwuzw.github.io/2017/09/21/%E8%81%8A%E8%81%8Adealloc/">聊聊dealloc</a></p>
+		  	<h2 id="toc_0">信号不可捕获的崩溃</h2>
+
+<ol>
+<li><p>后台任务超时</p></li>
+<li><p>内存打爆</p></li>
+<li><p>主线程卡顿超阈值<br/>
+如果主线程超过系统规定的时间无响应，就会被<code>Watchdog</code>杀掉,这是崩溃对应的异常编码为<code>0x8badf00d</code></p></li>
+</ol>
+
+<h2 id="toc_1">后台崩溃</h2>
+
+<p>当App退到后台后，即使代码逻辑没有问题，也容易导致崩溃。这是以内系统强杀某些进程导致，而这些情况由于系统原因没有办法捕获到</p>
+
+<p>我们通常在应用进入后台时，通过调用<code>beginBackgroundTaskWithExpirationHandler</code>方法来延长应用存活</p>
+
+<pre><code class="language-objectivec">- (void)applicationDidEnterBackground:(UIApplication *)application {
+    //正常app 退到后台只有几秒时间执行代码，接下来就会被系统挂起
+    
+    //通过backgroud task方法延长后台时间 这个方法必须与endBackgroundTask一一对象
+    self.backgroundTaskIdentifier = [application beginBackgroundTaskWithExpirationHandler:^{
+        //如果在最后时间到了之前仍然没有调用endBackgroundTask方法 就会执行此回调
+        //通常时间为3分钟，如果时间到期之前调用endBackgroundTask方法 就会强制杀掉进程，就会造成崩溃
+        
+        /*
+         * 因此我们可以加一个定时器 在3分钟将要到达时 判断是否后台应用程序还在执行
+         * 如果还在执行的话，就可以认为快要崩溃 进行记录 上报
+         */
+
+        self.backGroundTimer = [NSTimer scheduledTimerWithTimeInterval:2*60 target:self selector:@selector(threeMinuteTimeOut) userInfo:nil repeats:NO];
+        
+        
+    }];
+    
+    NSLog(@&quot;开始执行后台任务&quot;);
+    //此处为执行任务代码 通常用来保存应用程序关键数据数据
+    //当任务执行完成时 调用endBackgroundTask方法 调用后就会将app挂起 
+//    [application endBackgroundTask:self.backgroundTaskIdentifier];
+
+
+}
+</code></pre>
+
+<blockquote>
+<p>可以在应用程序的任何时候 多次调用<code>beginBackgroundTaskWithExpirationHandler</code>方法，此时建议使用<code>beginBackgroundTaskWithName：expirationHandler：</code>方法，来给每个单独指定名称，方便调试。此时，每个任务都需要用返回的标识符，单独结束</p>
+
+<p>假如不支持后台任务 该方法返回<code>UIBackgroundTaskInvalid</code></p>
+
+<p>挂起状态是指:应用处在后台，并且已停止执行代码。当处在此状态时，应用依然驻留内存但不执行任何程序代码。当系统发生低内存告警时，系统将会将处 于Suspended状态的应用清除出内存以为正在前台运行的应用提供足够的内存。</p>
+</blockquote>
 
 
 		</div>
@@ -112,24 +159,24 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -149,10 +196,10 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -176,7 +223,7 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -187,7 +234,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -205,6 +252,15 @@ $(document).ready(function(event) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -214,31 +270,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

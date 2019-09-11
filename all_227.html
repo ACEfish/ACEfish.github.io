@@ -82,121 +82,171 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15559026860989.html">KSCrash</a></h1>
-			<p class="meta"><time datetime="2019-04-22T11:11:26+08:00" 
-			pubdate data-updated="true">2019/4/22</time></p>
+		  	<h1 class="entry-title"><a href="15663537912476.html">引用计数</a></h1>
+			<p class="meta"><time datetime="2019-08-21T10:16:31+08:00" 
+			pubdate data-updated="true">2019/8/21</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>debug模式下,KSCrash的线程回调线程</p>
+		  	<h2 id="toc_0">引用计数规则</h2>
 
-<pre><code class="language-javascript">&quot;backtrace&quot;: {
-                    &quot;contents&quot;: [
-                        {
-                            &quot;object_name&quot;: &quot;CoreFoundation&quot;,
-                            &quot;object_addr&quot;: 7134101504,
-                            &quot;symbol_name&quot;: &quot;&lt;redacted&gt;&quot;,
-                            &quot;symbol_addr&quot;: 7135249460,
-                            &quot;instruction_addr&quot;: 7135249688
-                        },
-                        ...
-                        {
-                            &quot;object_name&quot;: &quot;KSCrashLearnDemo&quot;,
-                            &quot;object_addr&quot;: 4367810560, //104578000
-                            &quot;symbol_name&quot;: &quot;-[ViewController testArrayRangeException:]&quot;,
-                            &quot;symbol_addr&quot;: 4367835524, //10457e184
-                            &quot;instruction_addr&quot;: 4367835696 //10457e230
-                        },
-                        ...
-                        ...
-                        {
-                            &quot;object_name&quot;: &quot;KSCrashLearnDemo&quot;,
-                            &quot;object_addr&quot;: 4367810560, //104578000
-                            &quot;symbol_name&quot;: &quot;main&quot;,
-                            &quot;symbol_addr&quot;: 4367835828, // 10457e2b4
-                            &quot;instruction_addr&quot;: 4367835952 // 10457e330
-                        },
-                        {
-                            &quot;object_name&quot;: &quot;libdyld.dylib&quot;,
-                            &quot;object_addr&quot;: 7129288704, // 1a8f05000
-                            &quot;symbol_name&quot;: &quot;&lt;redacted&gt;&quot;,
-                            &quot;symbol_addr&quot;: 7129295068,  //1a8f068dc
-                            &quot;instruction_addr&quot;: 7129295072 // 1a8f068e0
-                        }
-                    ],
+<h3 id="toc_1">自己生成的对象 自己持有</h3>
+
+<p>使用以下名称开头的方法名，意味自己生成的对象只有自己持有：</p>
+
+<ul>
+<li>alloc</li>
+<li>new</li>
+<li>copy</li>
+<li>mutableCopy</li>
+</ul>
+
+<pre><code class="language-objectivec">id obj = [[NSObject alloc] init]
+id obj = [NSObject new]
 </code></pre>
 
-<p>对应用Xcode解析出来的crash文件</p>
+<p>自己生成并持有对象，指向生成并持有对象的指针被复制给变量<code>obj</code></p>
 
-<pre><code class="language-text">Last Exception Backtrace:
-0   CoreFoundation                  0x1a94b4518 __exceptionPreprocess + 228
-...
-3   CoreFoundation                  0x1a93c2484 -[__NSArrayM setObject:atIndexedSubscript:] + 703
-4   KSCrashLearnDemo                0x10457e230 0x104578000 + 25136
-5   UIKitCore                       0x1d58eb230 -[UIApplication sendAction:to:from:forEvent:] + 95
-...
-22  KSCrashLearnDemo                0x10457e330 0x104578000 + 25392
-23  libdyld.dylib                   0x1a8f068e0 start + 3
+<h3 id="toc_2">非自己生成的对象 自己也能持有</h3>
+
+<p>用上面👆所述的几个方法之外取得的对象，因为是非自己生成并持有的，所以自己并不是对象的持有者</p>
+
+<pre><code class="language-objectivec">//取得的对象存在 但是自己并不持有该对象
+id obj = [NSMutableArray array]
+
+//自己持有该对象
+[obj  retain]
 </code></pre>
 
-<h2 id="toc_0">KSCrash 学习知识点</h2>
+<p>通过<code>retain</code>方法  非自己生成的对象跟用<code>alloc/new/copy/mutablecopy</code>一样，称为自己持有的对象</p>
 
-<h4 id="toc_1">1. 获取内存使用情况</h4>
+<h3 id="toc_3">不再需要自己持有的对象时释放</h3>
 
-<pre><code class="language-objectivec">static bool VMStats(vm_statistics_data_t* const vmStats, vm_size_t* const pageSize)
-{
-    kern_return_t kr;
-    const mach_port_t hostPort = mach_host_self();
-    
-    if((kr = host_page_size(hostPort, pageSize)) != KERN_SUCCESS)
-    {
-        KSLOG_ERROR(@&quot;host_page_size: %s&quot;, mach_error_string(kr));
-        return false;
-    }
-    
-    mach_msg_type_number_t hostSize = sizeof(*vmStats) / sizeof(natural_t);
-    kr = host_statistics(hostPort,
-                         HOST_VM_INFO,
-                         (host_info_t)vmStats,
-                         &amp;hostSize);
-    if(kr != KERN_SUCCESS)
-    {
-        KSLOG_ERROR(@&quot;host_statistics: %s&quot;, mach_error_string(kr));
-        return false;
-    }
-    
-    return true;
-}
+<p>自己持有的对象，一旦不再需要，持有者有义务释放该对象，释放使用<code>release</code>方法</p>
 
-static uint64_t freeMemory(void)
-{
-    vm_statistics_data_t vmStats;
-    vm_size_t pageSize;
-    if(VMStats(&amp;vmStats, &amp;pageSize))
-    {
-        return ((uint64_t)pageSize) * vmStats.free_count;
-    }
-    return 0;
-}
+<ol>
+<li><p>自己生成并持有对象 自己释放</p>
+<pre><code class="language-objectivec">//自己生成并持有对象
+id obj = [[NSObject alloc] init]<br/>
+//释放对象<br/>
+[obj release]<br/>
+/*<br/>
+* 释放对象<br/>
+* 指向对象的指针仍然被保留在变量obj中，貌似能够访问<br/>
+* 但对象一经释放绝对不可访问<br/>
+*/
+</code></pre></li>
+<li><p>非自己生成并持有的对象 也可以通过<code>release</code>释放</p>
+<pre><code class="language-objectivec">//取的对象 但是自己并不持有
+id obj = [[NSObject alloc] init]<br/>
+//自己持有对象<br/>
+[obj retain]<br/>
+//释放对象<br/>
+[obj release]
+</code></pre>
+<p>用retian方法持有的对象 一旦不再寻妖 务必用<code>release</code>方法进行释放</p></li>
+<li><p>调用<code>alloc/new/copy/mutablecopy</code>开头方法生成对象，并将其返回该方法调用方</p>
+<pre><code class="language-objectivec">-(id)allocObject {
+    //自己生成并且持有对象<br/>
+    id obj = [[NSObject alloc] init]<br/>
+    return obj<br/>
+}<br/>
+//自己持有对象<br/>
+id obj1 = [obj0 allocObject]
+</code></pre>
+<p>原封不动的返回alloc方法生成并且持有的对象 就能让调用方也持有该对象<br/>
+<code>allocObject</code>是符合前面的命名规则的  因此调用该方法也能自己生成并且持有该对象</p></li>
+<li><p>调用非<code>alloc/new/copy/mutablecopy</code>开头方法生成对象</p>
+<p>此类型的方法 就是我们常用的<code>[NSArray array]</code>方法类似</p>
+<pre><code class="language-objectivec">-(id)object {
+//自己生成并持有对象<br/>
+id obj = [[NSObject alloc] init]<br/>
+//取得对象存在 但自己不持有对象<br/>
+[obj autorelease]<br/>
+//返回对象<br/>
+return obj<br/>
+}<br/>
+//取得的对象存在 但是自己不持有对象<br/>
+id obj1 = [obj0 object]<br/>
+//自己持有对象<br/>
+[obj1 retain]
+</code></pre>
+<p>使用<code>autorelease</code>方法，可以取得对象存在，但自己不持有对象。<br/>
+<code>autorelease</code>，使对象在超出指定生存范围时 能自动并且正确释放</p>
+<blockquote>
+<p>注意</p>
+<p>这些谁都不持有的对象的方法名不能以<code>alloc/new/copy/mutablecopy</code>开头</p>
+</blockquote></li>
+</ol>
 
-static uint64_t usableMemory(void)
-{
-    vm_statistics_data_t vmStats;
-    vm_size_t pageSize;
-    if(VMStats(&amp;vmStats, &amp;pageSize))
-    {
-        return ((uint64_t)pageSize) * (vmStats.active_count +
-                                       vmStats.inactive_count +
-                                       vmStats.wire_count +
-                                       vmStats.free_count);
-    }
-    return 0;
-}
+<h3 id="toc_4">无法释放非自己持有的对象</h3>
+
+<p>用<code>alloc/new/copy/mutablecopy</code>开头获得的对象 或者  <code>retain</code>方法持有的对象 持有者是自己<br/>
+当持有者是自己时 在不需要的时候将其释放  除此之外，得到的而对象绝对不能释放</p>
+
+<h2 id="toc_5">alloc/retain/release/dealloc实现过程</h2>
+
+<h3 id="toc_6">GUNStep中的实现方式</h3>
+
+<p>用alloc类方法初始化对象时，初始化开辟内存大小为对象大小加上一个 记录引用计数的结构体大小的空间。</p>
+
+<p>用该结构体中的<code>retained</code>整数来保存引用计数，并将其写到对象内存头部。通过对该结构体中的数值进行操作，来获取、增加、减少引用数值</p>
+
+<ul>
+<li>在<code>Object-C</code>对象存有引用计数这一数值</li>
+<li>调用alloc方法或retain方法 引用计数加1</li>
+<li>调用release后  引用计数减1</li>
+<li>引用计数为0  调用dealloc方法废弃该对象</li>
+</ul>
+
+<h3 id="toc_7">苹果的实现</h3>
+
+<p>在<code>NSObject</code>类方法上设置断点，列出<code>alloc</code>方法执行的函数</p>
+
+<pre><code class="language-objectivec">+alloc
++allocWithZone
+class_creatInstance
+calloc
 </code></pre>
 
-<h2 id="toc_2">参考资料:</h2>
+<p>alloc方法先调用<code>+allocWithZone</code>方法，然后调用运行时中的<code>class_createInstance</code>函数，最后调用<code>calloc</code>来分配内存块</p>
 
-<p><a href="http://jianli2017.top/wiki/IOS/crash/3_KSCrash_Analize/">KSCrash原理</a></p>
+<p><code>retaincount/retain/release</code>操作的实现  apple是维护了以个散列表(引用计数表)来管理引用计数<br/>
+散列表中 键值为内存块地址的散列值</p>
+
+<h2 id="toc_8">autorelease</h2>
+
+<p><code>autorelease</code>像C语言的自动变量那样来对待对象实例，当超出作用域，对象实例release方法被调用，编程人员可以设定变量的作用域</p>
+
+<pre><code class="language-objectivec">NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init]
+id obj = [[NSObject alloc] init]
+[obj autorelease]
+//等效于执行了 [obj release]
+[pool drain]
+</code></pre>
+
+<p>在Cocoa框架中，相当于程序主循环的<code>NSRunLoop</code>或者在其他程序可运行的地方，对<code>NSAutoreleasePool</code>对象进行生成，持有和废弃处理。因此，程序开发者不一定非要使用<code>NSAutoreleasePool</code>对象进行开发处理工作</p>
+
+<blockquote>
+<p>注意:</p>
+
+<p>虽然runloop会自动废弃<code>NSRunloop</code>对象，但是在大量产生对象时 也会产生内存不足的现象，需要在使用完后，手动及时释放对象</p>
+</blockquote>
+
+<p>在cocoa框架中，很多类方法 用于返回autorelease对象</p>
+
+<pre><code class="language-objectivec">id array = [NSMutableArray arrayWithCapacity:1];
+//相当于以下源代码
+id array = [[NSMutableArray arrayWithCapacity:1] autorelease];
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>在OC中 也就是Foundation框架时，无论调用那一个对象的autorelease方法，实现上是调用NSObject类的autorelease实例方法。但是对于NSAutoreleasePool类，该方法已经被重载，因此运行时会报错</p>
+</blockquote>
+
+<h3 id="toc_9">autorelease的实现</h3>
 
 
 		</div>
@@ -219,24 +269,24 @@ static uint64_t usableMemory(void)
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -256,10 +306,10 @@ static uint64_t usableMemory(void)
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -283,7 +333,7 @@ static uint64_t usableMemory(void)
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -294,7 +344,7 @@ static uint64_t usableMemory(void)
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -312,6 +362,15 @@ static uint64_t usableMemory(void)
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -321,31 +380,31 @@ static uint64_t usableMemory(void)
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

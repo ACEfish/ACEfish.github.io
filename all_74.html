@@ -82,75 +82,156 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15470311819265.html">解构</a></h1>
-			<p class="meta"><time datetime="2019-01-09T18:53:01+08:00" 
-			pubdate data-updated="true">2019/1/9</time></p>
+		  	<h1 class="entry-title"><a href="15475281191214.html">Class</a></h1>
+			<p class="meta"><time datetime="2019-01-15T12:55:19+08:00" 
+			pubdate data-updated="true">2019/1/15</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">对象解构</h2>
+		  	<p>class 并不是ES6的新的语法 而只是原有语法的语法糖，是一种特殊的函数（class的类型就是函数）</p>
 
-<p>为了方便一次性取出对象中的多个值,而不需要一一的取值赋值</p>
+<p>class类只能使用<code>new</code>关键字来调用和初始化 </p>
 
-<pre><code class="language-javascript">const fk = {
-    name: &quot;fankai&quot;,
-    age: 26,
-    family: {
-        farther: &quot;fkfarther&quot;,
-        mother: &quot;fkmother&quot;,
-        brother: &quot;lyy&quot;
+<pre><code class="language-javascript">//ES6前
+function User(name, email) {
+    this.name = name
+    this.email = email
+    return this
+}
+User.prototype.info = function() {
+    console.log(`hi, i am ${this.name}`)
+}
+const lyy = new User(&quot;lyy&quot;, &quot;sina.com&quot;)
+</code></pre>
+
+<p>新的class写法</p>
+
+<pre><code class="language-javascript">class User {
+    constructor(name, email) {
+        this.name = name
+        this.email = email
+    }
+    info() {
+        console.log(`hi, i am ${this.name}`)
     }
 }
 </code></pre>
 
-<p>常用的对象解构</p>
+<h2 id="toc_0">特性</h2>
 
-<pre><code class="language-javascript">const {name, age} = fk
-console.log(name) //fankai
-console.log(name) //26
+<h3 id="toc_1">静态方法</h3>
 
-//当变量已经被声明过
-let name
-//使用括号括起来 否则js会认为是语句
-({name, age} = fk)
+<pre><code class="language-javascript">class User {
+    constructor(name, email) {
+        this.name = name
+        this.email = email
+    }
+    info() {
+        console.log(`hi, i am ${this.name}`)
+    }
+    static description() {
+        console.log(&quot;I am user&quot;)
+    }
+}
+User.description() //I am user
 </code></pre>
 
-<p>使用与属性名不同的变量名</p>
+<h3 id="toc_2">Set和Get方法</h3>
 
-<pre><code class="language-javascript">const {farther: far, mother: mon, brother} = fk.family
-console.log(far)
+<pre><code class="language-javascript">class User {
+    constructor(name, email) {
+        this.name = name
+        this.email = email
+    }
+    set github(value) {
+        this.githubName = value
+    }
+
+    get github() {
+        return this.githubName
+    }
+}
 </code></pre>
 
-<p>当变量对应属性不存在时(即必须为undefined),使用默认值</p>
+<h3 id="toc_3">计算属性</h3>
 
-<pre><code class="language-javascript">const {farther, sister = &quot;hava no sisiter&quot;} = fk.family
-console.log(sister) //hava no sisiter
+<p>类似对象章节的写法 使用<code>[ ]</code>来写计算属性</p>
+
+<pre><code class="language-javascript">let methodName = &quot;info&quot;
+class User {
+    constructor(name, email) {
+        this.name = name
+        this.email = email
+    }
+    //计算属性 此时方法名为 info() {}
+    [methodName]() {
+        console.log(`hi, i am ${this.name}`)
+    }
+}
 </code></pre>
 
-<h3 id="toc_1">数组解构</h3>
+<h2 id="toc_4">类的继承</h2>
 
-<p>可以一次性从数组中取出多个值</p>
+<p>ES6中通过<code>extends</code>关键字来实现继承</p>
 
-<pre><code class="language-javascript">const numbers = [&quot;one&quot;, &quot;two&quot;, &quot;three&quot;, &quot;four&quot;]
+<pre><code class="language-javascript">class Animal {
+    constructor(name) {
+        this.name = name
+        this.belly = []
+    }
 
-//数组解构
-const [a, b] = numbers
-console.log(a) //one
-console.log(b) //two
+    eatFood(food) {
+        this.belly.push(food)
+    }
 
-//如果有可以用空,来越过数组中变量
-const [m, ,n] = numbers
-console.log(m) //one
-console.log(n) //three
+}
 
-//...onthers 来获取剩下所有值
-const [c, ...others] = numbers
-console.log(c) //one
-console.log(others) //[&quot;two&quot;, &quot;three&quot;, &quot;four&quot;]
+//extends 关键字实现继承
+class Dog extends Animal {
+    constructor(name, age) {
+        //使用super关键字来继承父类的属性和方法
+        super(name)
+        this.age = age
+    }
 
-//当不存在该值 即 该值为undefined时 使用默认值
-const [d, g, , ,f=&quot;five&quot;] = numbers
-console.log(f) //five
+    bark() {
+        console.log(&quot;wang wang wang&quot;)
+    }
+}
+
+const huanhuan = new Dog(&quot;wtt&quot;, 23)
+</code></pre>
+
+<h2 id="toc_5">扩展内建对象</h2>
+
+<p>我们通过es6的类可以扩展 内建对象在原有功能的基础上实现自己需要的功能</p>
+
+<h2 id="toc_6">补充</h2>
+
+<h3 id="toc_7">ES5中的类和静态方法</h3>
+
+<pre><code class="language-javascript">function Person(name,age) {
+//构造函数里面的方法和属性
+      this.name=name;
+      this.age=age;
+      this.run=function(){
+           console.log(`${this.name}---${this.age}`)
+       }
+}
+//原型链上面的属性和方法可以被多个实例共享
+Person.prototype.sex=&#39;男&#39;;
+Person.prototype.work=function(){
+      console.log(`${this.name}---${this.age}---${this.sex}`);
+ }
+//静态方法
+Person.setName=function(){
+      console.log(&#39;静态方法&#39;);
+}
+var p=new Person(&#39;zhangsan&#39;,&#39;20&#39;);   /*实例方法是通过实例化来调用的，静态是通过类名直接调用*/
+p.run();
+p.work();
+
+Person.setName();  /*执行静态方法*/
 </code></pre>
 
 
@@ -174,24 +255,24 @@ console.log(f) //five
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -211,10 +292,10 @@ console.log(f) //five
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -238,7 +319,7 @@ console.log(f) //five
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -249,7 +330,7 @@ console.log(f) //five
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -267,6 +348,15 @@ console.log(f) //five
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -276,31 +366,31 @@ console.log(f) //five
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

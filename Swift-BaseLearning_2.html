@@ -82,223 +82,127 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15052932669633.html">泛型</a></h1>
-			<p class="meta"><time datetime="2017-09-13T17:01:06+08:00" 
-			pubdate data-updated="true">2017/9/13</time></p>
+		  	<h1 class="entry-title"><a href="15660380397380.html">内存安全</a></h1>
+			<p class="meta"><time datetime="2019-08-17T18:33:59+08:00" 
+			pubdate data-updated="true">2019/8/17</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><strong>泛型:</strong>根据自定义的需求，编写适用于任意类型，灵活可用的函数和类型</p>
+		  	<p>默认情况下，<code>Swift</code>会阻止代码里的不安全行为。例如，变量在使用前完成初始化，在内存回收后无法被访问，并且数组的索引会做越界检查。</p>
 
-<h2 id="toc_0">泛型函数</h2>
+<p>因为<code>Swift</code>管理内存，大部分时间 并不需要考虑内存访问的事情。然而，理解潜在冲突也是很重要的，可以避免写出访问冲突的代码。如果代码确实存在冲突，那在编译时或者运行时会得到错误。</p>
 
-<p>泛型函数适用与任何类型</p>
+<h2 id="toc_0">理解内存访问冲突</h2>
 
-<pre><code class="language-swift">func swapTwoValues&lt;T&gt;(_ a: inout T, _ b: inout T) {
-    let temporaryA = a
-    a = b
-    b = temporaryA
-}
+<p>内存的访问，会发生在你给变量赋值，或者传递参数给函数时。<br/>
+而内存的访问冲突发生在代码多个访问同时访问同一个内存地址，造成的不可预计或者不一致的行为。</p>
+
+<h2 id="toc_1">内存访问性质</h2>
+
+<p>内存访问冲突会发生在以下两个访问符合情况时:</p>
+
+<ul>
+<li>至少有一个是写访问</li>
+<li>访问的是统一存储地址</li>
+<li>访问在时间线上部分重叠</li>
+</ul>
+
+<p>内存的访问时长，要么是瞬时的，要么是长期的。主要区别在于，别的代码有没有可能在访问期间同时访问，也就是时间线上的重叠。一个长期访问可以被别的长期或者瞬时访问重叠</p>
+
+<p>重叠访问主要出现在使用<code>in-out</code>参数的函数或方法  或者结构体的<code>mutating</code>方法里。</p>
+
+<h2 id="toc_2">In-Out参数的访问冲突</h2>
+
+<p>一个函数会对它所有的in-out参数进行长期写访问。in-out参数的写访问会在所有非in-out参数处理完成后开始，直到函数执行完毕位置。如果有多个in-out参数，则写访问开始的顺序和参数顺序一致。</p>
+
+<ol>
+<li><p>不能在访问以in-out形式传入后的原变量，即使作用域原则和访问权限允许--任何访问原变量的行为都会造成冲突<br/>
+<img src="media/15660380397380/15661846253994.jpg" alt="" style="width:600px;"/></p>
+<p>解决方案是 显示的拷贝一份<code>stepSize</code>：</p>
+<pre><code class="language-swift">// 显式拷贝
+var copyOfStepSize = stepSize<br/>
+increment(&amp;copyOfStepSize)<br/>
+// 更新原来的值<br/>
+stepSize = copyOfStepSize<br/>
+// stepSize 现在的值是 2
+</code></pre></li>
+<li><p>当向同一函数的多个in-out参数里传入同一个变量也会产生冲突，</p>
+<pre><code class="language-swift">func balance(_ x: inout Int, _ y: inout Int) {
+let sum = x + y<br/>
+x = sum / 2<br/>
+y = sum - x<br/>
+}<br/>
+var playerOneScore = 42<br/>
+var playerTwoScore = 30<br/>
+balance(&amp;playerOneScore, &amp;playerTwoScore)  // 正常<br/>
+balance(&amp;playerOneScore, &amp;playerOneScore)<br/>
+// 错误：playerOneScore 访问冲突
 </code></pre>
+<p>将 playerOneScore 作为参数同时传入就会产生冲突，因为它会发起两个写访问，同时访 问同一个的存储地址</p></li>
+</ol>
 
-<p>函数的泛型版本:<br/>
-1）使用占位类型名来代替实际类型名(这里用字母<code>T</code>表示),这里并没有指明T必须是什么类型,而是a与b类型相同,在实际调用时才根据传入类型决定<code>T</code>所代表的类型<br/>
-2）在函数名后有<code>&lt;T&gt;</code>，声明了<code>T</code>是函数内定义的占位类型名<br/>
-因此，函数<code>swapTwoInts(_:_:)</code>可以接受任意相同类型的参数</p>
+<blockquote>
+<p>注意:</p>
 
-<h2 id="toc_1">类型参数</h2>
+<p>因为操作符也是函数，它们也会对in-out参数进行长期访问</p>
+</blockquote>
 
-<p>类型参数指定并命名一个占位类型,紧随在函数名后,用尖括号括起来(如:<code>&lt;T&gt;</code>),也可以提供多个参数用逗号隔开</p>
+<h3 id="toc_3">方法里self的访问冲突</h3>
 
-<p>可以用指定的类型参数作为函数的参数类型或返回类型，</p>
+<p>一个结构体的<code>mutating</code>方法会在调用期间对<code>self</code>进行写访问</p>
 
-<h2 id="toc_2">命名类型参数</h2>
-
-<p>我们可以使用有意义的单词来表明类型参数和泛型函数关系,当没有联系时,通常使用单个字母来命名</p>
-
-<p><strong>使用大写字母开头的驼峰命名法来为类型参数命名</strong></p>
-
-<h2 id="toc_3">泛型类型</h2>
-
-<p><strong>泛型类型：</strong>除了泛型函数，Swift 还允许你定义泛型类型。这些自定义类、结构体和枚举可以适用于任何类型,类型于<code>Array</code>和<code>Dictionary</code></p>
-
-<pre><code class="language-swift">//泛型 Stack（栈型） 结构体
-struct Stack&lt;Element&gt; {
-    var items = [Element]()
-    mutating func push(item: Element) {
-        items.append(item)
-    }
-    mutating func pop() -&gt; Element {
-        return items.removeLast()
-    }
-}
-</code></pre>
-
-<p>使用占位类型<code>Element</code>，这个类型参数包裹在紧随结构体名的一对尖括号里（<code>&lt;Element&gt;</code>）,类型参数用来初始化数组,用来作为<code>push</code><code>pop</code>方法的参数</p>
-
-<p><code>Stack</code>是泛型类型,可以创建任意有效类型栈<br/>
-可以通过在尖括号写出栈中需要存储的数据类型来创建并初始化一个<code>Stack</code>实例</p>
-
-<pre><code class="language-swift">var stackOfStrings = Stack&lt;String&gt;()
-stackOfStrings.push(&quot;uno&quot;)
-stackOfStrings.push(&quot;dos&quot;)
-let fromTheTop = stackOfStrings.pop()
-</code></pre>
-
-<h2 id="toc_4">扩展泛型类型</h2>
-
-<p>在扩展泛型类型时，不需要在扩展的定义中提供类型参数列表。可以在扩展中直接使用原始类型参数列表,并且这些来自原始类型中的参数名称会被用作原始定义中类型参数的引用。</p>
-
-<pre><code class="language-swift">//扩展泛型类型增加只读的计算属性
-extension Stack {
-    var topItem: Element? {
-        return items.isEmpty ? nil : items[items.count - 1]
-    }
-}
-</code></pre>
-
-<p>返回`<code>item</code>数组的最后一个元素</p>
-
-<p>扩展中直接使用了已有的类型参数<code>Element</code></p>
-
-<h2 id="toc_5">类型约束</h2>
-
-<p>给泛型函数和泛型类型添加一个特定的约束，可以指定一个类型参数必须继承自指定类，或者符合协议或协议组合</p>
-
-<p>例如:<code>Dictionary</code>类型约束了字典中的键必须是可哈希的（符合<code>Hashable协议</code>），也就是必须有唯一的方法表示她，才能根据键进行判断</p>
-
-<h3 id="toc_6">类型约束语法</h3>
-
-<p>在类型参数名后放置类型或协议名用冒号隔开来进行约束，</p>
-
-<pre><code class="language-swift">//类型约束的泛型函数
-func someFunction&lt;T: SomeClass, U: SomeProtocol&gt;(someT: T, someU: U) {
-    // 这里是泛型函数的函数体部分
-}
-</code></pre>
-
-<p>约束T必须是SomeClass的子类，要求U必须遵循SomeProtocol的</p>
-
-<h3 id="toc_7">类型约束实践</h3>
-
-<p>我们新建一个泛型函数来从实现从数组中查找特定元素的功能;</p>
-
-<pre><code class="language-swift">//从数组中查找特定自字符串的非泛型函数
-func findIndex(ofString valueToFind: String, in array: [String]) -&gt; Int? {
-    for (index, value) in array.enumerated() {
-        if value == valueToFind {
-            return index
-        }
-    }
-    return nil
-}
-
-
-//泛型类型
-func findIndex&lt;T&gt;(of valueToFind: T, in array:[T]) -&gt; Int? {
-    for (index, value) in array.enumerated() {
-        if value == valueToFind {
-        return index
-        }
-    }
-    return nil
-}
-</code></pre>
-
-<p>上面的泛型函数，是无法通过编译的，因为不是任何类型都可以用<code>==</code>进行比较<br/>
-Swift定义了一个<code>Equatable</code>协议,所有遵守改协议的类型都必须实现<code>==或!=</code>，从而对该类型任意值进行比较</p>
-
-<pre><code class="language-swift">//此时泛型函数可以成功编译了
-func findIndex&lt;T: Equatable&gt;(array: [T], _ valueToFind: T) -&gt; Int? {
-    for (index, value) in array.enumerate() {
-        if value == valueToFind {
-            return index
-        }
-    }
-    return nil
-}
-</code></pre>
-
-<h2 id="toc_8">关联类型</h2>
-
-<p>定义协议时，声明一个或者多个<strong>关联类型</strong>作为协议的一部分</p>
-
-<p><strong>关联类型</strong>为协议中的的某个类型提供占位名(别名)，而其实际类型在协议被采纳时才会被指定</p>
-
-<p>用<code>associatedtype</code>关键字指定<strong>关联类型</strong></p>
-
-<pre><code class="language-swift">protocol Container {
-    associatedtype ItemType
-    mutating func append(item: ItemType)
-    var count: Int { get }
-    subscript(i: Int) -&gt; ItemType { get }
-}
-</code></pre>
-
-<p>在协议中声明了一个关联类型<code>ItemType</code>,来保证在不知道容器中元素的具体类型情况下行为能够正确执行</p>
-
-<pre><code class="language-swift">//定义类型遵循Contain协议
-Struct IntStack: Container {
-    // IntStack 的原始实现部分
-    var items = [Int]()
-    mutating func push(item: Int) {
-        items.append(item)
-    }
-    mutating func pop() -&gt; Int {
-        return items.removeLast()
-    }
-    // Container 协议的实现部分
-    typealias ItemType = Int//可以省略，swift会根据协议的实现推断出类型
-        mutating func append(item: Int) {
-        self.push(item)
-    }
-    var count: Int {
-        return items.count
-    }
-    subscript(i: Int) -&gt; Int {
-        return items[i]
+<pre><code class="language-swift">extension Player {
+    mutating func shareHealth(with teammate: inout Player) {
+        balance(&amp;teammate.health, &amp;health)
     }
 }
 
+var oscar = Player(name: &quot;Oscar&quot;, health: 10, energy: 10)
+var maria = Player(name: &quot;Maria&quot;, health: 5, energy: 10)
+oscar.shareHealth(with: &amp;maria)  // 正常
 </code></pre>
 
-<p>在实现协议时需要用<code>typealias ItemType = Int</code>来转换协议中的关联类型<br/>
-当然，这个是可以省略的，Swift可以根据方法推断出<code>ItemType</code>类型</p>
+<p><img src="media/15660380397380/15661951218602.jpg" alt="" style="width:600px;"/></p>
 
-<h3 id="toc_9">扩展存在的类型来指定关联类型</h3>
+<p>但是当如果</p>
 
-<p>对于Contain协议，Swift中的Array已经默认提供了协议中要求，因此我们只需要声明Array遵循该协议就可以扩展<code>Array</code></p>
-
-<pre><code class="language-swift">//我们只需要扩展Array来使其遵循该协议即可
-extension Array: Container {}
+<pre><code class="language-swift">oscar.shareHealth(with: &amp;oscar)
+// 错误：oscar 访问冲突
 </code></pre>
 
-<h2 id="toc_10">泛型Where语句</h2>
+<p>因为 mutating方法在调用期间需要对self发起访问，而同时in-out参数也需要写访问。在方法里，<code>self</code>和<code>teammate</code>指向统一存储地址。对同一块内存进行访问，并且重叠，就会产生冲突。</p>
 
-<p><strong>泛型Where语句</strong>用于为关联类型定义约束，比如要求其必须遵循特定协议，以及特定类型参数和关联类型必须相同</p>
+<h2 id="toc_4">属性的访问冲突</h2>
 
-<p>在函数体或者类型的大括号前添加<code>Where</code>子句</p>
+<p>结构体、元组和枚举都是值类型，由多个独立的值构成，所以修改值的一部分都是对于整个值的修改，意味着其中一个属性的读和写访问都需要访问整一个值。</p>
 
-<pre><code class="language-swift">func allItemsMatch&lt;C1: Container, C2: Container&gt;
-(_ someContainer: C1, _ anotherContainer: C2) -&gt; Bool
-    where C1.ItemType == C2.ItemType, C1.ItemType: Equatable {
-        // 检查两个容器含有相同数量的元素
-        if someContainer.count != anotherContainer.count {
-            return false
-        }
-        // 检查每一对元素是否相等
-        for i in 0..&lt;someContainer.count {
-            if someContainer[i] != anotherContainer[i] {
-            return false
-        }
-    }
-    // 所有元素都匹配，返回 true
-    return true
+<ol>
+<li><p>对元组元素的写访问重写会产生冲突</p>
+<pre><code class="language-swift">var playerInformation = (health: 10, energy: 20)
+balance(&amp;playerInformation.health, &amp;playerInformation.energy)<br/>
+// 错误：playerInformation 的属性访问冲突
+</code></pre>
+<p>所以，在任何情况下，对于元组元素的写访问都需要对整个元组发起写访问。</p></li>
+<li><p>对存储在全局变量的结构体属性写访问重叠</p>
+<pre><code class="language-swift">var holly = Player(name: &quot;Holly&quot;, health: 10, energy: 10)
+balance(&amp;holly.health, &amp;holly.energy)  // 错误
+</code></pre>
+<p>大多数对于结构体属性的访问都会安全的重叠。例如，将上面例子的变量改为本地变量而非全局变量，编译器即可保证其是安全的</p>
+<pre><code class="language-swift">func someFunction() {
+    var oscar = Player(name: &quot;Oscar&quot;, health: 10, energy: 10)<br/>
+    balance(&amp;oscar.health, &amp;oscar.energy)  // 正常<br/>
 }
 </code></pre>
+<p>此时编译器可以保证内存安全，因为两个存储尚需经任何情况下都不会互相影响。</p></li>
+</ol>
 
-<p>用<code>类型约束</code>约束类型参数:C1、C2必须符合<code>Contain</code>协议<br/>
-用<code>泛型Where语句</code>约束关联类型:C1和C2必须类型相同,并且C1符合<code>Equatable</code></p>
+<p>限制结构体属性的重叠访问对于保证内存安全不是必要的。保证内存安全是必要的，但因为访问独占权的要求比内存安全还要更严格——意味着即使有些代码违反了访问独占权的原则，也是内存安全的，所以如果编译器可以保证这种非专属的访问是安全的，那 Swift 就会允许这种行为的代码运行。特别是当你遵循下面的原则时，它可以保证结构体属性的重叠访问是安全的：</p>
+
+<ul>
+<li>你访问的是实例的存储属性，而不是计算属性或类的属性</li>
+<li>结构体是本地变量的值，而非全局变量</li>
+<li>结构体要么没有被闭包捕获，要么只被非逃逸闭包捕获了</li>
+</ul>
 
 
 		</div>
@@ -321,24 +225,24 @@ extension Array: Container {}
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -358,10 +262,10 @@ extension Array: Container {}
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -385,7 +289,7 @@ extension Array: Container {}
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -396,7 +300,7 @@ extension Array: Container {}
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -414,6 +318,15 @@ extension Array: Container {}
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -423,31 +336,31 @@ extension Array: Container {}
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

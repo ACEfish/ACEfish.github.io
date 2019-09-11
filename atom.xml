@@ -4,7 +4,7 @@
   <title><![CDATA[ACEfish-Blog]]></title>
   <link href="https://acefish.github.io/atom.xml" rel="self"/>
   <link href="https://acefish.github.io/"/>
-  <updated>2019-07-31T16:05:04+08:00</updated>
+  <updated>2019-09-11T14:06:21+08:00</updated>
   <id>https://acefish.github.io/</id>
   <author>
     <name><![CDATA[]]></name>
@@ -12,6 +12,1770 @@
   </author>
   <generator uri="http://www.coderforart.com/">CoderForArt</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[AFSecurityPolicy]]></title>
+    <link href="https://acefish.github.io/15680194937623.html"/>
+    <updated>2019-09-09T16:58:13+08:00</updated>
+    <id>https://acefish.github.io/15680194937623.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">AFSSLPinningMode</h2>
+
+<pre><code class="language-objectivec">typedef NS_ENUM(NSUInteger, AFSSLPinningMode) {
+    AFSSLPinningModeNone,
+    AFSSLPinningModePublicKey,
+    AFSSLPinningModeCertificate,
+};
+</code></pre>
+
+<p>设置了3中验证服务器是否受信任的方式</p>
+
+<ul>
+<li>AFSSLPinningModeNone： 默认的认证方式，只会在系统的信任证书列表中对服务器返回的证书进行验证</li>
+<li>AFSSLPinningModePublicKey：需要客户端预先保存服务器的证书</li>
+<li>AFSSLPinningModeCertificate： 需要客户端事先保存服务器端发送的证书，但是只会验证证书中的公钥是否正确</li>
+</ul>
+
+<h2 id="toc_1">AFSecurityPolicy初始化</h2>
+
+<pre><code class="language-objectivec">+ (instancetype)policyWithPinningMode:(AFSSLPinningMode)pinningMode withPinnedCertificates:(NSSet *)pinnedCertificates {
+    AFSecurityPolicy *securityPolicy = [[self alloc] init];
+    securityPolicy.SSLPinningMode = pinningMode;
+
+    [securityPolicy setPinnedCertificates:pinnedCertificates];
+
+    return securityPolicy;
+}
+
+
+- (void)setPinnedCertificates:(NSSet *)pinnedCertificates {
+    _pinnedCertificates = pinnedCertificates;
+
+    if (self.pinnedCertificates) {
+        NSMutableSet *mutablePinnedPublicKeys = [NSMutableSet setWithCapacity:[self.pinnedCertificates count]];
+        for (NSData *certificate in self.pinnedCertificates) {
+            id publicKey = AFPublicKeyForCertificate(certificate);
+            if (!publicKey) {
+                continue;
+            }
+            [mutablePinnedPublicKeys addObject:publicKey];
+        }
+        self.pinnedPublicKeys = [NSSet setWithSet:mutablePinnedPublicKeys];
+    } else {
+        self.pinnedPublicKeys = nil;
+    }
+}
+
+</code></pre>
+
+<p>初始化Policy<br/>
+在调用<code>PinnedCertificates</code>的setter方法时，调用了<code>AFPublicKeyForCertificate</code>C函数，对证书进行操作获取公钥，取出全部的公钥保存到<code>pinnedPublicKeys</code>属性中</p>
+
+<h2 id="toc_2">操作 SecTrustRef</h2>
+
+<p>对<code>SecTrustRef</code>的操作都是C的API，定义在<code>Security</code>模块中</p>
+
+<pre><code class="language-objectivec">static id AFPublicKeyForCertificate(NSData *certificate) {
+    //初始化临时变量
+    id allowedPublicKey = nil;
+    SecCertificateRef allowedCertificate;
+    SecPolicyRef policy = nil;
+    SecTrustRef allowedTrust = nil;
+    SecTrustResultType result;
+    //通过`DER`表示的数据生成一个`secCertificateRef`
+    allowedCertificate = SecCertificateCreateWithData(NULL, (__bridge CFDataRef)certificate);
+    //判断返回值是否为空
+    __Require_Quiet(allowedCertificate != NULL, _out);
+
+    //创建一个默认的符合 X509 标准的 SecPolicyRef
+    policy = SecPolicyCreateBasicX509();
+    //通过默认的SecPolicyRef和证书创建一个SecTrustRef用于信任评估，对该对象进行信任评估，确认生成的 SecTrustRef 是值得信任的
+    __Require_noErr_Quiet(SecTrustCreateWithCertificates(allowedCertificate, policy, &amp;allowedTrust), _out);
+    //确认生成的对象是值得信任的
+    __Require_noErr_Quiet(SecTrustEvaluate(allowedTrust, &amp;result), _out);
+    //获取公钥
+    allowedPublicKey = (__bridge_transfer id)SecTrustCopyPublicKey(allowedTrust);
+
+_out:
+    //释放指针
+    if (allowedTrust) {
+        CFRelease(allowedTrust);
+    }
+
+    if (policy) {
+        CFRelease(policy);
+    }
+
+    if (allowedCertificate) {
+        CFRelease(allowedCertificate);
+    }
+
+    return allowedPublicKey;
+}
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>每个SecTrustRef对象都包含多个<code>SecCertificateRef</code>和<code>SecPolicyRef</code>。其中<code>SecCertificateRef</code>可以使用DER进行表示，并且其中存储着公钥信息</p>
+</blockquote>
+
+<p>除此之外 还有操作还有<code>AFCertificateTrustChainForServerTrust</code>和<code>AFPublicKeyTrustChainForServerTrust</code>函数<br/>
+但是调用了几乎相同的API</p>
+
+<ul>
+<li><code>SecTrustGetCertificateAtIndex</code> 获取SecTrustRef中的证书</li>
+<li><p><code>SecCertificateCopyData</code> 从证书或者DER中表示的数据</p>
+<pre><code class="language-objectivec">static NSArray * AFCertificateTrustChainForServerTrust(SecTrustRef serverTrust) {
+    CFIndex certificateCount = SecTrustGetCertificateCount(serverTrust);<br/>
+    NSMutableArray *trustChain = [NSMutableArray arrayWithCapacity:(NSUInteger)certificateCount];<br/>
+    for (CFIndex i = 0; i &lt; certificateCount; i++) {<br/>
+        SecCertificateRef certificate = SecTrustGetCertificateAtIndex(serverTrust, i);<br/>
+        [trustChain addObject:(__bridge_transfer NSData *)SecCertificateCopyData(certificate)];<br/>
+    }<br/>
+    return [NSArray arrayWithArray:trustChain];<br/>
+}<br/>
+static NSArray * AFPublicKeyTrustChainForServerTrust(SecTrustRef serverTrust) {<br/>
+    SecPolicyRef policy = SecPolicyCreateBasicX509();<br/>
+    CFIndex certificateCount = SecTrustGetCertificateCount(serverTrust);<br/>
+    NSMutableArray *trustChain = [NSMutableArray arrayWithCapacity:(NSUInteger)certificateCount];<br/>
+    for (CFIndex i = 0; i &lt; certificateCount; i++) {<br/>
+        SecCertificateRef certificate = SecTrustGetCertificateAtIndex(serverTrust, i);<br/>
+        SecCertificateRef someCertificates[] = {certificate};<br/>
+        CFArrayRef certificates = CFArrayCreate(NULL, (const void **)someCertificates, 1, NULL);<br/>
+        SecTrustRef trust;<br/>
+        __Require_noErr_Quiet(SecTrustCreateWithCertificates(certificates, policy, &amp;trust), _out);<br/>
+        SecTrustResultType result;<br/>
+        __Require_noErr_Quiet(SecTrustEvaluate(trust, &amp;result), _out);<br/>
+        [trustChain addObject:(__bridge_transfer id)SecTrustCopyPublicKey(trust)];<br/>
+    _out:<br/>
+        if (trust) {<br/>
+            CFRelease(trust);<br/>
+        }<br/>
+        if (certificates) {<br/>
+            CFRelease(certificates);<br/>
+        }<br/>
+        continue;<br/>
+    }<br/>
+    CFRelease(policy);<br/>
+    return [NSArray arrayWithArray:trustChain];<br/>
+}
+</code></pre></li>
+</ul>
+
+<h2 id="toc_3">验证服务端是否受信</h2>
+
+<p>通过<code>[AFSecurityPolicy evaluateServerTrust:forDomain:]</code>来验证服务器端是否受信</p>
+
+<pre><code class="language-objectivec">- (BOOL)evaluateServerTrust:(SecTrustRef)serverTrust
+                  forDomain:(NSString *)domain {
+
+    #1: 不能隐式的信任自己签发的证书
+    #2: 设置policy
+    #3: 验证证书是否有效
+    #4: 根据SSLPinningMode对服务端进行验证
+    
+    return NO；
+}
+</code></pre>
+
+<ol>
+<li><p>不能隐式的信任自己签发的证书</p>
+<pre><code class="language-objectivec">if (domain &amp;&amp; self.allowInvalidCertificates &amp;&amp; self.validatesDomainName &amp;&amp; (self.SSLPinningMode == AFSSLPinningModeNone || [self.pinnedCertificates count] == 0)) {
+NSLog(@&quot;In order to validate a domain name for self signed certificates, you MUST use pinning.&quot;);<br/>
+return NO;<br/>
+}
+</code></pre>
+<p>因此如果没有提供证书或者不验证证书，并且还设置<code>allowInvalidCertificates</code>为真，满足上面所有条件 说明这次验证是不安全的  返回NO</p></li>
+<li><p>设置Policy</p>
+<pre><code class="language-objectivec">NSMutableArray *policies = [NSMutableArray array];
+if (self.validatesDomainName) {<br/>
+    [policies addObject:(__bridge_transfer id)SecPolicyCreateSSL(true, (__bridge CFStringRef)domain)];<br/>
+} else {<br/>
+    [policies addObject:(__bridge_transfer id)SecPolicyCreateBasicX509()];<br/>
+}
+</code></pre>
+<p>如果要验证域名的话，就以域名为参数创建一个SecPolicyRef，否则会创建一个符合X509标注的默认<code>DecPlocyRef</code>对象</p></li>
+<li><p>验证证书有效性</p>
+<pre><code class="language-objectivec">if (self.SSLPinningMode == AFSSLPinningModeNone) {
+    return self.allowInvalidCertificates || AFServerTrustIsValid(serverTrust);<br/>
+} else if (!AFServerTrustIsValid(serverTrust) &amp;&amp; !self.allowInvalidCertificates) {<br/>
+    return NO;<br/>
+}
+</code></pre>
+<ul>
+<li>如果只根据信任列表中证书进行验证，即<code>self.SSLPinningMode == AFSSLPinningModeNone</code>。如果允许无效的证书 就返回YES。不允许的话就对服务端进行验证</li>
+<li>如果服务器信任无效，并且不允许无效证书，就返回NO</li>
+</ul></li>
+<li><p>根据<code>SSLPingMode</code>对服务器信任进行验证</p>
+<pre><code class="language-objectivec">
+</code></pre>
+<ul>
+<li><code>AFSSLPinningModeNone</code>直接返回NO</li>
+<li><p><code>AFSSLPinningModeCertificate</code></p>
+<pre><code class="language-objectivec">case AFSSLPinningModeCertificate: {
+    NSMutableArray *pinnedCertificates = [NSMutableArray array];<br/>
+    for (NSData *certificateData in self.pinnedCertificates) {<br/>
+        [pinnedCertificates addObject:(__bridge_transfer id)SecCertificateCreateWithData(NULL, (__bridge CFDataRef)certificateData)];<br/>
+    }<br/>
+    SecTrustSetAnchorCertificates(serverTrust, (__bridge CFArrayRef)pinnedCertificates);<br/>
+    if (!AFServerTrustIsValid(serverTrust)) {<br/>
+        return NO;<br/>
+    }<br/>
+    // obtain the chain after being validated, which *should* contain the pinned certificate in the last position (if it&#39;s the Root CA)<br/>
+    NSArray *serverCertificates = AFCertificateTrustChainForServerTrust(serverTrust);<br/>
+    for (NSData *trustChainCertificate in [serverCertificates reverseObjectEnumerator]) {<br/>
+        if ([self.pinnedCertificates containsObject:trustChainCertificate]) {<br/>
+            return YES;<br/>
+        }<br/>
+    }<br/>
+    return NO;<br/>
+}
+</code></pre>
+<p>a. 从<code>self.pinnedCertificates</code>中获取DER表示的数据<br/>
+b. 使用<code>SecTrustSetAnchorCertigicates</code>为服务器信任设置证书<br/>
+c. 判断服务器信任的有效性<br/>
+d. 使用<code>AFCertificateTrustChainForServerTrust</code>获取服务器信任中的全部DER表示的整数<br/>
+e. 如果pinnedCertificated中有相同的整数，就会返回YES</p></li>
+<li><p><code>AFSSLPinningModePublicKey</code></p>
+<pre><code class="language-objectivec">case AFSSLPinningModePublicKey: {
+    NSUInteger trustedPublicKeyCount = 0;<br/>
+    NSArray *publicKeys = AFPublicKeyTrustChainForServerTrust(serverTrust);<br/>
+    for (id trustChainPublicKey in publicKeys) {<br/>
+        for (id pinnedPublicKey in self.pinnedPublicKeys) {<br/>
+            if (AFSecKeyIsEqualToKey((__bridge SecKeyRef)trustChainPublicKey, (__bridge SecKeyRef)pinnedPublicKey)) {<br/>
+                trustedPublicKeyCount += 1;<br/>
+            }<br/>
+        }<br/>
+    }<br/>
+    return trustedPublicKeyCount &gt; 0;<br/>
+}
+</code></pre>
+<p>与<code>AFSSLPinningModeCertificate</code>的不同点在于:</p>
+<ul>
+<li>从服务器信任中获取公钥</li>
+<li><code>pinnedPublicKeys</code>中的公钥与服务器信任中的公钥相同的属性大于0 返回真</li>
+</ul></li>
+</ul></li>
+</ol>
+
+<h2 id="toc_4">与 AFURLSessionManager 协作</h2>
+
+<p>在<code>NSURLSessionDelegate</code>代理方法中 调用运行这段代码</p>
+
+<pre><code class="language-objectivec"> - (void)URLSession:(NSURLSession *)session
+didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
+ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential))completionHandler
+{
+    NSURLSessionAuthChallengeDisposition disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+    __block NSURLCredential *credential = nil;
+
+    if (self.sessionDidReceiveAuthenticationChallenge) {
+        disposition = self.sessionDidReceiveAuthenticationChallenge(session, challenge, &amp;credential);
+    } else {
+        if ([challenge.protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust]) {
+            if ([self.securityPolicy evaluateServerTrust:challenge.protectionSpace.serverTrust forDomain:challenge.protectionSpace.host]) {
+                credential = [NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust];
+                if (credential) {
+                    disposition = NSURLSessionAuthChallengeUseCredential;
+                } else {
+                    disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+                }
+            } else {
+                disposition = NSURLSessionAuthChallengeCancelAuthenticationChallenge;
+            }
+        } else {
+            disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+        }
+    }
+
+    if (completionHandler) {
+        completionHandler(disposition, credential);
+    }
+}
+</code></pre>
+
+<p><code>NSURLAuthenticationChallenge</code>表示一个认证的挑战，提供了关于这次认证的全部信息。<br/>
+ 其中的<code>protectionSpace</code>属性，保存了需要认证的保护空间，每个<code>NSURLProtectionSpace</code>对象都保存了主机地址、端口和认证方法等重要信息</p>
+
+<p>如果保护空间的认证方法为<code>NSURLAuthenticationMethodServerTrust</code>，那么就会使用在上面提到的方法<code>- [AFSecurityPolicy evaluateServerTrust:forDomain:]</code> 对保护空间的<code>serverTrust</code>以及域名<code>host</code>进行认证</p>
+
+<p>根据认证的结果，在<code>completionHandler</code>中传入不同的<code>disposition</code>和<code>credential</code>参数</p>
+
+<h2 id="toc_5">小结</h2>
+
+<p>AFSecurityPolicy 同样也作为一个即插即用的模块，在 AFNetworking 中作为验证 HTTPS 证书是否有效的模块存在    </p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[AFNetworkReachabilityManager]]></title>
+    <link href="https://acefish.github.io/15680125238227.html"/>
+    <updated>2019-09-09T15:02:03+08:00</updated>
+    <id>https://acefish.github.io/15680125238227.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">AFNetworkReachabilityManager的使用</h2>
+
+<h3 id="toc_1">初始化 AFNetworkReachabilityManager</h3>
+
+<p>在初始化方法中使用<code>SCNetworkReachabilityCreateWithAddress</code>或者<code>SCNetworkReachabilityCreateWithName</code>生成一个<code>SCNetworkReachabilityRef</code>的引用</p>
+
+<pre><code class="language-objectivec">+ (instancetype)managerForDomain:(NSString *)domain {
+    SCNetworkReachabilityRef reachability = SCNetworkReachabilityCreateWithName(kCFAllocatorDefault, [domain UTF8String]);
+    AFNetworkReachabilityManager *manager = [[self alloc] initWithReachability:reachability];
+    CFRelease(reachability);
+    return manager;
+}
+
++ (instancetype)managerForAddress:(const void *)address {
+    SCNetworkReachabilityRef reachability = SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, (const struct sockaddr *)address);
+    AFNetworkReachabilityManager *manager = [[self alloc] initWithReachability:reachability];
+    CFRelease(reachability);
+    return manager;
+}
+
+- (instancetype)initWithReachability:(SCNetworkReachabilityRef)reachability {
+    self = [super init];
+    if (!self) {
+        return nil;
+    }
+
+    _networkReachability = CFRetain(reachability);
+    self.networkReachabilityStatus = AFNetworkReachabilityStatusUnknown;
+
+    return self;
+}
+</code></pre>
+
+<ol>
+<li>这两个方法通过 域名 或者有个 <code>sockaddr_in</code>指针 生成了一个<code>SCNetworkReachabilityRef</code></li>
+<li>调用<code>- [AFNetworkReachabilityManager initWithReachability:]</code>将生成的<code>SCNetworkReachabilityRef</code>传入</li>
+<li>设置默认<code>networkReachabilityStatus</code></li>
+</ol>
+
+<h3 id="toc_2">监控网络状态</h3>
+
+<p>在初始化了manager之后，我们需要调用<code>startMonitoring</code>来开始监控网络状态</p>
+
+<pre><code class="language-objectivec">- (void)startMonitoring {
+    [self stopMonitoring];
+    if (!self.networkReachability) {
+        return;
+    }
+    __weak __typeof(self)weakSelf = self;
+    AFNetworkReachabilityStatusBlock callback = ^(AFNetworkReachabilityStatus status) {
+        __strong __typeof(weakSelf)strongSelf = weakSelf;
+
+        strongSelf.networkReachabilityStatus = status;
+        if (strongSelf.networkReachabilityStatusBlock) {
+            strongSelf.networkReachabilityStatusBlock(status);
+        }
+
+    };
+
+    SCNetworkReachabilityContext context = {0, (__bridge void *)callback, AFNetworkReachabilityRetainCallback, AFNetworkReachabilityReleaseCallback, NULL};
+    SCNetworkReachabilitySetCallback(self.networkReachability, AFNetworkReachabilityCallback, &amp;context);
+    SCNetworkReachabilityScheduleWithRunLoop(self.networkReachability, CFRunLoopGetMain(), kCFRunLoopCommonModes);
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0),^{
+        SCNetworkReachabilityFlags flags;
+        if (SCNetworkReachabilityGetFlags(self.networkReachability, &amp;flags)) {
+            AFPostReachabilityStatusChange(flags, callback);
+        }
+    });
+}
+</code></pre>
+
+<p>在该方法中创建了每次网络状态改变时的回调<code>AFNetworkReachabilityStatusBlock</code>，当回调发生时，重新设置status属性，调用设置的<code>networkReachabilityStatusBlock</code>属性</p>
+
+<p>监控网络状态核心代码</p>
+
+<ol>
+<li><p>创建一个<code>SCNetworkReachabilityContext</code></p>
+<pre><code class="language-objectivec">typedef struct {
+    CFIndex     version;<br/>
+    void *      __nullable info;<br/>
+    const void  * __nonnull (* __nullable retain)(const void *info);<br/>
+    void        (* __nullable release)(const void *info);<br/>
+    CFStringRef __nonnull (* __nullable copyDescription)(const void *info);<br/>
+} SCNetworkReachabilityContext;<br/>
+SCNetworkReachabilityContext context = {<br/>
+ 0,<br/>
+ (__bridge void *)callback,<br/>
+ AFNetworkReachabilityRetainCallback, <br/>
+ AFNetworkReachabilityReleaseCallback, <br/>
+ NULL<br/>
+};
+</code></pre></li>
+<li><p>当目标状态改变时 调用传入的回调</p>
+<pre><code class="language-objectivec">SCNetworkReachabilitySetCallback(self.networkReachability, AFNetworkReachabilityCallback, &amp;context);
+static void AFNetworkReachabilityCallback(SCNetworkReachabilityRef __unused target, SCNetworkReachabilityFlags flags, void *info) {<br/>
+    AFPostReachabilityStatusChange(flags, (__bridge AFNetworkReachabilityStatusBlock)info);<br/>
+}<br/>
+static void AFPostReachabilityStatusChange(SCNetworkReachabilityFlags flags, AFNetworkReachabilityStatusBlock block) {<br/>
+    AFNetworkReachabilityStatus status = AFNetworkReachabilityStatusForFlags(flags);<br/>
+    dispatch_async(dispatch_get_main_queue(), ^{<br/>
+        if (block) {<br/>
+            block(status);<br/>
+        }<br/>
+        NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];<br/>
+        NSDictionary *userInfo = @{ AFNetworkingReachabilityNotificationStatusItem: @(status) };<br/>
+        [notificationCenter postNotificationName:AFNetworkingReachabilityDidChangeNotification object:nil userInfo:userInfo];<br/>
+    });<br/>
+}
+</code></pre>
+<ol>
+<li>当网络状态改变时 会将<code>context</code>作为参数 回调<code>AFNetworkReachabilityCallback</code></li>
+<li>在<code>AFNetworkReachabilityCallback</code>中，将context中的block，以及作为状态的flags作为参数调用了 <code>AFPostReachabilityStatusChange</code>状态改变方法</li>
+<li>利用<code>AFNetworkReachabilityStatusForFlags</code>函数将flags转变为网络状态status</li>
+<li>在主线程中执行<code>block(status)</code> 并发送状态改变的通知</li>
+</ol></li>
+<li><p>在MainRunLoop中监控网络状态</p>
+<pre><code class="language-objectivec">SCNetworkReachabilityScheduleWithRunLoop(self.networkReachability, CFRunLoopGetMain(), kCFRunLoopCommonModes);
+</code></pre></li>
+<li><p>获取当前网络状态 调用callback</p>
+<pre><code class="language-objectivec"> dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0),^{
+    SCNetworkReachabilityFlags flags;<br/>
+    if (SCNetworkReachabilityGetFlags(self.networkReachability, &amp;flags)) {<br/>
+        AFPostReachabilityStatusChange(flags, callback);<br/>
+    }<br/>
+});
+</code></pre></li>
+</ol>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[AFURLSerialization]]></title>
+    <link href="https://acefish.github.io/15677400518331.html"/>
+    <updated>2019-09-06T11:20:51+08:00</updated>
+    <id>https://acefish.github.io/15677400518331.html</id>
+    <content type="html"><![CDATA[
+<p>在对请求和接收响应的过程中有两个序列化的模块:</p>
+
+<ul>
+<li>AFURLRequestSerialization</li>
+<li>AFURLResponseSerialization</li>
+</ul>
+
+<p><code>AFURLRequestSerialization</code>主要用于修改请求(主要是HTTP请求)的头部，提供了一些语义明确的接口设置HTTP头部字段</p>
+
+<p><code>AFURLResponseSerialization</code>将请求返回的数据解析为对应的格式</p>
+
+<h2 id="toc_0">AFURLResponseSerialization</h2>
+
+<p><code>AFURLResponseSerialization</code>其实只是一个协议</p>
+
+<pre><code class="language-objectivec">@protocol AFURLResponseSerialization &lt;NSObject, NSSecureCoding, NSCopying&gt;
+- (nullable id)responseObjectForResponse:(nullable NSURLResponse *)response
+                           data:(nullable NSData *)data
+                          error:(NSError * _Nullable __autoreleasing *)error NS_SWIFT_NOTHROW;
+
+@end
+</code></pre>
+
+<p>当遵循了这个协议类的同时也要遵循NSObject、NSSecureCoding、NSCopying，用以实现安全编码、拷贝等OC对象的基本行为</p>
+
+<p>该模块中的父类为<code>AFHTTPResponseSerializer</code>并且继承了<code>AFURLResponseSerialization</code>，其子类有<code>AFJSONResponseSerializer</code>、<code>AFXMLDocumentResponseSerializer</code>、<code>AFPropertyListResponseSerializer</code>等</p>
+
+<h3 id="toc_1">AFHTTPResponseSerializer</h3>
+
+<p>这是该模块中的父类 也是最重要的类</p>
+
+<pre><code class="language-objectivec">- (instancetype)init {
+    self = [super init];
+    if (!self) {
+        return nil;
+    }
+    self.acceptableStatusCodes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(200, 100)];
+    self.acceptableContentTypes = nil;
+    return self;
+}
+</code></pre>
+
+<p>初始化 设置<code>acceptableStatusCodes</code>接受的状态码为<code>200-299</code>只有在这个范围内 才表示获取了有效响应</p>
+
+<h4 id="toc_2">验证有效性</h4>
+
+<p>在<code>AFHTTPResponseSerializer</code> 最重要的方法就是<code>- [AFHTTPResponseSerializer validateResponse:data:error:]</code></p>
+
+<pre><code class="language-objectivec">- (BOOL)validateResponse:(NSHTTPURLResponse *)response
+                    data:(NSData *)data
+                   error:(NSError * __autoreleasing *)error
+{
+    BOOL responseIsValid = YES;
+    NSError *validationError = nil;
+
+    if (response &amp;&amp; [response isKindOfClass:[NSHTTPURLResponse class]]) {
+        if (self.acceptableContentTypes &amp;&amp; ![self.acceptableContentTypes containsObject:[response MIMEType]] &amp;&amp;
+            !([response MIMEType] == nil &amp;&amp; [data length] == 0)) {
+            ...
+            //返回的类型 contentType无效
+            responseIsValid = NO;
+        }
+
+        if (self.acceptableStatusCodes &amp;&amp; ![self.acceptableStatusCodes containsIndex:(NSUInteger)response.statusCode] &amp;&amp; [response URL]) {
+                    ...
+                    //返回的状态码无效
+                    responseIsValid = NO;
+        }
+    }
+
+    if (error &amp;&amp; !responseIsValid) {
+        *error = validationError;
+    }
+
+    return responseIsValid;
+}
+</code></pre>
+
+<p>这个方法中根据 <code>acceptableContentTypes</code>和<code>acceptab;leStatusCodes</code>来判断当前响应是否有效</p>
+
+<p>通过<code>AFErrorWithUnderlyingError</code>生成格式化的错误</p>
+
+<pre><code class="language-objectivec">if ([data length] &gt; 0 &amp;&amp; [response URL]) {
+                NSMutableDictionary *mutableUserInfo = [@{
+                                                          NSLocalizedDescriptionKey: [NSString stringWithFormat:NSLocalizedStringFromTable(@&quot;Request failed: unacceptable content-type: %@&quot;, @&quot;AFNetworking&quot;, nil), [response MIMEType]],
+                                                          NSURLErrorFailingURLErrorKey:[response URL],
+                                                          AFNetworkingOperationFailingURLResponseErrorKey: response,
+                                                        } mutableCopy];
+                if (data) {
+                    mutableUserInfo[AFNetworkingOperationFailingURLResponseDataErrorKey] = data;
+                }
+
+                validationError = AFErrorWithUnderlyingError([NSError errorWithDomain:AFURLResponseSerializationErrorDomain code:NSURLErrorCannotDecodeContentData userInfo:mutableUserInfo], validationError);
+            }
+</code></pre>
+
+<h4 id="toc_3">协议实现</h4>
+
+<p>对于协议只是简单的调用了上面的对返回数据做了验证</p>
+
+<pre><code class="language-objectivec">- (id)responseObjectForResponse:(NSURLResponse *)response
+                           data:(NSData *)data
+                          error:(NSError *__autoreleasing *)error
+{
+    [self validateResponse:(NSHTTPURLResponse *)response data:data error:error];
+
+    return data;
+}
+</code></pre>
+
+<h3 id="toc_4">AFJSONResponseSerializer</h3>
+
+<p><code>AFJSONResponseSerializer</code>继承自<code>AFHTTPResponseSerializer</code> </p>
+
+<h4 id="toc_5">初始化</h4>
+
+<pre><code class="language-objectivec">- (instancetype)init {
+    ...
+    self.acceptableContentTypes = [NSSet setWithObjects:@&quot;application/json&quot;, @&quot;text/json&quot;, @&quot;text/javascript&quot;, nil];
+    return self;
+}
+
++ (instancetype)serializerWithReadingOptions:(NSJSONReadingOptions)readingOptions {
+    AFJSONResponseSerializer *serializer = [[self alloc] init];
+    serializer.readingOptions = readingOptions;
+    return serializer;
+}
+</code></pre>
+
+<p>设置了<code>acceptableContentTypes</code>属性</p>
+
+<h4 id="toc_6">重写协议实现</h4>
+
+<pre><code class="language-objectivec">- (id)responseObjectForResponse:(NSURLResponse *)response
+                           data:(NSData *)data
+                          error:(NSError *__autoreleasing *)error
+{
+    #1: 验证请求
+    if (![self validateResponse:(NSHTTPURLResponse *)response data:data error:error]) {
+        if (!error || AFErrorOrUnderlyingErrorHasCodeInDomain(*error, NSURLErrorCannotDecodeContentData, AFURLResponseSerializationErrorDomain)) {
+            return nil;
+        }
+    }
+    #2: 解决一个由只包含一个空格的响应引起的 bug, 略
+    BOOL isSpace = [data isEqualToData:[NSData dataWithBytes:&quot; &quot; length:1]];
+    
+    if (data.length == 0 || isSpace) {
+        return nil;
+    }
+    #3: 序列化 JSON
+       NSError *serializationError = nil;
+    
+    id responseObject = [NSJSONSerialization JSONObjectWithData:data options:self.readingOptions error:&amp;serializationError];
+
+    if (!responseObject)
+    {
+        if (error) {
+            *error = AFErrorWithUnderlyingError(serializationError, *error);
+        }
+        return nil;
+    }
+    #4: 移除 JSON 中的 null
+       if (self.removesKeysWithNullValues) {
+        return AFJSONObjectByRemovingKeysWithNullValues(responseObject, self.readingOptions);
+    }
+
+    if (error) {
+        *error = AFErrorWithUnderlyingError(serializationError, *error);
+    }
+    return responseObject;
+}
+</code></pre>
+
+<p>其中移除JSON中null的函数是一个递归调用的函数</p>
+
+<pre><code class="language-objectivec">static id AFJSONObjectByRemovingKeysWithNullValues(id JSONObject, NSJSONReadingOptions readingOptions) {
+    if ([JSONObject isKindOfClass:[NSArray class]]) {
+        NSMutableArray *mutableArray = [NSMutableArray arrayWithCapacity:[(NSArray *)JSONObject count]];
+        for (id value in (NSArray *)JSONObject) {
+            [mutableArray addObject:AFJSONObjectByRemovingKeysWithNullValues(value, readingOptions)];
+        }
+
+        return (readingOptions &amp; NSJSONReadingMutableContainers) ? mutableArray : [NSArray arrayWithArray:mutableArray];
+    } else if ([JSONObject isKindOfClass:[NSDictionary class]]) {
+        NSMutableDictionary *mutableDictionary = [NSMutableDictionary dictionaryWithDictionary:JSONObject];
+        for (id &lt;NSCopying&gt; key in [(NSDictionary *)JSONObject allKeys]) {
+            id value = (NSDictionary *)JSONObject[key];
+            if (!value || [value isEqual:[NSNull null]]) {
+                [mutableDictionary removeObjectForKey:key];
+            } else if ([value isKindOfClass:[NSArray class]] || [value isKindOfClass:[NSDictionary class]]) {
+            //移除value为null 的键值对
+                mutableDictionary[key] = AFJSONObjectByRemovingKeysWithNullValues(value, readingOptions);
+            }
+        }
+
+        return (readingOptions &amp; NSJSONReadingMutableContainers) ? mutableDictionary : [NSDictionary dictionaryWithDictionary:mutableDictionary];
+    }
+
+    return JSONObject;
+}
+</code></pre>
+
+<h2 id="toc_7">AFURLRequestSerialization</h2>
+
+<p><code>AFURLRequestSerialization</code>主要工作是对发出的HTTP请求进行处理</p>
+
+<ol>
+<li>处理查询的URL参数</li>
+<li>设置HTTP头部字段</li>
+<li>设置请求的属性</li>
+<li>分块上传</li>
+</ol>
+
+<h3 id="toc_8">处理查询参数</h3>
+
+<p>处理查询参数组要通过<code>AFQueryStringPair</code>类，以及一些C函数共同完成。<br/>
+<code>AFQueryStringPair</code>中存储了两个属性</p>
+
+<pre><code class="language-objectivec">@property (readwrite, nonatomic, strong) id field;
+@property (readwrite, nonatomic, strong) id value;
+</code></pre>
+
+<p>对应HTTP请求中查询URL中的参数</p>
+
+<pre><code class="language-objectivec">- (instancetype)initWithField:(id)field value:(id)value {
+    self = [super init];
+    if (!self) {
+        return nil;
+    }
+
+    self.field = field;
+    self.value = value;
+
+    return self;
+}
+
+- (NSString *)URLEncodedStringValue {
+    if (!self.value || [self.value isEqual:[NSNull null]]) {
+        return AFPercentEscapedStringFromString([self.field description]);
+    } else {
+        return [NSString stringWithFormat:@&quot;%@=%@&quot;, AFPercentEscapedStringFromString([self.field description]), AFPercentEscapedStringFromString([self.value description])];
+    }
+}
+</code></pre>
+
+<p>使用<code>AFPercentEscapedStringFromString</code>C函数来对filed和value进行处理，使用URL形式，将特殊字符转为百分号表示形式。返回<code>key=value</code>这种形式</p>
+
+<p>使用C函数<code>AFQueryStringPairsFromKeyAndValue</code>将参数字典转为<code>AFQueryStringPair</code>对象数组，然后使用<code>AFQueryStringFromParameters</code>用&amp;拼接参数，返回<code>username=dravenss&amp;password=123456&amp;hello[world]=helloworld<br/>
+</code>形式</p>
+
+<h3 id="toc_9">设置HTTP头部字段</h3>
+
+<p><code>AFHTTPRequestSerializer</code>帮助我们设置HTTP请求头，在内部提供了<code>- (void)setValue:(NSString *)valueforHTTPHeaderField:(NSString *)field</code>方法来设置HTTP头部，它的实现基于<code>mutableHTTPRequestHeaders</code>属性</p>
+
+<pre><code class="language-objectivec">@property (readwrite, nonatomic, strong) NSMutableDictionary *mutableHTTPRequestHeaders;
+
+- (void)setValue:(NSString *)value
+forHTTPHeaderField:(NSString *)field
+{
+    dispatch_barrier_async(self.requestHeaderModificationQueue, ^{
+        [self.mutableHTTPRequestHeaders setValue:value forKey:field];
+    });
+}
+</code></pre>
+
+<p>当我们设置请求头时都会设置到<code>mutableHTTPRequestHeaders</code>这个可变字典中，当真正使用时，通过<code>HTTPRequestHeaders</code>方法来获取对应版本的不可变字典</p>
+
+<pre><code class="language-objectivec">- (NSDictionary *)HTTPRequestHeaders {
+    NSDictionary __block *value;
+    dispatch_sync(self.requestHeaderModificationQueue, ^{
+        value = [NSDictionary dictionaryWithDictionary:self.mutableHTTPRequestHeaders];
+    });
+    return value;
+}
+</code></pre>
+
+<h4 id="toc_10">AFHTTPRequestSerializer设置常用的HTTP头</h4>
+
+<p>在初始化时，根据编译平台  设置了<code>userAgent</code>字符串</p>
+
+<pre><code class="language-objectivec">#if TARGET_OS_IOS
+    // User-Agent Header; see http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.43
+    userAgent = [NSString stringWithFormat:@&quot;%@/%@ (%@; iOS %@; Scale/%0.2f)&quot;, [[NSBundle mainBundle] infoDictionary][(__bridge NSString *)kCFBundleExecutableKey] ?: [[NSBundle mainBundle] infoDictionary][(__bridge NSString *)kCFBundleIdentifierKey], [[NSBundle mainBundle] infoDictionary][@&quot;CFBundleShortVersionString&quot;] ?: [[NSBundle mainBundle] infoDictionary][(__bridge NSString *)kCFBundleVersionKey], [[UIDevice currentDevice] model], [[UIDevice currentDevice] systemVersion], [[UIScreen mainScreen] scale]];
+    
+    if (userAgent) {
+        if (![userAgent canBeConvertedToEncoding:NSASCIIStringEncoding]) {
+            NSMutableString *mutableUserAgent = [userAgent mutableCopy];
+            if (CFStringTransform((__bridge CFMutableStringRef)(mutableUserAgent), NULL, (__bridge CFStringRef)@&quot;Any-Latin; Latin-ASCII; [:^ASCII:] Remove&quot;, false)) {
+                userAgent = mutableUserAgent;
+            }
+        }
+        [self setValue:userAgent forHTTPHeaderField:@&quot;User-Agent&quot;];
+    }
+</code></pre>
+
+<p>设置账号 密码等验证字段</p>
+
+<pre><code class="language-objectivec">- (void)setAuthorizationHeaderFieldWithUsername:(NSString *)username
+                                       password:(NSString *)password
+{
+    NSData *basicAuthCredentials = [[NSString stringWithFormat:@&quot;%@:%@&quot;, username, password] dataUsingEncoding:NSUTF8StringEncoding];
+    NSString *base64AuthCredentials = [basicAuthCredentials base64EncodedStringWithOptions:(NSDataBase64EncodingOptions)0];
+    [self setValue:[NSString stringWithFormat:@&quot;Basic %@&quot;, base64AuthCredentials] forHTTPHeaderField:@&quot;Authorization&quot;];
+}
+
+- (void)clearAuthorizationHeader {
+    dispatch_barrier_async(self.requestHeaderModificationQueue, ^{
+        [self.mutableHTTPRequestHeaders removeObjectForKey:@&quot;Authorization&quot;];
+    });
+}
+</code></pre>
+
+<h3 id="toc_11">设置请求的属性</h3>
+
+<p><code>AFNetworking</code>提供了这些属性来设置</p>
+
+<pre><code class="language-objectivec">@property (nonatomic, assign) BOOL allowsCellularAccess;
+
+@property (nonatomic, assign) NSURLRequestCachePolicy cachePolicy;
+
+@property (nonatomic, assign) BOOL HTTPShouldHandleCookies;
+
+@property (nonatomic, assign) BOOL HTTPShouldUsePipelining;
+
+@property (nonatomic, assign) NSURLRequestNetworkServiceType networkServiceType;
+
+@property (nonatomic, assign) NSTimeInterval timeoutInterval;
+</code></pre>
+
+<p>存储在数组中</p>
+
+<pre><code class="language-objectivec">static NSArray * AFHTTPRequestSerializerObservedKeyPaths() {
+    static NSArray *_AFHTTPRequestSerializerObservedKeyPaths = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&amp;onceToken, ^{
+        _AFHTTPRequestSerializerObservedKeyPaths = @[NSStringFromSelector(@selector(allowsCellularAccess)), NSStringFromSelector(@selector(cachePolicy)), NSStringFromSelector(@selector(HTTPShouldHandleCookies)), NSStringFromSelector(@selector(HTTPShouldUsePipelining)), NSStringFromSelector(@selector(networkServiceType)), NSStringFromSelector(@selector(timeoutInterval))];
+    });
+
+    return _AFHTTPRequestSerializerObservedKeyPaths;
+}
+</code></pre>
+
+<p>当这些属性被设置时  会触发KVO，将新的属性存储在一个名字为<code>mutableObservedChangedKeyPaths</code>中</p>
+
+<pre><code class="language-objectivec">- (void)observeValueForKeyPath:(NSString *)keyPath
+                      ofObject:(__unused id)object
+                        change:(NSDictionary *)change
+                       context:(void *)context
+{
+    if (context == AFHTTPRequestSerializerObserverContext) {
+        if ([change[NSKeyValueChangeNewKey] isEqual:[NSNull null]]) {
+            [self.mutableObservedChangedKeyPaths removeObject:keyPath];
+        } else {
+            [self.mutableObservedChangedKeyPaths addObject:keyPath];
+        }
+    }
+}
+</code></pre>
+
+<p>然后在生成request时 设置这些属性</p>
+
+<pre><code class="language-objectivec">for (NSString *keyPath in AFHTTPRequestSerializerObservedKeyPaths()) {
+        if ([self.mutableObservedChangedKeyPaths containsObject:keyPath]) {
+            [mutableRequest setValue:[self valueForKeyPath:keyPath] forKey:keyPath];
+        }
+    }
+</code></pre>
+
+<h3 id="toc_12">流程</h3>
+
+<p><code>AFHTTPRequestSerializer</code>会在<code>Manager</code>初始化之后进行一些初始化，它会根据当前系统环境预设置一些HTTP头部字段<code>Accept-Language</code>、<code>User-Agent</code>等</p>
+
+<p>在完成了HTTP 请求头和属性的设置后，</p>
+
+<p>在调用请求的方法时，会调用到序列化的这个方法</p>
+
+<pre><code class="language-objectivec">- (NSMutableURLRequest *)requestWithMethod:(NSString *)method
+                                 URLString:(NSString *)URLString
+                                parameters:(id)parameters
+                                     error:(NSError *__autoreleasing *)error
+{
+    NSParameterAssert(method);
+    NSParameterAssert(URLString);
+
+    NSURL *url = [NSURL URLWithString:URLString];
+
+    NSParameterAssert(url);
+
+    NSMutableURLRequest *mutableRequest = [[NSMutableURLRequest alloc] initWithURL:url];
+    mutableRequest.HTTPMethod = method;
+
+    for (NSString *keyPath in AFHTTPRequestSerializerObservedKeyPaths()) {
+        if ([self.mutableObservedChangedKeyPaths containsObject:keyPath]) {
+            [mutableRequest setValue:[self valueForKeyPath:keyPath] forKey:keyPath];
+        }
+    }
+
+    mutableRequest = [[self requestBySerializingRequest:mutableRequest withParameters:parameters error:error] mutableCopy];
+
+    return mutableRequest;
+}
+</code></pre>
+
+<p>这个方法完成了一下几件事</p>
+
+<ol>
+<li>对参数进行检查</li>
+<li>设置HTTP方法</li>
+<li>通过<code>mutableObservedChangedKeyPaths</code>设置<code>NSMutableRequest</code>的属性</li>
+<li><p>调用了<code>[AFHTTPRequestSerializer requestBySerializingRequest:withParameters:error:]</code>方法来设置HTTP头部字段和查询参数</p>
+<p>在这个方法中做了两件事</p>
+<ol>
+<li>设置HTTP头部</li>
+<li>调用<code>AFQueryStringFromParameters</code>将参数转为查询参数</li>
+<li><p>将params添加到url或者http body中</p>
+<pre><code class="language-objectivec">- (NSURLRequest *)requestBySerializingRequest:(NSURLRequest *)request
+                           withParameters:(id)parameters<br/>
+                                    error:(NSError *__autoreleasing *)error<br/>
+{<br/>
+    NSParameterAssert(request);<br/>
+    NSMutableURLRequest *mutableRequest = [request mutableCopy];<br/>
+    [self.HTTPRequestHeaders enumerateKeysAndObjectsUsingBlock:^(id field, id value, BOOL * __unused stop) {<br/>
+        if (![request valueForHTTPHeaderField:field]) {<br/>
+            [mutableRequest setValue:value forHTTPHeaderField:field];<br/>
+        }<br/>
+    }];<br/>
+    NSString *query = nil;<br/>
+    if (parameters) {<br/>
+        if (self.queryStringSerialization) {<br/>
+            NSError *serializationError;<br/>
+            query = self.queryStringSerialization(request, parameters, &amp;serializationError);<br/>
+            if (serializationError) {<br/>
+                if (error) {<br/>
+                    *error = serializationError;<br/>
+                }<br/>
+                return nil;<br/>
+            }<br/>
+        } else {<br/>
+            switch (self.queryStringSerializationStyle) {<br/>
+                case AFHTTPRequestQueryStringDefaultStyle:<br/>
+                    query = AFQueryStringFromParameters(parameters);<br/>
+                    break;<br/>
+            }<br/>
+        }<br/>
+    }<br/>
+    if ([self.HTTPMethodsEncodingParametersInURI containsObject:[[request HTTPMethod] uppercaseString]]) {<br/>
+        if (query &amp;&amp; query.length &gt; 0) {<br/>
+            mutableRequest.URL = [NSURL URLWithString:[[mutableRequest.URL absoluteString] stringByAppendingFormat:mutableRequest.URL.query ? @&quot;&amp;%@&quot; : @&quot;?%@&quot;, query]];<br/>
+        }<br/>
+    } else {<br/>
+        // #2864: an empty string is a valid x-www-form-urlencoded payload<br/>
+        if (!query) {<br/>
+            query = @&quot;&quot;;<br/>
+        }<br/>
+        if (![mutableRequest valueForHTTPHeaderField:@&quot;Content-Type&quot;]) {<br/>
+            [mutableRequest setValue:@&quot;application/x-www-form-urlencoded&quot; forHTTPHeaderField:@&quot;Content-Type&quot;];<br/>
+        }<br/>
+        [mutableRequest setHTTPBody:[query dataUsingEncoding:self.stringEncoding]];<br/>
+    }<br/>
+    return mutableRequest;<br/>
+}
+</code></pre></li>
+</ol></li>
+<li><p>最后这方法会返回一个<code>NSMutableURLRequest</code></p></li>
+</ol>
+
+<h3 id="toc_13">AFPropertyListRequestSerializer AFJSONRequestSerializer</h3>
+
+<p><code>AFJSONRequestSerializer</code> 、 <code>AFPropertyListRequestSerializer</code><br/>
+均继承自AFHTTPRequestSerializer  </p>
+
+<p>其重写了<code>- (NSURLRequest *)requestBySerializingRequest:(NSURLRequest *)request withParameters:(id)parameters error:(NSError *__autoreleasing *)error</code>方法，主要内部修改了contentType和设置的httpBody的数据格式化</p>
+
+<p>我们只需要在请求时设置manager 的 requestSerializer为<code>[AFJSONRequestSerializer serializer]</code></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[AFURLSessionManager]]></title>
+    <link href="https://acefish.github.io/15676621460215.html"/>
+    <updated>2019-09-05T13:42:26+08:00</updated>
+    <id>https://acefish.github.io/15676621460215.html</id>
+    <content type="html"><![CDATA[
+<p>根据作者:<br/>
+<code>AFURLSessionManager</code>是基于一个指定的<code>NSURLSessionConfiguration</code>对象创建的用于管理<code>NSURLSession</code>对象。 其遵循了<code>NSURLSessionTaskDelegate、NSURLSessionDataDelegate、NSURLSessionDownloadDelegate、NSURLSessionDelegate</code>协议</p>
+
+<pre><code class="language-objectivec">## NSURLSession &amp; NSURLSessionTask Delegate Methods
+
+ `AFURLSessionManager` implements the following delegate methods:
+
+ ### `NSURLSessionDelegate`
+
+ - `URLSession:didBecomeInvalidWithError:`
+ - `URLSession:didReceiveChallenge:completionHandler:`
+ - `URLSessionDidFinishEventsForBackgroundURLSession:`
+
+ ### `NSURLSessionTaskDelegate`
+
+ - `URLSession:willPerformHTTPRedirection:newRequest:completionHandler:`
+ - `URLSession:task:didReceiveChallenge:completionHandler:`
+ - `URLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:`
+ - `URLSession:task:needNewBodyStream:`
+ - `URLSession:task:didCompleteWithError:`
+
+ ### `NSURLSessionDataDelegate`
+
+ - `URLSession:dataTask:didReceiveResponse:completionHandler:`
+ - `URLSession:dataTask:didBecomeDownloadTask:`
+ - `URLSession:dataTask:didReceiveData:`
+ - `URLSession:dataTask:willCacheResponse:completionHandler:`
+
+ ### `NSURLSessionDownloadDelegate`
+
+ - `URLSession:downloadTask:didFinishDownloadingToURL:`
+ - `URLSession:downloadTask:didWriteData:totalBytesWritten:totalBytesWritten:totalBytesExpectedToWrite:`
+ - `URLSession:downloadTask:didResumeAtOffset:expectedTotalBytes:`
+
+ If any of these methods are overridden in a subclass, they _must_ call the `super` implementation first.
+
+</code></pre>
+
+<h2 id="toc_0">基本功能</h2>
+
+<ol>
+<li>创建和管理<code>NSURLSession</code></li>
+<li>管理<code>NSURLSessionTask</code></li>
+<li>实现<code>NSURLSessionDelegate</code>等协议中的代理方法</li>
+<li>使用<code>AFURLSessionManagerTaskDelegate</code>管理进度</li>
+<li>使用<code>_AFURLSessionTaskSwizzling</code>调剂方法</li>
+<li>引入<code>AFSecurityPolicy</code>保证请求的安全</li>
+<li>引入<code>AFNetworkReachabilityManager</code>监控网络状态</li>
+</ol>
+
+<h2 id="toc_1">创建和管理NSURLSession</h2>
+
+<p>初始化方法</p>
+
+<pre><code class="language-objectivec">- (instancetype)initWithSessionConfiguration:(NSURLSessionConfiguration *)configuration {
+
+    //配置会话设置
+    if (!configuration) {
+        configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
+    }
+    self.sessionConfiguration = configuration;
+    
+    self.operationQueue = [[NSOperationQueue alloc] init];
+    self.operationQueue.maxConcurrentOperationCount = 1;
+    
+    //设置NSURLSessionDelegate代理 和 代理queue
+    self.session = [NSURLSession sessionWithConfiguration:self.sessionConfiguration delegate:self delegateQueue:self.operationQueue];
+    
+    //初始化响应序列
+    self.responseSerializer = [AFJSONResponseSerializer serializer];
+    
+    //初始化安全认证
+    self.securityPolicy = [AFSecurityPolicy defaultPolicy];
+    
+    #if !TARGET_OS_WATCH
+    //初始化网络监测状态
+    self.reachabilityManager = [AFNetworkReachabilityManager sharedManager];
+    #endif
+
+    //初始化保存dataTask的字典
+    self.mutableTaskDelegatesKeyedByTaskIdentifier = [[NSMutableDictionary alloc] init];
+    
+    self.lock = [[NSLock alloc] init];
+    self.lock.name = AFURLSessionManagerLockName;
+    
+    //为已有task设置代理  
+    [self.session getTasksWithCompletionHandler:^(NSArray *dataTasks, NSArray *uploadTasks, NSArray *downloadTasks) {
+        for (NSURLSessionDataTask *task in dataTasks) {
+            [self addDelegateForDataTask:task uploadProgress:nil downloadProgress:nil completionHandler:nil];
+        }
+
+        for (NSURLSessionUploadTask *uploadTask in uploadTasks) {
+            [self addDelegateForUploadTask:uploadTask progress:nil completionHandler:nil];
+        }
+
+        for (NSURLSessionDownloadTask *downloadTask in downloadTasks) {
+            [self addDelegateForDownloadTask:downloadTask progress:nil destination:nil completionHandler:nil];
+        }
+    }];
+}
+</code></pre>
+
+<h2 id="toc_2">NSURLSessionTask</h2>
+
+<p><code>AFURLSessionManager</code>中提供了一系列的获取dataTask的方法</p>
+
+<pre><code class="language-objectivec">//upload 
+- (NSURLSessionUploadTask *)uploadTaskWithRequest:(NSURLRequest *)request
+                                         fromFile:(NSURL *)fileURL
+                                         progress:(void (^)(NSProgress *uploadProgress)) uploadProgressBlock
+                                completionHandler:(void (^)(NSURLResponse *response, id responseObject, NSError *error))completionHandler
+
+//download                                
+- (NSURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request
+                                             progress:(void (^)(NSProgress *downloadProgress)) downloadProgressBlock
+                                          destination:(NSURL * (^)(NSURL *targetPath, NSURLResponse *response))destination
+                                    completionHandler:(void (^)(NSURLResponse *response, NSURL *filePath, NSError *error))completionHandler
+
+
+//
+- (NSURLSessionDataTask *)dataTaskWithRequest:(NSURLRequest *)request
+                               uploadProgress:(nullable void (^)(NSProgress *uploadProgress)) uploadProgressBlock
+                             downloadProgress:(nullable void (^)(NSProgress *downloadProgress)) downloadProgressBlock
+                            completionHandler:(nullable void (^)(NSURLResponse *response, id _Nullable responseObject,  NSError * _Nullable error))completionHandler {
+
+    __block NSURLSessionDataTask *dataTask = nil;
+    url_session_manager_create_task_safely(^{
+        dataTask = [self.session dataTaskWithRequest:request];
+    });
+
+    [self addDelegateForDataTask:dataTask uploadProgress:uploadProgressBlock downloadProgress:downloadProgressBlock completionHandler:completionHandler];
+
+    return dataTask;
+}
+</code></pre>
+
+<p>使用<code>url_session_manager_create_task_safely</code>的原因是 苹果的框架的<a href="https://github.com/AFNetworking/AFNetworking/issues/2093">bug</a>，在并行队列中创建task时，因为可能返回的taskIdentifier，先前的complectionHandel被替换为新的，即对第二个任务调用第一个响应.（在iOS8之后问题已修复）</p>
+
+<p>调用了<code>addDelegateForDataTask: uploadProgress: downloadProgress: completionHandler:</code>方法</p>
+
+<pre><code class="language-objectivec">- (void)addDelegateForDataTask:(NSURLSessionDataTask *)dataTask
+                uploadProgress:(nullable void (^)(NSProgress *uploadProgress)) uploadProgressBlock
+              downloadProgress:(nullable void (^)(NSProgress *downloadProgress)) downloadProgressBlock
+             completionHandler:(void (^)(NSURLResponse *response, id responseObject, NSError *error))completionHandler
+{
+    AFURLSessionManagerTaskDelegate *delegate = [[AFURLSessionManagerTaskDelegate alloc] initWithTask:dataTask];
+    delegate.manager = self;
+    delegate.completionHandler = completionHandler;
+
+    dataTask.taskDescription = self.taskDescriptionForSessionTasks;
+    [self setDelegate:delegate forTask:dataTask];
+
+    delegate.uploadProgressBlock = uploadProgressBlock;
+    delegate.downloadProgressBlock = downloadProgressBlock;
+}
+
+- (void)setDelegate:(AFURLSessionManagerTaskDelegate *)delegate
+            forTask:(NSURLSessionTask *)task
+{
+    NSParameterAssert(task);
+    NSParameterAssert(delegate);
+
+    [self.lock lock];
+    self.mutableTaskDelegatesKeyedByTaskIdentifier[@(task.taskIdentifier)] = delegate;
+    [self addNotificationObserverForTask:task];
+    [self.lock unlock];
+}
+
+- (void)addNotificationObserverForTask:(NSURLSessionTask *)task {
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(taskDidResume:) name:AFNSURLSessionTaskDidResumeNotification object:task];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(taskDidSuspend:) name:AFNSURLSessionTaskDidSuspendNotification object:task];
+}
+</code></pre>
+
+<p>创建了一个<code>AFURLSessionManagerTaskDelegate</code>对象 <br/>
+并在其内部执行了<code>setDelegate</code>来设置代理</p>
+
+<p><code>AFURLSessionManager</code>就是通过字典<code>mutableTaskDelegatesKeyedByTaskIdentifier</code>来存储和管理每一个<code>NSURLSessionTask</code>，它以<code>taskIdentifier</code>为键存储task</p>
+
+<h2 id="toc_3">NSURLSessionDelegate</h2>
+
+<p>前面说过<code>AFURLSessionManager</code>遵循了一下代理</p>
+
+<ul>
+<li>NSURLSessionDelegate</li>
+<li>NSURLSessionTaskDelegate</li>
+<li>NSURLSessionDataDelegate</li>
+<li>NSURLSessionDownloadDelegate</li>
+</ul>
+
+<p>我们在使用<code>AFURLSessionManager</code>的初始化方法时 设置 session的delegate为self</p>
+
+<pre><code class="language-objectivec">- (void)URLSession:(NSURLSession *)session didBecomeInvalidWithError:(NSError *)error {
+    if (self.sessionDidBecomeInvalid) {
+        self.sessionDidBecomeInvalid(session, error);
+    }
+
+    [[NSNotificationCenter defaultCenter] postNotificationName:AFURLSessionDidInvalidateNotification object:session];
+}
+
+- (void)URLSession:(NSURLSession *)session
+didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
+ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential))completionHandler {
+    
+ }
+</code></pre>
+
+<p>遵循这些协议实现其方法，然后将其提供更简洁的block接口<br/>
+将block存在对应属性中，当代理方法调用时，执行对应的block</p>
+
+<pre><code class="language-objectivec">- (void)setSessionDidBecomeInvalidBlock:(void (^)(NSURLSession *session, NSError *error))block {
+    self.sessionDidBecomeInvalid = block;
+}
+
+- (void)setSessionDidReceiveAuthenticationChallengeBlock:(NSURLSessionAuthChallengeDisposition (^)(NSURLSession *session, NSURLAuthenticationChallenge *challenge, NSURLCredential * __autoreleasing *credential))block {
+    self.sessionDidReceiveAuthenticationChallenge = block;
+}
+</code></pre>
+
+<h2 id="toc_4">AFURLSessionManagerTaskDelegate管理进度</h2>
+
+<p>主要为task提供进度管理功能，并在task结束时回调，即调用<code>completionHandel</code></p>
+
+<pre><code class="language-objectivec">- (instancetype)initWithTask:(NSURLSessionTask *)task {
+    _mutableData = [NSMutableData data];
+    _uploadProgress = [[NSProgress alloc] initWithParent:nil userInfo:nil];
+    _downloadProgress = [[NSProgress alloc] initWithParent:nil userInfo:nil];
+    
+    __weak __typeof__(task) weakTask = task;
+    for (NSProgress *progress in @[ _uploadProgress, _downloadProgress ])
+    {
+        progress.totalUnitCount = NSURLSessionTransferSizeUnknown;
+        progress.cancellable = YES;
+        progress.cancellationHandler = ^{
+            [weakTask cancel];
+        };
+        progress.pausable = YES;
+        progress.pausingHandler = ^{
+            [weakTask suspend];
+        };
+#if AF_CAN_USE_AT_AVAILABLE
+        if (@available(iOS 9, macOS 10.11, *))
+#else
+        if ([progress respondsToSelector:@selector(setResumingHandler:)])
+#endif
+        {
+            progress.resumingHandler = ^{
+                [weakTask resume];
+            };
+        }
+        
+        [progress addObserver:self
+                   forKeyPath:NSStringFromSelector(@selector(fractionCompleted))
+                      options:NSKeyValueObservingOptionNew
+                      context:NULL];
+    }
+    return self;
+}
+</code></pre>
+
+<p>主要设置了<code>uploadProgress</code>和<code>downloadProgress</code>的回调，当NSProgress的状态改变时，调用相应的task方法，如：resume和suspend来改变task状态</p>
+
+<h3 id="toc_5">代理方法 URLSession:task:didCompleteWithError:</h3>
+
+<p>当sessionManager收到代理,将消息转发给task对应的<code>AFURLSessionManagerTaskDelegate</code></p>
+
+<pre><code class="language-objectivec">- (void)URLSession:(NSURLSession *)session
+              task:(NSURLSessionTask *)task
+didCompleteWithError:(NSError *)error {
+    if (delegate) {
+        [delegate URLSession:session task:task didCompleteWithError:error];
+        [self removeDelegateForTask:task];
+    }
+
+    if (self.taskDidComplete) {
+        self.taskDidComplete(session, task, error);
+    }
+}
+</code></pre>
+
+<p><code>AFURLSessionManagerTaskDelegate</code>主要调用传入的<code>completionHandle</code>,然后发出<code>AFNetworkingTaskDidCompleteNotification</code>通知</p>
+
+<pre><code class="language-objectivec">- (void)URLSession:(__unused NSURLSession *)session
+              task:(NSURLSessionTask *)task
+didCompleteWithError:(NSError *)error {
+    __strong AFURLSessionManager *manager = self.manager;
+    //从mutableData取出数据 设置UserInfo
+    __block NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+    userInfo[AFNetworkingTaskDidCompleteResponseSerializerKey] = manager.responseSerializer;
+    NSData *data = nil;
+    if (self.mutableData) {
+        data = [self.mutableData copy];
+        self.mutableData = nil;
+    }
+    if (self.downloadFileURL) {
+        userInfo[AFNetworkingTaskDidCompleteAssetPathKey] = self.downloadFileURL;
+    } else if (data) {
+        userInfo[AFNetworkingTaskDidCompleteResponseDataKey] = data;
+    }
+    //使用 complectionGroup或者complectionQueue 否则创建一个group和主线程调用completionHandler，并在主线程发出通知
+    if (error) {
+        dispatch_group_async(manager.completionGroup, manager.completionQueue, ^{
+            self.completionHandler(task.response, responseObject, error);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[NSNotificationCenter defaultCenter] postNotificationName:AFNetworkingTaskDidCompleteNotification object:task userInfo:userInfo];
+            });
+        })
+    } else {
+        dispatch_async(url_session_manager_processing_queue(), ^{
+            responseObject = [manager.responseSerializer responseObjectForResponse:task.response data:data error:&amp;serializationError];
+            dispatch_group_async(manager.completionGroup, manager.completionQueue, ^{
+            self.completionHandler(task.response, responseObject, error);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[NSNotificationCenter defaultCenter] postNotificationName:AFNetworkingTaskDidCompleteNotification object:task userInfo:userInfo];
+            });
+        })
+        }
+    }
+
+}
+</code></pre>
+
+<h3 id="toc_6">代理方法 URLSession:dataTask:didReceiveData: 和 - URLSession:downloadTask:didFinishDownloadingToURL:</h3>
+
+<pre><code class="language-objectivec">//在收到数据时调用
+- (void)URLSession:(__unused NSURLSession *)session
+          dataTask:(__unused NSURLSessionDataTask *)dataTask
+    didReceiveData:(NSData *)data
+{
+    self.downloadProgress.totalUnitCount = dataTask.countOfBytesExpectedToReceive;
+    self.downloadProgress.completedUnitCount = dataTask.countOfBytesReceived;
+
+    [self.mutableData appendData:data];
+}
+
+//在下载对应文件时调用
+- (void)URLSession:(NSURLSession *)session
+      downloadTask:(NSURLSessionDownloadTask *)downloadTask
+didFinishDownloadingToURL:(NSURL *)location
+{
+    self.downloadFileURL = nil;
+
+    if (self.downloadTaskDidFinishDownloading) {
+        self.downloadFileURL = self.downloadTaskDidFinishDownloading(session, downloadTask, location);
+        if (self.downloadFileURL) {
+            NSError *fileManagerError = nil;
+
+            if (![[NSFileManager defaultManager] moveItemAtURL:location toURL:self.downloadFileURL error:&amp;fileManagerError]) {
+                [[NSNotificationCenter defaultCenter] postNotificationName:AFURLSessionDownloadTaskDidFailToMoveFileNotification object:downloadTask userInfo:fileManagerError.userInfo];
+            }
+        }
+    }
+}
+</code></pre>
+
+<h2 id="toc_7">_AFURLSessionTaskSwizzling调剂方法</h2>
+
+<p><code>_AFURLSessionTaskSwizzling</code>功能就是修改<code>NSURLSessionTask</code>的<code>resume</code>和<code>suspend</code>方法，替换原有的实现</p>
+
+<pre><code class="language-objectivec">- (void)af_resume {
+    NSAssert([self respondsToSelector:@selector(state)], @&quot;Does not respond to state&quot;);
+    NSURLSessionTaskState state = [self state];
+    [self af_resume];
+    
+    if (state != NSURLSessionTaskStateRunning) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:AFNSURLSessionTaskDidResumeNotification object:self];
+    }
+}
+
+- (void)af_suspend {
+    NSAssert([self respondsToSelector:@selector(state)], @&quot;Does not respond to state&quot;);
+    NSURLSessionTaskState state = [self state];
+    [self af_suspend];
+    
+    if (state != NSURLSessionTaskStateSuspended) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:AFNSURLSessionTaskDidSuspendNotification object:self];
+    }
+}
+</code></pre>
+
+<p>这是为了在调用方法时 发出通知</p>
+
+<p>在load时执行方法替换操作，但是因为NSURLSessionTask在iOS7和8的实现有所不同 导致以下代码有点复杂</p>
+
+<p>在iOS7上，<code>localDataTask</code>是一个<code>__NSCFLocalDataTask</code>，它继承自<code>__NSCFLocalSessionTask</code>，它继承自<code>__NSCFURLSessionTask</code><br/>
+在iOS8上，<code>localDataTask</code>是一个<code>__NSCFLocalDataTask</code>，它继承自<code>__NSCFLocalSessionTask</code>，它继承自<code>NSURLSessionTask</code><br/>
+在iOS7上，<code>__ NSCFLocalSessionTask</code>和<code>__NSCFURLSessionTask</code>是唯一具有自己的<code>resume</code>和<code>suspend</code>实现的两个类，而__NSCFLocalSessionTask<code>则不会调用超级。这意味着两个类都需要调整。<br/>
+在iOS 8上，</code>NSURLSessionTask<code>是唯一实现</code>resume<code>和</code>suspend`的类。这意味着这是唯一需要调整的类。</p>
+
+<p>因为<code>NSURLSession</code>是使用类群实现的，因此从API请求的类并不是将获得的类的类型.所以直接简单的使用<code>[NSURLSessionTask class]</code>将不起作用的。需要用<code>NSURLSession</code>来实际创建一个对象，并从该对象处获取该类</p>
+
+<p>因此实现方案如下</p>
+
+<ol>
+<li>通过获取<code>NSURLSession</code>实例来获取<code>_NSCFLocalDataTask</code>实例</li>
+<li>获取指向<code>af_resume</code>的原始实现指针</li>
+<li>检查当前类是否有<code>resume</code>实现 如果有继续执行步骤4</li>
+<li>获取当前类的父类</li>
+<li>获取父类的<code>resume</code>实现指针</li>
+<li>获取当前类的<code>resume</code>实现指针</li>
+<li>加入当前类的resume实现与父类不同，并且当前类的resume实现和<code>af_resume</code>实现不同，则替换两个方法实现</li>
+<li>设置当前类为父类 重复步骤3-8</li>
+</ol>
+
+<pre><code class="language-objectivec">+ (void)load {
+    if (NSClassFromString(@&quot;NSURLSessionTask&quot;)) {
+        NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration ephemeralSessionConfiguration];
+        NSURLSession * session = [NSURLSession sessionWithConfiguration:configuration];
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored &quot;-Wnonnull&quot;
+        NSURLSessionDataTask *localDataTask = [session dataTaskWithURL:nil];
+#pragma clang diagnostic pop
+        IMP originalAFResumeIMP = method_getImplementation(class_getInstanceMethod([self class], @selector(af_resume)));
+        Class currentClass = [localDataTask class];
+        
+        while (class_getInstanceMethod(currentClass, @selector(resume))) {
+            Class superClass = [currentClass superclass];
+            IMP classResumeIMP = method_getImplementation(class_getInstanceMethod(currentClass, @selector(resume)));
+            IMP superclassResumeIMP = method_getImplementation(class_getInstanceMethod(superClass, @selector(resume)));
+            if (classResumeIMP != superclassResumeIMP &amp;&amp;
+                originalAFResumeIMP != classResumeIMP) {
+                [self swizzleResumeAndSuspendMethodForClass:currentClass];
+            }
+            currentClass = [currentClass superclass];
+        }
+        
+        [localDataTask cancel];
+        [session finishTasksAndInvalidate];
+    }
+}
+</code></pre>
+
+<h2 id="toc_8">引入AFSecurityPolicy来保证请求的安全</h2>
+
+<p>调用了<code>-[AFSecurityPolicy evaluateServerTrust:forDomain:]</code>方法来判断当前服务器是否被信任</p>
+
+<h2 id="toc_9">引入AFNetworkReachabilityManager监控网络状态</h2>
+
+<p><code>AFURLSessionManager</code>的网络状态由<code>AFNetworkReachabilityManager</code>监控，并持有一个该对象</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[AFNetworking]]></title>
+    <link href="https://acefish.github.io/15675682575589.html"/>
+    <updated>2019-09-04T11:37:37+08:00</updated>
+    <id>https://acefish.github.io/15675682575589.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">NSURLSession</h2>
+
+<p><code>NSURLSession</code>获取HTTP请求数据步骤：</p>
+
+<ol>
+<li>实例化一个<code>NSURLRequest/NSMutalbeRequest</code>,设置要请求的url</li>
+<li>获取NSUrlSession实例</li>
+<li>通过<code>dataWithRequest:completionHandle:</code>返回一个<code>dataTask</code></li>
+<li>向该对象发送消息<code>resume</code>执行这个任务</li>
+<li>在<code>completion</code>中 将对象编码 返回字符串</li>
+</ol>
+
+<pre><code class="language-objectivec">NSMutableURLRequest *request = [[NSMutableURLRequest alloc] initWithURL:[[NSURL alloc] initWithString:@&quot;https://github.com&quot;]];
+NSURLSession *session = [NSURLSession sharedSession];
+NSURLSessionDataTask *task = [session dataTaskWithRequest:request
+                                       completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+                                           NSString *dataStr = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+                                           NSLog(@&quot;%@&quot;, dataStr);
+                                       }];
+[task resume];
+</code></pre>
+
+<h2 id="toc_1">AFNetworking</h2>
+
+<pre><code class="language-objectivec">AFHTTPSessionManager *manager = [[AFHTTPSessionManager alloc] initWithBaseURL:[[NSURL alloc] initWithString:@&quot;hostname&quot;]];
+[manager GET:@&quot;relative_url&quot; parameters:nil progress:nil
+    success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        NSLog(@&quot;%@&quot; ,responseObject);
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        NSLog(@&quot;%@&quot;, error);
+    }];
+</code></pre>
+
+<p>AFNetworking默认接收json格式的响应，如果想要其它格式的 设置<code>acceptableContentTypes</code></p>
+
+<h2 id="toc_2">AFNetworking的调用栈</h2>
+
+<ol>
+<li><p><code>AFHTTPSessionManager</code>的初始化方法<code>- initWithBaseURL:</code></p>
+<pre><code class="language-objectivec">- [AFHTTPSessionManager initWithBaseURL:]
+    - [AFHTTPSessionManager initWithBaseURL:sessionConfiguration:]<br/>
+        - [AFURLSessionManager initWithSessionConfiguration:]<br/>
+            - [NSURLSession sessionWithConfiguration:delegate:delegateQueue:]<br/>
+            - [AFJSONResponseSerializer serializer] // 负责序列化响应<br/>
+            - [AFSecurityPolicy defaultPolicy] // 负责身份认证<br/>
+            - [AFNetworkReachabilityManager sharedManager] // 查看网络连接情况<br/>
+        - [AFHTTPRequestSerializer serializer] // 负责序列化请求<br/>
+        - [AFJSONResponseSerializer serializer] // 负责序列化响应
+</code></pre>
+<ul>
+<li>其中<code>AFURLSessionManager</code>是<code>AFHTTPSessionManager</code>的父类</li>
+<li><code>AFURLSessionManager</code>负责生成<code>NSURLSession</code>实例，并且管理<code>AFSecurityPolicy</code>和<code>AFNetworkReachabilityManager</code>，来保证请求的安全和查看网络连接情况，<code>AFJSONResponseSerializer</code>实例用来序列号HTTP响应</li>
+<li><code>AFHTTPSessionManager</code>有自己的<code>AFHTTPRequestSerializer</code>和<code>AFJSONResponseSerializer</code>来管理请求和响应的序列化，同时依赖父类提供的接口保证安全、监控网络状态，实现发送HTTP</li>
+</ul></li>
+<li><p><code>GET:Params:progress:success:</code>的调用栈</p>
+<pre><code class="language-objectivec">- [AFHTTPSessionManager GET:parameters:process:success:failure:]
+    - [AFHTTPSessionManager dataTaskWithHTTPMethod:parameters:uploadProgress:downloadProgress:success:failure:] // 返回 NSURLSessionDataTask #1<br/>
+        - [AFHTTPRequestSerializer requestWithMethod:URLString:parameters:error:] // 返回 NSMutableURLRequest<br/>
+        - [AFURLSessionManager dataTaskWithRequest:uploadProgress:downloadProgress:completionHandler:] // 返回 NSURLSessionDataTask #2<br/>
+            - [NSURLSession dataTaskWithRequest:] // 返回 NSURLSessionDataTask #3<br/>
+            - [AFURLSessionManager addDelegateForDataTask:uploadProgress:downloadProgress:completionHandler:]<br/>
+                - [AFURLSessionManagerTaskDelegate init]<br/>
+                - [AFURLSessionManager setDelegate:forTask:]<br/>
+    - [NSURLSessionDataTask resume]
+</code></pre>
+<p>在#3出调用了系统的请求方法，返回dataTask 然后调用<code>resume</code>方法执行请求，并在某些实践之星时通知代理<code>AFURLSessionManagerTaskDelegate</code></p></li>
+</ol>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[]]></title>
+    <link href="https://acefish.github.io/15669011764410.html"/>
+    <updated>2019-08-27T18:19:36+08:00</updated>
+    <id>https://acefish.github.io/15669011764410.html</id>
+    <content type="html"><![CDATA[
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Reactive Cocoa Tutorial]]></title>
+    <link href="https://acefish.github.io/15647325396059.html"/>
+    <updated>2019-08-02T15:55:39+08:00</updated>
+    <id>https://acefish.github.io/15647325396059.html</id>
+    <content type="html"><![CDATA[
+<p>学习地址  sunnyxx<a href="http://blog.sunnyxx.com/2014/03/06/rac_1_macros/">Reactive Cocoa Tutorial</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Texture(AsynDisplayKit)]]></title>
+    <link href="https://acefish.github.io/15647308243504.html"/>
+    <updated>2019-08-02T15:27:04+08:00</updated>
+    <id>https://acefish.github.io/15647308243504.html</id>
+    <content type="html"><![CDATA[
+<p>学习自 <a href="https://time.geekbang.org/column/article/92384">iOS开发高手课</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[图像解压缩]]></title>
+    <link href="https://acefish.github.io/15646478175328.html"/>
+    <updated>2019-08-01T16:23:37+08:00</updated>
+    <id>https://acefish.github.io/15646478175328.html</id>
+    <content type="html"><![CDATA[
+<p>学习自<a href="http://www.cocoachina.com/articles/18784">谈谈 iOS 中图片的解压缩</a></p>
+
+<p>从磁盘加载一张照片，并且将其显示到屏幕上，需要的工作流如下:</p>
+
+<ol>
+<li>假设适应+imageWithContentFile：从磁盘加载一张照片，这是图片还没有解压缩</li>
+<li>将生成的UIImage赋值给UIImageView</li>
+<li>一个隐式的CATransaction捕获到了UIImageView图层树的变化</li>
+<li>主线程的下一个runloop 到来时，CoreAnimation提交这个隐式的transaction。这个过程可能对图片执行copy操作，而受图片是否字节对齐等因素的影响，这个copy操作会涉及以下部分或全部步骤:
+<ul>
+<li>分配内存缓冲区用于管理文件IO和解压缩操作</li>
+<li>将文件数据从磁盘读到内存中</li>
+<li>将压缩的图片数据解码成未压缩的位图形式，这是非常耗时的cpu操作</li>
+<li>最后<code>Core Animation</code>使用未压缩的位图数据渲染UIImageView图层</li>
+</ul></li>
+</ol>
+
+<blockquote>
+<p>图片解压缩是一个非常耗时的CPU操作，并且默认是在主线程中执行的。当在主线程需要加载图片较多时，就会对应用响应性造成严重影响，尤其在快速滑动的列表中</p>
+</blockquote>
+
+<h3 id="toc_0">图片的解压缩</h3>
+
+<p>图片是无法直接显示到屏幕上，需要转换为位图。<strong>位图就是一个像素数组，没个像素就代表图片中的一个点。</strong><br/>
+<strong>解压缩后的图片大小与原始文件是大小之间没有任何关系，而只与图片的像素有关</strong><br/>
+<code>解压缩后的图片大小 = 图片的像素宽  * 图片的像素高 * 每个像素所占的字节数 4</code></p>
+
+<p>不论是JPEG还是PNG图片都是压缩的位图形式，只不过PNG是无损压缩并且支持alpha听到，而JPEG图片是有损压缩，可以指定0-100%的压缩比。<br/>
+因此，将磁盘中的图片渲染到屏幕上之前，必须得到图片的原始像素数据，才能执行后续绘制操作，也就是必须解压缩之后才能渲染了</p>
+
+<h2 id="toc_1">强制解压缩</h2>
+
+<p>为了不在主线程解压缩，影响性能，我们可以在子线程提前对图片进行解压缩，图片已经解压缩再渲染是，系统就不会图片再执行解压缩了</p>
+
+<p><strong>强制解压缩的原理就是对图片进行重新绘制，得到新的解压缩后的位图，用到最核心的就是<code>CGBitmapContextCreat</code></strong></p>
+
+<pre><code class="language-objectivec">CG_EXTERN CGContextRef __nullable CGBitmapContextCreate(void * __nullable data,
+    size_t width, size_t height, size_t bitsPerComponent, size_t bytesPerRow,
+    CGColorSpaceRef cg_nullable space, uint32_t bitmapInfo)
+    CG_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
+</code></pre>
+
+<h4 id="toc_2">pixel Format</h4>
+
+<p>位图是一个像素数组，而<em>像素格式</em>则是用来描述每个像素的组成格式，它包括了:</p>
+
+<p><code>Bits per component</code>：一个像素中每个独立的颜色分量使用的 bit 数；<br/>
+<code>Bits per pixel</code>: 像素深度: 存储每个像素所用的位数，也可以用它度量图像的分辨率<br/>
+<code>Bytes per row</code>: 位图中每一行使用的字节数</p>
+
+<p>对于位图来说，像素格式并不是随意组合的，目前只有一下17种特定组合:</p>
+
+<p><img src="media/15646478175328/15646579123618.jpg" alt="" style="width:769px;"/></p>
+
+<p>而iOS只支持其中的8中像素格式。颜色空间为Null的1种，Gary的2种，RGB的5种，即iOS不支持CMYK颜色空间。</p>
+
+<h4 id="toc_3">颜色空间</h4>
+
+<p>颜色空间用来使用一组值表示颜色。比如：<code>0、0、1</code>在RGB下表示蓝色，在brg下表示红色等。</p>
+
+<p>.<br/>
+.<br/>
+.<br/>
+.</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[]]></title>
+    <link href="https://acefish.github.io/15646313097300.html"/>
+    <updated>2019-08-01T11:48:29+08:00</updated>
+    <id>https://acefish.github.io/15646313097300.html</id>
+    <content type="html"><![CDATA[
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[包大小]]></title>
+    <link href="https://acefish.github.io/15645609012102.html"/>
+    <updated>2019-07-31T16:15:01+08:00</updated>
+    <id>https://acefish.github.io/15645609012102.html</id>
+    <content type="html"><![CDATA[
+<p>学习自 <a href="https://time.geekbang.org/column/article/88573">iOS开发高手课-包大小：如何从资源和代码层面实现全方位瘦身？</a></p>
+
+<p>APPStore对大于150M的应用无法再OTA环境下载，这就只能在wifi环境下下载，因此150M就是App的生死线</p>
+
+<p>如果App要兼容iOS7和iOS8的话，苹果规定主二进制 text 段的大小不能超过 60MB，如果没有达到这个标准，甚至无法提交AppStore</p>
+
+<h2 id="toc_0">App Thinning</h2>
+
+<p><code>App Thinning</code>是苹果公司推出的一项可以改善APP下载进程的新技术，主要为解决用户下载APP耗费流量过高，并节省用户iOS设备存储空间</p>
+
+<p>因为iOS设备的屏幕尺寸和分辨率 越来越多样化，就需要更多资源来匹配不同尺寸和分辨率。同时，App也会有32位、64位不同芯片架构的优化版本。如果这些都在同一个包中，那么用户下载包的大小势必就会变得更大</p>
+
+<p>而苹果提供的<code>App Thinning</code>就是针对不同的设备只选择适合当前设备的内容进行下载。比如，iPhone6只下载2x资源，而iPhone6 P则只下载3x图片资源</p>
+
+<p>在之前，每个app包会包含多个芯片的指令集架构文件。在而使用<code>App Thinning</code>后，用户下载时就只会下载一个适合自己设备的芯片指令集架构文件</p>
+
+<p>下图为所有设备的芯片指令集以及支持的最高和最低版本<br/>
+<img src="media/15645609012102/15645634237337.png" alt=""/></p>
+
+<p><strong><code>App Thinning</code>有三种方式，包括： App Slicing、Bitcode、On-Demand Resource</strong></p>
+
+<ul>
+<li>App Slicing：会在你向iTunnes Connrct上传App后，对App做切个，创建不同的变体，来适应不同的设备</li>
+<li>On-Demand Resource，主要是为游戏多关卡场景服务。可以根据用户的关卡进度下载随后关卡资源，并且删除已过关的资源，来减少出装app的大小</li>
+<li>Bitcode， 针对特定设备进行包大小优化，优化并不明显</li>
+</ul>
+
+<h3 id="toc_1">App Thinning的使用</h3>
+
+<p>使用App Thinning很简单，只需要通过Xcode添加 xcassets目录，然后将资源文件放进来即可：</p>
+
+<p>即添加<code>Asset Catalog</code>模板，按照模板添加资源即可，apple会创建不同的变体来减少app安装体积</p>
+
+<h2 id="toc_2">图片资源优化</h2>
+
+<p>图片资源的优化空间主要体现在删除无用图片和图片资源压缩两方面。</p>
+
+<h3 id="toc_3">查找无用图片资源</h3>
+
+<ol>
+<li>通过find获取App安装包中所有资源文件 </li>
+<li>设置用到的资源类型，比如jpg、gif、png、webp</li>
+<li>使用正则表达式匹配在源码中找出使用到的资源名，比如<code>pattern=@&quot;@&quot;(.+?)&quot;&quot;</code></li>
+<li>使用find命令找到所有资源文件，再去掉代码中使用到的资源文件，剩下的就是未使用到的了</li>
+<li>对于按照规则设置的资源名字，我们需要在匹配使用资源的正则表达式里，添加响应的规则，比如<code>image_%d</code></li>
+<li>确认无用资源后，就可以对无用资源执行删除操作了，这个删除操作可以使用<code>NSFileManager</code>系统类功能完成</li>
+</ol>
+
+<p>可以使用一些开源的工具，推荐的为<a href="https://github.com/tinymind/LSUnusedResources">LSUnusedResources</a>,其还可以对使用编号规则的图片，直接添加规则处理</p>
+
+<p><img src="media/15645609012102/15645678390885.gif" alt="" style="width:500px;"/></p>
+
+<h3 id="toc_4">图片资源压缩</h3>
+
+<p>在App中 图片资源总是占大头的。因此我们最好在不损失图片质量的前提下，尽可能的压缩。目前最好的压缩方案就是，将图片转为<a href="https://developers.google.com/speed/webp/">webP</a>(其是谷歌的一个开源项目)。</p>
+
+<ul>
+<li>WebP压缩率高，而且肉眼看不出来差异，同时支持有损和无损两种压缩模式。比如，将Gif专务Anumated WebP，有损模式下会减少64%大小，无损模式下会减少19%大小</li>
+<li>WebP支持Alpha透明和24-bit颜色数，不会像PNG8那样因为颜色不够而出现毛边</li>
+</ul>
+
+<h4 id="toc_5">将图片转为webP</h4>
+
+<p>Google提供了<code>cwebp</code>工具来将其它图片转成WebP。cwebp只需根据图片情况设置相应参数即可：</p>
+
+<pre><code class="language-text">cwebp [options] input_file -o output_file.webp
+
+//比如无损压缩文件命令如下   -lossless表示无损压缩
+cwebp -lossless original.png -o new.webp
+</code></pre>
+
+<p>注意：<br/>
+在图片色值不同的情况下，可以选择用-q参数进行设置，在不损失图片质量情况下进行最大化压缩：</p>
+
+<ul>
+<li>小于256色适合无损压缩，压缩率高，参数使用-lossless -q 100</li>
+<li>大于256色适合用75%的有损压缩，参数使用-q 75</li>
+<li>远大于256色 适合使用75%一下的压缩率，参数-q 50 -m 6</li>
+</ul>
+
+<p>除了使用google提供的cwebp工具外，可以使用企鹅公司开发的<a href="http://isparta.github.io/">iSparta</a>图形化工具，实现PNG到WebP转换，还可以批量处理和记录操作配置。至于其他格式图片，那就先转png再转webP即可</p>
+
+<h4 id="toc_6">显示WebP图片</h4>
+
+<p>在图片压缩完成后，还需要在项目中显示图片，使用<code>libwebp</code>进行解析。可以参考<a href="https://github.com/carsonmcdonald/WebP-iOS-example">这个iOS项目范例</a></p>
+
+<p>当然，因为WebP进行了压缩，因此在CPU消耗和解码时间上是会比PNG大两倍。所以，需要在性能和体积上做出取舍</p>
+
+<p><strong>建议： 如果图片大小超过100K，考虑使用WebP；小于100K时，可以使用网页工具<a href="https://tinypng.com/">TinyPng</a>或者图形化工具<a href="https://imageoptim.com/mac">ImageOptim</a>进行图片压缩。这两种工具的压缩率没有WebP高，不会改变图片压缩方式，相应的解析式对性能损耗也不会增加</strong></p>
+
+<h2 id="toc_7">代码瘦身</h2>
+
+<p>App的安装包之中主要就是资源文件和可执行文件，而我们在掌握了对图片资源的优化之后，就需要学习怎么优化可执行文件了</p>
+
+<p>可执行文件就是一个<code>Mach-O</code>文件了，大小由其代码量决定。通常，<strong>对可执行文件瘦身就是，删除无用代码的过程</strong></p>
+
+<ul>
+<li>首先，找出方法和类的全集</li>
+<li>然后，找到使用过的方法和类</li>
+<li>接下来，取二者的差集即为无用代码</li>
+<li>最后人工确认进行删除</li>
+</ul>
+
+<h3 id="toc_8">LinkMap 结合 Mach-O找到无用代码</h3>
+
+<h4 id="toc_9">LinkMap 来获得所有的代码类和方法的信息</h4>
+
+<p>通过在build setting中打开<code>Write Link Map</code>然后指定其path 可以获得编译后的LinkMapp文件，其主要分为 <code>Object File</code>、<code>Section</code>、<code>Symbols</code></p>
+
+<ul>
+<li>Object File：主要包含了代码工程的所有文件</li>
+<li>Section：描述代码段在生成的Mach-O里的偏移位置和大小</li>
+<li>Symbols会列出每个方法、类、block、以及它们的大小</li>
+</ul>
+
+<h4 id="toc_10">通过Mach-O获取所有使用过的方法和类</h4>
+
+<p>iOS方法都是通过<code>objc_send</code>方法调用的。而，objc_msgSend在Mach-O文件中是通过<code>__objc_selrefs</code>这个section来获取selector这个参数的</p>
+
+<p>因此: <strong>__Objc_selrefs里是调用过的方法。_objc_classrefs里是调用过的类，_objc_superrefs里是调用过super的类。因此，通过_objc_classrefs和_objc_superrefs就可以获取所有使用过的类和子类</strong></p>
+
+<p>想要查看Mach-O文件中的信息 我们可以通过<a href="https://sourceforge.net/projects/machoview/">MachOView这个软件</a>查看文件中的信息，其<a href="https://github.com/gdbinit/MachOView">源码地址</a></p>
+
+<p><img src="media/15645609012102/15646435135341.jpg" alt="" style="width:690px;"/></p>
+
+<p>因为可能存在运行时调用，所以这种方法并不完美，需要做二次确认，而且人工量太大，不适合频繁检测</p>
+
+<h3 id="toc_11">AppCode找出无用代码</h3>
+
+<p>AppCode当代码量过百万时，就无法做静态分析了。但是当项目工程量不大时，是可以直接用<code>AppCode</code>来做静态分析的。毕竟当代码量达到百万行级别的团队，是会自己通过Clang静态分析来开发工具，检查无用的方法和类</p>
+
+<p>使用很简单 在AppCode中选择Code-&gt;Inspect Code就可以进行静态分析<br/>
+静态分析之后，可以再Ununsed Code中看到所有的无用代码<br/>
+<img src="media/15645609012102/15646441469049.jpg" alt="" style="width:538px;"/></p>
+
+<p>其中包括了</p>
+
+<ul>
+<li>无用类：Unused class 无用类，Unused import statement 无用类引用声明， Unused property 无用的属性</li>
+<li>无用方法：Unused method 无用的方法 Unused parameter 无用参数 Unused instance variable无用的实例变量 Unused local variable无用的局部变量 Unused value 无用值</li>
+<li>无用宏： Unused macro 无用的宏</li>
+<li>无用全局： Unused global declation 是无用的全局声明</li>
+</ul>
+
+<p>注意，AppCode检查存在的问题:</p>
+
+<ul>
+<li>JSONModel里定义了未使用的协议会被判定为无用协议</li>
+<li>子类使用了父类的方法，那这个服类方法并不会任务被使用了</li>
+<li>通过点方式使用的属性，该属性会被认为没有使用</li>
+<li>使用performSelector方法调用的方法，是检查不出的</li>
+<li>运行时声明类的情况检查不出来</li>
+</ul>
+
+<p>因此，Appcode检查的无用代码也请 人工二次确认之后才能安全删除</p>
+
+<h3 id="toc_12">运行时检查类是否真的被使用</h3>
+
+<p>通过ObjC的runtime源码，我们可以找到怎么判断一个类是否初始化过的函数:</p>
+
+<pre><code class="language-objectivec">#define RW_INITIALIZED (1&lt;&lt;29)
+bool isInitialized() {
+   return getMeta()-&gt;data()-&gt;flags &amp; RW_INITIALIZED;
+}
+</code></pre>
+
+<p><code>isInitialized</code>的结果会保存到元类的class_rw_t结构体的flags信息里，flags的1&lt;&lt;29位记录的就是这个类是否初始化的信息。而flags的其他位记录的信息</p>
+
+<pre><code class="language-objectivec">// 类的方法列表已修复
+#define RW_METHODIZED         (1&lt;&lt;30)
+
+// 类已经初始化了
+#define RW_INITIALIZED        (1&lt;&lt;29)
+
+// 类在初始化过程中
+#define RW_INITIALIZING       (1&lt;&lt;28)
+
+// class_rw_t-&gt;ro 是 class_ro_t 的堆副本
+#define RW_COPIED_RO          (1&lt;&lt;27)
+
+// 类分配了内存，但没有注册
+#define RW_CONSTRUCTING       (1&lt;&lt;26)
+
+// 类分配了内存也注册了
+#define RW_CONSTRUCTED        (1&lt;&lt;25)
+
+// GC：class 有不安全的 finalize 方法
+#define RW_FINALIZE_ON_MAIN_THREAD (1&lt;&lt;24)
+
+// 类的 +load 被调用了
+#define RW_LOADED             (1&lt;&lt;23)
+</code></pre>
+
+<p>这样就能够找出哪些类是没有初始化的，找到真实环境中没有用到的类并清理。具体实施时，可以线下测试检查所有类，测出那些类没有使用，然后上线针对没有用到的类进行多版本检测，判断合理性后二次确认，并且最终将真正没有用到的类进行删除</p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[AsyncDisplayKit]]></title>
@@ -1021,778 +2785,6 @@ RACSignal *bindSignal = [signal bind:^RACSignalBindBlock _Nonnull{
 }
 </code></pre></li>
 </ol>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[RACStream]]></title>
-    <link href="https://acefish.github.io/15578193513091.html"/>
-    <updated>2019-05-14T15:35:51+08:00</updated>
-    <id>https://acefish.github.io/15578193513091.html</id>
-    <content type="html"><![CDATA[
-<p><code>RACStream</code>是继承自NSObject最基础的类，其它的子类例如<code>RCSignal</code>、<code>RACSequence</code>均继承自该类</p>
-
-<p><code>RACStream</code>作为一个抽象类存在，本身并不提供任何方法的实现，内部方法均为抽象方法，在调用时抛出异常</p>
-
-<pre><code class="language-objectivec">+ (__kindof RACStream *)empty {
-    NSString *reason = [NSString stringWithFormat:@&quot;%@ must be overridden by subclasses&quot;, NSStringFromSelector(_cmd)];
-    @throw [NSException exceptionWithName:NSInternalInconsistencyException reason:reason userInfo:nil];
-}
-- (__kindof RACStream *)bind:(RACStreamBindBlock (^)(void))block
-// return 根据该value 返回一个RACStream对象
-+ (__kindof RACStream *)return:(id)value
-- (__kindof RACStream *)concat:(RACStream *)stream
-- (__kindof RACStream *)zipWith:(RACStream *)stream
-
-</code></pre>
-
-<p>但是在RACStream的Operations分类<code>RACStream (Operations)</code>提供了更丰富的方法</p>
-
-<pre><code class="language-objectivec">//对信号的值进行map映射
-- (__kindof RACStream *)flattenMap:(__kindof RACStream * (^)(id value))block {
-    Class class = self.class;
-
-    return [[self bind:^{
-        return ^(id value, BOOL *stop) {
-            id stream = block(value) ?: [class empty];
-            NSCAssert([stream isKindOfClass:RACStream.class], @&quot;Value returned from -flattenMap: is not a stream: %@&quot;, stream);
-
-            return stream;
-        };
-    }] setNameWithFormat:@&quot;[%@] -flattenMap:&quot;, self.name];
-}
-- (__kindof RACStream *)flatten
-- (__kindof RACStream *)map:(id (^)(id value))block
-- (__kindof RACStream *)mapReplace:(id)object
-
-//根据规则过滤
-- (__kindof RACStream *)filter:(BOOL (^)(id value))block
-- (__kindof RACStream *)ignore:(id)value
-
-//对RACTuple中每个值进行处理 
-- (__kindof RACStream *)reduceEach:(RACReduceBlock)reduceBlock
-
-//将RACStream 前拼上一个新的值
-- (__kindof RACStream *)startWith:(id)value
-
-//跳过固定个数的值
-- (__kindof RACStream *)skip:(NSUInteger)skipCount
-//接收前固定个数的值
-- (__kindof RACStream *)take:(NSUInteger)count
-
-//将一组Stream按照block的规则合并为一个  
-+ (__kindof RACStream *)join:(id&lt;NSFastEnumeration&gt;)streams block:(RACStream * (^)(id, id))block
-+ (__kindof RACStream *)zip:(id&lt;NSFastEnumeration&gt;)streams
-+ (__kindof RACStream *)zip:(id&lt;NSFastEnumeration&gt;)streams reduce:(RACGenericReduceBlock)reduceBlock
-
-//一组Stream contact(连接)
-+ (__kindof RACStream *)concat:(id&lt;NSFastEnumeration&gt;)streams
-
-//用初始值开始reduce 返回每次block之后的结果
-- (__kindof RACStream *)scanWithStart:(id)startingValue reduceWithIndex:(id (^)(id, id, NSUInteger))reduceBlock
-
-//忽略不符合条件的
-- (__kindof RACStream *)takeUntilBlock:(BOOL (^)(id x))predicate
-- (__kindof RACStream *)takeWhileBlock:(BOOL (^)(id x))predicate
-
-//忽略不符合条件的 直到第一个符合条件的
-- (__kindof RACStream *)skipUntilBlock:(BOOL (^)(id x))predicate
-- (__kindof RACStream *)skipWhileBlock:(BOOL (^)(id x))predicate
-
-//忽略未改变值的改变
-- (__kindof RACStream *)distinctUntilChanged
-</code></pre>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[MatrixiOS学习]]></title>
-    <link href="https://acefish.github.io/15560883411509.html"/>
-    <updated>2019-04-24T14:45:41+08:00</updated>
-    <id>https://acefish.github.io/15560883411509.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">学习到的知识点</h2>
-
-<h4 id="toc_1">1.使用协议和继承进行规范开发</h4>
-
-<p>在项目中定义了plugin的基类<code>MatrixPlugin</code>继承自协议<code>MatrixPluginProtocol</code>，而接下来的组件开发，只需要继承自<code>MatrixPlugin</code>，然后实现协议中的方法即可</p>
-
-<p>而当回调时，也不需要知道具体是哪个<code>plugin</code>，只需指定其实一个继承了协议的插件即可:<br/>
-<code>- (void)onInit:(id&lt;MatrixPluginProtocol&gt;)plugin</code>,就可以使用其在协议中指定的方法</p>
-
-<h4 id="toc_2">2.利用运行时实现NSCoding协议</h4>
-
-<p>利用运行时方法获取对象类以及父类的所有属性变量属性变量，执行<code>encodeObject</code>和<code>decodeObjectForKey</code>方法</p>
-
-<p><a href="media/15560883411509/MatrixBaseModel.mm">MatrixBaseMode</a></p>
-
-<h4 id="toc_3">3. 对于app中常用文件路径可以专门写个工具类，为避免每次都访问使用单例</h4>
-
-<pre><code class="language-objectivec">+ (NSString *)matrixCacheRootPath
-{
-    static NSString *s_rootPath;
-    static dispatch_once_t onceToken;
-    dispatch_once(&amp;onceToken, ^{
-        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
-        s_rootPath = [paths[0] stringByAppendingString:@&quot;/Matrix&quot;];
-        if ([[NSFileManager defaultManager] fileExistsAtPath:s_rootPath] == NO) {
-            [[NSFileManager defaultManager] createDirectoryAtPath:s_rootPath withIntermediateDirectories:YES attributes:nil error:nil];
-        }
-    });
-    return s_rootPath;
-}
-</code></pre>
-
-<h4 id="toc_4">4.判断app是否处于调试环境下</h4>
-
-<pre><code class="language-objectivec">+ (BOOL)isBeingDebugged
-{
-    // Returns true if the current process is being debugged (either
-    // running under the debugger or has a debugger attached post facto).
-    int                 junk;
-    int                 mib[4];
-    struct kinfo_proc   info;
-    size_t              size;
-    
-    // Initialize the flags so that, if sysctl fails for some bizarre
-    // reason, we get a predictable result.
-    
-    info.kp_proc.p_flag = 0;
-    
-    // Initialize mib, which tells sysctl the info we want, in this case
-    // we&#39;re looking for information about a specific process ID.
-    
-    mib[0] = CTL_KERN;
-    mib[1] = KERN_PROC;
-    mib[2] = KERN_PROC_PID;
-    mib[3] = getpid();
-    
-    // Call sysctl.
-    
-    /**
-     *int sysctl(int *name, u_int namelen, void *old, size_t *oldlen, void *newp, size_t newlen);
-     *name参数是一个用以指定查询的信息数组；
-     *namelen用以指定name数组的元素个数；
-     *old是用以函数返回的缓冲区；
-     *oldlen用以指定oldp缓冲区长度；
-     *newp和newlen在设置时使用；
-     *当进程被调试器依附时，kinfo_proc结构下有一个kp_proc结构域，
-     kp_proc的p_flag的被调试标识将被设置，即会进行类似如下的设置：
-     kinfo_proc.kp_proc.p_flag&amp;P_TRACED
-     其中P_TRACED的定义如下：
-     #define P_TRACED        0x00000800
-     */
-    
-    
-    size = sizeof(info);
-    junk = sysctl(mib, sizeof(mib) / sizeof(*mib), &amp;info, &amp;size, NULL, 0);
-    assert(junk == 0);
-    
-    // We&#39;re being debugged if the P_TRACED flag is set.
-    return ((info.kp_proc.p_flag &amp; P_TRACED) != 0);
-}
-</code></pre>
-
-<p>以及一些获取app基本信息的方法<br/>
-<a href="media/15560883411509/MatrixDeviceInfo.mm">MatrixDeviceInfo</a></p>
-
-<h4 id="toc_5">5. atexit(func)在app正常退出时调用函数</h4>
-
-<p><code>atexit</code>函数是一个特殊的函数，它在正常退出程序时调用的函数<br/>
-atexit设置的函数会在exit过程中被调用，exit调用终止处理函数的顺序和atexit登记的顺序相反</p>
-
-<p>进程终止的方式有8种:</p>
-
-<ol>
-<li>从main函数返回</li>
-<li>调⽤用exit函数</li>
-<li>调⽤用_exit或_Exit； </li>
-<li>最后⼀一个线程从启动例程返回；</li>
-<li>最后⼀一个线程调⽤用pthread_exit</li>
-<li>调⽤用abort函数； </li>
-<li>接到一个信号并终⽌； </li>
-<li>最后⼀一个线程对取消请求做出响应<br/>
-其中前5种为正常终止，而后3种为异常终止</li>
-</ol>
-
-<p><code>_exit</code>和<code>_Exit</code>立即进入内核，而exit会进行一些清理工作<br/>
-exit函数运行时首先会执行由atexit()函数登记的函数，然后会做一些自身的清理工作，同时刷新所有输出流、关闭所有打开的流并且关闭通过标准I/O函数tmpfile()创建的临时文件。 </p>
-
-<h4 id="toc_6">6. 使用dispatch_block_cancel()来取消执行某些未来执行的block</h4>
-
-<h4 id="toc_7">7. MatrixAppRebootAnalyzer中对App启动和关闭状态的监控</h4>
-
-<p>Matrix中对应用被杀原因检测<br/>
-<img src="media/15560883411509/15562491518956.jpg" alt="" style="width:500px;"/></p>
-
-<h4 id="toc_8">8.获取CPU</h4>
-
-<p><code>WCCPUHandler</code>文件中对于CPU usage的计算</p>
-
-<h4 id="toc_9">9.获取线程信息</h4>
-
-<p><code>WCGetMainThreadUtil</code>文件中使用基于KSCrash获取堆栈</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Mach-O文件结构]]></title>
-    <link href="https://acefish.github.io/15559005276972.html"/>
-    <updated>2019-04-22T10:35:27+08:00</updated>
-    <id>https://acefish.github.io/15559005276972.html</id>
-    <content type="html"><![CDATA[
-<p>参考资料:<br/>
-<a href="http://jianli2017.top/wiki/IOS/MachO/MachO_FileStructure/">Mach-O文件结构理解</a></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[pod repo update]]></title>
-    <link href="https://acefish.github.io/15556625620569.html"/>
-    <updated>2019-04-19T16:29:22+08:00</updated>
-    <id>https://acefish.github.io/15556625620569.html</id>
-    <content type="html"><![CDATA[
-<p>我们平时开发pod update或者pod install , 这里其实 pod的工作就是根据pod库名在master/Specs/中找到对应的库，若指定版本则找到指定版本的podspec,否则找最高版本的podspec，找到后根据podsepc文件中的配置下载指定的库资源。</p>
-
-<p>那么pod repo update 的工作就是更新pod资源目录，也就是master下的资源，简单说 如果有一个第三方库发布了一个最新的版本，如果你不执行pod repo update，那么你的本地是不会知道有一个最新版本的，还会一直以你本地的资源目录为准。那么你永远都拿不到这个库的最新版本。</p>
-
-<p>使用pod update是默认会执行一遍pod repo update ，所以会发现如果你的pod库引用多了，每次pod update都很慢，网络如果不好更是经常会断掉，就是因为你在更新pod时，也更新了资源目录</p>
-
-<p>pod update 工作流程 :</p>
-
-<ul>
-<li>先拉取远程最新目录，再根据目录中的资源重新更新一遍pod</li>
-<li>如果你的podfile中每个库都指定了版本还好，如果没有，那么每次都是拉一遍最新库， 这时候就要用到命令
-<code>
-pod update --no-repo-update
-</code></li>
-</ul>
-
-<p>有些时候会引用一些私有库 ， <code>pod repo update</code> 会把<code>~/.cocoapods/repos/</code>这个目录下所有的资源库目录都更新一遍，有时候不想更新master，只想更新某个具体的私有库 可以使用<code>pod repo update ~/.cocoapods/repos/***/</code></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[otool命令]]></title>
-    <link href="https://acefish.github.io/15554889031358.html"/>
-    <updated>2019-04-17T16:15:03+08:00</updated>
-    <id>https://acefish.github.io/15554889031358.html</id>
-    <content type="html"><![CDATA[
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Instruments Help]]></title>
-    <link href="https://acefish.github.io/15553150729300.html"/>
-    <updated>2019-04-15T15:57:52+08:00</updated>
-    <id>https://acefish.github.io/15553150729300.html</id>
-    <content type="html"><![CDATA[
-<p>官方文档<a href="https://help.apple.com/instruments/mac/current/#//apple_ref/doc/uid/TP40004652-CH5">Instruments Help</a></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[KVO]]></title>
-    <link href="https://acefish.github.io/15551517319694.html"/>
-    <updated>2019-04-13T18:35:31+08:00</updated>
-    <id>https://acefish.github.io/15551517319694.html</id>
-    <content type="html"><![CDATA[
-<p><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/KeyValueObserving/KeyValueObserving.html#//apple_ref/doc/uid/10000177i">官方文档地址</a></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[OC中的泛型]]></title>
-    <link href="https://acefish.github.io/15550609641165.html"/>
-    <updated>2019-04-12T17:22:44+08:00</updated>
-    <id>https://acefish.github.io/15550609641165.html</id>
-    <content type="html"><![CDATA[
-<p><a href="http://blog.sunnyxx.com/2015/06/12/objc-new-features-in-2015/">参考</a></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[KVC]]></title>
-    <link href="https://acefish.github.io/15549735665033.html"/>
-    <updated>2019-04-11T17:06:06+08:00</updated>
-    <id>https://acefish.github.io/15549735665033.html</id>
-    <content type="html"><![CDATA[
-<p><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/KeyValueCoding/BasicPrinciples.html#//apple_ref/doc/uid/20002170-BAJEAIEE">官方文档地址</a></p>
-
-<p><code>KVC(Key-value coding)</code>是由<code>NSKeyValueCoding</code>非正式协议(其实就是我们所的分类或类别)启用的机制，通过该机制提供了对属性的间接访问。<br/>
-当对象符合键值编码时，属性可以通过字符串参数进行接口寻址。<br/>
-这种对属性的间接访问机制提供了对实例变量和其相关访问器方法的直接访问</p>
-
-<blockquote>
-<p>键值编码是一个基本概念，是许多其他Cocoa技术的基础，例如键值观察(KVO)，Cocoa绑定，CoreData和AppleScript能力。在某些情况下，键值编码还有助于简化代码。</p>
-</blockquote>
-
-<p>通过KVC 我们可以实现以下功能:</p>
-
-<ol>
-<li>获取对象属性</li>
-<li>操作对象属性</li>
-<li>在集合对象上进行集合运算符运算</li>
-<li>获取非对象属性</li>
-<li>通过keyPath来获取对象属性</li>
-</ol>
-
-<p><code>NSObject</code>的<code>NSKeyValueCoding</code>分类实现了KVC方法，并提供默认实现;而<code>NSArray</code>、<code>NSDictionary</code>、<code>NSMutableDictionary</code>等都又提供了自己的实现</p>
-
-<p><img src="media/15549735665033/15550373964851.jpg" alt="" style="width:200px;"/></p>
-
-<p>为了使对象符合键值编码，应确保其实现了NSKeyValueCoding非正式协议，并实现了相应的方法，<code>NSObject</code>使用了<code>NSKeyValueCoding</code>协议并为它们和其它基本方法提供了默认实现。因此从NSObject派生的对象，大部分工作已经完成；</p>
-
-<p>符合键值编码的对象可以实现其他Cocoa的技术:</p>
-
-<ol>
-<li>KVO</li>
-<li>Cocoa绑定：这一系列技术完全实现了模型 - 视图 - 控制器范例，其中模型封装应用程序数据，视图显示和编辑数据，控制器在两者之间进行调解。 阅读<a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/CocoaBindings/CocoaBindings.html#//apple_ref/doc/uid/10000167i">Cocoa Bindings编程主题</a>以了解有关Cocoa绑定的更多信息。</li>
-<li>CoreData: <a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/CoreData/index.html#//apple_ref/doc/uid/TP40001075">文档地址</a></li>
-<li>AppleScript：  <a href="https://developer.apple.com/library/archive/documentation/AppleScript/Conceptual/AppleScriptX/AppleScriptX.html#//apple_ref/doc/uid/10000156i">AppleScript Overview</a></li>
-</ol>
-
-<h2 id="toc_0">API</h2>
-
-<h4 id="toc_1">直接访问对象属性</h4>
-
-<pre><code class="language-objectivec">- (nullable id)valueForKey:(NSString *)key;
-- (void)setValue:(nullable id)value forKey:(NSString *)key;
-</code></pre>
-
-<pre><code class="language-objectivec">//点语法访问器
-myAccount.currentBalance = @(100.0);
-[myAccount setCurrentBalance:@(100.0)];
-
-//KVC
-[myAccount setValue:@(100.0) forKey:@&quot;currentBalance&quot;];
-NSNumber *currentBalance = [myAccount valueForKey:@&quot;currentBalance&quot;];
-
-Person *owerModel = [[Person alloc] init];
-[myAccount setValue:owerModel forKeyPath:@&quot;ower&quot;];
-</code></pre>
-
-<blockquote>
-<p>对于<code>forKey:</code>不常用，因为我们均可以使用<code>forKeyPath:</code>来代替，对于keyPath只有一层也是可以的</p>
-</blockquote>
-
-<h4 id="toc_2">路径访问属性</h4>
-
-<pre><code class="language-objectivec">- (nullable id)valueForKeyPath:(NSString *)keyPath;
-- (void)setValue:(nullable id)value forKeyPath:(NSString *)keyPath;
-</code></pre>
-
-<pre><code class="language-objectivec">//键路径是以点分隔的多个键字符串  指定了要遍历的对象属性序列
-[myAccount setValue:@&quot;lyy&quot; forKeyPath:@&quot;ower.name&quot;];
-NSString *name = [myAccount valueForKeyPath:@&quot;ower.name&quot;];
-</code></pre>
-
-<h4 id="toc_3">键未定义异常</h4>
-
-<p>当找不到key命名的属性时，会调用获取值的 </p>
-
-<pre><code class="language-objectivec">- (id)valueForUndefinedKey:(NSString *)key;
-- (void)setValue:(id)value forUndefinedKey:(NSString *)key;
-</code></pre>
-
-<p>找不到系统会默认引发一个<code>NSUndefinedKeyException</code>异常，可以通过重写这两个方法避免崩溃</p>
-
-<blockquote>
-<p>对于keyPath的方式访问属性，kayPath的键对应对象属性序列，到哪一级找不到对应属性，就会触发对应该级对象的这个两个方法，而不是总触发第一级对象的</p>
-</blockquote>
-
-<h4 id="toc_4">对于非对象值</h4>
-
-<p>当<code>setValue</code>时，如果属性不是对象值，而是标量或者结构体时，KVC会自动将value拆箱然后赋值给属性<br/>
-同理，当<code>valueForKey/keyPath:</code>会自动将属性值装箱，返回一个<code>NSNumber</code>或者<code>NSValue</code></p>
-
-<pre><code class="language-objectivec">//封装为为NSValue
-NSPoint、NSRange、NSRect、NSSize
-</code></pre>
-
-<h4 id="toc_5">对于nil</h4>
-
-<ul>
-<li><p>对于属性为对象值时，可以直接设置对象值为nil，或者获取对象指为nil</p></li>
-<li><p>对于属性为非对象值，即为标量或者结构体时，此时系统无法帮我们拆箱,会触发<code>setNilValueForKey:</code>方法，并且引发一个<code>NSInvalidArgumentException</code>异常，可以通过重写该方法避免</p></li>
-</ul>
-
-<h3 id="toc_6">多值访问</h3>
-
-<pre><code class="language-objectivec">- (NSDictionary&lt;NSString *, id&gt; *)dictionaryWithValuesForKeys:(NSArray&lt;NSString *&gt; *)keys;
-- (void)setValuesForKeysWithDictionary:(NSDictionary&lt;NSString *, id&gt; *)keyedValues;
-</code></pre>
-
-<p>提供了可以同时获取和设置多个值的方法，相当于一次性掉了多次<code>valueForKey</code>和<code>setValue:forKey:</code>，当key值不存在时也会触发<strong>键未定义异常</strong>的崩溃和避免崩溃方法<br/>
-注意： 这两个方法中只能设置的为key，而不能使用keyPath</p>
-
-<h3 id="toc_7">访问集合属性</h3>
-
-<p>对于属性为集合对象，与获取普通对象属性相同，可以直接获取和设置到集合对象属性值</p>
-
-<pre><code class="language-objectivec">[myAccount setValue:dataArr forKey:@&quot;transactionsArray&quot;];
-NSArray *obj = [myAccount valueForKeyPath:@&quot;transactionsArray&quot;];
-</code></pre>
-
-<p>另外一个较常用的功能,我们可以使用<code>valueForKeypath:</code>直接获取数组中每个对象的属性值集合</p>
-
-<pre><code class="language-objectivec">NSArray *obj1 = [myAccount valueForKeyPath:@&quot;transactionsArray.payee&quot;];
-</code></pre>
-
-<p>在keyPath中遇到数组时，会对数组中的每个元素都执行接下来的<code>valueForKeyPath:</code>,最后返回一个值的集合</p>
-
-<p>但是对于集合的属性集合<code>setValue:forkey/KeyPath:</code>并不好用，其并不会将value中的数组分别复制给key中的属性，而是会将value直接赋值给每个key中的属性</p>
-
-<h3 id="toc_8">操作集合属性</h3>
-
-<p>对于集合属性 我们想要修改其内容 需要先用<code>valueForKeyPath</code>获取到其不可变属性值，然后用其创建可变对象值然后修改，再用<code>setValueForKeyPath</code>方法重新设置回去，较麻烦</p>
-
-<p>苹果提供了直接可以获取集合属性的可变对象进行操作的方法</p>
-
-<pre><code class="language-objectivec">- (NSMutableArray *)mutableArrayValueForKey:(NSString *)key;
-- (NSMutableArray *)mutableArrayValueForKeyPath:(NSString *)keyPath;
-
-- (NSMutableOrderedSet *)mutableOrderedSetValueForKey:(NSString *)key;
-- (NSMutableOrderedSet *)mutableOrderedSetValueForKeyPath:(NSString *)keyPath;
-
-- (NSMutableSet *)mutableSetValueForKey:(NSString *)key;
-- (NSMutableSet *)mutableSetValueForKeyPath:(NSString *)keyPath;
-</code></pre>
-
-<p>会返回一个行为继承于<code>NSMutableArray/NSMutableOrderedSet/NSMutableSet</code>的内置对象，对这个对象直接操作(例如增加、删除元素)，系统会根据我们的操作直接修改原对象<br/>
-这样修改维护集合中的对象，还可以<strong>支持键值观察机制</strong></p>
-
-<blockquote>
-<p>这种方法只适合直接修改集合属性，而不适合修改集合属性的属性值集合，原因和不对其使用<code>setValue:forkey/KeyPath:</code>原因相同</p>
-</blockquote>
-
-<h3 id="toc_9">属性验证</h3>
-
-<p>NSKeyValueCoding协议提供了支持属性验证的方法。 可以通过调用</p>
-
-<pre><code class="language-objectivec">- (BOOL)validateValue:(inout id _Nullable * _Nonnull)ioValue forKey:(NSString *)inKey error:(out NSError **)outError;
-
-- (BOOL)validateValue:(inout id _Nullable * _Nonnull)ioValue forKeyPath:(NSString *)inKeyPath error:(out NSError **)outError;
-</code></pre>
-
-<p>协议的默认实现会像实例搜索是否存在实现了<code>validate&lt;Key&gt;:error:</code>方法，默认为返回YES表示验证成功，我们可以再这个方法中实现自己的验证逻辑</p>
-
-<pre><code class="language-objectivec">BankAccount *myAccount = [[BankAccount alloc] init];
-NSError *error;
-NSNumber *balance = @(100.0);
-BOOL result = [myAccount validateValue:&amp;balance forKey:@&quot;currentBalance&quot; error:&amp;error];
-
-//BankAccount.m
-- (BOOL)validateCurrentBalance:(id *)ioValue error:(NSError *__autoreleasing *)outError {
-    if (!ioValue || ((NSNumber *)*ioValue).integerValue &gt;= 100) {
-        *outError = [NSError errorWithDomain:@&quot;错误qqq&quot; code:123 userInfo:@{@&quot;key&quot;: @&quot;金额太大了&quot;}];
-        return NO;
-    }
-    return YES;
-}
-</code></pre>
-
-<p>当然如果不想每个不同key验证都写一次验证方法的话，就直接继承实现自己的validateValue</p>
-
-<pre><code class="language-objectivec">- (BOOL)validateValue:(inout id  _Nullable __autoreleasing *)ioValue forKey:(NSString *)inKey error:(out NSError * _Nullable __autoreleasing *)outError {
-    
-    if (!ioValue || ((NSNumber *)*ioValue).integerValue &gt;= 100) {
-        *outError = [NSError errorWithDomain:@&quot;错误qqq&quot; code:123 userInfo:@{@&quot;key&quot;: @&quot;金额太大了&quot;}];
-        return NO;
-    }
-    return YES;
-}
-</code></pre>
-
-<blockquote>
-<p><code>- (BOOL)validateValue:(inout id _Nullable * _Nonnull)ioValue forKeyPath:(NSString *)inKeyPath error:(out NSError **)outError;</code>怎么使用呢????</p>
-</blockquote>
-
-<h2 id="toc_10">集合运算符</h2>
-
-<p><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/KeyValueCoding/CollectionOperators.html#//apple_ref/doc/uid/20002176-SW9">官方文档</a></p>
-
-<p>使用<code>valueForKeyPath:</code>时，可以在路径中嵌入<strong>集合运算符</strong><br/>
-集合运算符是在<code>@</code>关键字标识，指定了getter应该执行的操作，以便在数据返回之前以某种方式操作数据</p>
-
-<p><img src="media/15549735665033/15550626615233.jpg" alt="" style="width:500px;"/></p>
-
-<p>当keyPath包含集合运算符时，@前路径为左键路径，表示相对操作对象的集合路径，当操作对象直接为集合对象时，可以省略左键路劲;@运算符后的为右键路径，表示操作的集合中的属性，除了<code>@count</code>都需要右键路径</p>
-
-<p>集合运算符共有三种类型:</p>
-
-<ul>
-<li><p>聚合运算符<br/>
-以某种方式合并集合中的对象，并返回和右键路径属性相同类型的一个值;（@count例外）</p>
-<ol>
-<li><p><strong>@avg</strong> 读取右键属性值，并将其转为<code>double</code>类型(将nil转为0)，计算其算术平均值，返回一个<code>NSNumber</code>对象</p>
-<pre><code class="language-objectivec">NSNumber *transactionAverage = [self.transactions valueForKeyPath:@&quot;@avg.amount&quot;];
-</code></pre></li>
-<li><p><strong>@count</strong> 获取集合中元素个数，忽略右键属性(如果有)</p>
-<pre><code class="language-objectivec">NSNumber *numberOfTransactions = [self.transactions valueForKeyPath:@&quot;@count&quot;];
-</code></pre></li>
-<li><p><strong>@max</strong> 搜索右键属性对应的值集合 返回最大的那个(比较时忽略nil)<br/>
-比较使用的时<code>compare:</code>方法，因此右键属性值必须能响应该方法</p>
-<pre><code class="language-objectivec">NSDate *latestDate = [self.transactions valueForKeyPath:@&quot;@max.date&quot;];
-</code></pre>
-<blockquote>
-<p><code>Foundation</code>中内置很多类都已经实现了该方法，我们也可以通过自己实现<code>- (NSComparisonResult)compare:(id)other</code>方法来实现自定义model的compare</p>
-</blockquote></li>
-<li><p><strong>@min</strong><br/>
-与@max同理</p></li>
-<li><p><strong>@sum</strong> 将集合中右键元素都转为double类型(将nil转为0)求和</p></li>
-<li><p><strong>@count</strong></p></li>
-</ol>
-<pre><code class="language-objectivec">    NSInteger count = [[myAccount.transactionsArray valueForKeyPath:@&quot;@count&quot;] integerValue];
-</code></pre></li>
-<li><p>数组运算符<br/>
-返回一个NSArray实例，返回集合中属性的子集</p>
-<p><strong>@distinctUnionOfObject</strong>返回一个数组其中包含了右键属性的不重复的值的集合(不包含nil元素)；</p>
-<pre><code class="language-objectivec">NSArray *arr = [myAccount valueForKeyPath:@&quot;transactionsArray.@distinctUnionOfObjects.amount&quot;];
-</code></pre>
-<p><strong>@unionOfObjects</strong> 返回右键属性值的集合并不会去重(不包含nil元素)</p></li>
-<li><p>嵌套操作符<br/>
-嵌套运算符处理嵌套的集合，集合的条目本身就包含了一个集合</p></li>
-</ul>
-
-<p><strong>@distinctUnionOfArrays</strong> 返回右键集合属性的所有集合元素中不重复值的集合</p>
-
-<pre><code class="language-objectivec">    NSArray *arr = [objArray valueForKeyPath:@&quot;@distinctUnionOfArrays.transactionsArray.payee&quot;];
-</code></pre>
-
-<p><strong>unionOfArrays</strong> 返回右键集合属性的所有元素集合（不去重）</p>
-
-<pre><code class="language-objectivec">    NSArray *arr1 = [objArray valueForKeyPath:@&quot;@unionOfArrays.transactionsArray.payee&quot;];
-</code></pre>
-
-<p><strong>@distinctUnionOfSets</strong> 与<code>distinctUnionOfArrays</code>类似 不同的是 其需要NSSet实例属性包含NSSet集合</p>
-
-<h2 id="toc_11">KVC的搜索规则</h2>
-
-<!--学习自简书[KVC原理剖析](https://www.jianshu.com/p/1d39bc610a5b)
--->
-
-<p>NSObject提供的<code>NSKeyValueCoding</code>协议默认实现，将基于键的访问映射到对象属性。这些协议方法使用key参数在自己对象实例中搜索访问器、实例变量以及某些约定命名方法</p>
-
-<h3 id="toc_12">基础Getter的搜索模式</h3>
-
-<p><code>valueForKey:</code>的默认实现，会根据key参数在对象实例中进行以下搜索流程:</p>
-
-<ol>
-<li>按顺序搜索实例变量中的方法名类似:<code>get&lt;Key&gt;</code>、<code>&lt;Key&gt;</code>、<code>is&lt;Key&gt;</code>或者<code>_&lt;Key&gt;</code>的方法,如果找到直接跳到第5步</li>
-<li><p>搜索实例中匹配<code>countOf&lt;Key&gt;</code>方法和<code>objectIn&lt;Key&gt;AtIndex:</code>方法(对应NSArray类的基本方法)以及<code>&lt;key&gt;AtIndexes:</code>(对应NSArray的<code>objectsAtIndexes:</code>方法)，如果找到第一个方法以及至少后两个方法中的一个，就创建一个相应NSArray所有方法的集合代理对象并返回，否则执行第3步</p>
-<p>这个代理对象会将接收到的所有NSArray消息转换为<code>countOf&lt;Key&gt;</code>、<code>objectIn&lt;Key&gt;AtIndex:</code>、<code>&lt;key&gt;AtIndexes:</code>方法的组合来交给原始对象响应。如果原始对象还实现了<code>get&lt;Key&gt;:range:</code>可选方法，也会在适当时候是使用；这个数组代理对象工作起来就像真的NSArray一样</p>
-<blockquote>
-<p>代理对象的作用只是将交给其的方法进行组合，转交给原始对象响应，让其工作的像一个真的数组一样</p>
-</blockquote></li>
-<li><p>搜索名字为<code>countOf&lt;Key&gt;</code>、<code>enumeratorOf&lt;Key&gt;</code>和<code>memberOf &lt;Key&gt;</code>的三个方法(对应NSSet类定义方法)，如果找到这个3个方法就返回一个响应所有NSSet方法的代理对象，否则执行第4步<br/>
-其会将随后收到的所有NSSet方法转换为上面3个方法的组合，让这个代理对象就像真的NSSet一样</p></li>
-<li><p>如果上面方法都没找到，并且接收对象的<code>accessInstanceVariablesDirectly</code>类方法返回YES。就按顺序搜索<code>_&lt;key&gt;</code>、<code>_isKey</code>、<code>&lt;Key&gt;</code>、<code>is&lt;Key&gt;</code>实例变量名，找到的话执行第5步，否则执行第6步</p></li>
-<li><p>如果是对象就直接返回，如果为非对象就装箱返回</p></li>
-<li><p>如果都没找到就触发<code>valueForUndefineKey:</code>异常</p></li>
-</ol>
-
-<h3 id="toc_13">基础Setter模式搜索</h3>
-
-<ol>
-<li>按顺序搜索名字为<code>set&lt;Key&gt;</code>或者<code>_set&lt;Key&gt;</code>的访问器，找到就直接调用</li>
-<li>如果找不到简单访问器，并且类方法<code>accessInstanceVariablesDirectly</code>类方法返回YES，并且按顺序查找<code>&lt;Key&gt;</code>、<code>_is&lt;Key&gt;</code>、<code>&lt;key&gt;</code>、<code>is&lt;Key&gt;</code>实例变量，如果找到直接设置值</li>
-<li>以上两步都找不到,带用<code>setValue:forUndefinedKey:</code>默认会引发异常</li>
-</ol>
-
-<h3 id="toc_14">可变数组的搜索模式</h3>
-
-<p><code>mutableArrayValueForKey:</code>用一下流程返回一个可变数组的代理对象</p>
-
-<ol>
-<li><p>搜索方法<code>insertObject:in&lt;Key&gt;AtIndex:</code>和<code>removeObjectFrom&lt;Key&gt;AtIndex:</code>(对应NSMutableArray的私有方法<code>insertObject:atIndex:</code>和<code>removeObjectAtIndex:</code>)，或者方法名为<code>insert&lt;Key&gt;:atIndexes:</code>和<code>remove&lt;Key&gt;AtIndexes:</code>（对应NSMutableArray的为<code>insertObjects:atIndexes:</code>和<code>removeObjectsAtIndexes:</code>）。假如对象有至少一个insert方法或者一个remove方法，就返回一个响应<code>NSMutableArray</code>方法的代理对象。</p>
-<p>代理对象通过发送一些组合的消息insertObject:in<Key>AtIndex:, removeObjectFrom<Key>AtIndex:, insert<Key>:atIndexes:,和remove<Key>AtIndexes:给<code>mutableArrayValueForKey:</code>消息的原始接收者来响应这些插入或者删除方法</p>
-<p>当接收<code>mutableArrayValueForKey：</code>的原始消息对象实现名称为<code>replaceObjectIn&lt;Key&gt;AtIndex:withObject:</code>或<code>replace&lt;Key&gt;AtIndexes:with&lt;Key&gt;:</code>的（可选）替换方法时，代理对象也会在适当时使用这些方法以获得最佳性能。</p>
-<blockquote>
-<p>代理的可变对象会响应所有NSMUtalbeArray方法，并将其转交给原始的对象消息接受者，对集合数组进行修改</p>
-</blockquote></li>
-<li><p>如果对象没有可变数组方法，就搜索名称为<code>set&lt;Key&gt;:</code>的访问器方法，这种情况会向<code>mutableArrayValueForKey:</code>的原始接收者发出<code>set&lt;Key&gt;</code>方法来，来响应NSMutableArray代理对象的消息</p>
-<blockquote>
-<p>注意: 这种方法的机制会比上一步的效率低得多，它会重复创建集合而不是修改原有集合,在使用KVC时应该尽量避免这种情况</p>
-</blockquote></li>
-<li><p>加入以上2中都没找到哦，并且对象响应<code>accessInstanceVariablesDirectly</code>类方法返回YES，就按顺序搜索<code>_&lt;Key&gt;</code>和<code>&lt;Key&gt;</code>的实例变量<br/>
-找到这样的实例变量，就返回一个代理对象，会把NSMutableArray消息转发给实例变量</p></li>
-<li><p>如果以上消息都失败了，就返回一个NSMutableArray的代理对象，该对象在收到<code>NSMutablrArray</code>消息后向<code>mutableArrayValueForKey:</code>原始接受者发出<code>setValue:ForUndefineKey:</code>消息，会引起<code>NSUndefinedKeyException</code>异常</p></li>
-</ol>
-
-<h3 id="toc_15">MutableOrderedSet的搜索模式</h3>
-
-<p><code>mutableOrderedSetValueForKey</code> 与 数组搜索模式类似 ，只是其第一步搜索的方法为<code>insertObject:in&lt;Key&gt;AtIndex:</code>和<code>removeObjectFrom&lt;Key&gt;AtIndex:</code>、 <code>insert&lt;Key&gt;:atIndexes:</code>和<code>remove&lt;Key&gt;AtIndexes:</code>和可选方法<code>replaceObjectIn&lt;Key&gt;AtIndex:withObject: 或 replace&lt;Key&gt;AtIndexes:with&lt;Key&gt;:</code></p>
-
-<h3 id="toc_16">MutableSet搜索模式</h3>
-
-<p>和mutableArray类似</p>
-
-<p>第一步方法为:<br/>
-<code>add&lt;Key&gt;Object:</code>和 <code>remove&lt;Key&gt;Object:</code> <code>add&lt;Key&gt;:</code>和<code>remove&lt;Key&gt;:</code>和可选方法<code>intersect&lt;Key&gt;: or set&lt;Key&gt;:</code></p>
-
-<p>多了第二步骤搜索:<br/>
-加入<code>mutableSetValueForKey</code>方法调用者是<code>manager object</code>则搜索模式不在继续,详情看CoreData核心编程指南</p>
-
-<h2 id="toc_17">KVC性能</h2>
-
-<p>KVC性能没有直接访问属性快，但是性能消耗微乎其微;<br/>
-但是需要注意对操作可变集合对象的搜索模式，最好自己实现方法，避免重复创建集合进行赋值，这样性能消耗太大</p>
-
-<h2 id="toc_18">注意</h2>
-
-<ol>
-<li>KVC本质是运行时查找对象实例的方法或变量，因此可以利用其访问私有变量，因此可以利用这一点，修改系统组件的样式或属性</li>
-<li>为避免KVC的硬编码，可以采用<code>NSStringFromSelector(@selector(METHODNAME))</code></li>
-<li>可以用KVC来触发KVO，即使在对象没有set访问器方法的情况下，即直接时候使用kvc赋值给对象的实例变量而该变量没有set方法时</li>
-</ol>
-
-<p>参考资料: <a href="https://www.jianshu.com/p/1d39bc610a5b">KVC原理剖析</a></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[main函数之前发生了什么]]></title>
-    <link href="https://acefish.github.io/15549543814877.html"/>
-    <updated>2019-04-11T11:46:21+08:00</updated>
-    <id>https://acefish.github.io/15549543814877.html</id>
-    <content type="html"><![CDATA[
-<p>学习自sunnyxx的<a href="https://blog.sunnyxx.com/2014/08/30/objc-pre-main/">iOS 程序 main 函数之前发生了什么</a></p>
-
-<h2 id="toc_0">dyld</h2>
-
-<h3 id="toc_1">动态链接库</h3>
-
-<p>iOS中用到系统frameWork都是动态链接的</p>
-
-<p>使用<code>otool</code>命令查看依赖的动态库</p>
-
-<pre><code class="language-objectivec">otool -L TestMain
-
-TestMain:
-    /System/Library/Frameworks/CoreGraphics.framework/CoreGraphics
-    /System/Library/Frameworks/UIKit.framework/UIKit
-    /System/Library/Frameworks/Foundation.framework/Foundation
-    /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
-    /usr/lib/libobjc.A.dylib    /usr/lib/libSystem.B.dylib 
-</code></pre>
-
-<p>除了我们添加或依赖的系统动态库，还有默认添加的lib:<code>libobjc</code>（objc和runtime需要依赖的库），<code>libSystem</code>包含了很多系统界别的lib,常用到的有：</p>
-
-<ul>
-<li>libdispatch(GCD)</li>
-<li>libsystem_c(C语言库)</li>
-<li>libsystem_blocks(Block)</li>
-<li>libcommonCrypto(加密库，比如常用的md5函数)</li>
-</ul>
-
-<p>这些库都是<code>dylib</code>格式</p>
-
-<h3 id="toc_2">dyld(the dynamic link editor)</h3>
-
-<p>Apple的动态链接器，系统kernel做好启动程序的准备后由dyld负责,dyld作用顺序概括:</p>
-
-<ol>
-<li>从kernel留下的原始调用栈引导和启动自己</li>
-<li>将程序依赖的动态链接库<strong>递归</strong>加载进内存，当然这里有<strong>缓存机制</strong></li>
-<li>non-lazy符号立即link到可执行文件，lazy的存到表里</li>
-<li>为可执行文件执行静态初始化</li>
-<li>找到可执行文件的main函数，准备参数并调用</li>
-<li>程序执行中 绑定lazy符号、提供runtime动态加载、提供调试器的接口</li>
-<li>程序main函数return后执行static terminator</li>
-<li>某些场景下 main函数结束后调用libSystem的__exit函数</li>
-</ol>
-
-<p>dyld是开源的，<a href="https://github.com/opensource-apple/dyld">源码github地址</a></p>
-
-<p>在项目源码中有<code>dyldStartup.s</code>这个汇编文件，实现了<code>__dyld_start</code>,其主要实现了:</p>
-
-<ol>
-<li>调用dyldbootstrap::start()方法</li>
-<li>上个方法返回了main函数地址，填入参数并调用main函数</li>
-</ol>
-
-<p><img src="media/15549543814877/15549648909838.jpg" alt="" style="width:350px;"/></p>
-
-<p>栈底的dyldbootstrap::start()方法，继而调用了dyld::_main()方法，其中完成了刚才说的递归加载动态库过程，由于libSystem默认引入，栈中出现了libSystem_initializer、libdispatch_init、_objc_init等的初始化方法。</p>
-
-<h2 id="toc_3">ImageLoader</h2>
-
-<p>image指二进制文件，里面是各种符号和代码等，因此ImageLoader是将这些文件加入内存</p>
-
-<h2 id="toc_4">runtime与load</h2>
-
-<p><code>libSystem</code>是是若干系统lib的集合容器，里面就一个<code>init.c</code>文件，因此调用<code>libSystem_initializer</code>会逐步调用到<code>_objc_init</code>，这个就是objc和runtime<br/>
-的初始化入口</p>
-
-<p>这里除了初始化runtime环境外，_objc_init绑定了新image被加载后的<code>callback</code>：</p>
-
-<pre><code class="language-objectivec">dyld_register_image_state_change_handler(
-dyld_image_state_bound, 1, &amp;map_images);
-dyld_register_image_state_change_handler(
-dyld_image_state_dependents_initialized, 0, &amp;load_images);
-</code></pre>
-
-<p>当新的image被加载进来之后由<code>runtime</code>去解析这个二进制文件的符号表和代码</p>
-
-<p><img src="media/15549543814877/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202019-04-11%2014.28.40.png" alt=" 屏幕快照 2019-04-11 14.28.40" style="width:300px;"/></p>
-
-<p>整个调用顺序:</p>
-
-<ol>
-<li>dyld将整个应用程序二进制文件初始化</li>
-<li>由ImageLoader读取image，其中包括了代码、类和方法各种符号</li>
-<li>因为runtime向dyld绑定了回调，当image加载到内存后，dyld会通知runtime处理</li>
-<li>runtime调用回调函数<code>map_image</code>做解析处理，之后<code>load_images</code>调用<code>call_load_methods</code>方法，遍历所有加载的class，然后按照继承和层架关系调用Class和其Category的<code>+load()</code>方法</li>
-</ol>
-
-<h3 id="toc_5">load方法收集</h3>
-
-<p>在<code>loadImage</code>后 会调用<code>prepare_load_methods</code>方法来获取所有类的列表，并且收集其中load方法。这个方法中会调用<code>schedule_class_load</code>遍历类递归至根节点来收集完成的关系树，并执行<code>add_class_to_loadable_list</code>将其加入执行列表， 然后调用<code>call_load_methods</code>方法，其会创建一个<code>autoreleasePool</code>使用函数指针来动态调用类和<code>Category</code>的<code>+load</code>方法</p>
-
-<p>此时，可执行文件中和动态库所有符号<code>Class、Protocol、Selector、IMP...</code>等都已经按照格式加载到内存，并被runtime管理，这样之后，<code>runtime</code>运行时机制和那些方法（动态添加class、swizzle等）才能生效</p>
-
-<h2 id="toc_6">真正的main函数</h2>
-
-<p>当前面的这些操作结束，dyld会清理现场，将调用栈回归，调用真正的main函数</p>
-
-<p><img src="media/15549543814877/15549695741385.jpg" alt="" style="width:300px;"/></p>
-
-<h2 id="toc_7">补充</h2>
-
-<p>此处只提及了runtime这个分支的初始化以及所做的事情，真正流程比这个复杂的多，还有类似<code>GCD</code><code>XPC</code>等系统库分支</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[UIApplicationMain]]></title>
-    <link href="https://acefish.github.io/15547885598364.html"/>
-    <updated>2019-04-09T13:42:39+08:00</updated>
-    <id>https://acefish.github.io/15547885598364.html</id>
-    <content type="html"><![CDATA[
-<p>创建一个应用程序对象和代理，并且设置事件循环(包括应用的runloop)</p>
-
-<pre><code class="language-objectivec">int UIApplicationMain(int argc, char * _Nullable *argv, NSString *principalClassName, NSString *delegateClassName);
-//argc: argv参数的个数
-//argv: 提供给main函数的参数
-//principalClassName: 设置UIApplicaion类或其子类的名字，可以为nil即默认为UIApplication
-//delegateClassName: 设置代理，假如从应用的main nib file加载可以该参数传空
-</code></pre>
-
-<blockquote>
-<p>If the application’s Info.plist file specifies a main nib file to be loaded, by including the NSMainNibFile key and a valid nib file name for the value, this function loads that nib file.</p>
-</blockquote>
 
 ]]></content>
   </entry>

@@ -82,273 +82,399 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14903384285214.html">显式动画</a></h1>
-			<p class="meta"><time datetime="2017-03-24T14:53:48+08:00" 
-			pubdate data-updated="true">2017/3/24</time></p>
+		  	<h1 class="entry-title"><a href="14940350647350.html">图像IO</a></h1>
+			<p class="meta"><time datetime="2017-05-06T09:44:24+08:00" 
+			pubdate data-updated="true">2017/5/6</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>隐式动画是在iOS平台创建动态用户界面的一种直接方式，也是UIKit动画机制的基础<br/>
-显式动画，它能够对一些属性做指定的自定义动画，或者创建非线性动画</p>
+		  	<p>和绘图相关的是图像性能，我们研究如何从闪存驱动器或者网络中加载和显示图片</p>
 
-<h3 id="toc_0">属性动画</h3>
+<p>补充知识:<br/>
+<a href="http://www.cocoachina.com/ios/20170227/18784.html">图片加载解压</a>原理知识学习<br/>
+<strong>图片解压缩的过程其实就是将图片的二进制数据转换成像素数据的过程</strong><br/>
+我们平常看大的图片大小其实只是图片的二进制数据大小即原始文件大小<br/>
+解压后的图片大小与原始文件大小之间没有任何关系，而只与图片的像素有关:</p>
 
-<p><code>core animation</code>里面有个很重要的类<code>CAPropertyAnimation</code>(属性动画)，它有两个子类，<code>CABasicAnimation</code>和<code>CAKeyFrameAnimation</code>。</p>
+<blockquote>
+<p>解压缩后的图片大小 = 图片的像素宽 30 * 图片的像素高 30 * 每个像素所占的字节数 4</p>
+</blockquote>
 
-<h4 id="toc_1">属性动画</h4>
+<p>事实上不管是<code>JPEG</code>还是<code>PNG</code>图片，都是一种压缩的位图图形格式。只不过<code>PNG</code>图片是无损压缩，并且支持<code>alpha</code>通道，而<code>JPEG</code>图片则是有损压缩，可以指定<code>0-100%</code>的压缩比。值得一提的是，在苹果的<code>SDK</code> 中专门提供了两个函数用来生成 PNG 和 JPEG 图片：</p>
 
-<p><code>CAAnimation</code>在动画结束时会属性会回到原值所以<br/>
-我们在做了显式动画后可以用<code>CAAnimationDelegate</code>中<code>- animationDidStop:finished:</code>方法来更新图层属性（一般设置其为终值）,更新属性的时候我们需要一个新的事务并且禁用图层行为.否则会有两次动画.</p>
+<pre><code class="language-objectivec">UIKIT_EXTERN NSData * __nullable UIImagePNGRepresentation(UIImage * __nonnull image);
+ 
+// return image as JPEG. May return nil if image has no CGImageRef or invalid bitmap format. compression is 0(most)..1(least)            
+UIKIT_EXTERN NSData * __nullable UIImageJPEGRepresentation(UIImage * __nonnull image, CGFloat compressionQuality);
+</code></pre>
 
-<pre><code class="language-objectivec">- (void)animationDidStop:(CABasicAnimation *)anim finished:(BOOL)flag
+<p>在将磁盘中的图片渲染到屏幕之前，必须先要得到图片的原始像素数据，才能执行后续的绘制操作</p>
+
+<h3 id="toc_0">加载和潜伏</h3>
+
+<p>绘图实际消耗的时间并不是影响性能主要因素。图片消耗很大一部分内存,而且不太可能把需要显示的图片都保留在内存中,所以在应用运行时周期性的加载和卸载图片</p>
+
+<p>图片文件的加载速度被<code>CPU</code>和<code>IO(输入输出)</code>同时影响。iOS设备中的闪存虽然比传统硬盘块,但是比RAM仍然慢了200倍，我们需要小心加载来避免延迟</p>
+
+<ol>
+<li><p>在程序生命周期不易察觉时来加载图片</p>
+<p>比如启动或者屏幕切换<br/>
+按下按钮和按钮响应时间之间最大延时大概200ms,而切换每帧动画16ms<br/>
+可以程序首次启动加载图片,如果启动时间过长影响用户体验,超过20s苹果就会关闭你的应用了</p>
+<p>但是有时候不适合提前加载所有图片,比如图片过多或者需要从网络远程下载图片</p></li>
+</ol>
+
+<h4 id="toc_1">线程加载</h4>
+
+<p>对于在主线程加载图片(比如<code>[UIImage imageWithContentsOfFile:</code>)如果图片较大就会卡线程,我们需要在后台加载图片,可以使用<code>GCD</code>或者<code>NSOperationQueue</code>创建自定义线程，或者使用<code>CATiledLayer</code>,为了从远程网络加载图片，我们可以使用异步的<code>NSURLConnection</code>但是对本地存储的图片，并不十分有效。</p>
+
+<h5 id="toc_2">GCD和 NSOperationQueue</h5>
+
+<p>GCD（Grand Central Dispatch）和 NSOperationQueue 很类似，都给我们提供了队列闭包块来在线程中按一定顺序来执行。 NSOperationQueue 有一个Objecive-C接口（而不是使用GCD的全局C函数），同样在操作优先级和依赖关系上提供了很好的粒度控制，但是需要更多地设置代码。</p>
+
+<p>下面是  我们在低优先级的后台队列而不是主线程用<code>GCD</code>加载图片</p>
+
+<pre><code class="language-objectivec">- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
+cellForItemAtIndexPath:(NSIndexPath *)indexPath
 {
-    //set the backgroundColor property to match animation toValue
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.colorLayer.backgroundColor = (__bridge CGColorRef)anim.toValue;
-    [CATransaction commit];
+//dequeue cell
+    UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@&quot;Cell&quot;
+forIndexPath:indexPath];
+    //add image view
+    const NSInteger imageTag = 99;
+    UIImageView *imageView = (UIImageView *)[cell viewWithTag:imageTag];
+    if (!imageView) {
+        imageView = [[UIImageView alloc] initWithFrame: cell.contentView.bounds];
+        imageView.tag = imageTag;
+        [cell.contentView addSubview:imageView];
+    }
+//tag cell with index and clear current image
+    cell.tag = indexPath.row;
+    imageView.image = nil;
+    //switch to background thread
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+    //load image
+        NSInteger index = indexPath.row;
+        NSString *imagePath = self.imagePaths[index];
+        UIImage *image = [UIImage imageWithContentsOfFile:imagePath];
+        //需要在主线程更新UI
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (index == cell.tag) {
+                imageView.image = image; 
+            }
+        });
+    });
+    return cell;
 }
 </code></pre>
 
-<p>但是如果我们有多个动画这个代理回调是无法区分是哪个图层的调用.<br/>
-1.因为这个代理传进来的动画的深拷贝,所以没有办法通过设置动画属性来分辨.<br/>
-2.使用<code>-addAnimation:forKey:</code>给动画设置不同key,<code>-animationForKey:</code>找到对应的key来对比，可实现但是比较复杂<br/>
-3.最简单的方法,<code>CAAnimation</code>实现了KVC,但是更像一个 NSDictionary ，可以让你<strong>随意设置键值对</strong>，即使和你使用的动画类所声明的属性并不匹配。</p>
+<p>由于视图在<code>UICollectionView</code>中是会重复利用的,因此我们加载图片时需要确定是否被不同索引重复利用。为<strong>避免图片加载到错误视图中,我们在加载前把单元格打上索引标签,然后在设置图片时检测标签是否改变</strong>.</p>
 
-<pre><code class="language-objectivec">//初始化动画时用KVC设置键值对
-CABasicAnimation *animation = [CABasicAnimation animation];
-[self updateHandsAnimated:NO];
-animation.keyPath = @&quot;transform&quot;;
-animation.toValue = [NSValue valueWithCATransform3D:transform];
-animation.duration = 0.5;
-animation.delegate = self;
-[animation setValue:handView forKey:@&quot;handView&quot;];
-[handView.layer addAnimation:animation forKey:nil];
-- (void)animationDidStop:(CABasicAnimation *)anim finished:(BOOL)flag
+<h4 id="toc_3">延迟解压</h4>
+
+<p>在上面我们认为 <strong>性能瓶颈在于 加载图片到内存中,其实这只是问题之一</strong>.</p>
+
+<p><strong>一旦图片文件被加载就必须要进行解码，解码过程是一个相当复杂的任务，需要消耗非常长的时间。解码后的图片将同样使用相当大的内存</strong>。</p>
+
+<p>用于加载的CPU时间与图片格式有关,<code>PNG</code>文件较大所以加载时间比<code>JPEG</code>更长,但是解码速度较快,而且<code>Xcode</code>会把<code>PNG</code>进行解码优化后引入工程.而<code>JPEG</code>图片较小,所以加载更快但是解压要消耗更长时间,因为<code>JPEG</code>解压算法比基于<code>zip</code>的<code>PNG</code>算法更加复杂</p>
+
+<p>在加载图片时,<strong>iOS通常会在图片加载到内存之后,绘制之前解压,这通常是消耗时间问题所在</strong></p>
+
+<blockquote>
+<p>此处的解码和解压意义相同<br/>
+避免延时加载方法:</p>
+</blockquote>
+
+<ol>
+<li>我们可以用<code>UIImage</code>的 <code>+imageNamed: 方法</code>，它不同于<code>+imageWithContentsOfFile: （和其他别的 UIImage 加载方法）</code>它可以避免延时加载，会在加载图片后立刻解压.但是这个方法只对资源束中图片有效.</li>
+<li>另一种立刻加载图片的方法就是把它设置成图层内容，或者是<code>UIImageView</code>的<code>image</code>属性,但是这都需要在主线程进行,不能提升性能.</li>
+<li><p>绕过<code>UIKit</code>，像下面这样使用<code>ImageIO</code>框架</p>
+<pre><code class="language-objectivec">NSInteger index = indexPath.row;
+NSURL *imageURL = [NSURL fileURLWithPath:self.imagePaths[index]];<br/>
+NSDictionary *options = @{(__bridge id)kCGImageSourceShouldCache: @YES};<br/>
+CGImageSourceRef source = CGImageSourceCreateWithURL((__bridge CFURLRef)imageURL, NULL);<br/>
+CGImageRef imageRef = CGImageSourceCreateImageAtIndex(source, 0,(__bridge CFDictionaryRef)options);<br/>
+UIImage *image = [UIImage imageWithCGImage:imageRef];<br/>
+CGImageRelease(imageRef);<br/>
+CFRelease(source);
+</code></pre>
+<p>可以使用<code>kCGImageSourceShouldCache</code>来创建图片，强制图片立刻解压，然后在图片的生命周期保留解压后的版本。</p></li>
+</ol>
+
+<p>最后一种方式用<code>UIKit</code>加载图片,但是会立即绘制到<code>CGContext</code>中去.因为图片必须要在绘制之前解压,所以强制了解压的及时性,好处是绘制图片可以在后台线程执行,不会阻塞UI</p>
+
+<p>强制解压提前渲染图片：</p>
+
+<ul>
+<li>将图片的一个像素绘制成一个像素大小的<code>CGContext</code>。这样仍会解压整张图片,但是绘制本身并没有消耗任何时间.加载的图片并不会在特定设备上为绘制做优化,所以可以在任何时间点绘制出来,iOS也就可以丢弃解压后的图片来节省内存</li>
+<li>将整张图片绘制到<code>CGContext</code>中，丢弃原始的图片，并且用一个从上下文内容中新的图片来代替。这样比绘制单一像素更需要复杂的计算,但是因此产生的图片将会为绘制做优化,而且由于原始压缩图片被抛弃了,iOS就不能够随时丢弃任何解压后的图片来节省内存了。</li>
+</ul>
+
+<p>注意苹果特别推荐了不要使用这些诡计来绕过标准图片解压逻辑（所以也是他们选择用默认处理方式的原因）,但是如果你使用很多大图来构建应用，那如果想提升性能，就只能和系统博弈了。</p>
+
+<p>如果不使用<code>+ imageNamed:</code>，那么把整张图片绘制到<code>CGContext</code>可能是最佳的方式了。。尽管你可能认为多余的绘制相较别的解压技术而言性能不是很高，但是新创建的图片（在特定的设备上做过优化）可能比原始图片绘制的更快。</p>
+
+<p>同样，如果想显示图片到比原始尺寸小的容器中，那么一次性在后台线程重新绘制到正确的尺寸会比每次显示的时候都做缩放会更有效</p>
+
+<pre><code class="language-objectivec">//-collectionView:cellForItemAtIndexPath: 方法来重绘图片
+UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@&quot;Cell&quot; forIndexPath:indexPath];
+...
+//switch to background thread
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+//load image
+    NSInteger index = indexPath.row;
+    NSString *imagePath = self.imagePaths[index];
+    UIImage *image = [UIImage imageWithContentsOfFile:imagePath];
+    //redraw image using device context
+    UIGraphicsBeginImageContextWithOptions(imageView.bounds.size, YES, 0);
+    [image drawInRect:imageView.bounds];
+    image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    //set image on main thread, but only if index still matches up
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (index == cell.tag) {
+            imageView.image = image;
+        }
+    });
+});
+return cell;
+
+</code></pre>
+
+<h4 id="toc_4">CATiledLayer</h4>
+
+<p>我们在学习<code>CALayer</code>一章，<code>CATiledLayer</code>可以用来异步加载和显示大型图片，而不阻塞用户输入。</p>
+
+<p>我们同样可以用<code>CATiledLayer</code>在<code>UICollectionView</code>中为每个表格创建分离的<code>CATiledLayer</code>实例加载传动器图片，每个表格仅使用一个图层。</p>
+
+<p>但是这样也有弊端:</p>
+
+<ul>
+<li><code>CATiledLayer</code>的队列和缓存算法没有暴露出来，所以我们只能祈祷它能匹配我们的需求</li>
+<li><code>CATiledLayer</code>需要我们每次重绘图片到<code>CGContext</code>中，即使它已经解压缩，而且和我们单元格尺寸一样（因此可以直接用作图层内容，而不需要重绘）</li>
+</ul>
+
+<pre><code class="language-objectivec">- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath
 {
-    //通过kvc获取存储的值
-    UIView *handView = [anim valueForKey:@&quot;handView&quot;];
-    handView.layer.transform = [anim.toValue CATransform3DValue];
+    //dequeue cell
+    UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@&quot;Cell&quot; forIndexPath:indexPath];
+    //add the tiled layer
+    CATiledLayer *tileLayer = [cell.contentView.layer.sublayers lastObject];
+    if (!tileLayer) {
+        tileLayer = [CATiledLayer layer];
+        tileLayer.frame = cell.bounds;
+        tileLayer.contentsScale = [UIScreen mainScreen].scale;
+        tileLayer.tileSize = CGSizeMake(cell.bounds.size.width * [UIScreen mainScreen].scale, cell.bounds.size.height * [UIScreen mainScreen].scale);
+        tileLayer.delegate = self;
+        [tileLayer setValue:@(indexPath.row) forKey:@&quot;index&quot;];
+        [cell.contentView.layer addSublayer:tileLayer];
+    }
+    //tag the layer with the correct index and reload
+    tileLayer.contents = nil;
+    [tileLayer setValue:@(indexPath.row) forKey:@&quot;index&quot;];
+    [tileLayer setNeedsDisplay];
+    return cell;
 }
-</code></pre>
 
-<p><code>CABasicAnimation</code>只能作用于一个属性,只能有初始值和结束值</p>
-
-<h4 id="toc_2">关键帧动画</h4>
-
-<p><code>CABasicAnimation</code>揭示了大多数隐式动画背后依赖的机制,但是显式地给图层添加<code>CABasicAnimation</code>相较于<code>隐式动画</code>而言，只能说费力不讨好。</p>
-
-<p><code>CAKeyframeAnimation</code>和<code>CABasicAnimation</code> 类似同样是<code>CAPropertyAnimation</code> 的一个子类它依然作用于单一的一个属性,但是它不限制于设置一个起始和结束的值，而是可以根据一连串随意的值来做动画。</p>
-
-<p><code>CAKeyframeAnimation</code>关键帧动画:只我们只需要绘制关键帧的动画，然后<code>Core Animation</code>在每帧之间进行插入。</p>
-
-<pre><code class="language-objectivec">- (IBAction)changeColor
+- (void)drawLayer:(CATiledLayer *)layer inContext:(CGContextRef)ctx
 {
-    //create a keyframe animation
-    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
-    animation.keyPath = @&quot;backgroundColor&quot;;
-    animation.duration = 2.0;
-    animation.values = @[
-    (__bridge id)[UIColor blueColor].CGColor,
-    (__bridge id)[UIColor redColor].CGColor,
-    (__bridge id)[UIColor greenColor].CGColor,
-    (__bridge id)[UIColor blueColor].CGColor ];
-    //apply animation to layer
-    [self.colorLayer addAnimation:animation forKey:nil];
+    //get image index
+    NSInteger index = [[layer valueForKey:@&quot;index&quot;] integerValue];
+    //load tile image
+    NSString *imagePath = self.imagePaths[index];
+    UIImage *tileImage = [UIImage imageWithContentsOfFile:imagePath];
+    //calculate image rect
+    CGFloat aspectRatio = tileImage.size.height / tileImage.size.width;
+    CGRect imageRect = CGRectZero;
+    imageRect.size.width = layer.bounds.size.width;
+    imageRect.size.height = layer.bounds.size.height * aspectRatio;
+    imageRect.origin.y = (layer.bounds.size.height - imageRect.size.height)/2;
+    //draw tile
+    UIGraphicsPushContext(ctx);
+    [tileImage drawInRect:imageRect];
+    UIGraphicsPopContext();
 }
-</code></pre>
 
-<p>是因为<code>CAKeyframeAnimation</code>并不能自动把当前值作为第一帧（就像<code>CABasicAnimation</code> 那样把 <code>fromValue</code> 设为 <code>nil</code> ），所以动画会在开始的时候突然由原来色变为蓝色,结束时又突然由结束色变为原来色.</p>
-
-<p>上面是使用<code>animation.values</code>来设置关键帧，我还可以用<code>path 属性</code>指定运动序列.<br/>
-我们要绘制一个<code>CGPath</code>的三次贝塞尔曲线，可以通过使用一个基于C的<code>Core Graphics</code>绘图指令来创建，不过用<code>UIKit</code>提供的<code>UIBezierPath</code>类会更简单.</p>
-
-<pre><code class="language-objectivec">UIBezierPath *bezierPath = [[UIBezierPath alloc] init];
-[bezierPath moveToPoint:CGPointMake(0, 150)];
-[bezierPath addCurveToPoint:CGPointMake(300, 150) controlPoint1:CGPointMake(75, 0) controlPoint2:CGPointMake(225, 300)];
-CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
-animation.keyPath = @&quot;position&quot;;
-animation.duration = 4.0;
-animation.path = bezierPath.CGPath;
-[shipLayer addAnimation:animation forKey:nil];
-</code></pre>
-
-<p>苹果很人性化的给我们提供了<code>rotationMode</code>属性,设置它为常量 <code>kCAAnimationRotateAuto</code>图层将会根据曲线的切线自动旋转。<br/>
-<code>animation.rotationMode = kCAAnimationRotateAuto;</code></p>
-
-<h4 id="toc_3">虚拟属性</h4>
-
-<p>属性动画实际上是针对于关键路径而不是一个键,这就意味着可以对<code>子属性</code>甚至是<code>虚拟属性</code>做动画.</p>
-
-<p>例如:想要对物体做旋转动画,需要作用于<code>transform</code> 属性，因为<code>CALayer</code>没有显式提供角度或者方向之类的属性</p>
-
-<pre><code class="language-objectivec">CABasicAnimation *animation = [CABasicAnimation animation];
-animation.keyPath = @&quot;transform&quot;;
-animation.duration = 2.0;
-animation.toValue = [NSValue valueWithCATransform3D: CATransform3DMakeRotation(M_PI, 0, 0, 1)];
-[shipLayer addAnimation:animation forKey:nil];
 /**
-这样确实会旋转180°但是如果我们把M_PI改为2*M_PI就不会旋转了
-即使我们设置了byValue也无效,因为变换矩阵并不会像角度值一样叠加
+CATiledLayer 的 tileSize 属性单位是像素，而不是点，所以为了保证瓦
+片和表格尺寸一致，需要乘以屏幕比例因子。
+在 - drawLayer:inContext: 方法中，我们需要知道图层属于哪一个 indexPath 以加载正确的图片。这里我们利用了 CALayer 的KVC来存储和检索任意的值，将图层和索引打标签
 */
 </code></pre>
 
-<p>对于<code>CATransform3D</code>因为0度旋转和360度旋转的矩阵完全相同,所以<code>fromValue</code> = <code>toValue</code>因此不会旋转的</p>
+<p>这样确实可以很好的解决了性能问题，有个小问题是图片加载到屏幕后有个明显的淡入,我们可以通过<code>CATiledLayer</code>的<code>fadeDuration</code>属性来调整淡入速度,甚至直接不要这个淡入,但是这样没法根本上去出问题:因为<strong>图片从加载到准备绘制总是有个延时的，所以会导致滑动时图片的跳入</strong>.(不仅仅是<code>CATiledLayer</code>，我们使用<code>GCD</code>也是有这个问题的)</p>
 
-<p>我们当然可以用关键帧动画,修改<code>transform</code>属性，实时地重新计算每个时间点的每个变换效果。这是非常复杂的，不推荐</p>
+<p>即使使用上述我们讨论的所有加载图片和缓存的技术，有时候仍然会发现实时加载大图还是有问题。就和13章中提到的那样，iPad上一整个视网膜屏图片分辨率达到了2048x1536，而且会消耗12MB的RAM（未压缩）。第三代iPad的硬件并不能支持1/60秒的帧率加载，解压和显示这种图片。即使用后台线程加载来避免动画卡顿，仍然解决不了问题。</p>
 
-<p>推荐:<br/>
-我们可以<br/>
-对<code>transform.rotation</code>关键路径应用动画，而不是<code>transform</code>本身</p>
+<p>我们可以在加载的同时显示一个占位图片，但这并没有根本解决问题，我们可以做到更好。</p>
 
-<pre><code class="language-objectivec">CABasicAnimation *animation = [CABasicAnimation animation];
-animation.keyPath = @&quot;transform.rotation&quot;;
-animation.duration = 2.0;
-animation.byValue = @(M_PI * 2);
-[shipLayer addAnimation:animation forKey:nil];
-</code></pre>
+<h4 id="toc_5">分辨率交换</h4>
 
-<p>这样我们就可以简单使用角度而不用复杂的矩阵,就可以使用<code>byValue</code>了. 还可以额外使用<code>transform.position</code> 或者<code>transform.scale</code></p>
+<p>视网膜分辨率代表人眼在正常视角能分辨的最小像素尺寸.但是这只是对于静态像素来说的,当我们观察一个移动图片时,眼镜对细节不敏感,所以低分辨率图片和视网膜质量图片就没什么区别了.</p>
 
-<p><code>transform.rotation</code>属性其实并不存在,这是因为<code>CATransform3D</code>不是对象而是结构体，它就是一个 <code>CALayer</code> 用于处理动画变换的虚拟属性。当我们<code>transform.rotation</code>等虚拟属性做动画时，<code>Core Animation</code>自动地根据通过 <code>CAValueFunction</code> 来计算的值来更新<code>transform</code> 属性。<br/>
-<code>CAValueFunction</code>用于把我们赋给虚拟的 <code>transform.rotation</code>简单浮点值转换成真正的用于摆放图层的<code>CATransform3D</code> 矩阵值。可以通过设置 <code>CAPropertyAnimation</code> 的<code>valueFunction</code>属性来改变，于是你设置的函数将会覆盖默认的函数。</p>
+<p>因此我们需要快速加载和显示移动大图,可以在移动传送器的时候显示一张小图(或者低分辨率图片),然后在停止之后换为大图。这意味着我们需要存两份不同分辨率图片,不过我们在应用中为了支持retina和非retina屏,这本来就是要做的<br/>
+对于那些没有可用的低分辨率图片，我们可以动态将大图绘制到较小的CGContext,然后存到某处复用</p>
 
-<h3 id="toc_4">动画组</h3>
+<h3 id="toc_6">缓存</h3>
 
-<h4 id="toc_5">动画组</h4>
+<p>如果很多图片要显示 最好不要提前把所有图片都加载进来,而应该在移出屏幕后立即销毁。我们可以通过选择性缓存来避免来回滚动时图片的重复加载.</p>
 
-<p><code>属性动画</code>仅仅作用于单独的属性,<code>CAAnimationGroup</code>是另一个继承于 <code>CAAnimation</code> 的子类，它添加了一个 <code>animations</code> 数组的属性，用来组合别的动画。</p>
+<p>缓存原理:存储昂贵计算后的结果(或者从闪存或者网络加载的文件)在内存中,以便后续使用.缓存本来就是一个权衡过程,消耗内存和提高性能的权衡</p>
 
-<pre><code class="language-objectivec">CAKeyframeAnimation *animation1 = [CAKeyframeAnimation animation];
-animation1.keyPath = @&quot;position&quot;;
-animation1.path = bezierPath.CGPath;
-animation1.rotationMode = kCAAnimationRotateAuto;
-//create the color animation
-CABasicAnimation *animation2 = [CABasicAnimation animation];
-animation2.keyPath = @&quot;backgroundColor&quot;;
-animation2.toValue = (__bridge id)[UIColor redColor].CGColor;
-//create group animation
-CAAnimationGroup *groupAnimation = [CAAnimationGroup animation];
-groupAnimation.animations = @[animation1, animation2];
-groupAnimation.duration = 4.0;
-//add the animation to the color layer
-[colorLayer addAnimation:groupAnimation forKey:nil];
-</code></pre>
+<p>大多数情况下,iOS为我们做好了图片的缓存.</p>
 
-<h3 id="toc_6">过渡</h3>
+<h4 id="toc_7">+ imageNamed:方法</h4>
 
-<p><strong>属性动画只对图层的可动画属性起作用</strong>，所以如果要改变一个不能动画的属性（比如图片），或者从层级关系中添加或者移除图层，属性动画将不起作用。</p>
+<p>我们知道用这个方法加载图片可以立刻解压图片而不用等到绘制的时候,除此之外另外一个好处就是:<strong>它在内存中自动缓存了解压后的图片</strong>，即使你没有保留对他的任何使用</p>
 
-<p>因为隐式动画或者属性动画都只能对图层的可动画属性做动画,如果这个属性不可动画，这时候我们就需要<code>过渡</code>了。过渡动画会影响到整个图层的变化,它首先展示的之前的图层外观,然后通过一个交换过渡到新的外观.</p>
+<p>对于iOS中那些主要的图片(如图标、按钮和背景图片)，我们这是最简单有效的方式.在nib中的图片同样也是用这种机制。</p>
 
-<p>我们用<code>CATransition</code>来创建过渡动画,它也是<code>CAAnimation</code>子类,有一个<code>type</code>和<code>subtype</code>来标识变换效果。</p>
+<p>当然它并不是适用任何情况,有时候我们还是要实现自己的缓存机制:</p>
 
-<pre><code class="language-objectivec">//type:
-kCATransitionFade//默认,淡入淡出
-kCATransitionMoveIn //新图层从顶部滑入
-kCATransitionPush //推出老图层
-kCATransitionReveal //滑动出原图层，显示新外观,而不是滑动入新图层
-//这是系统提供的,我们也可以自定义过渡动画效果
-</code></pre>
+<ul>
+<li><code>[UIImage imageNamed:]</code>方法仅仅适用于在应用程序资源束目录下的图片，但是大多数图片都是从网络或者用户的相机中获取,这种方法也就不适用了</li>
+<li><code>[UIImage imageNamed:]</code>如果用来缓存那些大图,iOS系统很可能会移除这些图片来节省内存，在切换页面时性能就会下降。所以我们队传送器的图片使用单独的缓存机制把它和应用图片的生命周期解耦</li>
+<li><code>[UIImage imageNamed:]</code>缓存机制并不是公开,所以我们不能很好的控制它。例如不能检测图片是否已经缓存，不能设置缓存大小，也没法控制图片从缓存移除</li>
+</ul>
 
-<p><code>type</code>过渡类型都有一个默认的动画方向（从左侧滑入）,可以通过<code>subtype</code>控制方向</p>
+<h4 id="toc_8">自定义缓存</h4>
 
-<pre><code class="language-text">//subtype
-kCATransitionFromRight
-kCATransitionFromLeft//
-kCATransitionFromTop
-kCATransitionFromBottom
-</code></pre>
+<p>自定义一个缓存是非常困难的，需要涉及这些方面:</p>
 
-<p><strong>注意</strong><br/>
-与属性动画类似我们通过<code>-addAnimation:forKey:</code>方法，但是它对指定图层一次只能用一次<code>CATransition</code>，因此，过渡动画都会对它的键设置成“transition”，也就是常量 kCATransition 。</p>
+<ul>
+<li>选择一个合适的<code>缓存键 - 缓存键</code>用来做图片的唯一标识。如果实时创建图片,通常不好生成一个字符串来区分别的图片。在我们的图片传送器例子，我们可以用图片的文件名</li>
+<li>提前缓存 - 当然你如果我们生成和加载的代价很大,我们会想第一次用到的时候再去加载和缓存.提前加载的逻辑是应用内就有的,但是在我们的例子中这也很好实现，因为对于给定位置和方向我们很容易判读出下一张出现的图片。</li>
+<li>缓存失效 - 图片文件发生改变,我们需要怎么通知缓存更新呢。我们的例子中是存程序资源加载静态图片不需要考虑这些.对于那些可能会被修改和覆盖的图片来说我们通常给在图片缓存时打上一个时间戳当文件更新时来作比较</li>
+<li>缓存回收 - 当内存不够时,我们需要用合适的算法来清空缓存.幸运的是我们可以用苹果提供的叫<code>NSCache</code>通用解决方案</li>
+</ul>
 
-<h4 id="toc_7">隐式过渡</h4>
+<h4 id="toc_9">NSCache</h4>
 
-<p>过渡动画和属性动画类似也是有隐式,如果设置了<code>CALayer</code>的<code>contents</code>属性,但是对于与视图关联的图层隐式过渡动画是被禁用的,但是如果是自己创建的图层<code>contents</code>图片做的改动都会自动附上淡入淡出的动画。</p>
+<p><code>NSCache</code>和<code>NSDictionary</code>类似。你可以通过<code>- setObject:forKey:</code>和<code>- object:forKey:</code>方法分别来插入，检索。不同的是<code>NSCache</code>在系统低内存是自动丢弃存储对象</p>
 
-<p><strong>注意</strong><br/>
-虽然我们用<code>过渡动画</code>来对图层的某些不可动画属性做动画,但是也不是说过渡动画不能对可动画属性做动画.</p>
+<p><code>NSCache</code>用来判断何时丢弃对象的算法并没有在文档中给出，但是你可以使用<code>- setCountLimit:</code>方法设置缓存大小，以及<code>- setObject:forKey:cost:</code>来对每个存储的对象指定消耗的值来提供一些暗示。</p>
 
-<pre><code class="language-objectivec">    CATransition *transition = [CATransition animation];
-    transition.type = kCATransitionPush;
-    transition.subtype = kCATransitionFromRight;
-    [self.containerView.layer addAnimation:transition forKey:nil];
-    self.containerView.backgroundColor = [UIColor redColor];
-</code></pre>
+<p>指定消耗数值可以用来指定相对的重建成本。如果对大图指定一个大的消耗值，那么缓存就知道这些物体的存储更加昂贵，于是当有大的性能问题的时候才会丢弃这些物体。你也可以用<code>- setTotalCostLimit:</code>方法来指定全体缓存的尺寸。</p>
 
-<h4 id="toc_8">图层树动画</h4>
+<p><code>NSCache</code>是一个普遍的缓存解决方案</p>
 
-<p>添加过渡动画<code>不需要指定属性</code>,它涉及到整个图层树的改变,因此我们可以在即使不能准确得知图层改变什么的情况下对图层做动画.</p>
+<p>使用图片缓存和提前加载来扩展之前的传送器案例:</p>
 
-<p>确保<code>CATransition</code>添加到的图层在过渡动画发生时不会在树状结构中被移除，否则<code>CATransition</code>将会和图层一起被移除。一般来说，你只需要将动画添加到被影响图层的<code>superlayer</code>。</p>
-
-<h4 id="toc_9">自定义动画</h4>
-
-<p><code>UIView</code>也有提供过渡动画函数:<br/>
- <code>UIView +transitionFromView:toView:duration:options:completion:</code>和 <code>+transiti<br/>
-onWithView:duration:options:animations:</code></p>
-
-<p>这些过渡方法中<code>options</code>参数可以由如下常量指定：</p>
-
-<pre><code class="language-objectivec">UIViewAnimationOptionTransitionFlipFromLeft//以Y轴从左向右旋转
-UIViewAnimationOptionTransitionFlipFromRight
-UIViewAnimationOptionTransitionCurlUp//从上向下翻页效果
-UIViewAnimationOptionTransitionCurlDown
-UIViewAnimationOptionTransitionCrossDissolve//溶解渐变效果
-UIViewAnimationOptionTransitionFlipFromTop//以X轴从下向上旋转
-UIViewAnimationOptionTransitionFlipFromBottom
-</code></pre>
-
-<p>因此只需要根据要实现效果<code>CATransition</code>还是<code>UIView</code>的过渡方法就行了.</p>
-
-<p>如果真的要实现自定义的过渡效果:<br/>
-因为过渡动画的原则就是对原始的图层外观截图，然后添加一段动画，平滑过渡到图层改变之后那个截图的效果。如果我们会对图层截图,就可以用属性动画来代替过渡动画了.</p>
-
-<p>对图层截图的方法:<code>CALayer</code>有一个 <code>- renderInContext:</code>方法，可以通过把它绘制到<code>Core Graphics</code>的上下文中捕获当前内容的图片，然后在另外的视图中显示出来。如果我们把这个截屏视图置于原始视图之上，就可以遮住真实视图的所有变化，于是重新创建了一个简单的过渡效果。</p>
-
-<pre><code class="language-objectivec">- (IBAction)performTransition
+<pre><code class="language-objectivec">- (UIImage *)loadImageAtIndex:(NSUInteger)index
 {
-    //preserve the current view snapshot
-    UIGraphicsBeginImageContextWithOptions(self.view.bounds.size, YES, 0.0);
-    [self.view.layer renderInContext:UIGraphicsGetCurrentContext()];
-    UIImage *coverImage = UIGraphicsGetImageFromCurrentImageContext();
-    //insert snapshot view in front of this one
-    UIView *coverView = [[UIImageView alloc] initWithImage:coverImage];
-    coverView.frame = self.view.bounds;
-    [self.view addSubview:coverView];
-    //update the view (we&#39;ll simply randomize the layer background color)
-    CGFloat red = arc4random() / (CGFloat)INT_MAX;
-    CGFloat green = arc4random() / (CGFloat)INT_MAX;
-    CGFloat blue = arc4random() / (CGFloat)INT_MAX;
-    self.view.backgroundColor = [UIColor colorWithRed:red green:green blue:blue alpha:1.0];
-    //perform animation (anything you like)
-    [UIView animateWithDuration:1.0 animations:^{
-        //scale, rotate and fade the view
-        CGAffineTransform transform = CGAffineTransformMakeScale(0.01, 0.01);
-        transform = CGAffineTransformRotate(transform, M_PI_2);
-        coverView.transform = transform;
-        coverView.alpha = 0.0;
-    } completion:^(BOOL finished) {
-        //remove the cover view now we&#39;re finished with it
-        [coverView removeFromSuperview];
-    }];
+    //set up cache
+    static NSCache *cache = nil;
+    if (!cache) {
+        cache = [[NSCache alloc] init];
+    }
+    //if already cached, return immediately
+    UIImage *image = [cache objectForKey:@(index)];
+    if (image) {
+        return [image isKindOfClass:[NSNull class]]? nil: image;
+    }
+    //set placeholder to avoid reloading image multiple times
+    [cache setObject:[NSNull null] forKey:@(index)];
+    //switch to background thread
+    dispatch_async( dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+        //load image
+        NSString *imagePath = self.imagePaths[index];
+        UIImage *image = [UIImage imageWithContentsOfFile:imagePath];
+        //redraw image using device context
+        UIGraphicsBeginImageContextWithOptions(image.size, YES, 0);
+        [image drawAtPoint:CGPointZero];
+        image = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
+        //set image for correct image view
+        dispatch_async(dispatch_get_main_queue(), ^{ //cache the image
+            [cache setObject:image forKey:@(index)];
+            //display the image
+            NSIndexPath *indexPath = [NSIndexPath indexPathForItem: index inSection:0]; 
+            UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
+            UIImageView *imageView = [cell.contentView.subviews lastObject];
+            imageView.image = image;
+        });
+    });
+    //not loaded yet
+    return nil;
+    }
+    
+    //效果确实更好了
+</code></pre>
+
+<h3 id="toc_10">文件格式</h3>
+
+<p><strong>图片加载性能取决于加载大图的时间和解压小图的权衡</strong>.<br/>
+很多苹果文档都说<code>PNG</code>是<code>iOS</code>所有图片加载的最好算法，但这是<strong>极度误导的过时信息</strong>了</p>
+
+<p><code>PNG</code>图片使用的无损压缩算法可以比使用<code>JPEG</code>的图片做到更快地解压，但是由于闪存访问的原因，这些加载的时间并没有什么区别。</p>
+
+<p>经过测试:<br/>
+<code>PNG</code>和<code>JPEG</code>压缩算法作用于两种不同的图片类型：<code>JPEG</code>对于噪点大的图片效果很好；但是<code>PNG</code>更适合于扁平颜色，锋利的线条或者一些渐变色的图片。</p>
+
+<p><img src="media/14940350647350/14949362399011.jpg" alt=""/></p>
+
+<p>但是<code>JPEG</code>图片并不是所有情况都适用，如果图片需要透明效果或者压缩之后细节损失很多,就需要用别的格式了</p>
+
+<h4 id="toc_11">混合图片</h4>
+
+<p>对于包含透明的图片来说，最好是使用压缩透明通道的PNG图片和压缩RGB部分的JPEG图片混合起来加载。这就对任何格式都适用了，而且无论从质量还是文件尺寸还是加载性能来说都和PNG和JPEG的图片相近。</p>
+
+<pre><code class="language-objectivec">- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    //load color image
+    UIImage *image = [UIImage imageNamed:@&quot;Snowman.jpg&quot;];
+    //load mask image
+    UIImage *mask = [UIImage imageNamed:@&quot;SnowmanMask.png&quot;];
+    //convert mask to correct format
+    CGColorSpaceRef graySpace = CGColorSpaceCreateDeviceGray();
+    CGImageRef maskRef = CGImageCreateCopyWithColorSpace(mask.CGImage, graySpace);
+    CGColorSpaceRelease(graySpace);
+    //combine images
+    CGImageRef resultRef = CGImageCreateWithMask(image.CGImage, maskRef);
+    UIImage *result = [UIImage imageWithCGImage:resultRef];
+    CGImageRelease(resultRef);
+    CGImageRelease(maskRef);
+    //display result
+    self.imageView.image = result;
 }
 </code></pre>
 
-<p><strong>注意</strong><br/>
-<code>- renderInContext:</code>捕获了图层的图片和子图层，但是不能对子图层正确地处理变换效果，而且对视频和OpenGL内容也不起作用。但是用<code>CATransition</code>，或者用私有的截屏方式就没有这个限制了。</p>
+<p>我们不可能对每张图片都使用两个独立文件:<br/>
+我们可以用一个第三方的<a href="https://github.com/nicklockwood/JPNG">JPNG库</a>，对这个技术提供了开源可复用的实现,并且直接添加<code>+imageNamed:</code>和 <code>+imageWithContentsOfFile:</code>方法的支持</p>
 
-<h3 id="toc_10">动画过程中取消动画</h3>
+<h4 id="toc_12">JPEG 2000</h4>
 
-<p>添加动画:<code>-addAnimation:forKey:</code><br/>
-检索动画:<code>- (CAAnimation *)animationForKey:(NSString *)key</code><br/>
-<em>不支持动画过程中修改动画</em><br/>
-移除指定动画:<code>- (void)removeAnimationForKey:(NSString *)key;</code><br/>
-移除所有动画:<code>- (void)removeAllAnimations;</code></p>
+<p>除了JPEG和PNG之外iOS还支持别的一些格式，例如TIFF和GIF，但是由于他们质量压缩得更厉害，性能比JPEG和PNG糟糕的多，所以大多数情况并不用考虑。</p>
 
-<p><strong>注意</strong><br/>
-一般说来，动画在结束之后被自动移除，除非设置<code>removedOnCompletion</code>为<code>NO</code>，如果你设置动画在结束之后不被自动移除，那么当它不需要的时候你要手动移除它；否则它会一直存在于内存中，直到图层被销毁。</p>
+<p>苹果低调添加了对<code>JPEG 2000</code>图片格式的支持，虽然并不是很好的支持,但是<code>JPEG 2000</code>图片在（设备和模拟器）运行时会有效，而且比<code>JPEG</code>质量更好，同样也对透明通道有很好的支持。但是<code>JPEG 2000</code>图片在加载和显示图片方面明显要比<code>PNG</code>和<code>JPEG</code>慢得多，所以对图片大小比运行效率更敏感的时候，使用它是一个不错的选择。</p>
+
+<h4 id="toc_13">PVRTC</h4>
+
+<p>当前iOS设备都有用<code>Imagination Technologies PowerVR</code>图像芯片作为<code>GPU</code>，<code>PowerVR</code>芯片支持一种叫做<code>PVRTC</code>的标准图片压缩.</p>
+
+<p>和其他大多数图片格式不同,PVRTC不用提前解压就可以直接绘制到屏幕上。意味着在加载图片之后不需要有解压操作，所以内存中的图片比其他图片格式大大减少了(这取决于压缩设置，大概只有1/60那么大)</p>
+
+<p>弊端：</p>
+
+<ul>
+<li>虽然它加载时消耗的<code>RAM</code>少,但是文件比<code>JPEG</code>大，甚至比<code>PNG</code>还大</li>
+<li><code>PVRTC</code>必须是二维正方形</li>
+<li>质量并不好，尤其是透明图片</li>
+<li>PVRTC不能用Core Graphics绘制，也不能在普通的 UIImageView 显示，也不能直接用作图层的内容。你必须要用作OpenGL纹理加载PVRTC图片，然后映射到一对三角板来在 CAEAGLLayer 或者 GLKView 中显示。</li>
+<li>OpenGL纹理加载PVRTC图片开销很大</li>
+<li>使用的是不对称压缩算法,尽管立即解压 但是压缩过程很漫长</li>
+</ul>
+
+<p>如果愿意使用<code>OpenGL</code>,也愿意提前生成图片,那么可以用<code>PVRTC</code>，将提供相对于别的可用格式来说非常高效的加载性能。</p>
+
+<p>我们可以使用<a href="http://www.imgtec.com/powervr/insider/sdkdownloads">Imagination Technologies PVRTexTool</a>，</p>
+
+<pre><code class="language-objectivec">//终端将PNG转换为PVRTC命令
+/Applications/Imagination/PowerVR/GraphicsSDK/PVRTexTool/CL/OSX_x86/PVRTexToolCL -i {input_file_name}.png -o {output_file_name}.pvr -legacypvr -p -f PVRTC1_4 -q pvrtcbest
+</code></pre>
+
+<p>用<code>openGL</code>实现<code>UIImageView</code>功能： <a href="https://github.com/nicklockwood/GLView">GLView的库</a></p>
 
 
 		</div>
@@ -371,24 +497,24 @@ UIViewAnimationOptionTransitionFlipFromBottom
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -408,10 +534,10 @@ UIViewAnimationOptionTransitionFlipFromBottom
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -435,7 +561,7 @@ UIViewAnimationOptionTransitionFlipFromBottom
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -446,7 +572,7 @@ UIViewAnimationOptionTransitionFlipFromBottom
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -464,6 +590,15 @@ UIViewAnimationOptionTransitionFlipFromBottom
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -473,31 +608,31 @@ UIViewAnimationOptionTransitionFlipFromBottom
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

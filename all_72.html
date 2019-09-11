@@ -82,75 +82,111 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15471038798384.html">数组</a></h1>
-			<p class="meta"><time datetime="2019-01-10T15:04:39+08:00" 
-			pubdate data-updated="true">2019/1/10</time></p>
+		  	<h1 class="entry-title"><a href="15476219190783.html">Generator 生成器</a></h1>
+			<p class="meta"><time datetime="2019-01-16T14:58:39+08:00" 
+			pubdate data-updated="true">2019/1/16</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">Array.from()</h2>
+		  	<p>生成器方法使用<code>*</code>符号标识<br/>
+在方法内使用<code>yield</code>关键字标识每次返回的值 返回yield后的值<br/>
+yield后的值为执行next()方法的返回值<br/>
+next方法的参数即为上个yeild的赋值</p>
 
-<p><code>Array.from()</code>用于将可迭代对象(有Sysmbol.iterator接口对象)和类数组对象(有lengths属性对象)装换为真正的数组Array对象</p>
-
-<p><code>Array.from(obj, func)</code><br/>
-将类数组或者遍历对象转换为数组对象，再将每个数组元素调用func方法处理(类似map)</p>
-
-<pre><code class="language-javascript">//lis是个类数组对象
-const lis = document.querySelectorAll(&quot;li&quot;)
-
-const liName = Array.from(lis, li =&gt; li.textContent)
-console.log(liName)
-
-
-function sum() {
-    //arguments是类数组对象
-    return Array.from(arguments).reduce((pre, curr) =&gt; pre+curr, 0)
+<pre><code class="language-javascript">//使用*方法标识生成器函数
+function *listColors() {
+    yield &quot;red&quot;;
+    yield &quot;green&quot;;
+    yield &quot;blue&quot;;
 }
+const colors = listColors()
+console.log(colors)
 </code></pre>
 
-<h2 id="toc_1">Array.of()</h2>
+<p><img src="media/15476219190783/15476229485970.jpg" alt="" style="width:497px;"/></p>
 
-<p>Array.of()是为了弥补 Array(count)方法的歧义</p>
+<h2 id="toc_0">特性</h2>
 
-<pre><code class="language-javascript">Array(2) //[undefined, undefined]
-Array(2,7) //[2, 7]
+<h3 id="toc_1">yield可以使用计算值</h3>
 
-Array.of(2) //[2]
-Array.of(2, 7) //[2, 7]
+<p><code>yield</code>使用计算值</p>
+
+<pre><code class="language-javascript">function *listColors() {
+    let i = 0;
+    yield i
+    i++
+    yield i
+    i++
+    yield i
+    i++
+    yield i
+}
+const colors = listColors()
+console.log(colors)
 </code></pre>
 
-<h2 id="toc_2">数组ES6新方法</h2>
+<p><img src="media/15476219190783/15476233739670.jpg" alt="" style="width:602px;"/></p>
 
-<ol>
-<li><p>find()</p>
-<p>find(func) 参数为一个函数 返回bool 返回第一个函数返回为true的元素 找到符合条件的即会停止遍历</p>
-<pre><code class="language-javascript">const numbers = [11, 32, 24, 12]
-const result = numbers.find((element, index, array) =&gt; element == 11)<br/>
-console.log(result) // 11
-</code></pre></li>
-<li><p>findIndex()</p>
-<p>findIndex(func) 参数为一个函数 返回bool 返回第一个函数返回为true的元素的下标值 找到符合条件的即会停止遍历</p>
-<pre><code class="language-javascript">const numbers = [11, 32, 24, 12]
-const result = numbers.find((element, index, array) =&gt; element == 11)<br/>
-console.log(result) // 0
-</code></pre></li>
-<li><p>some()</p>
-<p>some(func) 返回bool 判断数组中是否至少有一个符合func条件 遇到符合条件的停止遍历</p></li>
-<li><p>every()</p>
-<p>every(func) 返回bool 判断数组中是否全部符合func条件 会遍历全部</p></li>
-</ol>
-
-<h2 id="toc_3">Array常用方法</h2>
-
-<ol>
-<li><p>slice<br/>
-<code>arr.slice(fromIndex, toIndex)</code><br/>
-获取数组从开始索引到结束索引切片后的子数组</p>
 <blockquote>
-<p>如果结束索引大于数组长度,就获取到数组结尾停止</p>
-</blockquote></li>
-<li></li>
-</ol>
+<p>当遍历结束时,colors遍历器方法状态status 从<code>suspended</code>变为<code>closed</code></p>
+</blockquote>
+
+<h3 id="toc_2">遍历数组</h3>
+
+<pre><code class="language-javascript">const dataArray = [&quot;apple&quot;, &quot;banana&quot;, &quot;mango&quot;]
+function *fruitLoop() {
+    for (const value of dataArray) {
+        yield value
+    }
+}
+
+const fruit = fruitLoop()
+</code></pre>
+
+<p><img src="media/15476219190783/15476238330105.jpg" alt="" style="width:404px;"/></p>
+
+<h3 id="toc_3">不调用next方法 不会执行函数内容,调用next()方法只会执行到yield语句结束</h3>
+
+<pre><code class="language-javascript">function *fruitLoop() {
+    console.log(dataArray)
+    for (const value of dataArray) {
+        yield value
+        console.log(&quot;这是&quot;+value)
+    }
+}
+
+const fruit = fruitLoop() //此时并不会log array的信息
+fruit.next() //此时才会执行log array而不会logvalue值 
+fruit.next(） //此时才会logvalue值
+</code></pre>
+
+<h3 id="toc_4">next方法的参数 即为yield的返回值</h3>
+
+<p>yield后的值为执行next()方法的返回值<br/>
+next方法的参数为yeild的语句的赋值</p>
+
+<pre><code class="language-javascript">let userName 
+function* loopFunc() {
+    //并不会把&quot;fk&quot;+&quot;wtt&quot; 返回给userName 
+    //把下一个next方法的参数赋值给 username
+    userName = yield &quot;fk&quot;+&quot;wtt&quot;
+    console.log(&quot;执行结束&quot;)
+}
+
+const loopTest = loopFunc()
+//result 为{value: &quot;fkwtt&quot;, done: false}
+const result = loopTest.next() //此时userName 仍为undefined
+//{value: undefined, done: true}
+const result2 = loopTest.next(&quot;lyy&quot;)//此时userName为&quot;lyy&quot;
+//执行结束
+            
+</code></pre>
+
+<blockquote>
+<p>只有一个yield 但是需要两个next才能使函数执行结束</p>
+</blockquote>
+
+<h2 id="toc_5">例子</h2>
 
 
 		</div>
@@ -173,24 +209,24 @@ console.log(result) // 0
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -210,10 +246,10 @@ console.log(result) // 0
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -237,7 +273,7 @@ console.log(result) // 0
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -248,7 +284,7 @@ console.log(result) // 0
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -266,6 +302,15 @@ console.log(result) // 0
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -275,31 +320,31 @@ console.log(result) // 0
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

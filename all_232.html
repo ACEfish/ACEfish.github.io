@@ -82,134 +82,394 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14939015823586.html">高效绘图</a></h1>
-			<p class="meta"><time datetime="2017-05-04T20:39:42+08:00" 
-			pubdate data-updated="true">2017/5/4</time></p>
+		  	<h1 class="entry-title"><a href="14978615246204.html">集合类型</a></h1>
+			<p class="meta"><time datetime="2017-06-19T16:38:44+08:00" 
+			pubdate data-updated="true">2017/6/19</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</p>
+		  	<p><code>Swift</code>语言提供<code>Array</code>(有序数据集)、<code>Set</code>(无序不重复数据集)和<code>Dictionary</code>(无序键值对)三种基本的集合类型用来存储集合数据</p>
 
-<p>关于绘制的性能<br/>
-提高绘制性能或者减少需要绘制的数量</p>
+<p><code>Arrays</code>、<code>Sets</code>和<code>Dictionaries</code>中存储的数据值类型必须明确<br/>
+Swift 的Arrays、Sets和Dictionaries类型被实现为<code>泛型集合</code>。</p>
 
-<h3 id="toc_0">软件绘图</h3>
+<blockquote>
+<p>数组类型<code>Array&lt;Int&gt;</code> 简化形式 <code>[Int]</code><br/>
+集合类型<code>Set&lt;Int&gt;</code> 无简化形式<br/>
+字典类型<code>Dictionary&lt;Int, String&gt;</code> 简化 <code>[Int: String]</code><br/>
+Array继承<code>RangeReplaceableCollection</code>协议 因此可以使用我们前面说的<code>index索引</code>和<code>insert方法</code><br/>
+创建空的集合数据 就是 <code>类型()</code></p>
+</blockquote>
 
-<p>在<code>Core Animation</code>中的绘图通常是指<strong>软件绘图</strong><br/>
-在iOS中，软件绘图通常是由<code>Core Graphics</code>框架完成来完成。但是，在一些必要的情况下，相比<code>Core Animation</code>和<code>OpenGL</code>，<code>Core Graphics</code>要慢了不少。</p>
+<h2 id="toc_0">集合可变性</h2>
 
-<p>软件绘图不仅效率很低 而且很耗内存.CALayer只需要和自己相关的内存,只有他的寄宿图会消耗一点内存控件，即使直接赋给<code>contents</code>属性一张图片,也不需要增加额外的照片存储大小,如果相同的一张图片被多个图层作为<code>contents</code>属性，那么他们将会共用同一块内存，而不是复制内存块。</p>
+<p>当集合为变量，集合是可变的,当不需要集合改变时建议创建为不可变的let,有利于优化</p>
 
-<p><strong>但是如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</strong></p>
+<h2 id="toc_1">数组Array</h2>
 
-<p><strong>绘图代价很大，尽量避免重绘你的视图</strong></p>
+<p>存储同一类型值,可以重复</p>
 
-<h3 id="toc_1">矢量图形</h3>
+<blockquote>
+<p>注意</p>
 
-<p>我们用的矢量绘图包含:</p>
+<p>Swift 的Array类型被桥接到Foundation中的NSArray类</p>
 
-<ul>
-<li>任意多边形</li>
-<li>斜线或曲线</li>
-<li>文本</li>
-<li>渐变</li>
-</ul>
+<h3 id="toc_2">创建空数组</h3>
+</blockquote>
 
-<p>实现一个划线应用:将用户的触摸手势转换成一个 UIBezierPath 上的点，然后绘制成视图。</p>
+<pre><code class="language-swift">var someInts = [Int]()//创建空数组
+通过构造函数的类型，数组可以推断为[Int]
+//创建特定数据类型的空数组
+var someInt1 = [[Int]]()//创建类型为整形数组的空数组
+</code></pre>
 
-<p>1.用<code>Core Graphic</code>基于<code>drawRect</code>绘制</p>
+<blockquote>
+<p>数组的类型表达为 [Int]  表示一个类型为[Int]的数组</p>
+</blockquote>
 
-<pre><code class="language-objectivec">- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
-{
-    CGPoint point = [[touches anyObject] locationInView:self];
-    [self.path addLineToPoint:point];
-    [self setNeedsDisplay];
-}
-- (void)drawRect:(CGRect)rect
-{
-    [[UIColor clearColor] setFill];
-    [[UIColor redColor] setStroke];
-    [self.path stroke];
+<pre><code class="language-swift">someInts.append(3)
+//可以从上面推断出数组为Int类型数组,因此可以直接创建空数组
+someInts = []
+//直接创建空数组
+</code></pre>
+
+<h3 id="toc_3">带有默认值的数组</h3>
+
+<p>创建特定大小并且所有数据都被默认构造数组方法</p>
+
+<pre><code class="language-swift">var threeDoubles = Array(repeating: 0.0, count: 3)
+// threeDoubles 是一种 [Double] 数组，等价于 [0.0, 0.0, 0.0]
+</code></pre>
+
+<h3 id="toc_4">通过两个数组相加创建一个数组</h3>
+
+<p>可以用<code>+</code>将两种相同数据类型数组组合为一个新的数组,新的数组类型与这两个数组类型相同</p>
+
+<pre><code class="language-swift">var anotherThreeDoubles = Array(repeating: 2.5, count: 3)
+// anotherThreeDoubles 被推断为 [Double]，等价于 [2.5, 2.5, 2.5]
+
+var sixDoubles = threeDoubles + anotherThreeDoubles
+// sixDoubles 被推断为 [Double]，等价于 [0.0, 0.0, 0.0, 2.5, 2.5, 2.5]
+</code></pre>
+
+<h3 id="toc_5">用数组字面量构造数组</h3>
+
+<p>用数组字面量来进行数组构造,这是用一个或者多个数值构造数组</p>
+
+<pre><code class="language-swift">[value 1, value 2, value 3]
+// shoppingList 已经被构造并且拥有两个初始项。
+var shoppingList: [String] = [&quot;Eggs&quot;, &quot;Milk&quot;]
+var shoppingList = [&quot;Eggs&quot;, &quot;Milk&quot;] //可以不用声明类型 可以推断为String类型
+</code></pre>
+
+<h3 id="toc_6">访问和修改数组</h3>
+
+<ol>
+<li>使用数组的只读<code>count</code>属性来获取数组中数据项数量</li>
+<li><p>用布尔<code>isEmpty</code>检查数组是否为空 即<code>count</code>属性是否为<code>0</code></p>
+<pre><code class="language-swift">if shoppingList.isEmpty {
+    print(&quot;The shopping list is empty.&quot;)<br/>
+} else {<br/>
+    print(&quot;The shopping list is not empty.&quot;)<br/>
+}<br/>
+// 打印“The shopping list is not empty.”（shoppinglist 不是空的）
+</code></pre></li>
+<li><p>使用<code>append(_:)</code>方法在数组后添加一个新的数组项</p>
+<pre><code class="language-swift">shoppingList.append(&quot;Flour&quot;) //只能添加一项
+</code></pre></li>
+<li><p>用加法赋值运算符<code>+=</code>在数组后添加一个或多个相同类型数据项<br/>
+<code>shoppingList += [&quot;Chocolate Spread&quot;, &quot;Cheese&quot;, &quot;Butter&quot;]</code></p></li>
+<li><p>用下标来获取数组中数据项</p>
+<pre><code class="language-swift">var firstItem = shoppingList[0]//获取数组中第一项
+</code></pre></li>
+<li><p>用下标改变一个或多个下标索引对应色数据值</p>
+<pre><code class="language-swift">shoppingList[0] = &quot;Six eggs&quot;//
+shoppingList[4...6] = [&quot;Bananas&quot;, &quot;Apples&quot;]//改变一系列值 即使新数据和原 有数据的数量不一致
+</code></pre>
+<blockquote>
+<p>注意:</p>
+<p>不能用下标访问的形式在数组尾部添加新项</p>
+</blockquote></li>
+<li><p>用<code>insert(_:at:)</code>方法在某个索引之前添加新的数据项</p></li>
+<li><p>移除<br/>
+使用<code>remove(at:)</code>方法来移除数组中的某一项,并返回被移除的值</p>
+<pre><code class="language-swift">let mapleSyrup = shoppingList.remove(at: 0)
+// 索引值为0的数据项被移除<br/>
+// mapleSyrup 常量的值等于被移除数据项“Maple Syrup”
+</code></pre>
+<p><code>removeLast()</code>移除数组最后一项<br/>
+<code>removeFirst()</code>移除数组最后一项</p>
+<blockquote>
+<p>注意</p>
+<p>通过约见执行访问或修改数组数据，会引起运行期错误</p>
+</blockquote></li>
+</ol>
+
+<h3 id="toc_7">遍历数组</h3>
+
+<p>用<code>for-in</code>进行遍历</p>
+
+<pre><code class="language-swift">for item in shoppingList {
+    print(item)//单独的变量或常量可以直接print
 }
 </code></pre>
 
-<p><code>[self setNeedsDisplay];</code>可以重绘视图,再次走<code>drawRect</code>方法,但是如果一直重绘而且绘制工作量增大就会导致帧数下降.</p>
+<p>用数组的<code>enumerated()</code>,在遍历时获取每个数据项的索引和值,返回由索引和数组值组成的元组</p>
 
-<p>2.用<code>CAShaperLayer</code>绘制</p>
-
-<pre><code class="language-objectivec">+ (Class)layerClass
-{
-    return [CAShapeLayer class];
+<pre><code class="language-swift">for (index, value) in shoppingList.enumerated() {
+    print(&quot;Item \(String(index + 1)): \(value)&quot;)
 }
+/*
+    shoppingList.enumerated()返回就是一个sorted后 以元组形式返回
+*/
 </code></pre>
 
-<p><code>Core Animation</code>为这些图层类型提供了专门的类，并提供了硬件支持,比如<code>CAShapeLayer</code>可以绘制多边形，直线和曲线。 <code>CATextLayer</code>可以绘制文本。<code>CAGradientLayer</code>用来绘制渐变。这些总体上都比<code>Core Graphics</code>更快，同时他们也避免了创造一个寄宿图。(<strong>这些图层是CA提供的,而我们的绘图用的是CG</strong>)</p>
+<blockquote>
+<p>数组也继承了<code>collection</code>协议</p>
+</blockquote>
 
-<p>因此对于绘制矢量图层我们可以重写<code>UIView</code>的<code>layer</code>然后只需要将绘制的<code>path</code>赋值<code>CAShapeLayer</code>的<code>path</code>即可绘制，虽然性能依然下降但不明显几乎感觉不到帧率差异</p>
+<h2 id="toc_8">集合Set</h2>
 
-<h3 id="toc_2">脏矩形</h3>
+<p>存储相同类型并且没有确定顺序的值</p>
 
-<p>有时候我们没办法用<code>CAShapeLayer</code>等图层来代替<code>Core Graphics</code>，对于上面的例子,我们为了进一步提高性能,我们用一个“线刷”图片粘贴到用户手指触碰的地方</p>
+<blockquote>
+<p>注意</p>
 
-<p>我们如果在用户手指移动就重绘视图将图片粘贴到用户手指移动过的所有点,这样绘制越多就越慢,仍会引起性能问题</p>
+<p>Swift的Set类型被桥接到Foundation中的NSSet类</p>
+</blockquote>
 
-<p>为了减少不必要的绘制,Mac OS和iOS设备将会把屏幕区分为需要重绘的区域和不需要重绘的区域。<strong>那些需要重绘的部分被称作『脏区域』。</strong>为了方便我们通常指出包含需要重绘的视图的矩形位置,就是<strong>脏矩形</strong></p>
+<h3 id="toc_9">集合类型的哈希值</h3>
 
-<p>只改变了视图的部分区域的,重绘整个整个寄宿图就太浪费了,我们可以通过提供重绘区域.</p>
+<p>一个类型为了存储在集合中，该类型必须是可哈希化的,即该类型必须提供一个方法来计算它的哈希值(哈希值是<code>Int</code>类型的)，相等对象的哈希值必须相同(<code>a==b因此a.hashValue == b.hashValue</code>).</p>
 
-<p>当检测到需要重绘的区域时通过<code>setNeedsDisplayInRect:</code>标记,这样就会在一次试图刷新时调用调用视图的<code>- drawRect:</code>（或图层代理的<code>- drawLayer:inContext:</code>方法）</p>
+<p>Swift 的所有基本类型(比如<code>String , Int , Double 和 Bool</code>)默认都是可哈希化的，可以作为集合的值的类型或者字典的键的类型。没有关联值的枚举成员值默认也是可哈希化的。</p>
 
-<p>传入<code>- drawLayer:inContext:</code>的<code>CGContext</code>参数会自动被裁切以适应对应的矩形。为了确定矩形的尺寸大小，你可以用<code>CGContextGetClipBoundingBox()</code>方法来从上下文获得大小。调用<code>- drawRect()</code>会更简单，因为<code>CGRect</code>会作为参数直接传入。</p>
+<blockquote>
+<p>注意</p>
 
-<p>当然如果你的裁剪逻辑相当复杂,那还是是让<code>Core Graphics</code>来为你重绘吧，</p>
+<p>可以自定义一个遵循<code>Hashable</code>协议的自定义类型，作为集合值类型或者字典键的类型。这个协议需要提供一个<code>Int</code>的可读属性<code>hashValue</code>.<code>hashValue</code>属性返回的值并不需要在同一程序的不同执行周期或者不同程序之间保持相同。<br/>
+其次，因为<code>Hashable</code>协议符合<code>Equatable</code>协议，所以遵循该协议的类型也必须提供一个&quot;是否相等&quot;运算符(<code>==</code>)的实现。</p>
+</blockquote>
 
-<pre><code class="language-objectivec">- (void)addBrushStrokeAtPoint:(CGPoint)point
-{
-    //add brush stroke to array
-    [self.strokes addObject:[NSValue valueWithCGPoint:point]];
-    //set dirty rect
-    [self setNeedsDisplayInRect:[self brushRectForPoint:point]];
-}
-- (CGRect)brushRectForPoint:(CGPoint)point
-{
-    return CGRectMake(point.x - BRUSH_SIZE/2, point.y - BRUSH_SIZE/2, BRUSH_SIZE, BRUSH_SIZE);
-}
-- (void)drawRect:(CGRect)rect
-{
-    //redraw strokes
-    for (NSValue *value in self.strokes) {
-        //get point
-        CGPoint point = [value CGPointValue];
-        //get brush rect
-        CGRect brushRect = [self brushRectForPoint:point];
-        //only draw brush stroke if it intersects dirty rect
-        if (CGRectIntersectsRect(rect, brushRect)) {
-        //draw brush stroke
-        [[UIImage imageNamed:@&quot;Chalk.png&quot;] drawInRect:brushRect];
-        }
+<h3 id="toc_10">集合类型写法/表达</h3>
+
+<p>Swift 中的<code>Set</code>类型被写为 <code>Set&lt;Element&gt;</code>(<code>Element</code>表示<code>Set</code>中允许存储的类型)，它并没有类似数组的等价简化形式</p>
+
+<h3 id="toc_11">空的集合</h3>
+
+<pre><code class="language-swift">var letters = Set&lt;Character&gt;()
+</code></pre>
+
+<pre><code class="language-swift">letters.insert(&quot;a&quot;)//通过这 我们可以推断出为一个Set&lt;Character&gt;类型集合
+letters = []//我们可以直接设置其为空的Set  其类型还是Set&lt;Character&gt; 
+</code></pre>
+
+<h3 id="toc_12">用数组字面量创建集合</h3>
+
+<pre><code class="language-swift">//有三个初始值
+var favoriteGenres: Set&lt;String&gt; = [&quot;Rock&quot;, &quot;Classical&quot;, &quot;Hip hop&quot;]
+</code></pre>
+
+<p>我们用数组字面量的形式初始化这个<code>Set</code>.我们从数组字面量没有办法推断出为<code>Set</code>类型,因此必须显示声明,但是可以推断出Set中元素类型,因此我们可以简化为</p>
+
+<pre><code class="language-swift">var favoriteGenres: Set = [&quot;Rock&quot;, &quot;Classical&quot;, &quot;Hip hop&quot;]
+</code></pre>
+
+<h3 id="toc_13">访问和修改一个集合</h3>
+
+<p>1.只读属性<code>count</code>获取集合中个数</p>
+
+<p>2.布尔属性<code>isEmpty</code>作为一个缩写形式去检查<code>count</code>属性是否为 0</p>
+
+<p>3.<code>insert(_:)</code>方法来添加一个新元素</p>
+
+<pre><code class="language-swift">favoriteGenres.insert(&quot;Jazz&quot;)
+/**
+    返回一个元组(inserted: Bool, memberAfterInserted: String)
+*/
+</code></pre>
+
+<p>4.<code>remove(_:)</code>方法去删除一个元素<br/><br/>
+    如果删除的是集合中的一个元素，则删除并返回它，但是如果集合中不包含它，就返回<code>nil</code><br/>
+    <code>removeAll()</code>删除所有元素</p>
+
+<p>5.<code>contains(_:)</code>方法去检查<code>Set</code>中是否包含一个特定的值</p>
+
+<pre><code class="language-swift">    if favoriteGenres.contains(&quot;Funk&quot;) {
+        print(&quot;I get up on the good foot.&quot;)
+    } else {
+        print(&quot;It&#39;s too funky in here.&quot;)
     }
+</code></pre>
+
+<p>6.用<code>for-in</code>遍历</p>
+
+<pre><code class="language-swift">    for genre in favoriteGenres {
+        print(&quot;\(genre)&quot;)
+    }
+</code></pre>
+
+<p>7.排序<br/>
+<code>Set</code>类型没有确定的顺序，为了按照特定顺序来遍历一个<code>Set</code>中的值可以使用<code>sorted()</code>方法，它将返回一个有序数组，这个数组的元素排列顺序由操作符<code>&#39;&lt;&#39;</code>对元素进行比较的结果来确定</p>
+
+<pre><code class="language-swift">    for genre in favoriteGenres.sorted() {
+        print(&quot;(genre)&quot;)
+    }
+</code></pre>
+
+<blockquote>
+<p>sorted()后返回的是数组<br/>
+sorted()返回排序后数组 数据源不变 sort()不返回数组将数据源变为排序后的数组(Set没有这方法,Array有)</p>
+</blockquote>
+
+<h2 id="toc_14">集合操作</h2>
+
+<h3 id="toc_15">基本集合操作</h3>
+
+<p>用<code>intersection(_:)</code>计算两个集合相交部分 ---- 交集<br/>
+用<code>symmetricDifference(_:)</code>计算两个集合中不同部分 ---- <br/>
+用<code>union(_:)</code>方法合并两个集合 --- 并集<br/>
+用<code>subtracting(_:)</code>方法根据在本集合不在另外集合中的部分 --- 补集</p>
+
+<pre><code class="language-swift">let oddDigits: Set = [1, 3, 5, 7, 9]
+let evenDigits: Set = [0, 2, 4, 6, 8]
+let singleDigitPrimeNumbers: Set = [2, 3, 5, 7]
+oddDigits.union(evenDigits).sort()
+// [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+oddDigits.intersection(evenDigits).sorted()
+// []
+oddDigits.subtracting(singleDigitPrimeNumbers).sorted()
+// [1, 9]
+oddDigits. symmetricDifference(singleDigitPrimeNumbers).sorted()
+// [1, 2, 9]
+</code></pre>
+
+<h3 id="toc_16">集合成员关系以及相等</h3>
+
+<ol>
+<li>用<code>==</code>判断两个集合是否包含完全相同的值</li>
+<li>用<code>isSubset(of:)</code>判断是不是两外一个集合的子集</li>
+<li>用<code>isSuperset(of:)</code>判断另外一个集合是不是本集合的子集</li>
+<li>用<code>isStrictSubset(of:)</code>或<code>isStrictSuperset(of:)</code>判断一个集合是否是另外一个集合的子集合或者父集合并且两个集合并不相等</li>
+<li>用<code>isDisjoint(with:)</code>判断两个集合是否没有交集（没有相同的值）</li>
+</ol>
+
+<h2 id="toc_17">字典</h2>
+
+<p>存储多个相同类型的值的容器</p>
+
+<h3 id="toc_18">字典类型表达语法</h3>
+
+<p><code>Swift</code>的字典使用<code>Dictionary&lt;Key, Value&gt;</code>定义，<code>Key</code>是键的类型,<code>Value</code>是值所对应的数据类型<br/>
+<code>[Key: Value]</code>通常我们使用这种简化形式</p>
+
+<blockquote>
+<p>一个字典的 Key 类型必须遵循<code>Hashable</code>协议，就像<code>Set</code>的值类型,因为在字典中键也是唯一的,需要利用哈希值进行判断相等</p>
+</blockquote>
+
+<h3 id="toc_19">创建一个空字典</h3>
+
+<pre><code class="language-swift">var namesOfIntegers = [Int: String]()//创建一个[Int: String] 类型的空字典
+</code></pre>
+
+<p>如果上下文已经知道类型信息</p>
+
+<pre><code class="language-swift">namesOfIntegers = [:]//创建一个[Int: String] 类型的空字典
+</code></pre>
+
+<h3 id="toc_20">用字典字面量创建字典</h3>
+
+<pre><code class="language-swift">var airports: [String: String] = [&quot;YYZ&quot;: &quot;Toronto Pearson&quot;, &quot;DUB&quot;: &quot;Dublin&quot;]
+//因为swift可以推断出为[String : String]类型 因此可以不同显示声明
+var airports = [&quot;YYZ&quot;: &quot;Toronto Pearson&quot;, &quot;DUB&quot;: &quot;Dublin&quot;]
+</code></pre>
+
+<h3 id="toc_21">访问和修改字典</h3>
+
+<p>1.只读属性<code>count</code>来获取字典的数据项数量</p>
+
+<pre><code class="language-swift">print(&quot;The dictionary of airports contains (airports.count) items.&quot;)
+// 打印 &quot;The dictionary of airports contains 2 items.&quot;（这个字典有两个数据项）
+</code></pre>
+
+<p>2.<code>isEmpty</code>作为一个缩写形式去检查<code>count</code>属性是否为 0 </p>
+
+<p>3.可以在字典中使用下标语法来添加新的数据项<br/>
+4.在字典中使用下标语法来改变特定键对应的值</p>
+
+<pre><code class="language-swift">airports[&quot;LHR&quot;] = &quot;London&quot;
+//若不存在键&quot;LHR&quot; 即为添加新的数据项 否则为改变键对应值
+</code></pre>
+
+<p>5.<code>updateValue(_:forKey:)</code>方法作为替代下标语法的方式，可以设置或者更新特定键对应的值(当存在键时即为更新值 否则为设置值)<br/>
+<code>updateValue(_:forKey:)</code>方法会返回更新值之前的原值，所以对应值的类型的可选值(因为可能没有oldvalue)，可以根据此来判断更新是否成功</p>
+
+<pre><code class="language-swift">if let oldValue = airports.updateValue(&quot;Dublin Airport&quot;, forKey: &quot;DUB&quot;) {
+    print(&quot;The old value for DUB was (oldValue).&quot;)
+}
+// 输出 &quot;The old value for DUB was Dublin.&quot;
+</code></pre>
+
+<p>6.下标语法来在字典中检索特定键对应的值,因为可能不存在这个键，因此返回的为可选类型</p>
+
+<pre><code class="language-swift">if let airportName = airports[&quot;DUB&quot;] {
+    print(&quot;The name of the airport is (airportName).&quot;)
+} else {
+    print(&quot;That airport is not in the airports dictionary.&quot;)
 }
 </code></pre>
 
-<h3 id="toc_3">异步绘制</h3>
+<p>7.通过给某个键的对应值赋值为<code>nil</code>来从字典里移除一个键值对</p>
 
-<p><code>UIKit</code>的单线程天性意味着寄宿图通畅要在主线程上更新，这意味着绘制会打断用户交互，甚至让整个<code>app</code>看起来处于无响应状态。</p>
+<pre><code class="language-swift">airports[&quot;APL&quot;] = &quot;Apple Internation&quot;
+// &quot;Apple Internation&quot; 不是真的 APL 机场, 删除它
+airports[&quot;APL&quot;] = nil
+// APL 现在被移除了
+</code></pre>
 
-<p>为了可以避免用户等待绘制：</p>
+<p>8.<code>removeValue(forKey:)</code>也可以用来在字典中移除键值对<br/>
+在键值对存在的情况下会移除该键值对并且返回被移除的值 或者在没有值的情况下返回<code>nil</code></p>
 
-<h4 id="toc_4">CATiledLayer</h4>
+<pre><code class="language-swift">if let removedValue = airports.removeValue(forKey: &quot;DUB&quot;) {
+    print(&quot;The removed airport&#39;s name is (removedValue).&quot;)
+} else {
+    print(&quot;The airports dictionary does not contain a value for DUB.&quot;)
+}
+</code></pre>
 
-<p><code>CATiledLayer</code>除了将图层再次分割成独立更新的小块外<br/>
-<code>CATiledLayer</code>还有一个有趣的特性：在多个线程中为每个小块同时调用<code>- drawLayer:inContext:</code>方法。<br/>
-这就避免了阻塞用户交互而且能够利用多核心新片来更快地绘制。只有一个小块的<code>CATiledLayer</code>是实现异步更新图片视图的简单方法。</p>
+<h3 id="toc_22">字典遍历</h3>
 
-<h4 id="toc_5">drawsAsynchronously</h4>
+<p><code>for-in</code>遍历字典中的键值对，字典中的数据项都以<code>(key, value)</code>元组形式返回</p>
 
-<p>苹果为<code>CALayer</code>引入了这个令人好奇的属性，<code>drawsAsynchronously</code>属性对传入<code>-drawLayer:inContext:</code>的<code>CGContext</code>进行改动，允许<code>CGContext</code>延缓绘制命令的执行以至于不阻塞用户交互。</p>
+<pre><code class="language-swift">for (airportCode, airportName) in airports {
+    print(&quot;\(airportCode): \(airportName)&quot;)
+}
+</code></pre>
 
-<p>它与<code>CATiledLayer</code>使用的异步绘制并不相同。它自己的 <code>- drawLayer:inContext:</code>方法只会在主线程调用，但是<code>CGContext</code>并不等待每个绘制命令的结束。相反地，它会将命令加入队列，当方法返回时，在后台线程逐个执行真正的绘制。</p>
+<p>通过访问<code>keys</code>或者<code>values</code>属性，我们也可以遍历字典的键或者值</p>
 
-<p>根据苹果的说法。这个特性在需要频繁重绘的视图上效果最好（比如我们的绘图应用，或者诸如UITableViewCell 之类的），对那些只绘制一次或很少重绘的图层内容来说没什么太大的帮助。</p>
+<pre><code class="language-swift">for airportCode in airports.keys {
+    print(&quot;Airport code: (airportCode)&quot;)
+}
+for airportName in airports.values {
+print(&quot;Airport name: (airportName)&quot;)
+}
+</code></pre>
+
+<p>我们可以直接使用<code>keys</code>或者<code>values</code>属性构造一个新数组</p>
+
+<pre><code class="language-swift">let airportCodes: [String] = airports.keys
+// airportCodes 是 [&quot;YYZ&quot;, &quot;LHR&quot;]
+let airportNames: [String] = airports.values
+// airportNames 是 [&quot;Toronto Pearson&quot;, &quot;London Heathrow&quot;]
+let airportCodes = airports.keys.sorted()
+
+//创建键或者值的新数组
+</code></pre>
+
+<blockquote>
+<p><code>Swift</code>的字典类型是无序集合类型。为了以特定的顺序遍历字典的键或值，可以对字典的<code>keys</code>或<code>values</code>属性使用<code>sorted()</code>方法</p>
+</blockquote>
 
 
 		</div>
@@ -232,24 +492,24 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -269,10 +529,10 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -296,7 +556,7 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -307,7 +567,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -325,6 +585,15 @@ $(document).ready(function(event) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -334,31 +603,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

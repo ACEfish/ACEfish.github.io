@@ -1,0 +1,562 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>
+    
+  第三方项目学习 - ACEfish-Blog
+  
+
+  </title>
+  <meta name="author" content="">
+  <meta name="description" content="学习记录">
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link href="asset/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+  <script src="asset/js/modernizr-2.0.js"></script>
+  <script src="asset/js/jquery.min.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/solarized_light.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  <style type="text/css">
+  .cat-children-p{ padding: 6px 0px;}
+  .hljs{background: none;}
+  </style>
+  <script type="text/javascript">
+  var isAddSildbar = true;
+  </script>
+  <script src="asset/js/octopress.js" type="text/javascript"></script>
+</head>
+<script type="text/javascript">
+//链接新开窗口
+function addBlankTargetForLinks () {
+  $('a[href^="http"]').each(function(){
+      $(this).attr('target', '_blank');
+  });
+}
+$(document).ready(function(event) {
+  addBlankTargetForLinks();
+});
+</script>
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="index.html">ACEfish-Blog</a></h1>
+  
+    <h2>学习记录</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:acefish.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+
+  <li id=""><a target="_self" href="index.html">首页</a></li>
+
+  <li id=""><a target="_self" href="archives.html">归档</a></li>
+
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content"> 
+<div class="blog-index">
+
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15459662586152.html">ReactiveObjC</a></h1>
+			<p class="meta"><time datetime="2018-12-28T11:04:18+08:00" 
+			pubdate data-updated="true">2018/12/28</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">基础知识</h2>
+
+<p>常用的 <code>RACSignal</code>为冷信号  <code>RACSubject</code>为热信号<br/>
+冷信号 即为订阅之后才开始执行的消息，订阅几次 就执行几次<br/>
+热信号 为创建信号就开始执行的消息 无需订阅</p>
+
+<h2 id="toc_1">常用类</h2>
+
+<h3 id="toc_2">RCASignal信号</h3>
+
+<pre><code class="language-objectivec">//1.创建信号 
+
+//可以在创建信号中立即发送信号 但是不能在block结束返回前销毁该信号
+RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+        [subscriber sendNext:@&quot;发送的消息内容&quot;];
+        return nil;
+}];
+//立即发送给定的错误信息
+NSError *error = [[NSError alloc] init];
+[RACSignal error:error];
+//返回一个信号 该信号立即发送给定值 然后 complete
+[RACSignal return:@&quot;value&quot;];
+//返回信号 该信号直接 complete
+[RACSignal empty];
+
+//2.信号处理
+
+//2.1 concat 返回一个信号signal3 当signal1 complete时订阅信号就signal2信号变化 我们可以通过订阅 signal3 来收到信号两个信号的值变化
+RACSignal *signal3 = [signal1 concat:signal2]
+
+//2.2  flattenMap 串联信号 当收到第一个消息的值变化时 开始执行第二个信号 此时我们订阅信号2  只会收到信号2值改变信号
+RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(10 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [subscriber sendNext:@&quot;发送的消息内容&quot;];
+        });
+        return nil;
+    }];
+RACSignal *signal2 = [signal flattenMap:^__kindof RACSignal * _Nullable(id  _Nullable value) {
+    return  [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+        [subscriber sendNext:@&quot;signal2 发送的消息内容&quot;];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [subscriber sendNext:@&quot;signal2 3秒后发送的消息内容&quot;];
+        });
+        return nil;
+    }];
+}];
+
+//2.2 map 对信号1中收到的值进行处理返回信号2 
+RACSignal *signal2 = [signal map:^id _Nullable(NSString *  _Nullable value) {
+    return [value substringFromIndex:2];
+}];
+
+//2.3 filter 过滤信号值
+RACSignal *signal2 = [signal filter:^BOOL(NSString *  _Nullable value) {
+    return YES;
+}];
+
+//2.4 ignore 忽略特定值的信号
+RACSignal *signal2 = [signal ignore:@&quot;发送的消&quot;];
+
+//2.5 startwith: 将这个值 拼接到信号值开头 返回新的信号 
+RACSignal *signal2 = [signal startWith:@&quot;start with发送的消息内容&quot;];
+
+//2.6 skip: 忽略开始的count个信号值改变
+RACSignal *signal2 = [signal skip:1];
+
+//2.7 take: 返回一个只接收前count个信号的信号值改变  其后发送的信号会失败
+RACSignal *signal2 = [signal take:2];
+
+//2.8  scanWithStart: reduce: 遍历信号1值变化 block中next即为信号1的信号值  
+//      running为累计值 初始为start值 
+RACSignal *signal2 = [signal scanWithStart:@&quot;1&quot; reduce:^NSString * _Nullable(NSString *  _Nullable running, NSString *  _Nullable next) {
+    running = [[NSMutableString stringWithFormat:@&quot;%@%@&quot;, running, next] copy];
+    return running;
+}];
+
+//2.9 takeUntilBlock: 忽略这符合条件的信号以及之后的信号
+//     takeWhileBlock: 返回符合条件的信号值
+//      skipUntilBlock: 只返回符合条件以及之后的信号
+//      skipWhileBlock: 忽略符合条件的信号
+RACSignal *signal2 = [signal takeUntilBlock:^BOOL(NSString *  _Nullable x) {
+    return [x hasPrefix:@&quot;3秒&quot;];
+}];
+
+//2.10 distinctUntilChanged 只返回值不一样的信号
+RACSignal *signal2 = [signal distinctUntilChanged];
+
+
+//3. 订阅
+
+//subscribeNext： 订阅信号值改变  error 订阅错误信号 completed 订阅完成信号 
+RACDisposable *disposable = [signal3 subscribeNext:^(NSString *  _Nullable x) {
+    NSLog(@&quot;signal3收到订阅值:%@&quot;, x);
+} error:^(NSError * _Nullable error) {
+    NSLog(@&quot;signal3收到错误订阅:%@,&quot; error);
+} completed:^{
+    NSLog(@&quot;signal3收到成功订阅;&quot;);
+}];
+
+//取消订阅
+[disposable dispose];
+
+
+</code></pre>
+
+<h3 id="toc_3">RACSubject信号</h3>
+
+<pre><code class="language-objectivec">//RACSubject 继承于 RACSignal 使用这个对象 可以直接发送和接收信号值改变  而不需要关心 创建信号和注销订阅问题
+RACSubject *subject = [RACSubject subject];
+
+[subject subscribeNext:^(NSString *x) {
+    NSLog(@&quot;接受新值%@&quot;, x);
+} completed:^{
+    NSLog(@&quot;接受完成情况&quot;);
+}];
+
+[subject sendNext:@&quot;新的值1&quot;];
+
+</code></pre>
+
+<h3 id="toc_4">RACTuple 元组</h3>
+
+<p>元组功能</p>
+
+<h3 id="toc_5">NSArray NSDictionary 集合操作</h3>
+
+<p>RAC扩展了NSArray 和  NSDictionary 拥有 <code>rac_sequence</code>(<code>RACSequence</code>类)属性</p>
+
+<h3 id="toc_6">RACSequence</h3>
+
+<pre><code class="language-objectivec">    //1. 获取一个 发送集合中值改变的信号
+    arr.rac_sequence.signal
+    //2. 用信号来遍历集合
+    [arr.rac_sequence.signal subscribeNext:^(id  _Nullable x) {
+        NSLog(@&quot;%@&quot;, x);
+    }];
+    //3. head
+    NSLog(@&quot;第一个元素%@&quot;, arr.rac_sequence.head);
+    //4. tail
+    NSLog(@&quot;除了第一个元素外的所有元素集合%@&quot;, arr.rac_sequence.tail);
+    
+    //5. 从左侧开始遍历 start: 累计的初始值 accumulator: 累计值 value:当前值 count: 最终值
+    NSNumber *count = [intArr.rac_sequence foldLeftWithStart:@(10) reduce:^NSNumber* (NSNumber *accumulator, NSNumber *value) {
+        NSLog(@&quot;%@--- %@&quot;, accumulator, value);
+
+        return @(accumulator.integerValue + value.integerValue);
+    }];
+    NSLog(@&quot;%@&quot;, count);
+    
+    //6. 同样可以从右边开始遍历
+    
+    //7. 遍历集合 判断是否存在符合条件 当遇到block返回YES 返回YES不再执行
+    BOOL exist = [intArr.rac_sequence any:^BOOL(NSNumber *value) {
+        return value.integerValue == 2;
+    }];
+    NSLog(@&quot;%@&quot;, exist ? @&quot;存在&quot; : @&quot;不存在&quot;); //存在
+    //8. 遍历集合 判断是否所有元素都满足条件
+    BOOL pass = [intArr.rac_sequence all:^BOOL(id  _Nullable value) {
+        return [value isKindOfClass:[NSNumber class]];
+    }];
+    NSLog(@&quot;%@&quot;, pass ? @&quot;通过&quot; : @&quot;不通过&quot;); //存在
+    //9. 遍历集合找到第一个符合条件的元素
+    id obj = [intArr.rac_sequence objectPassingTest:^BOOL(id  _Nullable value) {
+        if ([value isKindOfClass:[NSNumber class]]) {
+            NSNumber *value1 = (NSNumber *)value;
+            if (value1.integerValue % 3 == 0) {
+                return YES;
+            }
+        }
+        return NO;
+    }];
+    NSLog(@&quot;第一个通过测试的是%@&quot;, obj); //9
+    
+    //10. 用户动态生成sequenceh headblock和tailblock只会执行一次
+    //是惰性加载生成的
+    //必须保证headblock和tailblock是线程安全的
+    RACSequence *sequence = [RACSequence sequenceWithHeadBlock:^id _Nullable{
+        return @(11);
+    } tailBlock:^RACSequence * _Nonnull{
+        return [RACSequence sequenceWithHeadBlock:^id _Nullable{
+            return @(11);
+        } tailBlock:^RACSequence * _Nonnull{
+            return [RACSequence sequenceWithHeadBlock:^id _Nullable{
+                return @(22);
+            } tailBlock:^RACSequence * _Nonnull{
+                return @[@(33)].rac_sequence;
+            }];
+        }];
+    }];
+    
+    [sequence.signal subscribeNext:^(id  _Nullable x) {
+        NSLog(@&quot;%@&quot;, x);
+    }];
+</code></pre>
+
+<h3 id="toc_7">UI操作</h3>
+
+<h4 id="toc_8">UIControl</h4>
+
+<pre><code class="language-objectivec"> RACSignal *signal = [self.btn rac_signalForControlEvents:UIControlEventTouchUpInside];
+[signal subscribeNext:^(UIButton *  _Nullable x) {
+    NSLog(@&quot;&quot;);
+}];
+</code></pre>
+
+<h4 id="toc_9">UIButton</h4>
+
+<pre><code class="language-objectivec">//当 按钮被点击时 执行 command中的block
+self.btn.rac_command 
+</code></pre>
+
+<h4 id="toc_10">RACCommand</h4>
+
+<pre><code class="language-objectivec">//初始化command 用一个信号
+self.btn.rac_command = [[RACCommand alloc] initWithSignalBlock:^RACSignal * _Nonnull(id  _Nullable input) {
+        return [RACSignal empty];
+    }];
+    
+//executionSignals  属性为 command执行时的信号
+[self.btn.rac_command.executionSignals subscribeNext:^(RACSignal&lt;id&gt; * _Nullable x) {
+    NSLog(@&quot;信号值执行了&quot;);
+}];
+    
+</code></pre>
+
+<h4 id="toc_11">UITextfield</h4>
+
+<pre><code class="language-objectivec">//rac_textSignal 获取textfield内容改变信号
+[self.textfield.rac_textSignal subscribeNext:^(NSString * _Nullable x) {
+    NSLog(@&quot;输出内容%@&quot;, x);
+}];
+</code></pre>
+
+<h3 id="toc_12">NSNotification</h3>
+
+<pre><code class="language-objectivec">//通知事件 无需主动移除通知
+[[[NSNotificationCenter defaultCenter] rac_addObserverForName:@&quot;&quot; object:nil] subscribeNext:^(NSNotification * _Nullable x) {
+    
+}];
+</code></pre>
+
+<h3 id="toc_13">Delegate</h3>
+
+<pre><code class="language-objectivec">[[self.view rac_signalForSelector:@selector(nameBtnDidClick:)] subscribeNext:^(RACTuple * _Nullable x) {
+    
+}];
+</code></pre>
+
+<h3 id="toc_14">KVO</h3>
+
+<pre><code class="language-objectivec">//这样设置KVO 无需主动移除
+//监听btn frame变化 
+[[self.btn rac_valuesForKeyPath:@&quot;frame&quot; observer:self] subscribeNext:^(id  _Nullable x) {
+        
+}];
+
+//使用宏定义快捷设置KVO （推荐）
+[RACObserve(self.btn, frame) subscribeNext:^(id  _Nullable x) {
+    
+}];
+
+</code></pre>
+
+
+		</div>
+
+		
+
+	</article>
+  
+	<div class="pagination">
+	 <a class="prev" href="第三方项目学习_17.html">&larr; Older</a> 
+<a href="archives.html">Blog Archives</a>
+	 <a class="next" href="第三方项目学习_15.html">Newer &rarr;</a>  
+	    
+	</div>
+</div>
+ <aside class="sidebar"> 
+
+	<section>
+	  <h1>Categories</h1>
+	  <ul id="recent_posts">
+	  
+	      <li class="post">
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
+	        
+	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Cocoapods.html">Cocoapods&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E6%A8%A1%E5%9D%97%E5%8C%96%E7%9F%A5%E8%AF%86%E5%AD%A6%E4%B9%A0.html">模块化知识学习&nbsp;(26)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Instrument%E5%AD%A6%E4%B9%A0.html">Instrument学习&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E7%82%B9.html">知识点&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E8%A1%A5%E5%85%85-1.html">补充&nbsp;(9)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E9%9D%A2%E8%AF%95.html">面试&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Computer-programming.html"><strong>计算机编程&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="iOSDevelop.html"><strong>iOSDevelop&nbsp;(27)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html">iOS 小知识&nbsp;(14)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html">iOS开发知识&nbsp;(12)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html">知识普及&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Flex.html">Flex&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
+	        
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="React-Native.html"><strong>React-Native&nbsp;(6)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Python.html"><strong>Python&nbsp;(14)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	   
+	  </ul>
+	</section>
+	<section>
+	  <h1>Recent Posts</h1>
+	  <ul id="recent_posts">
+	  
+	      
+		      <li class="post">
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15677400518331.html">AFURLSerialization</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15676621460215.html">AFURLSessionManager</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15675682575589.html">AFNetworking</a>
+		      </li>
+	     
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	   
+	  </ul>
+	</section>
+	
+</aside> </div></div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 -  -
+  <span class="credit">Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a> &nbsp;&nbsp; Theme by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+
+  
+    
+
+
+
+
+</body>
+</html>

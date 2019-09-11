@@ -82,121 +82,68 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15559026860989.html">KSCrash</a></h1>
-			<p class="meta"><time datetime="2019-04-22T11:11:26+08:00" 
-			pubdate data-updated="true">2019/4/22</time></p>
+		  	<h1 class="entry-title"><a href="14873195104181.html">RunLoop使用示例</a></h1>
+			<p class="meta"><time datetime="2017-02-17T16:18:30+08:00" 
+			pubdate data-updated="true">2017/2/17</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>debug模式下,KSCrash的线程回调线程</p>
+		  	<h3 id="toc_0">1.将定时器添加到NSRunLoopCommonModes中，避免在UITrackingRunLoopMode无法执行</h3>
 
-<pre><code class="language-javascript">&quot;backtrace&quot;: {
-                    &quot;contents&quot;: [
-                        {
-                            &quot;object_name&quot;: &quot;CoreFoundation&quot;,
-                            &quot;object_addr&quot;: 7134101504,
-                            &quot;symbol_name&quot;: &quot;&lt;redacted&gt;&quot;,
-                            &quot;symbol_addr&quot;: 7135249460,
-                            &quot;instruction_addr&quot;: 7135249688
-                        },
-                        ...
-                        {
-                            &quot;object_name&quot;: &quot;KSCrashLearnDemo&quot;,
-                            &quot;object_addr&quot;: 4367810560, //104578000
-                            &quot;symbol_name&quot;: &quot;-[ViewController testArrayRangeException:]&quot;,
-                            &quot;symbol_addr&quot;: 4367835524, //10457e184
-                            &quot;instruction_addr&quot;: 4367835696 //10457e230
-                        },
-                        ...
-                        ...
-                        {
-                            &quot;object_name&quot;: &quot;KSCrashLearnDemo&quot;,
-                            &quot;object_addr&quot;: 4367810560, //104578000
-                            &quot;symbol_name&quot;: &quot;main&quot;,
-                            &quot;symbol_addr&quot;: 4367835828, // 10457e2b4
-                            &quot;instruction_addr&quot;: 4367835952 // 10457e330
-                        },
-                        {
-                            &quot;object_name&quot;: &quot;libdyld.dylib&quot;,
-                            &quot;object_addr&quot;: 7129288704, // 1a8f05000
-                            &quot;symbol_name&quot;: &quot;&lt;redacted&gt;&quot;,
-                            &quot;symbol_addr&quot;: 7129295068,  //1a8f068dc
-                            &quot;instruction_addr&quot;: 7129295072 // 1a8f068e0
-                        }
-                    ],
-</code></pre>
+<p>滑动ScrollView后系统把RunLoop切换为UITrackingRunLoopMode,因此加载默认模式中的定时器并不会执行,只有滚动停止回到默认模式才会继续执行。我们可以把定时器设为 <code>NSRunLoopCommonModes</code>的模式，并添加到 run loop 中；<br/>
+<code>[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];</code></p>
 
-<p>对应用Xcode解析出来的crash文件</p>
+<h3 id="toc_1">2. 在NSDefaultRunLoopMode中加载图片，避免加载图片导致tableView滑动卡顿</h3>
 
-<pre><code class="language-text">Last Exception Backtrace:
-0   CoreFoundation                  0x1a94b4518 __exceptionPreprocess + 228
-...
-3   CoreFoundation                  0x1a93c2484 -[__NSArrayM setObject:atIndexedSubscript:] + 703
-4   KSCrashLearnDemo                0x10457e230 0x104578000 + 25136
-5   UIKitCore                       0x1d58eb230 -[UIApplication sendAction:to:from:forEvent:] + 95
-...
-22  KSCrashLearnDemo                0x10457e330 0x104578000 + 25392
-23  libdyld.dylib                   0x1a8f068e0 start + 3
-</code></pre>
+<p>当tableview的cell从网络异步加载图片, 加载完成后在主线程刷新显示图片, 这时滑动tableview会造成卡顿. 通常的思路是tableview滑动的时候延迟加载图片, 等停止滑动时再显示图片. 这里我们可以通过RunLoop来实现.<br/>
+<code>[self.cellImageView performSelector:@sector(setImage:) withObject:downloadedImage afterDelay:0 inModes:@[NSDefaultRunLoopMode]];</code></p>
 
-<h2 id="toc_0">KSCrash 学习知识点</h2>
+<h3 id="toc_2">3. AFNetworking类似 创建一个常驻的服务线程</h3>
 
-<h4 id="toc_1">1. 获取内存使用情况</h4>
-
-<pre><code class="language-objectivec">static bool VMStats(vm_statistics_data_t* const vmStats, vm_size_t* const pageSize)
-{
-    kern_return_t kr;
-    const mach_port_t hostPort = mach_host_self();
-    
-    if((kr = host_page_size(hostPort, pageSize)) != KERN_SUCCESS)
-    {
-        KSLOG_ERROR(@&quot;host_page_size: %s&quot;, mach_error_string(kr));
-        return false;
+<pre><code class="language-objectivec">+ (void)_networkThreadMain:(id)object {
+    @autoreleasepool {
+        [[NSThread currentThread] setName:@&quot;我自己的线程&quot;];
+        NSRunLoop *runLoop = [NSRunLoop currentRunLoop];
+        [runLoop addPort:[NSPort port] forMode:NSDefaultRunLoopMode];
+        [runLoop run];
     }
     
-    mach_msg_type_number_t hostSize = sizeof(*vmStats) / sizeof(natural_t);
-    kr = host_statistics(hostPort,
-                         HOST_VM_INFO,
-                         (host_info_t)vmStats,
-                         &amp;hostSize);
-    if(kr != KERN_SUCCESS)
-    {
-        KSLOG_ERROR(@&quot;host_statistics: %s&quot;, mach_error_string(kr));
-        return false;
-    }
-    
-    return true;
 }
 
-static uint64_t freeMemory(void)
-{
-    vm_statistics_data_t vmStats;
-    vm_size_t pageSize;
-    if(VMStats(&amp;vmStats, &amp;pageSize))
-    {
-        return ((uint64_t)pageSize) * vmStats.free_count;
-    }
-    return 0;
-}
 
-static uint64_t usableMemory(void)
-{
-    vm_statistics_data_t vmStats;
-    vm_size_t pageSize;
-    if(VMStats(&amp;vmStats, &amp;pageSize))
-    {
-        return ((uint64_t)pageSize) * (vmStats.active_count +
-                                       vmStats.inactive_count +
-                                       vmStats.wire_count +
-                                       vmStats.free_count);
-    }
-    return 0;
+
+
++ (NSThread *)networkThread {
+    static NSThread *thread = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&amp;onceToken, ^{
+        thread = [[NSThread alloc] initWithTarget:self selector:@selector(_networkThreadMain:) object:nil];
+        if ([thread respondsToSelector:@selector(setQualityOfService:)]) {
+            thread.qualityOfService = NSQualityOfServiceBackground;
+        }
+        [thread start];
+    });
+    return thread;
 }
 </code></pre>
 
-<h2 id="toc_2">参考资料:</h2>
+<p>在其他地方 通过</p>
 
-<p><a href="http://jianli2017.top/wiki/IOS/crash/3_KSCrash_Analize/">KSCrash原理</a></p>
+<pre><code class="language-objectivec">        [self performSelector:@selector(testApp) onThread:[RunLoopManager networkThread] withObject:nil waitUntilDone:NO];
+</code></pre>
+
+<h3 id="toc_3">4. 让Crash的App回光返照</h3>
+
+<p>接到crash的Signal后 手动重启RunLoop</p>
+
+<pre><code class="language-objectivec">CFRunLoopRef runLoop = CFRunLoopGetCurrent();
+    NSArray *allModes = CFBridgingRelease(CFRunLoopCopyAllModes(runLoop));
+    while (1) {
+        for (NSString *mode in allModes) {
+            CFRunLoopRunInMode((CFStringRef)mode, 0.001, false);
+        }
+    }
+</code></pre>
 
 
 		</div>
@@ -219,24 +166,24 @@ static uint64_t usableMemory(void)
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -256,10 +203,10 @@ static uint64_t usableMemory(void)
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -283,7 +230,7 @@ static uint64_t usableMemory(void)
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -294,7 +241,7 @@ static uint64_t usableMemory(void)
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -312,6 +259,15 @@ static uint64_t usableMemory(void)
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -321,31 +277,31 @@ static uint64_t usableMemory(void)
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

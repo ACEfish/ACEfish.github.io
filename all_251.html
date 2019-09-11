@@ -82,66 +82,383 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14872918920673.html">并发编程中的问题</a></h1>
-			<p class="meta"><time datetime="2017-02-17T08:38:12+08:00" 
-			pubdate data-updated="true">2017/2/17</time></p>
+		  	<h1 class="entry-title"><a href="14964011409915.html">iOS 开发中的九种锁</a></h1>
+			<p class="meta"><time datetime="2017-06-02T18:59:00+08:00" 
+			pubdate data-updated="true">2017/6/2</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>使用并发编程会带来许多陷阱<br/>
-优先级反转:也就是说低优先级的线程一直阻塞着高优先级的线程</p>
+		  	<p>我们在使用多线程的时候多个线程可能会访问同一块资源，这样就很容易引发数据错乱和数据安全等问题，这时候就需要我们保证每次只有一个线程访问这一块资源，锁 应运而生。</p>
 
-<h4 id="toc_0">1.资源共享</h4>
+<p>补充:<a href="http://www.cnblogs.com/huangjianwu/p/4575763.html">实现锁的多种方式和锁的高级用法</a><br/>
+<a href="http://www.jianshu.com/p/938d68ed832c">iOS中保证线程安全的几种方式与性能对比</a></p>
 
-<p>并发编程中许多问题的根源就是在多线程中访问共享资源。资源可以是一个属性、一个对象，通用的内存、网络设备或者一个文件等等。<br/>
-这里我们举了一个<a href="https://en.wikipedia.org/wiki/Race_condition#Software">竞态条件</a>的例子:<br/>
-<img src="media/14872918920673/14872931592764.jpg" alt=""/><br/>
-这个时候我们需要保证线程B必须等线程A访问完该共享资源才会开始访问共享资源.这时候我们需要一种互斥机制:</p>
+<h2 id="toc_0">一、OSSpinLock 自旋锁</h2>
 
-<h4 id="toc_1">2.互斥锁</h4>
+<p>OSSpinLock 自旋锁，性能最高的锁。在任何时刻只会有一个线程能获得锁,而其他线程忙着等待直到获得锁。缺点是<code>spinlock</code>使用不当(如临界区执行时间过长)会导致<code>cpu busy</code>飙高。不适合较长时间任务</p>
 
-<p><strong>互斥访问的意思就是同一时刻，只允许一个线程访问某个特定资源</strong><br/>
-首先需要获得一个共享资源的互斥锁，一旦某个线程对资源完成了操作，就释放掉这个互斥锁，这样别的线程就有机会访问该共享资源<br/>
-<img src="media/14872918920673/14872933923493.jpg" alt=""/><br/>
-因为现代 CPU 为了优化目的，往往会改变向内存读写数据的顺序（<a href="https://en.wikipedia.org/wiki/Out-of-order_execution">乱序执行</a>）因此还需要解决代码无序执行所带来的问题。如果不能确保 CPU 访问内存的顺序跟编程时的代码指令一样，那么仅仅依靠互斥访问是不够的。为了解决由 CPU 的优化策略引起的副作用，还需要引入<a href="https://en.wikipedia.org/wiki/Memory_barrier">内存屏障</a>。通过设置内存屏障，来确保没有无序执行的指令能跨过屏障而执行。</p>
+<pre><code class="language-objectivec">__block OSSpinLock theLock = OS_SPINLOCK_INIT;
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    OSSpinLockLock(&amp;theLock);
+    NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+    sleep(3);
+    NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+    OSSpinLockUnlock(&amp;theLock);
 
-<p>(<a href="https://en.wikipedia.org/wiki/Lock_%28computer_science%29#Granularity">锁的竞争</a>是这样产生的：当一个或者多个线程尝试获取一个已经被别的线程获取过了的锁)<br/>
-获取和释放锁所是要带来开销的，因此你需要确保你不会频繁地进入和退出临界区段（比如获取和释放锁）。同时，如果你获取锁之后要执行一大段代码，这将带来锁竞争的风险：其它线程可能必须等待获取资源锁而无法工作。</p>
+});
 
-<p>对于你的代码会如何在多核上运行的预测往往十分重要，你可以使用 Instrument 的 CPU strategy view 来检查是否有效的利用了 CPU 的可用核数，进而得出更好的想法，以此来优化代码。</p>
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    OSSpinLockLock(&amp;theLock);
+    sleep(1);
+    NSLog(@&quot;需要线程同步的操作2&quot;);
+    OSSpinLockUnlock(&amp;theLock);
 
-<h4 id="toc_2">3.死锁</h4>
+});
+</code></pre>
 
-<p>互斥锁解决了竞态条件的问题，但很不幸同时这也引入了一些其他问题，其中一个就是死锁。当多个线程在相互等待着对方的结束时，就会发生死锁，这时程序可能会被卡住。<br/>
-<img src="media/14872918920673/14872940417124.jpg" alt=""/><br/>
-你在线程之间共享的资源越多，你使用的锁也就越多，同时程序被死锁的概率也会变大。这也是为什么我们需要尽量减少线程间资源共享，并确保共享的资源尽量简单的原因之一。建议阅读一下底层<a href="https://objccn.io/issue-2-3/">并发编程 API</a> 中的全部使用异步分发一节。</p>
+<pre><code class="language-objectivec">//
+OS_SPINLOCK_INIT： 默认值为 0,在 locked 状态时就会大于 0，unlocked状态下为 0
+OSSpinLockLock(&amp;oslock)：上锁，参数为 OSSpinLock 地址
+OSSpinLockUnlock(&amp;oslock)：解锁，参数为 OSSpinLock 地址
+OSSpinLockTry(&amp;oslock)：尝试加锁，可以加锁则立即加锁并返回 YES,反之返回 NO
+/**
+当前线程锁失败，也可以继续其它任务，用 trylock 合适
+当前线程只有锁成功后，才会做一些有意义的工作，那就 lock，没必要轮询 trylock
+*/
+</code></pre>
 
-<h4 id="toc_3">4.资源饥饿（Starvation）</h4>
+<p>注意:<br/>
+<a href="http://blog.ibireme.com/2016/01/16/spinlock_is_unsafe_in_ios/">不再安全的 OSSpinLock</a></p>
 
-<p>锁定的共享资源会引起<a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writers_problem">读写问题</a>，大多数情况下，限制资源一次只能有一个线程进行读取访问其实是非常浪费的。因此，在资源上没有写入锁的时候，持有一个读取锁是被允许的。这种情况下，如果一个持有读取锁的线程在等待获取写入锁的时候，其他希望读取资源的线程则因为无法获得这个读取锁而导致<a href="https://en.wikipedia.org/wiki/Starvation_(computer_science)">资源饥饿</a>的发生。</p>
+<h2 id="toc_1">二、dispatch_semaphore 信号量</h2>
 
-<p>为了解决这个问题，我们需要使用一个比简单的读/写锁更聪明的方法，例如给定一个 <a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writer_lock">writer preference</a>，或者使用 <a href="https://en.wikipedia.org/wiki/Read-copy-update">read-copy-update</a> 算法。Daniel 在底层并发编程 API 中有介绍了如何用 GCD 实现一个多读取单写入的模式，这样就不会被写入资源饥饿的问题困扰了。</p>
+<p>是GCD的用来同步的一种方式<br/>
+在没有等待情况出现时，它的性能比<code>pthread_mutex</code>还要高，但一旦有等待情况出现时，性能就会下降许多。相对于<code>OSSpinLock</code>来说，它的优势在于等待时不会消耗<code>CPU</code>资源。</p>
 
-<h4 id="toc_4">5.优先级反转</h4>
+<pre><code class="language-objectivec">  dispatch_semaphore_t signal = dispatch_semaphore_create(1);
+    dispatch_time_t overTime = dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC);
 
-<p><code>优先级反转</code>是指程序在运行时低优先级的任务阻塞了高优先级的任务，有效的反转了任务的优先级。由于 GCD 提供了拥有不同优先级的后台队列，甚至包括一个 I/O 队列，所以我们最好了解一下优先级反转的可能性。</p>
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        dispatch_semaphore_wait(signal, overTime);
+            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+            sleep(2);
+            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+        dispatch_semaphore_signal(signal);
+    });
 
-<blockquote>
-<p>高优先级和低优先级的任务之间共享资源时，就可能发生优先级反转。当低优先级的任务获得了共享资源的锁时，该任务应该迅速完成，并释放掉锁，这样高优先级的任务就可以在没有明显延时的情况下继续执行。然而高优先级任务会在低优先级的任务持有锁的期间被阻塞。如果这时候有一个中优先级的任务(该任务不需要那个共享资源)，那么它就有可能会抢占低优先级任务而被执行，因为此时高优先级任务是被阻塞的，所以中优先级任务是目前所有可运行任务中优先级最高的。此时，中优先级任务就会阻塞着低优先级任务，导致低优先级任务不能释放掉锁，这也就会引起高优先级任务一直在等待锁的释放。</p>
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        sleep(1);
+        dispatch_semaphore_wait(signal, overTime);
+            NSLog(@&quot;需要线程同步的操作2&quot;);
+        dispatch_semaphore_signal(signal);
+    });
+</code></pre>
 
-<p>解决这个问题的方法，通常就是不要使用不同的优先级。通常最后你都会以让高优先级的代码等待低优先级的代码来解决问题。当你使用 GCD 时，总是使用默认的优先级队列（直接使用，或者作为目标队列）。如果你使用不同的优先级，很可能实际情况会让事情变得更糟糕。</p>
-</blockquote>
+<pre><code class="language-objectivec">dispatch_semaphore_create(1)： 传入值必须 &gt;=0, 若传入为 0 则阻塞线程并等待timeout,
+时间到后会执行其后的语句
+dispatch_semaphore_wait(signal, overTime)：可以理解为 lock,会使得 signal 值 -1，若信号量的值大于0，就可以继续往下执行,否则等待,如果在等待时间期间信号量一直为0，则会在`timeOut`后自动执行其后的语句。
+//
+dispatch_semaphore_signal(signal)：可以理解为 unlock,会使得 signal 值 +1
+</code></pre>
 
-<p><img src="media/14872918920673/14872951554551.jpg" alt=""/></p>
+<p>补充:<a href="http://www.cnblogs.com/snailHL/p/3906112.html">关于dispatch_semaphore的使用</a></p>
 
-<h3 id="toc_5">总结:</h3>
+<h2 id="toc_2">三、@synchronized</h2>
 
-<p>我们希望通过本文你能够了解到并发编程带来的复杂性和相关问题。并发编程中，无论是看起来多么简单的 API ，它们所能产生的问题会变得非常的难以观测，而且要想调试这类问题往往也都是非常困难的。</p>
+<pre><code class="language-objectivec"> NSObject *obj = [[NSObject alloc] init];
 
-<p>但另一方面，并发实际上是一个非常棒的工具。它充分利用了现代多核 CPU 的强大计算能力。在开发中，关键的一点就是尽量让并发模型保持简单，这样可以限制所需要的锁的数量。</p>
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        @synchronized(obj) {
+            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+            sleep(3);
+            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+        }
+    });
 
-<p>我们建议采纳的安全模式是这样的：<br/>
-<strong>从主线程中提取出要使用到的数据，并利用一个操作队列在后台处理相关的数据，最后回到主队列中来发送你在后台队列中得到的结果。使用这种方式，你不需要自己做任何锁操作，这也就大大减少了犯错误的几率。</strong></p>
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        sleep(1);
+        @synchronized(obj) {
+            NSLog(@&quot;需要线程同步的操作2&quot;);
+        }
+    });
+</code></pre>
+
+<p><code>@synchronized(obj)</code>指令使用的<code>obj</code>为该锁的唯一标识，只有当标识相同时，才为满足互斥.<br/>
+<code>@synchronized</code>指令实现锁的优点就是我们不需要在代码中显式的创建锁对象，便可以实现锁的机制，但作为一种预防措施，<code>@synchronized</code>块会隐式的添加一个异常处理例程来保护代码，该处理例程会在异常抛出的时候自动的释放互斥锁。所以如果不想让隐式的异常处理例程带来额外的开销，你可以考虑使用锁对象。</p>
+
+<p>补充：<a href="http://ios.jobbole.com/82826/">关于 @synchronized，这儿比你想知道的还要多</a></p>
+
+<h2 id="toc_3">四、NSLock</h2>
+
+<pre><code class="language-objectivec">    NSLock *lock = [[NSLock alloc] init];
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        //[lock lock];
+        [lock lockBeforeDate:[NSDate date]];
+            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+            sleep(2);
+            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+        [lock unlock];
+
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        sleep(1);
+        if ([lock tryLock]) {//尝试获取锁，如果获取不到返回NO，不会阻塞该线程
+            NSLog(@&quot;锁可用的操作&quot;);
+            [lock unlock];
+        }else{
+            NSLog(@&quot;锁不可用的操作&quot;);
+        }
+
+        NSDate *date = [[NSDate alloc] initWithTimeIntervalSinceNow:3];
+        if ([lock lockBeforeDate:date]) {//尝试在未来的3s内获取锁，并阻塞该线程，如果3s内获取不到恢复线程, 返回NO,不会阻塞该线程
+            NSLog(@&quot;没有超时，获得锁&quot;);
+            [lock unlock];
+        }else{
+            NSLog(@&quot;超时，没有获得锁&quot;);
+        }
+
+    });
+    //运行结果
+    2016-06-29 20:45:08.864 SafeMultiThread[35911:575795] 需要线程同步的操作1 开始
+    2016-06-29 20:45:09.869 SafeMultiThread[35911:575781] 锁不可用的操作
+    2016-06-29 20:45:10.869 SafeMultiThread[35911:575795] 需要线程同步的操作1 结束
+    2016-06-29 20:45:10.870 SafeMultiThread[35911:575781] 没有超时，获得锁
+
+</code></pre>
+
+<p><code>lock</code>一般用于多线程同时访问、修改同一个数据源，保证在同一时间内数据源只被访问、修改一次，其他线程的命令需要在<code>lock</code>外等待，只到<code>unlock</code>，才可访问</p>
+
+<p><code>NSLock</code>是<code>Cocoa</code>提供给我们最基本的锁对象，这也是我们经常所使用的，除了常使用的<code>lock</code>和<code>unlock</code>方法外,还提供了:<br/>
+<code>trylock</code>：能加锁返回<code>YES</code>并执行加锁操作，相当于<code>lock</code>，反之返回<code>NO</code><br/>
+<code>lockBeforeDate</code>：这个方法表示会在传入的时间内尝试加锁，若能加锁则执行加锁操作并返回<code>YES</code>，反之返回<code>NO</code></p>
+
+<h2 id="toc_4">五、NSRecursiveLock递归锁</h2>
+
+<pre><code class="language-objectivec">    NSRecursiveLock *lock = [[NSRecursiveLock alloc] init];
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+
+        static void (^RecursiveMethod)(int);
+
+        RecursiveMethod = ^(int value) {
+
+            [lock lock];
+            if (value &gt; 0) {
+
+                NSLog(@&quot;value = %d&quot;, value);
+                sleep(1);
+                RecursiveMethod(value - 1);
+            }
+            [lock unlock];
+        };
+
+        RecursiveMethod(5);
+    });
+    //执行结果
+    2016-06-30 19:09:41.414 SafeMultiThread[30949:450684] value = 5
+    2016-06-30 19:09:42.418 SafeMultiThread[30949:450684] value = 4
+    2016-06-30 19:09:43.419 SafeMultiThread[30949:450684] value = 3
+    2016-06-30 19:09:44.424 SafeMultiThread[30949:450684] value = 2
+    2016-06-30 19:09:45.426 SafeMultiThread[30949:450684] value = 1
+    
+    
+    //在上面如果用NSLock的话就会造成死锁的情况
+    NSLock *lock = [[NSLock alloc] init];
+    /**
+        在我们的线程中，RecursiveMethod是递归调用的。所以每次进入这个block时，都会去加一次
+        锁，而从第二次开始，由于锁已经被使用了且没有解锁，所以它需要等待锁被解除，这样就导致了死
+        锁，线程被阻塞住了。
+    */
+</code></pre>
+
+<p><code>NSRecursiveLock</code>递归锁，可以被同一线程多次请求，而不会引起死锁。这主要是用在循环或递归操作中。<br/>
+递归锁会跟踪它被lock的次数。每次成功的lock都必须平衡调用unlock操作。只有所有达到这种平衡，锁最后才能被释放，以供其它线程使用。</p>
+
+<p>补充:<a href="http://www.cocoachina.com/ios/20150513/11808.html">NSRecursiveLock递归锁的使用</a></p>
+
+<h2 id="toc_5">六、NSConditionLock条件锁</h2>
+
+<p>只是<code>lock</code>和<code>unlock</code>通常并不能满足我们的使用，我们通常在满足某条件的情况下才会打开这把锁，这时候我们可以使用<code>NSConditionLock条件锁</code></p>
+
+<pre><code class="language-objectivec">    NSConditionLock *cLock = [[NSConditionLock alloc] initWithCondition:0];
+
+//线程1
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    if([cLock tryLockWhenCondition:0]){
+        NSLog(@&quot;线程1&quot;);
+       [cLock unlockWithCondition:1];
+    }else{
+         NSLog(@&quot;失败&quot;);
+    }
+});
+
+//线程2
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    [cLock lockWhenCondition:3];
+    NSLog(@&quot;线程2&quot;);
+    [cLock unlockWithCondition:2];
+});
+
+//线程3
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    [cLock lockWhenCondition:1];
+    NSLog(@&quot;线程3&quot;);
+    [cLock unlockWithCondition:3];
+});
+/**
+    我们在初始化 NSConditionLock 对象时，给了他的标示为 0
+    执行 tryLockWhenCondition:时，我们传入的条件标示也是 0,所 以线程1 加锁成功
+    执行 unlockWithCondition:时，这时候会把condition由 0 修改为 1
+    因为condition 修改为了  1， 会先走到 线程3，然后 线程3 又将 condition 修改为 3
+    最后 走了 线程2 的流程
+*/
+    
+</code></pre>
+
+<p><img src="media/14964011409915/14967500416387.png" alt=""/></p>
+
+<p>相比于 NSLock 多了个<code>condition</code>参数，我们可以理解为一个条件标示.<br/>
+我们还用它实现了任务支架你的依赖</p>
+
+<pre><code class="language-objectivec">//可用功能如下:
+- (instancetype)initWithCondition:(NSInteger)condition NS_DESIGNATED_INITIALIZER;
+
+@property (readonly) NSInteger condition;
+- (void)lockWhenCondition:(NSInteger)condition;
+- (BOOL)tryLock;
+- (BOOL)tryLockWhenCondition:(NSInteger)condition;
+- (void)unlockWithCondition:(NSInteger)condition;
+- (BOOL)lockBeforeDate:(NSDate *)limit;
+- (BOOL)lockWhenCondition:(NSInteger)condition beforeDate:(NSDate *)limit;
+
+@property (nullable, copy) NSString *name NS_AVAILABLE(10_5, 2_0);
+</code></pre>
+
+<h2 id="toc_6">七、NSCondition</h2>
+
+<p>一种最基本的条件锁。手动控制线程<code>wait</code>和<code>signal</code>。</p>
+
+<pre><code class="language-objectivec">NSCondition *condition = [[NSCondition alloc] init];
+
+    NSMutableArray *products = [NSMutableArray array];
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        while (1) {
+            [condition lock];
+            if ([products count] == 0) {
+                NSLog(@&quot;wait for product&quot;);
+                [condition wait];
+            }
+            [products removeObjectAtIndex:0];
+            NSLog(@&quot;custome a product&quot;);
+            [condition unlock];
+        }
+
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        while (1) {
+            [condition lock];
+            [products addObject:[[NSObject alloc] init]];
+            NSLog(@&quot;produce a product,总量:%zi&quot;,products.count);
+            [condition signal];
+            [condition unlock];
+            sleep(1);
+        }
+
+    });
+    
+2016-06-30 20:21:25.295 SafeMultiThread[31256:513991] wait for product
+2016-06-30 20:21:25.296 SafeMultiThread[31256:513994] produce a product,总量:1
+2016-06-30 20:21:25.296 SafeMultiThread[31256:513991] custome a product
+</code></pre>
+
+<p><code>[condition lock]</code>一般用于多线程同时访问、修改同一个数据源，保证在同一时间内数据源只被访问、修改一次，其他线程的命令需要在lock 外等待，只到unlock ，才可访问<br/>
+<code>[condition unlock]</code>与lock 同时使用<br/>
+<code>[condition wait]</code>让当前线程处于等待状态<br/>
+<code>[condition signal]</code>CPU发信号告诉线程不用在等待，可以继续执行</p>
+
+<pre><code class="language-objectivec">- (void)wait;//进入等待状态(当一个线程调用wait时其他线程就可以获得这个锁)
+- (BOOL)waitUntilDate:(NSDate *)limit;//让一个线程等待一定的时间
+- (void)signal;//唤醒一个等待的线程
+- (void)broadcast;//唤醒所有等待的线程
+</code></pre>
+
+<p>补充:<br/>
+这里需要注意wait和signal的问题：<br/>
+    1: 其实，wait函数内部悄悄的调用了unlock函数（猜测，有兴趣可自行分析），也就是说在调用wati函数后，这个NSCondition对象就处于了无锁的状态，这样其他线程就可以对此对象加锁并触发该NSCondition对象。当NSCondition被其他线程触发时，在wait函数内部得到此事件被触发的通知，然后对此事件重新调用lock函数（猜测），而在外部看起来好像接收事件的线程（调用wait的线程）从来没有放开NSCondition对象的所有权，wati线程直接由阻塞状态进入了触发状态一样。这里容易造成误解。<br/>
+    2: wait函数并不是完全可信的。也就是说wait返回后，并不代表对应的事件一定被触发了，因此，为了保证线程之间的同步关系，使用NSCondtion时往往需要加入一个额外的变量来对非正常的wait返回进行规避。<br/>
+   3: 关于多个wait时的调用顺序，测试发现与wait执行顺序有关。</p>
+
+<h2 id="toc_7">八、pthread_mutex互斥锁</h2>
+
+<pre><code class="language-objectivec">  __block pthread_mutex_t theLock;
+    pthread_mutex_init(&amp;theLock, NULL);
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            pthread_mutex_lock(&amp;theLock);
+            NSLog(@&quot;需要线程同步的操作1 开始&quot;);
+            sleep(3);
+            NSLog(@&quot;需要线程同步的操作1 结束&quot;);
+            pthread_mutex_unlock(&amp;theLock);
+
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            sleep(1);
+            pthread_mutex_lock(&amp;theLock);
+            NSLog(@&quot;需要线程同步的操作2&quot;);
+            pthread_mutex_unlock(&amp;theLock);
+
+    });
+2016-06-30 21:13:32.440 SafeMultiThread[31429:548869] 需要线程同步的操作1 开始
+2016-06-30 21:13:35.445 SafeMultiThread[31429:548869] 需要线程同步的操作1 结束
+2016-06-30 21:13:35.446 SafeMultiThread[31429:548866] 需要线程同步的操作2
+    /**
+        与OSSpinLock类似,pthread_mutex 中也有个pthread_mutex_trylock(&amp;pLock)，和上面提
+        到的 OSSpinLockTry(&amp;oslock)区别在于，前者可以加锁时返回的是 0，否则返回一个错误提示
+        码；后者返回的 YES和NO
+    */
+</code></pre>
+
+<pre><code class="language-objectivec">1：pthread_mutex_init(pthread_mutex_t mutex,const pthread_mutexattr_t attr);
+初始化锁变量mutex。attr为锁属性，NULL值为默认属性。
+2：pthread_mutex_lock(pthread_mutex_t mutex);加锁
+3：pthread_mutex_tylock(*pthread_mutex_t *mutex);加锁，但是与2不一样的是当锁已经在使用的时候，返回为EBUSY，而不是挂起等待。
+4：pthread_mutex_unlock(pthread_mutex_t *mutex);释放锁
+5：pthread_mutex_destroy(pthread_mutex_t* mutex);使用完后释放
+</code></pre>
+
+<p><code>YYKit</code>源码<br/>
+<img src="media/14964011409915/14967514267813.png" alt=""/></p>
+
+<h2 id="toc_8">九、pthread_mutex(recursive)递归锁</h2>
+
+<p>之前的lock是和unlock成对出现，同一线程多次 lock 是不允许的，而递归锁允许同一个线程在未释放其拥有的锁时反复对该锁进行加锁操作。</p>
+
+<pre><code class="language-objectivec">static pthread_mutex_t pLock;
+pthread_mutexattr_t attr;
+pthread_mutexattr_init(&amp;attr); //初始化attr并且给它赋予默认
+pthread_mutexattr_settype(&amp;attr, PTHREAD_MUTEX_RECURSIVE); //设置锁类型，这边是设置为递归锁
+pthread_mutex_init(&amp;pLock, &amp;attr);
+pthread_mutexattr_destroy(&amp;attr); //销毁一个属性对象，在重新进行初始化之前该结构不能重新使用
+
+//1.线程1
+dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    static void (^RecursiveBlock)(int);
+    RecursiveBlock = ^(int value) {
+        pthread_mutex_lock(&amp;pLock);
+        if (value &gt; 0) {
+            NSLog(@&quot;value: %d&quot;, value);
+            RecursiveBlock(value - 1);
+        }
+        pthread_mutex_unlock(&amp;pLock);
+    };
+    RecursiveBlock(5);
+});
+//如果我们用 pthread_mutex_init(&amp;pLock, NULL) 初始化会出现死锁的情况，递归锁能很好的避免这种情况的死锁；
+</code></pre>
 
 
 		</div>
@@ -164,24 +481,24 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -201,10 +518,10 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -228,7 +545,7 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -239,7 +556,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -257,6 +574,15 @@ $(document).ready(function(event) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -266,31 +592,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

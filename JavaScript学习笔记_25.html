@@ -82,104 +82,81 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15469392062682.html">箭头函数</a></h1>
-			<p class="meta"><time datetime="2019-01-08T17:20:06+08:00" 
+		  	<h1 class="entry-title"><a href="15469449620960.html">函数参数</a></h1>
+			<p class="meta"><time datetime="2019-01-08T18:56:02+08:00" 
 			pubdate data-updated="true">2019/1/8</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>箭头函数即 省略function关键字 添加 =&gt; 符号</p>
+		  	<h2 id="toc_0">默认参数</h2>
 
-<pre><code class="language-javascript">    const numArr = [1, 2, 3, 4]
-    
-    //function函数
-    const num2 = numArr.map(function(num) {
-        return  num*num
-    })
-    //箭头函数
-    const numArr2 = numArr.map((num) =&gt; {
-        return num*num
-    })
+<p>ES6提供了更方便的写默认参数方式</p>
+
+<pre><code class="language-javascript">function getSum(a=10, b=2) {
+    return a+b
+}
+
+getSum() //12
+getSum(1, 3) //4
+getSum(1) //3
+getSum(undefined, 10) //20  当要省略不是最后的参数时 需要使用也只能使用undefined
 </code></pre>
 
-<h2 id="toc_0">特点</h2>
+<h2 id="toc_1">剩余参数</h2>
 
-<h3 id="toc_1">参数</h3>
+<p>用于当参数不止一个时，方便我们一次获取多个参数</p>
 
-<p>当只有一个参数时,箭头函数中的()可省略,多个参数在括号中用,分割</p>
+<pre><code class="language-javascript">function sum(...args) {
+    return args.reduce((prev, current) =&gt; prev+current, 0)
+}
+sum(1,2,3,4) //10
 
-<pre><code class="language-javascript">    //箭头函数 
-    const numArr2 = numArr.map(num =&gt; {
-        return num*num
-    })
+const numbers = [11, 32, 24, 12]
+//数组需要扩展运算符
+sum(...numbers) //79
+
+function userScoreSum(name, ...score) {
+    const sum = score.reduce((pre, curr) =&gt; pre+curr, 0)
+    console.log(`${name}得分为${sum}`)
+}
+userScoreSum(&quot;lyy&quot;, 100, 99, 99) //lyy得分为298
 </code></pre>
 
-<h3 id="toc_2">隐式返回</h3>
+<h2 id="toc_2">扩展运算符</h2>
 
-<p>箭头函数可以隐式返回<br/>
-此时可以省略大括号和return关键字</p>
+<p>将可迭代(遍历)对象每个元素扩展为一个参数序列</p>
 
-<pre><code class="language-javascript">    //大括号 和 return关键字必须同时省略
-    const numArr2 = numArr.map((num) =&gt; num*num)
+<pre><code class="language-javascript">const numbersArr1 = [1, 3, 6]
+const numbersArr2 = [2, 4, 6]
+
+//[1, 3, 6, 2, 4 ,6]
+const totalNums = numbersArr1.concat(numbersArr2) 
+
+//[1, 3, 6, 55, 2, 4 ,6]
+const totalNums2 = [...numbersArr1, 55,...numbersArr2]
+
 </code></pre>
 
-<h3 id="toc_3">匿名函数</h3>
+<h3 id="toc_3">扩展运算符 运用</h3>
 
-<p>箭头函数是匿名函数</p>
-
-<blockquote>
-<p>当要使用匿名函数时  我们可以将函数赋值给其他变量 然后使用</p>
-</blockquote>
-
-<h3 id="toc_4">箭头函数的this继承父作用域</h3>
-
-<p><strong>箭头函数没有自己的this值, 它的this值继承自父作用域</strong></p>
-
-<p>普通函数的this值是在运行时动态绑定的</p>
-
-<p>因此当我们需要执行函数绑定this为当前运行对象时 可以使用箭头函数</p>
-
-<pre><code class="language-javascript">   const people = {
-       ownname: &quot;fk&quot;,
-       names: [&quot;lyy&quot;, &quot;tt&quot;],
-       showName: function() {
-            this.names.map(function(name){
-                //此时函数未回调的独立函数 this为window
-                console.log(this) //window
-                 //因为this此时为window 因此获取不到执行对象
-                console.log(this.ownname+&quot;名字&quot;+name)
-            })
-       },
-       showName2: function() {
-            this.names.map(name =&gt; {
-                //此时箭头函数的this继承了showname函数为people对象 
-                //可以获取到对象
-                console.log(this.ownname+&quot;名字&quot;+name)
-            })
-       }
-   }
-   people.showName()
-   people.showName2()
-</code></pre>
-
-<blockquote>
-<p>当一个函数是独立函数时(常出现在回调函数中),即独立运行 而不是作为对象的方法执行时，该方法中的<code>this</code>会指向window对象，此时我们可以使用 <code>call</code> <code>apply</code> <code>by</code>等绑定执行对象 或者 使用箭头函数</p>
-</blockquote>
-
-<h2 id="toc_5">不使用箭头函数的情况</h2>
-
-<h3 id="toc_6">作为构造函数、为原型或对象增加方法</h3>
-
-<p>当作为构造函数或者为原型对象添加方法时 不能使用箭头函数,因为此时获取不到this对象,需要使用传统的function函数</p>
-
-<h3 id="toc_7">当函数没有父级作用域时而我们需要this时</h3>
-
-<p>当箭头函数作为对象方法的调用时,此时不能用箭头函数,因为此时箭头函数的this为window而不是该对象，此时使用传统function函数,作为对象方法执行可以将this绑定为当前对象</p>
-
-<h3 id="toc_8">当需要arguments对象时</h3>
-
-<p>箭头函数中没有<code>arguments</code>对象<br/>
-我们可以使用ES6新增的 <code>...arg</code></p>
+<ol>
+<li><p>获取数组副本</p>
+<p>我们经常使用其来实现获取可遍历对象的副本，而避免其引用</p>
+<pre><code class="language-javascript">//避免使用引用类型 而操作num3时 影响num2数组
+const totalNums3 = [...totalNums2]
+</code></pre></li>
+<li><p>替代Array.from() 获取每个字符 将可遍历或者类数组对象变为数组对象</p>
+<pre><code class="language-javascript">const lis = [...document.querySelectorAll(&quot;li&quot;)]
+</code></pre></li>
+<li><p>扩展数组元素拼接</p></li>
+<li><p>将数组元素扩展为函数参数</p>
+<pre><code class="language-javascript">const numbersArr1 = [1, 3, 6]
+const numbersArr2 = [2, 4, 6]<br/>
+numbersArr1.push(numbersArr2)<br/>
+console.log(numbersArr1) //[1, 3, 6, [2, 4, 6]]]<br/>
+numbersArr1.push(...numbersArr2) //[1, 3, 6, 2, 4, 6]
+</code></pre></li>
+</ol>
 
 
 		</div>
@@ -202,24 +179,24 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -239,10 +216,10 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -266,7 +243,7 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -277,7 +254,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -295,6 +272,15 @@ $(document).ready(function(event) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -304,31 +290,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

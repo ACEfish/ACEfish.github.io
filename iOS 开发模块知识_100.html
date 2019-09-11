@@ -82,271 +82,198 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14913623029277.html">基于定时器的动画</a></h1>
-			<p class="meta"><time datetime="2017-04-05T11:18:22+08:00" 
-			pubdate data-updated="true">2017/4/5</time></p>
+		  	<h1 class="entry-title"><a href="15553160787382.html">内存管理实践</a></h1>
+			<p class="meta"><time datetime="2019-04-15T16:14:38+08:00" 
+			pubdate data-updated="true">2019/4/15</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>缓冲主要学习<code>CAMediaTimingFunction</code>通过来做加速减速等增强现实感.</p>
+		  	<p>尽管内存管理规则是简单的，但是我们可以通过一些实用的步骤来使内存管理更加稳健、高效</p>
 
-<p>本章学习精确地控制一帧一帧展示的基于定时器的动画,来更加真实模拟物理交互或者根据用户输入来改变动画</p>
+<h2 id="toc_0">使用访问器方法来简化内存管理</h2>
 
-<h3 id="toc_0">定时帧</h3>
+<p>假如类有一个对象属性时，我们需要确保赋值给属性的对象不会被<code>deallocted</code>，因此需要持有该对象而且需要释放当前属性对象；我们应该使用访问器方法来避免在代码中大量使用<code>release</code>和<code>retain</code>方法</p>
 
-<p>iOS按照每秒60次刷新屏幕,<code>CAAnimation</code>计算出需要展示的新的帧。</p>
+<pre><code class="language-objectivec">@interface Counter : NSObject
+@property (nonatomic, retain) NSNumber *count;
+@end;
 
-<h4 id="toc_1">NSTimer</h4>
+//get访问器方法 只需要直接返回该对象，无需retain或者release
+- (NSNumber *)count {
+    return _count;
+}
 
-<p>我们可以用NStimer来一秒钟更新60次，来做动画.</p>
-
-<p>用<code>NSTimer</code>做动画的话需要几个属性来存储动画的<code>fromValue</code> ，<code>toValue</code>，<code>duration</code>和当前的 <code>timeOffset</code>。</p>
-
-<p><code>示例代码省略</code></p>
-
-<p>但是用<code>NSTimer</code>并不是一个很好的方案</p>
-
-<p>iOS中每个线程都管理了一个<code>NSRunloop</code>，通过循环来完成一些任务列表</p>
-
-<p>但是主线程的任务有:</p>
-
-<ul>
-<li>处理触摸事件</li>
-<li>发送和接受网络数据包</li>
-<li>执行使用gcd的代码</li>
-<li>处理定时器行为</li>
-<li>屏幕重绘</li>
-</ul>
-
-<p>当我们设置了一个NSTimer,会被插入到当前任务列表中,指定时间过去后才被执行.但是何时启动定时器并没有一个时间上限，而且它只会在列表中上一个任务完成之后开始执行。这通常会导致有几毫秒的延迟，但是如果上一个任务过了很久才完成就会导致延迟很长一段时间。</p>
-
-<p>屏幕重绘的频率是一秒钟六十次，但是和定时器行为一样，如果列表中上一个执行了很长时间，它也会延迟。这些延迟都是一个随机值，于是就不能保证定时器精准地一秒钟执行六十次。有时候发生在屏幕重绘之后，这就会使得更新屏幕会有个延迟，看起来就是动画卡壳了。有时候定时器会在屏幕更新的时候执行两次，于是动画看起来就跳动了。</p>
-
-<p>优化方法:</p>
-
-<ul>
-<li>我们可以用 CADisplayLink 让更新频率严格控制在每次屏幕刷新之后。</li>
-<li>基于真实帧的持续时间而不是假设的更新频率来做动画。</li>
-<li>调整动画计时器的 <code>run loop</code> 模式，这样就不会被别的事件干扰。</li>
-</ul>
-
-<h4 id="toc_2">CADisplayLink</h4>
-
-<p><code>CADisplayLink</code>是<code>CoreAnimation</code>提供的另一个类似<code>NSTimer</code>类,总是在屏幕完成一次更新之前启动,它和<code>NSTimer</code>的内部实现相同,只不过它不是以时间间隔秒为单位,<code>CADisplayLink</code> 有一个整型的<code>frameInterval</code> 属性，指定了间隔多少帧之后才执行。默认值是1，意味着每次屏幕更新之前都会执行一次。(我们可以根据动画的执行时间来确定多少帧执行一次)</p>
-
-<p>虽然<code>CADisplayLink</code>也不能保证每帧都按计划执行,出现丢帧情况,但是和<code>NSTimer</code>不同的是<code>NSTimer</code>一有机会就会开启,而<code>CADisplayLink</code>如果丢帧的话会直接忽略它们,在下一次更新时接着运行;</p>
-
-<pre><code class="language-objectivec">self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-
-- (void)step:(CADisplayLink *)timer
-{
-    //calculate time delta
-    CFTimeInterval thisStep = CACurrentMediaTime();
-    CFTimeInterval stepDuration = thisStep - self.lastStep;
-    self.lastStep = thisStep;
-    
-    self.timeOffset = MIN(self.timeOffset + stepDuration, self.duration);
-    //get normalized time offset (in range 0 - 1)
-    float time = self.timeOffset / self.duration;
-    //apply easing
-    time = bounceEaseOut(time);
-    //interpolate position
-    id position = [self interpolateFromValue:self.fromValue toValue:self.toValue
-    time:time];
-    //move ball view to new position
-    self.ballView.center = [position CGPointValue];
-    //stop the timer if we&#39;ve reached the end of the animation
-    if (self.timeOffset &gt;= self.duration) {
-        [self.timer invalidate];
-        self.timer = nil;
-    }
+//set访问器方法，需要先持有newCount 释放oldCount的持有权
+- (void)setCount:(NSNumber *)newCount {
+    [newCount retain];
+    [_count release];
+    // Make the new assignment.
+    _count = newCount;
 }
 </code></pre>
 
-<h4 id="toc_3">Run Loop 模式</h4>
+<blockquote>
+<p>因为在OC中是可以给nil发送消息的，因此即使newCount为空也是有效的<br/>
+必须先retain后release，因为避免两个count为同一个对象，导致对象不经意间被释放</p>
+</blockquote>
 
-<p>创建Run Loop时需要指定mode,iOS会根据指定的优先级,，而且当UI很活跃的时候的确会暂停一些别的任务.</p>
+<h3 id="toc_1">使用访问器方法设置属性值</h3>
 
-<ul>
-<li>NSDefaultRunLoopMode - 标准优先级</li>
-<li>NSRunLoopCommonModes - 高优先级</li>
-<li>UITrackingRunLoopMode - 用于 UIScrollView 和别的控件的动画</li>
-</ul>
+<p>假如想要重置属性值可以使用以下两种方法</p>
 
-<pre><code class="language-objectivec">/*我们可以同时加入 NSDefaultRunLoopMode 和 UITrackingRunLoopMode 
-    来保证它不会被滑动打断，也不会被其他UIKit控件动画影响性能
-**/
-self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:UITrackingRunLoop];
+<pre><code class="language-objectivec">//因为使用alloc 所以需要release
+- (void)reset {
+    NSNumber *zero = [[NSNumber alloc] initWithInteger:0];
+    [self setCount:zero];
+    [zero release];
+}
+
+- (void)reset {
+    NSNumber *zero = [NSNumber numberWithInteger:0];
+    [self setCount:zero];
+}
 </code></pre>
 
-<h3 id="toc_4">物理模拟</h3>
+<p>以上两种方法都使用了set访问器方法</p>
 
-<p>我们在上面的方法中，关键帧的实现中我们提前加计算了所有帧,这次我们按需要进行计算,这样我们可以根据用户输入实时修改动画的逻辑，或者和别的实时动画系统例如物理引擎进行整合。</p>
+<p>应该尽量避免下面的写法,虽然其在简单情况下也会正常，但是这样做很容易导致出错</p>
 
-<h4 id="toc_5">Chipmunk</h4>
+<pre><code class="language-objectivec">- (void)reset {
+    NSNumber *zero = [[NSNumber alloc] initWithInteger:0];
+    [_count release];
+    _count = zero;
+}
+</code></pre>
 
-<p>基于物理学创建一个真实的重力模拟效果来取代当前基于缓冲的弹性动画,因为模拟物理效果太复杂了，我们直接使用开源的物理引擎,我这里使用<code>Chipmunk</code>，有很多版本包括和<code>Objective-C</code>绑定的<code>“indie”</code>版本<a href="http://chipmunk-physics.net/">下载地址</a></p>
+<blockquote>
+<p>假如你使用KVO，这样写是不符合KVO标准的</p>
+</blockquote>
 
-<p>我们只简单使用这个引擎中的几个类:</p>
+<h3 id="toc_2">不要在初始化方法和dealloc方法中使用访问器方法</h3>
 
-<ul>
-<li>cpSpace - 所有的物理结构体的容器。它有一个大小和一个可选的重力矢量</li>
-<li>cpBody - 一个固态无弹力的刚体。它有一个坐标，以及其他物理属性，例如质量，运动和摩擦系数等等。</li>
-<li>cpShape - 一个抽象的几何形状，用来检测碰撞。可以给结构体添加一个多边形，而且<code>cpShape</code>有各种子类来代表不同形状的类型。</li>
-</ul>
+<p><strong>唯一不应该使用访问器方法设置实例变量的地方就是在初始化方法和dealloc方法中</strong></p>
 
-<p>因为C语言是不支持引用计数的所以为了准确的创建和释放我们将<code>cpShape</code>和<code>cpBody</code>和<code>Crate</code>（木箱）类进行绑定，在木箱的<code>- init</code>方法中创建,<code>-dealloc</code>中释放。用视图控制器来管理<code>cpSpace</code></p>
-
-<p><code>Chipmunk</code>使用了一个和<code>UIKit</code>颠倒的坐标系（Y轴向上为正方向）。我们可以使用<code>geometryFlipped</code>属性翻转容器视图的集合坐标,这样模型和视图就共享一个坐标系了<br/>
-<strong>geometryFlipped</strong>设置layer的这个属性可以调整坐标系Y轴方向</p>
-
-<p>代码示例:</p>
-
-<pre><code class="language-objectivec">//创建木箱的image对象
-@interface Crate : UIImageView
-@property (nonatomic, assign) cpBody *body;
-@property (nonatomic, assign) cpShape *shape;
-@end
-
-@implementation Crate
-#define MASS 100
-- (id)initWithFrame:(CGRect)frame
-{
-    if ((self = [super initWithFrame:frame])) {
-        //set image
-        self.image = [UIImage imageNamed:@&quot;Crate.png&quot;];
-        self.contentMode = UIViewContentModeScaleAspectFill;
-        //create the body
-        self.body = cpBodyNew(MASS, cpMomentForBox(MASS, frame.size.width, frame.size.height));
-        //create the shape
-        cpVect corners[] = {
-            cpv(0, 0),
-            cpv(0, frame.size.height),
-            cpv(frame.size.width, frame.size.height),
-            cpv(frame.size.width, 0),
-        };
-    self.shape = cpPolyShapeNew(self.body, 4, corners, cpv(-frame.size.width/2, -frame.size.height/2));
-    //set shape friction &amp; elasticity
-    cpShapeSetFriction(self.shape, 0.5);
-    cpShapeSetElasticity(self.shape, 0.8);
-    //link the crate to the shape
-    //so we can refer to crate from callback later on
-    self.shape-&gt;data = (__bridge void *)self;
-    //set the body position to match view
-    cpBodySetPos(self.body, cpv(frame.origin.x + frame.size.width/2, 300 - frame.origin.y - frame.size.height/2));
+<pre><code class="language-objectivec">- init {
+    self = [super init];
+    if (self) {
+        _count = [[NSNumber alloc] initWithInteger:0];
     }
     return self;
 }
-- (void)dealloc
-{
-    //release shape and body
-    cpShapeFree(_shape);
-    cpBodyFree(_body);
-}
-@end
 
-//创建重力空间
-@interface ViewController ()
-@property (nonatomic, weak) IBOutlet UIView *containerView;
-@property (nonatomic, assign) cpSpace *space;
-@property (nonatomic, strong) CADisplayLink *timer;
-@property (nonatomic, assign) CFTimeInterval lastStep;
-@end
-
-@implementation ViewController
-#define GRAVITY 1000
-- (void)viewDidLoad
-{
-    //invert view coordinate system to match physics
-    self.containerView.layer.geometryFlipped = YES;
-    //set up physics space
-    self.space = cpSpaceNew();
-    cpSpaceSetGravity(self.space, cpv(0, -GRAVITY));
-    //add a crate
-    Crate *crate = [[Crate alloc] initWithFrame:CGRectMake(100, 0, 100, 100)];
-    [self.containerView addSubview:crate];
-    cpSpaceAddBody(self.space, crate.body);
-    cpSpaceAddShape(self.space, crate.shape);
-    //start the timer
-    self.lastStep = CACurrentMediaTime();
-    self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-    [self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-}
-
-void updateShape(cpShape *shape, void *unused)
-{
-    //get the crate object associated with the shape
-    Crate *crate = (__bridge Crate *)shape-&gt;data;
-    //update crate view position and angle to match physics shape
-    cpBody *body = shape-&gt;body;
-    crate.center = cpBodyGetPos(body);
-    crate.transform = CGAffineTransformMakeRotation(cpBodyGetAngle(body));
-}
-
-- (void)step:(CADisplayLink *)timer
-{
-    //calculate step duration
-    CFTimeInterval thisStep = CACurrentMediaTime();
-    CFTimeInterval stepDuration = thisStep - self.lastStep;
-    self.lastStep = thisStep;
-    //update physics
-    cpSpaceStep(self.space, stepDuration);
-    //update all the shapes
-    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
-}
-@end
-</code></pre>
-
-<h4 id="toc_6">添加用户交互</h4>
-
-<p>为了使木箱不掉落到屏幕外 我们在屏幕周围添加四条线来限制范围;</p>
-
-<p>通过给<code>cpSpace</code>添加四个<code>cpSegmentShape</code>对象（<code>cpSegmentShape</code>代表一条直线，所以四个拼起来就是一个矩形）。然后赋值给空间的<code>staticBody</code>属性(这是不受重力的结构体)，而不是像木箱那样会受重力的<code>cpBody</code>实例，因为我们不想这线画出屏幕或者被木箱击中消失。</p>
-
-<p>通过添加一个加速器,可以通过倾斜手机来调整重力矢量,在横屏模式下，要交换加速计矢量的x和y值，竖屏模式下再换回来.</p>
-
-<pre><code class="language-text">代码省略
-</code></pre>
-
-<h4 id="toc_7">模拟时间以及固定的时间步长</h4>
-
-<p>在上面我们做动画的缓冲效果来说,都是计算每帧的持续时间，这样的话两个时间步长就是可变的,对于模拟物理效果并不理想:</p>
-
-<p>因此我们通过<strong>固定的时间步长</strong>来计算物理效果，还要保证在屏幕发生重绘时能够同步更新视图</p>
-
-<p>因为刚好我们的模型（在这个例子中就是Chipmunk的 cpSpace 中的 cpBody ）被视图（就是屏幕上代表木箱的 UIView 对象）分离，于是就很简单了。我们只需要根据屏幕刷新的时间跟踪时间步长，然后根据每帧去计算一个或者多个模拟出来的效果。</p>
-
-<pre><code class="language-objectivec">
-/**
-    通过每次 CADisplayLink 的启动来通知屏幕将要刷新，然后记录下当前的
-    CACurrentMediaTime() 。
-    在一个小增量中提前重复物理模拟（这里用120分之一秒）直到赶上显示的时间。然后更新我们的视图，
-    在屏幕刷新的时候匹配当前物理结构体的显示位置。
-*/
-
-#define SIMULATION_STEP (1/120.0)
-- (void)step:(CADisplayLink *)timer
-{
-    //calculate frame step duration
-    CFTimeInterval frameTime = CACurrentMediaTime();
-    //update simulation
-    while (self.lastStep &lt; frameTime) {
-        cpSpaceStep(self.space, SIMULATION_STEP);
-        self.lastStep += SIMULATION_STEP;
+- initWithCount:(NSNumber *)startingCount {
+    self = [super init];
+    if (self) {
+        _count = [startingCount copy];
     }
-    //update all the shapes
-    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
+    return self;
 }
 </code></pre>
 
-<h4 id="toc_8">避免死亡螺旋</h4>
+<p>因为<code>Counter Class</code>有一个实例变量对象，所以必须完成<code>dealloc</code>方法来释放所有的实例变量对象</p>
 
-<p>在上面例子中我们随意选择了1/120秒来模拟物理效果,但是我们在场景很复杂，<code>cpSpaceStp()</code>计算也会超出1/120秒,这样就会造成延迟帧率,帧延迟的话，我们需要更多时间来同步真实时间,这样就越来越慢，直到应用程序卡死,这就是所谓的<code>死亡螺旋</code></p>
+<pre><code class="language-objectivec">- (void)dealloc {
+    [_count release];
+    [super dealloc];
+}
+</code></pre>
 
-<p>为了避免这种情况 我们需要留下足够的时间容错，如果物理计算超过了模拟时间的50%，就需要考虑增加模拟时间步长（或者简化场景）。如果模拟时间步长增加到超过1/60秒（一个完整的屏幕更新时间），你就需要减少动画帧率到一秒30帧或者增加<code>CADisplayLink</code>的<code>frameInterval</code>来保证不会随机丢帧，不然你的动画将会看起来不平滑。</p>
+<h2 id="toc_3">使用弱引用避免循环引用</h2>
+
+<p>当retain一个对象时就对该对象创建一个<em>强引用</em>。一个对象在它的所有的强引用被释放前不会被<code>deallocated</code>。因此，假如两个对象互相引用(或者引用链最后一个对象又引用第一个对象)就有可能造成循环引用</p>
+
+<p>解决循环引用就是使用<em>弱引用</em>，弱引用中源对象并不持有引用对象；因此按照Cocoa惯例:&quot;父对象&quot;强引用他的&quot;子对象&quot;，而&quot;子对象&quot;弱引用&quot;父对象&quot;<br/>
+<img src="media/15553160787382/15553237100030.jpg" alt="" style="width:300px;"/></p>
+
+<p>常用的弱引用:  table data sources、视图、notication observers、delegate等</p>
+
+<p>使用弱引用需要注意，避免向已经<code>deallocated</code>的对象发送消息，否则会引起崩溃；因此弱引用对象使用时一般知道另外对象对其的弱引用，并在对象deallocated时通知两外一个对象。例如，向<code>notification center</code>注册接收对象时，通知中心会保留对该对象的弱引用，来在通知时给其发送通知消息。而在<code>deallocated</code>后，向<code>notification center</code>注销该对象，避免再次向其发送消息; 同样的，当取消分配的delegate时，需要<code>setDelegate：</code>为<code>nil</code>，这些消息常在<code>deallco</code>方法中发送。</p>
+
+<h2 id="toc_4">避免正在使用的对象内存销毁</h2>
+
+<p>我们在使用内存规则时保证对象在使用时是有效的，但是注意在以下两种情况可能导致出现异常情况:</p>
+
+<ol>
+<li><p>当一个对象从集合中移除</p>
+<pre><code class="language-objectivec">heisenObject = [array objectAtIndex:n];
+[array removeObjectAtIndex:n];<br/>
+//heisenObject 此时可能已经无效了
+</code></pre>
+<p>当对象从集合汇总移除时，会发送一个<code>release</code>消息，此时如果集合是该对象唯一持有者，该对象就会被销毁</p></li>
+<li><p>当&quot;父对象&quot;被销毁时</p>
+<pre><code class="language-objectivec">id parent = &lt;#create a parent object#&gt;;
+// ...<br/>
+heisenObject = [parent child] ;<br/>
+[parent release]; // Or, for example: self.parent = nil;<br/>
+// heisenObject could now be invalid.
+</code></pre>
+<p>当使用子对象时，其父对象被释放导致被销毁，那么子对象也会被释放，而如果其父对象是其唯一的持有者，那么子对象也会被同时销毁</p></li>
+</ol>
+
+<p>为了避免出现以上两种情况，应该在收到该对象时retain，而在不再使用时release</p>
+
+<pre><code class="language-objectivec">heisenObject = [[array objectAtIndex:n] retain];
+[array removeObjectAtIndex:n];
+// Use heisenObject...
+[heisenObject release];
+</code></pre>
+
+<h2 id="toc_5">不要在dealloc中管理稀缺系统资源</h2>
+
+<p>不应该在<code>dealloc</code>中管理稀缺资源，例如文件描述符、网络连接以及缓冲区和缓存。更不应该在你认为dealloc将调用是调用dealloc方法，因为dealloc的调用可能会因为bug或者应用终止而导致延迟或者不调用</p>
+
+<p>相反，可以设计一个类，在不再需要这些稀缺系统资源时，进行“清理”。</p>
+
+<p>在dealloc中进行资源管理可能会导致以下问题:</p>
+
+<ol>
+<li><p>视图拆除的顺序的依赖性<br/>
+对象视图拆除机制本质上是无序的。虽然我们经常会获得期待的拆除顺序，但是这会给项目带来脆弱性。例如如果对象因为意外autorelease而不是release，拆除顺序就有可能改变</p></li>
+<li><p>稀缺资源的未回收<br/>
+内存管理时，内存泄漏是应该修复的错误，但是通常不会立刻致命。但是如果是该释放的资源没有立即释放就有可能遇到更严重的问题。例如，用完了文件描述符导致应用无法再存储数据</p></li>
+<li><p>清理逻辑在错误的线程中执行</p>
+<p>如果<strong>一个对象意外的autorelease，它将会在释放时碰巧遇到的任何线程的自动释放池中释放</strong>。而这对于那些只能在某个线程中释放的资源，是很致命的</p></li>
+</ol>
+
+<h2 id="toc_6">集合持有它所包含的元素对象</h2>
+
+<p>将对象添加到集合中，集合就会持有该对象，即强引用该对象。而当集合中移除对象或者该集合本身被释放，集合将release该对象。因此，例如，假如你想要创建一组数组集合，可以这么做:</p>
+
+<pre><code class="language-objectivec">NSMutableArray *array = &lt;#Get a mutable array#&gt;;
+NSUInteger i;
+// ...
+for (i = 0; i &lt; 10; i++) {
+    NSNumber *convenienceNumber = [NSNumber numberWithInteger:i];
+    [array addObject:convenienceNumber];
+}
+</code></pre>
+
+<p>这样写，因为不是alloc调用的的，因此不必release。而我们也必要retain数字对象，因为数组会对其进行retain</p>
+
+<pre><code class="language-objectivec">NSMutableArray *array = &lt;#Get a mutable array#&gt;;
+NSUInteger i;
+// ...
+for (i = 0; i &lt; 10; i++) {
+    NSNumber *allocedNumber = [[NSNumber alloc] initWithInteger:i];
+    [array addObject:allocedNumber];
+    [allocedNumber release];
+}
+</code></pre>
+
+<p>在这个例子中，for循环中，因为是<code>allocNumber</code>产生的对象因此需要release进行平衡</p>
+
+<h2 id="toc_7">使用引用计数来进行持有策略</h2>
+
+<p>引用计数，通常在retain后称为保留计数，每个对象都有一个保留计数</p>
+
+<ul>
+<li>创建对象时，保留计数为1</li>
+<li>向对象发送保留消息，其保留计数加1</li>
+<li>向对象发送释放消息，保留计数减1</li>
+<li>向对象发送自动释放消息，保留计数在当前自动释放池末尾，保留计数减1</li>
+<li>当保留计数为0，则将其<code>deallocated</code>即销毁对象释放内存<br/>
+</li>
+</ul>
 
 
 		</div>
@@ -369,24 +296,24 @@ void updateShape(cpShape *shape, void *unused)
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -406,10 +333,10 @@ void updateShape(cpShape *shape, void *unused)
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -433,7 +360,7 @@ void updateShape(cpShape *shape, void *unused)
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -444,7 +371,7 @@ void updateShape(cpShape *shape, void *unused)
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -462,6 +389,15 @@ void updateShape(cpShape *shape, void *unused)
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -471,31 +407,31 @@ void updateShape(cpShape *shape, void *unused)
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

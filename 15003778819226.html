@@ -86,7 +86,7 @@ $(document).ready(function(event) {
 			 </header>
 		  	<div class="entry-content">
 			  	<ol>
-<li><p>与C语言不同，<code>Swift</code>中的枚举更加灵活，不必给每一个枚举成员提供一个值。如果给枚举成员提供一个值（称为“原始”值），则该值的类型可以是字符串，字符，或是一个整型值或浮点数。</p></li>
+<li><p>与C语言类似但不同，<code>Swift</code>中的枚举更加灵活，不必给每一个枚举成员提供一个值。如果给枚举成员提供一个值（称为“原始”值），则该值的类型可以是字符串，字符，或是一个整型值或浮点数。</p></li>
 <li><p>枚举成员可以指定任意类型的关联值存储到枚举成员中</p></li>
 <li><p>在 Swift 中，<strong>枚举类型</strong>是一等（first-class）类型。采用了很多在传统上只被类（class）所支持的特性，例如计算属性（computed properties），用于提供枚举值的附加信息，实例方法（instance methods），用于提供和枚举值相关联的功能。枚举也可以定义构造函数（initializers）来提供一个初始值；可以在原始实现的基础上扩展它们的功能；还可以遵循协议（protocols）来提供标准的功能。</p></li>
 </ol>
@@ -111,6 +111,8 @@ enum Planet {
 <p>我们使用<code>case</code>来定义一个新的枚举成员值</p>
 
 <blockquote>
+<p>注意:</p>
+
 <p>与OC不同,Swift枚举成员不会再创建时被赋予一个默认的整型值。这些枚举成员本身就是完备的值，这些值的类型是已经明确定义好的<code>CompassPoint</code>类型</p>
 </blockquote>
 
@@ -137,9 +139,26 @@ default:
 // 打印 &quot;Mostly harmless”
 </code></pre>
 
-<h2 id="toc_2">关联值</h2>
+<h2 id="toc_2">枚举成员的遍历</h2>
 
-<p>可以使用<code>Swift</code>的枚举来<strong>存储任意类型的关联值</strong>,枚举成员的关联值类型可以不同(关联值)</p>
+<p>有时我们可能会需要得到一个包含所有枚举成员的集合。这时，可以这么实现:</p>
+
+<p>令枚举遵循<code>CaseInterable</code>协议。Swift会生成一个<code>allClass</code>属性，用于表示一个包含枚举所有成员的集合。</p>
+
+<pre><code class="language-swift">enum Beverage: CaseIterable {
+    case coffee, tea, juice
+}
+let numberOfChoices = Beverage.allCases.count
+print(&quot;\(numberOfChoices) beverages available&quot;)
+// 打印“3 beverages available”
+for beverage in Beverage.allCases {
+    print(beverage)
+}
+</code></pre>
+
+<h2 id="toc_3">关联值</h2>
+
+<p>可以使用<code>Swift</code>的枚举来<strong>存储任意类型的关联值</strong>,枚举成员的关联值类型可以不同</p>
 
 <pre><code class="language-swift">enum Barcode {
     case upc(Int, Int, Int, Int)
@@ -147,7 +166,9 @@ default:
 }
 </code></pre>
 
-<p>定义一个枚举类型,一个成员值是具有 <code>(Int，Int，Int，Int)</code>类型关联值的 upc，另一个是<code>String</code>类型关联值的qrcode</p>
+<p>这个枚举的意思是:定义一个枚举类型,其一个成员值是具有 <code>(Int，Int，Int，Int)</code>类型关联值的 upc，另一个是<code>String</code>类型关联值的qrcode。这个定义并不提供和任何Int或String类型的关联值，只是定义了，当Barcode常量和变量等于<code>barcode.upc</code>或<code>barcode.qrCode</code>时，可以存储的关联值类型</p>
+
+<p>比如创建任意条形码类型</p>
 
 <pre><code class="language-swift">//给其赋值关联的元组值
 var productBarcode = Barcode.upc(8, 85909, 51226, 3)
@@ -178,9 +199,9 @@ case let .qrCode(productCode):
 // 输出 &quot;QR code: ABCDEFGHIJKLMNOP.&quot;
 </code></pre>
 
-<h2 id="toc_3">原始值</h2>
+<h2 id="toc_4">原始值</h2>
 
-<p>枚举成员可以被<strong>默认值（称为原始值）预填充</strong>，这些原始值的类型必须相同。</p>
+<p>作为关联值的替代选择，枚举成员可以被<strong>默认值（称为原始值）预填充</strong>，这些原始值的类型必须相同。</p>
 
 <pre><code class="language-swift">enum ASCIIControlCharacter: Character {
     case tab = &quot;\t&quot;
@@ -193,13 +214,16 @@ case let .qrCode(productCode):
 每个原始值在枚举声明中必须是唯一的。</p>
 
 <blockquote>
-<p>注意原始值与关联值的不同，原始值是在定义枚举是预先填充的值，对于特定的枚举成员其原始值不变<br/>
+<p>注意：</p>
+
+<p>原始值与关联值的不同，原始值是在定义枚举是预先填充的值，<br/>
+对于特定的枚举成员其原始值不变<br/>
 关联值是创建一个基于枚举成员的常量或变量时才设置的值,枚举成员的关联值可以变化</p>
 </blockquote>
 
-<h3 id="toc_4">原始值的隐式赋值</h3>
+<h3 id="toc_5">原始值的隐式赋值</h3>
 
-<p>当原始值为整数或者字符串类型的枚举时,Swift会自动为每个枚举成员设置原始值;</p>
+<p>当原始值为整数或者字符串类型的枚举时,此时不需要显式的为每个枚举成员设置原始值，Swift会自动为每个枚举成员设置原始值;</p>
 
 <ol>
 <li><p>原始值为整形枚举</p>
@@ -225,7 +249,7 @@ let sunsetDirection = CompassPoint.west.rawValue
     // sunsetDirection 值为 &quot;west&quot;
 </code></pre>
 
-<h3 id="toc_5">原始值初始化枚举实例</h3>
+<h3 id="toc_6">原始值初始化枚举实例</h3>
 
 <p>定义枚举时使用原始值,会获得一个初始化方法,有一个<code>rawValue</code>类型为原始值类型的参数，返回一个枚举类型或为<code>nil</code></p>
 
@@ -244,13 +268,20 @@ if let somePlanet = Planet(rawValue: positionToFind) {
     print(&quot;There isn&#39;t a planet at position \(positionToFind)&quot;)
 }
 //找不到11代表的行星
+
 </code></pre>
 
-<h2 id="toc_6">递归枚举</h2>
+<blockquote>
+<p>注意：</p>
 
-<p>是一种枚举类型  有一个或多个成员使用该枚举类型实例作为关联值</p>
+<p>原始值构造器是一个可失败构造器  因为并不是每个原始值都有与之对应的枚举成员</p>
+</blockquote>
 
-<p>可以在枚举成员前加<code>indirect</code>表示该成员可递归, 或者在枚举类型开头加上<code>indirect</code>关键字来表明它的所有成员都是可递归</p>
+<h2 id="toc_7">递归枚举</h2>
+
+<p><strong>递归枚举</strong>也是是一种枚举类型，只是它<strong>有一个或多个成员使用该枚举类型实例作为关联值</strong><br/>
+在使用递归枚举时，编译器会加上一个间接层。<br/>
+可以在枚举成员前加<code>indirect</code>表示该成员可递归, 或者在枚举类型开头加上<code>indirect</code>关键字来表明它的所有成员都是可递归</p>
 
 <pre><code class="language-swift">enum ArithmeticExpression {
     case number(Int)
@@ -330,24 +361,24 @@ print(evaluate(product))//18
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -367,10 +398,10 @@ print(evaluate(product))//18
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -394,7 +425,7 @@ print(evaluate(product))//18
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -405,7 +436,7 @@ print(evaluate(product))//18
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -423,6 +454,15 @@ print(evaluate(product))//18
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -432,31 +472,31 @@ print(evaluate(product))//18
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

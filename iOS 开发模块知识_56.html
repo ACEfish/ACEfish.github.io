@@ -82,104 +82,69 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15350923380421.html">CGColor</a></h1>
-			<p class="meta"><time datetime="2018-08-24T14:32:18+08:00" 
-			pubdate data-updated="true">2018/8/24</time></p>
+		  	<h1 class="entry-title"><a href="15529084547270.html">ReactObjc常用</a></h1>
+			<p class="meta"><time datetime="2019-03-18T19:27:34+08:00" 
+			pubdate data-updated="true">2019/3/18</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>定义颜色的组件，通过颜色空间来解释其颜色</p>
+		  	<h2 id="toc_0">常用信号</h2>
 
-<p><code>CGColorRef</code></p>
+<pre><code class="language-objectivec">//按钮点击事件信号
+RACSignal *controlUpdate = [myButton rac_signalForControlEvents:UIControlEventTouchUpInside];
 
-<h2 id="toc_0">CGColor的Release和Retain</h2>
+//监测textField改变信号
+RACSignal *textChange = [myTextField rac_textSignal];
 
-<pre><code class="language-objectivec">void CGColorRelease(CGColorRef color);
+//alertView UIActionSheet UIImagePickerControl 监测信号
+//例如对alertView  UIActionSheet 等监测返回的就是点击的按钮index
+RACSignal *alertButtonClicked = [myAlertView rac_buttonClickedSignal];
 
-CGColorRef CGColorRetain(CGColorRef color);
+//监测对象某个事件的执行
+RACSignal *viewAppeared = [self rac_signalForSelector:@selector(viewDidAppear:)];
+
 </code></pre>
 
-<h2 id="toc_1">创建颜色</h2>
+<h2 id="toc_1">UI控件展示与对象属性的绑定</h2>
 
-<ol>
-<li><p>使用颜色空间和强度值列表(包括Alpha)创建颜色</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreate(CGColorSpaceRef space, const CGFloat *components);
-space: 颜色空间<br/>
-components: 描述颜色强度值的n+1个值的数组,n个值对应颜色空间的n歌颜色分量，后加alpha分量
-</code></pre>
-<blockquote>
-<p>需要调用CGColorRelease进行释放</p>
-</blockquote></li>
-<li><p>Copy已有颜色副本</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreateCopy(CGColorRef color);
-</code></pre>
-<blockquote>
-<p>需要调用CGColorRelease进行释放</p>
-</blockquote></li>
-<li><p>创建通用灰度颜色空间颜色</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreateGenericGray(CGFloat gray, CGFloat alpha);
-gray:  A grayscale value (0.0 - 1.0).<br/>
-alpha:An alpha value (0.0 - 1.0).
-</code></pre></li>
-<li><p>创建通用RGB颜色空间颜色</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreateGenericRGB(CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha);
-red: A red component value (0.0 - 1.0).<br/>
-green: A green component value (0.0 - 1.0).<br/>
-blue: A blue component value (0.0 - 1.0).<br/>
-alpha: An alpha value (0.0 - 1.0)
-</code></pre></li>
-<li><p>创建通用CMYK颜色</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreateGenericCMYK(CGFloat cyan, CGFloat magenta, CGFloat yellow, CGFloat black, CGFloat alpha);
-cyan： 0.0=1.0<br/>
-magenta： 0.0=1.0<br/>
-yellow： 0.0=1.0<br/>
-black： 0.0=1.0<br/>
-alpha： 0.0=1.0
-</code></pre></li>
-<li><p>创建与现有颜色相同，alpha不同的颜色副本</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreateCopyWithAlpha(CGColorRef color, CGFloat alpha);
-</code></pre>
-<blockquote>
-<p>需要调用CGColorRelease释放</p>
-</blockquote></li>
-<li><p>使用图案颜色空间、图案和强度值列表(包括alpha)创建颜色</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreateWithPattern(CGColorSpaceRef space, CGPatternRef pattern, const CGFloat *components);
-</code></pre>
-<blockquote>
-<p>需要调用CGColorRelease释放</p>
-</blockquote></li>
-<li><p>在不同颜色空间创建与颜色匹配的新颜色</p>
-<pre><code class="language-objectivec">CGColorRef CGColorCreateCopyByMatchingToColorSpace(CGColorSpaceRef, CGColorRenderingIntent intent, CGColorRef color, CFDictionaryRef options);
-CGColorSpaceRef: 目标颜色空间<br/>
-intent: 当颜色在新颜色色域之外时采用的模式<br/>
-color: 要转换的颜色<br/>
-options: NULL
-</code></pre></li>
-</ol>
+<pre><code class="language-objectivec">//将label内容与model属性绑定  之后当model属性改变即会改变label内容，
+//RACObserve 是采用了KVO方式，因此改变userFullName属性方法需要出发setter方法 
+RAC(self.userNameLabel, text) = RACObserve(self.viewModel, userFullName);
 
-<h2 id="toc_2">其他方法</h2>
+//当要赋值的属性类型不一致时，可以使用map将属性调整一致
+RAC(self.countLabel, text) = [RACObserve(cellVM, count) map:^id _Nullable(NSNumber *  _Nullable value) {
+    return value.stringValue;
+}];
 
-<ol>
-<li><p>判断两个颜色是否相同<br/>
-当两个颜色的颜色空间以及各个分量值相同时，相同</p>
-<pre><code class="language-objectivec">bool CGColorEqualToColor(CGColorRef color1, CGColorRef color2);
-</code></pre></li>
-<li><p>获取颜色的alpha</p>
-<pre><code class="language-objectivec">CGFloat CGColorGetAlpha(CGColorRef color);
-</code></pre></li>
-<li><p>获取颜色的颜色空间</p>
-<pre><code class="language-objectivec">CGColorSpaceRef CGColorGetColorSpace(CGColorRef color);
-</code></pre></li>
-<li><p>获取与颜色相关的n+1个分量值（包括alpha）</p>
-<pre><code class="language-objectivec">const CGFloat * CGColorGetComponents(CGColorRef color);
-</code></pre></li>
-<li><p>获取指定颜色的分享个数(包括alpha)</p>
-<pre><code class="language-objectivec">size_t CGColorGetNumberOfComponents(CGColorRef color);
-</code></pre></li>
-<li><p>获取与颜色图案空间相关的颜色图案</p>
-<pre><code class="language-objectivec">CGPatternRef CGColorGetPattern(CGColorRef color);
-</code></pre></li>
-</ol>
+//将UI控件内容绑定到对象属性
+//将Textfield内容绑定到self.viewModel的userName属性 
+//rac_textSignal默认检测textEditingEvent 因此代码级别改变Textfield内容不会触发此信号
+RAC(self.viewModel, username) = [myTextfield rac_textSignal];
+</code></pre>
+
+<h2 id="toc_2">UI事件与对象数据绑定</h2>
+
+<pre><code class="language-objectivec">//订阅数据改变的信号 当数据信号改变时刷新tableView 这样之后我们只需要改变数据即可 无需手动调用tableView刷新事件
+//因为这里tableView的刷新绑定两个属性 因此我们需要对这两个信号执行merge
+//因为多个信号 同时改变的话可能会导致多次刷新 因此`bufferWithTime`
+//设置在指定时间内只执行一次 当设置为0时 在下次屏幕刷新之前(即一个runloop中) 只执行一次 而不会多次刷新
+@weakify(self);
+[[[RACSignal merge:@[RACObserve(self.viewModel, tweets),
+                    RACObserve(self.viewModel, allTweetsLoaded)]]
+bufferWithTime:0 onScheduler:[RACScheduler mainThreadScheduler]]
+subscribeNext:^(id value) {
+    @strongify(self);
+    [self.tableView reloadData];
+}];
+
+
+//按钮点击事件
+[[self.goButton rac_signalForControlEvents:UIControlEventTouchUpInside]
+subscribeNext: ^(id value) {
+    @strongify(self);
+    [self.viewModel getTweetsForCurrentUsername];
+}];
+</code></pre>
 
 
 		</div>
@@ -202,24 +167,24 @@ options: NULL
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -239,10 +204,10 @@ options: NULL
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -266,7 +231,7 @@ options: NULL
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -277,7 +242,7 @@ options: NULL
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -295,6 +260,15 @@ options: NULL
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -304,31 +278,31 @@ options: NULL
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

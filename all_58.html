@@ -82,61 +82,44 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15481487955572.html">事件处理函数</a></h1>
-			<p class="meta"><time datetime="2019-01-22T17:19:55+08:00" 
-			pubdate data-updated="true">2019/1/22</time></p>
+		  	<h1 class="entry-title"><a href="15527263519137.html">iOS视图约束</a></h1>
+			<p class="meta"><time datetime="2019-03-16T16:52:31+08:00" 
+			pubdate data-updated="true">2019/3/16</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>js中事件处理函数写法:</p>
+		  	<h2 id="toc_0">自动约束方法</h2>
 
-<pre><code class="language-javascript">class BtnComponets extends React.Component {
+<ol>
+<li><p>updateConstraintsIfNedded<br/>
+触发开始约束更新<br/>
+当有新的布局时，系统调用此方法确保视图和子视图约束信息的更新，系统会自动调用这方法，我们也可以手动调用此方法，来检查最新的约束条件</p></li>
+<li><p>updateConstraints<br/>
+更新约束<br/>
+我们可以通过重写此方法来设置自己的约束，系统在调用layOut布局之前，回调用这个方法，确认在视图的约束<br/>
+当我们的视图有约束变化或者失效，我们可以改变这些约束然后调用<code>setNeedUpdateConstraints</code>标记约束需要更新<br/>
+需要在此方法最后调用<code>super updateConstraints</code></p></li>
+<li><p>-（BOOL）neddUpdateConstrains<br/>
+调用此方法根据此方法的返回 决定是否需要更新约束</p></li>
+<li><p>setNeedsUpdateConstraints<br/>
+当视图需要更新时 我们可以调用此方法，然后在系统决定更新时机</p></li>
+</ol>
 
-    constructor(props) {
-        super(props)
-        //js中的方法当作为事件函数需要绑定this
-        this.actionClick = this.actionClick.bind(this)
-    }
+<h2 id="toc_1">updateConstranins和layOut方法联系</h2>
 
-    actionClick(e) {
-        console.log(&#39;The link was clicked.&#39;);
-        console.log(this)
-    }
+<p>AutoLayout在更新显示view之前，会先调用updateContrains和layingOutView，layout和依赖于Contrains，而view的最终显示依赖于layout</p>
 
-    render() {
-        return(
-            &lt;a href=&quot;#&quot; onClick={this.actionClick}&gt; Click Me &lt;/a&gt;
-            // &lt;button onClick = {this.actionClick}&gt; 这是一个按钮 &lt;/button&gt;
-        )
-    }
-}
-</code></pre>
+<p>第一步：update constrains 进行视图的约束，从俯视图到子视图更新约束信息，可以通过调用<code>setNeedsUpdateConstraints</code>来触发此步骤. 而当我们做出一些改变约束的事情事，可以调用<code>updateConstraintsIfNedded</code>来通知约束改变，可以在<code>updateConstraints</code>方法中重写或者补充一些视图的约束</p>
 
-<p>注意:</p>
+<p>第二步: lauout 根据上一步的约束结果，从父视图到子视图来设置视图的bounds frame等 确定试图位置，与constrains类似 有<code>setNeedLayout</code> <code>layoutIfNeeded</code> <code>layoutSubviews</code>方法</p>
 
-<blockquote>
-<p>类的方法 默认不会绑定<code>this</code> 当把其传到事件函数中，当调用此函数时 其值默认为<code>undefined</code>，因此需要在构造方法中对其绑定。(在传入事件回调函数时进行绑定的话,会在每次使用此组件时就进行一次绑定 浪费性能)</p>
+<p>第三步: 此步骤时 把view展示在屏幕上 此步骤可以通过<code>setNeedDisplay</code>来触发</p>
 
-<p>作为事件处理函数传入时,传入的是函数名而不是执行函数，例如传入的是<code>onClick={this.actionClick}</code>而不是<code>onClick={this.actionClick}</code>，你也可以这么写<code>onClick={()=&gt;{this.actionClick()}}</code>，但是样每次都会创建一个函数,不推荐这么写</p>
-</blockquote>
+<p>这三个步骤互相依赖，每一步的触发都依赖于上一步</p>
 
-<h3 id="toc_0">阻止默认行为</h3>
+<h2 id="toc_2">补充</h2>
 
-<p>在<code>React</code>中另一个不同是你不能使用返回<code>false</code>的方式阻止默认行为。你必须明确的使用 <code>preventDefault</code></p>
-
-<pre><code class="language-javascript">function ActionLink() {
-  function handleClick(e) {
-    e.preventDefault();
-    console.log(&#39;The link was clicked.&#39;);
-  }
-
-  return (
-    &lt;a href=&quot;#&quot; onClick={handleClick}&gt;
-      Click me
-    &lt;/a&gt;
-  );
-}
-</code></pre>
+<p><code>UIViewController</code>中有<code>- (void)updateViewConstraints</code>默认实现是调用UIView的<code>uodateConstraints</code></p>
 
 
 		</div>
@@ -159,24 +142,24 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -196,10 +179,10 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -223,7 +206,7 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -234,7 +217,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -252,6 +235,15 @@ $(document).ready(function(event) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -261,31 +253,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

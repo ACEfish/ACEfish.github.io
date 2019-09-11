@@ -82,399 +82,248 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14940350647350.html">图像IO</a></h1>
-			<p class="meta"><time datetime="2017-05-06T09:44:24+08:00" 
-			pubdate data-updated="true">2017/5/6</time></p>
+		  	<h1 class="entry-title"><a href="15543697527242.html">深入理解RunLoop</a></h1>
+			<p class="meta"><time datetime="2019-04-04T17:22:32+08:00" 
+			pubdate data-updated="true">2019/4/4</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>和绘图相关的是图像性能，我们研究如何从闪存驱动器或者网络中加载和显示图片</p>
+		  	<p>学习自Y神的<a href="https://blog.ibireme.com/2015/05/18/runloop/">深入理解RunLoop</a></p>
 
-<p>补充知识:<br/>
-<a href="http://www.cocoachina.com/ios/20170227/18784.html">图片加载解压</a>原理知识学习<br/>
-<strong>图片解压缩的过程其实就是将图片的二进制数据转换成像素数据的过程</strong><br/>
-我们平常看大的图片大小其实只是图片的二进制数据大小即原始文件大小<br/>
-解压后的图片大小与原始文件大小之间没有任何关系，而只与图片的像素有关:</p>
+<h2 id="toc_0">RunLoop的概念</h2>
+
+<p>关键点在于:如何管理事件/消息，如何让线程在没有消息处理时休眠避免资源消耗、而在消息到来时被立刻唤醒</p>
+
+<p>所以,RunLoop实际上就是一个对象，这个对象管理其需要处理的事件和消息，并提供了一个入口函数执行上面EventLoop逻辑，线程处理了这个函数后，就会一直处于函数内部“接收消息-&gt;等待-&gt;处理”的循环中，知道循环结束，函数返回</p>
+
+<p>系统提供了两个对象:<code>NSRunLoop</code>和<code>CFRunLoopRef</code>。CFRunLoopRef是在CoreFoundation框架内的，提供了纯C函数的API，这些API都是线程安全的(内部有加锁操作);NSRunLoop是基于CFRunLoopRef的封装，提供了面对对象的API，但是这些API不是线程安全的</p>
 
 <blockquote>
-<p>解压缩后的图片大小 = 图片的像素宽 30 * 图片的像素高 30 * 每个像素所占的字节数 4</p>
+<p>线程安全简而言之就是，一个方法或者一个实例在多线程环境中使用而不会出现问题的</p>
 </blockquote>
 
-<p>事实上不管是<code>JPEG</code>还是<code>PNG</code>图片，都是一种压缩的位图图形格式。只不过<code>PNG</code>图片是无损压缩，并且支持<code>alpha</code>通道，而<code>JPEG</code>图片则是有损压缩，可以指定<code>0-100%</code>的压缩比。值得一提的是，在苹果的<code>SDK</code> 中专门提供了两个函数用来生成 PNG 和 JPEG 图片：</p>
+<h2 id="toc_1">RunLoop和线程的关系</h2>
 
-<pre><code class="language-objectivec">UIKIT_EXTERN NSData * __nullable UIImagePNGRepresentation(UIImage * __nonnull image);
+<p>iOS开发中有两个线程对象pthread和NSThread<br/>
+苹果不允许直接创建RunLoop，但是提供了两个自动获取的函数:<code>CFRunLoopGetMain()</code> 和 <code>CFRunLoopGetCurrent()</code></p>
+
+<p>线程和runloop之间是一一对应的，其关系保存在一个全局的字典之中，线程刚创建的时候是没有runLoop的，如果不主动获取，就一直不会有，其创建发生在第一次获取时，RunnLoop销毁发生在线程结束时。除了主线程，你只能在线程的内部获取其RunLoop</p>
+
+<h2 id="toc_2">RunLoop对外的接口</h2>
+
+<p>在CF中 RunLoop有五个类</p>
+
+<pre><code class="language-text">CFRunLoopRef
+CFRunLoopModeRef
+CFRunLoopSourceRef
+CFRunLoopTimerRef
+CFRunLoopObserverRef
+</code></pre>
+
+<p>一个RunLoop中包含若干个Mode，每个Mode中包含若干个<code>Source/Timer/Observer</code>，每次调用RunLopp的主函数，只能指定其中一个Mode,即currentMode，如果需要切换Mode，只能退出Loop，再重新指定一个Mode进入，这样就可以分割不同组的Source/Timer/observer,互不影响</p>
+
+<p><strong>CFRunLoopSourceRef</strong>是事件产生的地方，source有两个版本：source0和Source1</p>
+
+<ul>
+<li>source0，之所以这么命名是因为上下文结构的版本字段为0，由应用程序管理，只包含了一个回调指针(函数指针)，不能主动触发事件。使用时，需要先调用<code>CFRunLoopSourceSignal(source)</code>将source标记为待处理，然后调用<code>CFRunLoopWakeUp(runloop)</code>来唤醒RunLoop唤醒RunLoop，让其处理这个事件</li>
+<li>source1，由RunLoop和内和管理，包含了一个mach_port和一个回调指针，被用于内核和其他线程互相发送消息。<strong>这种source能主动唤醒RunLoop的线程</strong></li>
+</ul>
+
+<p><strong>CFRunLoopTimerRef</strong>是一个特殊的源，基于时间的触发器，和<code>NSTimer</code>是<code>toll-free bridged</code>的,因此二者是可以混用替代的，包含一个时间长苏和回调指针。加入RunLoop后，RunLoop会注册对应时间点，当时间到了，就会被唤醒执行回调；</p>
+
+<p><strong>CFRunLoopObserverRef</strong>观察者，每个Observer都包含一个回调，当RunLoop状态发生改变是，就通过回调接受到此变化</p>
+
+<pre><code class="language-c">typedef CF_OPTIONS(CFOptionFlags, CFRunLoopActivity) {
+    kCFRunLoopEntry         = (1UL &lt;&lt; 0), // 即将进入Loop
+    kCFRunLoopBeforeTimers  = (1UL &lt;&lt; 1), // 即将处理 Timer
+    kCFRunLoopBeforeSources = (1UL &lt;&lt; 2), // 即将处理 Source
+    kCFRunLoopBeforeWaiting = (1UL &lt;&lt; 5), // 即将进入休眠
+    kCFRunLoopAfterWaiting  = (1UL &lt;&lt; 6), // 刚从休眠中唤醒
+    kCFRunLoopExit          = (1UL &lt;&lt; 7), // 即将退出Loop
+};
+</code></pre>
+
+<p>这三种被统称为mode item，一个item可以被同时加入多个Mode，但是一个item被重复加入同一个mode不会有效果，如果mode中一个item没有就会直接退出，不进入循环</p>
+
+<h2 id="toc_3">RunLoop的Mode</h2>
+
+<p>CFRunLoopMode 和 CFRunLoop 的结构大致如下：</p>
+
+<pre><code class="language-c">struct __CFRunLoopMode {
+    CFStringRef _name;            // Mode Name, 例如 @&quot;kCFRunLoopDefaultMode&quot;
+    CFMutableSetRef _sources0;    // Set
+    CFMutableSetRef _sources1;    // Set
+    CFMutableArrayRef _observers; // Array
+    CFMutableArrayRef _timers;    // Array
+    ...
+};
  
-// return image as JPEG. May return nil if image has no CGImageRef or invalid bitmap format. compression is 0(most)..1(least)            
-UIKIT_EXTERN NSData * __nullable UIImageJPEGRepresentation(UIImage * __nonnull image, CGFloat compressionQuality);
+struct __CFRunLoop {
+    CFMutableSetRef _commonModes;     // Set
+    CFMutableSetRef _commonModeItems; // Set&lt;Source/Observer/Timer&gt;
+    CFRunLoopModeRef _currentMode;    // Current Runloop Mode
+    CFMutableSetRef _modes;           // Set
+    ...
+};
 </code></pre>
 
-<p>在将磁盘中的图片渲染到屏幕之前，必须先要得到图片的原始像素数据，才能执行后续的绘制操作</p>
+<p>CF中有一种特殊的“假”mode即common mode，允许你将一个item添加到多个mode中；如果要指定commod模式，使用<code>kCFRunLoopCommonModes</code>常量作为模式名； 一个mode可以通过<code>CFRunLoopAddCommonMode</code>将mode的名字添加到commonModes中，每个runLoop都有自己独立的common模式集。每当RunLoop内容发生变化时，RunLoop会自动将_commonModeItems里的item同步到有&quot;common&quot;标记的mode</p>
 
-<h3 id="toc_0">加载和潜伏</h3>
+<p>CFRunLoop对外暴露的管理 Mode 接口</p>
 
-<p>绘图实际消耗的时间并不是影响性能主要因素。图片消耗很大一部分内存,而且不太可能把需要显示的图片都保留在内存中,所以在应用运行时周期性的加载和卸载图片</p>
+<pre><code class="language-c">CFRunLoopAddCommonMode(CFRunLoopRef runloop, CFStringRef modeName);
+//指定当前线程的CFRunLoop对象 运行的mode
+CFRunLoopRunResult CFRunLoopRunInMode(CFRunLoopMode mode, CFTimeInterval seconds, Boolean returnAfterSourceHandled)
+</code></pre>
 
-<p>图片文件的加载速度被<code>CPU</code>和<code>IO(输入输出)</code>同时影响。iOS设备中的闪存虽然比传统硬盘块,但是比RAM仍然慢了200倍，我们需要小心加载来避免延迟</p>
+<p>Mode中管理Item的接口</p>
+
+<pre><code class="language-objectivec">CFRunLoopAddSource(CFRunLoopRef rl, CFRunLoopSourceRef source, CFStringRef modeName);
+CFRunLoopAddObserver(CFRunLoopRef rl, CFRunLoopObserverRef observer, CFStringRef modeName);
+CFRunLoopAddTimer(CFRunLoopRef rl, CFRunLoopTimerRef timer, CFStringRef mode);
+CFRunLoopRemoveSource(CFRunLoopRef rl, CFRunLoopSourceRef source, CFStringRef modeName);
+CFRunLoopRemoveObserver(CFRunLoopRef rl, CFRunLoopObserverRef observer, CFStringRef modeName);
+CFRunLoopRemoveTimer(CFRunLoopRef rl, CFRunLoopTimerRef timer, CFStringRef mode);
+
+</code></pre>
+
+<p>你只能通过<code>mode name</code>来操作内部的<code>mode</code>，当你传入一个新的<code>mode name</code>,但<code>RunLoop</code>内部没有对应 <code>mode</code>时，RunLoop会自动帮你创建对应的 <code>CFRunLoopModeRef</code>。对于一个<code>RunLoop</code>来说，其内部的<code>mode</code>只能增加不能删除。</p>
+
+<p>苹果公开提供的 Mode 有两个：<code>kCFRunLoopDefaultMode (NSDefaultRunLoopMode)</code> 和 <code>UITrackingRunLoopMode</code>，你可以用这两个Mode Name来操作其对应的Mode。主线程的<code>RunLoop</code>是预置这两个的Mode的</p>
+
+<p>同时苹果还提供了一个操作<code>Common</code>标记的字符串：<code>kCFRunLoopCommonModes (NSRunLoopCommonModes)</code>，你可以用这个字符串来操作<code>Common Items</code>，或标记一个<code>Mode</code>为 “Common”。使用时注意区分这个字符串和其他<code>mode name</code>。</p>
+
+<h2 id="toc_4">RunLoop的内部逻辑</h2>
+
+<p><img src="media/15543697527242/15546895686967.png" alt="" style="width:500px;"/></p>
+
+<p>实际上 RunLoop 就是这样一个函数，其内部是一个 do-while 循环。当你调用 CFRunLoopRun() 时，线程就会一直停留在这个循环里；直到超时或被手动停止，该函数才会返回。</p>
+
+<h2 id="toc_5">底层实现</h2>
+
+<p><img src="media/15543697527242/15547182684191.png" alt="" style="width:300px;"/></p>
+
+<p>应用层: 用户能接触到的图形应用，例如:Spotlight、Aqua、SpringBoard等<br/>
+应用框架层: 开发人员接触到的Cocoa等框架<br/>
+核心框架层: 核心框架、OpenGL等内容<br/>
+<strong>Darwin 即操作系统的核心，包括系统内核、驱动、Shell 等内容</strong>，</p>
+
+<p><img src="media/15543697527242/15547185300035.png" alt="" style="width:300px;"/></p>
+
+<p><strong>在硬件层上面的三个组成部分：Mach、BSD、IOKit (还包括一些上面没标注的内容)，共同组成了 XNU 内核</strong>。<br/>
+XNU 内核的内环被称作 Mach，其作为一个微内核，仅提供了诸如处理器调度、IPC (进程间通信)等非常少量的基础服务。<br/>
+BSD 层可以看作围绕 Mach 层的一个外环，其提供了诸如进程管理、文件系统和网络等功能。<br/>
+IOKit 层是为设备驱动提供了一个面向对象(C++)的一个框架。<br/>
+在 Mach 中，所有的东西都是通过自己的对象实现的，进程、线程和虚拟内存都被称为”对象”。和其他架构不同， Mach 的对象间不能直接调用，只能通过消息传递的方式实现对象间的通信。”消息”是 Mach 中最基础的概念，消息在两个端口 (port) 之间传递，这就是 Mach 的 IPC (进程间通信) 的核心。</p>
+
+<p>为了实现消息的发送和接收，mach_msg() 函数实际上是调用了一个 Mach 陷阱 (trap)，即函数mach_msg_trap()，陷阱这个概念在 Mach 中等同于系统调用。当你在用户态调用 mach_msg_trap() 时会触发陷阱机制，切换到内核态；内核态中内核实现的 mach_msg() 函数会完成实际的工作，</p>
+
+<h2 id="toc_6">苹果用RunLoop实现的功能</h2>
+
+<p>系统默认注册了5个Mode:</p>
 
 <ol>
-<li><p>在程序生命周期不易察觉时来加载图片</p>
-<p>比如启动或者屏幕切换<br/>
-按下按钮和按钮响应时间之间最大延时大概200ms,而切换每帧动画16ms<br/>
-可以程序首次启动加载图片,如果启动时间过长影响用户体验,超过20s苹果就会关闭你的应用了</p>
-<p>但是有时候不适合提前加载所有图片,比如图片过多或者需要从网络远程下载图片</p></li>
+<li>kCFRunLoopDefaultMode: App的默认 Mode，通常主线程是在这个 Mode 下运行的。</li>
+<li>UITrackingRunLoopMode: 界面跟踪 Mode，用于 ScrollView 追踪触摸滑动，保证界面滑动时不受其他 Mode 影响</li>
+<li>UIInitializationRunLoopMode: 在刚启动 App 时第进入的第一个 Mode，启动完成后就不再使用</li>
+<li>GSEventReceiveRunLoopMode: 接受系统事件的内部 Mode，通常用不到</li>
+<li>kCFRunLoopCommonModes: 这是一个占位的 Mode，没有实际作用</li>
 </ol>
 
-<h4 id="toc_1">线程加载</h4>
+<p>APP中常看到的RunLoop函数:</p>
 
-<p>对于在主线程加载图片(比如<code>[UIImage imageWithContentsOfFile:</code>)如果图片较大就会卡线程,我们需要在后台加载图片,可以使用<code>GCD</code>或者<code>NSOperationQueue</code>创建自定义线程，或者使用<code>CATiledLayer</code>,为了从远程网络加载图片，我们可以使用异步的<code>NSURLConnection</code>但是对本地存储的图片，并不十分有效。</p>
-
-<h5 id="toc_2">GCD和 NSOperationQueue</h5>
-
-<p>GCD（Grand Central Dispatch）和 NSOperationQueue 很类似，都给我们提供了队列闭包块来在线程中按一定顺序来执行。 NSOperationQueue 有一个Objecive-C接口（而不是使用GCD的全局C函数），同样在操作优先级和依赖关系上提供了很好的粒度控制，但是需要更多地设置代码。</p>
-
-<p>下面是  我们在低优先级的后台队列而不是主线程用<code>GCD</code>加载图片</p>
-
-<pre><code class="language-objectivec">- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
-cellForItemAtIndexPath:(NSIndexPath *)indexPath
-{
-//dequeue cell
-    UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@&quot;Cell&quot;
-forIndexPath:indexPath];
-    //add image view
-    const NSInteger imageTag = 99;
-    UIImageView *imageView = (UIImageView *)[cell viewWithTag:imageTag];
-    if (!imageView) {
-        imageView = [[UIImageView alloc] initWithFrame: cell.contentView.bounds];
-        imageView.tag = imageTag;
-        [cell.contentView addSubview:imageView];
-    }
-//tag cell with index and clear current image
-    cell.tag = indexPath.row;
-    imageView.image = nil;
-    //switch to background thread
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
-    //load image
-        NSInteger index = indexPath.row;
-        NSString *imagePath = self.imagePaths[index];
-        UIImage *image = [UIImage imageWithContentsOfFile:imagePath];
-        //需要在主线程更新UI
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (index == cell.tag) {
-                imageView.image = image; 
-            }
-        });
-    });
-    return cell;
-}
+<pre><code class="language-objectivec">/// 1. 通知Observers，即将进入RunLoop
+    /// 此处有Observer会创建AutoreleasePool: _objc_autoreleasePoolPush();
+    __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopEntry);
+    do {
+ 
+        /// 2. 通知 Observers: 即将触发 Timer 回调。
+        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopBeforeTimers);
+        /// 3. 通知 Observers: 即将触发 Source (非基于port的,Source0) 回调。
+        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopBeforeSources);
+        __CFRUNLOOP_IS_CALLING_OUT_TO_A_BLOCK__(block);
+ 
+        /// 4. 触发 Source0 (非基于port的) 回调。
+        __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE0_PERFORM_FUNCTION__(source0);
+        __CFRUNLOOP_IS_CALLING_OUT_TO_A_BLOCK__(block);
+ 
+        /// 6. 通知Observers，即将进入休眠
+        /// 此处有Observer释放并新建AutoreleasePool: _objc_autoreleasePoolPop(); _objc_autoreleasePoolPush();
+        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopBeforeWaiting);
+ 
+        /// 7. sleep to wait msg.
+        mach_msg() -&gt; mach_msg_trap();
+        
+ 
+        /// 8. 通知Observers，线程被唤醒
+        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopAfterWaiting);
+ 
+        /// 9. 如果是被Timer唤醒的，回调Timer
+        __CFRUNLOOP_IS_CALLING_OUT_TO_A_TIMER_CALLBACK_FUNCTION__(timer);
+ 
+        /// 9. 如果是被dispatch唤醒的，执行所有调用 dispatch_async 等方法放入main queue 的 block
+        __CFRUNLOOP_IS_SERVICING_THE_MAIN_DISPATCH_QUEUE__(dispatched_block);
+ 
+        /// 9. 如果如果Runloop是被 Source1 (基于port的) 的事件唤醒了，处理这个事件
+        __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE1_PERFORM_FUNCTION__(source1);
+ 
+ 
+    } while (...);
+ 
+    /// 10. 通知Observers，即将退出RunLoop
+    /// 此处有Observer释放AutoreleasePool: _objc_autoreleasePoolPop();
+    __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopExit);
 </code></pre>
 
-<p>由于视图在<code>UICollectionView</code>中是会重复利用的,因此我们加载图片时需要确定是否被不同索引重复利用。为<strong>避免图片加载到错误视图中,我们在加载前把单元格打上索引标签,然后在设置图片时检测标签是否改变</strong>.</p>
+<h3 id="toc_7">1. AutoreleasePool</h3>
 
-<h4 id="toc_3">延迟解压</h4>
+<p>App启动后，苹果在主线程<code>RunLoop</code>中注册了两个Observer，回调为<code>_wrapRunLoopWithAutoreleasePoolHandler()</code></p>
 
-<p>在上面我们认为 <strong>性能瓶颈在于 加载图片到内存中,其实这只是问题之一</strong>.</p>
+<p>第一个Observer是在进入Loop时(Entry)，回调内部会调用<code>_objc_autoreleasePoolPush（）</code>创建自动释放池，其order是-2147483647，优先级最高，保证自动释放池在其他回调之前</p>
 
-<p><strong>一旦图片文件被加载就必须要进行解码，解码过程是一个相当复杂的任务，需要消耗非常长的时间。解码后的图片将同样使用相当大的内存</strong>。</p>
+<p>第二个Observer监视两个事件: <code>BeforeWaiting</code>(准备进入休眠) 时调用<code>_objc_autoreleasePoolPop()</code> 和 <code>_objc_autoreleasePoolPush()</code> 释放旧的池并创建新池；<code>Exit</code>(即将退出Loop) 时调用 <code>_objc_autoreleasePoolPop()</code> 来释放自动释放池。这个<code>Observer</code>的<code>order</code>是 2147483647，优先级最低，保证其释放池子发生在其他所有回调之后。</p>
 
-<p>用于加载的CPU时间与图片格式有关,<code>PNG</code>文件较大所以加载时间比<code>JPEG</code>更长,但是解码速度较快,而且<code>Xcode</code>会把<code>PNG</code>进行解码优化后引入工程.而<code>JPEG</code>图片较小,所以加载更快但是解压要消耗更长时间,因为<code>JPEG</code>解压算法比基于<code>zip</code>的<code>PNG</code>算法更加复杂</p>
+<p>主线程执行的代码，通常写在诸如事件回调、Timer回调内。这些回调会被RunLoop创建的Autorelease环绕，所以不会出现泄漏</p>
 
-<p>在加载图片时,<strong>iOS通常会在图片加载到内存之后,绘制之前解压,这通常是消耗时间问题所在</strong></p>
+<h3 id="toc_8">2.事件响应</h3>
+
+<p>Source1(基于mach port)用来接收系统事件，回调函数为<code>__IOHIDEventSystemClientQueueCallback()</code></p>
+
+<p>当有一个硬件事件(触摸/锁屏/摇晃等)，先由<code>IOKit.framework</code>生成一个<code>IOHIDEvent</code>事件，并由<code>SpringBoard</code>接收<a href="http://iphonedevwiki.net/index.php/IOHIDFamily">详细信息</a>;然后由<code>mach port</code>转发给需要的App进程,runLoop中Source1就会触发回调<code>__IOHIDEventSystemClientQueueCallback()</code>回调内调用Source0，Source0触发<code>_UIApplicationHandleEventQueue()</code>将<code>IOHIDEvent</code>包装为<code>UIEvent</code>进行处理分发。</p>
+
+<p>可以加一个__IOHIDEventSystemClientQueueCallback()的symblol breakpoint看一下<br/>
+<img src="media/15543697527242/15547372542156.jpg" alt="" style="width:420px;"/></p>
+
+<h3 id="toc_9">3.手势识别</h3>
+
+<p>当上面的<code>_UIApplicationHandleEventQueue()</code>识别了一个手势时，其首先会调用<code>Cancel</code>将当前的<code>touchesBegin/Move/End</code>系列回调打断。随后系统将对应的<code>UIGestureRecognizer</code>标记为待处理。</p>
+
+<p>苹果注册了一个Observer来监测<code>BeforeWaiting</code>事件，回调为<code>_UIGestureRecognizerUpdateObserver()</code>会获取所有被标记为未处理的<code>GestureRecognizer</code>，并执行<code>GestureRecognizer</code></p>
+
+<h3 id="toc_10">4.界面更新</h3>
+
+<p>当在操作UI时，当一个UIView/CALayer改变，就会被标记为待处理，提交到全局容器中。<br/>
+苹果注册了一个Observer监听BeforeWating和Exit事件，回调<code>_ZN2CA11Transaction17observer_callbackEP19__CFRunLoopObservermPv()</code>回调内将所有待处理的UIView/CALayer进行绘制或者调整，更新UI界面</p>
+
+<h3 id="toc_11">5.定时器</h3>
+
+<p>一个NSTimer注册到RunLoop后，RunLoop会为其重复的时间点注册好事件。RunLoop为了节省资源，不会再非常准确的时间回调Timer。Timer有<code>Tolerance</code>属性，标识当前时间点到了之后允许多大的误差，如果执行了一个很长的任务，这个时间点被错过，那么这个时间点也会跳过去，不执行。</p>
+
+<p>NSTimer使用XUN内核的<code>mk_timer</code>驱动</p>
+
+<h3 id="toc_12">6.PerformSelector</h3>
+
+<p><code>performSelecter:afterDelay:</code>其实内部也是创建一个Timer添加到RunLoop中，如果当前线程没有RunLoop，则这个方法也会失效</p>
+
+<h3 id="toc_13">7.GCD</h3>
+
+<p><code>dispatch_async(dispatch_get_main_queue(), block)</code>向主线程发送消息时，libDispatch向主线程RunLoop发送消息，主线程被唤醒，从消息中去的block，在<code>__CFRUNLOOP_IS_SERVICING_THE_MAIN_DISPATCH_QUEUE__（）</code>中执行这个block。</p>
 
 <blockquote>
-<p>此处的解码和解压意义相同<br/>
-避免延时加载方法:</p>
+<p>仅限于diapatch到主线程 到其他线程还是呦libDispatch处理</p>
 </blockquote>
 
-<ol>
-<li>我们可以用<code>UIImage</code>的 <code>+imageNamed: 方法</code>，它不同于<code>+imageWithContentsOfFile: （和其他别的 UIImage 加载方法）</code>它可以避免延时加载，会在加载图片后立刻解压.但是这个方法只对资源束中图片有效.</li>
-<li>另一种立刻加载图片的方法就是把它设置成图层内容，或者是<code>UIImageView</code>的<code>image</code>属性,但是这都需要在主线程进行,不能提升性能.</li>
-<li><p>绕过<code>UIKit</code>，像下面这样使用<code>ImageIO</code>框架</p>
-<pre><code class="language-objectivec">NSInteger index = indexPath.row;
-NSURL *imageURL = [NSURL fileURLWithPath:self.imagePaths[index]];<br/>
-NSDictionary *options = @{(__bridge id)kCGImageSourceShouldCache: @YES};<br/>
-CGImageSourceRef source = CGImageSourceCreateWithURL((__bridge CFURLRef)imageURL, NULL);<br/>
-CGImageRef imageRef = CGImageSourceCreateImageAtIndex(source, 0,(__bridge CFDictionaryRef)options);<br/>
-UIImage *image = [UIImage imageWithCGImage:imageRef];<br/>
-CGImageRelease(imageRef);<br/>
-CFRelease(source);
-</code></pre>
-<p>可以使用<code>kCGImageSourceShouldCache</code>来创建图片，强制图片立刻解压，然后在图片的生命周期保留解压后的版本。</p></li>
-</ol>
-
-<p>最后一种方式用<code>UIKit</code>加载图片,但是会立即绘制到<code>CGContext</code>中去.因为图片必须要在绘制之前解压,所以强制了解压的及时性,好处是绘制图片可以在后台线程执行,不会阻塞UI</p>
-
-<p>强制解压提前渲染图片：</p>
-
-<ul>
-<li>将图片的一个像素绘制成一个像素大小的<code>CGContext</code>。这样仍会解压整张图片,但是绘制本身并没有消耗任何时间.加载的图片并不会在特定设备上为绘制做优化,所以可以在任何时间点绘制出来,iOS也就可以丢弃解压后的图片来节省内存</li>
-<li>将整张图片绘制到<code>CGContext</code>中，丢弃原始的图片，并且用一个从上下文内容中新的图片来代替。这样比绘制单一像素更需要复杂的计算,但是因此产生的图片将会为绘制做优化,而且由于原始压缩图片被抛弃了,iOS就不能够随时丢弃任何解压后的图片来节省内存了。</li>
-</ul>
-
-<p>注意苹果特别推荐了不要使用这些诡计来绕过标准图片解压逻辑（所以也是他们选择用默认处理方式的原因）,但是如果你使用很多大图来构建应用，那如果想提升性能，就只能和系统博弈了。</p>
-
-<p>如果不使用<code>+ imageNamed:</code>，那么把整张图片绘制到<code>CGContext</code>可能是最佳的方式了。。尽管你可能认为多余的绘制相较别的解压技术而言性能不是很高，但是新创建的图片（在特定的设备上做过优化）可能比原始图片绘制的更快。</p>
-
-<p>同样，如果想显示图片到比原始尺寸小的容器中，那么一次性在后台线程重新绘制到正确的尺寸会比每次显示的时候都做缩放会更有效</p>
-
-<pre><code class="language-objectivec">//-collectionView:cellForItemAtIndexPath: 方法来重绘图片
-UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@&quot;Cell&quot; forIndexPath:indexPath];
-...
-//switch to background thread
-dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
-//load image
-    NSInteger index = indexPath.row;
-    NSString *imagePath = self.imagePaths[index];
-    UIImage *image = [UIImage imageWithContentsOfFile:imagePath];
-    //redraw image using device context
-    UIGraphicsBeginImageContextWithOptions(imageView.bounds.size, YES, 0);
-    [image drawInRect:imageView.bounds];
-    image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    //set image on main thread, but only if index still matches up
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (index == cell.tag) {
-            imageView.image = image;
-        }
-    });
-});
-return cell;
-
-</code></pre>
-
-<h4 id="toc_4">CATiledLayer</h4>
-
-<p>我们在学习<code>CALayer</code>一章，<code>CATiledLayer</code>可以用来异步加载和显示大型图片，而不阻塞用户输入。</p>
-
-<p>我们同样可以用<code>CATiledLayer</code>在<code>UICollectionView</code>中为每个表格创建分离的<code>CATiledLayer</code>实例加载传动器图片，每个表格仅使用一个图层。</p>
-
-<p>但是这样也有弊端:</p>
-
-<ul>
-<li><code>CATiledLayer</code>的队列和缓存算法没有暴露出来，所以我们只能祈祷它能匹配我们的需求</li>
-<li><code>CATiledLayer</code>需要我们每次重绘图片到<code>CGContext</code>中，即使它已经解压缩，而且和我们单元格尺寸一样（因此可以直接用作图层内容，而不需要重绘）</li>
-</ul>
-
-<pre><code class="language-objectivec">- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath
-{
-    //dequeue cell
-    UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@&quot;Cell&quot; forIndexPath:indexPath];
-    //add the tiled layer
-    CATiledLayer *tileLayer = [cell.contentView.layer.sublayers lastObject];
-    if (!tileLayer) {
-        tileLayer = [CATiledLayer layer];
-        tileLayer.frame = cell.bounds;
-        tileLayer.contentsScale = [UIScreen mainScreen].scale;
-        tileLayer.tileSize = CGSizeMake(cell.bounds.size.width * [UIScreen mainScreen].scale, cell.bounds.size.height * [UIScreen mainScreen].scale);
-        tileLayer.delegate = self;
-        [tileLayer setValue:@(indexPath.row) forKey:@&quot;index&quot;];
-        [cell.contentView.layer addSublayer:tileLayer];
-    }
-    //tag the layer with the correct index and reload
-    tileLayer.contents = nil;
-    [tileLayer setValue:@(indexPath.row) forKey:@&quot;index&quot;];
-    [tileLayer setNeedsDisplay];
-    return cell;
-}
-
-- (void)drawLayer:(CATiledLayer *)layer inContext:(CGContextRef)ctx
-{
-    //get image index
-    NSInteger index = [[layer valueForKey:@&quot;index&quot;] integerValue];
-    //load tile image
-    NSString *imagePath = self.imagePaths[index];
-    UIImage *tileImage = [UIImage imageWithContentsOfFile:imagePath];
-    //calculate image rect
-    CGFloat aspectRatio = tileImage.size.height / tileImage.size.width;
-    CGRect imageRect = CGRectZero;
-    imageRect.size.width = layer.bounds.size.width;
-    imageRect.size.height = layer.bounds.size.height * aspectRatio;
-    imageRect.origin.y = (layer.bounds.size.height - imageRect.size.height)/2;
-    //draw tile
-    UIGraphicsPushContext(ctx);
-    [tileImage drawInRect:imageRect];
-    UIGraphicsPopContext();
-}
-
-/**
-CATiledLayer 的 tileSize 属性单位是像素，而不是点，所以为了保证瓦
-片和表格尺寸一致，需要乘以屏幕比例因子。
-在 - drawLayer:inContext: 方法中，我们需要知道图层属于哪一个 indexPath 以加载正确的图片。这里我们利用了 CALayer 的KVC来存储和检索任意的值，将图层和索引打标签
-*/
-</code></pre>
-
-<p>这样确实可以很好的解决了性能问题，有个小问题是图片加载到屏幕后有个明显的淡入,我们可以通过<code>CATiledLayer</code>的<code>fadeDuration</code>属性来调整淡入速度,甚至直接不要这个淡入,但是这样没法根本上去出问题:因为<strong>图片从加载到准备绘制总是有个延时的，所以会导致滑动时图片的跳入</strong>.(不仅仅是<code>CATiledLayer</code>，我们使用<code>GCD</code>也是有这个问题的)</p>
-
-<p>即使使用上述我们讨论的所有加载图片和缓存的技术，有时候仍然会发现实时加载大图还是有问题。就和13章中提到的那样，iPad上一整个视网膜屏图片分辨率达到了2048x1536，而且会消耗12MB的RAM（未压缩）。第三代iPad的硬件并不能支持1/60秒的帧率加载，解压和显示这种图片。即使用后台线程加载来避免动画卡顿，仍然解决不了问题。</p>
-
-<p>我们可以在加载的同时显示一个占位图片，但这并没有根本解决问题，我们可以做到更好。</p>
-
-<h4 id="toc_5">分辨率交换</h4>
-
-<p>视网膜分辨率代表人眼在正常视角能分辨的最小像素尺寸.但是这只是对于静态像素来说的,当我们观察一个移动图片时,眼镜对细节不敏感,所以低分辨率图片和视网膜质量图片就没什么区别了.</p>
-
-<p>因此我们需要快速加载和显示移动大图,可以在移动传送器的时候显示一张小图(或者低分辨率图片),然后在停止之后换为大图。这意味着我们需要存两份不同分辨率图片,不过我们在应用中为了支持retina和非retina屏,这本来就是要做的<br/>
-对于那些没有可用的低分辨率图片，我们可以动态将大图绘制到较小的CGContext,然后存到某处复用</p>
-
-<h3 id="toc_6">缓存</h3>
-
-<p>如果很多图片要显示 最好不要提前把所有图片都加载进来,而应该在移出屏幕后立即销毁。我们可以通过选择性缓存来避免来回滚动时图片的重复加载.</p>
-
-<p>缓存原理:存储昂贵计算后的结果(或者从闪存或者网络加载的文件)在内存中,以便后续使用.缓存本来就是一个权衡过程,消耗内存和提高性能的权衡</p>
-
-<p>大多数情况下,iOS为我们做好了图片的缓存.</p>
-
-<h4 id="toc_7">+ imageNamed:方法</h4>
-
-<p>我们知道用这个方法加载图片可以立刻解压图片而不用等到绘制的时候,除此之外另外一个好处就是:<strong>它在内存中自动缓存了解压后的图片</strong>，即使你没有保留对他的任何使用</p>
-
-<p>对于iOS中那些主要的图片(如图标、按钮和背景图片)，我们这是最简单有效的方式.在nib中的图片同样也是用这种机制。</p>
-
-<p>当然它并不是适用任何情况,有时候我们还是要实现自己的缓存机制:</p>
-
-<ul>
-<li><code>[UIImage imageNamed:]</code>方法仅仅适用于在应用程序资源束目录下的图片，但是大多数图片都是从网络或者用户的相机中获取,这种方法也就不适用了</li>
-<li><code>[UIImage imageNamed:]</code>如果用来缓存那些大图,iOS系统很可能会移除这些图片来节省内存，在切换页面时性能就会下降。所以我们队传送器的图片使用单独的缓存机制把它和应用图片的生命周期解耦</li>
-<li><code>[UIImage imageNamed:]</code>缓存机制并不是公开,所以我们不能很好的控制它。例如不能检测图片是否已经缓存，不能设置缓存大小，也没法控制图片从缓存移除</li>
-</ul>
-
-<h4 id="toc_8">自定义缓存</h4>
-
-<p>自定义一个缓存是非常困难的，需要涉及这些方面:</p>
-
-<ul>
-<li>选择一个合适的<code>缓存键 - 缓存键</code>用来做图片的唯一标识。如果实时创建图片,通常不好生成一个字符串来区分别的图片。在我们的图片传送器例子，我们可以用图片的文件名</li>
-<li>提前缓存 - 当然你如果我们生成和加载的代价很大,我们会想第一次用到的时候再去加载和缓存.提前加载的逻辑是应用内就有的,但是在我们的例子中这也很好实现，因为对于给定位置和方向我们很容易判读出下一张出现的图片。</li>
-<li>缓存失效 - 图片文件发生改变,我们需要怎么通知缓存更新呢。我们的例子中是存程序资源加载静态图片不需要考虑这些.对于那些可能会被修改和覆盖的图片来说我们通常给在图片缓存时打上一个时间戳当文件更新时来作比较</li>
-<li>缓存回收 - 当内存不够时,我们需要用合适的算法来清空缓存.幸运的是我们可以用苹果提供的叫<code>NSCache</code>通用解决方案</li>
-</ul>
-
-<h4 id="toc_9">NSCache</h4>
-
-<p><code>NSCache</code>和<code>NSDictionary</code>类似。你可以通过<code>- setObject:forKey:</code>和<code>- object:forKey:</code>方法分别来插入，检索。不同的是<code>NSCache</code>在系统低内存是自动丢弃存储对象</p>
-
-<p><code>NSCache</code>用来判断何时丢弃对象的算法并没有在文档中给出，但是你可以使用<code>- setCountLimit:</code>方法设置缓存大小，以及<code>- setObject:forKey:cost:</code>来对每个存储的对象指定消耗的值来提供一些暗示。</p>
-
-<p>指定消耗数值可以用来指定相对的重建成本。如果对大图指定一个大的消耗值，那么缓存就知道这些物体的存储更加昂贵，于是当有大的性能问题的时候才会丢弃这些物体。你也可以用<code>- setTotalCostLimit:</code>方法来指定全体缓存的尺寸。</p>
-
-<p><code>NSCache</code>是一个普遍的缓存解决方案</p>
-
-<p>使用图片缓存和提前加载来扩展之前的传送器案例:</p>
-
-<pre><code class="language-objectivec">- (UIImage *)loadImageAtIndex:(NSUInteger)index
-{
-    //set up cache
-    static NSCache *cache = nil;
-    if (!cache) {
-        cache = [[NSCache alloc] init];
-    }
-    //if already cached, return immediately
-    UIImage *image = [cache objectForKey:@(index)];
-    if (image) {
-        return [image isKindOfClass:[NSNull class]]? nil: image;
-    }
-    //set placeholder to avoid reloading image multiple times
-    [cache setObject:[NSNull null] forKey:@(index)];
-    //switch to background thread
-    dispatch_async( dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
-        //load image
-        NSString *imagePath = self.imagePaths[index];
-        UIImage *image = [UIImage imageWithContentsOfFile:imagePath];
-        //redraw image using device context
-        UIGraphicsBeginImageContextWithOptions(image.size, YES, 0);
-        [image drawAtPoint:CGPointZero];
-        image = UIGraphicsGetImageFromCurrentImageContext();
-        UIGraphicsEndImageContext();
-        //set image for correct image view
-        dispatch_async(dispatch_get_main_queue(), ^{ //cache the image
-            [cache setObject:image forKey:@(index)];
-            //display the image
-            NSIndexPath *indexPath = [NSIndexPath indexPathForItem: index inSection:0]; 
-            UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
-            UIImageView *imageView = [cell.contentView.subviews lastObject];
-            imageView.image = image;
-        });
-    });
-    //not loaded yet
-    return nil;
-    }
-    
-    //效果确实更好了
-</code></pre>
-
-<h3 id="toc_10">文件格式</h3>
-
-<p><strong>图片加载性能取决于加载大图的时间和解压小图的权衡</strong>.<br/>
-很多苹果文档都说<code>PNG</code>是<code>iOS</code>所有图片加载的最好算法，但这是<strong>极度误导的过时信息</strong>了</p>
-
-<p><code>PNG</code>图片使用的无损压缩算法可以比使用<code>JPEG</code>的图片做到更快地解压，但是由于闪存访问的原因，这些加载的时间并没有什么区别。</p>
-
-<p>经过测试:<br/>
-<code>PNG</code>和<code>JPEG</code>压缩算法作用于两种不同的图片类型：<code>JPEG</code>对于噪点大的图片效果很好；但是<code>PNG</code>更适合于扁平颜色，锋利的线条或者一些渐变色的图片。</p>
-
-<p><img src="media/14940350647350/14949362399011.jpg" alt=""/></p>
-
-<p>但是<code>JPEG</code>图片并不是所有情况都适用，如果图片需要透明效果或者压缩之后细节损失很多,就需要用别的格式了</p>
-
-<h4 id="toc_11">混合图片</h4>
-
-<p>对于包含透明的图片来说，最好是使用压缩透明通道的PNG图片和压缩RGB部分的JPEG图片混合起来加载。这就对任何格式都适用了，而且无论从质量还是文件尺寸还是加载性能来说都和PNG和JPEG的图片相近。</p>
-
-<pre><code class="language-objectivec">- (void)viewDidLoad
-{
-    [super viewDidLoad];
-    //load color image
-    UIImage *image = [UIImage imageNamed:@&quot;Snowman.jpg&quot;];
-    //load mask image
-    UIImage *mask = [UIImage imageNamed:@&quot;SnowmanMask.png&quot;];
-    //convert mask to correct format
-    CGColorSpaceRef graySpace = CGColorSpaceCreateDeviceGray();
-    CGImageRef maskRef = CGImageCreateCopyWithColorSpace(mask.CGImage, graySpace);
-    CGColorSpaceRelease(graySpace);
-    //combine images
-    CGImageRef resultRef = CGImageCreateWithMask(image.CGImage, maskRef);
-    UIImage *result = [UIImage imageWithCGImage:resultRef];
-    CGImageRelease(resultRef);
-    CGImageRelease(maskRef);
-    //display result
-    self.imageView.image = result;
-}
-</code></pre>
-
-<p>我们不可能对每张图片都使用两个独立文件:<br/>
-我们可以用一个第三方的<a href="https://github.com/nicklockwood/JPNG">JPNG库</a>，对这个技术提供了开源可复用的实现,并且直接添加<code>+imageNamed:</code>和 <code>+imageWithContentsOfFile:</code>方法的支持</p>
-
-<h4 id="toc_12">JPEG 2000</h4>
-
-<p>除了JPEG和PNG之外iOS还支持别的一些格式，例如TIFF和GIF，但是由于他们质量压缩得更厉害，性能比JPEG和PNG糟糕的多，所以大多数情况并不用考虑。</p>
-
-<p>苹果低调添加了对<code>JPEG 2000</code>图片格式的支持，虽然并不是很好的支持,但是<code>JPEG 2000</code>图片在（设备和模拟器）运行时会有效，而且比<code>JPEG</code>质量更好，同样也对透明通道有很好的支持。但是<code>JPEG 2000</code>图片在加载和显示图片方面明显要比<code>PNG</code>和<code>JPEG</code>慢得多，所以对图片大小比运行效率更敏感的时候，使用它是一个不错的选择。</p>
-
-<h4 id="toc_13">PVRTC</h4>
-
-<p>当前iOS设备都有用<code>Imagination Technologies PowerVR</code>图像芯片作为<code>GPU</code>，<code>PowerVR</code>芯片支持一种叫做<code>PVRTC</code>的标准图片压缩.</p>
-
-<p>和其他大多数图片格式不同,PVRTC不用提前解压就可以直接绘制到屏幕上。意味着在加载图片之后不需要有解压操作，所以内存中的图片比其他图片格式大大减少了(这取决于压缩设置，大概只有1/60那么大)</p>
-
-<p>弊端：</p>
-
-<ul>
-<li>虽然它加载时消耗的<code>RAM</code>少,但是文件比<code>JPEG</code>大，甚至比<code>PNG</code>还大</li>
-<li><code>PVRTC</code>必须是二维正方形</li>
-<li>质量并不好，尤其是透明图片</li>
-<li>PVRTC不能用Core Graphics绘制，也不能在普通的 UIImageView 显示，也不能直接用作图层的内容。你必须要用作OpenGL纹理加载PVRTC图片，然后映射到一对三角板来在 CAEAGLLayer 或者 GLKView 中显示。</li>
-<li>OpenGL纹理加载PVRTC图片开销很大</li>
-<li>使用的是不对称压缩算法,尽管立即解压 但是压缩过程很漫长</li>
-</ul>
-
-<p>如果愿意使用<code>OpenGL</code>,也愿意提前生成图片,那么可以用<code>PVRTC</code>，将提供相对于别的可用格式来说非常高效的加载性能。</p>
-
-<p>我们可以使用<a href="http://www.imgtec.com/powervr/insider/sdkdownloads">Imagination Technologies PVRTexTool</a>，</p>
-
-<pre><code class="language-objectivec">//终端将PNG转换为PVRTC命令
-/Applications/Imagination/PowerVR/GraphicsSDK/PVRTexTool/CL/OSX_x86/PVRTexToolCL -i {input_file_name}.png -o {output_file_name}.pvr -legacypvr -p -f PVRTC1_4 -q pvrtcbest
-</code></pre>
-
-<p>用<code>openGL</code>实现<code>UIImageView</code>功能： <a href="https://github.com/nicklockwood/GLView">GLView的库</a></p>
+<h3 id="toc_14">8.网络请求</h3>
 
 
 		</div>
@@ -497,24 +346,24 @@ CATiledLayer 的 tileSize 属性单位是像素，而不是点，所以为了保
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -534,10 +383,10 @@ CATiledLayer 的 tileSize 属性单位是像素，而不是点，所以为了保
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -561,7 +410,7 @@ CATiledLayer 的 tileSize 属性单位是像素，而不是点，所以为了保
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -572,7 +421,7 @@ CATiledLayer 的 tileSize 属性单位是像素，而不是点，所以为了保
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -590,6 +439,15 @@ CATiledLayer 的 tileSize 属性单位是像素，而不是点，所以为了保
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -599,31 +457,31 @@ CATiledLayer 的 tileSize 属性单位是像素，而不是点，所以为了保
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

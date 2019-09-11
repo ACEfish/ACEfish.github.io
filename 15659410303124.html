@@ -1,0 +1,415 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>
+    
+  不透明类型 - ACEfish-Blog
+  
+
+  </title>
+  <meta name="author" content="">
+  <meta name="description" content="学习记录">
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link href="asset/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+  <script src="asset/js/modernizr-2.0.js"></script>
+  <script src="asset/js/jquery.min.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/solarized_light.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  <style type="text/css">
+  .cat-children-p{ padding: 6px 0px;}
+  .hljs{background: none;}
+  </style>
+  <script type="text/javascript">
+  var isAddSildbar = true;
+  </script>
+  <script src="asset/js/octopress.js" type="text/javascript"></script>
+</head>
+<script type="text/javascript">
+//链接新开窗口
+function addBlankTargetForLinks () {
+  $('a[href^="http"]').each(function(){
+      $(this).attr('target', '_blank');
+  });
+}
+$(document).ready(function(event) {
+  addBlankTargetForLinks();
+});
+</script>
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="index.html">ACEfish-Blog</a></h1>
+  
+    <h2>学习记录</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:acefish.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+
+  <li id=""><a target="_self" href="index.html">首页</a></li>
+
+  <li id=""><a target="_self" href="archives.html">归档</a></li>
+
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content"> 
+<div>
+	<article class="hentry" role="article">
+	<header>
+			  	<h1 class="entry-title">不透明类型</h1>
+				<p class="meta"><time datetime="2019-08-16T15:37:10+08:00" pubdate data-updated="true">2019/8/16</time></p>
+			 </header>
+		  	<div class="entry-content">
+			  	<p>具有不透明返回类型的函数或方法会隐藏返回值的类型信息。此时，函数不再提供具体的类型作为返回类型，而是根据它支持的协议来描述返回值。</p>
+
+<p>在处理模块和调用代码之间关系时，异常类型信息非常有用，此时返回的底层数据类型仍然可以保持私有。而且不同于返回协议类型，不透明类型可以保证类型一致性--表一起能获取到类型信息，但是模块使用者却不能获取到</p>
+
+<h2 id="toc_0">不透明类型解决的问题</h2>
+
+<h2 id="toc_1">返回不透明类型</h2>
+
+<p>可以认为不透明类型和泛型相反。</p>
+
+<p>泛型允许调用一个方法，为这个方法的形参和返回值制定一个与实现无关的类型，例如</p>
+
+<pre><code class="language-swift">func max&lt;T&gt;(_ x: T, _ y: T) -&gt; T where T: Comparable { ... }
+</code></pre>
+
+<p>类型T由调用方法的代码决定，函数内部也要通过通用的方式写代码，才能应对调用者传入的各种类型</p>
+
+<p>返回不透明类型函数中，不透明类型允许函数实现时，选择一个与调用代码无关的返回类型，比如：下面例子返回了一个梯形，但是却没直接输出梯形的底层类型</p>
+
+<pre><code class="language-swift">struct Square: Shape {
+    var size: Int
+    func draw() -&gt; String {
+        let line = String(repeating: &quot;*&quot;, count: size)
+        let result = Array&lt;String&gt;(repeating: line, count: size)
+        return result.joined(separator: &quot;\n&quot;)
+    }
+}
+
+func makeTrapezoid() -&gt; some Shape {
+    let top = Triangle(size: 2)
+    let middle = Square(size: 2)
+    let bottom = FlippedShape(shape: top)
+    let trapezoid = JoinedShape(
+        top: top,
+        bottom: JoinedShape(top: middle, bottom: bottom)
+    )
+    return trapezoid
+}
+let trapezoid = makeTrapezoid()
+print(trapezoid.draw())
+</code></pre>
+
+<p>返回值定义为<code>some Shape</code>；因此，该函数返回遵循<code>Shape</code>协议的给定类型，而不需要指定任何具体类型。<br/>
+这样写<code>makeTrapezoid()</code>函数可以表明它公共接口的基本性质 --返回的是一个几何图形 -- 而不是部分的公共接口生成的特殊类型。</p>
+
+<p><code>makeTrapezoid()</code>函数可以返回任意它需要的类型，只要其遵循<code>Shape</code>协议即可，类似泛型函数的实现代码，其调用代码需要采用通用的方式，使其返回的任何<code>Shape</code>类型值都能被正常使用</p>
+
+<pre><code class="language-swift">//泛型和不透明类型相结合
+func flip&lt;T: Shape&gt;(_ shape: T) -&gt; some Shape {
+    return FlippedShape(shape: shape)
+}
+</code></pre>
+
+<blockquote>
+<p>注意:</p>
+
+<p>如果函数内部有多个地方返回不透明类型，那么需要保证返回的均为同一类型，否则会报错</p>
+</blockquote>
+
+<h2 id="toc_2">不透明类型和协议类型区别</h2>
+
+<p>虽然使用不透明类型作为函数返回值，看起来和返回协议类型非常相似，但这两者有一个主要区别，就在于是否需要保证类型一致性。</p>
+
+<p>一个不透明类型只能对应一个具体的类型，即使函数调用者并不知道是哪种类型。<br/>
+协议类型可以对应多个类型，只要他们遵循同一协议<br/>
+不透明类型则比啊留了底层类型的唯一性，swift能够推断出来关联类型</p>
+
+<pre><code class="language-swift">protocol Container {
+    associatedtype Item
+    var count: Int { get }
+    subscript(i: Int) -&gt; Item { get }
+}
+extension Array: Container { }
+
+// 错误：有关联类型的协议不能作为返回类型。
+func makeProtocolContainer&lt;T&gt;(item: T) -&gt; Container {
+    return [item]
+}
+
+// 错误：没有足够多的信息来推断 C 的类型。
+func makeProtocolContainer&lt;T, C: Container&gt;(item: T) -&gt; C {
+    return [item]
+}
+
+
+func makeOpaqueContainer&lt;T&gt;(item: T) -&gt; some Container {
+    return [item]
+}
+let opaqueContainer = makeOpaqueContainer(item: 12)
+let twelve = opaqueContainer[0]
+print(type(of: twelve))
+// 输出 &quot;Int&quot;
+</code></pre>
+
+			</div>
+
+		
+	  
+		<footer>
+		 <p class="meta">
+
+			<strong>Categories:</strong>&nbsp; 
+			<span class="categories">
+			
+			    <a class='category' href='Swift-BaseLearning.html'>Swift基础知识</a>&nbsp;
+			 
+			</span>
+		    </p>
+		    <p class="meta">
+		      
+		 </p>
+	    
+		<div class="sharing">
+		  
+          
+
+          
+
+		</div>
+
+	    <p class="meta">
+	    
+	        <a class="basic-alignment left" href="15028525854956.html" 
+	        title="Previous Post: 自动引用计数">&laquo; 自动引用计数</a>
+	    
+	    
+	        <a class="basic-alignment right" href="15052932669633.html" 
+	        title="Next Post: 泛型">泛型 &raquo;</a>
+	    
+	    </p>
+	  </footer>
+	</article>
+</div>
+ <aside class="sidebar"> 
+
+	<section>
+	  <h1>Categories</h1>
+	  <ul id="recent_posts">
+	  
+	      <li class="post">
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
+	        
+	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Cocoapods.html">Cocoapods&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E6%A8%A1%E5%9D%97%E5%8C%96%E7%9F%A5%E8%AF%86%E5%AD%A6%E4%B9%A0.html">模块化知识学习&nbsp;(26)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Instrument%E5%AD%A6%E4%B9%A0.html">Instrument学习&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E7%82%B9.html">知识点&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E8%A1%A5%E5%85%85-1.html">补充&nbsp;(9)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E9%9D%A2%E8%AF%95.html">面试&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Computer-programming.html"><strong>计算机编程&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="iOSDevelop.html"><strong>iOSDevelop&nbsp;(27)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html">iOS 小知识&nbsp;(14)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html">iOS开发知识&nbsp;(12)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html">知识普及&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Flex.html">Flex&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
+	        
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="React-Native.html"><strong>React-Native&nbsp;(6)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Python.html"><strong>Python&nbsp;(14)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	   
+	  </ul>
+	</section>
+	<section>
+	  <h1>Recent Posts</h1>
+	  <ul id="recent_posts">
+	  
+	      
+		      <li class="post">
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15677400518331.html">AFURLSerialization</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15676621460215.html">AFURLSessionManager</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15675682575589.html">AFNetworking</a>
+		      </li>
+	     
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	   
+	  </ul>
+	</section>
+	
+</aside> </div></div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 -  -
+  <span class="credit">Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a> &nbsp;&nbsp; Theme by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+
+  
+    
+
+
+
+
+</body>
+</html>

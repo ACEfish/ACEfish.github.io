@@ -82,128 +82,314 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15553791452907.html">autorelease && autorelease pool block</a></h1>
-			<p class="meta"><time datetime="2019-04-16T09:45:45+08:00" 
-			pubdate data-updated="true">2019/4/16</time></p>
+		  	<h1 class="entry-title"><a href="15015839505859.html">属性</a></h1>
+			<p class="meta"><time datetime="2017-08-01T18:39:10+08:00" 
+			pubdate data-updated="true">2017/8/1</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>autorelease pool block提供了一个允许我们延时<code>deallocated</code>对象的机制</p>
+		  	<p>属性将值跟特定的类、结构或枚举关联。存储属性存储常量或变量作为实例的一部分，而计算属性计算（不是存储）一个值。<strong>计算属性可以用于类、结构体和枚举，存储属性只能用于类和结构体。</strong></p>
 
-<h2 id="toc_0">autorelease</h2>
+<p>属性也可以直接作用于类型本身，这种属性称为类型属性。</p>
 
-<p><code>NSAutoReleasePool</code>对象的生存周期相当于C语言变量的作用域。对于所有调用过<code>autorelease</code>的实例方法，会在废弃NSAutorelease对象时，调用release方法</p>
+<p>可以定义属性观察器来监控属性值的变化，以此来触发一个自定义的操作.可以添加到自己定义的存储属性上，也可以添加到从父类继承的属性上。</p>
 
-<pre><code class="language-objectivec">NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-id obj = [[NSObject alloc] init];
-[obj autorelease];
-[pool drain]; //调用pool drain方法相当于调用[obj release]
+<h2 id="toc_0">存储属性</h2>
+
+<p>存储属性就是存储在特定类或结构体实例里的一个常量或变量,可以为变量或者常量<br/>
+可以在定义存储属性时指定默认值，也可在构造过程中设置或修改存储属性值,甚至修改常量存储属性值</p>
+
+<pre><code class="language-swift">struct FixedLengthRange {
+    var firstValue: Int
+    let length: Int
+}
+var rangeOfThreeItems = FixedLengthRange(firstValue: 0, length: 3)
+rangeOfThreeItems.firstValue = 6
 </code></pre>
 
-<p>在Cocoa框架也有很多可以返回autorelease对象的方法</p>
+<p>定义一个结构体,包含<code>firstValue</code>变量存储属性,和<code>length</code>常量存储属性。<code>length</code>在创建实例的时候被初始化，因为它是一个常量存储属性，所以之后无法修改它的值</p>
 
-<pre><code class="language-objectivec">//返回autorelease对象
-id array = [NSMutableArray Array];
-//相当与
-id array = [[[NSMutableArray alloc] init] autorelease];
+<h3 id="toc_1">常量结构体的存储属性</h3>
+
+<p>若结构体声明为常量,则无法修改实例的任何属性,即使为变量属性:</p>
+
+<pre><code class="language-swift">let rangeOfFourItems = FixedLengthRange(firstValue: 0, length: 4)
+// 该区间表示整数0，1，2，3
+rangeOfFourItems.firstValue = 6//报错不可修改
+// 尽管 firstValue 是个变量属性，这里还是会报错
 </code></pre>
 
-<h2 id="toc_1">autorelease 原理</h2>
-
-<p>在NSAutoreleasePool维持了一个数组来保存autorelase的对象，[obj autorelease]方法实际上是调用了<code>NSAutoreleasePool</code>的<code>[NSAutoreleasePool addObject:obj]</code>方法，该方法会找到当前的pool并add到数组中，当调用<code>[pool drain]</code>时会废弃当前pool对象，并释放内部数组，因此内部所有对象都会被调用release方法</p>
+<p>这是<strong>由于结构体为值类型,值类型为常量则所有属性也变为常量</strong></p>
 
 <blockquote>
-<p>可以使用<code>[NSAutoreleasePool showPools];</code>这个非公开方法查看现在的pool中对象状况,查看结果类似下面输出，可以用其查看对象是否被自动release</p>
+<p>注意</p>
+
+<p>对于引用类型的类来说,将引用类型赋值给一个常量，仍然可以修改实例的变量属性</p>
 </blockquote>
 
-<pre><code class="language-objectivec">objc[41725]: ##############
-objc[41725]: AUTORELEASE POOLS for thread 0x10cd6f5c0
-objc[41725]: 2337 releases pending.
-objc[41725]: [0x7ff2b4000000]  ................  PAGE (full)  (cold)
-objc[41725]: [0x7ff2b4000038]    0x6000012fd180  __NSArrayI
-objc[41725]: [0x7ff2b4000040]    0x6000024aa1c0  __NSSetI
-objc[41725]: [0x7ff2b4000048]  ################  POOL 0x7ff2b4000048
-objc[41725]: [0x7ff2b4000050]    0x6000007a8480  __NSCFString
-...
-objc[41725]: [0x7ff2b4000058]  ################  POOL 0x7ff2b4000058
-objc[41725]: [0x7ff2b406ea10]  ################  POOL 0x7ff2b406ea10
-objc[41725]: [0x7ff2b406ea18]    0x6000005a77c0  NSObject
-objc[41725]: ##############
-</code></pre>
+<h3 id="toc_2">延迟存储属性</h3>
 
-<h2 id="toc_2">autorelease pool block</h2>
+<p><strong>延迟属性</strong>第一次调用时才会结算其初始化值的属性<br/>
+在属性声明前加<code>lazy</code>来标示一个延迟存储属性</p>
 
-<p>在Cocoa框架中，主循环的RunLoop会对<code>NSAutoreleasePool</code>进行生成、持有和废弃，因此，通常，我们不需要创建自己的自动释放池，但是有些情况下我怕们需要这么做<br/>
-在autorelease pool block结束时，所有在block内部收到<code>autorelease</code>消息的对象都会被发送一个<code>release</code>消息</p>
+<blockquote>
+<p>注意：</p>
 
-<p>autorelease pool block可以嵌套:</p>
+<p>必须将延迟存储属性声明成<code>变量</code>（使用 var 关键字），因为属性的初始值可能在实例构造完成之后才会得到。而常量属性在构造过程完成之前必须要有初始值，因此无法声明成延迟属性。</p>
+</blockquote>
 
-<pre><code class="language-objectivec">@autoreleasepool {
-    // . . .
-    @autoreleasepool {
-        // . . .
-    }
-    . . .
+<pre><code class="language-swift">class DataImporter {
+    /*
+    DataImporter 是一个负责将外部文件中的数据导入的类。
+    这个类的初始化会消耗不少时间。
+    */
+    var fileName = &quot;data.txt&quot;
+    // 这里会提供数据导入功能
+}
+class DataManager {
+    lazy var importer = DataImporter()
+    var data = [String]()
+    // 这里会提供数据管理功能
 }
 </code></pre>
 
-<p>Cocoa中代码都是在自动释放池block中执行，否则会自动释放的对象未被释放造成内存泄漏。(因此，如果在自动释放池block外执行走动式房消息，Cocoa会报错)。AppKit或者UIKit框架都在自动释放池block中处理每个事件循环(详情见runLoop)。因此，通常不需要创建autorelease pool block，但是<strong>以下三种情况可能需要使用自己的自动释放池</strong>：</p>
+<pre><code class="language-swift">let manager = DataManager()
+manager.data.append(&quot;Some data&quot;)
+//此时实例的import属性还没创建
+</code></pre>
+
+<pre><code class="language-swift">print(manager.importer.fileName)
+// DataImporter 实例的 importer 属性现在被创建了
+// 输出 &quot;data.txt”
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>如果一个被标记为<code>lazy</code>的属性在没有初始化时就同时被多个线程访问，则无法保证该属性只会被初始化一次**</p>
+</blockquote>
+
+<h3 id="toc_3">存储属性和实例变量</h3>
+
+<p>与OC不同<code>Swift</code>没有属性对应的实例变量，因此没有办法直接访问属性的后端存储，方便统一访问方式<br/>
+使属性的全部信息包括<code>命名、类型和内存管理特征</code>都在一个地方定义</p>
+
+<h2 id="toc_4">计算属性</h2>
+
+<p>计算属性不存储值而是提供一个<code>getter</code>和一个可选的<code>setter</code>,来间接获取和设置其他属性或变量的值</p>
+
+<blockquote>
+<p>必须使用 var 关键字定义计算属性，包括只读计算属性，因为它们的值不是固定的</p>
+</blockquote>
+
+<pre><code class="language-swift">struct Point {
+    var x = 0.0, y = 0.0
+}
+struct Size {
+    var width = 0.0, height = 0.0
+}
+struct Rect {
+    var origin = Point()
+    var size = Size()
+    var center: Point {
+        get {
+            let centerX = origin.x + (size.width / 2)
+            let centerY = origin.y + (size.height / 2)
+            return Point(x: centerX, y: centerY)
+        }
+        set(newCenter) {
+            origin.x = newCenter.x - (size.width / 2)
+            origin.y = newCenter.y - (size.height / 2)
+        }
+    }
+}
+var square = Rect(origin: Point(x: 0.0, y: 0.0),
+                  size: Size(width: 10.0, height: 10.0))
+let initialSquareCenter = square.center
+square.center = Point(x: 15.0, y: 15.0)
+print(&quot;square.origin is now at (\(square.origin.x), \(square.origin.y))&quot;)
+</code></pre>
+
+<p>可以通过<code>square.center</code>访问计算属性<code>center</code> 会调用<code>getter</code>计算新的值返回<br/>
+<code>center</code>可以设置一个新值,会调用<code>setter</code>来修改<code>origin</code>来移动正方形</p>
+
+<h3 id="toc_5">简化setter声明</h3>
+
+<p>如果计算属性的<code>setter</code>没有定义表示新值,就可以使用默认名称<code>newValue</code></p>
+
+<pre><code class="language-swift">struct AlternativeRect {
+    var origin = Point()
+    var size = Size()
+    var center: Point {
+        get {
+            let centerX = origin.x + (size.width / 2)
+            let centerY = origin.y + (size.height / 2)
+            return Point(x: centerX, y: centerY)
+        }
+        set {
+            origin.x = newValue.x - (size.width / 2)
+            origin.y = newValue.y - (size.height / 2)
+        }
+    }
+}
+</code></pre>
+
+<h3 id="toc_6">只读的计算属性</h3>
+
+<p>只有<code>getter</code>没有<code>setter</code>的计算属性就是只读计算属性，可以访问值,不能设置新值</p>
+
+<pre><code class="language-swift">struct Cuboid {
+    var width = 0.0, height = 0.0, depth = 0.0
+    var volume: Double {
+        return width * height * depth
+    }
+}
+</code></pre>
+
+<p>只读属性可以省略掉 <code>get</code>关键字和花括号</p>
+
+<h2 id="toc_7">属性观察器</h2>
+
+<p><strong>属性观察器</strong>监控和响应属性值变化，每次属性被设置时会调用属性观察器，即使新值和当前值相同时也不例外</p>
+
+<p>可以为<code>除了延迟加载存储属性</code>外其他存储属性添加属性观察器，对于继承的存储属性和计算属性,通过重写的方式来添加属性观察器<br/>
+对于非继承的计算属性没必要添加属性观察器，我们可以通过<code>setter</code>方法直接监控</p>
+
+<p>属性观察期器:</p>
 
 <ul>
-<li>假如编写不基于UI框架的程序，例如命令行工具</li>
-<li>假如编写一个创建了很多临时对象的循环<br/>
-可以再循环内的下一次迭代之前处理这些对象，有助于减少应用程序的最大内存占用量</li>
-<li>如果你创建了一个辅助线程<br/>
-当你的线程开始执行时，必须创建自己的自动释放池，否则你的应用程序有可能会内存泄漏</li>
+<li><code>willSet</code>在新值被设置前调用</li>
+<li><code>didSet</code>在新值被设置之后调用</li>
 </ul>
 
-<h3 id="toc_3">使用本地自动释放池block减少峰值内存占用</h3>
+<p><code>willSet</code>观察器会将新的属性值作为常量参数传入，在<code>willSet</code>的实现代码中可以为这个参数指定一个名称，如果不指定则参数仍然可用，这时使用默认名称<code>newValue</code>表示。</p>
 
-<pre><code class="language-objectivec">NSArray *urls = &lt;# An array of file URLs #&gt;;
-for (NSURL *url in urls) {
- 
-    @autoreleasepool {
-        NSError *error;
-        NSString *fileContents = [NSString stringWithContentsOfURL:url
-                                         encoding:NSUTF8StringEncoding error:&amp;error];
-        /* Process the string, creating and autoreleasing more objects. */
-    }
-}
-</code></pre>
+<p><code>didSet</code>观察器会将旧的属性值作为参数传入，可以为该参数命名或者使用默认参数名<code>oldValue</code>。如果在<code>didSet</code>方法中再次对该属性赋值，那么新值会覆盖旧的值</p>
 
-<p>在上面例子中，for循环每次循环的自动释放block结束时，将自动释放对象(例如:<code>fileContents</code>)发送release消息</p>
+<blockquote>
+<p>注意：</p>
 
-<p>在自动释放池block后，块中的自动释放对象不应该再向其发送消息或者返回。如果想要将其返回，则可以先将其<code>retain</code>然后在block外将其autorelease</p>
+<p>父类的属性在子类的构造器中被赋值时，它在父类中的 willSet 和 didSet 观察器会被调用，随后才会调用子类的观察器。在父类初始化方法调用之前，子类给属性赋值时，观察器不会被调用。</p>
+</blockquote>
 
-<pre><code class="language-objectivec">– (id)findMatchingObject:(id)anObject {
- 
-    id match;
-    while (match == nil) {
-        @autoreleasepool {
- 
-            /* Do a search that creates a lot of temporary objects. */
-            match = [self expensiveSearchForObject:anObject];
- 
-            if (match != nil) {
-                [match retain]; /* Keep match around. */
+<pre><code class="language-swift">class StepCounter {
+    var totalSteps: Int = 0 {
+        willSet(newTotalSteps) {
+            print(&quot;About to set totalSteps to \(newTotalSteps)&quot;)
+        }
+        didSet {
+            if totalSteps &gt; oldValue {
+                print(&quot;Added \(totalSteps - oldValue) steps&quot;)
             }
         }
     }
- 
-    return [match autorelease];   /* Let match go and return it. */
 }
+let stepCounter = StepCounter()
+stepCounter.totalSteps = 200
+// About to set totalSteps to 200
+// Added 200 steps
 </code></pre>
 
-<h3 id="toc_4">线程和自动释放池block</h3>
+<blockquote>
+<p>注意</p>
 
-<p><code>Cocoa</code>应用程序的每个线程都会维护自己的自动释放池堆栈。如果编写基于<code>Foundation</code>的程序或者分离线程，则你必须创建自己的autoreleasePool</p>
+<p>在willSet或者didSet方法中设置属性值是不会触发的属性观察器方法  </p>
 
-<p>如果应用程序或者线程长时间运行，则有可能产生大量自动释放对象，此时就需要使用自动释放池(例如主线程的UIKit和AppKit)；否则自动释放对象会累计，造成内存增加。但，如果你的线程没有进行Cocoa调用，则不需要使用自动释放池block</p>
+<p>如果将属性通过<code>in-out</code>方式传入函数，<code>willSet</code>和<code>didSet</code>也会调用。这是因为<code>in-out</code>参数采用了拷入拷出模式：即在函数内部使用的是参数的<code>copy</code>，函数结束后，又对参数重新赋值。</p>
+</blockquote>
+
+<h2 id="toc_8">全局变量和局部变量</h2>
+
+<p><strong>计算属性和属性观察器所描述的功能也可以用于全局变量和局部变量</strong></p>
+
+<p>我们之前用的变量都是存储型变量,跟存储属性类似，它为特定类型的值提供存储空间，并允许读取和写入</p>
+
+<p>我们可以在全局或局部范围为存储型变量定义观察器</p>
+
+<p>在全局或局部范围都可以定义计算型变量。计算型变量跟计算属性一样，返回一个计算结果而不是存储值，声明格式也完全一样</p>
 
 <blockquote>
-<p>注意:<br/>
-<strong>如果使用POSIX线程API而不是NSThread创建辅助线程，则除非Cocoa处于多线程模式，否则不能使用Cocoa</strong>Cocoa仅在分离其第一个NSThread对象后才进入多线程模式。 要在辅助POSIX线程上使用Cocoa，您的应用程序必须首先分离至少一个NSThread对象，该对象可以立即退出。 您可以使用NSThread类方法isMultiThreaded测试Cocoa是否处于多线程模式。</p>
+<p>注意:</p>
+
+<ol>
+<li>全局的常量或变量都是延迟计算，类似<code>延迟属性</code>但是不需要<code>lazy</code>声明</li>
+<li>局部的常量或变量从不延迟计算</li>
+</ol>
 </blockquote>
+
+<h2 id="toc_9">类型属性</h2>
+
+<p>可以为类型本身定义属性</p>
+
+<p>类型属性用于定义某个类型所有实例共享的数据</p>
+
+<p>类型属性也可以有 存储型的常量或变量 计算型的只能为变量</p>
+
+<blockquote>
+<p>注意:</p>
+
+<p>存储型类型属性必须指定默认值，因为类型本身没有构造器，也就无法在初始化过程中使用构造器给类型属性赋值</p>
+
+<p>存储型类型属性是延迟初始化的，它们只有在第一次被访问的时候才会被初始化。即使它们被多个线程同时访问，系统也保证只会对其进行一次初始化，并且不需要对其使用<code>lazy</code>修饰符。</p>
+</blockquote>
+
+<h3 id="toc_10">类型属性语法</h3>
+
+<p>在<code>OC</code>中,在类中关联的静态变量和常量是作为全局静态变量定义<br/>
+在<code>Swift</code>中，类型属性是作为类型定义的一部分写在类型最外层的花括号内，作用范围就在类型支持的范围内</p>
+
+<p>使用<code>static</code>来定义类型属性。</p>
+
+<p>在为类定义计算型类型属性时，可以改用关键字<code>class</code>来支持子类对父类的实现进行重写</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>只有计算型类型属性，采用class关键字进行重写</p>
+</blockquote>
+
+<pre><code class="language-swift">//结构体
+struct SomeStructure {
+    static var storedTypeProperty = &quot;Some value.&quot;
+    static var computedTypeProperty: Int {
+        return 1
+    }
+}
+//枚举
+enum SomeEnumeration {
+    static var storedTypeProperty = &quot;Some value.&quot;
+    static var computedTypeProperty: Int {
+        return 6
+    }
+}
+//类
+class SomeClass {
+    static var storedTypeProperty = &quot;Some value.&quot;
+    static var computedTypeProperty: Int {
+        return 27
+    }
+    //子类对父类的实现进行重写
+    class var overrideableComputedTypeProperty: Int {
+        return 107
+    }
+}
+
+</code></pre>
+
+<h3 id="toc_11">获取和设置类型属性值</h3>
+
+<p>类型属性通过点运算符通过类型本身来访问</p>
+
+<pre><code class="language-swift">print(SomeStructure.storedTypeProperty)
+    // 打印 &quot;Some value.&quot;
+SomeStructure.storedTypeProperty = &quot;Another value.&quot;
+print(SomeStructure.storedTypeProperty)
+    // 打印 &quot;Another value.”
+print(SomeEnumeration.computedTypeProperty)
+    // 打印 &quot;6&quot;
+print(SomeClass.computedTypeProperty)
+    // 打印 &quot;27&quot;
+</code></pre>
 
 
 		</div>
@@ -226,24 +412,24 @@ for (NSURL *url in urls) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -263,10 +449,10 @@ for (NSURL *url in urls) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -290,7 +476,7 @@ for (NSURL *url in urls) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -301,7 +487,7 @@ for (NSURL *url in urls) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -319,6 +505,15 @@ for (NSURL *url in urls) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -328,31 +523,31 @@ for (NSURL *url in urls) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

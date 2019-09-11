@@ -82,71 +82,95 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15471147696850.html">对象</a></h1>
-			<p class="meta"><time datetime="2019-01-10T18:06:09+08:00" 
+		  	<h1 class="entry-title"><a href="15471197068949.html">Promise</a></h1>
+			<p class="meta"><time datetime="2019-01-10T19:28:26+08:00" 
 			pubdate data-updated="true">2019/1/10</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>JS对象可以通过<code>[ ]</code>来取值和赋值属性或者方法</p>
+		  	<h2 id="toc_0">Promise 写法</h2>
 
-<h2 id="toc_0">ES6对象写法改变</h2>
-
-<h3 id="toc_1">简写对象属性</h3>
-
-<p>当属性名和变量名相同时 可以省写,只写一个属性名即可</p>
-
-<pre><code class="language-javascript">    const name = &quot;lyy&quot;
-    const age = 25
-    const birthday = &quot;1994-10&quot;
-    
-      
-    const lyy = {
-        name: name, //旧版写法
-        age, //es6简写形式
-        birthday,
-    }
+<pre><code class="language-javascript">//构造一个Promise
+const promise = new Promise((resolve, reject) =&gt; {
+    // resolve 或者  reject只返回一个 一次 然后就会停止监听了
+    // setTimeout(() =&gt; {
+    //     resolve(&quot;这是返回的结果&quot;)
+        
+    // }, 2000);
+    setTimeout(() =&gt; {
+     reject(Error(&quot;这是错误的信息结果&quot;))
+    }, 3000);
+})
+//监听这个promise返回结果
+promise.then(result =&gt; {
+    console.log(result)
+}).catch(err =&gt; {
+    console.log(err)
+})
 </code></pre>
 
-<h3 id="toc_2">简写对象方法</h3>
+<blockquote>
+<p>Promise 的then方法参数为两个，第一个回调函数为result回调，第二个为error的回调函数</p>
 
-<p>对象方法可以简写省略: 和 function 关键字</p>
+<p>在Promise的.then中return的值默认即为返回一个Promise.resolve 我们可以通过继续.then来获取这个返回的值</p>
+</blockquote>
 
-<pre><code class="language-javascript">const lyy = {       
-    showName() { //es6简写
+<p><img src="media/15471197068949/2181551322657_.pic_hd.jpg" alt="2181551322657_.pic_hd"/></p>
 
-    },
-    showAge: function() { //旧版写法
+<p><img src="media/15471197068949/2191551324230_.pic_hd.jpg" alt="2191551324230_.pic_hd"/></p>
 
-    }
-}
-</code></pre>
+<h3 id="toc_1">Promise实例</h3>
 
-<h3 id="toc_3">对象计算属性</h3>
+<h4 id="toc_2">Promise链式调用</h4>
 
-<p><code>[ ]</code>方括号属性 -- 计算属性</p>
+<h4 id="toc_3">多个Promise</h4>
 
-<pre><code class="language-javascript">let id = 1;
-
-const userId  = {
-    [`userId-${++id}`] : id,
-    [`userId-${++id}`] : id,
-    [`userId-${++id}`] : id,
-}
-//{userId-2: 2, userId-3: 3, userId-4: 4}
-
-
-const keyArr = [&quot;name&quot;, &quot;age&quot;, &quot;birthday&quot;]
-const valueArr = [&quot;lyy&quot;, 27, &quot;1993-12&quot;]
-
-const poeple = {
-    [keyArr.shift()] : valueArr.shift(),
-    [keyArr.shift()] : valueArr.shift(),
-    [keyArr.shift()] : valueArr.shift()
-}
-console.log(poeple) //{name: &quot;lyy&quot;, age: 27, birthday: &quot;1993-12&quot;}
-
-</code></pre>
+<ol>
+<li><p>Promise.all()<br/>
+参数为promise对象数组 只有当数组中的promise都resolve 才then结果为按顺序请求数组中的promise的resove，否则只要有一个请求reject 执行catch方法不再等待其他请求结果</p>
+<pre><code class="language-javascript">const userPromise = new Promise((resolve, reject) =&gt; {
+    setTimeout(() =&gt; {<br/>
+        resolve(&quot;这是user请求&quot;)<br/>
+    }, 1000);<br/>
+})<br/>
+const namePromise = new Promise((resolve, reject) =&gt; {<br/>
+    setTimeout(() =&gt; {<br/>
+        resolve(&quot;这是name请求&quot;)<br/>
+    }, 2000);<br/>
+})<br/>
+Promise.all([userPromise, namePromise])<br/>
+.then(response =&gt; {<br/>
+    console.log(response)<br/>
+    //[&quot;这是user请求&quot;, &quot;这是name请求&quot;]<br/>
+})<br/>
+.catch(err =&gt; {<br/>
+    console.log(err)<br/>
+})
+</code></pre></li>
+<li><p>Promise.race()</p>
+<p>参数为promise对象数组，只会返回该数组中请求最快完成的resolve或者reject结果</p>
+<pre><code class="language-javascript">const userPromise = new Promise((resolve, reject) =&gt; {
+    setTimeout(() =&gt; {<br/>
+        resolve(&quot;这是user请求&quot;)<br/>
+        // reject(&quot;user请求失败&quot;)<br/>
+    }, 1000);<br/>
+})<br/>
+const namePromise = new Promise((resolve, reject) =&gt; {<br/>
+    setTimeout(() =&gt; {<br/>
+        // resolve(&quot;这是name请求&quot;)<br/>
+        reject(&quot;name请求失败&quot;)<br/>
+    }, 2000);<br/>
+})<br/>
+Promise.race([userPromise, namePromise])<br/>
+.then(response =&gt; {<br/>
+    console.log(response)<br/>
+    //这是user请求<br/>
+})<br/>
+.catch(err =&gt; {<br/>
+    console.log(err)<br/>
+})
+</code></pre></li>
+</ol>
 
 
 		</div>
@@ -169,24 +193,24 @@ console.log(poeple) //{name: &quot;lyy&quot;, age: 27, birthday: &quot;1993-12&q
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -206,10 +230,10 @@ console.log(poeple) //{name: &quot;lyy&quot;, age: 27, birthday: &quot;1993-12&q
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -233,7 +257,7 @@ console.log(poeple) //{name: &quot;lyy&quot;, age: 27, birthday: &quot;1993-12&q
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -244,7 +268,7 @@ console.log(poeple) //{name: &quot;lyy&quot;, age: 27, birthday: &quot;1993-12&q
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -262,6 +286,15 @@ console.log(poeple) //{name: &quot;lyy&quot;, age: 27, birthday: &quot;1993-12&q
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -271,31 +304,31 @@ console.log(poeple) //{name: &quot;lyy&quot;, age: 27, birthday: &quot;1993-12&q
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

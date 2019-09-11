@@ -82,71 +82,92 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14861702798513.html">iOS中主要框架</a></h1>
-			<p class="meta"><time datetime="2017-02-04T09:04:39+08:00" 
-			pubdate data-updated="true">2017/2/4</time></p>
+		  	<h1 class="entry-title"><a href="14867842994268.html">容易忘记的易错点</a></h1>
+			<p class="meta"><time datetime="2017-02-11T11:38:19+08:00" 
+			pubdate data-updated="true">2017/2/11</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h4 id="toc_0">1. 系统框架层</h4>
+		  	<h3 id="toc_0">1. @property属性中如果是copy属性要记得：</h3>
 
-<p>每个框架对应IOS系统里的一层，每层建立在它下面层的上面。应该尽量使用上层的框架来代替下面的框架。更高层次的框架是对底层框架基于对象的抽象。<br/><br/>
-<img src="media/14861702798513/DraggedImage.png" alt="DraggedImage"/></p>
+<pre><code class="language-text">**注意：**
+在重写setter方法时要记得加上 
 
-<h4 id="toc_1">2. 两个基础框架</h4>
+``` Object-c
+_name = [name copy]
+```
+在内部的init方法中 也要记得加copy，即在内部直接给属性变量赋值时记得加copy
 
-<p>iOS应用程序基于Foundation和UIKit框架<br/>
-<strong>Foundation</strong><br/><br/>
-Foundation框架为所有的应用程序提供基本系统服务你的应用程序，UIKit和其它的框架都是建立在Foundation框架上面的。Foundation框架是用Object-C对CoreFoundation框架里许多特性的封装。<br/><br/>
-使用Foundation可以:</p>
-
-<ol>
-<li>创建和管理集合，比如数组和字典
-<ol>
-<li>访问存储在应用程序里的图片和其它资源
-<ol>
-<li>创建和管理字符串</li>
-<li>提交和接收通</li>
-<li>创建日期和时间对象</li>
-<li>自动发现IP网络上的设备</li>
-<li>操作URL流
-<strong>UIKit</strong><br/>
-所有的iOS应用程序都基于UIKit，你不能是应用程序脱离这个框架。UIKit提供了在屏幕上绘制的机制，捕获事件，和创建通用用户界面元素。UIKit也通过管理显示在屏幕上的组件来组织复杂的项目。<br/>
-使用UIKit可以：</li>
-</ol></li>
-</ol></li>
-<li>构建和管理你的用户界面
-<ol>
-<li>捕获触摸和基于移动的事件
-<ol>
-<li>呈现文字和web内容</li>
-<li>优化多任务程序</li>
-<li>创建定制的用户界面元素</li>
-</ol></li>
-</ol></li>
-</ol>
-
-<h4 id="toc_2">3. 其他重要框架</h4>
-
-<pre><code class="language-text">Core Data , Core Graphics, CoreAnimation,和OpenGLES框架都是高级的技术
-1. **CoreData框架管着理应用程序数据模型**
-    Core Data提供对象的管理，使用CoreData，你可以创建模型对象，并管理这些对象。你管理这这些对象间的联系并修改数据。CoreData提供的内建SQLlite技术可以高效的管理数据。
-    使用CoreData可以:
-    - 在库里存储和接受对象
-    - 提供基本的undo/redo
-    - 自动验证属性值
-    - 过滤、分组和优化内存中的数据
-    - 用[NSFetchedResultsController]管理表视图中的结果
-    - 支持基于文档的应用程序
-2. **CoreGraphics框架帮助你创建图形
-
-3. **CoreAnimation允许你创建高级的动画和虚拟效果
-4. **OpenGL ES框架提供2D和3D绘图工具
+```Object-c
+//这里尽量不要用self.实例变量 而用 _实例变量
 </code></pre>
 
-<ol>
-<li><br/></li>
-</ol>
+<ul>
+<li><p>initWithSpId:(SInt32)spId spName:(NSString *)spName type:(SInt32)spType spPinyin:(NSString *)spPinyin spLetter:(NSString *)spLetter {<br/>
+if (self = [super init]) {<br/>
+    _spId = spId;<br/>
+    _spName = [spName copy];<br/>
+    _type = spType;<br/>
+}<br/>
+return self;<br/>
+}</p>
+<pre><code class="language-text">### 2. 注意在修改navigation时是只修改了navigationItem还是修改了NavigationBar
+如果是仅仅修改了navigationItem那就只对本控制器有效 push或者pop了都不影响，一般有以下几种情况:<br/>
+1. 修改了navigationItem的元素<br/>
+    ```Object-c<br/>
+    self.navigationItem.title = @&quot;title&quot;;<br/>
+    self.navigationItem.titleView = [[UIView alloc] init];<br/>
+    ```<br/>
+2. 修改了navigationItem的BarButtonItem<br/>
+    ```Object-c<br/>
+    self.navigationItem.leftBarButtonItem = [UIBarButtonItem itemWithTarget:self action:@selector(popViewController) image:@&quot;general_arrow_back_white&quot; highImage:@&quot;general_arrow_back_orange&quot;];<br/>
+    ```<br/>
+    **一般我们可以通过这种方法拦截返回点击事件，比如全局控制器的返回按键已经写好，而我们想要拦截点击事件就可以用这种方法,写一个同一样式的按键触发不同的事件**<br/>
+这些修改是不影响的整个navigationBar的仅此不需要在视图控制器消失时做额外的操作<br/>
+而如果是修改了navigationBar 那就对全局有影响了,需要在控制器消失时做额外还原处理,一般情况如下:<br/>
+```Object-c<br/>
+//修改背景图片<br/>
+[self.navigationController.navigationBar setShadowImage:[UIImage new]];<br/>
+//修改背景颜色<br/>
+[self.navigationController.navigationBar lt_setBackgroundColor:[UIColor clearColor]];<br/>
+//修改navigationBar的整体字体颜色<br/>
+[self.navigationController.navigationBar setTitleTextAttributes:<br/>
+ [NSDictionary dictionaryWithObjectsAndKeys:[UIColor whiteColor],NSForegroundColorAttributeName,nil]];<br/>
+ //隐藏navigationBar<br/>
+self.navigationController.navigationBar.hidden = YES;
+</code></pre>
+<p>此时我们需要在退出时做一下还原操作</p>
+<pre><code class="language-object-c">[super viewWillDisappear:animated];
+[self.navigationController.navigationBar lt_reset];<br/>
+[self.navigationController.navigationBar setTitleTextAttributes:<br/>
+[NSDictionary dictionaryWithObjectsAndKeys:[UIColor blackColor],NSForegroundColorAttributeName,nil]];<br/>
+self.navigationController.navigationBar.hidden = NO;
+</code></pre>
+<h3 id="toc_1">3. 隐藏tabbar</h3>
+<p>我们在某些界面需要隐藏Tabbar的时候，会出现原区域无法响应点击事件的问题。系统的Tabbar已经被我们hidden了，但是仍然无法响应事件，此时我们只要将系统的Tabbar的frame设置为CGRectZero即可。</p>
+<pre><code class="language-objectivec">[UIApplication sharedApplication].keyWindow.rootViewController).tabBar.frame 
+= CGRectZero;
+</code></pre></li>
+</ul>
+
+<h3 id="toc_2">4. 自动布局的动画</h3>
+
+<pre><code class="language-text">用`xib`拉的视图或者`masonry`布局的视图在`[UIView animation...]`动画方法中都是可以直接改变`frame`或者`transform`来进行动画的
+我们可以直接改变`frame`包括宽、高、中心等 直接进行各种动画,而不用担心因为`autolayout`问题,毕竟masony或者xib拉约束都只是布局问题,在运行时还是会转成`frame`的.
+
+而通常我们拖约束线出去是为了:
+1. 在视图还没加载时用代码设置某个约束值  
+2. 真的是要改变某个约束值做动画（通常某个视图也和这个约束有关系）
+</code></pre>
+
+<h3 id="toc_3">让UIButton的title对齐方式</h3>
+
+<p>有些时候我们想让UIButton的title居左对齐</p>
+
+<p>button.textLabel.textAlignment = UITextAlignmentLeft  //是没有作用的，我们需要设置</p>
+
+<p>button.contentHorizontalAlignment = UIControlContentHorizonAlignmentLeft; //显示居左<br/>
+**除了水平 还有垂直方向的对齐方式</p>
 
 
 		</div>
@@ -169,24 +190,24 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -206,10 +227,10 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -233,7 +254,7 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -244,7 +265,7 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -262,6 +283,15 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -271,31 +301,31 @@ Foundation框架为所有的应用程序提供基本系统服务你的应用程�
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

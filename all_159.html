@@ -82,387 +82,81 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14877347224030.html">运行时实例:</a></h1>
-			<p class="meta"><time datetime="2017-02-22T11:38:42+08:00" 
-			pubdate data-updated="true">2017/2/22</time></p>
+		  	<h1 class="entry-title"><a href="14899954232802.html">1.weak是怎么实现的</a></h1>
+			<p class="meta"><time datetime="2017-03-20T15:37:03+08:00" 
+			pubdate data-updated="true">2017/3/20</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">类与对象</h2>
+		  	<p>在Objective-C中，用__weak修饰的指针，会在所指向的那个Objective-C对象被释放后，自动指向nil。</p>
 
-<pre><code class="language-objectivec">//-----------------------------------------------------------
-// MyClass.h
-@interface MyClass : NSObject &lt;NSCopying, NSCoding&gt;
-@property (nonatomic, strong) NSArray *array;
-@property (nonatomic, copy) NSString *string;
-- (void)method1;
-- (void)method2;
-+ (void)classMethod1;
-@end
-//-----------------------------------------------------------
-// MyClass.m
-#import &quot;MyClass.h&quot;
-@interface MyClass () {
-    NSInteger       _instance1;
-    NSString    *   _instance2;
-}
-@property (nonatomic, assign) NSUInteger integer;
-- (void)method3WithArg1:(NSInteger)arg1 arg2:(NSString *)arg2;
-@end
-@implementation MyClass
-+ (void)classMethod1 {
-}
-- (void)method1 {
-    NSLog(@&quot;call method method1&quot;);
-}
-- (void)method2 {
-}
-- (void)method3WithArg1:(NSInteger)arg1 arg2:(NSString *)arg2 {
-    NSLog(@&quot;arg1 : %ld, arg2 : %@&quot;, arg1, arg2);
-}
-@end
-//-----------------------------------------------------------
-// main.h
-#import &quot;MyClass.h&quot;
-#import &quot;MySubClass.h&quot;
-#import &lt;objc/runtime.h&gt;
-int main(int argc, const char * argv[]) {
-    @autoreleasepool {
-    
-        MyClass *myClass = [[MyClass alloc] init];
-        unsigned int outCount = 0;
-        Class cls = myClass.class;
-        // 类名
-        NSLog(@&quot;class name: %s&quot;, class_getName(cls));
-        NSLog(@&quot;==========================================================&quot;);
-        // 父类
-        NSLog(@&quot;super class name: %s&quot;, class_getName(class_getSuperclass(cls)));
-        NSLog(@&quot;==========================================================&quot;);
-        // 是否是元类
-        NSLog(@&quot;MyClass is %@ a meta-class&quot;, (class_isMetaClass(cls) ? @&quot;&quot; : @&quot;not&quot;));
-        NSLog(@&quot;==========================================================&quot;);
-        Class meta_class = objc_getMetaClass(class_getName(cls));
-        NSLog(@&quot;%s&#39;s meta-class is %s&quot;, class_getName(cls), class_getName(meta_class));
-        NSLog(@&quot;==========================================================&quot;);
-        // 变量实例大小
-        NSLog(@&quot;instance size: %zu&quot;, class_getInstanceSize(cls));
-        NSLog(@&quot;==========================================================&quot;);
-        // 成员变量
-        Ivar *ivars = class_copyIvarList(cls, &amp;outCount);
-        for (int i = 0; i &lt; outCount; i++) {
-            Ivar ivar = ivars[i];
-            NSLog(@&quot;instance variable&#39;s name: %s at index: %d&quot;, ivar_getName(ivar), i);
-        }
-        free(ivars);
-        Ivar string = class_getInstanceVariable(cls, &quot;_string&quot;);
-        if (string != NULL) {
-            NSLog(@&quot;instace variable %s&quot;, ivar_getName(string));
-        }
-        NSLog(@&quot;==========================================================&quot;);
-        // 属性操作
-        objc_property_t * properties = class_copyPropertyList(cls, &amp;outCount);
-        for (int i = 0; i &lt; outCount; i++) {
-            objc_property_t property = properties[i];
-            NSLog(@&quot;property&#39;s name: %s&quot;, property_getName(property));
-        }
-        free(properties);
-        objc_property_t array = class_getProperty(cls, &quot;array&quot;);
-        if (array != NULL) {
-            NSLog(@&quot;property %s&quot;, property_getName(array));
-        }
-        NSLog(@&quot;==========================================================&quot;);
-        // 方法操作
-        Method *methods = class_copyMethodList(cls, &amp;outCount);
-        for (int i = 0; i &lt; outCount; i++) {
-            Method method = methods[i];
-            NSLog(@&quot;method&#39;s signature: %s&quot;, method_getName(method));
-        }
-        free(methods);
-        Method method1 = class_getInstanceMethod(cls, @selector(method1));
-        if (method1 != NULL) {
-            NSLog(@&quot;method %s&quot;, method_getName(method1));
-        }
-        Method classMethod = class_getClassMethod(cls, @selector(classMethod1));
-        if (classMethod != NULL) {
-            NSLog(@&quot;class method : %s&quot;, method_getName(classMethod));
-        }
-        NSLog(@&quot;MyClass is%@ responsd to selector: method3WithArg1:arg2:&quot;, class_respondsToSelector(cls, @selector(method3WithArg1:arg2:)) ? @&quot;&quot; : @&quot; not&quot;);
-        IMP imp = class_getMethodImplementation(cls, @selector(method1));
-        imp();
-        NSLog(@&quot;==========================================================&quot;);
-        // 协议
-        Protocol * __unsafe_unretained * protocols = class_copyProtocolList(cls, &amp;outCount);
-        Protocol * protocol;
-        for (int i = 0; i &lt; outCount; i++) {
-            protocol = protocols[i];
-            NSLog(@&quot;protocol name: %s&quot;, protocol_getName(protocol));
-        }
-        NSLog(@&quot;MyClass is%@ responsed to protocol %s&quot;, class_conformsToProtocol(cls, protocol) ? @&quot;&quot; : @&quot; not&quot;, protocol_getName(protocol));
-        NSLog(@&quot;==========================================================&quot;);
-    }
-    return 0;
-}
+<p>参考<a href="http://www.jianshu.com/p/fe9865814668">weak是怎么实现的</a></p>
 
-//输出结果
+<p>通俗的解释就是，在Objective-C的运行时环境中，维护了一种<strong>weak表</strong>，这张<strong>哈希表</strong>用对象的首地址作为键，将由若干个__weak修饰的指针自身的地址组成的数组作为值。当一个Objective-C对象被释放后，通过这个对象的起始地址来找到所有指向它的__weak指针，并将它们指向nil。</p>
 
+<p>ARC下，编译器会生成一个全局的散列表数组，每个散列表的大小上限为128Byte，取这个数值也是为了和cache line size（64Byte）对齐，对于iOS系统，这个数组的大小为8*128（Byte），可以存放8张散列表<code>SideTable</code>结构体。<br/>
+一个对象的首地址经过哈希之后可以确定这个对象映射到那个<code>SideTable</code>。<br/>
+一个<code>SideTable</code>结构体中包含了一个<code>weak_table</code>:</p>
 
+<pre><code class="language-objectivec">struct SideTable {
+    //.......
+    weak_table_t weak_table;
+    //.......
+};
+
+struct weak_table_t {
+    weak_entry_t *weak_entries;
+    size_t    num_entries;
+    uintptr_t mask;
+    uintptr_t max_hash_displacement;
+};
 </code></pre>
 
-<h3 id="toc_1">动态创建类</h3>
+<p>根据对象首地址查找weak_entry的方法为weak_entry_for_referent()，可以看到其中对对象首地址做了一次哈希，得到了对应的index。如果发生碰撞，则index依次+1，遍历整个数组，检查是否能获得正确的weak_entry_t对象。</p>
 
-<pre><code class="language-objectivec">Class cls = objc_allocateClassPair(MyClass.class, &quot;MySubClass&quot;, 0);
-class_addMethod(cls, @selector(submethod1), (IMP)imp_submethod1, &quot;v@:&quot;);
-class_replaceMethod(cls, @selector(method1), (IMP)imp_submethod1, &quot;v@:&quot;);
-class_addIvar(cls, &quot;_ivar1&quot;, sizeof(NSString *), log(sizeof(NSString *)), &quot;i&quot;);
-objc_property_attribute_t type = {&quot;T&quot;, &quot;@\&quot;NSString\&quot;&quot;};
-objc_property_attribute_t ownership = { &quot;C&quot;, &quot;&quot; };
-objc_property_attribute_t backingivar = { &quot;V&quot;, &quot;_ivar1&quot;};
-objc_property_attribute_t attrs[] = {type, ownership, backingivar};
-class_addProperty(cls, &quot;property2&quot;, attrs, 3);
-objc_registerClassPair(cls);
-id instance = [[cls alloc] init];
-[instance performSelector:@selector(submethod1)];
-[instance performSelector:@selector(method1)];
-//输出
-2014-10-23 11:35:31.006 RuntimeTest[3800:66152] run sub method 1
-2014-10-23 11:35:31.006 RuntimeTest[3800:66152] run sub method 1
-
+<pre><code class="language-objectivec">#define WEAK_INLINE_COUNT 4
+struct weak_entry_t {
+    DisguisedPtr&lt;objc_object&gt; referent;
+    union {
+        struct {
+            weak_referrer_t *referrers;//就是这个weak指针指向的对象地址
+            uintptr_t        out_of_line : 1;
+            uintptr_t        num_refs : PTR_MINUS_1;
+            uintptr_t        mask;
+            uintptr_t        max_hash_displacement;
+        };
+        struct {
+            // out_of_line=0 is LSB of one of these (don&#39;t care which)
+            weak_referrer_t  inline_referrers[WEAK_INLINE_COUNT];
+        };
+    };
+};
 </code></pre>
 
-<h3 id="toc_2">动态创建对象</h3>
+<p>其中的<code>weak_referrer_t</code>实际就是指向Objective-C对象的指针的地址的类型：</p>
 
-<pre><code class="language-objectivec">id theObject = class_createInstance(NSString.class, sizeof(unsigned));
- 
-id str1 = [theObject init];
-NSLog(@&quot;%@&quot;, [str1 class]);
-id str2 = [[NSString alloc] initWithString:@&quot;test&quot;];
-NSLog(@&quot;%@&quot;, [str2 class]);
-//输出
-2014-10-23 12:46:50.781 RuntimeTest[4039:89088] NSString
-2014-10-23 12:46:50.781 RuntimeTest[4039:89088] __NSCFConstantString
-
+<pre><code class="language-objectivec">typedef objc_object ** weak_referrer_t;
 </code></pre>
 
-<h3 id="toc_3">实例操作函数</h3>
+<p>弱引用销毁过程:</p>
 
-<h4 id="toc_4">对象拷贝</h4>
+<p>在<code>runtime</code>的代码中，可以找到一个叫做<code>weak_clear_no_lock</code>的方法，它的注释表明，这个方法会被<code>dealloc</code>方法调用，然后将被销毁对象所对应的所有弱引用指针都置为<code>nil</code>。</p>
 
-<pre><code class="language-objectivec">NSObject *a = [[NSObject alloc] init];
-id newB = object_copy(a, class_getInstanceSize(MyClass.class));
-object_setClass(newB, MyClass.class);
-object_dispose(a);
-</code></pre>
+<p>过程:</p>
 
-<h4 id="toc_5">获取类定义（获取已注册类）</h4>
+<ol>
+<li>利用即将被销毁的对象的首地址，找到对应的weak_entry_t。</li>
+<li>从weak_entry_t对象中获取指向weak_referrer_t数组的指针。</li>
+<li>遍历这个数组，对于数组中的每个元素，检查是否真的指向即将被销毁的对象的首地址，如果是，则将它指向nil，如果不是则报错。</li>
+<li>释放这个weak_entry_t对象，并更新weak_table_t中的entry数目。如果有必要，对weak_table_t进行缩容。</li>
+</ol>
 
-<pre><code class="language-objectivec">int numClasses;
-Class * classes = NULL;
-numClasses = objc_getClassList(NULL, 0);
-if (numClasses &gt; 0) {
-    classes = malloc(sizeof(Class) * numClasses);
-    numClasses = objc_getClassList(classes, numClasses);
-    NSLog(@&quot;number of classes: %d&quot;, numClasses);
-    for (int i = 0; i &lt; numClasses; i++) {
-        Class cls = classes[i];
-        NSLog(@&quot;class name: %s&quot;, class_getName(cls));
-    }
-    free(classes);
-}
-</code></pre>
+<p>补充:<br/>
+当使用一个__weak指针时，<code>objc_loadWeakRetained()</code>和<code>objc_release()</code>函数都被调用了。</p>
 
-<h2 id="toc_6">成员变量、属性</h2>
+<p>其中<code>objc_loadWeakRetained()</code>会调用<code>retainWeakReference</code>方法，如果某个类重写了<code>retainWeakReference</code>方法并返回<code>NO</code>，则这个<code>__weak</code>指针获取的就永远是<code>nil</code>了。</p>
 
-<h3 id="toc_7">关联对象</h3>
-
-<p>假定我们想要动态地将一个Tap手势操作连接到任何UIView中，并且根据需要指定点击后的实际操作。这时候我们就可以将一个手势对象及操作的block对象关联到我们的UIView对象中。这项任务分两部分。<br/>
-首先，如果需要，我们要创建一个手势识别对象并将它及block做为关联对象。如下代码所示：</p>
-
-<pre><code class="language-objectivec">- (void)setTapActionWithBlock:(void (^)(void))block
-{
-    UITapGestureRecognizer *gesture = objc_getAssociatedObject(self, &amp;kDTActionHandlerTapGestureKey);
- 
-    if (!gesture)
-    {
-        gesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(__handleActionForTapGesture:)];
-        [self addGestureRecognizer:gesture];
-        objc_setAssociatedObject(self, &amp;kDTActionHandlerTapGestureKey, gesture, OBJC_ASSOCIATION_RETAIN);
-    }
-    objc_setAssociatedObject(self, &amp;kDTActionHandlerTapBlockKey, block, OBJC_ASSOCIATION_COPY);
-}
-</code></pre>
-
-<p>这段代码检测了手势识别的关联对象。如果没有，则创建并建立关联关系。同时，将传入的块对象连接到指定的key上。注意<code>block</code>对象的关联内存管理策略。<br/>
-手势识别对象需要一个<code>target</code>和<code>action</code>，所以接下来我们定义处理方法：</p>
-
-<pre><code class="language-objectivec">- (void)__handleActionForTapGesture:(UITapGestureRecognizer *)gesture
-{
-    if (gesture.state == UIGestureRecognizerStateRecognized)
-    {
-        void(^action)(void) = objc_getAssociatedObject(self, &amp;kDTActionHandlerTapBlockKey);
-        if (action)
-        {
-            action();
-        }
-    }
-}
-</code></pre>
-
-<h3 id="toc_8">设置属性</h3>
-
-<p>我们从服务端两个不同的接口获取相同的字典数据，但这两个接口是由两个人写的，相同的信息使用了不同的字段表示。我们在接收到数据时，可将这些数据保存在相同的对象中。对象类如下定义：</p>
-
-<pre><code class="language-objectivec">@interface MyObject: NSObject
-@property (nonatomic, copy) NSString    *   name;                  
-@property (nonatomic, copy) NSString    *   status;                 
-@end
-</code></pre>
-
-<p>接口A、B返回的字典数据如下所示：</p>
-
-<pre><code class="language-objectivec">@{@&quot;name1&quot;: &quot;张三&quot;, @&quot;status1&quot;: @&quot;start&quot;}
-@{@&quot;name2&quot;: &quot;张三&quot;, @&quot;status2&quot;: @&quot;end&quot;}
-</code></pre>
-
-<p>通常的方法是写两个方法分别做转换，不过如果能灵活地运用Runtime的话，可以只实现一个转换方法，为此，我们需要先定义一个映射字典(全局变量)</p>
-
-<pre><code class="language-objectivec">static NSMutableDictionary *map = nil;
-@implementation MyObject    
-+ (void)load
-{
-    map = [NSMutableDictionary dictionary];
-    map[@&quot;name1&quot;]                = @&quot;name&quot;;
-    map[@&quot;status1&quot;]              = @&quot;status&quot;;
-    map[@&quot;name2&quot;]                = @&quot;name&quot;;
-    map[@&quot;status2&quot;]              = @&quot;status&quot;;
-}
-@end
-</code></pre>
-
-<p>上面的代码将两个字典中不同的字段映射到MyObject中相同的属性上，这样，转换方法可如下处理：</p>
-
-<pre><code class="language-objectivec">- (void)setDataWithDic:(NSDictionary *)dic
-{
-    [dic enumerateKeysAndObjectsUsingBlock:^(NSString *key, id obj, BOOL *stop) {
-        NSString *propertyKey = [self propertyForKey:key];
-        if (propertyKey)
-        {
-            objc_property_t property = class_getProperty([self class], [propertyKey UTF8String]);
-            // TODO: 针对特殊数据类型做处理
-            NSString *attributeString = [NSString stringWithCString:property_getAttributes(property) encoding:NSUTF8StringEncoding];
-            ...
-            [self setValue:obj forKey:propertyKey];
-        }
-    }];
-}
-</code></pre>
-
-<h2 id="toc_9">方法和消息</h2>
-
-<h3 id="toc_10">消息转发 -</h3>
-
-<h4 id="toc_11">备用接收者</h4>
-
-<p>使用这个方法通常是在对象内部，可能还有一系列其它对象能处理该消息，我们便可借这些对象来处理消息并返回，这样在对象外部看来，还是由该对象亲自处理了这一消息。</p>
-
-<pre><code class="language-objectivec">@interface SUTRuntimeMethodHelper : NSObject
-- (void)method2;
-@end
-@implementation SUTRuntimeMethodHelper
-- (void)method2 {
-    NSLog(@&quot;%@, %p&quot;, self, _cmd);
-}
-@end
-#pragma mark -
-@interface SUTRuntimeMethod () {
-    SUTRuntimeMethodHelper *_helper;
-}
-@end
-@implementation SUTRuntimeMethod
-+ (instancetype)object {
-    return [[self alloc] init];
-}
-- (instancetype)init {
-    self = [super init];
-    if (self != nil) {
-        _helper = [[SUTRuntimeMethodHelper alloc] init];
-    }
-    return self;
-}
-- (void)test {
-    [self performSelector:@selector(method2)];
-}
-- (id)forwardingTargetForSelector:(SEL)aSelector {
-    NSLog(@&quot;forwardingTargetForSelector&quot;);
-    NSString *selectorString = NSStringFromSelector(aSelector);
-    // 将消息转发给_helper来处理
-    if ([selectorString isEqualToString:@&quot;method2&quot;]) {
-        return _helper;
-    }
-    return [super forwardingTargetForSelector:aSelector];
-}
-@end
-</code></pre>
-
-<p>这一步合适于我们只想将消息转发到另一个能处理该消息的对象上。但这一步无法对消息进行处理，如操作消息的参数和返回值。</p>
-
-<h4 id="toc_12">完整消息转发</h4>
-
-<pre><code class="language-objectivec">- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    NSMethodSignature *signature = [super methodSignatureForSelector:aSelector];
-    if (!signature) {
-        if ([SUTRuntimeMethodHelper instancesRespondToSelector:aSelector]) {
-            signature = [SUTRuntimeMethodHelper instanceMethodSignatureForSelector:aSelector];
-        }
-    }
-    return signature;
-}
-- (void)forwardInvocation:(NSInvocation *)anInvocation {
-    if ([SUTRuntimeMethodHelper instancesRespondToSelector:anInvocation.selector]) {
-        [anInvocation invokeWithTarget:_helper];
-    }
-}
-</code></pre>
-
-<h2 id="toc_13">Method Swizzing</h2>
-
-<p>例如，我们想跟踪在程序中每一个view controller展示给用户的次数：当然，我们可以在每个view controller的viewDidAppear中添加跟踪代码；但是这太过麻烦，需要在每个view controller中写重复的代码。创建一个子类可能是一种实现方式，但需要同时创建UIViewController, UITableViewController, UINavigationController及其它UIKit中view controller的子类，这同样会产生许多重复的代码。</p>
-
-<pre><code class="language-objectivec">#import &lt;objc/runtime.h&gt;
-@implementation UIViewController (Tracking)
-+ (void)load {
-    static dispatch_once_t onceToken;
-    dispatch_once(&amp;onceToken, ^{
-        Class class = [self class];         
-        // When swizzling a class method, use the following:
-        // Class class = object_getClass((id)self);
-        SEL originalSelector = @selector(viewWillAppear:);
-        SEL swizzledSelector = @selector(xxx_viewWillAppear:);
-        Method originalMethod = class_getInstanceMethod(class, originalSelector);
-        Method swizzledMethod = class_getInstanceMethod(class, swizzledSelector);
-        BOOL didAddMethod = class_addMethod(class,
-                originalSelector,
-                method_getImplementation(swizzledMethod),
-                method_getTypeEncoding(swizzledMethod));
-        if (didAddMethod) {
-            class_replaceMethod(class,
-                swizzledSelector,
-                method_getImplementation(originalMethod),
-                method_getTypeEncoding(originalMethod));
-        } else {
-            method_exchangeImplementations(originalMethod, swizzledMethod);
-        }
-    });
-}
-#pragma mark - Method Swizzling
-- (void)xxx_viewWillAppear:(BOOL)animated {
-    [self xxx_viewWillAppear:animated];
-    NSLog(@&quot;viewWillAppear: %@&quot;, self);
-}
-</code></pre>
-
-<p>在这里，我们通过method swizzling修改了UIViewController的@selector(viewWillAppear:)对应的函数指针，使其实现指向了我们自定义的xxx_viewWillAppear的实现。这样，当UIViewController及其子类的对象调用viewWillAppear时，都会打印一条日志信息。</p>
-
-<p>上面的例子很好地展示了使用method swizzling来一个类中注入一些我们新的操作。当然，还有许多场景可以使用method swizzling，在此不多举例。</p>
+<p>为什么需要在使用一个<code>__weak</code>指针时调用<code>objc_loadWeakRetained()</code>函数呢:是为了确保在使用这个<code>__weak</code>指针的过程中，指向的对象不被释放。</p>
 
 
 		</div>
@@ -485,24 +179,24 @@ if (numClasses &gt; 0) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -522,10 +216,10 @@ if (numClasses &gt; 0) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -549,7 +243,7 @@ if (numClasses &gt; 0) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -560,7 +254,7 @@ if (numClasses &gt; 0) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -578,6 +272,15 @@ if (numClasses &gt; 0) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -587,31 +290,31 @@ if (numClasses &gt; 0) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

@@ -82,182 +82,283 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15317414032911.html">语句</a></h1>
-			<p class="meta"><time datetime="2018-07-16T19:43:23+08:00" 
-			pubdate data-updated="true">2018/7/16</time></p>
+		  	<h1 class="entry-title"><a href="15324890369623.html">面对对象高级编程</a></h1>
+			<p class="meta"><time datetime="2018-07-25T11:23:56+08:00" 
+			pubdate data-updated="true">2018/7/25</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">list</h2>
+		  	<p>对于python这种动态语言,我们可以在创建了class实例之后，给其绑定属性甚至绑定方法</p>
+
+<pre><code class="language-python">class My_TestClass(object):
+    &quot;&quot;&quot;docstring for My_TestClass&quot;&quot;&quot;
+    pass
+
+test1=My_TestClass()
+test1.name=&quot;liyuyuan&quot; # 给实例绑定对象
+
+def set_name(self, name):
+    self.name=name
+
+from types import MethodType
+test1.set_name=MethodType(set_name, test1) #实例对象绑定方法
+test1.set_name(&quot;lyy&quot;)
+print(test1.name)  # lyy
+</code></pre>
+
+<blockquote>
+<p>给一个实例对象绑定的方法，对另外的实例对象是不起作用的，应该给<code>class</code>绑定方法<br/>
+动态语言允许我们在程序运行过程中动态给<code>class</code>增加功能</p>
+</blockquote>
+
+<pre><code class="language-python">My_TestClass.set_name=set_name
+test2=My_TestClass()
+test2.set_name(&quot;wtt&quot;)
+print(test2.name) # wtt
+</code></pre>
+
+<h2 id="toc_0"><strong>slots</strong></h2>
+
+<p>通过<code>__slots__</code>来对实例的属性进行限制能添加的属性</p>
+
+<pre><code class="language-python">class My_Slots_Class(object):
+    &quot;&quot;&quot;docstring for My_Slots_Class&quot;&quot;&quot;
+    __slots__=(&quot;name&quot;, &quot;score&quot;)
+    # def __init__(self, age): #不能有 name、score外的其他属性
+    #   self.age=age
+    pass
+        
+
+slot1=My_Slots_Class()
+slot1.age=10 #AttributeError: &#39;My_Slots_Class&#39; object has no attribute &#39;age&#39;
+</code></pre>
+
+<blockquote>
+<p><code>__slots__</code>定义属性仅对当前类实例起作用,对继承的子类是不起作用的，可以在子类中也定义<code>__slots__</code>，这样，子类实例允许定义的属性就是自身的<code>__slots__</code>加上父类的<code>__slots__</code>。</p>
+</blockquote>
+
+<pre><code class="language-python">class My_Slots_Subclass(My_Slots_Class):
+    &quot;&quot;&quot;docstring for My_Slots_Subclass&quot;&quot;&quot;
+    __slots__=(&quot;age&quot;)
+    pass
+#此时允许的属性为子类的__slots__加上父类的__slots__
+slot2=My_Slots_Subclass()
+slot2.age=22
+slot2.ttt=10  #AttributeError: &#39;My_Slots_Subclass&#39; object has no attribute &#39;ttt&#39;
+</code></pre>
+
+<h2 id="toc_1">@property</h2>
+
+<p>python内置的<code>@property</code>装饰器就负责把一个方法变为属性调用</p>
+
+<pre><code class="language-python">class My_Property_Class(object):
+    @property
+    def age(self):
+        print(&quot;获取age&quot;,self._age)
+        return self._age
+
+    @age.setter
+    def age(self, age):
+       #可以在此处检查传入参数处理
+        print(&quot;设置age&quot;,age)
+        self._age=age
+
+property1=My_Property_Class()
+property1.age=10 #设置age 10
+property1.age # 获取age 10
+</code></pre>
+
+<p>如果我们只定义<code>@property</code>那么该属性就是只读的</p>
+
+<h2 id="toc_2">多继承</h2>
+
+<p>python中支持多继承,一个子类可以同时获得多个父类的所有功能</p>
+
+<h3 id="toc_3">MixIn</h3>
+
+<p>一般设计为单继承,但是当需要额外功能时可以用过多继承实现,这就是<br/>
+<code>MixIn</code></p>
+
+<h2 id="toc_4">定制类</h2>
+
+<p>类似<code>__slots__</code>限制类的属性<br/>
+<code>__len__()</code>方法让class能作用域<code>len()</code>函数</p>
+
+<h3 id="toc_5"><strong>str</strong></h3>
+
+<p><code>__str__()</code> 对于打印出来的对象信息修改<br/>
+<code>__repr__()</code>对程序员看到的对象信息修改</p>
+
+<pre><code class="language-python">class Student(object):
+...     def __init__(self, name):
+...         self.name = name
+...     def __str__(self):
+...         return &#39;Student object (name: %s)&#39; % self.name
+            __repr__ = __str__ #经常把两个写作相同
+...
+print(Student(&#39;Michael&#39;)) #Student object (name: Michael)
+#当开发者在命令行直接输入对象 会打印对象信息，这是调用的是__repr__()
+</code></pre>
+
+<h3 id="toc_6"><strong>iter</strong></h3>
+
+<p>如果类需要被<code>for...in</code>循环,必须实现<code>__iter__()</code>方法,返回一个可迭代对象，然后调用对象的<code>__next__()</code>方法获取循环下一个值,直到遇到<code>StopIteration</code>错误退出循环</p>
+
+<blockquote>
+<p>学习迭代器一章知道,调用iter()方法转为迭代器,然后调用next方法获取下一个值,其内部实现就是<code>__iter__()</code>和<code>__next__()</code></p>
+</blockquote>
 
 <pre><code class="language-python">
-list1=[1, 2, 3]
+class My_Iter_Class(object):
+    &quot;&quot;&quot;docstring for My_Iter_Class&quot;&quot;&quot;
+    def __init__(self):
+        self.a=0
+    def __iter__(self):
+        return self
 
-print(len(list1)) #长度 3
-print(&quot;第一个元素:%s&quot; % (list1[0])) #从0开始获取第一个元素 1
-print(&quot;最后一个元素:%s&quot; % (list1[-1])) #从-1开始获取最后一个元素 3
+    def __next__(self):
+        self.a+=1
+        while self.a&gt;10:
+            raise StopIteration()
+        print(self.a)
 
-list1.append(4) #追加元素到末尾
-print(&quot;m末尾追加元素：%s&quot;%(list1[-1]))  # 4
 
-list1.insert(1, 1) #向索引1插入1
-print(list1)  # [1, 1, 2, 3, 4]
+for x in My_Iter_Class():
+    pass
 
-list1.pop() #删除末尾元素
-print(list1)  # [1, 1, 2, 3]
 
-list1.pop(1) #删除指定索引位置元素
-print(list1)  # [1, 2, 3]
-
-list1[1] = 1 #替换元素
-print(list1)  # [1, 1, 3]
-
-list1[2] = &quot;第3个元素&quot;  #list中的数据类型可以不同
-list1.append(False)
-list1.append([5,6])
-print(list1)  # [1, 1, &#39;第3个元素&#39;, False, [5, 6]]
 </code></pre>
 
-<h2 id="toc_1">tuple</h2>
+<h3 id="toc_7"><strong>getitem</strong></h3>
 
-<pre><code class="language-python">tuple1=(1,) #定义只有一个元素的元组 不能使用 tuple1=(1)这样定义为1这个数
-print(tuple1) # (1,)
-#tuple一经定义便不能修改，不过不变的是每个元素的指向,而可以修改器内指针元素指向的对象
-tuple2=() # 定义一个空元组
-</code></pre>
+<p>对于实现了<code>__iter__()</code>和<code>__next__()</code>可以用for遍历,但是并不能像list一样取某个下标或者进行切片操作,这时需要实现<code>__getitem__()</code>方法</p>
 
-<blockquote>
-<p>因为tuple与list相比不能修改,所以更安全，尽量使用元组</p>
-</blockquote>
-
-<h2 id="toc_2">条件语句</h2>
-
-<pre><code class="language-python">if len(tuple2)==0:
-    print(&quot;空元组&quot;)
-elif len(tuple2)&gt;0:   # else if的缩写
-    print(&quot;非空数组&quot;)
-else:
-    print(&quot;无效&quot;)
+<pre><code class="language-python">class Fib(object):
+    def __getitem__(self, n):
+        if isinstance(n, int): # n是索引
+            a, b = 1, 1
+            for x in range(n):
+                a, b = b, a + b
+            return a
+        #判断是否为切片对象
+        if isinstance(n, slice): # n是切片  
+            start = n.start
+            stop = n.stop
+            if start is None:
+                start = 0
+            a, b = 1, 1
+            L = []
+            for x in range(stop):
+                if x &gt;= start:
+                    L.append(a)
+                a, b = b, a + b
+            return L
 </code></pre>
 
 <blockquote>
-<p>对于判断条件中的非零数值、非空字符串、非空list等，就判断为<code>True</code>，否则为<code>False</code></p>
+<p>在<code>__getitem__()</code>方法中，需要判断是取下标索引传入参数为<code>int</code>，还是传入的为切片<code>slice</code>进行切片操作<br/>
+上面对切片操作并不完善，比如对于负数的处理</p>
 </blockquote>
 
-<h2 id="toc_3">input</h2>
+<p><strong>对应于__getitem__()还有__setitem__()来对类进行赋值 <strong>delitem</strong>()删除某个元素</strong></p>
 
-<pre><code class="language-python">birth=input(&quot;birth:&quot;)
-birth=int(birth)
-if birth &gt; 25:
-    print(&quot;人到中年，身不由己&quot;)
-else:
-    print(&quot;你还年轻&quot;)
+<h3 id="toc_8"><strong>getattr</strong></h3>
+
+<p>当我们调用类中不存在的属性或方法时时，Python解释器会试图调用<code>__getattr__(self, &#39;attr&#39;)</code>来获得属性或方法，我们就可以通过这个方法来返回对应不存在属性值或方法</p>
+
+<blockquote>
+<p>如果我们实现了这个方法,默认返回是<code>None</code>无法提示用户该属性不存在,我们可以返回一个<code>raise AttributeError</code>错误</p>
+</blockquote>
+
+<h3 id="toc_9"><strong>call</strong></h3>
+
+<p>当我们在类内部实现<code>__call__()</code>方法后,我们就可以直接对实例进行调用</p>
+
+<pre><code class="language-python">class My_Call_Class(object):
+    def __call__(self):
+        print(&quot;调用自身call&quot;)
+
+obj1=My_Call_Class()
+obj1() # 调用自身call
+
+#判断一个对象是否可调用
+if callable(obj1): #True
+    print(&quot;可调用&quot;)  #可调用
+
 </code></pre>
 
 <blockquote>
-<p>input默认导入的为一个字符串 因此需要转换类型为int才能进行与数字进行比较</p>
+<p>对于可直接调用对象，可以将其看做函数,可以传参数</p>
 </blockquote>
 
-<h2 id="toc_4">for循环</h2>
+<h2 id="toc_10">枚举类</h2>
 
-<pre><code class="language-python">for x in list1: #遍历列表
-    print(x)
+<p>Python为定义大量常量的枚举 提供了<code>Enum</code>类</p>
 
-for x in range(1,10): 
-    print(x)
+<p>使用Enum实现一个简单的枚举</p>
+
+<pre><code class="language-python">Month = Enum(&quot;Month&quot;, (&quot;Jan&quot;, &quot;Feb&quot;, &quot;Mar&quot;, &quot;Apr&quot;))
+print(Month.Jan) # Month.Jan
+print(Month.Mar.value) # 3
+
+# __members__返回所有成员的name-&gt;value的map
+for name, member in Month.__members__.items():
+    print(name, &#39;=&gt;&#39;, member, &#39;,&#39;, member.value)
 </code></pre>
 
-<h2 id="toc_5">break continue</h2>
+<p>对于某些情况我们可能需要自定义枚举,可以从<code>Enum</code>派生出自定义类</p>
 
-<p><code>break</code>用于提前退出循环<br/>
-<code>continue</code>用于跳过当前这次循环</p>
+<pre><code class="language-python">class WeekDay(Enum):
+    Sun=7
+    Mon=1
+    Tue=2
+    Wed=3
+    Thu=4
+    Fri=5
+    Sat=6
 
-<pre><code class="language-python">for x in range(1,10):
-    if x==5:
-        break
-    print(x)
-    
-    for x in range(1,10):
-    if x==5:
-        continue
-    print(x)
+print(WeekDay.Sun) #WeekDay.Sun
+print(WeekDay.Fri.value) #5
+
+for name, member in WeekDay.__members__.items():
+    print(name, &#39;=&gt;&#39;, member, &#39;,&#39;, member.value)
 </code></pre>
+
+<p><code>Enum</code>可以把相关常量定义在一个不可变<code>class</code>中,成员之间可以直接比较</p>
+
+<h2 id="toc_11">元类</h2>
+
+<p><strong>动态语言和静态语言最大的不同就是,函数和类的定义不是编译时定义的而是运行时动态创建的</strong></p>
+
+<p>当python解释器载入模块时，就会依次执行该模块中的所有语句</p>
+
+<p><code>class</code>的定义是在运行时动态创建的，创建<code>class</code>的方法就是使用<code>type()</code>函数</p>
+
+<p>利用<code>type</code>函数创建一个class</p>
+
+<pre><code class="language-python">def hello_func(self, name=&quot;world&quot;):
+    print(&quot;hello, &quot;, name)
+
+#用type创建Hello class
+Hello_Class=type(&quot;Hello&quot;, (object,), dict(hello=hello_func))
+
+h1= Hello_Class()
+h1.hello() # hello,  world
+</code></pre>
+
+<p>用type定义的类与class定义的完全相同,python解释器遇到class定义类也是仅仅扫描一下后调用<code>type()</code>方法来定义类</p>
 
 <blockquote>
-<p>不要滥用break和continue，容易逻辑分差太多而出错</p>
+<p>当前执行的模块名字为__main__</p>
 </blockquote>
 
-<h2 id="toc_6">dict</h2>
+<h3 id="toc_12">metaclass</h3>
 
-<pre><code class="language-python">dict1={&quot;lyy&quot;:25, &quot;wtt&quot;:20}
-dict1[None] = 10
-dict1[&#39;Adam&#39;] = 67
-print(dict1[None]) # 10
-print(dict1) #{&#39;lyy&#39;: 25, &#39;wtt&#39;: 20, None: 10, &#39;Adam&#39;: 67}
+<p><code>metaclass</code>允许我们创建或者修改类</p>
 
-#判断key是否存在  key in dict
-if &quot;lyy&quot; in dict1:
-    print(dict1[&quot;lyy&quot;])   #25
+<p><code>metaclass</code>是类的模板，所以必须从<code>type</code>类型派生</p>
 
-print(dict1.get(&quot;eee&quot;, &quot;placehoder&quot;)) #placehoder  获取key如果没有就返回None或自指定的value
-
-dict1.pop(&quot;lyy&quot;)  #pop删除指定键
-if &quot;lyy&quot; in dict1:
-    print(dict1[&quot;lyy&quot;])
-else:
-    print(&quot;lyy不存在&quot;)  #不存在
-    
-
-dict1[(1,)] = &quot;name&quot;  #用元组作为key
-print(dict1[(1,)])  #name
-#虽然元组也是不可变对象 但是元素不能为list等可变对象
-dict1[(1,[1,2])] = &quot;name&quot;  #报错  unhashable type: &#39;list&#39;
-</code></pre>
-
-<p><code>dict</code>的<code>key</code>必须为不可变对象,例如字符串，整数等，而list是可变的不能作为key</p>
-
-<blockquote>
-<p>和list比较，dict有以下几个特点：<br/>
-查找和插入的速度极快，不会随着key的增加而变慢；<br/>
-需要占用大量的内存，内存浪费多。<br/>
-而list相反：<br/>
-查找和插入的时间随着元素的增加而增加；<br/>
-占用空间小，浪费内存很少。</p>
-</blockquote>
-
-<p>补充知识:</p>
-
-<p><strong>dict()</strong>函数 用于创建一个字典,返回一个字典</p>
-
-<pre><code class="language-python">class dict(**kwarg)  # **kwargs -- 关键字
-class dict(mapping, **kwarg)  # mapping -- 元素的容器
-class dict(iterable, **kwarg) # iterable -- 可迭代对象
-
-
-dict()                        # 创建空字典
-{}
-dict(a=&#39;a&#39;, b=&#39;b&#39;, t=&#39;t&#39;)     # 传入关键字
-{&#39;a&#39;: &#39;a&#39;, &#39;b&#39;: &#39;b&#39;, &#39;t&#39;: &#39;t&#39;}
-dict(zip([&#39;one&#39;, &#39;two&#39;, &#39;three&#39;], [1, 2, 3]))   # 映射函数方式来构造字典
-{&#39;three&#39;: 3, &#39;two&#39;: 2, &#39;one&#39;: 1} 
-dict([(&#39;one&#39;, 1), (&#39;two&#39;, 2), (&#39;three&#39;, 3)])    # 可迭代对象方式来构造字典
-{&#39;three&#39;: 3, &#39;two&#39;: 2, &#39;one&#39;: 1}
-</code></pre>
-
-<h2 id="toc_7">Set</h2>
-
-<p><code>set</code>中不能元素不能重复,因此只能为不可变对象</p>
-
-<p>要创建<code>set</code>需要用<code>list</code>作为输入集合</p>
-
-<pre><code class="language-python">set1 = set([1, &quot;name&quot;, 1])
-print(set1)  # {1, &#39;name&#39;}
-set1.add(&quot;1&quot;)
-set1.add(1)
-print(set1)  # {1, &#39;1&#39;, &#39;name&#39;}
-set1.remove(1)
-print(set1)  # {&#39;1&#39;, &#39;name&#39;}
-</code></pre>
+<p>该节不常用,自行参考<a href="https://www.liaoxuefeng.com/wiki/0014316089557264a6b348958f449949df42a6d3a2e542c000/0014319106919344c4ef8b1e04c48778bb45796e0335839000">廖雪峰的python学习元类</a></p>
 
 
 		</div>
@@ -280,24 +381,24 @@ print(set1)  # {&#39;1&#39;, &#39;name&#39;}
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -317,10 +418,10 @@ print(set1)  # {&#39;1&#39;, &#39;name&#39;}
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -344,7 +445,7 @@ print(set1)  # {&#39;1&#39;, &#39;name&#39;}
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -355,7 +456,7 @@ print(set1)  # {&#39;1&#39;, &#39;name&#39;}
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -373,6 +474,15 @@ print(set1)  # {&#39;1&#39;, &#39;name&#39;}
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -382,31 +492,31 @@ print(set1)  # {&#39;1&#39;, &#39;name&#39;}
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

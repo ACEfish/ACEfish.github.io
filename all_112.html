@@ -82,201 +82,184 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15304988629042.html">混合开发(OC)</a></h1>
-			<p class="meta"><time datetime="2018-07-02T10:34:22+08:00" 
-			pubdate data-updated="true">2018/7/2</time></p>
+		  	<h1 class="entry-title"><a href="15320795459657.html">函数式编程</a></h1>
+			<p class="meta"><time datetime="2018-07-20T17:39:05+08:00" 
+			pubdate data-updated="true">2018/7/20</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">声明类 实现协议</h2>
+		  	<h2 id="toc_0">高阶函数</h2>
 
-<p>需要实现了<code>RCTBridgeModule</code>协议类,<br/>
-导入<code>#import &lt;React/RCTBridgeModule.h&gt;</code></p>
+<ol>
+<li><p>变量可以指向函数</p>
+<pre><code class="language-python">print(abs(-10)) # 10
+abs_func=abs<br/>
+print(abs_func(-10)) # 10
+</code></pre></li>
+<li><p>函数名也是变量<br/>
+例如 <code>abs</code>就是一个指向获取绝对值的函数，我们可以试着将<code>abs</code>指向其它对象,这时<code>abs</code>也就无法完成获取绝对值</p></li>
+<li><p>传入参数<br/>
+函数可以接收另外一个函数作为参数</p>
+<pre><code class="language-python">def my_funcparam_func(x, y, f):
+   return f(x)+f(y)<br/>
+print(my_funcparam_func(10,-10,abs))  #20
+</code></pre></li>
+</ol>
 
-<p>实现协议需要包含这个宏，可以添加参数作为访问此模块的名字 通常不指定默认使用类名<br/>
-<code>RCT_EXPORT_MODULE();</code></p>
+<h3 id="toc_1">map/reduce</h3>
 
-<h2 id="toc_1">声明原生方法给js调用</h2>
+<ol>
+<li><p>map用法<br/>
+map将传入的参数依次作用域每个元素，将结果作为<code>Iterator</code>返回</p>
+<pre><code class="language-python">r1=map(my_func_xx,[1,2,3,4,5])
+list1=list(r1) #因为返回的时Iterator惰性序列,使用list将整个序列计算返回list<br/>
+print(list1)  # [1, 4, 9, 16, 25]
+</code></pre></li>
+<li><p>reduce用法<br/>
+<code>reduce</code>把一个函数作用在一个序列上,这个函数接收两个参数，将结果继续和下一个元素做累计运算</p>
+<pre><code class="language-python">from functools import reduce
+def my_func_add(x, y):<br/>
+    return x+y<br/>
+list2=reduce(my_func_add,[1,2,3,4])<br/>
+print(list2) #10
+</code></pre>
+<h3 id="toc_2">filter</h3></li>
+</ol>
 
-<p>声明需要提供给<code>React Native</code>组件调用的方法，即导出的方法<br/>
-<code>RCT_EXPORT_METHOD()</code></p>
+<p><code>filter</code>将传入函数依次作用于每个元素,然后根据返回值为<code>True</code>或者<code>False</code>，决定保留或者丢弃该元素</p>
 
-<pre><code class="language-javascript">//在OC中
-RCT_EXPORT_METHOD(addEvent:(NSString *)name location:(NSString *)location)
-{
-  RCTLogInfo(@&quot;Pretending to create an event %@ at %@&quot;, name, location);
-}
-//在js中这样调用
-import { NativeModules } from &#39;react-native&#39;;
-var CalendarManager = NativeModules.CalendarManager;
-CalendarManager.addEvent(&#39;Birthday Party&#39;, &#39;4 Privet Drive, Surrey&#39;);
+<pre><code class="language-python">    def my_is_odd(x):
+        return x%2==0
+    #返回的还是Iterator的惰性序列
+    list3=list(filter(my_is_odd, [1,2,4,5,6]))
+    print(list3)  #[2, 4, 6]
 </code></pre>
 
-<p>通常我们将多个参数使用一个字典进行存放</p>
+<h3 id="toc_3">排序</h3>
 
-<pre><code class="language-javascript">#import &lt;React/RCTConvert.h&gt;
+<p><code>sorted</code>函数</p>
 
-RCT_EXPORT_METHOD(addEvent:(NSString *)name details:(NSDictionary *)details)
-{
-  NSString *location = [RCTConvert NSString:details[@&quot;location&quot;]];
-  NSDate *time = [RCTConvert NSDate:details[@&quot;time&quot;]];
-  ...
-}
-
-CalendarManager.addEvent(&#39;Birthday Party&#39;, {
-  location: &#39;4 Privet Drive, Surrey&#39;,
-  time: date.toTime(),
-  description: &#39;...&#39;
-})
-</code></pre>
-
-<h3 id="toc_2">声明回调函数</h3>
-
-<pre><code class="language-javascript">
-//原生
-//原生模块通常只应调用回调函数一次。但是，它可以保存callback并在将来调用
-RCT_EXPORT_METHOD(findEvents:(RCTResponseSenderBlock)callback)
-{
-  NSArray *events = ...
-  callback(@[[NSNull null], events]);
-}
-
-//js调用
-CalendarManager.findEvents((error, events) =&gt; {
-  if (error) {
-    console.error(error);
-  } else {
-    this.setState({events: events});
-  }
-})
-
-//采用promise
-
-//原生
-RCT_REMAP_METHOD(findEvents,
-                 resolver:(RCTPromiseResolveBlock)resolve
-                 rejecter:(RCTPromiseRejectBlock)reject)
-{
-  NSArray *events = ...
-  if (events) {
-    resolve(events);
-  } else {
-    reject(error);
-  }
-}
-//js调用
-async function updateEvents() {
-  try {
-    var events = await CalendarManager.findEvents();
-    this.setState({ events });
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-updateEvents();
+<pre><code class="language-python">list4=[1, 2,-4,0,-3]
+#直接用sorted函数排序
+sorted(list4) # [-4, -3, 0, 1, 2]
+sorted([&#39;bob&#39;, &#39;about&#39;, &#39;Zoo&#39;, &#39;Credit&#39;]) #[&#39;Credit&#39;, &#39;Zoo&#39;, &#39;about&#39;, &#39;bob&#39;]
+#用关键字排序
+sorted(list4, key=abs) #[0, 1, 2, -3, -4]
+#反向排序 
+sorted([&#39;bob&#39;, &#39;about&#39;, &#39;Zoo&#39;, &#39;Credit&#39;], key=str.lower, reverse=True)
 
 </code></pre>
 
-<h2 id="toc_3">多线程</h2>
+<p>默认对字符串的排序,按照ASCII码大小比较,<br/>
+<code>key</code>指定的函数作用域list的每个元素.并根据返回结果进行排序</p>
 
-<p>生模块不应对自己被调用时所处的线程做任何假设。React Native在一个独立的串行GCD队列中调用原生模块的方法，但这属于实现的细节，并且可能会在将来的版本中改变。通过实现方法<code>- (dispatch_queue_t)methodQueue</code>，原生模块可以指定自己想在哪个队列中被执行。</p>
+<h2 id="toc_4">返回函数</h2>
 
-<pre><code class="language-objectivec">- (dispatch_queue_t)methodQueue
-{
-  return dispatch_get_main_queue();
-}
+<p>函数作为结果值进行返回</p>
+
+<pre><code class="language-python">def my_lazy_sum(*args):
+    def my_sum():
+        sum=0
+        for x in args:
+            sum+=x
+        return sum
+    return my_sum
+
+my_f=my_lazy_sum(1,2,3,4)
+my_f() #10
+
 </code></pre>
 
-<p>如果一个操作需要花费很长时间，原生模块不应该阻塞住，而是应当声明一个用于执行操作的独立队列</p>
+<p>在函数内部又定义了函数,内部函数可以引用外部函数的参数和局部变量,当外部函数返回内部函数时,参数和变量都保存在返回的函数中，这就是<code>闭包</code></p>
 
-<pre><code class="language-objectivec">- (dispatch_queue_t)methodQueue
-{
-  return dispatch_queue_create(&quot;com.facebook.React.AsyncLocalStorageQueue&quot;, DISPATCH_QUEUE_SERIAL);
-}
+<h3 id="toc_5">闭包</h3>
+
+<p>注意:返回的函数并不会立即执行，而是直到调用才执行,因此函数内用到的变量是执行时的变量值,为了避免:<strong>返回函数时，不要饮用任何循环变量或后续会变化的变量</strong></p>
+
+<h2 id="toc_6">匿名函数</h2>
+
+<p><code>lambda</code>关键字表示匿名函数，冒号前为函数参数<br/>
+匿名函数也可以作为返回值</p>
+
+<pre><code class="language-python">my_f2=lambda x: x*x
+print(my_f2(2)) #4
+</code></pre>
+
+<h2 id="toc_7">装饰器</h2>
+
+<p>函数有<code>__name__</code>属性，可以拿到函数的名字</p>
+
+<pre><code class="language-python">def my_func_now(x):
+    return x*3
+
+name=my_func_now.__name__
+print(name) #my_func_now
+</code></pre>
+
+<p>定义一个装饰器decorator</p>
+
+<pre><code class="language-python">def my_custom_decorator(func):
+    def my_wrapper(*args, **kw):
+        print(&quot;call %s()&quot;%func.__name__)
+        return func(*args, **kw)
+    return my_wrapper
+</code></pre>
+
+<p>用装饰器装饰一个函数</p>
+
+<pre><code class="language-python">@my_custom_decorator #相当于执行了my_log=my_custom_decorator(my_log)
+def my_log():
+    print(&quot;my_log_func&quot;)
+
+my_log() 
+#call my_log()
+# my_log_func
+</code></pre>
+
+<p>在执行<code>my_log</code>函数不仅会执行函数本身，还会运行装饰器的<code>my_wrapper</code>函数</p>
+
+<p><code>decorator</code>还可以传入参数，就需要更复杂的3层嵌套</p>
+
+<pre><code class="language-python">def log(text):
+    def decorator(func):
+        def wrapper(*args, **kw):
+            print(&#39;%s %s():&#39; % (text, func.__name__))
+            return func(*args, **kw)
+        return wrapper
+    return decorator
+    
+@log(&#39;execute&#39;) #3层嵌套相当于:  now = log(&#39;execute&#39;)(now)
+def now():
+    print(&#39;2015-3-25&#39;)
+#execute now():
+#2015-3-25
 </code></pre>
 
 <blockquote>
-<p>在模块之间共享分发队列<br/>
-methodQueue方法会在模块被初始化的时候被执行一次，然后会被React Native的桥接机制保存下来，所以你不需要自己保存队列的引用，除非你希望在模块的其它地方使用它。但是，如果你希望在若干个模块中共享同一个队列，则需要自己保存并返回相同的队列实例；仅仅是返回相同名字的队列是不行的。</p>
+<p>当需要在装饰器中获取到真正执行的函数名称时,我们可以使用<code>Python</code>内置的<code>functools.wraps</code></p>
 </blockquote>
 
-<h2 id="toc_4">导出常量</h2>
+<pre><code class="language-python">import functools
 
-<pre><code class="language-objectivec">- (NSDictionary *)constantsToExport
-{
-  return @{ @&quot;firstDayOfTheWeek&quot;: @&quot;Monday&quot; };
-}
+def log(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kw):
+        print(&#39;call %s():&#39; % func.__name__) #此时获取到的name为装饰的函数名称，而不是wrapper
+        return func(*args, **kw)
+    return wrapper
 </code></pre>
 
-<h2 id="toc_5">给JS发送事件</h2>
+<h2 id="toc_8">偏函数</h2>
 
-<p>继承<code>RCTEventEmitter</code>，实现<code>suppportEvents</code>方法并调用<code>self sendEventWithName:</code></p>
+<p>使用<code>functools.partial</code>将函数的某些参数固定住（设置默认值）,返回一个新的函数</p>
 
-<pre><code class="language-objectivec">#import &lt;React/RCTEventEmitter.h&gt;
+<pre><code class="language-python">import functools
 
-- (NSArray&lt;NSString *&gt; *)supportedEvents
-{
-  return @[@&quot;EventReminder&quot;];
-}
-
-- (void)calendarEventReminderReceived:(NSNotification *)notification
-{
-  NSString *eventName = notification.userInfo[@&quot;name&quot;];
-  [self sendEventWithName:@&quot;EventReminder&quot; body:@{@&quot;name&quot;: eventName}];
-}
-
+int2=functools.partial(int, base=2)
+print(int2(&quot;100&quot;))  #4
 </code></pre>
 
-<p>JavaScript代码可以创建一个包含你的模块的NativeEventEmitter实例来订阅这些事件。</p>
-
-<pre><code class="language-javascript">import { NativeEventEmitter, NativeModules } from &#39;react-native&#39;;
-const { CalendarManager } = NativeModules;
-
-const calendarManagerEmitter = new NativeEventEmitter(CalendarManager);
-
-const subscription = calendarManagerEmitter.addListener(
-  &#39;EventReminder&#39;,
-  (reminder) =&gt; console.log(reminder.name)
-);
-...
-// 别忘了取消订阅，通常在componentWillUnmount生命周期方法中实现。
-subscription.remove();
-</code></pre>
-
-<h2 id="toc_6">原生UI</h2>
-
-<p>原生视图需要被一个RCTViewManager来管理和创建。本质上都是单例 - React Native只会为每个管理器创建一个实例。它们创建原生的视图并提供给<code>RCTUIManager</code>，<code>RCTUIManager</code>则会反过来委托它们在需要的时候去设置和更新视图的属性。RCTViewManager还会代理视图的所有委托，并给JavaScript发回对应的事件</p>
-
-<ol>
-<li>创建<code>RCTViewManager</code>的子类</li>
-<li>添加<code>RCT_EXPORT_MODULE()</code>标记宏</li>
-<li><p>实现<code>-(UIView *)view</code>方法</p></li>
-<li><p>在js代码中将视图变为可用的React组件</p></li>
-</ol>
-
-<pre><code class="language-javascript">// MapView.js
-var { requireNativeComponent } = require(&#39;react-native&#39;);
-
-// requireNativeComponent 自动把这个组件提供给 &quot;RNTMapManager&quot;
-module.exports = requireNativeComponent(&#39;RNTMap&#39;, null);
-</code></pre>
-
-<h3 id="toc_7">声明属性</h3>
-
-<pre><code class="language-objectivec">//声明属性
-RCT_EXPORT_VIEW_PROPERTY(pitchEnabled, BOOL)
-
-//设置属性之后，在js中可以直接设置
-&lt;MapView pitchEnabled={false} /&gt;
-
-//比较复杂的属性
-RCT_CUSTOM_VIEW_PROPERTY(region, MKCoordinateRegion, RNTMap)
-{
-  [view setRegion:json ? [RCTConvert MKCoordinateRegion:json] : defaultView.region animated:YES];
-}
-
-</code></pre>
+<p>实际<code>functools.partial</code>接受三个参数:函数对象、<code>*args</code>、<code>**kw</code>,会将<code>*args</code>参数部分自动加到函数对象的左边,而将<code>**kw</code>一部分自动加到右边</p>
 
 
 		</div>
@@ -299,24 +282,24 @@ RCT_CUSTOM_VIEW_PROPERTY(region, MKCoordinateRegion, RNTMap)
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -336,10 +319,10 @@ RCT_CUSTOM_VIEW_PROPERTY(region, MKCoordinateRegion, RNTMap)
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -363,7 +346,7 @@ RCT_CUSTOM_VIEW_PROPERTY(region, MKCoordinateRegion, RNTMap)
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -374,7 +357,7 @@ RCT_CUSTOM_VIEW_PROPERTY(region, MKCoordinateRegion, RNTMap)
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -392,6 +375,15 @@ RCT_CUSTOM_VIEW_PROPERTY(region, MKCoordinateRegion, RNTMap)
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -401,31 +393,31 @@ RCT_CUSTOM_VIEW_PROPERTY(region, MKCoordinateRegion, RNTMap)
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

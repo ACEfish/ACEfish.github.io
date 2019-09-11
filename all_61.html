@@ -82,203 +82,103 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15476929753174.html">React基础 & JSX</a></h1>
-			<p class="meta"><time datetime="2019-01-17T10:42:55+08:00" 
-			pubdate data-updated="true">2019/1/17</time></p>
+		  	<h1 class="entry-title"><a href="15487460996181.html">Refs</a></h1>
+			<p class="meta"><time datetime="2019-01-29T15:14:59+08:00" 
+			pubdate data-updated="true">2019/1/29</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">介绍</h2>
+		  	<p>在React中我们的数据流是从上至下，通过传递给子组件<code>props</code>来重新渲染它</p>
 
-<p><code>React</code>是前端的开发框架 <strong>允许我们用js的代码写html的页面</strong></p>
+<p>但是，有时候我们需要获取某些组件或者DOM元素，强制修改,这时我们可以使用<code>Refs</code></p>
 
-<p>react不仅可以写web页面 还可以写手机app应用和pc端的软件 </p>
+<p>我们应该使用声明式实现，避免使用<code>refs</code>，尽量只在一下几种情况下使用:</p>
 
-<p>使用<code>JSX</code>语法</p>
+<ul>
+<li>处理焦点、文本选择或媒体控制</li>
+<li>触发强制动画</li>
+<li>集成第三方 DOM 库</li>
+</ul>
 
-<h2 id="toc_1">JSX</h2>
+<h2 id="toc_0">添加Ref</h2>
 
-<p>React使用<code>JSX</code>，是js语法的扩展,在js的内部实现</p>
+<pre><code class="language-javascript">import React from &quot;react&quot;
 
-<p>可以任意的在jsx中使用JS的表达式</p>
+class CustomTextInput extends React.Component {
 
-<ol>
-<li>jsx中的表达式要包含在大括号中</li>
-<li>推荐在 JSX 代码的外面扩上一个小括号，这样可以防止 分号自动插入 的bug.</li>
-</ol>
+    constructor(props) {
+        super(props)
+        this.focus = this.focus.bind(this)
+    }
 
-<pre><code class="language-javascript">function formatUserName(user) {
-    return user.firstName+&quot; 帅哥 &quot;+user.lastName
-} 
-
-const user = {
-    firstName: &quot;li&quot;,
-    lastName: &quot;yuyuan&quot;
-}
-
-//括号内即为jsx代码
-const element = (
-    &lt;h1&gt; 
-        //jsx代码中的js代码加上{}
-        hello,{formatUserName(user)}
-    &lt;/h1&gt;
-)
-//将元素渲染到对应 dom上 第一个参数为reactDOM元素 第二个元素为要渲染的节点
-ReactDOM.render(element, document.getElementById(&quot;root&quot;))
-</code></pre>
-
-<blockquote>
-<p>在编译之后,jsx会被转化为普通的javascript对象,所以我们可以随时使用jsx</p>
-</blockquote>
-
-<h3 id="toc_2">jsx的实现</h3>
-
-<p>babel转义器会把JSX转换为名为<code>React.createElement()</code>方法来调用,返回一个react元素的对象</p>
-
-<p>创建为一个React元素，这个元素即我们在屏幕上能看到的东西，React通过读取这些对象来构建DOM并且并保持内容一致</p>
-
-<pre><code class="language-javascript">const element = (
-  &lt;h1 className=&quot;greeting&quot;&gt;
-    Hello, world!
-  &lt;/h1&gt;
-);
-</code></pre>
-
-<p>转换为</p>
-
-<pre><code class="language-javascript">//React.createElement()方法
-const element = React.createElement(
-  &#39;h1&#39;,
-  {className: &#39;greeting&#39;},
-  &#39;Hello, world!&#39;
-);
-</code></pre>
-
-<p>//返回一个React元素的对象</p>
-
-<pre><code class="language-javascript">const element = {
-  type: &#39;h1&#39;,
-  props: {
-    className: &#39;greeting&#39;,
-    children: &#39;Hello, world&#39;
-  }
-};
-</code></pre>
-
-<p>注意:<br/>
-因为JSX编译后会转为<code>React.creatElement</code>函数,因此在使用之前必须导入并声明<code>React</code>变量，以及所使用的自定义组件</p>
-
-<h4 id="toc_3">点语法</h4>
-
-<p>我们可以利用点语法，从一个模块中中导出其他组件</p>
-
-<pre><code class="language-javascript">mport React from &#39;react&#39;;
-
-const MyComponents = {
-  DatePicker: function DatePicker(props) {
-    return &lt;div&gt;Imagine a {props.color} datepicker here.&lt;/div&gt;;
-  }
-}
-
-function BlueDatePicker() {
-  return &lt;MyComponents.DatePicker color=&quot;blue&quot; /&gt;;
-}
-</code></pre>
-
-<h4 id="toc_4">组件命名</h4>
-
-<p>一般小写开头的组件是内置的 ，因此我们建议以大写开头来命名自定义组件</p>
-
-<p>如果我们想用表达式作为组件名使用时，我们需要将表达式首先赋值给大写开头的变量,然后使用此变量作为组件名使用，而不能直接使用表达式作为组件名进行使用</p>
-
-<pre><code class="language-javascript">function FancyBorder(props) {
-    return(
-        &lt;div&gt;
-            &lt;h1&gt;
-                {props.title}
-            &lt;/h1&gt;
-        &lt;/div&gt;
-    )
-}
-
-const componentsName = {
-    fancy: FancyBorder
-}
-
-class PublicFancyBorder extends React.Component {
+    focus() {
+        this.textInput.focus()
+    }
 
     render() {
-        //先赋值大写开头的变量名
-        const ComponentBorder = componentsName[this.props.componentName]
+        return(
+            &lt;div&gt;
+                //通过ref设置textInput 为此DOM元素
+                &lt;input type=&quot;text&quot; ref={input =&gt; this.textInput = input} &gt;&lt;/input&gt;
+                &lt;input type=&quot;button&quot; value=&quot;获得焦点&quot; onClick={this.focus} &gt;&lt;/input&gt;
+            &lt;/div&gt;
+        )
+    }
 
-        return (
-            &lt;ComponentBorder title=&quot;这是标题&quot;&gt;&lt;/ComponentBorder&gt;
+}
+
+export default  CustomTextInput
+</code></pre>
+
+<p><code>ref={input =&gt; this.textInput = input}</code>  ref属性 会在DOM元素加载时将此元素传入ref,卸载时传入null</p>
+
+<blockquote>
+<p>这种声明方式只对DOM元素和用class声明的组件有效<br/>
+在函数式组件上，因为没有实例，所以不能使用ref属性</p>
+</blockquote>
+
+<h2 id="toc_1">对父组件暴露DOM节点</h2>
+
+<p>当我们想要向从父组件访问子组件节点时,我们可以将传递给子组件一个特殊的函数属性,然后将这个函数属性作为ref属性传入子节点，可以通过这个函数将子节点赋值给父节点的属性</p>
+
+<pre><code class="language-javascript">class CustomTextInput extends React.Component {
+    render() {
+        return(
+            &lt;div&gt;
+                &lt;input type=&quot;text&quot; ref={this.props.inputRef} &gt;&lt;/input&gt;
+            &lt;/div&gt;
+        )
+    }
+
+}
+
+class ParentCompnent extends React.Component {
+    constructor(props) {
+        super(props)
+        this.focus = this.focus.bind(this)
+    }
+
+    focus() {
+        this.textInput.focus()
+    }
+    render() {
+        return(
+            &lt;div&gt;
+                &lt;input type=&quot;button&quot; value=&quot;获得焦点&quot; onClick={this.focus} &gt;&lt;/input&gt;
+                &lt;CustomTextInput inputRef={refCom =&gt; this.textInput = refCom}&gt;&lt;/CustomTextInput&gt;
+            &lt;/div&gt;
         )
     }
 }
 
-export default PublicFancyBorder
+export default  ParentCompnent
 </code></pre>
 
-<h4 id="toc_5">组件属性传递</h4>
-
-<ol>
-<li><p>在jsx中字符串常量可以作为属性值传递</p>
-<pre><code class="language-javascript">&lt;MyComponent message=&quot;hello world&quot; /&gt;
-&lt;MyComponent message={&#39;hello world&#39;} /&gt;
-</code></pre></li>
-<li><p>如果不传值默认为<code>true</code>（不推荐这么做）</p></li>
-<li><p>可以使用扩展运算符,将props对象全部传递</p>
-<pre><code class="language-javascript">function App1() {
-  return &lt;Greeting firstName=&quot;Ben&quot; lastName=&quot;Hector&quot; /&gt;;<br/>
-}<br/>
-//这两种写法等效<br/>
-function App2() {<br/>
-  const props = {firstName: &#39;Ben&#39;, lastName: &#39;Hector&#39;};<br/>
-  return &lt;Greeting {...props} /&gt;;<br/>
-}
-</code></pre>
-<blockquote>
-<p>在js中 扩展运算符也可以扩展对象，我们可以利用这点 将对象的属性和方法均作为props进行传递</p>
-</blockquote></li>
-</ol>
-
-<h4 id="toc_6">JSX格式化html代码</h4>
-
-<p>JSX 会移除行空行和开始和结尾处的空格。标签邻近的新行也会被移除，字符串常量内部的换行会被压缩成一个空格</p>
-
-<h4 id="toc_7">子代 &amp;&amp; props.children</h4>
-
-<p>在<code>jsx</code>中，在组件的开始和结束标签，标记之间的内容都会作为特殊的参数进行传递:<code>props.children</code></p>
-
-<p><code>props.children</code>可以用来传递任何数据，而不是我们常见的React元素或字符串</p>
-
-<pre><code class="language-text">function Repeat(props) {
-    let items = [];
-    for (let i = 0; i &lt; props.numTimes; i++) {
-      items.push(props.children(i));
-    }
-    return &lt;div&gt;{1}&lt;/div&gt;;
-  }
-  
-  function ListOfTenThings() {
-    return (
-      &lt;Repeat numTimes={10}&gt;
-        {(index) =&gt; &lt;div key={index}&gt;This is item {index} in the list&lt;/div&gt;}
-      &lt;/Repeat&gt;
-    );
-  }
-
-export default ListOfTenThings
-</code></pre>
+<p><code>&lt;CustomTextInput inputRef={refCom =&gt; this.textInput = refCom}&gt;&lt;/CustomTextInput&gt;</code>设置子组件的ref属性回调此函数，将子组件设置为父组件的<code>this.textInput</code>属性</p>
 
 <blockquote>
-<p>此例中传递的props.children为函数</p>
+<p>如果有更深的层级结构 我们只需要一级一级传递即可</p>
 </blockquote>
-
-<h4 id="toc_8">jsx中的boolean、Null、Undefined被忽略</h4>
-
-<p><code>false</code>、<code>null</code>、<code>undefined</code> 和<code>true</code>都是有效的子代，但它们不会直接被渲染，如果想要出现在结果中，需要先进行转为字符串<code>String( )</code></p>
 
 
 		</div>
@@ -301,24 +201,24 @@ export default ListOfTenThings
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -338,10 +238,10 @@ export default ListOfTenThings
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -365,7 +265,7 @@ export default ListOfTenThings
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -376,7 +276,7 @@ export default ListOfTenThings
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -394,6 +294,15 @@ export default ListOfTenThings
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -403,31 +312,31 @@ export default ListOfTenThings
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

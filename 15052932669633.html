@@ -85,7 +85,8 @@ $(document).ready(function(event) {
 				<p class="meta"><time datetime="2017-09-13T17:01:06+08:00" pubdate data-updated="true">2017/9/13</time></p>
 			 </header>
 		  	<div class="entry-content">
-			  	<p><strong>泛型:</strong>根据自定义的需求，编写适用于任意类型，灵活可用的函数和类型</p>
+			  	<p><strong>泛型:</strong>根据自定义的需求，编写适用于任意类型，灵活可复用的函数和类型<br/>
+避免编写重复代码，使用清晰抽象的方式表达意图</p>
 
 <h2 id="toc_0">泛型函数</h2>
 
@@ -98,22 +99,34 @@ $(document).ready(function(event) {
 }
 </code></pre>
 
-<p>函数的泛型版本:<br/>
-1）使用占位类型名来代替实际类型名(这里用字母<code>T</code>表示),这里并没有指明T必须是什么类型,而是a与b类型相同,在实际调用时才根据传入类型决定<code>T</code>所代表的类型<br/>
-2）在函数名后有<code>&lt;T&gt;</code>，声明了<code>T</code>是函数内定义的占位类型名<br/>
-因此，函数<code>swapTwoInts(_:_:)</code>可以接受任意相同类型的参数</p>
+<p>泛型函数:</p>
+
+<ol>
+<li>使用<code>占位符</code>类型名来代替<code>实际类型名</code>(这里用字母<code>T</code>表示),这里并没有指明T必须是什么类型,而是a与b类型相同,在实际调用时才根据传入类型决定<code>T</code>所代表的类型</li>
+<li>泛型函数在函数名后紧跟着<code>&lt;T&gt;</code>，尖括号用来告诉swift，<code>T</code>是函数定义内的一个占位类型，因此swift不会去查找名为T的实际类型</li>
+</ol>
+
+<p>因此，函数<code>swapTwoInts(_:_:)</code>可以接受任意相同类型的参数</p>
 
 <h2 id="toc_1">类型参数</h2>
 
 <p>类型参数指定并命名一个占位类型,紧随在函数名后,用尖括号括起来(如:<code>&lt;T&gt;</code>),也可以提供多个参数用逗号隔开</p>
 
-<p>可以用指定的类型参数作为函数的参数类型或返回类型，</p>
+<p>当类型参数被指定后，可以用指定的类型参数作为函数的参数类型或返回类型，甚至可以用作函数主体中的注释类型</p>
+
+<p>类型参数会在函数被调用时被实际类型所替代</p>
+
+<p>可以提供多个类型参数，写在尖括号汇总，并用逗号隔开</p>
 
 <h2 id="toc_2">命名类型参数</h2>
 
 <p>我们可以使用有意义的单词来表明类型参数和泛型函数关系,当没有联系时,通常使用单个字母来命名</p>
 
-<p><strong>使用大写字母开头的驼峰命名法来为类型参数命名</strong></p>
+<blockquote>
+<p>注意</p>
+
+<p>使用大写字母开头的驼峰命名法来为类型参数命名</p>
+</blockquote>
 
 <h2 id="toc_3">泛型类型</h2>
 
@@ -133,6 +146,14 @@ struct Stack&lt;Element&gt; {
 
 <p>使用占位类型<code>Element</code>，这个类型参数包裹在紧随结构体名的一对尖括号里（<code>&lt;Element&gt;</code>）,类型参数用来初始化数组,用来作为<code>push</code><code>pop</code>方法的参数</p>
 
+<p><code>Element</code>为待提供类型定义了一个占位名。这种待提供类型可以在结构体的定义中通过<code>Element</code>来引用</p>
+
+<ul>
+<li>使用Element类型初始化items数组进行初始化</li>
+<li>指定<code>push</code>方法的参数</li>
+<li>指定<code>pop</code>方法的返回值类型</li>
+</ul>
+
 <p><code>Stack</code>是泛型类型,可以创建任意有效类型栈<br/>
 可以通过在尖括号写出栈中需要存储的数据类型来创建并初始化一个<code>Stack</code>实例</p>
 
@@ -142,9 +163,10 @@ stackOfStrings.push(&quot;dos&quot;)
 let fromTheTop = stackOfStrings.pop()
 </code></pre>
 
-<h2 id="toc_4">扩展泛型类型</h2>
+<h2 id="toc_4">泛型扩展</h2>
 
-<p>在扩展泛型类型时，不需要在扩展的定义中提供类型参数列表。可以在扩展中直接使用原始类型参数列表,并且这些来自原始类型中的参数名称会被用作原始定义中类型参数的引用。</p>
+<p>当对泛型类型进行扩展时，并不需要提供类型参数列表作为定义的一部分。<br/>
+可以在扩展中直接使用原始类型中声明的参数列表,并且这些来自原始类型中的参数名称会被用作原始定义中类型参数的引用。</p>
 
 <pre><code class="language-swift">//扩展泛型类型增加只读的计算属性
 extension Stack {
@@ -160,15 +182,17 @@ extension Stack {
 
 <h2 id="toc_5">类型约束</h2>
 
-<p>给泛型函数和泛型类型添加一个特定的约束，可以指定一个类型参数必须继承自指定类，或者符合协议或协议组合</p>
+<p>类型约束指定类型参数必须继承自指定类、遵循特定的协议或协议组合</p>
 
-<p>例如:<code>Dictionary</code>类型约束了字典中的键必须是可哈希的（符合<code>Hashable协议</code>），也就是必须有唯一的方法表示她，才能根据键进行判断</p>
+<p>对泛型函数或泛型类型中添加特定的类型参数，这在某些情况下是非常有用的<br/>
+例如:<code>Dictionary</code>类型约束了字典中的键必须是可哈希的（符合<code>Hashable协议</code>），也就是必须有唯一的方法表示它，才能根据键进行判断</p>
 
 <h3 id="toc_6">类型约束语法</h3>
 
-<p>在类型参数名后放置类型或协议名用冒号隔开来进行约束，</p>
+<p>在类型参数名后放置类名或协议名用冒号隔开，来定义类型约束</p>
 
 <pre><code class="language-swift">//类型约束的泛型函数
+//T必须是SomeClass的子类，而U必须遵循SomeProtocol协议
 func someFunction&lt;T: SomeClass, U: SomeProtocol&gt;(someT: T, someU: U) {
     // 这里是泛型函数的函数体部分
 }
@@ -218,9 +242,9 @@ func findIndex&lt;T: Equatable&gt;(array: [T], _ valueToFind: T) -&gt; Int? {
 
 <h2 id="toc_8">关联类型</h2>
 
-<p>定义协议时，声明一个或者多个<strong>关联类型</strong>作为协议的一部分</p>
+<p>定义协议时，声明一个或者多个关联类型作为协议的一部分</p>
 
-<p><strong>关联类型</strong>为协议中的的某个类型提供占位名(别名)，而其实际类型在协议被采纳时才会被指定</p>
+<p><strong>关联类型</strong>为协议中的的某个类型提供占位符名称，而其实际类型在协议被采纳时才会被指定</p>
 
 <p>用<code>associatedtype</code>关键字指定<strong>关联类型</strong></p>
 
@@ -259,7 +283,7 @@ Struct IntStack: Container {
 
 </code></pre>
 
-<p>在实现协议时需要用<code>typealias ItemType = Int</code>来转换协议中的关联类型<br/>
+<p><code>IntStack</code>结构体实现了<code>Container</code>协议的三个要求，此外在实现其要求时，指定<code>Item</code>为<code>Int</code>类型，即<code>typealias ItemType = Int</code>来转换协议中的关联类型<br/>
 当然，这个是可以省略的，Swift可以根据方法推断出<code>ItemType</code>类型</p>
 
 <h3 id="toc_9">扩展存在的类型来指定关联类型</h3>
@@ -270,11 +294,28 @@ Struct IntStack: Container {
 extension Array: Container {}
 </code></pre>
 
-<h2 id="toc_10">泛型Where语句</h2>
+<h3 id="toc_10">在关联类型约束里使用协议</h3>
 
-<p><strong>泛型Where语句</strong>用于为关联类型定义约束，比如要求其必须遵循特定协议，以及特定类型参数和关联类型必须相同</p>
+<pre><code class="language-swift">protocol SuffixableContainer: Container {
+    associatedtype Suffix: SuffixableContainer where Suffix.Item == Item
+    func suffix(_ size: Int) -&gt; Suffix
+}
+</code></pre>
 
-<p>在函数体或者类型的大括号前添加<code>Where</code>子句</p>
+<p><code>Suffix</code>是一个关联类型，有两个约束: </p>
+
+<ol>
+<li>必须遵循SuffixableContainer协议</li>
+<li>他的<code>Item</code>类型必须和容器里的<code>Item</code>类型相同</li>
+</ol>
+
+<h2 id="toc_11">泛型Where语句</h2>
+
+<p>对关联类型添加约束是非常有用的。可以通过定义一个泛型<code>where</code>语句来实现。通过泛型where子句让关联类型遵循特定协议，以及某个特定的类型参数和关联参数必须相同</p>
+
+<p>通过将<code>where</code>关键字紧跟在类型参数列表后来定义where子句，where子句后跟一个或者多个针对关联类型的约束，以及一个或者多个类型参数和关联类型间的相等关系。</p>
+
+<p>可以在函数体或者类型的大括号之前添加<code>where</code>子句</p>
 
 <pre><code class="language-swift">func allItemsMatch&lt;C1: Container, C2: Container&gt;
 (_ someContainer: C1, _ anotherContainer: C2) -&gt; Bool
@@ -294,8 +335,83 @@ extension Array: Container {}
 }
 </code></pre>
 
-<p>用<code>类型约束</code>约束类型参数:C1、C2必须符合<code>Contain</code>协议<br/>
-用<code>泛型Where语句</code>约束关联类型:C1和C2必须类型相同,并且C1符合<code>Equatable</code></p>
+<p>这个函数的类型参数列表还定义对两个类型参数的要求:</p>
+
+<ul>
+<li>C1必须符合<code>Container</code>协议</li>
+<li>C2必须符合<code>Containner</code>协议</li>
+<li>C1的Item必须和C2的Item类型相同</li>
+<li>C1的Item必须符合Equtable协议<br/>
+前两个要求定义在函数的类型参数列表里，后两个要求定义在函数的泛型where分句中</li>
+</ul>
+
+<h3 id="toc_12">具有Where子句的扩展</h3>
+
+<p>可以使用泛型where子句 作为扩展的一部分。</p>
+
+<pre><code class="language-swift">//扩展泛型Stack结构体
+extension Stack where Element: Equatable {
+    func isTop(_ item: Element) -&gt; Bool {
+        guard let topItem = items.last else {
+            return false
+        }
+        return topItem == item
+    }
+}
+
+//扩展协议
+extension Container where Item: Equatable {
+    func startsWith(_ item: Item) -&gt; Bool {
+        return count &gt;= 1 &amp;&amp; self[0] == item
+    }
+}
+
+</code></pre>
+
+<h3 id="toc_13">具有泛型Where子句的关联类型</h3>
+
+<p>可以在关联类型后面加上具有泛型where的子句。</p>
+
+<pre><code class="language-swift">protocol Container {
+    associatedtype Item
+    mutating func append(_ item: Item)
+    var count: Int { get }
+    subscript(i: Int) -&gt; Item { get }
+
+    associatedtype Iterator: IteratorProtocol where Iterator.Element == Item
+    func makeIterator() -&gt; Iterator
+}
+</code></pre>
+
+<p>迭代器<code>Iterator</code>的泛型<code>where</code>子句要求:无论迭代器是什么类型，迭代器中的元素类型，必须和容器项目的类型保持一致。</p>
+
+<p>当一个协议继承另外一个协议，通过在协议声明中，包含<code>where</code>子句，来添加一个约束到被继承协议的关联类型。</p>
+
+<pre><code class="language-swift">protocol ComparableContainer: Container where Item: Comparable { }
+</code></pre>
+
+<h3 id="toc_14">泛型下标</h3>
+
+<p>下标也可以是泛型，能够包含泛型<code>where</code>语句。<br/>
+可以在 subscript 后用尖括号来写占位符类型，你还可以在下标代码块花括号前写 where 子句</p>
+
+<pre><code class="language-swift">extension Container {
+    subscript&lt;Indices: Sequence&gt;(indices: Indices) -&gt; [Item]
+        where Indices.Iterator.Element == Int {
+            var result = [Item]()
+            for index in indices {
+                result.append(self[index])
+            }
+            return result
+    }
+}
+</code></pre>
+
+<ul>
+<li>泛型参数 Indices，必须是符合标准库中的 Sequence 协议</li>
+<li>下标使用的单一的参数，indices，必须是 Indices实例</li>
+<li>泛型 where 子句要求 Sequence（Indices）的迭代器，其所有的元素都是 Int 类型</li>
+</ul>
 
 			</div>
 
@@ -325,8 +441,8 @@ extension Array: Container {}
 
 	    <p class="meta">
 	    
-	        <a class="basic-alignment left" href="15057532270985.html" 
-	        title="Previous Post: 访问控制">&laquo; 访问控制</a>
+	        <a class="basic-alignment left" href="15659410303124.html" 
+	        title="Previous Post: 不透明类型">&laquo; 不透明类型</a>
 	    
 	    
 	        <a class="basic-alignment right" href="15047511695312.html" 
@@ -343,24 +459,24 @@ extension Array: Container {}
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -380,10 +496,10 @@ extension Array: Container {}
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -407,7 +523,7 @@ extension Array: Container {}
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -418,7 +534,7 @@ extension Array: Container {}
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -436,6 +552,15 @@ extension Array: Container {}
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -445,31 +570,31 @@ extension Array: Container {}
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

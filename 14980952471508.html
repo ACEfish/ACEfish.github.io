@@ -90,6 +90,7 @@ $(document).ready(function(event) {
 <p>可以用来遍历区间</p>
 
 <pre><code class="language-swift">//遍历一个闭区间
+//此时无需声明index
 for index in 1...5 {
     print(&quot;(index) times 5 is (index * 5)&quot;)
 }
@@ -105,6 +106,15 @@ let power = 10
 var answer = 1
 for _ in 1...power {
     answer *= base
+}
+</code></pre>
+
+<p>有时可能需要间隔式的数字:</p>
+
+<pre><code class="language-swift">let minuteInterval = 5
+//stride函数 返回一个间隔的数据
+for tickMark in stride(from: 0, to: minutes, by: minuteInterval) {
+    // 每5分钟渲染一个刻度线（0, 5, 10, 15 ... 45, 50, 55）
 }
 </code></pre>
 
@@ -138,7 +148,7 @@ for _ in 1...power {
 
 <h2 id="toc_4">条件语句</h2>
 
-<h3 id="toc_5">IF语句</h3>
+<h3 id="toc_5">if语句</h3>
 
 <pre><code class="language-swift">let temperatureInFahrenheit = 90
 if temperatureInFahrenheit &lt;= 32 {
@@ -166,15 +176,21 @@ default:
 }
 </code></pre>
 
-<p>完备性:<br/>
-对于<code>switch</code>语句每个可能的值,需要至少一个<code>case</code>分支与之对应,对于某些没办法用<code>case</code>覆盖所有分支的情况,可以通过在最后加上<code>default</code>分支来涵盖其他没有对应的值</p>
+<p>完备性(switch必须覆盖所有可能的字符):</p>
+
+<p>对于<code>switch</code>语句每个可能的值,需要至少一个<code>case</code>分支与之对应,对于某些没办法用<code>case</code>覆盖所有分支的情况,可以通过在最后加上<code>default</code>分支来涵盖其他没有对应的值</p>
 
 <h4 id="toc_7">隐式break</h4>
 
-<p>与OC中的<code>switch</code>语句不同,即使在<code>case</code>语句后没有break 也在执行<code>case</code>分钟的代码执行完毕后终止<code>switch</code>语句的执行，不会继续执行下一个<code>case</code>分支</p>
+<p>与OC中的<code>switch</code>语句不同,即使在<code>case</code>语句后没有break 也在执行<code>case</code>分钟的代码执行完毕后终止<code>switch</code>语句的执行，不会继续执行下一个<code>case</code>分支，并不存在隐式的贯穿</p>
 
-<p>注意:<br/>
-<code>case</code>分支中都至少包含一条语句</p>
+<blockquote>
+<p>注意</p>
+
+<p>虽然Swift中的break不是必须的，但是依然可以再case分支中的代码执行完毕之前用break跳出</p>
+
+<p>每个<code>case</code>分支中都至少包含一条语句</p>
+</blockquote>
 
 <pre><code class="language-switch">//case分支后至少需要一条语句 下面这种写法是错误的
 let anotherCharacter: Character = &quot;a&quot;
@@ -192,7 +208,7 @@ default:
 
 <pre><code class="language-swift">let anotherCharacter: Character = &quot;a&quot;
 switch anotherCharacter {
-case &quot;a&quot;, &quot;A&quot;:
+case &quot;a&quot;, &quot;A&quot;:  //用逗号隔开
     print(&quot;The letter A&quot;)
 default:
     print(&quot;Not the letter A&quot;)
@@ -247,9 +263,9 @@ default:
 //（0,0）虽然符合所有分支模式 但是只有第一个case分支会执行
 </code></pre>
 
+<blockquote>
 <p>注意：</p>
 
-<blockquote>
 <p>与OC中的switch不同,swift中的case分支中的值是允许交叉的,即允许多个case匹配同一个值,但是只会执行第一个被匹配的case分支</p>
 </blockquote>
 
@@ -286,12 +302,12 @@ case let defaultPint:
 
 <pre><code class="language-swift">let yetAnotherPoint = (1, -1)
 switch yetAnotherPoint {
-    case let (x, y) where x == y:
-print(&quot;(\(x), \(y)) is on the line x == y&quot;)
-    case let (x, y) where x == -y:
-print(&quot;(\(x), \(y)) is on the line x == -y&quot;)
-    case let (x, y):
-print(&quot;(\(x), \(y)) is just some arbitrary point&quot;)
+case let (x, y) where x == y:
+    print(&quot;(\(x), \(y)) is on the line x == y&quot;)
+case let (x, y) where x == -y:
+    print(&quot;(\(x), \(y)) is on the line x == -y&quot;)
+case let (x, y):
+    print(&quot;(\(x), \(y)) is just some arbitrary point&quot;)
 }
 // 输出 &quot;(1, -1) is on the line x == -y&quot;
 </code></pre>
@@ -386,10 +402,11 @@ print(description)
 
 <p>在分支语句加上<code>fallthrough</code>关键字后,在执行完分支语句后会继续执行下面的分支，即贯穿到<code>default</code>分支</p>
 
-<p>注意:<br/>
-在加上<code>fallthrough</code>后是不会判断下面的<code>case</code>语句的匹配条件而直接执行其分支中的代码</p>
-
 <blockquote>
+<p>注意:</p>
+
+<p>在加上<code>fallthrough</code>后是不会判断下面的<code>case</code>语句的匹配条件而直接执行其分支中的代码</p>
+
 <p>在C语言的switch语句中也是如果不加break时,那么执行完一条case语句后会直接执行下一条case分支代码,而不会判断分支条件,直到遇到break或者switch语句结束,这与swift中是一致的</p>
 </blockquote>
 
@@ -428,8 +445,10 @@ print(&quot;Game over!&quot;)
 
 <p>与<code>if</code>语句类似<code>guard</code>语句的执行取决于其后的一个bool条件,如果为真时直接执行<code>guard</code>语句后的代码,如果为假时执行<code>else</code>中的语句</p>
 
-<p><strong>注意:</strong><br/>
-条件不满足会执行<code>else</code>分支上的代码,这个分支这个分支<strong>必须转移控制以退出<code>guard</code>语句出现的代码段</strong>。可以使用控制转移语句如<code>return</code>, <code>break</code>, <code>continue</code>或者<code>throw</code>做这件事，或者调用一个不返回的方法或函数，例如<code>fatalError()</code>。</p>
+<blockquote>
+<p>注意:<br/>
+条件不满足会执行<code>else</code>分支上的代码,这个分支这个分支必须转移控制以退出<code>guard</code>语句出现的代码段。可以使用控制转移语句如<code>return</code>, <code>break</code>, <code>continue</code>或者<code>throw</code>做这件事，或者调用一个不返回的方法或函数，例如<code>fatalError()</code>。</p>
+</blockquote>
 
 <pre><code class="language-swift">func greet(person: [String: String]) {
     guard let name = person[&quot;name&quot;] else {
@@ -513,24 +532,24 @@ greet(person: [&quot;name&quot;: &quot;Jane&quot;, &quot;location&quot;: &quot;C
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -550,10 +569,10 @@ greet(person: [&quot;name&quot;: &quot;Jane&quot;, &quot;location&quot;: &quot;C
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -577,7 +596,7 @@ greet(person: [&quot;name&quot;: &quot;Jane&quot;, &quot;location&quot;: &quot;C
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -588,7 +607,7 @@ greet(person: [&quot;name&quot;: &quot;Jane&quot;, &quot;location&quot;: &quot;C
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -606,6 +625,15 @@ greet(person: [&quot;name&quot;: &quot;Jane&quot;, &quot;location&quot;: &quot;C
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -615,31 +643,31 @@ greet(person: [&quot;name&quot;: &quot;Jane&quot;, &quot;location&quot;: &quot;C
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

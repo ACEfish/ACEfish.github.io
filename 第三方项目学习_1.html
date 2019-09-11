@@ -82,28 +82,140 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15611008346251.html">RACDelegateProxy</a></h1>
-			<p class="meta"><time datetime="2019-06-21T15:07:14+08:00" 
-			pubdate data-updated="true">2019/6/21</time></p>
+		  	<h1 class="entry-title"><a href="15680125238227.html">AFNetworkReachabilityManager</a></h1>
+			<p class="meta"><time datetime="2019-09-09T15:02:03+08:00" 
+			pubdate data-updated="true">2019/9/9</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>将代理用<code>RACDelegateProxy</code>实现</p>
+		  	<h2 id="toc_0">AFNetworkReachabilityManager的使用</h2>
 
-<pre><code class="language-objectivec">RACDelegateProxy *proxy = [[RACDelegateProxy alloc] initWithProtocol:@protocol(UITableViewDelegate)];
-objc_setAssociatedObject(self, _cmd, proxy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-proxy.rac_proxiedDelegate = self;
-[[proxy rac_signalForSelector:@selector(tableView:didSelectRowAtIndexPath:)]
- subscribeNext:^(RACTuple *value) {
-     [value.first deselectRowAtIndexPath:value.second animated:YES];
- }];
-self.tableView.delegate = (id&lt;UITableViewDelegate&gt;)proxy;
+<h3 id="toc_1">初始化 AFNetworkReachabilityManager</h3>
 
-//等效于
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+<p>在初始化方法中使用<code>SCNetworkReachabilityCreateWithAddress</code>或者<code>SCNetworkReachabilityCreateWithName</code>生成一个<code>SCNetworkReachabilityRef</code>的引用</p>
+
+<pre><code class="language-objectivec">+ (instancetype)managerForDomain:(NSString *)domain {
+    SCNetworkReachabilityRef reachability = SCNetworkReachabilityCreateWithName(kCFAllocatorDefault, [domain UTF8String]);
+    AFNetworkReachabilityManager *manager = [[self alloc] initWithReachability:reachability];
+    CFRelease(reachability);
+    return manager;
+}
+
++ (instancetype)managerForAddress:(const void *)address {
+    SCNetworkReachabilityRef reachability = SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, (const struct sockaddr *)address);
+    AFNetworkReachabilityManager *manager = [[self alloc] initWithReachability:reachability];
+    CFRelease(reachability);
+    return manager;
+}
+
+- (instancetype)initWithReachability:(SCNetworkReachabilityRef)reachability {
+    self = [super init];
+    if (!self) {
+        return nil;
+    }
+
+    _networkReachability = CFRetain(reachability);
+    self.networkReachabilityStatus = AFNetworkReachabilityStatusUnknown;
+
+    return self;
 }
 </code></pre>
+
+<ol>
+<li>这两个方法通过 域名 或者有个 <code>sockaddr_in</code>指针 生成了一个<code>SCNetworkReachabilityRef</code></li>
+<li>调用<code>- [AFNetworkReachabilityManager initWithReachability:]</code>将生成的<code>SCNetworkReachabilityRef</code>传入</li>
+<li>设置默认<code>networkReachabilityStatus</code></li>
+</ol>
+
+<h3 id="toc_2">监控网络状态</h3>
+
+<p>在初始化了manager之后，我们需要调用<code>startMonitoring</code>来开始监控网络状态</p>
+
+<pre><code class="language-objectivec">- (void)startMonitoring {
+    [self stopMonitoring];
+    if (!self.networkReachability) {
+        return;
+    }
+    __weak __typeof(self)weakSelf = self;
+    AFNetworkReachabilityStatusBlock callback = ^(AFNetworkReachabilityStatus status) {
+        __strong __typeof(weakSelf)strongSelf = weakSelf;
+
+        strongSelf.networkReachabilityStatus = status;
+        if (strongSelf.networkReachabilityStatusBlock) {
+            strongSelf.networkReachabilityStatusBlock(status);
+        }
+
+    };
+
+    SCNetworkReachabilityContext context = {0, (__bridge void *)callback, AFNetworkReachabilityRetainCallback, AFNetworkReachabilityReleaseCallback, NULL};
+    SCNetworkReachabilitySetCallback(self.networkReachability, AFNetworkReachabilityCallback, &amp;context);
+    SCNetworkReachabilityScheduleWithRunLoop(self.networkReachability, CFRunLoopGetMain(), kCFRunLoopCommonModes);
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0),^{
+        SCNetworkReachabilityFlags flags;
+        if (SCNetworkReachabilityGetFlags(self.networkReachability, &amp;flags)) {
+            AFPostReachabilityStatusChange(flags, callback);
+        }
+    });
+}
+</code></pre>
+
+<p>在该方法中创建了每次网络状态改变时的回调<code>AFNetworkReachabilityStatusBlock</code>，当回调发生时，重新设置status属性，调用设置的<code>networkReachabilityStatusBlock</code>属性</p>
+
+<p>监控网络状态核心代码</p>
+
+<ol>
+<li><p>创建一个<code>SCNetworkReachabilityContext</code></p>
+<pre><code class="language-objectivec">typedef struct {
+    CFIndex     version;<br/>
+    void *      __nullable info;<br/>
+    const void  * __nonnull (* __nullable retain)(const void *info);<br/>
+    void        (* __nullable release)(const void *info);<br/>
+    CFStringRef __nonnull (* __nullable copyDescription)(const void *info);<br/>
+} SCNetworkReachabilityContext;<br/>
+SCNetworkReachabilityContext context = {<br/>
+ 0,<br/>
+ (__bridge void *)callback,<br/>
+ AFNetworkReachabilityRetainCallback, <br/>
+ AFNetworkReachabilityReleaseCallback, <br/>
+ NULL<br/>
+};
+</code></pre></li>
+<li><p>当目标状态改变时 调用传入的回调</p>
+<pre><code class="language-objectivec">SCNetworkReachabilitySetCallback(self.networkReachability, AFNetworkReachabilityCallback, &amp;context);
+static void AFNetworkReachabilityCallback(SCNetworkReachabilityRef __unused target, SCNetworkReachabilityFlags flags, void *info) {<br/>
+    AFPostReachabilityStatusChange(flags, (__bridge AFNetworkReachabilityStatusBlock)info);<br/>
+}<br/>
+static void AFPostReachabilityStatusChange(SCNetworkReachabilityFlags flags, AFNetworkReachabilityStatusBlock block) {<br/>
+    AFNetworkReachabilityStatus status = AFNetworkReachabilityStatusForFlags(flags);<br/>
+    dispatch_async(dispatch_get_main_queue(), ^{<br/>
+        if (block) {<br/>
+            block(status);<br/>
+        }<br/>
+        NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];<br/>
+        NSDictionary *userInfo = @{ AFNetworkingReachabilityNotificationStatusItem: @(status) };<br/>
+        [notificationCenter postNotificationName:AFNetworkingReachabilityDidChangeNotification object:nil userInfo:userInfo];<br/>
+    });<br/>
+}
+</code></pre>
+<ol>
+<li>当网络状态改变时 会将<code>context</code>作为参数 回调<code>AFNetworkReachabilityCallback</code></li>
+<li>在<code>AFNetworkReachabilityCallback</code>中，将context中的block，以及作为状态的flags作为参数调用了 <code>AFPostReachabilityStatusChange</code>状态改变方法</li>
+<li>利用<code>AFNetworkReachabilityStatusForFlags</code>函数将flags转变为网络状态status</li>
+<li>在主线程中执行<code>block(status)</code> 并发送状态改变的通知</li>
+</ol></li>
+<li><p>在MainRunLoop中监控网络状态</p>
+<pre><code class="language-objectivec">SCNetworkReachabilityScheduleWithRunLoop(self.networkReachability, CFRunLoopGetMain(), kCFRunLoopCommonModes);
+</code></pre></li>
+<li><p>获取当前网络状态 调用callback</p>
+<pre><code class="language-objectivec"> dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0),^{
+    SCNetworkReachabilityFlags flags;<br/>
+    if (SCNetworkReachabilityGetFlags(self.networkReachability, &amp;flags)) {<br/>
+        AFPostReachabilityStatusChange(flags, callback);<br/>
+    }<br/>
+});
+</code></pre></li>
+</ol>
 
 
 		</div>
@@ -126,24 +238,24 @@ self.tableView.delegate = (id&lt;UITableViewDelegate&gt;)proxy;
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -163,10 +275,10 @@ self.tableView.delegate = (id&lt;UITableViewDelegate&gt;)proxy;
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -190,7 +302,7 @@ self.tableView.delegate = (id&lt;UITableViewDelegate&gt;)proxy;
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -201,7 +313,7 @@ self.tableView.delegate = (id&lt;UITableViewDelegate&gt;)proxy;
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -219,6 +331,15 @@ self.tableView.delegate = (id&lt;UITableViewDelegate&gt;)proxy;
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -228,31 +349,31 @@ self.tableView.delegate = (id&lt;UITableViewDelegate&gt;)proxy;
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  

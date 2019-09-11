@@ -82,33 +82,56 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15540375355169.html">Clang CFE</a></h1>
-			<p class="meta"><time datetime="2019-03-31T21:05:35+08:00" 
-			pubdate data-updated="true">2019/3/31</time></p>
+		  	<h1 class="entry-title"><a href="15539605071421.html">Clang Static Analyzer静态代码分析</a></h1>
+			<p class="meta"><time datetime="2019-03-30T23:41:47+08:00" 
+			pubdate data-updated="true">2019/3/30</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>常用的Clang前端组件和库</p>
+		  	<p>学习自 <a href="https://github.com/ming1016/study/wiki/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90-iOS-%E7%BC%96%E8%AF%91-Clang---LLVM">深入剖析iOS编译</a></p>
+
+<h4 id="toc_0">词法分析：</h4>
+
+<p>静态分析前会对diamante进行<code>词法分析</code>，生成<code>Token</code>，Token包括以下几类，</p>
 
 <ul>
-<li>LLVM Support Library: <code>LLVM libSupport</code>库提供了许多底层库和数据结果，包括命令行option处理，各种容器和系统抽象层，用于文件系统访问</li>
-<li>The Clang &quot;Basic&quot; Library: 提供了追踪和操纵<code>source buffers</code>，<code>source buffers</code>的位置，<code>diagnostics</code>，<code>token</code>，抽象目标以及编译语言自己信息的<code>low-level</code>实用程序。还部分由可以用在其他非C语言比如<code>SourceLocation</code>、<code>SourceManager</code>,<code>Diagnositics</code>，<code>FileManager</code>等。其中Diagnositics这个子系统是编译器和普通写代码人交流的主要组成部分，它会诊断当前代码那些不正确，按照严重程度产生warning或error，每个诊断会有唯一ID,sourceLocation会负责管理</li>
-<li>The Driver Library : 和Driver相关的库</li>
-<li>Precompiled Header： Clang支持预编译Header的两个实现</li>
-<li>The Frontend Library： 这个库包含在Clang库之上构建的功能，比如输出diagnosistics的几种方法</li>
-<li>The Lexer and Preprocessor Library: 词法分析和预处理的库，包含了Token、Annotation、Tokens、TokenLexer、Lexer等词法类，还有Parser library和AST语法树相关的比如Type、ASTContext、QualType、DeclarationName、DeclContext以及CFG类</li>
-<li>The Sema Library： 解析器调用此库时，会对输入进行语义分析。对有效的程序，Sema为解析构造一个AST</li>
-<li>The CodeGen Lirary： 用AST作为输入，生成LLVM IR代码</li>
+<li>关键字： 语法中的关键字 if、else、while for等</li>
+<li>标识符： 变量名</li>
+<li>字面量： 值、数字、字符串</li>
+<li>特殊符号： 加减乘除符号
+<code>
+clang -fmodules -E -Xclang -dump-tokens main.m
+</code>
+可以查看生成的token，其中还包括了代码位置等信息</li>
 </ul>
 
-<h2 id="toc_0">libClang</h2>
+<h4 id="toc_1">语法分析</h4>
 
-<h2 id="toc_1">Driver</h2>
+<p>词法分析后进行语法分析，将token按照语法组合成语义生成ValDecl节点，将这些节点按照层级关系生成抽象语法树<code>Abstract Syntax Tree(AST)</code></p>
 
-<p>Driver是Clang面向用户的接口，用来解析Option设置，判断决定调用的工具链，最终完成整个编译过程</p>
+<pre><code class="language-text">clang -fmodules -fsyntax-only -Xclang -ast-dump main.m
+</code></pre>
 
-<p>Driver 的流程是按照 ArgList - Actions - Jobs 来的<br/>
-<img src="media/15540375355169/15540403081825.jpg" alt="" style="width:716px;"/></p>
+<p>以<code>TranslationUnitDecl</code>根节点开始，表示一个源文件<br/>
+其中，Decl表示一个生命、Expr表示表达式、Literal表示特殊字面量、Stmt表示语句</p>
+
+<h3 id="toc_2">静态分析原理</h3>
+
+<p>clang 静态分析是通过建立分析引擎和 checkers 所组成的架构，可以通过 <code>clng --analyze</code>命令调用</p>
+
+<p><code>clang static analyzer</code>分为<code>analyzer core</code>分析引擎和checker两部分，而所有的checker是基于底层的分析引擎之上的，也可以通过分析引擎提供的功能编写新的checker</p>
+
+<p>如果想编写自己的<code>checker</code>，可以在 clang 项目的<code>lib / StaticAnalyzer / Checkers</code>目录下找到实例参考，比如 ObjCUnusedIVarsChecker.cpp 用来检查未使用定义过的变量。方便用户扩展对代码的检查规则或对bug类型的扩展，但是每执行完一条语句后，分析引擎就会会遍历所有checker中的回调函数，所以checker越多，速度越慢</p>
+
+<p>通过<code>clang -cc1 -analyzer-checker-help</code>可以列出能调用的 checker<br/>
+<img src="media/15539605071421/15539654466718.jpg" alt="" style="width:830px;"/></p>
+
+<p><code>clang static analyzer</code>引擎大致上分为<code>CFG，MemRegion，SValBuilder，ConstraintManager</code> 和 <code>ExplodedGraph</code> 几个模块,<code>clang static analyzer</code> 本质上就是<code>path-sensitive analysis</code>，要很好的理解<code>clang static analyzer</code>引擎就需要对<code>Data Flow Analysis</code>有所了解，包括迭代数据流分析,<code>path-sensitive</code>，<code>path-insensitive</code> ，<code>flow-sensitive</code>等。</p>
+
+<p>编译的概念（<strong>词法-&gt;语法-&gt;语义-&gt;IR-&gt;优化-&gt;CodeGen</strong>）在 clang static analyzer 里到处可见，例如 Relaxed Live Variables Analysis 可以减少分析中的内存消耗，使用 mark-sweep 实现 Dead Symbols 的删除。</p>
+
+<p>静态检查的一些库以及使用方法：<br/>
+<a href="https://github.com/DeveloperLx/FauxPas_document_translation/blob/master/README.md?from=timeline&amp;isappinstalled=0">FauxPas_document_translation/README.md at master · DeveloperLx/FauxPas_document_translation · GitHub</a></p>
 
 
 		</div>
@@ -131,24 +154,24 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(157)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(2)</a>&nbsp;&nbsp;
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(19)</a>&nbsp;&nbsp;
-	        
-	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">内存管理&nbsp;(14)</a>&nbsp;&nbsp;
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
 	        
 	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
 	        
-	        	<a href="Concurrent-Programming.html">多线程&nbsp;(18)</a>&nbsp;&nbsp;
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(13)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
 	        
@@ -168,10 +191,10 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(26)</strong></a>
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
 	         <p class="cat-children-p"> 
 	        
-	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(26)</a>&nbsp;&nbsp;
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -195,7 +218,7 @@ $(document).ready(function(event) {
 	      </li>
 	  
 	      <li class="post">
-	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(40)</strong></a>
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
 	         <p class="cat-children-p"> 
 	        
 	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
@@ -206,7 +229,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
 	        
-	        	<a href="React.html">React&nbsp;(9)</a>&nbsp;&nbsp;
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
 	        
 	         </p> 
 	      </li>
@@ -224,6 +247,15 @@ $(document).ready(function(event) {
 	        
 	        
 	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
 	   
 	  </ul>
 	</section>
@@ -233,31 +265,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15645543599204.html">AsyncDisplayKit</a>
+		        <a href="15680194937623.html">AFSecurityPolicy</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15644708593081.html">离屏渲染</a>
+		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15643878437057.html">渲染</a>
+		        <a href="15677400518331.html">AFURLSerialization</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15611008346251.html">RACDelegateProxy</a>
+		        <a href="15676621460215.html">AFURLSessionManager</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15609354619260.html">RACChannel</a>
+		        <a href="15675682575589.html">AFNetworking</a>
 		      </li>
 	     
 	  
