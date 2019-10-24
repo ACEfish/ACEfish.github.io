@@ -82,51 +82,106 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15668020933125.html">Blocks</a></h1>
-			<p class="meta"><time datetime="2019-08-26T14:48:13+08:00" 
-			pubdate data-updated="true">2019/8/26</time></p>
+		  	<h1 class="entry-title"><a href="15539566553487.html">Target在build中的控制</a></h1>
+			<p class="meta"><time datetime="2019-03-30T22:37:35+08:00" 
+			pubdate data-updated="true">2019/3/30</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">Block语法</h2>
+		  	<p>在<code>Xcode</code>的<code>Project editor</code>中的<code>Build Setting</code>、<code>Build Phases</code>和<code>Build Rules</code>用来控制整个编译过程</p>
 
-<h3 id="toc_1">block表达式</h3>
+<h2 id="toc_0">Build Phases</h2>
 
-<p><code>^ 返回值类型 参数列表 表达式</code></p>
+<p>构建可执行文件规则。</p>
 
-<pre><code class="language-objectivec">^void(void){
-    printf(&quot;Blocks\n&quot;)
-}
-</code></pre>
+<p><code>Target Dependencies</code><br/>
+指定target的依赖项目，在targrt build之前需要先build的依赖</p>
 
-<p>其中返回值类型和参数列表均可省略</p>
+<p><code>Compile Source</code><br/>
+指定所有必须编译的文件,这些文件会根据<code>build Setting</code>和<code>Builsd Rules</code>里的设置来处理</p>
 
-<h3 id="toc_2">block类型</h3>
+<p><code>Link Binary With Libraries</code><br/>
+列出所有的静态库和动态库，和编译生成文件进行链接</p>
 
-<p><code>返回值类型(^变量名)参数列表</code></p>
+<p><code>Copy Bundle Resources</code><br/>
+指定要copy的资源文件</p>
 
-<pre><code class="language-objectivec">//例如
-int(^blk)(int) = ^(int count){return count+1}
-//赋值
-int(^blk1)(int) = blk
-</code></pre>
+<h2 id="toc_1">Build Rules</h2>
 
-<p>使用typedef声明block类型变量<br/>
-<code>typedef int (^blk_t)(int)</code></p>
+<p>指定不同文件类型如何编译。每条build rule 指定了该类型怎么处理立即输出在哪。可以增加一条新规则对特定类型文件类型添加处理方法</p>
 
-<h3 id="toc_3">截获自动变量值</h3>
+<h2 id="toc_2">Build Setting</h2>
 
-<p>在Blocks中，block表达式回拨或所使用的自动变量的值，即保存了该自动变量的瞬间值。</p>
+<p>在<code>build</code>的过程中各个阶段的选项的设置</p>
 
-<h3 id="toc_4">__block说明符</h3>
+<h2 id="toc_3">pbxproj工程文件</h2>
 
-<p>自动变量值捕获只能保存其瞬间值，但是保存后并不能改写该值了。</p>
+<p><code>.xcodeproj</code>包中的工程文件<code>project.pbxproj</code>里包含了build过程中的设置.</p>
 
-<p>如果想在block语法的表达式中将值赋给在Block语法外声明的自动变量，需要在该自动变量前添加<code>__block</code>修饰符</p>
-
-<h3 id="toc_5">截获对象</h3>
-
-<p>当截获的为<code>OC</code>的对象时，其实是截获的为对象的指针，因此我们可以在不修改指针的情况下修改该对象内容，而不需要添加<code>__block</code>修饰符</p>
+<ol>
+<li>在这个文件中，首先找到rootObject的值
+<code>
+rootObject = CFE011DA22409055007FEEDD /* Project object */;
+</code></li>
+<li>根据CFE011DA22409055007FEEDD代表的proect找到这个工程,这里面包括了部分这个工程的信息
+<code>
+/* Begin PBXProject section */<br/>
+    CFE011DA22409055007FEEDD /* Project object */ = {<br/>
+        isa = PBXProject;<br/>
+        attributes = {<br/>
+            LastUpgradeCheck = 1010;<br/>
+            ORGANIZATIONNAME = universalCertification;<br/>
+            TargetAttributes = {<br/>
+                CFE011E122409055007FEEDD = {<br/>
+                    CreatedOnToolsVersion = 10.1;<br/>
+                };<br/>
+            };<br/>
+        };<br/>
+        buildConfigurationList = CFE011DD22409055007FEEDD /* Build configuration list for PBXProject &quot;RSSReader&quot; */;<br/>
+        compatibilityVersion = &quot;Xcode 9.3&quot;;<br/>
+        developmentRegion = en;<br/>
+        hasScannedForEncodings = 0;<br/>
+        knownRegions = (<br/>
+            en,<br/>
+            Base,<br/>
+        );<br/>
+        mainGroup = CFE011D922409055007FEEDD;<br/>
+        productRefGroup = CFE011E322409055007FEEDD /* Products */;<br/>
+        projectDirPath = &quot;&quot;;<br/>
+        projectRoot = &quot;&quot;;<br/>
+        targets = (<br/>
+            CFE011E122409055007FEEDD /* RSSReader */,<br/>
+        );<br/>
+    };<br/>
+/* End PBXProject section */
+</code></li>
+<li>然后根据工程中的<code>targets</code>可以找到对应target
+<code>
+/* Begin PBXNativeTarget section */<br/>
+        CFE011E122409055007FEEDD /* RSSReader */ = {<br/>
+            isa = PBXNativeTarget;<br/>
+            buildConfigurationList = CFE011F822409056007FEEDD /* Build configuration list for PBXNativeTarget &quot;RSSReader&quot; */;<br/>
+            buildPhases = (<br/>
+                47F7B3ABDF3263B6EDCA68AD /* [CP] Check Pods Manifest.lock */,<br/>
+                CFE011DE22409055007FEEDD /* Sources */,<br/>
+                CFE011DF22409055007FEEDD /* Frameworks */,<br/>
+                CFE011E022409055007FEEDD /* Resources */,<br/>
+            );<br/>
+            buildRules = (<br/>
+            );<br/>
+            dependencies = (<br/>
+            );<br/>
+            name = RSSReader;<br/>
+            productName = RSSReader;<br/>
+            productReference = CFE011E222409055007FEEDD /* RSSReader.app */;<br/>
+            productType = &quot;com.apple.product-type.application&quot;;<br/>
+        };<br/>
+/* End PBXNativeTarget section */
+</code></li>
+<li>可以根据这些信息查看更详细的编译信息<br/>
+比如:
+<code>buildConfigurationList</code>指向了debug和release的详细配置信息</li>
+</ol>
 
 
 		</div>
@@ -149,8 +204,10 @@ int(^blk1)(int) = blk
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -164,7 +221,7 @@ int(^blk1)(int) = blk
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -260,31 +317,31 @@ int(^blk1)(int) = blk
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

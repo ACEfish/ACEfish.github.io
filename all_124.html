@@ -82,132 +82,162 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15288713693530.html">状态机</a></h1>
-			<p class="meta"><time datetime="2018-06-13T14:29:29+08:00" 
-			pubdate data-updated="true">2018/6/13</time></p>
+		  	<h1 class="entry-title"><a href="15324145349319.html">面对对象编程</a></h1>
+			<p class="meta"><time datetime="2018-07-24T14:42:14+08:00" 
+			pubdate data-updated="true">2018/7/24</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>ReactNative 将UI视作一个状态机,每个UI场景就是状态机的一个状态</p>
+		  	<h2 id="toc_0">类和实例</h2>
 
-<blockquote>
-<p>不要在状态机变量中存放于显示无关的变量,会导致务必要渲染UI</p>
-</blockquote>
+<p><code>class</code>关键字定义类<br/>
+类名通常首字母大写</p>
 
-<h2 id="toc_0">State</h2>
+<pre><code class="language-python">class My_Class_Student(object):
+    &quot;&quot;&quot;docstring for My_Class_Student&quot;&quot;&quot;
+    def __init__(self, name):
+        super(My_Class_Student, self).__init__()
+        self.name = name
+        
+lyy=My_Class_Student(&quot;liyuyuan&quot;)
 
-<blockquote>
-<p>尽可能让自定义的组件成为无状态组件<br/>
-好的reactnative设计思路:创建多个只负责渲染数据的无状态组件，将他们封装在一个有状态的reactnative组件中,有状态的组件封装了UI交互的逻辑，而无状态的组件负责渲染UI界面。</p>
-</blockquote>
-
-<pre><code class="language-javascrip">constructor(props) {
-        super(props)
-        this.state = {
-            input: &#39;&#39;,
-            inputPWD: &#39;&#39;,
-        }
-    }
-    updateNum(newText) {
-        this.setState((state) =&gt; {
-            return {input: newText}
-        });
-    }
-
-    updatePWD(newText) {
-        this.setState(() =&gt; {
-            return {
-                inputPWD : newText
-            }
-        })
-    }
+print(lyy)
+print(lyy.name) # liyuyuan
 </code></pre>
 
-<p>通过this.state.状态机变量名 访问状态机变量</p>
+<p><code>__init__</code>方法定义初始化对象时必须要传入的参数,比如上面student初始化时必须传入name</p>
 
-<p>我们需要将状态机变量看做 <strong>不可变常量</strong>，不能直接改变状态机变量，只能通过<strong>setState</strong>函数</p>
+<p>在类中定义的函数，第一个参数永远是实例变量<code>self</code>，调用时不用传递该参数</p>
 
-<h2 id="toc_1">渲染</h2>
+<h3 id="toc_1">数据封装</h3>
 
-<p>setState函数原型：<code>setState(oldState, callback)</code> 第二个参数为回调函数,会在setState完成并且重新渲染完成(如果需要的话)后被调用</p>
+<p>使用类中定义的方法来实现数据封装</p>
 
-<p>如果setState函数将传入函数的返回值与当前状态机相比没有任何修改或增加,将不会进行渲染</p>
+<pre><code class="language-python">class My_Class_Student(object):
+    &quot;&quot;&quot;docstring for My_Class_Student&quot;&quot;&quot;
+    def __init__(self, name):
+        super(My_Class_Student, self).__init__()
+        self.name = name
+    def print_name(self):
+        print(self.name)
+        
+lyy=My_Class_Student(&quot;liyuyuan&quot;)
 
-<p>改变状态机变量后 所有与状态机变量值有关系的组件都会被刷新。</p>
+print(lyy)
+print(lyy.name) # liyuyuan
+lyy.print_name() #liyuyuan
 
-<blockquote>
-<p>当修改组件的状态机变量值后，ReactNative会在考虑清楚如何高效的渲染UI后,执行SetState的箭头函数来渲染组件,因此setState是异步执行的函数</p>
-
-<p>当子组件需要渲染时,那么该子组件的各个生命周期的函数都会按声明周期调用 这就是渲染高效的原因</p>
-</blockquote>
-
-<h3 id="toc_2">判断是否渲染</h3>
-
-<pre><code class="language-javascript">//判断是否渲染，实现这个函数后,会在重新渲染组件前，调用这个函数，返回false就放弃渲染组件
-shouldComponentUpdate() {
-        if (this.state.input.length &lt; 3) {
-            return true;
-        }
-        return false;
-    }
 </code></pre>
 
-<h3 id="toc_3">强制渲染</h3>
+<h2 id="toc_2">访问限制</h2>
 
-<p><code>forceUpdate(callback)</code> <br/>
-当UI的可变数据来源为属性和状态之外获取时,可以使用这个函数要求重新渲染，这会导致所有级别的UI都重新读取、计算、渲染。</p>
+<p>让内部属性不被外部访问，可以再属性名称前加双下划线<code>__</code>，在python中，以<code>__</code>开头的变量名就为私有变量,外部不能访问（只能为<code>__</code>不能<code>_</code>）</p>
+
+<pre><code class="language-python">class My_Class_Student(object):
+    &quot;&quot;&quot;docstring for My_Class_Student&quot;&quot;&quot;
+    def __init__(self, name):
+        super(My_Class_Student, self).__init__()
+        self.__name = name
+    def print_name(self):
+        print(self.__name)
+        
+lyy=My_Class_Student(&quot;liyuyuan&quot;)
+
+print(lyy.__name) # AttributeError:&#39;My_Class_Student&#39; object has no attribute &#39;__name&#39;
+lyy.print_name() #liyuyuan
+</code></pre>
 
 <blockquote>
-<p>这个渲染过程不会调用<code>shouldComponentUpdate</code><br/>
-可以通过回调函数,在执行结束后调用<br/>
-尽量避免使用</p>
+<p>变量名为<code>__xxx__</code>是特殊变量，外部可以直接访问的</p>
+
+<p>对于单下划线开头的变量,虽然可以访问,但是约定俗成不要访问,当做私有变量</p>
+
+<p>对于<code>__</code>开头的变量，其实python是将其改名为<code>_classname__变量名</code>，我们也可以通过其进行访问，不建议</p>
 </blockquote>
 
-<h3 id="toc_4">render渲染过程</h3>
+<h2 id="toc_3">继承和多态</h2>
 
-<p>RN通过<code>render</code>实现重新渲染。原型为<code>ReactComponent render()</code><br/>
-任何组件都必须有这个函数 也必须只能返回一个可渲染组件<br/>
-通过修改属性或者状态机变量来触发render的重新渲染，而不是直接调用这个函数</p>
+<h3 id="toc_4">继承</h3>
 
-<h3 id="toc_5">简洁写法</h3>
+<pre><code class="language-python">class Animal(object):
+    def run(self):
+        print(&#39;Animal is running...&#39;)
 
-<pre><code class="language-javascript">    //简洁写法1（通过指定参数名称与状态机变量名称相同 省略）
-    updateNum(input) {
-        this.setState(() =&gt; {
-            return {input}
-        })
-    }
+#继承了Animal 就自带了run方法
+class Dog(Animal):
+    pass
+
+#重写父类继承的方法
+class Cat(Animal):
+    def run(self):
+        print(&#39;Cat is running...&#39;)
     
-    //简洁写法2（省略箭头函数）
-    updateNum(input) {
-        this.setState( {input})
-    }
- ```
-
-## 成员变量
-
-```javascript
-    constructor(props) {
-        super(props)
-        this.myProperty1 = &quot;test&quot;
-        this.myProperty2 = true
-        this.state = {
-            input: &#39;&#39;,
-            inputPWD: &#39;&#39;,
-        }
-    }
-    //就可以在组件中使用myProperty1  myProperty2 这两个成员变量
 </code></pre>
 
-<p>组件可以有静态变量、静态成员函数，直接用<code>类名.</code>调用</p>
+<h3 id="toc_5">多态</h3>
 
-<h3 id="toc_6">回调函数绑定</h3>
+<p>判断一个变量是否是某个类型可以用<code>isinstance()</code>判断：</p>
 
-<pre><code class="language-javascript">//在constuctor函数中
-this.updateNum = this.updateNum.bind(this)
+<pre><code class="language-python">b = Animal() # b是Animal类型
+isinstance(b, Animal)  #True
 </code></pre>
 
-<p>绑定操作是为了让回调函数能正确解析出this，否则this.updateNum函数被执行时,指向另外对象而不是该组建类的实例</p>
+<blockquote>
+<p>对于静态语言(java等),需要传入的必须是Animal类型或者其子类,否则无法调用其方法</p>
+
+<p>对于python等动态语言,没有类型检查,只需要保证其有执行的方法就行了，就可以执行<br/>
+这就是鸭子类型</p>
+</blockquote>
+
+<h2 id="toc_6">获取对象信息</h2>
+
+<h3 id="toc_7">type()</h3>
+
+<p>用<code>type()</code>来获取对象类型</p>
+
+<pre><code class="language-python">if type(&quot;name&quot;) == type(&quot;dd&quot;):
+    print(&quot;类型相同+&quot;,type(&quot;name&quot;)) # 类型相同+ &lt;class &#39;str&#39;&gt;
+</code></pre>
+
+<h3 id="toc_8">isinstance()</h3>
+
+<p>对于继承关系来说,<code>type()</code>并不好用,我们可以使用<code>isinstance()</code>函数来判断<code>class</code>类型<br/>
+<code>isinstance()</code>对于该类型以及父类继承链 均返回<code>True</code></p>
+
+<pre><code class="language-python">#用type() 判断的基本类型 也可以用isinstance判断
+isinstance(123, int) # True
+
+
+# 判断是否为某些类型的一种
+ isinstance([1, 2, 3], (list, tuple))  #True
+
+</code></pre>
+
+<h3 id="toc_9">dir() getattr() setattr() hasattr()</h3>
+
+<p>用<code>dir()</code>来获得对象的所有属性和方法</p>
+
+<p><code>hasattr()</code>判断该对象是否有此属性<br/>
+<code>setattr()</code>设置一个属性<br/>
+<code>getattr()</code>获取该属性的值 ，当试图获取不存在的属性，会抛出<code>AttributeError</code>错误</p>
+
+<h2 id="toc_10">实例属性和类属性</h2>
+
+<p>对于类属性,直接在<code>class</code>定义</p>
+
+<pre><code class="language-python">class My_Student_Class(object):
+    &quot;&quot;&quot;docstring for My_Student_Class&quot;&quot;&quot;
+    name=&quot;My_Student_Class&quot; #在类中直接定义的类属性
+
+stu1=My_Student_Class()
+# 因为对象没有name属性,因此继续查找class的name属性
+print(stu1.name) # My_Student_Class
+print(My_Student_Class.name) #My_Student_Class
+stu1.name=&quot;liyuyuan&quot;
+print(stu1.name,&quot;  &quot;,My_Student_Class.name) #  liyuyuan    My_Student_Class
+del stu1.name #删除实例的name属性
+print(stu1.name) # My_Student_Class
+</code></pre>
 
 
 		</div>
@@ -230,8 +260,10 @@ this.updateNum = this.updateNum.bind(this)
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -245,7 +277,7 @@ this.updateNum = this.updateNum.bind(this)
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -341,31 +373,31 @@ this.updateNum = this.updateNum.bind(this)
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

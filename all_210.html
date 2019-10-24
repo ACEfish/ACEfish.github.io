@@ -82,241 +82,238 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15003778819226.html">枚举</a></h1>
-			<p class="meta"><time datetime="2017-07-18T19:38:01+08:00" 
-			pubdate data-updated="true">2017/7/18</time></p>
+		  	<h1 class="entry-title"><a href="15541132912435.html">Mach-O文件</a></h1>
+			<p class="meta"><time datetime="2019-04-01T18:08:11+08:00" 
+			pubdate data-updated="true">2019/4/1</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<ol>
-<li><p>与C语言类似但不同，<code>Swift</code>中的枚举更加灵活，不必给每一个枚举成员提供一个值。如果给枚举成员提供一个值（称为“原始”值），则该值的类型可以是字符串，字符，或是一个整型值或浮点数。</p></li>
-<li><p>枚举成员可以指定任意类型的关联值存储到枚举成员中</p></li>
-<li><p>在 Swift 中，<strong>枚举类型</strong>是一等（first-class）类型。采用了很多在传统上只被类（class）所支持的特性，例如计算属性（computed properties），用于提供枚举值的附加信息，实例方法（instance methods），用于提供和枚举值相关联的功能。枚举也可以定义构造函数（initializers）来提供一个初始值；可以在原始实现的基础上扩展它们的功能；还可以遵循协议（protocols）来提供标准的功能。</p></li>
-</ol>
+		  	<p>记录编译后的可执行文件、对象代码、共享库、动态加载代码和内存转储的文件格式<br/>
+是二进制数据文件，里面有不同的包含元信息的数据块，比如字节顺序，cpu类型，块大小等。文件内容不可修改，因为在.app目录中有<code>_CodeSignature</code>目录，里面包含了程序代码的签名，这个签名的作用就是保证.app里的文件，包括资源文件，Mach-O文件都不能更改</p>
 
-<h2 id="toc_0">枚举语法</h2>
+<p>Mach-O文件包含三个区域</p>
 
-<p>用<code>enum</code>关键字来创建枚举</p>
+<ul>
+<li><code>Mach-O Header</code>：包含字节顺序，magic，cpu类型，加载指令的数量等</li>
+<li><code>Load Commands</code>：包含很多内容的表，包括区域的位置，符号表，动态符号表。每个加载指令包含一个元信息，比如指令类型，名称，在二进制中的位置</li>
+<li><code>data</code>: 文件中最大的部分，包含了代码，数据，比如符号表、动态符号表</li>
+</ul>
 
-<pre><code class="language-swift">enum CompassPoint {
-    case north
-    case south
-    case east
-    case west
-}
+<p><img src="media/15541132912435/15541134009742.jpg" alt="" style="width:415px;"/></p>
 
-//多个成员可以在同一行 用 , 隔开
-enum Planet {
-    case mercury, venus, earth, mars, jupiter, saturn, uranus, neptune
-}
-</code></pre>
+<p><img src="media/15541132912435/15541204613989.jpg" alt="" style="width:636px;"/></p>
 
-<p>我们使用<code>case</code>来定义一个新的枚举成员值</p>
+<h2 id="toc_0">Mach-O 文件的解析</h2>
 
-<blockquote>
-<p>注意:</p>
+<p>自己创建一个test.c文件</p>
 
-<p>与OC不同,Swift枚举成员不会再创建时被赋予一个默认的整型值。这些枚举成员本身就是完备的值，这些值的类型是已经明确定义好的<code>CompassPoint</code>类型</p>
-</blockquote>
-
-<p>在<code>Swift</code>中每个枚举定义了一个全新的类型，与Swift中的其他类型一样,名字以大写字母开头</p>
-
-<pre><code class="language-swift">var directionToHead = CompassPoint.west
-//此时directionToHead类型可以被推断出来,我们可以直接使用 . 语法将其设置为另一个枚举值
-directionToHead = .east
-</code></pre>
-
-<p>当 directionToHead 的类型已知时，再次为其赋值可以省略枚举类型名。</p>
-
-<h2 id="toc_1">用switch语句匹配枚举值</h2>
-
-<p>在判断一个枚举类型值时,<code>switch</code>必须穷举所有情况，如果不需要匹配每个成员可以使用<code>default</code>分支</p>
-
-<pre><code class="language-swift">let somePlanet = Planet.earth
-switch somePlanet {
-case .earth:
-    print(&quot;Mostly harmless&quot;)
-default:
-    print(&quot;Not a safe place for humans&quot;)
-}
-// 打印 &quot;Mostly harmless”
-</code></pre>
-
-<h2 id="toc_2">枚举成员的遍历</h2>
-
-<p>有时我们可能会需要得到一个包含所有枚举成员的集合。这时，可以这么实现:</p>
-
-<p>令枚举遵循<code>CaseInterable</code>协议。Swift会生成一个<code>allClass</code>属性，用于表示一个包含枚举所有成员的集合。</p>
-
-<pre><code class="language-swift">enum Beverage: CaseIterable {
-    case coffee, tea, juice
-}
-let numberOfChoices = Beverage.allCases.count
-print(&quot;\(numberOfChoices) beverages available&quot;)
-// 打印“3 beverages available”
-for beverage in Beverage.allCases {
-    print(beverage)
+<pre><code class="language-c">#include &lt;stdio.h&gt;
+int main(int argc, char *argv[])
+{
+    printf(&quot;hi there!\n&quot;);
+    return 0;
 }
 </code></pre>
 
-<h2 id="toc_3">关联值</h2>
-
-<p>可以使用<code>Swift</code>的枚举来<strong>存储任意类型的关联值</strong>,枚举成员的关联值类型可以不同</p>
-
-<pre><code class="language-swift">enum Barcode {
-    case upc(Int, Int, Int, Int)
-    case qrCode(String)
-}
+<pre><code class="language-c">//将test.c 编译汇编链接成一个可执行文件 未指定输出文件 即默认为a.out
+xcrun clang test.c 
 </code></pre>
 
-<p>这个枚举的意思是:定义一个枚举类型,其一个成员值是具有 <code>(Int，Int，Int，Int)</code>类型关联值的 upc，另一个是<code>String</code>类型关联值的qrcode。这个定义并不提供和任何Int或String类型的关联值，只是定义了，当Barcode常量和变量等于<code>barcode.upc</code>或<code>barcode.qrCode</code>时，可以存储的关联值类型</p>
+<hr/>
 
-<p>比如创建任意条形码类型</p>
+<p>使用size工具查看a.out中的section</p>
 
-<pre><code class="language-swift">//给其赋值关联的元组值
-var productBarcode = Barcode.upc(8, 85909, 51226, 3)
-//赋值新的枚举关联字符串
-productBarcode = .qrCode(&quot;ABCDEFGHIJKLMNOP&quot;)
-//productBarcode同一时间只能存储这两个值中的一个
+<pre><code class="language-c">xcrun size -x -l -m a.out
 </code></pre>
 
-<pre><code class="language-swift">switch productBarcode {
-case .upc(let numberSystem, let manufacturer, let product, let check):
-    print(&quot;UPC: \(numberSystem), \(manufacturer), \(product), \(check).&quot;)
-case .qrCode(let productCode):
-    print(&quot;QR code: \(productCode).&quot;)
-}
-// 打印 &quot;QR code: ABCDEFGHIJKLMNOP.&quot;
+<pre><code class="language-c">Segment __PAGEZERO: 0x100000000 (vmaddr 0x0 fileoff 0)
+Segment __TEXT: 0x1000 (vmaddr 0x100000000 fileoff 0)
+    Section __text: 0x34 (addr 0x100000f50 offset 3920)
+    Section __stubs: 0x6 (addr 0x100000f84 offset 3972)
+    Section __stub_helper: 0x1a (addr 0x100000f8c offset 3980)
+    Section __cstring: 0xa (addr 0x100000fa6 offset 4006)
+    Section __unwind_info: 0x48 (addr 0x100000fb0 offset 4016)
+    total 0xa6
+Segment __DATA: 0x1000 (vmaddr 0x100001000 fileoff 4096)
+    Section __nl_symbol_ptr: 0x10 (addr 0x100001000 offset 4096)
+    Section __la_symbol_ptr: 0x8 (addr 0x100001010 offset 4112)
+    total 0x18
+Segment __LINKEDIT: 0x1000 (vmaddr 0x100002000 fileoff 8192)
+total 0x100003000
 </code></pre>
 
-<p>我们可以提取出来关联值作为常量或变量</p>
+<p>有4个segment和多个section<br/>
+当运行时，虚拟内存会把segment映射到进程的地址空间，虚拟内存会避免将全部执行文件全部加载到内存</p>
 
-<p>如果一个枚举成员的所有关联值都被提取为常量，或者都被提取为变量，为了简洁，你可以只在成员名称前标注一个<code>let</code>或者<code>var</code>：</p>
+<p><code>__PAGEZERO sement</code>的大小是4GB，不是文件真实大小，是规定进程地址空间前4GB被映射为不可执行文件，不可读、不可写</p>
 
-<pre><code class="language-swift">switch productBarcode {
-case let .upc(numberSystem, manufacturer, product, check):
-    print(&quot;UPC: \(numberSystem), \(manufacturer), \(product), \(check).&quot;)
-case let .qrCode(productCode):
-    print(&quot;QR code: \(productCode).&quot;)
-}
-// 输出 &quot;QR code: ABCDEFGHIJKLMNOP.&quot;
+<p><code>__TEXT segment</code>包含被执行的代码以只读和可执行的方式映射</p>
+
+<ul>
+<li>__text section 包含编译后的机器码</li>
+<li><strong>stubs和</strong>stub_hepler是给动态链接器dyld使用，可以允许延迟链接</li>
+<li>__csstring 可执行文件中的字符串</li>
+<li>__const不可变的常量</li>
+</ul>
+
+<p><code>__DATA segment</code>以可读写和不可执行的方式映射,里面是会被更改的数据</p>
+
+<ul>
+<li>__nl_symbol_ptr 非延迟指针.可执行文件加载同时加载</li>
+<li>__la_symbol_ptr延迟符号指针.延迟用于可执行文件汇总调用未定义的函数，可执行文件里没有包含的函数会延迟加载</li>
+<li>__const 需要重定向的常量  例如 char * const c = “foo”; c指针指向可变的数据</li>
+<li>__bbs不用初始化的静态变量</li>
+<li>__common包含外部全局变量。例如在函数外定义 int i；</li>
+<li>__dyld是section占位符，用于动态链接器</li>
+</ul>
+
+<hr/>
+
+<p>查看<strong>section中的内容</strong></p>
+
+<pre><code class="language-text">xcrun otool -s __TEXT __text a.out
 </code></pre>
 
-<h2 id="toc_4">原始值</h2>
+<p>显示的为二进制数据，我们可以反汇编,查看汇编信息 -s __TEXT __text 有个缩写 -t</p>
 
-<p>作为关联值的替代选择，枚举成员可以被<strong>默认值（称为原始值）预填充</strong>，这些原始值的类型必须相同。</p>
-
-<pre><code class="language-swift">enum ASCIIControlCharacter: Character {
-    case tab = &quot;\t&quot;
-    case lineFeed = &quot;\n&quot;
-    case carriageReturn = &quot;\r&quot;
-}
+<pre><code class="language-text">xcrun otool -v -t a.out
 </code></pre>
 
-<p>枚举类型<code>ASCIIControlCharacter</code>的原始值类型被定义为<code>Character</code><br/>
-每个原始值在枚举声明中必须是唯一的。</p>
-
-<blockquote>
-<p>注意：</p>
-
-<p>原始值与关联值的不同，原始值是在定义枚举是预先填充的值，<br/>
-对于特定的枚举成员其原始值不变<br/>
-关联值是创建一个基于枚举成员的常量或变量时才设置的值,枚举成员的关联值可以变化</p>
-</blockquote>
-
-<h3 id="toc_5">原始值的隐式赋值</h3>
-
-<p>当原始值为整数或者字符串类型的枚举时,此时不需要显式的为每个枚举成员设置原始值，Swift会自动为每个枚举成员设置原始值;</p>
-
-<ol>
-<li><p>原始值为整形枚举</p>
-<pre><code class="language-swift">enum Planet: Int {
-    case mercury = 1, venus, earth, mars, jupiter, saturn, uranus, neptune<br/>
-}
-</code></pre>
-<p>当使用整数作为原始值时，隐式赋值的值依次递增1。如果第一个枚举成员没有设置原始值，其原始值将为0</p></li>
-<li><p>原始值为字符串类型</p>
-<pre><code class="language-swift">enum CompassPoint: String {
-    case north, south, east, west<br/>
-}<br/>
-//CompassPoint.south 拥有隐式原始值 south
-</code></pre>
-<p>使用字符串作为枚举类型的原始值时，每个枚举成员的隐式原始值为该枚举成员的名称</p></li>
-</ol>
-
-<p>使用枚举成员的<code>rawValue</code>属性可以访问枚举成员初始值</p>
-
-<pre><code class="language-swift">let earthsOrder = Planet.earth.rawValue
-    // earthsOrder 值为 3
-let sunsetDirection = CompassPoint.west.rawValue
-    // sunsetDirection 值为 &quot;west&quot;
+<pre><code class="language-c">a.out:
+(__TEXT,__text) section
+_main:
+0000000100000f50    pushq    %rbp
+0000000100000f51    movq    %rsp, %rbp
+0000000100000f54    subq    $0x20, %rsp
+0000000100000f58    leaq    0x47(%rip), %rax
+0000000100000f5f    movl    $0x0, -0x4(%rbp)
+0000000100000f66    movl    %edi, -0x8(%rbp)
+0000000100000f69    movq    %rsi, -0x10(%rbp)
+0000000100000f6d    movq    %rax, %rdi
+0000000100000f70    movb    $0x0, %al
+0000000100000f72    callq    0x100000f84
+0000000100000f77    xorl    %ecx, %ecx
+0000000100000f79    movl    %eax, -0x14(%rbp)
+0000000100000f7c    movl    %ecx, %eax
+0000000100000f7e    addq    $0x20, %rsp
+0000000100000f82    popq    %rbp
+0000000100000f83    retq
 </code></pre>
 
-<h3 id="toc_6">原始值初始化枚举实例</h3>
+<hr/>
 
-<p>定义枚举时使用原始值,会获得一个初始化方法,有一个<code>rawValue</code>类型为原始值类型的参数，返回一个枚举类型或为<code>nil</code></p>
+<p>使用otool查看可执行文件的头部,即header</p>
 
-<pre><code class="language-swift">let possiblePlanet = Planet(rawValue: 7)
-// possiblePlanet 类型为 Planet? 值为 Planet.uranus
-//因为不一定都能找到匹配的行星  返回的是可选类型
-let positionToFind = 11
-if let somePlanet = Planet(rawValue: positionToFind) {
-    switch somePlanet {
-    case .earth:
-        print(&quot;Mostly harmless&quot;)
-    default:
-        print(&quot;Not a safe place for humans&quot;)
-    }
-} else {
-    print(&quot;There isn&#39;t a planet at position \(positionToFind)&quot;)
-}
-//找不到11代表的行星
-
+<pre><code class="language-c">otool -v -h a.out
 </code></pre>
 
-<blockquote>
-<p>注意：</p>
+<p>得到 <strong>头部信息</strong></p>
 
-<p>原始值构造器是一个可失败构造器  因为并不是每个原始值都有与之对应的枚举成员</p>
-</blockquote>
-
-<h2 id="toc_7">递归枚举</h2>
-
-<p><strong>递归枚举</strong>也是是一种枚举类型，只是它<strong>有一个或多个成员使用该枚举类型实例作为关联值</strong><br/>
-在使用递归枚举时，编译器会加上一个间接层。<br/>
-可以在枚举成员前加<code>indirect</code>表示该成员可递归, 或者在枚举类型开头加上<code>indirect</code>关键字来表明它的所有成员都是可递归</p>
-
-<pre><code class="language-swift">enum ArithmeticExpression {
-    case number(Int)
-    indirect case addition(ArithmeticExpression, ArithmeticExpression)
-    indirect case multiplication(ArithmeticExpression, ArithmeticExpression)
-}
-
-indirect enum ArithmeticExpression {
-    case number(Int)
-    case addition(ArithmeticExpression, ArithmeticExpression)
-    case multiplication(ArithmeticExpression, ArithmeticExpression)
-}
-
-//递归枚举使用
-let five = ArithmeticExpression.number(5)
-let four = ArithmeticExpression.number(4)
-let sum = ArithmeticExpression.addition(five, four)
-let product = ArithmeticExpression.multiplication(sum, ArithmeticExpression.number(2))
-
-//递归函数中使用递归枚举
-func evaluate(_ expression: ArithmeticExpression) -&gt; Int {
-    switch expression {
-    case let .number(value):
-        return value
-    case let .addition(left, right):
-        return evaluate(left) + evaluate(right)
-    case let .multiplication(left, right):
-        return evaluate(left) * evaluate(right)
-    }
-}
-print(evaluate(product))//18
+<pre><code class="language-text">Mach header
+      magic cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+MH_MAGIC_64  X86_64        ALL LIB64     EXECUTE    15       1200   NOUNDEFS DYLDLINK TWOLEVEL PIE
 </code></pre>
+
+<p>mach_header 结构体</p>
+
+<pre><code class="language-text">struct mach_header {
+  uint32_t      magic; 
+  cpu_type_t    cputype; 
+  cpu_subtype_t cpusubtype;
+  uint32_t      filetype;
+  uint32_t      ncmds;
+  uint32_t      sizeofcmds;
+  uint32_t      flags;
+};
+</code></pre>
+
+<p>cputype 和 cpusubtype 规定可执行文件可以在哪些目标架构运行。ncmds 和 sizeofcmds 是加载命令<code>LoadCommand</code></p>
+
+<hr/>
+
+<p><strong>查看LoadCommands</strong>使用命令 <code>otool -v -l a.out</code></p>
+
+<pre><code class="language-c">...
+...
+Load command 1
+      cmd LC_SEGMENT_64
+  cmdsize 472
+  segname __TEXT
+   vmaddr 0x0000000100000000
+   vmsize 0x0000000000001000
+  fileoff 0
+ filesize 4096
+  maxprot rwx
+ initprot r-x
+   nsects 5
+    flags (none)
+Section
+  Section
+  sectname __text
+   segname __TEXT
+      addr 0x0000000100000f50 //代码的位置地址 和上面反汇编的地址是一样的
+      size 0x0000000000000034 
+    offset 3920 //在文件中的偏移量
+     align 2^4 (16)
+    reloff 0
+    nreloc 0
+      type S_REGULAR
+attributes PURE_INSTRUCTIONS SOME_INSTRUCTIONS
+ reserved1 0
+ reserved2 0
+Section
+  sectname __stubs
+   segname __TEXT
+      addr 0x0000000100000f88
+      size 0x0000000000000006
+    offset 3976
+     align 2^1 (2)
+    reloff 0
+    nreloc 0
+      type S_SYMBOL_STUBS
+attributes PURE_INSTRUCTIONS SOME_INSTRUCTIONS
+ reserved1 0 (index into indirect symbol table)
+ reserved2 6 (size of stubs)
+ ...
+ ...
+</code></pre>
+
+<p>加载命令的结构体</p>
+
+<pre><code class="language-text">struct segment_command {
+  uint32_t  cmd;
+  uint32_t  cmdsize;
+  char      segname[16];
+  uint32_t  vmaddr;
+  uint32_t  vmsize;
+  uint32_t  fileoff;
+  uint32_t  filesize;
+  vm_prot_t maxprot;
+  vm_prot_t initprot; //权限 例如r-x
+  uint32_t  nsects;
+  uint32_t  flags;
+};
+</code></pre>
+
+<hr/>
+
+<h2 id="toc_1">逆向Mach-O文件</h2>
+
+<p>需要先安装 tweak，安装越狱可以通过 cydia，不越狱直接打包成 ipa 安装包。越狱的话会安装一个 mobilesubstrate 的动态库，使用 theos 开发工具，非越狱的直接把这个库打包进 ipa 中或者直接修改汇编代码。</p>
+
+<p>Mobilesubstrate 提供了三个模块来方便开发。</p>
+
+<p>MobileHooker：利用 method swizzling 技术定义一些宏和函数来替换系统或者目标函数。<br/>
+MobileLoader：在程序启动时将我们写的破解程序用的第三方库注入进去。怎么注入的呢，还记得先前说的 clang attribute 里的一个 attribute((constructor)) 么，它会在 main 执行之前执行，所以把我们的 hook 放在这里就可以了。<br/>
+Safe mode：类似安全模式，会禁用的改动。<br/>
+先前提到 Mach-O 的结构有 Header，Load commands 和 Data，Mobileloader 会通过修改二进制的 loadCommands 来先把自己注入然后再把我们写的第三方库注入进去，这样破解程序就会放在 Load commands 段里面了。</p>
+
+<p>当然如果是我们自己的程序我们是知道要替换哪些方法的，既然是逆向肯定是别人的程序了，这个时候就需要去先分析下我们想替换方法是哪个，网络相关的分析可以用常用那些抓包工具，比如 Charles，WireShark 等，静态的可以通过砸壳，反汇编，classdump 头文件来分析 app 的架构，对应的常用工具dumpdecrypted，hopper disassembler 和 class_dump。运行时的分析可用工具有运行时控制台cycript，远程断点调试lldb+debugserver，logify。</p>
+
+<ul>
+<li>入门文章可以看看这篇: <a href="https://github.com/zhengmin1989/MyArticles/tree/master/iOS%E5%86%B0%E4%B8%8E%E7%81%AB%E4%B9%8B%E6%AD%8C"> MyArticles/iOS冰与火之歌 at master · zhengmin1989/MyArticles · GitHub</a></li>
+<li><a href="http://blog.imjun.net/posts/convert-iOS-app-to-dynamic-library/">黑科技：把第三方 iOS 应用转成动态库 - Jun’s Blog</a>  <a href="http://blog.imjun.net/posts/restore-symbol-of-iOS-app/"> iOS符号表恢复&amp;逆向支付宝 - Jun’s Blog</a></li>
+</ul>
 
 
 		</div>
@@ -339,8 +336,10 @@ print(evaluate(product))//18
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -354,7 +353,7 @@ print(evaluate(product))//18
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -450,31 +449,31 @@ print(evaluate(product))//18
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

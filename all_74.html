@@ -82,156 +82,58 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15475281191214.html">Class</a></h1>
-			<p class="meta"><time datetime="2019-01-15T12:55:19+08:00" 
-			pubdate data-updated="true">2019/1/15</time></p>
+		  	<h1 class="entry-title"><a href="15502241816242.html">函数子组件</a></h1>
+			<p class="meta"><time datetime="2019-02-15T17:49:41+08:00" 
+			pubdate data-updated="true">2019/2/15</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>class 并不是ES6的新的语法 而只是原有语法的语法糖，是一种特殊的函数（class的类型就是函数）</p>
+		  	<p>组件必须有子组件 而且子组件必须为函数，可以在这个组件的生命周期中通过<code>this.props.children</code>访问到该子组件函数，在组件中通过执行该子组件函数来渲染子组件内容，我们只需要负责使用该组件并且完成子组件函数，在函数中return我们需要的内容</p>
 
-<p>class类只能使用<code>new</code>关键字来调用和初始化 </p>
+<pre><code class="language-javascript">class CountDown extends React.Component {
 
-<pre><code class="language-javascript">//ES6前
-function User(name, email) {
-    this.name = name
-    this.email = email
-    return this
-}
-User.prototype.info = function() {
-    console.log(`hi, i am ${this.name}`)
-}
-const lyy = new User(&quot;lyy&quot;, &quot;sina.com&quot;)
-</code></pre>
+  constructor() {
+    super(...arguments);
+    this.state = {count: this.props.startCount};
+  }
 
-<p>新的class写法</p>
+  shouldComponentUpdate(nextProps, nextState) {
+    return nextState.count !== this.state.count;
+  }
 
-<pre><code class="language-javascript">class User {
-    constructor(name, email) {
-        this.name = name
-        this.email = email
+  componentDidMount() {
+    this.intervalHandle = setInterval(() =&gt; {
+      const newCount = this.state.count - 1;
+      if (newCount &gt;= 0) {
+        this.setState({count: newCount});
+      } else {
+        window.clearInterval(this.intervalHandle);
+        this.intervalHandle = null;
+      }
+    }, 1000);
+  }
+
+  componentWillUnmount() {
+    if (this.intervalHandle) {
+      window.clearInterval(this.intervalHandle);
+      this.intervalHandle = null;
     }
-    info() {
-        console.log(`hi, i am ${this.name}`)
-    }
-}
-</code></pre>
+  }
 
-<h2 id="toc_0">特性</h2>
-
-<h3 id="toc_1">静态方法</h3>
-
-<pre><code class="language-javascript">class User {
-    constructor(name, email) {
-        this.name = name
-        this.email = email
-    }
-    info() {
-        console.log(`hi, i am ${this.name}`)
-    }
-    static description() {
-        console.log(&quot;I am user&quot;)
-    }
-}
-User.description() //I am user
-</code></pre>
-
-<h3 id="toc_2">Set和Get方法</h3>
-
-<pre><code class="language-javascript">class User {
-    constructor(name, email) {
-        this.name = name
-        this.email = email
-    }
-    set github(value) {
-        this.githubName = value
-    }
-
-    get github() {
-        return this.githubName
-    }
-}
-</code></pre>
-
-<h3 id="toc_3">计算属性</h3>
-
-<p>类似对象章节的写法 使用<code>[ ]</code>来写计算属性</p>
-
-<pre><code class="language-javascript">let methodName = &quot;info&quot;
-class User {
-    constructor(name, email) {
-        this.name = name
-        this.email = email
-    }
-    //计算属性 此时方法名为 info() {}
-    [methodName]() {
-        console.log(`hi, i am ${this.name}`)
-    }
-}
-</code></pre>
-
-<h2 id="toc_4">类的继承</h2>
-
-<p>ES6中通过<code>extends</code>关键字来实现继承</p>
-
-<pre><code class="language-javascript">class Animal {
-    constructor(name) {
-        this.name = name
-        this.belly = []
-    }
-
-    eatFood(food) {
-        this.belly.push(food)
-    }
-
+  render() {
+    //传入需要的参数 并执行子组件函数
+    return this.props.children(this.state.count);
+  }
 }
 
-//extends 关键字实现继承
-class Dog extends Animal {
-    constructor(name, age) {
-        //使用super关键字来继承父类的属性和方法
-        super(name)
-        this.age = age
-    }
 
-    bark() {
-        console.log(&quot;wang wang wang&quot;)
-    }
+使用该组件
+
+&lt;CountDown startCount={10}&gt;
+{
+    (count) =&gt; &lt;div&gt;{count &gt; 0 ? count : &quot;新年快乐&quot;} &lt;/div&gt;
 }
-
-const huanhuan = new Dog(&quot;wtt&quot;, 23)
-</code></pre>
-
-<h2 id="toc_5">扩展内建对象</h2>
-
-<p>我们通过es6的类可以扩展 内建对象在原有功能的基础上实现自己需要的功能</p>
-
-<h2 id="toc_6">补充</h2>
-
-<h3 id="toc_7">ES5中的类和静态方法</h3>
-
-<pre><code class="language-javascript">function Person(name,age) {
-//构造函数里面的方法和属性
-      this.name=name;
-      this.age=age;
-      this.run=function(){
-           console.log(`${this.name}---${this.age}`)
-       }
-}
-//原型链上面的属性和方法可以被多个实例共享
-Person.prototype.sex=&#39;男&#39;;
-Person.prototype.work=function(){
-      console.log(`${this.name}---${this.age}---${this.sex}`);
- }
-//静态方法
-Person.setName=function(){
-      console.log(&#39;静态方法&#39;);
-}
-var p=new Person(&#39;zhangsan&#39;,&#39;20&#39;);   /*实例方法是通过实例化来调用的，静态是通过类名直接调用*/
-p.run();
-p.work();
-
-Person.setName();  /*执行静态方法*/
+&lt;/CountDown&gt;
 </code></pre>
 
 
@@ -255,8 +157,10 @@ Person.setName();  /*执行静态方法*/
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -270,7 +174,7 @@ Person.setName();  /*执行静态方法*/
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -366,31 +270,31 @@ Person.setName();  /*执行静态方法*/
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

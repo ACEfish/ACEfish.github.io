@@ -82,61 +82,216 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15555568072278.html">后台任务超时崩溃</a></h1>
-			<p class="meta"><time datetime="2019-04-18T11:06:47+08:00" 
-			pubdate data-updated="true">2019/4/18</time></p>
+		  	<h1 class="entry-title"><a href="15668021082247.html">Blocks的实现</a></h1>
+			<p class="meta"><time datetime="2019-08-26T14:48:28+08:00" 
+			pubdate data-updated="true">2019/8/26</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">信号不可捕获的崩溃</h2>
+		  	<h2 id="toc_0">Block的实质</h2>
+
+<p>通过<code>-rewrite-objc</code>将Block语法转为C++源代码</p>
+
+<pre><code class="language-objectivec">//源代码
+void(^blk)(void) = ^{
+    printf(&quot;Block\n&quot;)
+}
+</code></pre>
 
 <ol>
-<li><p>后台任务超时</p></li>
-<li><p>内存打爆</p></li>
-<li><p>主线程卡顿超阈值<br/>
-如果主线程超过系统规定的时间无响应，就会被<code>Watchdog</code>杀掉,这是崩溃对应的异常编码为<code>0x8badf00d</code></p></li>
+<li><p>block是&quot;带有自动变量值的匿名函数&quot;，</p>
+<pre><code class="language-objectivec">static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    printf(&quot;Block\n&quot;)<br/>
+}
+</code></pre>
+<p>可以看到其执行内容会按照普通的C函数处理，并且Block会根据所属的函数名(main函数)和该block出现的顺序值(为0)进行命名。并且其函数的执行参数即为<code>__cself</code>也就是指向该block的机构体的指针</p></li>
+<li><p>Block其实是<code>Object-C</code>对象</p>
+<p>block转换为结构体后其结构如下:</p>
+<pre><code class="language-objectivec">struct __main_block_impl_0 {
+    struct __block_impl impl;<br/>
+    struct __main_block_desc_0 *Desc;<br/>
+    //结构体初始化函数<br/>
+    __main_block_impl_0(void *fp, strct __main_block_desc_0, int flags=0) {<br/>
+        impl.isa = &amp; NSConcreatStackBlock;<br/>
+        impl.Flags = flags;<br/>
+        impl.FuncPtr = fp;<br/>
+        Desc = desc;<br/>
+    }<br/>
+}<br/>
+struct __block_impl {<br/>
+    void *isa;<br/>
+    int Flags;<br/>
+    int Reserved;<br/>
+    void *FunctionPtr;<br/>
+}<br/>
+struct __main_block_desc_0 {<br/>
+    unsigned long reserved; //今后版本升级所需的区域<br/>
+    unsigned long Block_size; //block的大小<br/>
+}
+</code></pre>
+<p>因此将block结构体展开的话，其初始化结构如下:</p>
+<pre><code class="language-objectivec">static struct __main_block_desc_0 __main_block_desc_0_DATA = {
+    0,<br/>
+    sizeof(struct __main_block_impl_0) //block大小<br/>
+}<br/>
+//初始化<br/>
+isa = &amp;_NSConcreatStackBlock;<br/>
+Flags=0;<br/>
+Reserved=0;<br/>
+FuncPtr=__main_block_func_0;<br/>
+Desc= &amp;__main_block_desc_0_DATA;
+</code></pre>
+<p>当执行该block时,即执行block中的FuncPtr函数，然后将block结构体指针作为参数传入：</p>
+<pre><code class="language-objectivec">((void(*)(struct __block_impl *))((struct __block_impl *)blk)-&gt;FuncPtr)((struct _block_impl*)blk)
+</code></pre>
+<blockquote>
+<p>注意</p>
+<p>对于<code>isa=&amp;_NSConcreatStackBlock;</code>因为block也是一个对象，因此与其它OC对象类型，其isa指针指向其类结构体，即block的类信息就放在<code>_NSConcreatStackBlock</code>中</p>
+</blockquote></li>
 </ol>
 
-<h2 id="toc_1">后台崩溃</h2>
+<h2 id="toc_1">截获自动变量</h2>
 
-<p>当App退到后台后，即使代码逻辑没有问题，也容易导致崩溃。这是以内系统强杀某些进程导致，而这些情况由于系统原因没有办法捕获到</p>
+<p>所谓的&quot;截获自动变量值&quot;其实是在执行block时，Block语法表达式所使用的自动变量被保存到Block的结构体实例中</p>
 
-<p>我们通常在应用进入后台时，通过调用<code>beginBackgroundTaskWithExpirationHandler</code>方法来延长应用存活</p>
+<p>截获了自动变量的结构体</p>
 
-<pre><code class="language-objectivec">- (void)applicationDidEnterBackground:(UIApplication *)application {
-    //正常app 退到后台只有几秒时间执行代码，接下来就会被系统挂起
-    
-    //通过backgroud task方法延长后台时间 这个方法必须与endBackgroundTask一一对象
-    self.backgroundTaskIdentifier = [application beginBackgroundTaskWithExpirationHandler:^{
-        //如果在最后时间到了之前仍然没有调用endBackgroundTask方法 就会执行此回调
-        //通常时间为3分钟，如果时间到期之前调用endBackgroundTask方法 就会强制杀掉进程，就会造成崩溃
-        
-        /*
-         * 因此我们可以加一个定时器 在3分钟将要到达时 判断是否后台应用程序还在执行
-         * 如果还在执行的话，就可以认为快要崩溃 进行记录 上报
-         */
-
-        self.backGroundTimer = [NSTimer scheduledTimerWithTimeInterval:2*60 target:self selector:@selector(threeMinuteTimeOut) userInfo:nil repeats:NO];
-        
-        
-    }];
-    
-    NSLog(@&quot;开始执行后台任务&quot;);
-    //此处为执行任务代码 通常用来保存应用程序关键数据数据
-    //当任务执行完成时 调用endBackgroundTask方法 调用后就会将app挂起 
-//    [application endBackgroundTask:self.backgroundTaskIdentifier];
-
-
+<pre><code class="language-objectivec">struct __main_block_impl_0 {
+    struct __block_impl impl;
+    struct __main_block_desc_0 *Desc;
+    const char *fmt; //自动变量值
+    int val; //自动变量值
+        //结构体初始化函数
+     __main_block_impl_0(void *fp, strct __main_block_desc_0, const char*_fmt, int _val, int flags=0) : fmt(_fmt), val(_val) {
+        impl.isa = &amp; NSConcreatStackBlock;
+        impl.Flags = flags;
+        impl.FuncPtr = fp;
+        Desc = desc;
+    }
 }
 </code></pre>
 
 <blockquote>
-<p>可以在应用程序的任何时候 多次调用<code>beginBackgroundTaskWithExpirationHandler</code>方法，此时建议使用<code>beginBackgroundTaskWithName：expirationHandler：</code>方法，来给每个单独指定名称，方便调试。此时，每个任务都需要用返回的标识符，单独结束</p>
+<p>注意</p>
 
-<p>假如不支持后台任务 该方法返回<code>UIBackgroundTaskInvalid</code></p>
-
-<p>挂起状态是指:应用处在后台，并且已停止执行代码。当处在此状态时，应用依然驻留内存但不执行任何程序代码。当系统发生低内存告警时，系统将会将处 于Suspended状态的应用清除出内存以为正在前台运行的应用提供足够的内存。</p>
+<p>block只会捕获使用到的变量，表达式中没有使用到的变量不会被自动追加</p>
 </blockquote>
+
+<h2 id="toc_2">__block说明符</h2>
+
+<p>看到上面👆捕获变量的源码，可以看出来，block中捕获的自动变量仅捕获自动变量的值。因此在block内部重写该自动变量也不会改变原来捕获的自动变量值，因此，当我们给捕获的自动变量赋值时 就会产生编译错误</p>
+
+<h3 id="toc_3">静态变量、静态全局变量、全局变量</h3>
+
+<p>我们可以在block中直接访问或修改静态全局变量/全局变量 这是没有任何改变的，因此可以在block转换后的函数中直接使用，而无需在结构体中保留、变量</p>
+
+<p>但是对于静态变量，因为block转换后的函数已经在静态变量所处的函数之外，出了访问的作用域</p>
+
+<pre><code class="language-objectivec">//结构体中
+__main_block_impl_0 {
+    ...
+    int * static_val; //block内部保留 静态变量的指针地址
+}
+
+//执行函数
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    (*static_val) *= 3 //
+}
+</code></pre>
+
+<p>因此 block将静态变量的指针传递给<code>__main_block_impl_0</code>结构体的构造函数，并保留在结构体中，这是超出作用范围最简单的访问方法了</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>对于自动变量为什么没有采用类似静态变量的访问方式呢??<br/>
+Block可以截获超过作用域被截获的对象的自动变量，变量作用域结束的，原来的自动变量被废弃，因此block中超过变量作用域的对象就如同静态变量一样，无法通过指针进行访问了</p>
+</blockquote>
+
+<h3 id="toc_4">__block修饰符</h3>
+
+<p>在OC中存在以下几种存储域类说明符:</p>
+
+<ul>
+<li>typedef</li>
+<li>extern</li>
+<li>static</li>
+<li>auto</li>
+<li>register</li>
+</ul>
+
+<p><code>__block</code>就类似static、auto、register说明符，用于指定将变量设置到哪个存储区域中。(auto表示作为自动变量存储到栈中、static作为静态变量存储到数据区)</p>
+
+<pre><code class="language-objectivec">//源代码
+__block int val = 10
+void(^blk)(void) = ^{val = 1}
+</code></pre>
+
+<p>block结构体持有了指向__block变量结构体指针</p>
+
+<pre><code class="language-objectivec">struct __main_block_impl_0 {
+    struct __block_impl impl;
+    struct __main_block_desc_0 *Desc;
+    __Block_byref_val_0 *val;
+        //结构体初始化函数
+     __main_block_impl_0(void *fp, strct __main_block_desc_0, __Block_byref_val_0 *_val, int flags=0) : val(_val-&gt;_forwarding) {
+        impl.isa = &amp; NSConcreatStackBlock;
+        impl.Flags = flags;
+        impl.FuncPtr = fp;
+        Desc = desc;
+    }
+}
+</code></pre>
+
+<p>__block变量<br/>
+__block变量如同block一般变为<code>__Block_byref_val_0</code>结构体实例</p>
+
+<pre><code class="language-objectivec">struct __Block_byref_val_0 {
+    void *__isa;
+    __Block_byref_val_0 *__forwarding;
+    int __flags;
+    int __size;
+    int val; //相当于原自动变量
+}
+//其初始化
+__Block_byref_val_0 val = {
+    0,
+    &amp;val,
+    0,
+    sizeof(__Block_byref_val_0),
+    10
+}
+</code></pre>
+
+<p>结构体持有了相当持有原自动变量的成员变量,  <code>__Block_byref_val_0</code>结构体实例的成员变量<code>__forwarding</code>持有指向该实例自身的指针。通过 <code>__forwarding</code>访问成员变量val。(成员变量val相当于原自动变量)</p>
+
+<p>函数</p>
+
+<pre><code class="language-objectivec">^{val=1}
+    
+//源代码转换为
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    __Block_byref_val_0 *val = _cself-&gt;val;
+    
+    (val-&gt;__forwarding-&gt;val) = 1
+}
+</code></pre>
+
+<blockquote>
+<p>注意：</p>
+
+<ol>
+<li>为什么将__block变量写为单独的结构体而不写在block结构体中? 因是为了可以在多个block中使用相同的__block变量</li>
+<li>为了什么使用了__block变量 就可以改写值？  因为当变量添加了__block前缀，此时声明的就直接是一个结构体 我们之后访问、修改不论是在block内外 都是用的这个结构体</li>
+</ol>
+</blockquote>
+
+<p>本章忽略内容：</p>
+
+<ul>
+<li>Block超出变量作用域存在原因</li>
+<li><strong>block变量结构体成员</strong>forwading存在理由</li>
+</ul>
 
 
 		</div>
@@ -159,8 +314,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -174,7 +331,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -270,31 +427,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

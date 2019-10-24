@@ -82,40 +82,141 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15444371982559.html">Ajax</a></h1>
-			<p class="meta"><time datetime="2018-12-10T18:19:58+08:00" 
-			pubdate data-updated="true">2018/12/10</time></p>
+		  	<h1 class="entry-title"><a href="15470891496440.html">遍历</a></h1>
+			<p class="meta"><time datetime="2019-01-10T10:59:09+08:00" 
+			pubdate data-updated="true">2019/1/10</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<pre><code class="language-javascript">    &lt;script&gt;
-            var oAjax = new XMLHttpRequest()
-            //1. 请求方式
-            //2. 目标资源位置
-            //3. 是否异步
-            oAjax.open(&quot;GET&quot;, &quot;https://www.baidu.com/&quot;, true)
-            oAjax.send()
-            //
-            oAjax.onreadystatechange = function () {
-                /**
-                * readyState
-                *   0：未初始化 还没调用open()方法
-                *   1：载入 已调用send()方法 正在发送请求
-                *   2：载入完成  已经调用send()方法 已收到全部相应内容
-                *   3：解析 正在解析响应内容
-                *   4：完成 响应内容解析完成 可以在客户端使用
-                */
-                if (oAjax.readyState == 4) {
-                    if (oAjax.status == 200) {
-                        alert(&quot;success&quot;)
-                        alert(oAjax.responseText)
-                    } else {
-                        alert(&quot;fail&quot;)
-                    }
-                }
-            }
-        &lt;/script&gt;
+		  	<p>ES有新的遍历方式 <code>for of</code></p>
+
+<pre><code class="language-javascript">const fruits = [&quot;apple&quot;, &quot;banana&quot;, &quot;orange&quot;, &quot;mango&quot;]
+fruits.describe = &quot;this is all describe&quot;
+
+Array.prototype.firstName = function() {
+    return this[0]
+}
 </code></pre>
+
+<h2 id="toc_0">常用遍历方式</h2>
+
+<ol>
+<li><p>for循环<br/>
+写法比较繁琐</p>
+<pre><code class="language-javascript">for (let index = 0; index &lt; fruits.length; index++) {
+    if(fruits[index] == &quot;banana&quot;) {<br/>
+        continue;<br/>
+    }<br/>
+    console.log(&quot;for循环&quot; + fruits[index])                <br/>
+}<br/>
+/*<br/>
+for循环apple<br/>
+for循环banana<br/>
+for循环orange<br/>
+for循环mango<br/>
+*/
+</code></pre></li>
+<li><p>for each</p>
+<p>可以使用箭头函数 写法便捷 但是不能使用continue 和 break</p>
+<pre><code class="language-javascript">fruits.forEach(fruit =&gt; {
+// if(fruit == &quot;banana&quot;) {<br/>
+//     continue;<br/>
+// }<br/>
+console.log(&quot;for each &quot;+fruit)<br/>
+});<br/>
+/*<br/>
+for each apple<br/>
+for each banana<br/>
+for each orange<br/>
+for each mango<br/>
+*/
+</code></pre></li>
+<li><p>for in</p>
+<p>forin 遍历获取的是key 需要额外取值value<br/>
+forin不仅仅可以遍历可迭代对象<br/>
+<strong>forin遍历可以获取对象的原型方法和对象方法、属性</strong></p>
+<pre><code class="language-javascript">for (const key in fruits) {
+    if(fruits[key] == &quot;banana&quot;) {<br/>
+        continue;<br/>
+    }<br/>
+    console.log(&quot;for in key &quot;+ key+ &quot; value &quot; + fruits[key])<br/>
+}<br/>
+/*<br/>
+for in key 0 value apple<br/>
+for in key 2 value orange<br/>
+for in key 3 value mango<br/>
+for in key describe value this is all describe<br/>
+for in key firstName value function() {<br/>
+    return this[0]<br/>
+}<br/>
+*/
+</code></pre>
+<p>forin遍历不可迭代对象</p>
+<pre><code class="language-javascript">const fankai = {
+    name: &quot;fankai&quot;,<br/>
+    age: 26<br/>
+}<br/>
+for (const value in fankai) {<br/>
+    console.log(value)<br/>
+}
+</code></pre></li>
+<li><p>for of</p>
+<p>遍历可迭代对象</p>
+<pre><code class="language-objectivec">for (const fruit of fruits) {
+    if(fruit == &quot;banana&quot;) {<br/>
+        continue;<br/>
+    }<br/>
+    console.log(&quot;for of &quot;+ fruit)<br/>
+}<br/>
+/**<br/>
+* for of apple<br/>
+* for of orange<br/>
+* for of mango<br/>
+*/
+</code></pre></li>
+</ol>
+
+<h3 id="toc_1">for of</h3>
+
+<p>只能遍历可迭代对象<br/>
+可迭代对象就是部署了<code>iterable</code>接口 或者定义了<code>Symbol.iterator</code>方法的数据结构。<br/>
+<code>js</code>内置了一些带遍历器接口的数据结构,例如Array、map</p>
+
+<p>iterable接口 内置了<code>next</code>方法,调用该方法返回对象,该对象包含值<code>value</code>，以及是否遍历结束的标识<code>done</code>，value中包含了当前的索引以及索引对应的值</p>
+
+<p><img src="media/15470891496440/15471018365126.jpg" alt="" style="width:544px;"/></p>
+
+<p><code>entries()</code>可以获取包含数组的键值对</p>
+
+<pre><code class="language-javascript">//entries() 获取数组的可迭代对象 该对象包含数组的键值对(key/value)
+for (let [index, fruit] of fruits.entries()) {
+    console.log(index, fruit)
+}
+</code></pre>
+
+<h4 id="toc_2">for of 常用实例</h4>
+
+<p>for of循环遍历除了可以遍历数组外 还经常用于其他地方:</p>
+
+<ol>
+<li><p>遍历方法参数<code>arguments</code></p>
+<pre><code class="language-javascript">function sum() {
+    for (const variable of arguments) {<br/>
+        console.log(variable)<br/>
+    }<br/>
+}
+</code></pre></li>
+<li><p>遍历字符串</p>
+<pre><code class="language-javascript">for (const char of &quot;object&quot;) {
+    console.log(char)<br/>
+}
+</code></pre></li>
+<li><p>遍历DOM元素</p>
+<pre><code class="language-javascript">const lis = document.querySelectorAll(&quot;li&quot;)
+for (const li of lis) {<br/>
+}
+</code></pre></li>
+</ol>
 
 
 		</div>
@@ -138,8 +239,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -153,7 +256,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -249,31 +352,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

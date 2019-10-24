@@ -82,23 +82,272 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15077234771115.html">ARKit</a></h1>
-			<p class="meta"><time datetime="2017-10-11T20:04:37+08:00" 
-			pubdate data-updated="true">2017/10/11</time></p>
+		  	<h1 class="entry-title"><a href="15450317285396.html">ReactiveObjC</a></h1>
+			<p class="meta"><time datetime="2018-12-17T15:28:48+08:00" 
+			pubdate data-updated="true">2018/12/17</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>AR即虚拟现实增强技术</p>
+		  	<blockquote>
+<p>本文内容来自github <a href="https://github.com/ReactiveCocoa/ReactiveObjC">ReactiveObjC的官方文档</a></p>
+</blockquote>
 
-<p><code>ARKit</code>是基于苹果的游戏引擎3D(SceneKit)和2D的(SpriktKit)</p>
+<h2 id="toc_0">介绍</h2>
 
-<p>注意:需要A9处理器的的iOS11以上的系统</p>
+<p>ReactiveObjC 是一个函数相应式编程的OC框架，为我们提供了组合、转换流的api</p>
 
-<p>增强现实的目标是往真实世界中的特定点插入虚拟内容，并且在真实世界中移动时还能对此虚拟内容保持追踪。ARKit 的基本流程包括从 iOS 设备摄像头中读取视频帧，对每一帧的图片进行处理并获得特征点。特征有很多很多，但我们需要从图片中找出能在多个帧中都被追踪到的特征。特征可能是物体的某个角，或是有纹理的织物的某条边等等。有很多种方式可以生成这些特征，可以在网上了解更多（例如搜索 SIFT）但目前我们只需知道，每张图片里会产生多个唯一标识的特征就足够了。</p>
+<p>RAC没有使用可修改或可替换的变量，而是提供了信号(<code>RACSignal</code>)来捕获当前或者未来的信号，我们通过串联、绑定、响应信号，就可以无需持续的观察和更新值来检测变化</p>
 
-<p>获得某张图片的特征后，就可以从多个帧中追踪这些特征，随着用户在世界中移动，就可以利用相应的特征点来估算 3D 世界信息，例如当前摄像头的位置和特征的位置。用户移动地越多，就会获得越多的特征，并优化这些估算的 3D 世界信息。</p>
+<p>例如: 为了检测一个textField的text的最新内容,我们不需要每秒钟就去获取其值的变化,使用RAC更像KVO可以实时获取到其内容变化,与KVO不同的时 我们使用<code>block</code>而不是使用<code>-observeValueForKeyPath:ofObject:change:context:</code></p>
 
-<p>至于平面检测，就是在获得一定数量的 3D 特征点后，尝试在这些点中安装一些平面，然后根据尺度、方向和位置找出最匹配的那个。ARKit 会不断分析 3D 特征点并在代码中报告找到的平面。</p>
+<p>信号也可以帮助我们进行异步操作,就像对未来结果的许诺,极大的帮助我们简化网络请求等异步操作代码</p>
+
+<p><strong>RAC主要提供了一个统一的方法 来处理异步行为，包括delegate、kvo、target-action、notification、block</strong></p>
+
+<ol>
+<li><p>监测属性值变化</p>
+<pre><code class="language-objectivec">类似kvo
+//检测self.username属性变化<br/>
+//RACObserve(TARGET, KEYPATH)是一个创建检测值变化的信号<br/>
+//subscribeNext 当检测的信号变化时 就会执行这个信号<br/>
+[RACObserve(self, username) subscribeNext:^(NSString *newName) {<br/>
+       NSLog(@&quot;%@&quot;, newName);<br/>
+}];
+</code></pre></li>
+<li><p>监测过滤出来的部分信号值<br/>
+与kvo不同的是，我们可以串联、操作这些信号</p>
+<pre><code class="language-objectivec">//过滤 信号中以&quot;j&quot;开头的信号值的变化
+[[RACObserve(self, username)<br/>
+filter:^(NSString *newName) {<br/>
+    return [newName hasPrefix:@&quot;j&quot;];<br/>
+}]<br/>
+subscribeNext:^(NSString *newName) {<br/>
+    NSLog(@&quot;%@&quot;, newName);<br/>
+}];
+</code></pre></li>
+<li><p>通过RAC我们可以很方便的通过信号监测变化,而不需要通过观察和设置其它属性</p>
+<pre><code class="language-objectivec">//combineLatest: reduce:方法 合并一组信号,当其中任意一个信号的最新值变化时,会执行该block 并返回新的值
+RAC(self, createEnabled) = [RACSignal<br/>
+combineLatest:@[ RACObserve(self, password), RACObserve(self, passwordConfirmation) ]<br/>
+reduce:^(NSString *password, NSString *passwordConfirm) {<br/>
+    return @([passwordConfirm isEqualToString:password]);<br/>
+}];
+</code></pre></li>
+<li><p>信号不止类似kvo可以监测属性，还可以监测其它任何随时间变化的值或者流</p>
+<pre><code class="language-objectivec">//RACCommand 创建一个与UI有关的信号 此处是按钮点击信号,当按钮被点击时执行该block
+//rac_command是按钮类别的属性，当按钮被点击自动发送<br/>
+self.button.rac_command = [[RACCommand alloc] initWithSignalBlock:^(id _) {<br/>
+NSLog(@&quot;button was pressed!&quot;);<br/>
+return [RACSignal empty];<br/>
+}];
+</code></pre></li>
+<li><p>RAC表示网络操作</p>
+<pre><code class="language-objectivec">//创建一个信号 当self.loginCommand执行其block
+self.loginCommand = [[RACCommand alloc] initWithSignalBlock:^(id sender) {<br/>
+    return [client logIn];<br/>
+}];<br/>
+//executionSignals 返回上面RACComond中block返回的信号的信号,即当上面block返回时 会触发该信号 并可以监测block返回的信号的变化<br/>
+[self.loginCommand.executionSignals subscribeNext:^(RACSignal *loginSignal) {<br/>
+    // Log a message whenever we log in successfully.<br/>
+    [loginSignal subscribeCompleted:^{<br/>
+        NSLog(@&quot;Logged in successfully!&quot;);<br/>
+    }];<br/>
+}];<br/>
+//当按钮点击时 执行该self.loginCommand<br/>
+self.loginButton.rac_command = self.loginCommand;
+</code></pre></li>
+<li><p>表示异步操作的信号间可以链接来表示更加复杂的行为(在一组操作完成后开始另外一个操作)</p>
+<pre><code class="language-objectivec">//merge: 合并两个信号 返回一个新的信号
+//subscribeCompleted: 订阅返回完成的信号<br/>
+[[RACSignal merge:@[ [client fetchUserRepos], [client fetchOrgRepos] ]]<br/>
+subscribeCompleted:^{<br/>
+    NSLog(@&quot;They&#39;re both done!&quot;);<br/>
+}];
+</code></pre></li>
+<li><p>信号可以串联起来 避免使用block嵌套来表示依赖</p>
+<pre><code class="language-objectivec">//
+[[[[client<br/>
+    logInUser]<br/>
+    flattenMap:^(User *user) {<br/>
+        // Return a signal that loads cached messages for the user.<br/>
+        return [client loadCachedMessagesForUser:user];<br/>
+    }]<br/>
+    flattenMap:^(NSArray *messages) {<br/>
+        // Return a signal that fetches any remaining messages.<br/>
+        return [client fetchMessagesAfterMessage:messages.lastObject];<br/>
+    }]<br/>
+    subscribeNext:^(NSArray *newMessages) {<br/>
+        NSLog(@&quot;New messages: %@&quot;, newMessages);<br/>
+    } completed:^{<br/>
+        NSLog(@&quot;Fetched all messages.&quot;);<br/>
+    }];
+</code></pre></li>
+<li><p>获取异步操作的结果 </p>
+<pre><code class="language-objectivec">//当异步图片下载完成后赋值到图片上
+//deliverOn: 创建信号并执行在其他队列线程  [RACScheduler scheduler] background线程  RACScheduler.mainThreadScheduler]主线程<br/>
+RAC(self.imageView, image) = [[[[client<br/>
+fetchUserWithUsername:@&quot;joshaber&quot;]<br/>
+deliverOn:[RACScheduler scheduler]]<br/>
+map:^(User *user) {<br/>
+    // Download the avatar (this is done on a background queue).<br/>
+    return [[NSImage alloc] initWithContentsOfURL:user.avatarURL];<br/>
+}]<br/>
+// Now the assignment will be done on the main thread.<br/>
+deliverOn:RACScheduler.mainThreadScheduler];
+</code></pre></li>
+</ol>
+
+<h2 id="toc_1">示例</h2>
+
+<h3 id="toc_2">1. 处理多来源的异步操作或事件状态</h3>
+
+<p>不使用RAC的情况</p>
+
+<p>页面中的登录按钮 只有在<code>usernameTextField</code> <code>passwordTextField</code> 不为空 并且当前不在登录状态 才可以点击</p>
+
+<pre><code class="language-objectivec">static void *ObservationContext = &amp;ObservationContext;
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+
+    [LoginManager.sharedManager addObserver:self forKeyPath:@&quot;loggingIn&quot; options:NSKeyValueObservingOptionInitial context:&amp;ObservationContext];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(loggedOut:) name:UserDidLogOutNotification object:LoginManager.sharedManager];
+
+    [self.usernameTextField addTarget:self action:@selector(updateLogInButton) forControlEvents:UIControlEventEditingChanged];
+    [self.passwordTextField addTarget:self action:@selector(updateLogInButton) forControlEvents:UIControlEventEditingChanged];
+    [self.logInButton addTarget:self action:@selector(logInPressed:) forControlEvents:UIControlEventTouchUpInside];
+}
+
+- (void)dealloc {
+    [LoginManager.sharedManager removeObserver:self forKeyPath:@&quot;loggingIn&quot; context:ObservationContext];
+    [NSNotificationCenter.defaultCenter removeObserver:self];
+}
+
+- (void)updateLogInButton {
+    BOOL textFieldsNonEmpty = self.usernameTextField.text.length &gt; 0 &amp;&amp; self.passwordTextField.text.length &gt; 0;
+    BOOL readyToLogIn = !LoginManager.sharedManager.isLoggingIn &amp;&amp; !self.loggedIn;
+    self.logInButton.enabled = textFieldsNonEmpty &amp;&amp; readyToLogIn;
+}
+
+- (IBAction)logInPressed:(UIButton *)sender {
+    [[LoginManager sharedManager]
+        logInWithUsername:self.usernameTextField.text
+        p**assword:self.passwordTextField.text
+        success:^{
+            self.loggedIn = YES;
+        } failure:^(NSError *error) {
+            [self presentError:error];
+        }];
+}
+
+- (void)loggedOut:(NSNotification *)notification {
+    self.loggedIn = NO;
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
+    if (context == ObservationContext) {
+        [self updateLogInButton];
+    } else {
+        [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+    }
+}
+</code></pre>
+
+<p>使用RAC来写的话</p>
+
+<pre><code class="language-objectivec">- (void)viewDidLoad {
+    [super viewDidLoad];
+
+    @weakify(self);
+
+    RAC(self.logInButton, enabled) = [RACSignal
+        combineLatest:@[
+            self.usernameTextField.rac_textSignal,
+            self.passwordTextField.rac_textSignal,
+            RACObserve(LoginManager.sharedManager, loggingIn),
+            RACObserve(self, loggedIn)
+        ] reduce:^(NSString *username, NSString *password, NSNumber *loggingIn, NSNumber *loggedIn) {
+            return @(username.length &gt; 0 &amp;&amp; password.length &gt; 0 &amp;&amp; !loggingIn.boolValue &amp;&amp; !loggedIn.boolValue);
+        }];
+
+    [[self.logInButton rac_signalForControlEvents:UIControlEventTouchUpInside] subscribeNext:^(UIButton *sender) {
+        @strongify(self);
+
+        RACSignal *loginSignal = [LoginManager.sharedManager
+            logInWithUsername:self.usernameTextField.text
+            password:self.passwordTextField.text];
+
+            [loginSignal subscribeError:^(NSError *error) {
+                @strongify(self);
+                [self presentError:error];
+            } completed:^{
+                @strongify(self);
+                self.loggedIn = YES;
+            }];
+    }];
+
+    RAC(self, loggedIn) = [[NSNotificationCenter.defaultCenter
+        rac_addObserverForName:UserDidLogOutNotification object:nil]
+        mapReplace:@NO];
+}
+</code></pre>
+
+<h3 id="toc_3">2.串联异步操作的依赖</h3>
+
+<pre><code class="language-objectivec">//logInWithSuccess 登录成功 -&gt; loadCachedMessagesWithSuccess 加载本地数据   -&gt;  fetchMessagesAfterMessage 请求本地为缓存的最新的数据
+
+//不使用色RAC 使用block嵌套
+[client logInWithSuccess:^{
+    [client loadCachedMessagesWithSuccess:^(NSArray *messages) {
+        [client fetchMessagesAfterMessage:messages.lastObject success:^(NSArray *nextMessages) {
+            NSLog(@&quot;Fetched all messages.&quot;);
+        } failure:^(NSError *error) {
+            [self presentError:error];
+        }];
+    } failure:^(NSError *error) {
+        [self presentError:error];
+    }];
+} failure:^(NSError *error) {
+    [self presentError:error];
+}];
+
+//RAC版本
+[[[[client logIn]
+    then:^{
+        return [client loadCachedMessages];
+    }]
+    flattenMap:^(NSArray *messages) {
+        return [client fetchMessagesAfterMessage:messages.lastObject];
+    }]
+    subscribeError:^(NSError *error) {
+        [self presentError:error];
+    } completed:^{
+        NSLog(@&quot;Fetched all messages.&quot;);
+    }];
+</code></pre>
+
+<h3 id="toc_4">3.用RAC实现 OC中 集合没有的 map、filter、fold/reduce等方法</h3>
+
+<pre><code class="language-objectivec">//获取数组中字符串长度大于2并且拼接字符串`foobar`
+NSMutableArray *results = [NSMutableArray array];
+for (NSString *str in strings) {
+    if (str.length &lt; 2) {
+        continue;
+    }
+
+    NSString *newString = [str stringByAppendingString:@&quot;foobar&quot;];
+    [results addObject:newString];
+}
+
+
+RACSequence *results = [[strings.rac_sequence
+    filter:^ BOOL (NSString *str) {
+        return str.length &gt;= 2;
+    }]
+    map:^(NSString *str) {
+        return [str stringByAppendingString:@&quot;foobar&quot;];
+    }];
+</code></pre>
 
 
 		</div>
@@ -121,8 +370,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -136,7 +387,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -232,31 +483,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

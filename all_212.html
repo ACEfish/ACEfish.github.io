@@ -82,127 +82,57 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15553791452907.html">autorelease && autorelease pool block</a></h1>
-			<p class="meta"><time datetime="2019-04-16T09:45:45+08:00" 
-			pubdate data-updated="true">2019/4/16</time></p>
+		  	<h1 class="entry-title"><a href="15541067561617.html">Link Map File && dSYM</a></h1>
+			<p class="meta"><time datetime="2019-04-01T16:19:16+08:00" 
+			pubdate data-updated="true">2019/4/1</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>autorelease pool block提供了一个允许我们延时<code>deallocated</code>对象的机制</p>
+		  	<p>学习自 <a href="https://github.com/ming1016/study/wiki/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90-iOS-%E7%BC%96%E8%AF%91-Clang---LLVM">深入剖析iOS编译</a></p>
 
-<h2 id="toc_0">autorelease</h2>
+<h2 id="toc_0">编译后生成的二进制内容 Link Map File</h2>
 
-<p><code>NSAutoReleasePool</code>对象的生存周期相当于C语言变量的作用域。对于所有调用过<code>autorelease</code>的实例方法，会在废弃NSAutorelease对象时，调用release方法</p>
+<p>在<code>build Setting</code>里设置<code>Write Link Map File</code>为Yes后，每次编译都会在指定目录生成这样一个文件。文件内容包含了<code>Object files</code>，<code>Sections</code>，<code>Symbols</code></p>
 
-<pre><code class="language-objectivec">NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-id obj = [[NSObject alloc] init];
-[obj autorelease];
-[pool drain]; //调用pool drain方法相当于调用[obj release]
-</code></pre>
+<h3 id="toc_1">Object files</h3>
 
-<p>在Cocoa框架也有很多可以返回autorelease对象的方法</p>
+<p>这部分内容都是.m编译后的.o和需要link的.a文件。前面是文件编号，后面是文件路径</p>
 
-<pre><code class="language-objectivec">//返回autorelease对象
-id array = [NSMutableArray Array];
-//相当与
-id array = [[[NSMutableArray alloc] init] autorelease];
-</code></pre>
-
-<h2 id="toc_1">autorelease 原理</h2>
-
-<p>在NSAutoreleasePool维持了一个数组来保存autorelase的对象，[obj autorelease]方法实际上是调用了<code>NSAutoreleasePool</code>的<code>[NSAutoreleasePool addObject:obj]</code>方法，该方法会找到当前的pool并add到数组中，当调用<code>[pool drain]</code>时会废弃当前pool对象，并释放内部数组，因此内部所有对象都会被调用release方法</p>
-
-<blockquote>
-<p>可以使用<code>[NSAutoreleasePool showPools];</code>这个非公开方法查看现在的pool中对象状况,查看结果类似下面输出，可以用其查看对象是否被自动release</p>
-</blockquote>
-
-<pre><code class="language-objectivec">objc[41725]: ##############
-objc[41725]: AUTORELEASE POOLS for thread 0x10cd6f5c0
-objc[41725]: 2337 releases pending.
-objc[41725]: [0x7ff2b4000000]  ................  PAGE (full)  (cold)
-objc[41725]: [0x7ff2b4000038]    0x6000012fd180  __NSArrayI
-objc[41725]: [0x7ff2b4000040]    0x6000024aa1c0  __NSSetI
-objc[41725]: [0x7ff2b4000048]  ################  POOL 0x7ff2b4000048
-objc[41725]: [0x7ff2b4000050]    0x6000007a8480  __NSCFString
+<pre><code class="language-c">[  2] /Users/fish/Library/Developer/Xcode/DerivedData/RSSReader-dguiqpuhzqvuwbewcrithsiyuewj/Build/Intermediates.noindex/RSSReader.build/Debug-iphonesimulator/RSSReader.build/Objects-normal/x86_64/UIView+Extension.o
 ...
-objc[41725]: [0x7ff2b4000058]  ################  POOL 0x7ff2b4000058
-objc[41725]: [0x7ff2b406ea10]  ################  POOL 0x7ff2b406ea10
-objc[41725]: [0x7ff2b406ea18]    0x6000005a77c0  NSObject
-objc[41725]: ##############
+...
+...
+[160] /Users/fish/Library/Developer/Xcode/DerivedData/RSSReader-dguiqpuhzqvuwbewcrithsiyuewj/Build/Products/Debug-iphonesimulator/libPods-RSSReader.a(Pods-RSSReader-dummy.o)
 </code></pre>
 
-<h2 id="toc_2">autorelease pool block</h2>
+<h3 id="toc_2">Sections</h3>
 
-<p>在Cocoa框架中，主循环的RunLoop会对<code>NSAutoreleasePool</code>进行生成、持有和废弃，因此，通常，我们不需要创建自己的自动释放池，但是有些情况下我怕们需要这么做<br/>
-在autorelease pool block结束时，所有在block内部收到<code>autorelease</code>消息的对象都会被发送一个<code>release</code>消息</p>
+<p>描述每个Section在可执行文件中的位置和大小。每个Section的Segment类型分为__TEXT代码段和__DATA数据段两种</p>
 
-<p>autorelease pool block可以嵌套:</p>
+<p><img src="media/15541067561617/15541075745329.jpg" alt="" style="width:698px;"/><br/>
+.data数据段里面保存的都是初始化过的全局静态变量和局部静态变量。.rodata段存放的是只读数据，一般都是const修饰的变量和字符串常量。.bss段存放的是未初始化的全局变量和局部静态变量。代码段就在.text段。</p>
 
-<pre><code class="language-objectivec">@autoreleasepool {
-    // . . .
-    @autoreleasepool {
-        // . . .
-    }
-    . . .
-}
+<h3 id="toc_3">Symbols</h3>
+
+<p>symbols对Sections进行了再划分。这里会描述所有的method、ivar和字符串，以及对应的地址、大小、文件编号信息等</p>
+
+<p><img src="media/15541067561617/15541077442023.jpg" alt="" style="width:650px;"/><br/>
+<img src="media/15541067561617/15541077540760.jpg" alt="" style="width:732px;"/></p>
+
+<h2 id="toc_4">每次编译后生成的dSYM文件</h2>
+
+<p>在每次编译后都会生成dSYM文件，程序在执行中通过地址来调用方法函数，而dSYM文件里存储了函数地址映射，这样调用栈里的地址可以通过dSYM这个映射表获取具体函数的位置。常用来处理crash时获取到的调用栈.crash文件，将其符号化</p>
+
+<p>可以通过 Xcode 进行符号化，将 .crash 文件，.dSYM 和 .app 文件放到同一个目录下，打开 Xcode 的 Window 菜单下的 organizer，再点击 Device tab，最后选中左边的 Device Logs。选择 import 将 .crash 文件导入就可以看到 crash 的详细 log 了。</p>
+
+<p>还可以通过命令行工具 symbolicatecrash 来手动符号化 crash log。同样先将 .crash 文件，.dSYM 和 .app 文件放到同一个目录下，然后输入下面的命令</p>
+
+<pre><code class="language-objectivec">export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+symbolicatecrash appName.crash appName.app &gt; appName.log
 </code></pre>
-
-<p>Cocoa中代码都是在自动释放池block中执行，否则会自动释放的对象未被释放造成内存泄漏。(因此，如果在自动释放池block外执行走动式房消息，Cocoa会报错)。AppKit或者UIKit框架都在自动释放池block中处理每个事件循环(详情见runLoop)。因此，通常不需要创建autorelease pool block，但是<strong>以下三种情况可能需要使用自己的自动释放池</strong>：</p>
-
-<ul>
-<li>假如编写不基于UI框架的程序，例如命令行工具</li>
-<li>假如编写一个创建了很多临时对象的循环<br/>
-可以再循环内的下一次迭代之前处理这些对象，有助于减少应用程序的最大内存占用量</li>
-<li>如果你创建了一个辅助线程<br/>
-当你的线程开始执行时，必须创建自己的自动释放池，否则你的应用程序有可能会内存泄漏</li>
-</ul>
-
-<h3 id="toc_3">使用本地自动释放池block减少峰值内存占用</h3>
-
-<pre><code class="language-objectivec">NSArray *urls = &lt;# An array of file URLs #&gt;;
-for (NSURL *url in urls) {
- 
-    @autoreleasepool {
-        NSError *error;
-        NSString *fileContents = [NSString stringWithContentsOfURL:url
-                                         encoding:NSUTF8StringEncoding error:&amp;error];
-        /* Process the string, creating and autoreleasing more objects. */
-    }
-}
-</code></pre>
-
-<p>在上面例子中，for循环每次循环的自动释放block结束时，将自动释放对象(例如:<code>fileContents</code>)发送release消息</p>
-
-<p>在自动释放池block后，块中的自动释放对象不应该再向其发送消息或者返回。如果想要将其返回，则可以先将其<code>retain</code>然后在block外将其autorelease</p>
-
-<pre><code class="language-objectivec">– (id)findMatchingObject:(id)anObject {
- 
-    id match;
-    while (match == nil) {
-        @autoreleasepool {
- 
-            /* Do a search that creates a lot of temporary objects. */
-            match = [self expensiveSearchForObject:anObject];
- 
-            if (match != nil) {
-                [match retain]; /* Keep match around. */
-            }
-        }
-    }
- 
-    return [match autorelease];   /* Let match go and return it. */
-}
-</code></pre>
-
-<h3 id="toc_4">线程和自动释放池block</h3>
-
-<p><code>Cocoa</code>应用程序的每个线程都会维护自己的自动释放池堆栈。如果编写基于<code>Foundation</code>的程序或者分离线程，则你必须创建自己的autoreleasePool</p>
-
-<p>如果应用程序或者线程长时间运行，则有可能产生大量自动释放对象，此时就需要使用自动释放池(例如主线程的UIKit和AppKit)；否则自动释放对象会累计，造成内存增加。但，如果你的线程没有进行Cocoa调用，则不需要使用自动释放池block</p>
 
 <blockquote>
-<p>注意:<br/>
-<strong>如果使用POSIX线程API而不是NSThread创建辅助线程，则除非Cocoa处于多线程模式，否则不能使用Cocoa</strong>Cocoa仅在分离其第一个NSThread对象后才进入多线程模式。 要在辅助POSIX线程上使用Cocoa，您的应用程序必须首先分离至少一个NSThread对象，该对象可以立即退出。 您可以使用NSThread类方法isMultiThreaded测试Cocoa是否处于多线程模式。</p>
+<p>debug环境默认不生成dsym文件，release环境才会生成</p>
 </blockquote>
 
 
@@ -226,8 +156,10 @@ for (NSURL *url in urls) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -241,7 +173,7 @@ for (NSURL *url in urls) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -337,31 +269,31 @@ for (NSURL *url in urls) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

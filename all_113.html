@@ -82,138 +82,104 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15319012648780.html">高级特性</a></h1>
-			<p class="meta"><time datetime="2018-07-18T16:07:44+08:00" 
-			pubdate data-updated="true">2018/7/18</time></p>
+		  	<h1 class="entry-title"><a href="15350923380421.html">CGColor</a></h1>
+			<p class="meta"><time datetime="2018-08-24T14:32:18+08:00" 
+			pubdate data-updated="true">2018/8/24</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">切片</h2>
+		  	<p>定义颜色的组件，通过颜色空间来解释其颜色</p>
 
-<p>list的切片</p>
+<p><code>CGColorRef</code></p>
 
-<pre><code class="language-python">listTest = list(range(100))
+<h2 id="toc_0">CGColor的Release和Retain</h2>
 
-listTest[:10]  # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-listTest[:10:2] #[0, 2, 4, 6, 8]
-listTest[-10:] # [90, 91, 92, 93, 94, 95, 96, 97, 98, 99]
-listTest[:] # 拷贝一个新的list 相当于深拷贝
+<pre><code class="language-objectivec">void CGColorRelease(CGColorRef color);
+
+CGColorRef CGColorRetain(CGColorRef color);
 </code></pre>
 
-<p>元组:<br/>
-元组的切片结果 仍为不可变的元组</p>
-
-<pre><code class="language-python">(0, 1, 2, 3, 4, 5)[:3] #(0, 1, 2)
-</code></pre>
-
-<p>字符串也可看做一种list，可执行切片</p>
-
-<pre><code class="language-python">&#39;ABCDEFG&#39;[:3] #&#39;ABC&#39;
-&#39;ABCDEFG&#39;[::2] #&#39;ACEG&#39;
-</code></pre>
-
-<h2 id="toc_1">迭代</h2>
-
-<pre><code class="language-python">#遍历dict
-for key in dict2: #遍历所有键
-for key in dict2.values(): #遍历所有值
-for key in dict2.items(): #遍历所有键值对，返回为元组
-    print(key)
-</code></pre>
-
-<p>当遍历时需要下标时,用enumerate()方法可以获取索引</p>
-
-<pre><code class="language-python">for x, value in enumerate(dict2):
-    print(x, value)
-</code></pre>
-
-<h2 id="toc_2">列表生成器</h2>
-
-<pre><code class="language-python">L1=list(range(1,11))
-print(L1) #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-L2=[x*x for x in L1]
-print(L2) #[1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
-L3=[x*x for x in L1 if x%2 == 0]
-print(L3) # [4, 16, 36, 64, 100]
-L4=[str(x1)+str(x2) for x1 in list(range(3)) for x2 in list(range(3,6))]
-print(L4) # [&#39;03&#39;, &#39;04&#39;, &#39;05&#39;, &#39;13&#39;, &#39;14&#39;, &#39;15&#39;, &#39;23&#39;, &#39;24&#39;, &#39;25&#39;]
-</code></pre>
-
-<h2 id="toc_3">生成器 generator</h2>
-
-<p>在列表中一遍循环一边计算的机制,称为生成器：<code>generator</code></p>
-
-<p>创建生成器:</p>
+<h2 id="toc_1">创建颜色</h2>
 
 <ol>
-<li><p>方法一: 通过将列表生成器的<code>[]</code>改为<code>()</code></p>
-<pre><code class="language-python"> LI1=list(range(1,5))
-LI2=(x*x for x in LI1)<br/>
-#通过next()方法来获取生成器中的下一个值 直到最后一个元素抛出错误<br/>
-print(next(LI2))<br/>
-print(next(LI2))<br/>
-print(next(LI2))<br/>
-print(next(LI2))<br/>
-print(next(LI2)) # 抛出 StopIteration错误<br/>
-# 通过next()方法太麻烦,我们应该用 for 循环 不用关心StopIteration错误<br/>
-for x in LI2:<br/>
-    print(x)<br/>
-# 1<br/>
-# 4<br/>
-# 9<br/>
-# 16
+<li><p>使用颜色空间和强度值列表(包括Alpha)创建颜色</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreate(CGColorSpaceRef space, const CGFloat *components);
+space: 颜色空间<br/>
+components: 描述颜色强度值的n+1个值的数组,n个值对应颜色空间的n歌颜色分量，后加alpha分量
+</code></pre>
+<blockquote>
+<p>需要调用CGColorRelease进行释放</p>
+</blockquote></li>
+<li><p>Copy已有颜色副本</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreateCopy(CGColorRef color);
+</code></pre>
+<blockquote>
+<p>需要调用CGColorRelease进行释放</p>
+</blockquote></li>
+<li><p>创建通用灰度颜色空间颜色</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreateGenericGray(CGFloat gray, CGFloat alpha);
+gray:  A grayscale value (0.0 - 1.0).<br/>
+alpha:An alpha value (0.0 - 1.0).
 </code></pre></li>
-<li><p>方法二: 函数中包含<code>yield</code>关键字,为一个generator函数<br/>
-generator函数在遇到yield关键字时会中断，返回yeild后的值,next之后会继续执行,直到没有yeild就会报错<br/>
-当然也可以通过<code>for</code>循环来获取</p>
-<pre><code class="language-python">def my_generatorFuc():
-    print(&quot;step1&quot;)<br/>
-    yield (1)<br/>
-    print(&quot;step2&quot;)<br/>
-    yield (5)<br/>
-    print(&quot;step3&quot;)<br/>
-    yield(10)<br/>
-    return 100
+<li><p>创建通用RGB颜色空间颜色</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreateGenericRGB(CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha);
+red: A red component value (0.0 - 1.0).<br/>
+green: A green component value (0.0 - 1.0).<br/>
+blue: A blue component value (0.0 - 1.0).<br/>
+alpha: An alpha value (0.0 - 1.0)
+</code></pre></li>
+<li><p>创建通用CMYK颜色</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreateGenericCMYK(CGFloat cyan, CGFloat magenta, CGFloat yellow, CGFloat black, CGFloat alpha);
+cyan： 0.0=1.0<br/>
+magenta： 0.0=1.0<br/>
+yellow： 0.0=1.0<br/>
+black： 0.0=1.0<br/>
+alpha： 0.0=1.0
+</code></pre></li>
+<li><p>创建与现有颜色相同，alpha不同的颜色副本</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreateCopyWithAlpha(CGColorRef color, CGFloat alpha);
+</code></pre>
+<blockquote>
+<p>需要调用CGColorRelease释放</p>
+</blockquote></li>
+<li><p>使用图案颜色空间、图案和强度值列表(包括alpha)创建颜色</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreateWithPattern(CGColorSpaceRef space, CGPatternRef pattern, const CGFloat *components);
+</code></pre>
+<blockquote>
+<p>需要调用CGColorRelease释放</p>
+</blockquote></li>
+<li><p>在不同颜色空间创建与颜色匹配的新颜色</p>
+<pre><code class="language-objectivec">CGColorRef CGColorCreateCopyByMatchingToColorSpace(CGColorSpaceRef, CGColorRenderingIntent intent, CGColorRef color, CFDictionaryRef options);
+CGColorSpaceRef: 目标颜色空间<br/>
+intent: 当颜色在新颜色色域之外时采用的模式<br/>
+color: 要转换的颜色<br/>
+options: NULL
 </code></pre></li>
 </ol>
 
-<blockquote>
-<p>采用<code>next()</code>可以当遇到<code>StopIteration</code>错误可以获取到<code>generator</code>函数的<code>return</code>值,返回值包含在<code>StopIteration</code>的<code>value</code>中<br/>
-采用<code>for</code>循环获取不到函数的返回值,因此需要捕获<code>StopIteration</code>错误</p>
-</blockquote>
+<h2 id="toc_2">其他方法</h2>
 
-<h2 id="toc_4">迭代器</h2>
-
-<p> 对于可以用for循环的对象称为可迭代对象:<code>Iterable</code><br/>
- 目前常用的可迭代对象有:<br/>
- 1. list、tuple、dict、set、str<br/>
- 2. generator:生成器和带<code>yield</code>的generator函数<br/>
- <br/>
- 可以被next()函数调用并不断返回下一个值的对象称为迭代器：<code>Iterator</code><br/>
- 生成器都是迭代器,但是list、tuple、dict、set、str等是可迭代对象但不是迭代器<br/>
- </p>
-
-<blockquote>
-<p><code>Iterator</code>对象表示的是一个数据流，是一个惰性序列,不能事先知道序列长度，只能通过需要是<code>next()</code>计算下一个序列值</p>
-
-<p><code>for</code>循环本质上是通过不停调用<code>next()</code>来实现的</p>
-
-<p>list、tuple、dict、set、str等可迭代对象可以通过<code>iter()</code>函数获得一个<code>Iterator</code>对象</p>
-</blockquote>
-
-<pre><code class="language-python">it = iter([1, 2, 3, 4, 5])
-# 循环:
-while True:
-    try:
-        # 获得下一个值:
-        x = next(it)
-    except StopIteration:
-        # 遇到StopIteration就退出循环
-        break
-</code></pre>
-
-<p> <br/>
- </p>
+<ol>
+<li><p>判断两个颜色是否相同<br/>
+当两个颜色的颜色空间以及各个分量值相同时，相同</p>
+<pre><code class="language-objectivec">bool CGColorEqualToColor(CGColorRef color1, CGColorRef color2);
+</code></pre></li>
+<li><p>获取颜色的alpha</p>
+<pre><code class="language-objectivec">CGFloat CGColorGetAlpha(CGColorRef color);
+</code></pre></li>
+<li><p>获取颜色的颜色空间</p>
+<pre><code class="language-objectivec">CGColorSpaceRef CGColorGetColorSpace(CGColorRef color);
+</code></pre></li>
+<li><p>获取与颜色相关的n+1个分量值（包括alpha）</p>
+<pre><code class="language-objectivec">const CGFloat * CGColorGetComponents(CGColorRef color);
+</code></pre></li>
+<li><p>获取指定颜色的分享个数(包括alpha)</p>
+<pre><code class="language-objectivec">size_t CGColorGetNumberOfComponents(CGColorRef color);
+</code></pre></li>
+<li><p>获取与颜色图案空间相关的颜色图案</p>
+<pre><code class="language-objectivec">CGPatternRef CGColorGetPattern(CGColorRef color);
+</code></pre></li>
+</ol>
 
 
 		</div>
@@ -236,8 +202,10 @@ while True:
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -251,7 +219,7 @@ while True:
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -347,31 +315,31 @@ while True:
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

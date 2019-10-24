@@ -82,195 +82,486 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15608261485816.html">RACCommand: NSObject</a></h1>
-			<p class="meta"><time datetime="2019-06-18T10:49:08+08:00" 
-			pubdate data-updated="true">2019/6/18</time></p>
+		  	<h1 class="entry-title"><a href="15677400518331.html">AFURLSerialization</a></h1>
+			<p class="meta"><time datetime="2019-09-06T11:20:51+08:00" 
+			pubdate data-updated="true">2019/9/6</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><code>RACCommand</code> 继承自<code>NSObject</code> 用于管理<code>RACSignal</code>信号</p>
+		  	<p>在对请求和接收响应的过程中有两个序列化的模块:</p>
 
-<h2 id="toc_0">RACCommand使用示例</h2>
+<ul>
+<li>AFURLRequestSerialization</li>
+<li>AFURLResponseSerialization</li>
+</ul>
 
-<pre><code class="language-objectivec">RACCommand *command = [[RACCommand alloc] initWithSignalBlock:^RACSignal * _Nonnull(id  _Nullable input) {
-        return [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
-            NSInteger integer = [input integerValue];
-            for (NSInteger i = 0; i &lt; integer; i++) {
-                [subscriber sendNext:@(i)];
-            }
-            [subscriber sendCompleted];
-            return [RACDisposable disposableWithBlock:^{
-                NSLog(@&quot;信号销毁了&quot;);
-            }];
-        }];
-    }];
-    
-    [[command.executionSignals switchToLatest] subscribeNext:^(id  _Nullable x) {
-        NSLog(@&quot;收到消息---%@&quot;,x);
-    } error:^(NSError * _Nullable error) {
-        NSLog(@&quot;error了&quot;);
-    } completed:^{
-        NSLog(@&quot;completed了&quot;);
-    }];
-    
-    [command execute:@1];
-    [RACScheduler.mainThreadScheduler afterDelay:0.1
-                                        schedule:^{
-                                            [command execute:@2];
-                                        }];
-    [RACScheduler.mainThreadScheduler afterDelay:0.2
-                                        schedule:^{
-                                            [command execute:@3];
-                                        }];
-                                        
-                            
-    //log结果
-    收到消息---0
-    信号销毁了
-    收到消息---0
-    收到消息---1
-    信号销毁了
-    收到消息---0
-    收到消息---1
-    收到消息---2
-    信号销毁了
-    completed了
+<p><code>AFURLRequestSerialization</code>主要用于修改请求(主要是HTTP请求)的头部，提供了一些语义明确的接口设置HTTP头部字段</p>
+
+<p><code>AFURLResponseSerialization</code>将请求返回的数据解析为对应的格式</p>
+
+<h2 id="toc_0">AFURLResponseSerialization</h2>
+
+<p><code>AFURLResponseSerialization</code>其实只是一个协议</p>
+
+<pre><code class="language-objectivec">@protocol AFURLResponseSerialization &lt;NSObject, NSSecureCoding, NSCopying&gt;
+- (nullable id)responseObjectForResponse:(nullable NSURLResponse *)response
+                           data:(nullable NSData *)data
+                          error:(NSError * _Nullable __autoreleasing *)error NS_SWIFT_NOTHROW;
+
+@end
 </code></pre>
 
-<ol>
-<li>通过<code>switchToLatest</code>方法来获取信号中的信号</li>
-<li>因为默认情况下<code>RACCommand</code>是不支持并发操作的，需要在上次命令发送完成后，再发送下次信号</li>
-</ol>
+<p>当遵循了这个协议类的同时也要遵循NSObject、NSSecureCoding、NSCopying，用以实现安全编码、拷贝等OC对象的基本行为</p>
 
-<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) RACSignal&lt;RACSignal&lt;ValueType&gt; *&gt; *executionSignals;
-</code></pre>
+<p>该模块中的父类为<code>AFHTTPResponseSerializer</code>并且继承了<code>AFURLResponseSerialization</code>，其子类有<code>AFJSONResponseSerializer</code>、<code>AFXMLDocumentResponseSerializer</code>、<code>AFPropertyListResponseSerializer</code>等</p>
 
-<p>通过以上示例可以看出整个流程中，传入一个block，这个block通过传入值生成对应的<code>signal</code>, 而command属性<code>executionSignals</code>即为这些信号的信号</p>
+<h3 id="toc_1">AFHTTPResponseSerializer</h3>
 
-<p>通过 <code>execute</code>方法 出入值 </p>
+<p>这是该模块中的父类 也是最重要的类</p>
 
-<h2 id="toc_1">RACCommand</h2>
-
-<p>在<code>Command</code>内部 是由几个很重要的信号组成的</p>
-
-<h3 id="toc_2">初始化</h3>
-
-<p>初始化方法需要传入<code>signalBlock</code>， 该block通过input传入值 生成一个<code>RACSignal</code><br/>
- 在初始化方法中初始化了重要的信号</p>
-
-<pre><code class="language-objectivec"> RACCommand initWithEnabled:(RACSignal *)enabledSignal signalBlock:(RACSignal&lt;id&gt; * (^)(id input))signalBlock {
-    _addedExecutionSignalsSubject = [RACSubject new];
-    _allowsConcurrentExecutionSubject = [RACSubject new];
-    _signalBlock = [signalBlock copy];
-    _executionSignals =...
-    _errors = ...
-    _executing = ...
-    _immediateEnabled = ...
-    _enabled = ...
- }
-</code></pre>
-
-<h3 id="toc_3">addedExecutionSignalsSubject</h3>
-
-<p><code>addedExecutionSignalsSubject</code>即为包含信号的信号 当传入值时通过signalblock生成的signal即包含在改信号中</p>
-
-<p><code>addedExecutionSignalsSubject</code>信号在<code>execute:</code>执行时，对信号进行订阅和发送</p>
-
-<pre><code class="language-objectivec">- (RACSignal *)execute:(id)input { 
-    BOOL enabled = [[self.immediateEnabled first] boolValue];
-    if (!enabled) {
-        return [RACSignal error:error];
+<pre><code class="language-objectivec">- (instancetype)init {
+    self = [super init];
+    if (!self) {
+        return nil;
     }
-    RACSignal *signal = self.signalBlock(input);
-    //订阅信号
-    RACMulticastConnection *connection = [[signal
-        subscribeOn:RACScheduler.mainThreadScheduler]
-        multicast:[RACReplaySubject subject]];
-    //发送信号
-    [self.addedExecutionSignalsSubject sendNext:connection.signal];
-    [connection connect];
-    return connection.signal;
+    self.acceptableStatusCodes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(200, 100)];
+    self.acceptableContentTypes = nil;
+    return self;
 }
 </code></pre>
 
-<h3 id="toc_4">immediateExecuting &amp;&amp; _executing 表示当前有操作执行的信号</h3>
+<p>初始化 设置<code>acceptableStatusCodes</code>接受的状态码为<code>200-299</code>只有在这个范围内 才表示获取了有效响应</p>
 
-<p>immediateExecuting的逻辑是：<br/>
-    1. <code>catchTo</code>捕获<code>addedExecutionSignalsSubject</code>信号中的error信号，转换为empty<br/>
-    2. <code>flattenMap:</code>将每个信号的开始和结束时间点转为1和-1信号（<code>start为1 then为-1</code>）<br/>
-    3. <code>scanWithStart:@0 reduce:</code> 将上一步得到的1和-1进行叠加得到0 或者 非0<br/>
-        1. <code>map:</code>将0/非0 转为 NO/YES 表示当前是否有信号正在处理</p>
+<h4 id="toc_2">验证有效性</h4>
 
-<pre><code class="language-objectivec">RACSignal *immediateExecuting = [[[[self.addedExecutionSignalsSubject
-        flattenMap:^(RACSignal *signal) {
-            return [[[signal
-                catchTo:[RACSignal empty]]
-                then:^{
-                    return [RACSignal return:@-1];
-                }]
-                startWith:@1];
-        }]
-        scanWithStart:@0 reduce:^(NSNumber *running, NSNumber *next) {
-            return @(running.integerValue + next.integerValue);
-        }]
-        map:^(NSNumber *count) {
-            return @(count.integerValue &gt; 0);
-        }]
-        startWith:@NO];
+<p>在<code>AFHTTPResponseSerializer</code> 最重要的方法就是<code>- [AFHTTPResponseSerializer validateResponse:data:error:]</code></p>
+
+<pre><code class="language-objectivec">- (BOOL)validateResponse:(NSHTTPURLResponse *)response
+                    data:(NSData *)data
+                   error:(NSError * __autoreleasing *)error
+{
+    BOOL responseIsValid = YES;
+    NSError *validationError = nil;
+
+    if (response &amp;&amp; [response isKindOfClass:[NSHTTPURLResponse class]]) {
+        if (self.acceptableContentTypes &amp;&amp; ![self.acceptableContentTypes containsObject:[response MIMEType]] &amp;&amp;
+            !([response MIMEType] == nil &amp;&amp; [data length] == 0)) {
+            ...
+            //返回的类型 contentType无效
+            responseIsValid = NO;
+        }
+
+        if (self.acceptableStatusCodes &amp;&amp; ![self.acceptableStatusCodes containsIndex:(NSUInteger)response.statusCode] &amp;&amp; [response URL]) {
+                    ...
+                    //返回的状态码无效
+                    responseIsValid = NO;
+        }
+    }
+
+    if (error &amp;&amp; !responseIsValid) {
+        *error = validationError;
+    }
+
+    return responseIsValid;
+}
 </code></pre>
 
-<p>将immediateExecuting 信号进行优化  <strong>表示当前是否有任务执行</strong></p>
+<p>这个方法中根据 <code>acceptableContentTypes</code>和<code>acceptab;leStatusCodes</code>来判断当前响应是否有效</p>
 
-<pre><code class="language-objectivec">_executing = [[[[immediateExecuting
-        deliverOn:RACScheduler.mainThreadScheduler]
-        // This is useful before the first value arrives on the main thread.
-        startWith:@NO]
-        distinctUntilChanged]
-        replayLast]
+<p>通过<code>AFErrorWithUnderlyingError</code>生成格式化的错误</p>
+
+<pre><code class="language-objectivec">if ([data length] &gt; 0 &amp;&amp; [response URL]) {
+                NSMutableDictionary *mutableUserInfo = [@{
+                                                          NSLocalizedDescriptionKey: [NSString stringWithFormat:NSLocalizedStringFromTable(@&quot;Request failed: unacceptable content-type: %@&quot;, @&quot;AFNetworking&quot;, nil), [response MIMEType]],
+                                                          NSURLErrorFailingURLErrorKey:[response URL],
+                                                          AFNetworkingOperationFailingURLResponseErrorKey: response,
+                                                        } mutableCopy];
+                if (data) {
+                    mutableUserInfo[AFNetworkingOperationFailingURLResponseDataErrorKey] = data;
+                }
+
+                validationError = AFErrorWithUnderlyingError([NSError errorWithDomain:AFURLResponseSerializationErrorDomain code:NSURLErrorCannotDecodeContentData userInfo:mutableUserInfo], validationError);
+            }
 </code></pre>
 
-<h3 id="toc_5">moreExecutionsAllowed  表示是否允许更多信号执行</h3>
+<h4 id="toc_3">协议实现</h4>
 
-<p>简单来看就是 当不允许并发时（默认不允许并发），<code>[immediateExecuting not]</code></p>
+<p>对于协议只是简单的调用了上面的对返回数据做了验证</p>
 
-<pre><code class="language-objectivec">RACSignal *moreExecutionsAllowed = [RACSignal
-        if:[self.allowsConcurrentExecutionSubject startWith:@NO]
-        then:[RACSignal return:@YES]
-        else:[immediateExecuting not]];
+<pre><code class="language-objectivec">- (id)responseObjectForResponse:(NSURLResponse *)response
+                           data:(NSData *)data
+                          error:(NSError *__autoreleasing *)error
+{
+    [self validateResponse:(NSHTTPURLResponse *)response data:data error:error];
+
+    return data;
+}
 </code></pre>
 
-<h3 id="toc_6">executionSignals</h3>
+<h3 id="toc_4">AFJSONResponseSerializer</h3>
 
-<pre><code class="language-objectivec"> @property (nonatomic, strong, readonly) RACSignal&lt;RACSignal&lt;ValueType&gt; *&gt; *executionSignals;
+<p><code>AFJSONResponseSerializer</code>继承自<code>AFHTTPResponseSerializer</code> </p>
+
+<h4 id="toc_5">初始化</h4>
+
+<pre><code class="language-objectivec">- (instancetype)init {
+    ...
+    self.acceptableContentTypes = [NSSet setWithObjects:@&quot;application/json&quot;, @&quot;text/json&quot;, @&quot;text/javascript&quot;, nil];
+    return self;
+}
+
++ (instancetype)serializerWithReadingOptions:(NSJSONReadingOptions)readingOptions {
+    AFJSONResponseSerializer *serializer = [[self alloc] init];
+    serializer.readingOptions = readingOptions;
+    return serializer;
+}
 </code></pre>
 
-<p><code>executionSignals</code>是一个包含信号的信号<br/>
-executionSignals 只是简单的将<code>self.addedExecutionSignalsSubject</code>信号中的所有错误信号<code>NSError</code>转换为了<code>empty</code>信号</p>
+<p>设置了<code>acceptableContentTypes</code>属性</p>
 
-<pre><code class="language-objectivec">_executionSignals = [[self.addedExecutionSignalsSubject
-        map:^(RACSignal *signal) {
-            return [signal catchTo:[RACSignal empty]];
-        }]
-        deliverOn:RACScheduler.mainThreadScheduler]
-</code></pre>
+<h4 id="toc_6">重写协议实现</h4>
 
-<h3 id="toc_7">_enabled 信号 表示当前命令是否可以被再次执行</h3>
-
-<pre><code class="language-objectivec">RACSignal *enabledSignal = [RACSignal return:@YES];
-
-_immediateEnabled = [[[[RACSignal
-    combineLatest:@[ enabledSignal, moreExecutionsAllowed ]]
-    and]
-    takeUntil:self.rac_willDeallocSignal]
-    replayLast];
+<pre><code class="language-objectivec">- (id)responseObjectForResponse:(NSURLResponse *)response
+                           data:(NSData *)data
+                          error:(NSError *__autoreleasing *)error
+{
+    #1: 验证请求
+    if (![self validateResponse:(NSHTTPURLResponse *)response data:data error:error]) {
+        if (!error || AFErrorOrUnderlyingErrorHasCodeInDomain(*error, NSURLErrorCannotDecodeContentData, AFURLResponseSerializationErrorDomain)) {
+            return nil;
+        }
+    }
+    #2: 解决一个由只包含一个空格的响应引起的 bug, 略
+    BOOL isSpace = [data isEqualToData:[NSData dataWithBytes:&quot; &quot; length:1]];
     
-//保证信号中的第一个值在订阅线程，而其他值在主线程派发
-_enabled = [[[[self.immediateEnabled
-    take:1]
-    concat:[[self.immediateEnabled skip:1] deliverOn:RACScheduler.mainThreadScheduler]]
-    distinctUntilChanged]
-    replayLast]
+    if (data.length == 0 || isSpace) {
+        return nil;
+    }
+    #3: 序列化 JSON
+       NSError *serializationError = nil;
+    
+    id responseObject = [NSJSONSerialization JSONObjectWithData:data options:self.readingOptions error:&amp;serializationError];
+
+    if (!responseObject)
+    {
+        if (error) {
+            *error = AFErrorWithUnderlyingError(serializationError, *error);
+        }
+        return nil;
+    }
+    #4: 移除 JSON 中的 null
+       if (self.removesKeysWithNullValues) {
+        return AFJSONObjectByRemovingKeysWithNullValues(responseObject, self.readingOptions);
+    }
+
+    if (error) {
+        *error = AFErrorWithUnderlyingError(serializationError, *error);
+    }
+    return responseObject;
+}
 </code></pre>
+
+<p>其中移除JSON中null的函数是一个递归调用的函数</p>
+
+<pre><code class="language-objectivec">static id AFJSONObjectByRemovingKeysWithNullValues(id JSONObject, NSJSONReadingOptions readingOptions) {
+    if ([JSONObject isKindOfClass:[NSArray class]]) {
+        NSMutableArray *mutableArray = [NSMutableArray arrayWithCapacity:[(NSArray *)JSONObject count]];
+        for (id value in (NSArray *)JSONObject) {
+            [mutableArray addObject:AFJSONObjectByRemovingKeysWithNullValues(value, readingOptions)];
+        }
+
+        return (readingOptions &amp; NSJSONReadingMutableContainers) ? mutableArray : [NSArray arrayWithArray:mutableArray];
+    } else if ([JSONObject isKindOfClass:[NSDictionary class]]) {
+        NSMutableDictionary *mutableDictionary = [NSMutableDictionary dictionaryWithDictionary:JSONObject];
+        for (id &lt;NSCopying&gt; key in [(NSDictionary *)JSONObject allKeys]) {
+            id value = (NSDictionary *)JSONObject[key];
+            if (!value || [value isEqual:[NSNull null]]) {
+                [mutableDictionary removeObjectForKey:key];
+            } else if ([value isKindOfClass:[NSArray class]] || [value isKindOfClass:[NSDictionary class]]) {
+            //移除value为null 的键值对
+                mutableDictionary[key] = AFJSONObjectByRemovingKeysWithNullValues(value, readingOptions);
+            }
+        }
+
+        return (readingOptions &amp; NSJSONReadingMutableContainers) ? mutableDictionary : [NSDictionary dictionaryWithDictionary:mutableDictionary];
+    }
+
+    return JSONObject;
+}
+</code></pre>
+
+<h2 id="toc_7">AFURLRequestSerialization</h2>
+
+<p><code>AFURLRequestSerialization</code>主要工作是对发出的HTTP请求进行处理</p>
+
+<ol>
+<li>处理查询的URL参数</li>
+<li>设置HTTP头部字段</li>
+<li>设置请求的属性</li>
+<li>分块上传</li>
+</ol>
+
+<h3 id="toc_8">处理查询参数</h3>
+
+<p>处理查询参数组要通过<code>AFQueryStringPair</code>类，以及一些C函数共同完成。<br/>
+<code>AFQueryStringPair</code>中存储了两个属性</p>
+
+<pre><code class="language-objectivec">@property (readwrite, nonatomic, strong) id field;
+@property (readwrite, nonatomic, strong) id value;
+</code></pre>
+
+<p>对应HTTP请求中查询URL中的参数</p>
+
+<pre><code class="language-objectivec">- (instancetype)initWithField:(id)field value:(id)value {
+    self = [super init];
+    if (!self) {
+        return nil;
+    }
+
+    self.field = field;
+    self.value = value;
+
+    return self;
+}
+
+- (NSString *)URLEncodedStringValue {
+    if (!self.value || [self.value isEqual:[NSNull null]]) {
+        return AFPercentEscapedStringFromString([self.field description]);
+    } else {
+        return [NSString stringWithFormat:@&quot;%@=%@&quot;, AFPercentEscapedStringFromString([self.field description]), AFPercentEscapedStringFromString([self.value description])];
+    }
+}
+</code></pre>
+
+<p>使用<code>AFPercentEscapedStringFromString</code>C函数来对filed和value进行处理，使用URL形式，将特殊字符转为百分号表示形式。返回<code>key=value</code>这种形式</p>
+
+<p>使用C函数<code>AFQueryStringPairsFromKeyAndValue</code>将参数字典转为<code>AFQueryStringPair</code>对象数组，然后使用<code>AFQueryStringFromParameters</code>用&amp;拼接参数，返回<code>username=dravenss&amp;password=123456&amp;hello[world]=helloworld<br/>
+</code>形式</p>
+
+<h3 id="toc_9">设置HTTP头部字段</h3>
+
+<p><code>AFHTTPRequestSerializer</code>帮助我们设置HTTP请求头，在内部提供了<code>- (void)setValue:(NSString *)valueforHTTPHeaderField:(NSString *)field</code>方法来设置HTTP头部，它的实现基于<code>mutableHTTPRequestHeaders</code>属性</p>
+
+<pre><code class="language-objectivec">@property (readwrite, nonatomic, strong) NSMutableDictionary *mutableHTTPRequestHeaders;
+
+- (void)setValue:(NSString *)value
+forHTTPHeaderField:(NSString *)field
+{
+    dispatch_barrier_async(self.requestHeaderModificationQueue, ^{
+        [self.mutableHTTPRequestHeaders setValue:value forKey:field];
+    });
+}
+</code></pre>
+
+<p>当我们设置请求头时都会设置到<code>mutableHTTPRequestHeaders</code>这个可变字典中，当真正使用时，通过<code>HTTPRequestHeaders</code>方法来获取对应版本的不可变字典</p>
+
+<pre><code class="language-objectivec">- (NSDictionary *)HTTPRequestHeaders {
+    NSDictionary __block *value;
+    dispatch_sync(self.requestHeaderModificationQueue, ^{
+        value = [NSDictionary dictionaryWithDictionary:self.mutableHTTPRequestHeaders];
+    });
+    return value;
+}
+</code></pre>
+
+<h4 id="toc_10">AFHTTPRequestSerializer设置常用的HTTP头</h4>
+
+<p>在初始化时，根据编译平台  设置了<code>userAgent</code>字符串</p>
+
+<pre><code class="language-objectivec">#if TARGET_OS_IOS
+    // User-Agent Header; see http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.43
+    userAgent = [NSString stringWithFormat:@&quot;%@/%@ (%@; iOS %@; Scale/%0.2f)&quot;, [[NSBundle mainBundle] infoDictionary][(__bridge NSString *)kCFBundleExecutableKey] ?: [[NSBundle mainBundle] infoDictionary][(__bridge NSString *)kCFBundleIdentifierKey], [[NSBundle mainBundle] infoDictionary][@&quot;CFBundleShortVersionString&quot;] ?: [[NSBundle mainBundle] infoDictionary][(__bridge NSString *)kCFBundleVersionKey], [[UIDevice currentDevice] model], [[UIDevice currentDevice] systemVersion], [[UIScreen mainScreen] scale]];
+    
+    if (userAgent) {
+        if (![userAgent canBeConvertedToEncoding:NSASCIIStringEncoding]) {
+            NSMutableString *mutableUserAgent = [userAgent mutableCopy];
+            if (CFStringTransform((__bridge CFMutableStringRef)(mutableUserAgent), NULL, (__bridge CFStringRef)@&quot;Any-Latin; Latin-ASCII; [:^ASCII:] Remove&quot;, false)) {
+                userAgent = mutableUserAgent;
+            }
+        }
+        [self setValue:userAgent forHTTPHeaderField:@&quot;User-Agent&quot;];
+    }
+</code></pre>
+
+<p>设置账号 密码等验证字段</p>
+
+<pre><code class="language-objectivec">- (void)setAuthorizationHeaderFieldWithUsername:(NSString *)username
+                                       password:(NSString *)password
+{
+    NSData *basicAuthCredentials = [[NSString stringWithFormat:@&quot;%@:%@&quot;, username, password] dataUsingEncoding:NSUTF8StringEncoding];
+    NSString *base64AuthCredentials = [basicAuthCredentials base64EncodedStringWithOptions:(NSDataBase64EncodingOptions)0];
+    [self setValue:[NSString stringWithFormat:@&quot;Basic %@&quot;, base64AuthCredentials] forHTTPHeaderField:@&quot;Authorization&quot;];
+}
+
+- (void)clearAuthorizationHeader {
+    dispatch_barrier_async(self.requestHeaderModificationQueue, ^{
+        [self.mutableHTTPRequestHeaders removeObjectForKey:@&quot;Authorization&quot;];
+    });
+}
+</code></pre>
+
+<h3 id="toc_11">设置请求的属性</h3>
+
+<p><code>AFNetworking</code>提供了这些属性来设置</p>
+
+<pre><code class="language-objectivec">@property (nonatomic, assign) BOOL allowsCellularAccess;
+
+@property (nonatomic, assign) NSURLRequestCachePolicy cachePolicy;
+
+@property (nonatomic, assign) BOOL HTTPShouldHandleCookies;
+
+@property (nonatomic, assign) BOOL HTTPShouldUsePipelining;
+
+@property (nonatomic, assign) NSURLRequestNetworkServiceType networkServiceType;
+
+@property (nonatomic, assign) NSTimeInterval timeoutInterval;
+</code></pre>
+
+<p>存储在数组中</p>
+
+<pre><code class="language-objectivec">static NSArray * AFHTTPRequestSerializerObservedKeyPaths() {
+    static NSArray *_AFHTTPRequestSerializerObservedKeyPaths = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&amp;onceToken, ^{
+        _AFHTTPRequestSerializerObservedKeyPaths = @[NSStringFromSelector(@selector(allowsCellularAccess)), NSStringFromSelector(@selector(cachePolicy)), NSStringFromSelector(@selector(HTTPShouldHandleCookies)), NSStringFromSelector(@selector(HTTPShouldUsePipelining)), NSStringFromSelector(@selector(networkServiceType)), NSStringFromSelector(@selector(timeoutInterval))];
+    });
+
+    return _AFHTTPRequestSerializerObservedKeyPaths;
+}
+</code></pre>
+
+<p>当这些属性被设置时  会触发KVO，将新的属性存储在一个名字为<code>mutableObservedChangedKeyPaths</code>中</p>
+
+<pre><code class="language-objectivec">- (void)observeValueForKeyPath:(NSString *)keyPath
+                      ofObject:(__unused id)object
+                        change:(NSDictionary *)change
+                       context:(void *)context
+{
+    if (context == AFHTTPRequestSerializerObserverContext) {
+        if ([change[NSKeyValueChangeNewKey] isEqual:[NSNull null]]) {
+            [self.mutableObservedChangedKeyPaths removeObject:keyPath];
+        } else {
+            [self.mutableObservedChangedKeyPaths addObject:keyPath];
+        }
+    }
+}
+</code></pre>
+
+<p>然后在生成request时 设置这些属性</p>
+
+<pre><code class="language-objectivec">for (NSString *keyPath in AFHTTPRequestSerializerObservedKeyPaths()) {
+        if ([self.mutableObservedChangedKeyPaths containsObject:keyPath]) {
+            [mutableRequest setValue:[self valueForKeyPath:keyPath] forKey:keyPath];
+        }
+    }
+</code></pre>
+
+<h3 id="toc_12">流程</h3>
+
+<p><code>AFHTTPRequestSerializer</code>会在<code>Manager</code>初始化之后进行一些初始化，它会根据当前系统环境预设置一些HTTP头部字段<code>Accept-Language</code>、<code>User-Agent</code>等</p>
+
+<p>在完成了HTTP 请求头和属性的设置后，</p>
+
+<p>在调用请求的方法时，会调用到序列化的这个方法</p>
+
+<pre><code class="language-objectivec">- (NSMutableURLRequest *)requestWithMethod:(NSString *)method
+                                 URLString:(NSString *)URLString
+                                parameters:(id)parameters
+                                     error:(NSError *__autoreleasing *)error
+{
+    NSParameterAssert(method);
+    NSParameterAssert(URLString);
+
+    NSURL *url = [NSURL URLWithString:URLString];
+
+    NSParameterAssert(url);
+
+    NSMutableURLRequest *mutableRequest = [[NSMutableURLRequest alloc] initWithURL:url];
+    mutableRequest.HTTPMethod = method;
+
+    for (NSString *keyPath in AFHTTPRequestSerializerObservedKeyPaths()) {
+        if ([self.mutableObservedChangedKeyPaths containsObject:keyPath]) {
+            [mutableRequest setValue:[self valueForKeyPath:keyPath] forKey:keyPath];
+        }
+    }
+
+    mutableRequest = [[self requestBySerializingRequest:mutableRequest withParameters:parameters error:error] mutableCopy];
+
+    return mutableRequest;
+}
+</code></pre>
+
+<p>这个方法完成了一下几件事</p>
+
+<ol>
+<li>对参数进行检查</li>
+<li>设置HTTP方法</li>
+<li>通过<code>mutableObservedChangedKeyPaths</code>设置<code>NSMutableRequest</code>的属性</li>
+<li><p>调用了<code>[AFHTTPRequestSerializer requestBySerializingRequest:withParameters:error:]</code>方法来设置HTTP头部字段和查询参数</p>
+<p>在这个方法中做了两件事</p>
+<ol>
+<li>设置HTTP头部</li>
+<li>调用<code>AFQueryStringFromParameters</code>将参数转为查询参数</li>
+<li><p>将params添加到url或者http body中</p>
+<pre><code class="language-objectivec">- (NSURLRequest *)requestBySerializingRequest:(NSURLRequest *)request
+                           withParameters:(id)parameters<br/>
+                                    error:(NSError *__autoreleasing *)error<br/>
+{<br/>
+    NSParameterAssert(request);<br/>
+    NSMutableURLRequest *mutableRequest = [request mutableCopy];<br/>
+    [self.HTTPRequestHeaders enumerateKeysAndObjectsUsingBlock:^(id field, id value, BOOL * __unused stop) {<br/>
+        if (![request valueForHTTPHeaderField:field]) {<br/>
+            [mutableRequest setValue:value forHTTPHeaderField:field];<br/>
+        }<br/>
+    }];<br/>
+    NSString *query = nil;<br/>
+    if (parameters) {<br/>
+        if (self.queryStringSerialization) {<br/>
+            NSError *serializationError;<br/>
+            query = self.queryStringSerialization(request, parameters, &amp;serializationError);<br/>
+            if (serializationError) {<br/>
+                if (error) {<br/>
+                    *error = serializationError;<br/>
+                }<br/>
+                return nil;<br/>
+            }<br/>
+        } else {<br/>
+            switch (self.queryStringSerializationStyle) {<br/>
+                case AFHTTPRequestQueryStringDefaultStyle:<br/>
+                    query = AFQueryStringFromParameters(parameters);<br/>
+                    break;<br/>
+            }<br/>
+        }<br/>
+    }<br/>
+    if ([self.HTTPMethodsEncodingParametersInURI containsObject:[[request HTTPMethod] uppercaseString]]) {<br/>
+        if (query &amp;&amp; query.length &gt; 0) {<br/>
+            mutableRequest.URL = [NSURL URLWithString:[[mutableRequest.URL absoluteString] stringByAppendingFormat:mutableRequest.URL.query ? @&quot;&amp;%@&quot; : @&quot;?%@&quot;, query]];<br/>
+        }<br/>
+    } else {<br/>
+        // #2864: an empty string is a valid x-www-form-urlencoded payload<br/>
+        if (!query) {<br/>
+            query = @&quot;&quot;;<br/>
+        }<br/>
+        if (![mutableRequest valueForHTTPHeaderField:@&quot;Content-Type&quot;]) {<br/>
+            [mutableRequest setValue:@&quot;application/x-www-form-urlencoded&quot; forHTTPHeaderField:@&quot;Content-Type&quot;];<br/>
+        }<br/>
+        [mutableRequest setHTTPBody:[query dataUsingEncoding:self.stringEncoding]];<br/>
+    }<br/>
+    return mutableRequest;<br/>
+}
+</code></pre></li>
+</ol></li>
+<li><p>最后这方法会返回一个<code>NSMutableURLRequest</code></p></li>
+</ol>
+
+<h3 id="toc_13">AFPropertyListRequestSerializer AFJSONRequestSerializer</h3>
+
+<p><code>AFJSONRequestSerializer</code> 、 <code>AFPropertyListRequestSerializer</code><br/>
+均继承自AFHTTPRequestSerializer  </p>
+
+<p>其重写了<code>- (NSURLRequest *)requestBySerializingRequest:(NSURLRequest *)request withParameters:(id)parameters error:(NSError *__autoreleasing *)error</code>方法，主要内部修改了contentType和设置的httpBody的数据格式化</p>
+
+<p>我们只需要在请求时设置manager 的 requestSerializer为<code>[AFJSONRequestSerializer serializer]</code></p>
 
 
 		</div>
@@ -293,8 +584,10 @@ _enabled = [[[[self.immediateEnabled
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -308,7 +601,7 @@ _enabled = [[[[self.immediateEnabled
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -404,31 +697,31 @@ _enabled = [[[[self.immediateEnabled
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

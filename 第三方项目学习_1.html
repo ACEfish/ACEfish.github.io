@@ -82,139 +82,51 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15680125238227.html">AFNetworkReachabilityManager</a></h1>
-			<p class="meta"><time datetime="2019-09-09T15:02:03+08:00" 
-			pubdate data-updated="true">2019/9/9</time></p>
+		  	<h1 class="entry-title"><a href="15710248960458.html">Layout Specs</a></h1>
+			<p class="meta"><time datetime="2019-10-14T11:48:16+08:00" 
+			pubdate data-updated="true">2019/10/14</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">AFNetworkReachabilityManager的使用</h2>
+		  	<h2 id="toc_0">Layout specs</h2>
 
-<h3 id="toc_1">初始化 AFNetworkReachabilityManager</h3>
+<h3 id="toc_1">Layout flow</h3>
 
-<p>在初始化方法中使用<code>SCNetworkReachabilityCreateWithAddress</code>或者<code>SCNetworkReachabilityCreateWithName</code>生成一个<code>SCNetworkReachabilityRef</code>的引用</p>
+<p>Layout计算是 通过以下启动触发器来递归完成。一个layout布局完成的启动触发器就是 当父节点改变时。这触发器也在第一次node树被创建时发生。</p>
 
-<pre><code class="language-objectivec">+ (instancetype)managerForDomain:(NSString *)domain {
-    SCNetworkReachabilityRef reachability = SCNetworkReachabilityCreateWithName(kCFAllocatorDefault, [domain UTF8String]);
-    AFNetworkReachabilityManager *manager = [[self alloc] initWithReachability:reachability];
-    CFRelease(reachability);
-    return manager;
-}
+<p><code>ASDisplayNode</code>第一个重要分支是顶层的<code>[ASDisplayNode calculateLayoutThatFits]</code>，这个方法将会选择布局引擎是<code>Texture布局</code>还是<code>Yoga</code></p>
 
-+ (instancetype)managerForAddress:(const void *)address {
-    SCNetworkReachabilityRef reachability = SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, (const struct sockaddr *)address);
-    AFNetworkReachabilityManager *manager = [[self alloc] initWithReachability:reachability];
-    CFRelease(reachability);
-    return manager;
-}
+<pre><code class="language-objectivec">- (ASLayout *)calculateLayoutThatFits:(ASSizeRange)constrainedSize
+{
+  __ASDisplayNodeCheckForLayoutMethodOverrides;
 
-- (instancetype)initWithReachability:(SCNetworkReachabilityRef)reachability {
-    self = [super init];
-    if (!self) {
-        return nil;
-    }
+  switch (self.layoutEngineType) {
+    case ASLayoutEngineTypeLayoutSpec:
+      return [self calculateLayoutLayoutSpec:constrainedSize];
+#if YOGA
+    case ASLayoutEngineTypeYoga:
+      return [self calculateLayoutYoga:constrainedSize];
+#endif
+      // If YOGA is not defined but for some reason the layout type engine is Yoga
+      // we explicitly fallthrough here
+    default:
+      break;
+  }
 
-    _networkReachability = CFRetain(reachability);
-    self.networkReachabilityStatus = AFNetworkReachabilityStatusUnknown;
-
-    return self;
-}
-</code></pre>
-
-<ol>
-<li>这两个方法通过 域名 或者有个 <code>sockaddr_in</code>指针 生成了一个<code>SCNetworkReachabilityRef</code></li>
-<li>调用<code>- [AFNetworkReachabilityManager initWithReachability:]</code>将生成的<code>SCNetworkReachabilityRef</code>传入</li>
-<li>设置默认<code>networkReachabilityStatus</code></li>
-</ol>
-
-<h3 id="toc_2">监控网络状态</h3>
-
-<p>在初始化了manager之后，我们需要调用<code>startMonitoring</code>来开始监控网络状态</p>
-
-<pre><code class="language-objectivec">- (void)startMonitoring {
-    [self stopMonitoring];
-    if (!self.networkReachability) {
-        return;
-    }
-    __weak __typeof(self)weakSelf = self;
-    AFNetworkReachabilityStatusBlock callback = ^(AFNetworkReachabilityStatus status) {
-        __strong __typeof(weakSelf)strongSelf = weakSelf;
-
-        strongSelf.networkReachabilityStatus = status;
-        if (strongSelf.networkReachabilityStatusBlock) {
-            strongSelf.networkReachabilityStatusBlock(status);
-        }
-
-    };
-
-    SCNetworkReachabilityContext context = {0, (__bridge void *)callback, AFNetworkReachabilityRetainCallback, AFNetworkReachabilityReleaseCallback, NULL};
-    SCNetworkReachabilitySetCallback(self.networkReachability, AFNetworkReachabilityCallback, &amp;context);
-    SCNetworkReachabilityScheduleWithRunLoop(self.networkReachability, CFRunLoopGetMain(), kCFRunLoopCommonModes);
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0),^{
-        SCNetworkReachabilityFlags flags;
-        if (SCNetworkReachabilityGetFlags(self.networkReachability, &amp;flags)) {
-            AFPostReachabilityStatusChange(flags, callback);
-        }
-    });
+  // If this case is reached a layout type engine was defined for a node that is currently
+  // not supported.
+  ASDisplayNodeAssert(NO, @&quot;No layout type determined&quot;);
+  return nil;
 }
 </code></pre>
 
-<p>在该方法中创建了每次网络状态改变时的回调<code>AFNetworkReachabilityStatusBlock</code>，当回调发生时，重新设置status属性，调用设置的<code>networkReachabilityStatusBlock</code>属性</p>
-
-<p>监控网络状态核心代码</p>
+<p>基于UIKit系统，Texture在不同阶段遵循以下过程</p>
 
 <ol>
-<li><p>创建一个<code>SCNetworkReachabilityContext</code></p>
-<pre><code class="language-objectivec">typedef struct {
-    CFIndex     version;<br/>
-    void *      __nullable info;<br/>
-    const void  * __nonnull (* __nullable retain)(const void *info);<br/>
-    void        (* __nullable release)(const void *info);<br/>
-    CFStringRef __nonnull (* __nullable copyDescription)(const void *info);<br/>
-} SCNetworkReachabilityContext;<br/>
-SCNetworkReachabilityContext context = {<br/>
- 0,<br/>
- (__bridge void *)callback,<br/>
- AFNetworkReachabilityRetainCallback, <br/>
- AFNetworkReachabilityReleaseCallback, <br/>
- NULL<br/>
-};
-</code></pre></li>
-<li><p>当目标状态改变时 调用传入的回调</p>
-<pre><code class="language-objectivec">SCNetworkReachabilitySetCallback(self.networkReachability, AFNetworkReachabilityCallback, &amp;context);
-static void AFNetworkReachabilityCallback(SCNetworkReachabilityRef __unused target, SCNetworkReachabilityFlags flags, void *info) {<br/>
-    AFPostReachabilityStatusChange(flags, (__bridge AFNetworkReachabilityStatusBlock)info);<br/>
-}<br/>
-static void AFPostReachabilityStatusChange(SCNetworkReachabilityFlags flags, AFNetworkReachabilityStatusBlock block) {<br/>
-    AFNetworkReachabilityStatus status = AFNetworkReachabilityStatusForFlags(flags);<br/>
-    dispatch_async(dispatch_get_main_queue(), ^{<br/>
-        if (block) {<br/>
-            block(status);<br/>
-        }<br/>
-        NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];<br/>
-        NSDictionary *userInfo = @{ AFNetworkingReachabilityNotificationStatusItem: @(status) };<br/>
-        [notificationCenter postNotificationName:AFNetworkingReachabilityDidChangeNotification object:nil userInfo:userInfo];<br/>
-    });<br/>
-}
-</code></pre>
-<ol>
-<li>当网络状态改变时 会将<code>context</code>作为参数 回调<code>AFNetworkReachabilityCallback</code></li>
-<li>在<code>AFNetworkReachabilityCallback</code>中，将context中的block，以及作为状态的flags作为参数调用了 <code>AFPostReachabilityStatusChange</code>状态改变方法</li>
-<li>利用<code>AFNetworkReachabilityStatusForFlags</code>函数将flags转变为网络状态status</li>
-<li>在主线程中执行<code>block(status)</code> 并发送状态改变的通知</li>
-</ol></li>
-<li><p>在MainRunLoop中监控网络状态</p>
-<pre><code class="language-objectivec">SCNetworkReachabilityScheduleWithRunLoop(self.networkReachability, CFRunLoopGetMain(), kCFRunLoopCommonModes);
-</code></pre></li>
-<li><p>获取当前网络状态 调用callback</p>
-<pre><code class="language-objectivec"> dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0),^{
-    SCNetworkReachabilityFlags flags;<br/>
-    if (SCNetworkReachabilityGetFlags(self.networkReachability, &amp;flags)) {<br/>
-        AFPostReachabilityStatusChange(flags, callback);<br/>
-    }<br/>
-});
-</code></pre></li>
+<li>ASDisplayNode和ASLayout初始化。这是完全独立与UIKit存在。这是当一个布局计算创建时</li>
+<li>UIView/CALayer初始化。遵循UIKit管理惯例，即在布局大小之前创建要显示的UIKit items。然而，它们是在UIKit层次，允许下列的布局触发器</li>
+<li>UIView/CALayer布局。这是UIKit递归操作之后的结果。这和步骤1中的布局计算不同，这是仅仅为了使用已经准备好的布局，并且将其应用到UIView/CALayer中 进行布局调整</li>
+<li>如有必要，在其中渲染CALayer的光栅化。UIKit可以将UIKit层次结构绘制到屏幕上</li>
 </ol>
 
 
@@ -238,8 +150,10 @@ static void AFPostReachabilityStatusChange(SCNetworkReachabilityFlags flags, AFN
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -253,7 +167,7 @@ static void AFPostReachabilityStatusChange(SCNetworkReachabilityFlags flags, AFN
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -349,31 +263,31 @@ static void AFPostReachabilityStatusChange(SCNetworkReachabilityFlags flags, AFN
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

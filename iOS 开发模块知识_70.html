@@ -82,94 +82,68 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15082316038998.html">ARSCNView</a></h1>
-			<p class="meta"><time datetime="2017-10-17T17:13:23+08:00" 
-			pubdate data-updated="true">2017/10/17</time></p>
+		  	<h1 class="entry-title"><a href="15529084547270.html">ReactObjc常用</a></h1>
+			<p class="meta"><time datetime="2019-03-18T19:27:34+08:00" 
+			pubdate data-updated="true">2019/3/18</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>用于3DAR场景的视图</p>
+		  	<h2 id="toc_0">常用信号</h2>
 
-<ul>
-<li>在视图中渲染设备摄像头的实时视频流，并就其设置为 3D 场景的背景</li>
-<li>ARKit 的 3D 坐标系会匹配 SceneKit 的 3D 坐标系，所以此视图渲染的对象会自动匹配增强后的 ARKit 世界视图</li>
-<li>自动移动虚拟 SceneKit 3D 摄像头来匹配 ARKit 追踪到的 3D 位置，所以不需要再写代码连接 ARKit 移动事件与 SceneKit 3D 渲染</li>
-</ul>
+<pre><code class="language-objectivec">//按钮点击事件信号
+RACSignal *controlUpdate = [myButton rac_signalForControlEvents:UIControlEventTouchUpInside];
 
-<pre><code class="language-objectivec">/**
-代理
- */
-@property (nonatomic, weak, nullable) id&lt;ARSCNViewDelegate&gt; delegate;
+//监测textField改变信号
+RACSignal *textChange = [myTextField rac_textSignal];
 
-/**
-AR会话
- */
-@property (nonatomic, strong) ARSession *session;
+//alertView UIActionSheet UIImagePickerControl 监测信号
+//例如对alertView  UIActionSheet 等监测返回的就是点击的按钮index
+RACSignal *alertButtonClicked = [myAlertView rac_buttonClickedSignal];
 
-/**
-场景
- */
-@property(nonatomic, strong) SCNScene *scene;
+//监测对象某个事件的执行
+RACSignal *viewAppeared = [self rac_signalForSelector:@selector(viewDidAppear:)];
 
-/**
-是否自动适应灯光
- */
-@property(nonatomic) BOOL automaticallyUpdatesLighting;
+</code></pre>
 
-/**
-返回对应节点的锚点，节点是一个3D虚拟物体，它的坐标是虚拟场景中的坐标，而锚点ARAnchor是ARKit中现实世界的坐标。
- */
-- (nullable ARAnchor *)anchorForNode:(SCNNode *)node;
+<h2 id="toc_1">UI控件展示与对象属性的绑定</h2>
 
-/**
-返回对应锚点的物体
- */
-- (nullable SCNNode *)nodeForAnchor:(ARAnchor *)anchor;
+<pre><code class="language-objectivec">//将label内容与model属性绑定  之后当model属性改变即会改变label内容，
+//RACObserve 是采用了KVO方式，因此改变userFullName属性方法需要出发setter方法 
+RAC(self.userNameLabel, text) = RACObserve(self.viewModel, userFullName);
 
-/**
-根据2D坐标点搜索3D模型，这个方法通常用于，当我们在手机屏幕点击某一个点的时候，可以捕捉到这一个点所在的3D模型的位置，至于为什么是一个数组非常好理解。手机屏幕一个是长方形，这是一个二维空间。而相机捕捉到的是一个由这个二维空间射出去的长方体，我们点击屏幕一个点可以理解为在这个长方体的边缘射出一条线，这一条线上可能会有多个3D物体模型
-point：2D坐标点（手机屏幕某一点）
-ARHitTestResultType：捕捉类型  点还是面
-(NSArray&lt;ARHitTestResult *&gt; *)：追踪结果数组  详情见本章节ARHitTestResult类介绍
-数组的结果排序是由近到远
- */
-- (NSArray&lt;ARHitTestResult *&gt; *)hitTest:(CGPoint)point types:(ARHitTestResultType)types;
+//当要赋值的属性类型不一致时，可以使用map将属性调整一致
+RAC(self.countLabel, text) = [RACObserve(cellVM, count) map:^id _Nullable(NSNumber *  _Nullable value) {
+    return value.stringValue;
+}];
 
-@end
+//将UI控件内容绑定到对象属性
+//将Textfield内容绑定到self.viewModel的userName属性 
+//rac_textSignal默认检测textEditingEvent 因此代码级别改变Textfield内容不会触发此信号
+RAC(self.viewModel, username) = [myTextfield rac_textSignal];
+</code></pre>
 
-//代理
-#pragma mark - ARSCNViewDelegate
+<h2 id="toc_2">UI事件与对象数据绑定</h2>
+
+<pre><code class="language-objectivec">//订阅数据改变的信号 当数据信号改变时刷新tableView 这样之后我们只需要改变数据即可 无需手动调用tableView刷新事件
+//因为这里tableView的刷新绑定两个属性 因此我们需要对这两个信号执行merge
+//因为多个信号 同时改变的话可能会导致多次刷新 因此`bufferWithTime`
+//设置在指定时间内只执行一次 当设置为0时 在下次屏幕刷新之前(即一个runloop中) 只执行一次 而不会多次刷新
+@weakify(self);
+[[[RACSignal merge:@[RACObserve(self.viewModel, tweets),
+                    RACObserve(self.viewModel, allTweetsLoaded)]]
+bufferWithTime:0 onScheduler:[RACScheduler mainThreadScheduler]]
+subscribeNext:^(id value) {
+    @strongify(self);
+    [self.tableView reloadData];
+}];
 
 
-//代理的内部实现了SCNSceneRendererDelegate：scenekit代理 和ARSessionObserver：ARSession监听（KVO机制）
-@protocol ARSCNViewDelegate &lt;SCNSceneRendererDelegate, ARSessionObserver&gt;
-@optional
-
-/**
-自定义节点的锚点
- */
-- (nullable SCNNode *)renderer:(id &lt;SCNSceneRenderer&gt;)renderer nodeForAnchor:(ARAnchor *)anchor;
-
-/**
-当添加节点是会调用，我们可以通过这个代理方法得知我们添加一个虚拟物体到AR场景下的锚点（AR现实世界中的坐标）
- */
-- (void)renderer:(id &lt;SCNSceneRenderer&gt;)renderer didAddNode:(SCNNode *)node forAnchor:(ARAnchor *)anchor;
-
-/**
-将要刷新节点
- */
-- (void)renderer:(id &lt;SCNSceneRenderer&gt;)renderer willUpdateNode:(SCNNode *)node forAnchor:(ARAnchor *)anchor;
-
-/**
- 已经刷新节点
- */
-- (void)renderer:(id &lt;SCNSceneRenderer&gt;)renderer didUpdateNode:(SCNNode *)node forAnchor:(ARAnchor *)anchor;
-
-/**
- 移除节点
- */
-- (void)renderer:(id &lt;SCNSceneRenderer&gt;)renderer didRemoveNode:(SCNNode *)node forAnchor:(ARAnchor *)anchor;
-
+//按钮点击事件
+[[self.goButton rac_signalForControlEvents:UIControlEventTouchUpInside]
+subscribeNext: ^(id value) {
+    @strongify(self);
+    [self.viewModel getTweetsForCurrentUsername];
+}];
 </code></pre>
 
 
@@ -193,8 +167,10 @@ ARHitTestResultType：捕捉类型  点还是面
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -208,7 +184,7 @@ ARHitTestResultType：捕捉类型  点还是面
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -304,31 +280,31 @@ ARHitTestResultType：捕捉类型  点还是面
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

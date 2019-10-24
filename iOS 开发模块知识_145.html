@@ -82,148 +82,87 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15671439508053.html">Block存储</a></h1>
-			<p class="meta"><time datetime="2019-08-30T13:45:50+08:00" 
-			pubdate data-updated="true">2019/8/30</time></p>
+		  	<h1 class="entry-title"><a href="15668021082247.html">Blocks的实现</a></h1>
+			<p class="meta"><time datetime="2019-08-26T14:48:28+08:00" 
+			pubdate data-updated="true">2019/8/26</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">Block存储区域</h2>
+		  	<h2 id="toc_0">Block的实质</h2>
 
-<p>在之前我们看到了block的<code>isa</code>指向的为<code>_NSConcreteStackBlock</code> 其实 除此之外还还有其他两种:</p>
+<p>通过<code>-rewrite-objc</code>将Block语法转为C++源代码</p>
 
-<ul>
-<li><code>_NSConcreteStackBlock</code>：该类对象被设置到栈上</li>
-<li><code>_NSConcreteGlobalBlock</code>：与全局变量类似，被设置在城区的数据区域<code>.data区</code> 中</li>
-<li><code>_NSConcreteMallocBlock</code>：设置在由malloc函数分配的内存块(堆)中</li>
-</ul>
-
-<p>block为<code>_NSConcreteGlobalBlock</code>的情况:</p>
+<pre><code class="language-objectivec">//源代码
+void(^blk)(void) = ^{
+    printf(&quot;Block\n&quot;)
+}
+</code></pre>
 
 <ol>
-<li><p>记述全局变量的地方有Block语法时<br/>
-block写在全局变量区，此时转换源代码可以看到<code>impl.isa=&amp;_NSConcreteGloabalBlock</code>。因为在全局变量区中不能使用自动变量，所以不存在对自动变量的截获，因此整个程序只需要一个实例即可，故将Block用结构体实例设置在全局变量相同的数据区</p></li>
-<li><p>Block语法的表示式中不使用截获的自动变量时</p>
-<pre><code class="language-objectivec">typedef int(^blk_t)(int)
-for(int rate=0; rate&lt;10; ++rate) {<br/>
-    blk_t blk = ^(int count){<br/>
-        return count<br/>
+<li><p>block是&quot;带有自动变量值的匿名函数&quot;，</p>
+<pre><code class="language-objectivec">static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    printf(&quot;Block\n&quot;)<br/>
+}
+</code></pre>
+<p>可以看到其执行内容会按照普通的C函数处理，并且Block会根据所属的函数名(main函数)和该block出现的顺序值(为0)进行命名。并且其函数的执行参数即为<code>__cself</code>也就是指向该block的机构体的指针</p></li>
+<li><p>Block其实是<code>Object-C</code>对象</p>
+<p>block转换为结构体后其结构如下:</p>
+<pre><code class="language-objectivec">struct __main_block_impl_0 {
+    struct __block_impl impl;<br/>
+    struct __main_block_desc_0 *Desc;<br/>
+    //结构体初始化函数<br/>
+    __main_block_impl_0(void *fp, strct __main_block_desc_0, int flags=0) {<br/>
+        impl.isa = &amp; NSConcreatStackBlock;<br/>
+        impl.Flags = flags;<br/>
+        impl.FuncPtr = fp;<br/>
+        Desc = desc;<br/>
     }<br/>
-}
-</code></pre>
-<p>即使在函数内部，不在全局变量区域使用Block语法，只要Block不截获自动变量，就可以将Block用结构体实例设置在数据区域</p></li>
-</ol>
-
-<h3 id="toc_1">Block在超出变量作用域还能存在的原因</h3>
-
-<p>对于配置在全局数据区的block 超出变量作用区可以安全使用。<br/>
-设置在栈上的block和__block变量，是在栈上，当作用域结束，会被废弃，可以通过将<code>block</code>和<code>__block</code>变量复制到堆上解决此问题</p>
-
-<p>当将block复制到堆上后，其<code>isa=&amp;_NSConceteMallocBlock</code></p>
-
-<p>在ARC情况下，编译器大多会自动判断，生成将block从栈到堆上的代码</p>
-
-<pre><code class="language-objectivec">typedef int(^blk_t)(int)
-blk_t func(int rate) {
-    return ^(int count) {
-        return rate*count
-    }
-}
-
-//转换为源代码
-blk_t func(int rate) {
-    blk_t tmp = &amp;_func_block_impl_0(_func_block_func_0, &amp;__func_block_desc_0_DATA, rate)
-    tmp = objc_retainBlock(tmp) //等效于 tmp = Block_Copy(tmp)
-    return objc_autoreleaseReturnValue(tmp)
-}
-</code></pre>
-
-<p><code>tmp = objc_retainBlock(tmp)</code>其实就是执行了<code>Block_Copy</code>函数</p>
-
-<p>虽然大多时候编译器会自动判断，但是特殊情况，我们需要手动<code>copy</code>，将其从栈复制到堆上</p>
-
-<ol>
-<li><p>当向方法或者函数的参数中传递Block时，需要手动copy<br/>
-但是如果在方法或者函数中对复制了传递过来的参数，就不需要在调用函数之前手动复制了<br/>
-以下为不需要手动复制情况：</p>
-<ul>
-<li>Cocoa框架中的方法，并且方法名字中含有<code>usingBlock</code>时</li>
-<li>GCD的API中</li>
-</ul>
-<pre><code class="language-objectivec">//例如
-- (id)getBlockArray {<br/>
-    int val = 10<br/>
-    return [[NSArray alloc] initWithObjects: [^{NSLog(@&quot;blk0:%d&quot;, val);} copy], nil]; <br/>
 }<br/>
-//作为参数传递的block需要copy  否则block在出了该函数作用区域就被废弃
-</code></pre></li>
+struct __block_impl {<br/>
+    void *isa;<br/>
+    int Flags;<br/>
+    int Reserved;<br/>
+    void *FunctionPtr;<br/>
+}<br/>
+struct __main_block_desc_0 {<br/>
+    unsigned long reserved; //今后版本升级所需的区域<br/>
+    unsigned long Block_size; //block的大小<br/>
+}
+</code></pre>
+<p>因此将block结构体展开的话，其初始化结构如下:</p>
+<pre><code class="language-objectivec">static struct __main_block_desc_0 __main_block_desc_0_DATA = {
+    0,<br/>
+    sizeof(struct __main_block_impl_0) //block大小<br/>
+}<br/>
+//初始化<br/>
+isa = &amp;_NSConcreatStackBlock;<br/>
+Flags=0;<br/>
+Reserved=0;<br/>
+FuncPtr=__main_block_func_0;<br/>
+Desc= &amp;__main_block_desc_0_DATA;
+</code></pre>
+<p>当执行该block时,即执行block中的FuncPtr函数，然后将block结构体指针作为参数传入：</p>
+<pre><code class="language-objectivec">((void(*)(struct __block_impl *))((struct __block_impl *)blk)-&gt;FuncPtr)((struct _block_impl*)blk)
+</code></pre>
+<blockquote>
+<p>注意</p>
+<p>对于<code>isa=&amp;_NSConcreatStackBlock;</code>因为block也是一个对象，因此与其它OC对象类型，其isa指针指向其类结构体，即block的类信息就放在<code>_NSConcreatStackBlock</code>中</p>
+</blockquote></li>
 </ol>
 
-<p>不论block&#39;在何处，对其执行copy方法都不会有任何问题</p>
+<h2 id="toc_1">截获自动变量</h2>
 
-<ul>
-<li>对栈上的block copy  将其从栈上复制到堆上</li>
-<li>对数据区的block copy  什么也不做</li>
-<li>对堆上的block copy   引用计数增加</li>
-</ul>
+<p>所谓的&quot;截获自动变量值&quot;其实是在执行block时，Block语法表达式所使用的自动变量被保存到Block的结构体实例中</p>
 
-<blockquote>
-<p>注意</p>
+<p>截获了自动变量的结构体</p>
 
-<p>对block多次调用 copy 也是不会有任何问题的 [[[[blk copy] copy] copy] copy]</p>
-</blockquote>
-
-<h2 id="toc_2">__block变量存储区域</h2>
-
-<p>当Block从栈复制到堆上时，其使用的__block变量也会复制到堆上，此时Block会持有__block变量</p>
-
-<p>当多个block使用__block变量时，当第一个block从栈复制到堆上时，__block变量就复制到堆上，并被改block持有，而其他block再从栈复制到堆上时，只是对该__block的引用计数增加了而已</p>
-
-<blockquote>
-<p>注意</p>
-
-<p>在栈上的block只是对__block变量使用 而并不会持有</p>
-</blockquote>
-
-<h3 id="toc_3"><strong>block使用</strong>forwarding原因</h3>
-
-<p>这样设计的主要原因是: 为了不论__block变量是在栈还是堆上都能够正确访问</p>
-
-<p>因为在将__block从栈复制到堆上之后，我们就有两个可访问:栈上的__block变量和堆上的__block变量<br/>
-此时访问该变量的方法均为<code>++(val-&gt;__forwarding-&gt;val)</code>  将变量从栈复制到堆上时，就将成员变量<code>__forwarding</code>的值替换为了指向了堆上的<code>__block</code>变量结构体实例的地址</p>
-
-<h2 id="toc_4">截获对象</h2>
-
-<p>当block内部使用的是 id类型或者对象类型变量时，</p>
-
-<pre><code class="language-objectivec">blk_t blk;
-{
-    id array = [[NSMutableArray alloc] init]
-    blk = [^(id objc){
-        [array addObject: obj]
-        NSLog(&quot;%ld&quot;, [array count])
-    } copy]
-}
-blk([[NSObject alloc] init]) //1
-blk([[NSObject alloc] init]) //2
-blk([[NSObject alloc] init]) //3
-</code></pre>
-
-<p>此时array在变量作用域结束或 依旧存在</p>
-
-<blockquote>
-<p>注意</p>
-
-<p>必须在block后执行copy方法，因为只有调用了_Block_Copy方法才能持有截获的__strong类型对象。否则不调用<code>_Block_Copy</code>函数的话，即使截获了对象，也会随着变量作用域的结束而被废弃</p>
-</blockquote>
-
-<pre><code class="language-objectivec">//转换源码
-struct __main_block_impl_0 {
+<pre><code class="language-objectivec">struct __main_block_impl_0 {
     struct __block_impl impl;
     struct __main_block_desc_0 *Desc;
-    id __strong array; //id __strong修饰符的成员变量
-    //结构体初始化函数
-    __main_block_impl_0(void *fp, strct __main_block_desc_0, id __strong _array, int flags=0): array(_array) {
+    const char *fmt; //自动变量值
+    int val; //自动变量值
+        //结构体初始化函数
+     __main_block_impl_0(void *fp, strct __main_block_desc_0, const char*_fmt, int _val, int flags=0) : fmt(_fmt), val(_val) {
         impl.isa = &amp; NSConcreatStackBlock;
         impl.Flags = flags;
         impl.FuncPtr = fp;
@@ -232,186 +171,127 @@ struct __main_block_impl_0 {
 }
 </code></pre>
 
-<p>可以看到 array被截获成为block结构体的成员变量 </p>
+<blockquote>
+<p>注意</p>
 
-<p>内存管理中说C语言的结构体中不能含有附有<code>__strong</code>修饰符的成员变量。因为编译器不知道何时能进行C语言结构体的初始化和废弃操作，不能很好的管理内存。但是<code>Object-C</code>的运行时 能帮助<mark>准确掌握Block从栈复制到堆上以及堆上的block被废弃的时机，因此在Block的结构体中即使有__strong或者__weak的修饰符的变量，也可以恰当的进行初始化和废弃。</mark>为此需要在<code>_main_block_des_0</code>中增加成员变量copy和dispose，以及作为指针赋值给该成员变量的<code>_main_block_copy_0</code>和<code>_main_block_dispose_0</code>函数</p>
+<p>block只会捕获使用到的变量，表达式中没有使用到的变量不会被自动追加</p>
+</blockquote>
 
-<pre><code class="language-objectivec">static void __main_block_copy_0(struct __main_block_impl_0 *dst, struct _main_block_impl_0 *src) {
-    _Block_object_assign(&amp;det-&gt;array, src-&gt;array, BLOCK_FIFLD_IS_OBJECT)
+<h2 id="toc_2">__block说明符</h2>
+
+<p>看到上面👆捕获变量的源码，可以看出来，block中捕获的自动变量仅捕获自动变量的值。因此在block内部重写该自动变量也不会改变原来捕获的自动变量值，因此，当我们给捕获的自动变量赋值时 就会产生编译错误</p>
+
+<h3 id="toc_3">静态变量、静态全局变量、全局变量</h3>
+
+<p>我们可以在block中直接访问或修改静态全局变量/全局变量 这是没有任何改变的，因此可以在block转换后的函数中直接使用，而无需在结构体中保留、变量</p>
+
+<p>但是对于静态变量，因为block转换后的函数已经在静态变量所处的函数之外，出了访问的作用域</p>
+
+<pre><code class="language-objectivec">//结构体中
+__main_block_impl_0 {
+    ...
+    int * static_val; //block内部保留 静态变量的指针地址
 }
 
-static void __main_block_dispose_0(struct _main_block_impl_0 *src) {
-    _Block_object_dispose(src-&gt;array, BLOCK_FIFLD_IS_OBJECT)
-}
-
-static struct __main_block_desc_0 {
-    unsigned long reserved; 
-    unsigned long Block_size; 
-    void (*copy)(struct __main_block_impl_0 *)
-    void (*dispose)(struct __main_block_impl_0 *)
+//执行函数
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    (*static_val) *= 3 //
 }
 </code></pre>
 
-<p>使用<code>_Block_object_assign</code>将对象类型赋值给block结构体的成员变量并持有该对象。相当于调用了<code>retain</code>方法<br/>
-使用<code>_Block_object_dispose</code>来释放在block中的结构体变量中的成员变量，相当于<code>release</code>实例方法<br/>
-当block复制到堆上时调用copy函数，当堆上的block被废弃时调用<code>dispose</code>函数</p>
+<p>因此 block将静态变量的指针传递给<code>__main_block_impl_0</code>结构体的构造函数，并保留在结构体中，这是超出作用范围最简单的访问方法了</p>
 
-<p>Block复制到堆上的时机？</p>
+<blockquote>
+<p>注意</p>
+
+<p>对于自动变量为什么没有采用类似静态变量的访问方式呢??<br/>
+Block可以截获超过作用域被截获的对象的自动变量，变量作用域结束的，原来的自动变量被废弃，因此block中超过变量作用域的对象就如同静态变量一样，无法通过指针进行访问了</p>
+</blockquote>
+
+<h3 id="toc_4">__block修饰符</h3>
+
+<p>在OC中存在以下几种存储域类说明符:</p>
 
 <ul>
-<li>调用Block的copy实例方法时</li>
-<li>Block作为函数返回值返回时</li>
-<li>将Block赋值给附有__strong修饰符id类型的类或者Block类型的成员变量时</li>
-<li>在方法名中含有<code>usingBlock</code>的Cocoa框架方法或者GCD的API中传递Block时</li>
+<li>typedef</li>
+<li>extern</li>
+<li>static</li>
+<li>auto</li>
+<li>register</li>
 </ul>
 
-<p>根据block存储区域的学习可知，其实就是当<code>__Block_copy</code>方法被调用时，Block从栈复制到堆上<br/>
-当释放block谁都不持有时，调用<code>dispose</code>函数，相当于调用dealloc实例方法</p>
+<p><code>__block</code>就类似static、auto、register说明符，用于指定将变量设置到哪个存储区域中。(auto表示作为自动变量存储到栈中、static作为静态变量存储到数据区)</p>
 
-<h3 id="toc_5">__block &lt;==&gt; 对象</h3>
+<pre><code class="language-objectivec">//源代码
+__block int val = 10
+void(^blk)(void) = ^{val = 1}
+</code></pre>
 
-<p>我们在使用<code>__block</code>变量时 与 截获对象类型相似 </p>
+<p>block结构体持有了指向__block变量结构体指针</p>
 
-<pre><code class="language-objectivec">static void __main_block_copy_0(struct __main_block_impl_0 *dst, struct _main_block_impl_0 *src) {
-    _Block_object_assign(&amp;det-&gt;val, src-&gt;val, BLOCK_FIFLD_IS_BYREF)
-}
-
-static void __main_block_dispose_0(struct _main_block_impl_0 *src) {
-    _Block_object_dispose(src-&gt;val, BLOCK_FIFLD_IS_BYREF)
+<pre><code class="language-objectivec">struct __main_block_impl_0 {
+    struct __block_impl impl;
+    struct __main_block_desc_0 *Desc;
+    __Block_byref_val_0 *val;
+        //结构体初始化函数
+     __main_block_impl_0(void *fp, strct __main_block_desc_0, __Block_byref_val_0 *_val, int flags=0) : val(_val-&gt;_forwarding) {
+        impl.isa = &amp; NSConcreatStackBlock;
+        impl.Flags = flags;
+        impl.FuncPtr = fp;
+        Desc = desc;
+    }
 }
 </code></pre>
 
-<p>通过<code>BLOCK_FIFLD_IS_BYREF/BLOCK_FIFLD_IS_OBJECT</code>区分是__block变量还是对象类型。<br/>
-与对象相同 copy函数持有__block变量 dispose释放持有的__block变量，因为都被block持有，因此与block类似可以在超出其变量作用域而存在</p>
+<p>__block变量<br/>
+__block变量如同block一般变为<code>__Block_byref_val_0</code>结构体实例</p>
 
-<h2 id="toc_6">__block对象变量</h2>
-
-<pre><code class="language-objectivec">__block id obj = [[NSObject alloc] init]
-
-
-__block id __strong obj = [[NSObject alloc] init]
-</code></pre>
-
-<p>源代码转换如下:</p>
-
-<pre><code class="language-objectivec">struct __Block_byref_obj_0 {
+<pre><code class="language-objectivec">struct __Block_byref_val_0 {
     void *__isa;
     __Block_byref_val_0 *__forwarding;
     int __flags;
     int __size;
-    void (* __Block_byref_id_object_copy)(void *, void*)
-    void (* __Object_object_dispose)(void *)
-    __strong id obj;
+    int val; //相当于原自动变量
 }
-
-static void __Block_byref_id_object_copy_131(void *dst, void *src) {
-    _Object_object_assign((char *)det + 40, *(void **) ((char *)src + 40), 131);
-}
-
-static void __Block_byref_id_object_dispose_131(void *src) {
-    _Object_object_dispose( *(void **) ((char *)src + 40), 131);
-}
-</code></pre>
-
-<p>__block声明</p>
-
-<pre><code class="language-objectivec">__Block_byref_obj_0 obj = {
+//其初始化
+__Block_byref_val_0 val = {
     0,
-    &amp;obj,
-    0x20000000,
-    sizeof(__Block_byref_obj_0),
-    __Block_byref_id_object_copy_131,
-    __Block_byref_id_object_dispose_131,
-    [[NSObject alloc] init],
+    &amp;val,
+    0,
+    sizeof(__Block_byref_val_0),
+    10
 }
 </code></pre>
 
-<p>与之前Block截获__strong或者id类型的过程相同，当__block变量从栈复制到堆上的时候，使用<code>_Object_object_assign</code>函数，持有赋值给<code>__block</code>变量的对象，当<code>__block</code>变量被废弃时，使用<code>_Object_object_dispose</code>函数，释放赋值给__block变量的对象。因此，只要__block变量在堆上继续存在，那么该变量就会处于被持有状态</p>
+<p>结构体持有了相当持有原自动变量的成员变量,  <code>__Block_byref_val_0</code>结构体实例的成员变量<code>__forwarding</code>持有指向该实例自身的指针。通过 <code>__forwarding</code>访问成员变量val。(成员变量val相当于原自动变量)</p>
 
-<p>对于__weak修饰符，即使附加了__block修饰符 当变量被释放时，<code>nil</code>也会被附加到<code>__weak</code>修饰符的变量中</p>
+<p>函数</p>
 
-<blockquote>
-<p>注意</p>
-
-<p>因为不存在__autorelasing修饰符和__block修饰符同时存在的必要，因此 同时指定会引起编译错误</p>
-</blockquote>
-
-<h2 id="toc_7">Block循环引用</h2>
-
-<p>如果在block中使用__strong类型修饰符的变量，因为会随着从栈复制到堆上，该对象被block持有而引起循环引用</p>
-
-<pre><code class="language-objectivec">typedef blk_t blk;
-@interface MyObject: NSObject 
-{
-    blk_t blk_;
-    id obj_;
-}
-@end
-
-@implementation MyObject 
-- (id)init {
-    self = [super init]
-    blk_ = ^{
-        NSLog(@&quot;%@&quot;, obj_);
-    };
-    return self;
-}
-@end
-</code></pre>
-
-<p>实际上<br/>
-<code>blk_=^{NSLog(@&quot;obj_=%@&quot;, self-&gt;obj_);}</code>block内部捕获了self</p>
-
-<p>对于该实例 将不会<code>dealloc</code>,因为 blk_是该实例成员成员变量，而且blk_因为赋值给成员变量也会从栈复制到堆，blk_持有其附有的__strong修饰符的id类型变量self</p>
-
-<h3 id="toc_8">使用__weak避免循环引用</h3>
-
-<pre><code class="language-objectivec">- (id)init {
-    self = [super init]
-    id __weak obj = obj_;
-    blk_ = ^{
-        NSLog(@&quot;%@&quot;, self);
-    };
-    return self;
+<pre><code class="language-objectivec">^{val=1}
+    
+//源代码转换为
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    __Block_byref_val_0 *val = _cself-&gt;val;
+    
+    (val-&gt;__forwarding-&gt;val) = 1
 }
 </code></pre>
 
 <blockquote>
-<p>注意</p>
+<p>注意：</p>
 
-<p>因为此时此时Block存在 持有其值的对象必定存在 因此也不需要进行判断是否为nil</p>
+<ol>
+<li>为什么将__block变量写为单独的结构体而不写在block结构体中? 因是为了可以在多个block中使用相同的__block变量</li>
+<li>为了什么使用了__block变量 就可以改写值？  因为当变量添加了__block前缀，此时声明的就直接是一个结构体 我们之后访问、修改不论是在block内外 都是用的这个结构体</li>
+</ol>
 </blockquote>
 
-<h3 id="toc_9">使用__block避免循环引用</h3>
+<p>本章忽略内容：</p>
 
-<pre><code class="language-objectivec">- (id)init {
-    self = [super init]
-    __block id tmp = self
-    blk_ = {
-        NSLog(@&quot;%@&quot;, tmp)
-        tmp = nil;
-    };
-}
-
-...
-
-int main() {
-    id o = [[NSObject alloc] init]
-    [o execBlock];
-}
-</code></pre>
-
-<p>此时代码并没有引起循环引用，但是如果不调用<code>execBlock</code>即执行成员变量<code>blk_</code>就会循环引用，造成内存泄漏</p>
-
-<p>当执行了该block后，<code>__Block</code>变量不再持有该对象，而block虽然持有__block变量但是也就不再造成循环引用了</p>
-
-<blockquote>
-<p>注意</p>
-
-<p>使用__block避免循环引用必须执行block</p>
-</blockquote>
-
-<h3 id="toc_10">copy/release</h3>
+<ul>
+<li>Block超出变量作用域存在原因</li>
+<li><strong>block变量结构体成员</strong>forwading存在理由</li>
+</ul>
 
 
 		</div>
@@ -434,8 +314,10 @@ int main() {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -449,7 +331,7 @@ int main() {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -545,31 +427,31 @@ int main() {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

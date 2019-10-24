@@ -82,22 +82,141 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14957029093514.html">UITextView</a></h1>
-			<p class="meta"><time datetime="2017-05-25T17:01:49+08:00" 
-			pubdate data-updated="true">2017/5/25</time></p>
+		  	<h1 class="entry-title"><a href="15082349866219.html">ARSession</a></h1>
+			<p class="meta"><time datetime="2017-10-17T18:09:46+08:00" 
+			pubdate data-updated="true">2017/10/17</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h3 id="toc_0">1.代理</h3>
+		  	<p><code>ARSession</code>是连接底层与AR视图的桥梁，<code>ARCNView</code>内部所有的代理方法都是ARSession提供的</p>
 
-<p>对于我们在代码中修改textView的内容是不会走delegate中的这个方法的</p>
+<p><img src="media/15082349866219/15082365566677.png" alt=""/></p>
 
-<pre><code class="language-objectivec">- (void)textViewDidChange:(UITextView *)textView {}
-</code></pre>
+<h2 id="toc_0">获取相机位置的方法</h2>
 
-<p>也不会走这个监听</p>
+<ol>
+<li>实时不断的获取相机位置,然后由<code>ARSession</code>告知用户</li>
+</ol>
 
-<pre><code class="language-objectivec">[ITNotificationCenter addObserver:self selector:@selector(textViewChangeContent:) name:UITextViewTextDidChangeNotification object:nil];
+<p>//获取相机位置<br/>
+<code>- (void)session:(ARSession *)session didUpdateFrame:(ARFrame *)frame</code></p>
+
+<ol>
+<li>用户想要时主动去获取,通过其<code>currentFrame</code>属性获取</li>
+</ol>
+
+<h2 id="toc_1">API</h2>
+
+<pre><code class="language-objectivec">/**
+ 代理
+ */
+@property (nonatomic, weak) id &lt;ARSessionDelegate&gt; delegate;
+
+/**
+指定代理执行的线程（主线程不会有延迟，子线程会有延迟），不指定的话默认主线程
+ */
+@property (nonatomic, strong, nullable) dispatch_queue_t delegateQueue;
+
+/**
+相机当前的位置（是由会话追踪配置计算出来的）
+ */
+@property (nonatomic, copy, nullable, readonly) ARFrame *currentFrame;
+
+/**
+ 会话追踪配置
+ */
+@property (nonatomic, copy, nullable, readonly) ARSessionConfiguration *configuration;
+
+/**
+运行会话（这行代码就是开启AR的关键所在）
+ */
+- (void)runWithConfiguration:(ARSessionConfiguration *)configuration NS_SWIFT_UNAVAILABLE(&quot;Use run(_:options:)&quot;);
+
+/**
+运行会话，只是多了一个参数ARSessionRunOptions：作用就是会话断开重连时的行为。
+ARSessionRunOptionResetTracking：表示重置追踪  
+ARSessionRunOptionRemoveExistingAnchors：移除现有锚点
+ */
+- (void)runWithConfiguration:(ARSessionConfiguration *)configuration options:(ARSessionRunOptions)options NS_SWIFT_NAME(run(_:options:));
+
+/**
+暂停会话
+ */
+- (void)pause;
+
+/**
+添加锚点
+ */
+- (void)addAnchor:(ARAnchor *)anchor NS_SWIFT_NAME(add(anchor:));
+
+/**
+移除锚点
+ */
+- (void)removeAnchor:(ARAnchor *)anchor NS_SWIFT_NAME(remove(anchor:));
+
+@end
+
+//session代理分类两部分，一个是观察者（KVO） 一个是委托者（代理）
+#pragma mark - ARSessionObserver
+
+
+//session KVO观察者
+@protocol ARSessionObserver &lt;NSObject&gt;
+
+@optional
+
+/**
+ session失败
+ */
+- (void)session:(ARSession *)session didFailWithError:(NSError *)error;
+
+/**
+相机改变追踪状态
+ */
+- (void)session:(ARSession *)session cameraDidChangeTrackingState:(ARCamera *)camera;
+
+/**
+ session意外断开（如果开启ARSession之后，APP退到后台就有可能导致会话断开）
+ */
+- (void)sessionWasInterrupted:(ARSession *)session;
+
+/**
+session会话断开恢复（短时间退到后台再进入APP会自动恢复）
+ */
+- (void)sessionInterruptionEnded:(ARSession *)session;
+
+@end
+
+#pragma mark - ARSessionDelegate
+
+
+
+@protocol ARSessionDelegate &lt;ARSessionObserver&gt;
+
+@optional
+
+/**
+ 更新相机位置
+ */
+- (void)session:(ARSession *)session didUpdateFrame:(ARFrame *)frame;
+
+/**
+添加锚点
+ */
+- (void)session:(ARSession *)session didAddAnchors:(NSArray&lt;ARAnchor*&gt;*)anchors;
+
+/**
+刷新锚点
+ */
+- (void)session:(ARSession *)session didUpdateAnchors:(NSArray&lt;ARAnchor*&gt;*)anchors;
+
+/**
+移除锚点
+ */
+- (void)session:(ARSession *)session didRemoveAnchors:(NSArray&lt;ARAnchor*&gt;*)anchors;
+
+@end
+
 </code></pre>
 
 
@@ -121,8 +240,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -136,7 +257,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -232,31 +353,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

@@ -4,7 +4,7 @@
   <title><![CDATA[ACEfish-Blog]]></title>
   <link href="https://acefish.github.io/atom.xml" rel="self"/>
   <link href="https://acefish.github.io/"/>
-  <updated>2019-09-11T14:06:21+08:00</updated>
+  <updated>2019-10-24T10:11:50+08:00</updated>
   <id>https://acefish.github.io/</id>
   <author>
     <name><![CDATA[]]></name>
@@ -12,6 +12,2015 @@
   </author>
   <generator uri="http://www.coderforart.com/">CoderForArt</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Collections and asynchronous updates]]></title>
+    <link href="https://acefish.github.io/15710288132412.html"/>
+    <updated>2019-10-14T12:53:33+08:00</updated>
+    <id>https://acefish.github.io/15710288132412.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">概述</h2>
+
+<p>ASCollectionNode和ASTableNode使用相同的内部类(ASRangeController和ASDataController)来简化大多数的操作。</p>
+
+<p><code>ASRangeController</code>负责确定哪些Collection cell node 是在一定范围内并且为cell node以及其子节点设置正确的 interface state</p>
+
+<p><code>ASDataController</code>是支持UICollectionView的真实数据源。负责处理批处理更新，以线程安全的方式将其转发到bacKing View.</p>
+
+<h2 id="toc_1">批量更新</h2>
+
+<p><code>UICollectionView</code>允许客户端提交单个编辑而不需要包装在批处理更新中。<code>ASCollectionNode</code>虽然也允许这么做，但是在后台操作会自动捆绑到批处理更新中，因此也叫做<code>change set(更改集 _ASHierarchyChangeSet)</code>。批处理操作也可以嵌套，最后是单个的更改集<br/>
+值得注意的是，在其生命周期开始，UICollectionView需要执行初始数据加载。可以简单的通过调用<code>-reladData</code>实现,这也包装在ASCollectionNode的更改集中。因此，初始数据加载只是另一个更改集，就像其它更改一样。</p>
+
+<h2 id="toc_2">改变集 处理流程</h2>
+
+<p><code>ASCollectionNode</code>不接受也不处理单个的编辑操作。其<code>ASDataController</code>公开的主要数据更新方法为<code>-updateWithChangeSet:（_ ASHierarchyChangeSet *）changeSet</code>，并且在通过此方法提交之前，必须将编辑操作包装在更改集中，可以将这个方法是为处理更改集的通道</p>
+
+<p>通道在开始处理主线程的更改集之前，切换到后台线程执行昂贵的操作，最后返回到主线程将其转发到UICollectionView</p>
+
+<h3 id="toc_3">内部队列和数据集</h3>
+
+<p>由于通道在多个线程上运行，因此每个改变集都需要通过通道确保数据的一致性，不仅与数据源而且与backing View保持一致。在内部，<code>ASDataController</code>使用两个队列和数据集来简化通道</p>
+
+<p>这两个队列称为<code>_editingTransactionQueue</code>和<code>_mainSerialQueue</code>。前者为串行后台dispatch_queue,后者为<code>ASMainSerialQueue</code></p>
+
+<p>两个数据集为<code>pendingMap</code>和<code>visibleMap</code>。它们每个都是ASElementMap实例，<code>ASElementMap</code>是不可变的、主线程的<code>ASCollectionElement</code>的集合</p>
+
+<p>每一个<code>ASCollectionElement</code>代表colletion视图中的item或者supplementary视图。它具有足够的信息帮助ASDataController来初始化和测量backing ASCellNode以及最终要的nodeblock。这个block是在进程开始时被data source返回的，并且被element引用直到该block被执行。在首次调用<code>-[ASCollectionElement node]</code>被调用时 该block被执行。一旦被执行，<code>ASCellNode</code>将会被element强应用并且block被释放。这意味着任何给定时间，element要不具有node block 要不具有node instance，不能同时拥有两者。如果caller想要获取node，只有在node已经被初始化的情况下，此时应该调用<code>-nodeIfAllocated</code></p>
+
+<h2 id="toc_4">Data Source index space VS UIKit index space</h2>
+
+<p>由于每个改变集都是异步处理，因此可能需要支持多个<code>UICollectionView</code>在多个主线程run loop中使用改变集。</p>
+
+<p>在任何给定时间，ASDataController的pendingMap是从数据源获取的最新map，因此它位于数据源索引空间中。另一方面，visibleMap是UICollectionView当前显示的元素的集合。结果，它在UIKit索引空间中。</p>
+
+<h3 id="toc_5">工作的五个步骤</h3>
+
+<p>每个改变集都会执行这5个步骤</p>
+
+<ol>
+<li>该进程从主线程开始。此时pendingMap和visibleMap是同一个。制作一个pendingMap的mutalbe copy，然后根据改变集来进行更新。这包括，移除旧的items，向数据源查询插入新的items。在这步结束时，将会更新<code>pendingMap</code>反应data source的整体视图</li>
+<li>这是一个可选的步骤，仅当layout delegate设置为data controller时执行。默认，data controller一次性的初始化和测量所有的items(步骤3)。具有layout delegate时可以使其他类自定义此行为，例如，ASCollectionLayout仅初始化和测量足够的cell填充可见口。当用户滚动时，将按需分配更多cell，为此，layout delegate可能需要构造一个上下文，该上下文必须在同一主线程runloop上发生，</li>
+<li>在<code>_editingTransactionQueue</code>，分配和测量<code>pendingMap</code>的所有element，或者调用layout delegate让其决定。在此步骤结束时，element已经准备好被backing view使用</li>
+<li>在block中计划执行下一步，通过<code>_mainSerialQueue</code>将其添加到主线程队列中。如果在此点之前还有其他尚未调度到队列的block被调度，执行步骤5</li>
+<li>通知ASRangeController，colletionView的布局协调器，更重要的时，向collection发送有关更改集的信息。ASColelctionView调用其超类来执行批处理更新，在批处理中，pendingMap被更改为visibleMap。 UICollectionView要求将新数据集部署在-[UICollectionView performBatchUpdates：completion：]的更新块中。它还要求编辑操作必须按照特定的顺序进行，并由步骤1之前的更改集验证</li>
+</ol>
+
+<h2 id="toc_6">动画</h2>
+
+<h2 id="toc_7">移动操作</h2>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Layout Specs]]></title>
+    <link href="https://acefish.github.io/15710248960458.html"/>
+    <updated>2019-10-14T11:48:16+08:00</updated>
+    <id>https://acefish.github.io/15710248960458.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">Layout specs</h2>
+
+<h3 id="toc_1">Layout flow</h3>
+
+<p>Layout计算是 通过以下启动触发器来递归完成。一个layout布局完成的启动触发器就是 当父节点改变时。这触发器也在第一次node树被创建时发生。</p>
+
+<p><code>ASDisplayNode</code>第一个重要分支是顶层的<code>[ASDisplayNode calculateLayoutThatFits]</code>，这个方法将会选择布局引擎是<code>Texture布局</code>还是<code>Yoga</code></p>
+
+<pre><code class="language-objectivec">- (ASLayout *)calculateLayoutThatFits:(ASSizeRange)constrainedSize
+{
+  __ASDisplayNodeCheckForLayoutMethodOverrides;
+
+  switch (self.layoutEngineType) {
+    case ASLayoutEngineTypeLayoutSpec:
+      return [self calculateLayoutLayoutSpec:constrainedSize];
+#if YOGA
+    case ASLayoutEngineTypeYoga:
+      return [self calculateLayoutYoga:constrainedSize];
+#endif
+      // If YOGA is not defined but for some reason the layout type engine is Yoga
+      // we explicitly fallthrough here
+    default:
+      break;
+  }
+
+  // If this case is reached a layout type engine was defined for a node that is currently
+  // not supported.
+  ASDisplayNodeAssert(NO, @&quot;No layout type determined&quot;);
+  return nil;
+}
+</code></pre>
+
+<p>基于UIKit系统，Texture在不同阶段遵循以下过程</p>
+
+<ol>
+<li>ASDisplayNode和ASLayout初始化。这是完全独立与UIKit存在。这是当一个布局计算创建时</li>
+<li>UIView/CALayer初始化。遵循UIKit管理惯例，即在布局大小之前创建要显示的UIKit items。然而，它们是在UIKit层次，允许下列的布局触发器</li>
+<li>UIView/CALayer布局。这是UIKit递归操作之后的结果。这和步骤1中的布局计算不同，这是仅仅为了使用已经准备好的布局，并且将其应用到UIView/CALayer中 进行布局调整</li>
+<li>如有必要，在其中渲染CALayer的光栅化。UIKit可以将UIKit层次结构绘制到屏幕上</li>
+</ol>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Node Lifecycle]]></title>
+    <link href="https://acefish.github.io/15707800044047.html"/>
+    <updated>2019-10-11T15:46:44+08:00</updated>
+    <id>https://acefish.github.io/15707800044047.html</id>
+    <content type="html"><![CDATA[
+<p><code>Texture</code>使用ARC，因此对象不再有强引用时就会被dealloc。而对于ASDisplayNode和其子类来说，不同node有不同的生命周期，因此了解其生命周期以及 enter interface和loading state  是很有用的</p>
+
+<h2 id="toc_0">node container 管理node</h2>
+
+<p>node container负责它们管理的node的声明周期。一般来说，<code>node container</code>会在需要时尽快分配节点，并在不需要时释放它们。<code>Texture</code>假设<code>node container</code>完全管理其node，而客户端 不保留这些节点 和/或 修改其生命周期。例如，客户端不应该尝试存储由于<code>ASCollectionNode、ASPageNode或ASTableNode</code>初始化的<code>ASCellNode</code>实例</p>
+
+<p><code>ASCollectionNode</code>和<code>ASTableNode</code>在将<code>ASCellNodes</code>添加到container node立即对其进行初始化，不论是通过reload data或者作为批处理的一部分更新。类似于<code>UICollectionView/UITableView</code>，第一次数据加载都是在没有先前数据集合的基础上重新加载数据。但是又与<code>UICollectionView/UITableView</code>不同，其cell在被显示之前会被重用和重新配置，而<code>ASCollectionNode和ASTableNode</code>不会重用<code>ASCellNode</code>。这就会导致结果，由collection和table管理的<code>ASCellNode</code>数量和截止到那时为止插入的items和rows相同</p>
+
+<p>目前为止，ASCollectionNode和ASTableNode的当前实现会在插入所有cell后立即初始化它们。即，如果客户端执行100个items插入到collection node中的批处理更新，则该collection node将会初始化100个单元节点作为批处理更新的一部分。它还将在每个新的cell node上执行布局结算。因此，在该过程结束时，collection node将会管理100个节点，并且这些节点已经计算出可以使用的布局</p>
+
+<p>由于上面所说的行为，ASCollection和ASTableNode可能需要一段时间才能处理插入大量items的批处理更新。在这种情况下，建议使用<code>node block</code>API，该API允许在主线程外并行初始化。如果仍然需要考虑性能，则使用批处理提取API拆分数据集，并在最终用户滚动时，逐渐向容器节点公开更多数据</p>
+
+<h2 id="toc_1">ASCollectionLayout</h2>
+
+<p>为了解决上面所说的处理大型数据集合的弊端，为<code>ASCollectionNode</code>引入了新的API，使其可以再用户滚动时，延迟初始化和布局cell node。但是，由于某些限制，此功能仅仅适用于知道每个cell node大小的colletion layout。例如，轮播图，分页布局等</p>
+
+<h3 id="toc_2">ASCellNodes的 dealloction</h3>
+
+<p>因为ASCellNode并未重用，因此与<code>UICollectionViewCell或UITableViewCell</code>相比，他们具有更长的生命周期。当不再使用ASCellNodes并将其从容器中删除时，将会释放。这可能发生在重新加载数据 或者 删除批处理数据更新之后，或者在node container不再使用而被释放。</p>
+
+<p>对于后者node container不再被使用而被释放的情况，它们的单元节点不会立即释放。这是因为collection node和table nodes中可能持有大量的cell nodes，并且同时释放他们，这会导致明显的延迟。为了避免这种情况，使用了<code>ASDeallocQueue</code>帮助在后台线程释放。<br/>
+由于<code>ASDataController</code>实例是所有单元节点的真正所有者–它对所有单元节点都有很强的引用.因此，所有这些单元节点也都从主线程中释放。因此，可以预期从释放集合或表视图开始，直到所有单元节点都完全释放并回收其内存为止的延迟。在调试内存泄漏时，请记住这一点，这一点很重要：DataController引用的对象可能需要一点时间才能被<code>Instruments</code>显示为已经dealloc。</p>
+
+<h3 id="toc_3">ASDeallocQueue</h3>
+
+<p><code>ASDeallocQueue</code>通过增加每个对象的引用计数（基本上保留它们并充当其唯一所有者）来帮助延迟分配给它的对象的重新分配，然后稍后在后台线程上释放它们</p>
+
+<h2 id="toc_4">未被Container管理的Node</h2>
+
+<p>这些节点通常由客户端代码直接创建，例如cell node的直接或间接子节点。因为node通常存在于视图结构层次中，整个node视图层次和root node有相同的生命周期。最后，如果root node由node container管理(直接被ASViewController管理，或者间接作为collection或者table的 cell node被管理)，则整个node 视图层次都由node  container管理</p>
+
+<h3 id="toc_5">自动节点管理(ASM)下的声明周期</h3>
+
+<p>ASM允许简单的返回包含给定时间父节点需要的子节点布局规范来操作节点的结构层次。纹理通过比较先前和当前的布局规范计算子节点的插入和删除，并更新节点层次。为了支持两个布局之间的动画，新的节点在动画之前就插入，为新来的动画做准备。新的节点在开始时就被父节点保留，而在动画结束后，删除旧的节点，如果旧节点没有被其他引用或者保留 将将被释放</p>
+
+<h2 id="toc_6">node interface state</h2>
+
+<p>在智能预加载的支持下，ASTableView和ASCollectionView都使用<code>ASRangeController</code>确定他们管理的每个ASCellNode的状态，并将该状态递归设置为层次结构中的每个节点</p>
+
+<h2 id="toc_7">Node loading state</h2>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[线程]]></title>
+    <link href="https://acefish.github.io/15707737201639.html"/>
+    <updated>2019-10-11T14:02:00+08:00</updated>
+    <id>https://acefish.github.io/15707737201639.html</id>
+    <content type="html"><![CDATA[
+<p><code>Texture</code>是对资源的高效利用来给用户提供高帧速的体验。换言之，科学的在线程间分配工作，使默认的runLoop保持精简，实时允许用户的输入事件，并且消耗主队列上安排的工作</p>
+
+<p>遵循以下规定：</p>
+
+<ol>
+<li>使用UIKit API必须通过<code>dispatch_get_main_queue()</code>或者使用<code>ASPerformBlockOnMainThread()</code>在主线程执行</li>
+<li>一般来说 其它任何事情都应该在后台发生</li>
+</ol>
+
+<h2 id="toc_0">Run Loop、Threads and Queues</h2>
+
+<h2 id="toc_1">ASMainSerialQueue</h2>
+
+<p><code>ASMainSerialQueue</code>确保在不中断的情况下在主线程执行工作，其主要区别是，使用<code>dispatch_async(dispatch_get_main_queue, block)</code>会在块的执行之间中断。<br/>
+因此接口将在主线程中的队列中执行所有可能操作，然后再将控制权转移给OS</p>
+
+<p>此接口会调用<code>ASPerformBlockOnMainThread</code>。当其他线程pop block在主线程执行时，该接口就会锁定其他线程，确保其在主调度队列和runloop的其它循环之前</p>
+
+<p>并且由于是同步机制，<code>ASMainSerialQueue</code>是串行的，因此可以确保按照顺序执行。一个示例是将以下块排队: 更改视图属性-&gt;触发布局更新-&gt;动画。 由于ASMainSerialQueue可能会较早执行，因此要比使用<code>dispatch_async（dispatch_get_main_queue（））</code>发送的块较早执行。</p>
+
+<p>这实际上只是主调度队列的缓冲区，为计划工作提供了更多可见性。该接口确保计划的所有内容都将在主线程以同一操作顺兴进行</p>
+
+<h3 id="toc_2">ASRunLoopQueue</h3>
+
+<h3 id="toc_3">Locks and Safety</h3>
+
+<h3 id="toc_4">线程竞争</h3>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Nodes]]></title>
+    <link href="https://acefish.github.io/15698393226216.html"/>
+    <updated>2019-09-30T18:28:42+08:00</updated>
+    <id>https://acefish.github.io/15698393226216.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">ASDisplayNode</h2>
+
+<p><code>ASDisplayNode</code>是UIView和CALayer的主要抽象。与UIView创建和持有<code>CALayer</code>相同，Node创建和持有UIView</p>
+
+<pre><code class="language-objectivec">ASDisplayNode *node = [[ASDisplayNode alloc] init];
+node.backgroundColor = [UIColor orangeColor];
+node.bounds = CGRectMake(0, 0, 100, 100);
+NSLog(@&quot;Underlying view: %@&quot;, node.view);
+</code></pre>
+
+<p>node拥有与<code>UIView</code>相同的所有属性，view和layer的所有属性都会映射到node，非常方便我们使用</p>
+
+<pre><code class="language-objectivec">ASDisplayNode *node = [[ASDisplayNode alloc] init];
+node.clipsToBounds = YES;       // not .masksToBounds
+node.borderColor = [UIColor blueColor];  //layer name when there is no UIView equivalent
+NSLog(@&quot;Backing layer: %@&quot;, node.layer);
+</code></pre>
+
+<p>当与node container一起使用时，node的属性将会在后台线程设置，</p>
+
+<h3 id="toc_1">视图包装器</h3>
+
+<p>有时，我们提供一个视图作为node的backing view。这个视图在block中提供，block中返回视图并进行保存。此时，这些node的展示会同步发生，因为只有node中的<code>_ASDisplayView</code>才会异步显示，在普通包装的UIView并不会异步显示</p>
+
+<pre><code class="language-objectivec">ASDisplayNode *node = [ASDisplayNode alloc] initWithViewBlock:^{
+    SomeView *view  = [[SomeView alloc] init];
+    return view;
+}];
+</code></pre>
+
+<p>我们通常使用这个方法将UIView的子类转换为<code>ASDisplayNode</code>子类，来包装现有视图</p>
+
+<h2 id="toc_2">ASCellNode</h2>
+
+<p>是Texture中的cell类，<code>ASCellNode</code>可以和<code>ASTableNodes</code>、<code>ASCollectionNodes</code>、<code>ASPageNodes</code>一起使用</p>
+
+<h3 id="toc_3">使用cellNode的三种方式</h3>
+
+<h4 id="toc_4">子类化</h4>
+
+<p>与子类化<code>ASDisplayNode</code>几乎相同，需要使用以下方法:</p>
+
+<ul>
+<li>-init</li>
+<li>-layoutSpecThatFits</li>
+<li>-didLoad</li>
+<li>-layout</li>
+</ul>
+
+<h4 id="toc_5">使用ASViewController初始化</h4>
+
+<p>将视图控制器作为视图放入cell的scroll node或者page node</p>
+
+<p>举个例子:<br/>
+编写一个用于管理<code>ASTableNode</code>的视图控制器。将该表作为<code>ASPagenode</code>的页面，使用<code>initWithViewControllerBlock</code></p>
+
+<pre><code class="language-objectivec">- (ASCellNode *)pagerNode:(ASPagerNode *)pagerNode nodeAtIndex:(NSInteger)index
+{
+    NSArray *animals = self.allAnimals[index];
+    
+    ASCellNode *node = [[ASCellNode alloc] initWithViewControllerBlock:^UIViewController * _Nonnull{
+        return [[AnimalTableNodeController alloc] initWithAnimals:animals];
+    } didLoadBlock:nil];
+    node.style.preferredSize = pagerNode.bounds.size;
+    return node;
+}
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>使用这个方式设置的node，需要设置其<code>.style.preferredSize</code>。</p>
+</blockquote>
+
+<h4 id="toc_6">使用UIView和CALayer初始化</h4>
+
+<p>当如果有<code>UIView</code>或者<code>CALayer</code>子类 作为cell</p>
+
+<pre><code class="language-objectivec">- (ASCellNode *)pagerNode:(ASPagerNode *)pagerNode nodeAtIndex:(NSInteger)index
+{
+    NSArray *animal = self.animals[index];
+    
+    ASCellNode *node = [[ASCellNode alloc] initWithViewBlock:^UIView * _Nonnull{
+        return [[SomeAnimalView alloc] initWithAnimal:animal];
+    }];
+
+    node.style.preferredSize = pagerNode.bounds.size;
+    
+    return node;
+}
+</code></pre>
+
+<p>虽然可以这么做 但是推荐将现有的UIView类转为ASCellNode的子类 获取异步显示的优势</p>
+
+<h3 id="toc_7">Never Show Placeholders</h3>
+
+<p>通常，如果cell在其到达屏幕之前仍为display完成，将会显示占位符直到绘制内容完成</p>
+
+<p>但是，当如果我们不想要看到placeholder内容，可以将其属性<code>neverShowPlaceholders</code>设置为<code>YES</code></p>
+
+<pre><code class="language-objectivec">node.neverShowPlaceholders = YES;
+</code></pre>
+
+<p>将其设置为yes，则cell的主线程将会被阻塞，直到cell显示完成为止。</p>
+
+<h4 id="toc_8">UITableViewCell的特殊属性</h4>
+
+<p>在<code>ASCellNode</code>中也存在和<code>UITableViewCell</code>中的类似<code>selectionStyle、accessoryType和seperatorInset</code>等我们偶尔可能使用的属性</p>
+
+<h2 id="toc_9">ASButtonNode</h2>
+
+<p>类似UIButton继承自UIControl，而ASButtonNode也继承自<code>ASControlNode</code>。</p>
+
+<h3 id="toc_10">control state</h3>
+
+<pre><code class="language-objectivec">[buttonNode setTitle:@&quot;Button Title Normal&quot; withFont:nil withColor:[UIColor blueColor] forState:ASControlStateNormal];
+
+//可以通过设置Attribute  设置更多自定义属性
+[self.buttonNode setAttributedTitle:attributedTitle forState:ASControlStateNormal];
+</code></pre>
+
+<h3 id="toc_11">Target-Action</h3>
+
+<pre><code class="language-objectivec">[buttonNode addTarget:self action:@selector(buttonPressed:) forControlEvents:ASControlNodeEventTouchUpInside];
+</code></pre>
+
+<h3 id="toc_12">Content Alignment</h3>
+
+<p><code>ASButtonNode</code>提供了<code>contentVerticalAlignment和contentHorizontalAlignment</code>属性，可以轻松设置对齐方式</p>
+
+<pre><code class="language-objectivec">self.buttonNode.contentVerticalAlignment = ASVerticalAlignmentTop;
+self.buttonNode.contentHorizontalAlignment = ASHorizontalAlignmentMiddle;
+</code></pre>
+
+<h3 id="toc_13">注意</h3>
+
+<h2 id="toc_14">ASTextNode</h2>
+
+<p>Texture中的主要文本节点，通常在使用UILabel的情况下使用。拥有完整的富文本支持，并且继承自ASControlNode，</p>
+
+<h3 id="toc_15">使用</h3>
+
+<p>ASTextNode的接口对于使用UILabel的人来说非常熟悉，第一个不同的地方在于node仅使用attribute而不能使用纯文字字符</p>
+
+<pre><code class="language-objectivec">NSDictionary *attrs = @{ NSFontAttributeName: [UIFont fontWithName:@&quot;HelveticaNeue&quot; size:12.0f] };
+NSAttributedString *string = [[NSAttributedString alloc] initWithString:@&quot;Hey, here&#39;s some text.&quot; attributes:attrs];
+
+_node = [[ASTextNode alloc] init];
+_node.attributedText = string;
+</code></pre>
+
+<h3 id="toc_16">截断字符串</h3>
+
+<p>当显示文本的空间小于要显示的文本必须空间，将会尽可能多的显示文本，并且所有被截断字符串将会被截断字符串替换。</p>
+
+<pre><code class="language-objectivec">_textNode = [[ASTextNode alloc] init];
+_textNode.attributedText = string;
+_textNode.truncationAttributedText = [[NSAttributedString alloc]
+</code></pre>
+
+<p>默认情况下，截断字符串为<code>...</code></p>
+
+<h3 id="toc_17">Link Attributes</h3>
+
+<p>为了将文本指定为链接，需要将<code>linkAttribute</code>数组设置为字符串数组，将该数组用作属性字符串中链接的键。在设置attribute时，将这些键指向响应的NSURL</p>
+
+<pre><code class="language-objectivec">_textNode.linkAttributeNames = @[ kLinkAttributeName ];
+
+NSString *blurb = @&quot;kittens courtesy placekitten.com \U0001F638&quot;;
+NSMutableAttributedString *string = [[NSMutableAttributedString alloc] initWithString:blurb];
+[string addAttribute:NSFontAttributeName value:[UIFont fontWithName:@&quot;HelveticaNeue-Light&quot; size:16.0f] range:NSMakeRange(0, blurb.length)];
+[string addAttributes:@{
+                      kLinkAttributeName: [NSURL URLWithString:@&quot;http://placekitten.com/&quot;],
+                      NSForegroundColorAttributeName: [UIColor grayColor],
+                      NSUnderlineStyleAttributeName: @(NSUnderlineStyleSingle | NSUnderlinePatternDot),
+                      }
+              range:[blurb rangeOfString:@&quot;placekitten.com&quot;]];
+_textNode.attributedText = string;
+_textNode.userInteractionEnabled = YES;
+</code></pre>
+
+<h3 id="toc_18">ASTextNodeDelegate</h3>
+
+<p>实现<code>ASTextNodeDelegate</code>允许类对与文本相关联的各种事件做出反应</p>
+
+<p>例如点击事件:</p>
+
+<pre><code class="language-objectivec">- (void)textNode:(ASTextNode *)richTextNode tappedLinkAttribute:(NSString *)attribute value:(NSURL *)URL atPoint:(CGPoint)point textRange:(NSRange)textRange
+{
+  // the link was tapped, open it
+  [[UIApplication sharedApplication] openURL:URL];
+}
+</code></pre>
+
+<p>类似的:</p>
+
+<pre><code class="language-objectivec">– textNode:longPressedLinkAttribute:value:atPoint:textRange:
+
+– textNode:shouldHighlightLinkAttribute:value:atPoint:
+
+– textNode:shouldLongPressLinkAttribute:value:atPoint:
+</code></pre>
+
+<h3 id="toc_19">具有行间距的文本导致不正确的最大行数</h3>
+
+<p>当多行文本中使用<code>NSParagraphStyle</code>修改了非默认的<code>lineSpacing</code>，那么就会导致设置的最大行数不正确</p>
+
+<pre><code class="language-objectivec">NSString *someLongString = @&quot;...&quot;;
+
+NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
+paragraphStyle.lineSpacing = 10.0;
+
+UIFont *font = [UIFont fontWithName:@&quot;SomeFontName&quot; size:15];
+
+NSDictionary *attributes = @{
+    NSFontAttributeName : font,
+    NSParagraphStyleAttributeName: paragraphStyle
+};
+
+ASTextNode *textNode = [[ASTextNode alloc] init];
+textNode.maximumNumberOfLines = 4;
+textNode.attributedText = [[NSAttributedString  alloc] initWithString:someLongString
+</code></pre>
+
+<p>为了暂时解决此问题 可以通过设置<code>truncationMode</code>为<code>NSLineBreakByTruncatingTail</code></p>
+
+<pre><code class="language-objectivec">ASTextNode *textNode = [[ASTextNode alloc] init];
+textNode.maximumNumberOfLines = 4;
+textNode.truncationMode = NSLineBreakByTruncatingTail;
+textNode.attributedText = [[NSAttributedString  alloc] initWithString:someLongString
+</code></pre>
+
+<h2 id="toc_20">ASImageNode</h2>
+
+<p>等效于<code>UIImageView</code>。最基本的区别在于图像默认情况下是异步解码的。并且还有其他功能，例如支持GIF和<code>imageModificationBlocks</code></p>
+
+<h3 id="toc_21">基础使用</h3>
+
+<p>使用方式与imageView 基本相同</p>
+
+<pre><code class="language-objectivec">ASImageNode *imageNode = [[ASImageNode alloc] init];
+imageNode.image = [UIImage imageNamed:@&quot;someImage&quot;];
+imageNode.contentMode = UIViewContentModeScaleAspectFill;
+</code></pre>
+
+<h3 id="toc_22">图像变换和效果</h3>
+
+<p>通过为imageNode设置<code>imageModificationBlock</code>,可以定义需要在imagenode上设置的任何需要图像异步发生的转换，包括圆角、添加边框、覆盖花纹等</p>
+
+<h3 id="toc_23">图像裁剪</h3>
+
+<p>image的默认mode为<code>UIViewContentModeScaleAspectFill</code>，图片将会放大填充内容区域，并且裁剪掉超出的内容部分。</p>
+
+<p>我们可以通过设置<code>cropRect</code>来移动图片，其为单元矩阵，默认值为(0.5,0.5,0,0)，要显示左侧内容，可将其x设置为0，以为这图片原点从{0, 0}开始，而非默认值</p>
+
+<h3 id="toc_24">强制放大</h3>
+
+<p>默认情况下，图像过小而无法放入已设置的imageNode的边界时，将不会在CPU上放大图像。</p>
+
+<p>如果您想更改此事实，可以将forceUpscaling设置为YES。这样做意味着您每次使用小于目标位置的图像时，您的应用程序都会占用更多内存</p>
+
+<h3 id="toc_25">检测图像缩放</h3>
+
+<p>通过使用<code>pixel scaling tool</code>可以方便的查看图片放大或者缩小了多少</p>
+
+<h2 id="toc_26">ASNetworkImageNode</h2>
+
+<p>当需要显示远程的图像时，可以使用<code>ASNetworkImageNode</code>,需要做的就是将.URL属性设置为合适的NSURL实例，图像将会异步加载并呈现</p>
+
+<pre><code class="language-objectivec">ASNetworkImageNode *imageNode = [[ASNetworkImageNode alloc] init];
+imageNode.URL = [NSURL URLWithString:@&quot;https://someurl.com/image_uri&quot;];
+</code></pre>
+
+<h3 id="toc_27">Network Image 布局</h3>
+
+<p>因为<code>ASNetworkImageNode</code>并未限制内容大小，因此必须指定layout的大小</p>
+
+<ol>
+<li>style.preferredSize</li>
+</ol>
+
+<p>当我们想要使用标准尺寸时</p>
+
+<pre><code class="language-objectivec">- (ASLayoutSpec *)layoutSpecThatFits:(ASSizeRange)constraint
+{
+    imageNode.style.preferredSize = CGSizeMake(100, 200);
+    ...
+    return finalLayoutSpec;
+}
+</code></pre>
+
+<ol>
+<li>ASRatioLayoutSpec</li>
+</ol>
+
+<p>使用<code>ASRatioLayoutSpec</code>为图像分配一个比例，当图像加载完成后 将会保持该比例</p>
+
+<pre><code class="language-objectivec">- (ASLayoutSpec *)layoutSpecThatFits:(ASSizeRange)constraint
+{
+    CGFloat ratio = 3.0/1.0;
+    ASRatioLayoutSpec *imageRatioSpec = [ASRatioLayoutSpec ratioLayoutSpecWithRatio:ratio child:self.imageNode];
+    ...
+    return finalLayoutSpec;
+}
+</code></pre>
+
+<h3 id="toc_28">引擎组件</h3>
+
+<p>如果选择没有包括<code>PINRemoteImage</code>和<code>PINCache</code>，那么将失去对<code>jpeg</code>的渐进支持，并且需要自定义实现<code>ASImageCacheProtocol</code>的缓存</p>
+
+<h3 id="toc_29">渐进式JPEG支持</h3>
+
+<p>由于包含了<code>PINRemoteImage</code>，NetworkImageNode现在支持加载渐进式的JPEG。意味着，如果服务器提供了这种jpeg，则图像会将以较低的质量快速显示，并且随着加载更多的数据而扩大</p>
+
+<p>启用渐进加载只需要设置<code>shouldRenderProgressImages</code>为<code>YES</code></p>
+
+<pre><code class="language-objectivec">networkImageNode.shouldRenderProgressImages = YES;
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>这种方式是使用一张逐渐加载的图像。如果服务器只能使用常规的JPEG，但是可以提供多个版本来提高质量，那么应该使用<code>ASMultiplexImageNode</code></p>
+</blockquote>
+
+<h3 id="toc_30">自动缓存</h3>
+
+<p>使用<code>PINCache</code>自动缓存网络图像</p>
+
+<h3 id="toc_31">GIF支持</h3>
+
+<p>ASNetworkImageNode通过PINRemoteImage的beta版PINAnimatedImage提供GIF支持。注意！除非shouldCacheImage设置为NO，否则该支持将不适用于本地文件。</p>
+
+<h2 id="toc_32">ASVideoNode</h2>
+
+<p>方便我们在app中展示视频</p>
+
+<blockquote>
+<p>使用<code>ASVideoNode</code>就会连接<code>AVFoundation</code>，因为在内部底层中使用了<code>AVPlayerLayer</code>和<code>AVFoundataion</code></p>
+</blockquote>
+
+<h3 id="toc_33">基础使用</h3>
+
+<p>最简单的方式就是设置一个<code>AVAsset</code>资源</p>
+
+<pre><code class="language-objectivec">ASVideoNode *videoNode = [[ASVideoNode alloc] init];
+
+AVAsset *asset = [AVAsset assetWithURL:[NSURL URLWithString:@&quot;http://www.w3schools.com/html/mov_bbb.mp4&quot;]];
+videoNode.asset = asset;
+</code></pre>
+
+<h3 id="toc_34">自动播放、自动重复、自动静音</h3>
+
+<p>通过一些简单的BOOL属性，设置视频播放</p>
+
+<pre><code class="language-objectivec">//进入可见范围后自动播放
+videoNode.shouldAutoplay = YES;
+//视频无限循环播放
+videoNode.shouldAutorepeat = NO;
+//将静音设置为YES 将会关闭视频声音
+videoNode.muted = YES;
+</code></pre>
+
+<h3 id="toc_35">占位图像</h3>
+
+<p>因为video node继承自<code>ASNetworkImageNode</code>，因此可以使用<code>URL</code>属性设置其占位图像。加入决定不这么做，则视频的第一针将会自动解码并作为占位图像</p>
+
+<h3 id="toc_36">ASVideoNode Delegate</h3>
+
+<p>有很多delegate可以对视频事件作出响应，</p>
+
+<p>例如,当播放状态改变时:</p>
+
+<pre><code class="language-objectivec">- (void)videoNode:(ASVideoNode *)videoNode willChangePlayerState:(ASVideoNodePlayerState)state toState:(ASVideoNodePlayerState)toState;
+</code></pre>
+
+<h2 id="toc_37">ASMapNode</h2>
+
+<p>帮助显示用户地离区域</p>
+
+<h3 id="toc_38">基础使用</h3>
+
+<p>只需要输入要显示位置的坐标即可</p>
+
+<pre><code class="language-objectivec">ASMapNode *mapNode = [[ASMapNode alloc] init];
+mapNode.style.preferredSize = CGSizeMake(300.0, 300.0);
+
+// San Francisco
+CLLocationCoordinate2D coord = CLLocationCoordinate2DMake(37.7749, -122.4194);
+
+// show 20,000 square meters
+mapNode.region = MKCoordinateRegionMakeWithDistance(coord, 20000, 20000);
+</code></pre>
+
+<h3 id="toc_39">MKMapSnapshotOptions</h3>
+
+<p>可以通过option属性 定义<code>node</code>的主要组件部分</p>
+
+<ul>
+<li>MKMapCamera:  相机的高度和仰角</li>
+<li>MKMapRect：CGRect</li>
+<li>MKMapRegion：控制焦点的坐标 以及 焦点周围的大小和显示</li>
+<li>MKMapType：设置为Standard、Satellite(卫星)等</li>
+</ul>
+
+<pre><code class="language-objectivec">MKMapSnapshotOptions *options = [[MKMapSnapshotOptions alloc] init];
+options.mapType = MKMapTypeSatellite;
+options.region = MKCoordinateRegionMakeWithDistance(coord, 20000, 20000);
+mapNode.options = options;
+</code></pre>
+
+<h3 id="toc_40">标记</h3>
+
+<p>设置标记，要做的就是为<code>ASMapNode</code>分配标记数组</p>
+
+<pre><code class="language-objectivec">//在地图中间直接显示图钉标记
+MKPointAnnotation *annotation = [[MKPointAnnotation alloc] init];
+annotation.coordinate = CLLocationCoordinate2DMake(37.7749, -122.4194);
+
+mapNode.annotations = @[annotation];
+</code></pre>
+
+<h3 id="toc_41">实时地图</h3>
+
+<p>将map node从静态的地图转换为可交互的<br/>
+<code>mapNode.liveMap = YES;</code></p>
+
+<p>与UIKit视图一样，实时模式下的MKMapView并不是线程安全的</p>
+
+<h3 id="toc_42">MKMapView Delegate</h3>
+
+<pre><code class="language-text">如果启用了实时地图模式，并且您需要对与地图节点关联的任何事件做出反应，则可以设置mapDelegate属性。该代理应该实现MKMapViewDelegate协议。
+</code></pre>
+
+<h2 id="toc_43">ASControlNode</h2>
+
+<p>ASControlNode与UIControl等效。我们不会直接创建实例，可以子类化其作为自己的控件。<code>ASTextNode、ASImageNode、ASVideoNode、ASMapNode</code>都是ASControlNode的子类</p>
+
+<p>这意味着我们可以将任何文本或者图像作为按钮，而不必像UIKIt中依赖于手势识别器，或使用UIBUtton</p>
+
+<h3 id="toc_44">Control state</h3>
+
+<pre><code class="language-objectivec">typedef NS_OPTIONS(NSUInteger, ASControlState) {
+    ASControlStateNormal       = 0,
+    ASControlStateHighlighted  = 1 &lt;&lt; 0,  // used when isHighlighted is set
+    ASControlStateDisabled     = 1 &lt;&lt; 1,
+    ASControlStateSelected     = 1 &lt;&lt; 2,  // used when isSelected is set
+    ...
+};
+</code></pre>
+
+<h3 id="toc_45">Target-Action 机制</h3>
+
+<p>类似UIControl  ASControlNode中也有一系列事件</p>
+
+<pre><code class="language-objectivec">typedef NS_OPTIONS(NSUInteger, ASControlNodeEvent)
+{
+  /** A touch-down event in the control node. */
+  ASControlNodeEventTouchDown         = 1 &lt;&lt; 0,
+  /** A repeated touch-down event in the control node; for this event the value of the UITouch tapCount method is greater than one. */
+  ASControlNodeEventTouchDownRepeat   = 1 &lt;&lt; 1,
+  /** An event where a finger is dragged inside the bounds of the control node. */
+  ASControlNodeEventTouchDragInside   = 1 &lt;&lt; 2,
+  /** An event where a finger is dragged just outside the bounds of the control. */
+  ASControlNodeEventTouchDragOutside  = 1 &lt;&lt; 3,
+  /** A touch-up event in the control node where the finger is inside the bounds of the node. */
+  ASControlNodeEventTouchUpInside     = 1 &lt;&lt; 4,
+  /** A touch-up event in the control node where the finger is outside the bounds of the node. */
+  ASControlNodeEventTouchUpOutside    = 1 &lt;&lt; 5,
+  /** A system event canceling the current touches for the control node. */
+  ASControlNodeEventTouchCancel       = 1 &lt;&lt; 6,
+  /** All events, including system events. */
+  ASControlNodeEventAllEvents         = 0xFFFFFFFF
+};
+</code></pre>
+
+<h3 id="toc_46">Hit Test Slop</h3>
+
+<p>尽管所有的node均有<code>hitTestSlop</code>属性，但是在control node中最常用</p>
+
+<pre><code class="language-objectivec">CGFloat horizontalDiff = (bounds.size.width - _playButton.bounds.size.width)/2;
+CGFloat verticalDiff = (bounds.size.height - _playButton.bounds.size.height)/2;
+
+_playButton.hitTestSlop = UIEdgeInsetsMake(-verticalDiff, -horizontalDiff, -verticalDiff, -horizontalDiff);
+
+</code></pre>
+
+<h3 id="toc_47">Hit Test Visualization</h3>
+
+<h2 id="toc_48">ASScrollNode</h2>
+
+<p>ASScrollNode是一个<code>ASDisplayNode</code>,其底层是一个<code>UIScrollView</code>.其可以自动采用ASLayoutSpec的大小作为可滚动的contentSize</p>
+
+<h3 id="toc_49">自动管理contentSize</h3>
+
+<p>启用后，由ASSCrollNode布局规范计算的大小将定义滚动视图的<code>.contentSize</code>。在此模式下，滚动视图的边界会填充父级尺寸</p>
+
+<p><code>AutomaticManagesContentSize</code>对于实现了<code>layoutSpecThatFits</code>的ASScrollNode子类很有用，也适用设置了<code>.layoutSpecBlock</code>基类。这两种情况下都通常适用<code>.automaticallyManagesSubnodes</code>属性，以便将layout spec中的node自动添加到可滚动区域</p>
+
+<p>适用这种方法无需捕获布局大小，使用绝对布局规范作为包装器或在代码任何位置设置contentSize，都将会将layout布局更新。通常我们将返回<code>ASStackLayoutSpec</code>，可滚动区域将允许查看所有内容</p>
+
+<h3 id="toc_50">滚动方向</h3>
+
+<p>当使用<code>automaticallyManagersContentSize</code>时，特别因为默认是垂直而你想要水平方向时，这个属性是很有用的</p>
+
+<p>这个属性控制了调整内容大小时的<code>constrainedSize</code></p>
+
+<ul>
+<li>Vertical：constrainedSize的.height是为无限制的(<code>CGFLOAT_MAX</code>)</li>
+<li>Horizontal：</li>
+<li>Vertical&amp;Horizontal：</li>
+</ul>
+
+<h2 id="toc_51">ASEditableTextNode</h2>
+
+<p><code>ASEditableTextNode</code>通常在所有使用<code>UITextView</code>或者<code>UITextField</code>的地方使用。</p>
+
+<p>在后台 使用了专门的UITextView作为其底层视图。当在主线程上操作时，你都可以直接访问和操作该视图</p>
+
+<h3 id="toc_52">基础使用</h3>
+
+<p>如果要默认情况下有文本，则可以将属性字符串分配给<code>attributedText</code>属性</p>
+
+<pre><code class="language-objectivec">ASEditableTextNode *editableTextNode = [[ASEditableTextNode alloc] init];
+editableTextNode.attributedText = [[NSAttributedString alloc] initWithString:@&quot;Lorem ipsum dolor sit amet.&quot;];
+editableTextNode.textContainerInset = UIEdgeInsetsMake(8, 8, 8, 8);
+</code></pre>
+
+<h3 id="toc_53">Placeholder Text</h3>
+
+<p>如果要显示占位符 只需要设置<code>attributedPlaceholderText</code>属性</p>
+
+<pre><code class="language-objectivec">editableTextNode.attributedPlaceholderText = [[NSAttributedString alloc] initWithString:@&quot;Type something here...&quot;];
+</code></pre>
+
+<p>属性<code>isDisplayingPlaceholder</code>最初为YES，当输入文本设置为非空字符串时，又将切换为NO</p>
+
+<h3 id="toc_54">Typing Attributes</h3>
+
+<p>如果要修改用户将在在这text field中输入文字的style，可以设置<code>typingAttributes</code>属性</p>
+
+<pre><code class="language-objectivec">editableTextNode.typingAttributes = @{NSForegroundColorAttributeName: [UIColor blueColor], 
+                                      NSBackgroundColorAttributeName: [UIColor redColor]};
+</code></pre>
+
+<h3 id="toc_55">ASEditableTextNode Delegate</h3>
+
+<p>可以使用一下delegate方法 来实现响应关联事件</p>
+
+<pre><code class="language-objectivec">//
+- (void)editableTextNodeDidBeginEditing:(ASEditableTextNode *)editableTextNode;
+
+- (BOOL)editableTextNode:(ASEditableTextNode *)editableTextNode shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text;
+
+- (void)editableTextNodeDidChangeSelection:(ASEditableTextNode *)editableTextNode fromSelectedRange:(NSRange)fromSelectedRange toSelectedRange:(NSRange)toSelectedRange dueToEditing:(BOOL)dueToEditing;
+
+- (void)editableTextNodeDidUpdateText:(ASEditableTextNode *)editableTextNode;
+- 
+- (void)editableTextNodeDidFinishEditing:(ASEditableTextNode *)editableTextNode;
+
+</code></pre>
+
+<h2 id="toc_56">ASMultiplexImageNode</h2>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Node Containers]]></title>
+    <link href="https://acefish.github.io/15697458035343.html"/>
+    <updated>2019-09-29T16:30:03+08:00</updated>
+    <id>https://acefish.github.io/15697458035343.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">ASViewController</h2>
+
+<p><code>ASViewController</code>是<code>UIViewController</code>的子类，添加了一些有用的功能来承载<code>ASDisplayNode</code>层次结构<br/>
+可以使用<code>ASViewController</code>代替任何UIViewControlller</p>
+
+<p>使用<code>ASViewController</code>的好处:</p>
+
+<ol>
+<li>保存内存。</li>
+<li>ASVisibility</li>
+</ol>
+
+<h3 id="toc_1">使用</h3>
+
+<p><code>UIViewController</code>提供了自己的View。<code>ASViewController</code>在初始化时  通过<code>initWithNode</code>分配了要管理的节点</p>
+
+<pre><code class="language-objectivec">//例如 修改视图控制器的视图的根node 为 table node
+
+- (instancetype)init
+{
+  _tableNode = [[ASTableNode alloc] initWithStyle:UITableViewStylePlain];
+  self = [super initWithNode:_tableNode];
+  
+  if (self) {
+    _tableNode.dataSource = self;
+    _tableNode.delegate = self;
+  }
+  
+  return self;
+}
+</code></pre>
+
+<h2 id="toc_2">ASTableNode</h2>
+
+<p>相当于<code>UITableView</code> 并且可以用来代替任何<code>UITableView</code></p>
+
+<pre><code class="language-objectivec">- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+
+//替换方法
+- (ASCellNode *)tableNode:(ASTableNode *)tableNode nodeForRowAtIndexPath:(NSIndexPath *)indexPath
+//或者
+- (ASCellNodeBlock)tableNode:(ASTableNode *)tableNode nodeBlockForRowAtIndexPath:(NSIndexPath *)indexPath
+</code></pre>
+
+<blockquote>
+<p>建议使用 nodeblock版本，以便table node可以同时准备和display。这意味着所有的<code>subnode</code>初始化方法都会在后台运行，请确保线程安全。</p>
+</blockquote>
+
+<p><code>ASCellNodeBlock</code>是创建<code>ASCellNode</code>的block，能够在后台线程运行。</p>
+
+<blockquote>
+<p>注意</p>
+
+<p><code>ASCellNodes</code>被<code>ASTableNode、ASCollectionNode、ASPagerNode</code>使用</p>
+
+<p>这些方法均不需要重用机制(只会执行一次，与UIKIt不同，当行要显示时不会调用这些方法)</p>
+</blockquote>
+
+<h3 id="toc_3">node block的线程安全</h3>
+
+<p>node blocks必须是线程安全的。一方面是确保在node block外访问数据模型。因此，不太需要会在block内部访问indexPath</p>
+
+<pre><code class="language-objectivec">- (ASCellNodeBlock)tableNode:(ASTableNode *)tableNode nodeBlockForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    PhotoModel *photoModel = [_photoFeed objectAtIndex:indexPath.row];
+    
+    // this may be executed on a background thread - it is important to make sure it is thread safe
+    ASCellNode *(^cellNodeBlock)() = ^ASCellNode *() {
+        PhotoCellNode *cellNode = [[PhotoCellNode alloc] initWithPhoto:photoModel];
+        cellNode.delegate = self;
+        return cellNode;
+    };
+    
+    return cellNodeBlock;
+}
+</code></pre>
+
+<h3 id="toc_4">ASTableView的访问</h3>
+
+<p><code>ASTableView</code>是<code>UITalbeView</code>的子类，在<code>ASTalbeNode</code>内部进行使用，可以在<code>viewDidLoad</code>或<code>didLoad</code>方法找中通过<code>.view</code>属性访问节点的<code>view</code>或者<code>layer</code>属性</p>
+
+<p>例如，可以再<code>ViewDidLoad</code>方法中 访问呢表节点的视图完成对表格的分隔符样式设置</p>
+
+<pre><code class="language-objectivec">- (void)viewDidLoad
+{
+  [super viewDidLoad];
+  
+  _tableNode.view.allowsSelection = NO;
+  _tableNode.view.separatorStyle = UITableViewCellSeparatorStyleNone;
+  _tableNode.view.leadingScreensForBatching = 3.0;  // default is 2.0
+}
+</code></pre>
+
+<h3 id="toc_5">行高</h3>
+
+<p>需要注意的是： ASTableNode不提供和<code>UITableView</code>的<code>tableView:heightForRowAtIndexPath</code>等效功能<br/>
+这是因为node 会根据提供的约束确定其自身的高度，因此不再需要编写代码在视图控制器中确定此信息<br/>
+node通过<code>layoutSpecThatFits</code>方法 返回的<code>layoutSpec</code>定义其高度。所有给定了限制size的node都可以计算其目标size</p>
+
+<p>默认情况，<code>ASTableNode</code>给其cell提供的大小范围约束，其中最小宽度为tablenode的宽度，最小高度为0.最大宽度为tablenode的宽度，最大高度为<code>FLT_MAX</code>，就是说table的cell宽度是固定的为整个table的宽度，但是其高度时灵活的，可以自动调整大小</p>
+
+<p>如果在<code>ASCellNode</code>上调用<code>-setNeddsLayout</code> 将自动执行一遍布局，如果总体所需大小已经更改，通知table 将会进行更新</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>这些规则和UIKit不同，在UIKit中必须调用reload row/item。这样就节省了大量代码</p>
+</blockquote>
+
+<h2 id="toc_6">ASCollectionNode</h2>
+
+<p>ASCollectionNode 等效于 UICollectionView 可以在任何情况下替代<code>UICollectionView</code></p>
+
+<pre><code class="language-objectivec">- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath;
+//替换为
+- (ASCellNode *)collectionNode:(ASCollectionNode *)collectionNode nodeForItemAtIndexPath:(NSIndexPath *)indexPath
+//或
+- (ASCellNodeBlock)collectionNode:(ASCollectionNode *)collectionNode nodeBlockForItemAtIndexPath:(NSIndexPath *)indexPath
+</code></pre>
+
+<p>推荐使用node block </p>
+
+<h3 id="toc_7">cell 大小和布局</h3>
+
+<p>可以使用<code>ASCollectionNode</code>的<code>-constrainedSizeForItemAtIndexPath：</code>约束colletion node中使用的cell</p>
+
+<h3 id="toc_8">UICollectionViewCell的互通性</h3>
+
+<p><code>ASCollectionNode</code>支持<code>UICollectionViewCells</code>和<code>ASCellNodes</code>一起使用</p>
+
+<p>注意：即使混合在统一<code>ASCollectionNode</code>中，这些<code>UIKit</code>组件也不会有<code>ASCellNode</code>的性能优势</p>
+
+<h2 id="toc_9">ASPageNode</h2>
+
+<p><code>ASPageNode</code>是<code>ASCollectionView</code>的子类，只是内部采用了特殊的<code>UIColelctionViewLayout</code></p>
+
+<p><code>ASPageNode</code>可以创建出类似<code>UIPageViewController</code>创建的页面UI。支持在轮换期间停留在正确的页面。不支持循环滚动</p>
+
+<pre><code class="language-objectivec">- (NSInteger)numberOfPagesInPagerNode:(ASPagerNode *)pagerNode
+//和
+- (ASCellNode *)pagerNode:(ASPagerNode *)pagerNode nodeAtIndex:(NSInteger)index
+//或者
+- (ASCellNodeBlock)pagerNode:(ASPagerNode *)pagerNode nodeBlockAtIndex:(NSInteger)index`
+</code></pre>
+
+<h3 id="toc_10">使用ASViewController来获得最佳性能</h3>
+
+<p>一种特别有用的模式就是 返回 使用现有<code>UIViewController</code>或者<code>ASViewController</code>初始化的ASCellNode。当然，为了获得最佳性能请使用<code>ASViewController</code></p>
+
+<pre><code class="language-objectivec">- (ASCellNode *)pagerNode:(ASPagerNode *)pagerNode nodeAtIndex:(NSInteger)index
+{
+    NSArray *animals = self.animals[index];
+    
+    ASCellNode *node = [[ASCellNode alloc] initWithViewControllerBlock:^{
+        return [[AnimalTableNodeController alloc] initWithAnimals:animals];;
+    } didLoadBlock:nil];
+    
+    node.style.preferredSize = pagerNode.bounds.size;
+    
+    return node;
+}
+</code></pre>
+
+<p>在这个例子中，该节点使用<code>initWithViewControllerBlock：</code>方法构造。通常时必须采用这种方法，以便执行正确的布局</p>
+
+<h3 id="toc_11">使用ASPagerNode作为ASViewController的root node</h3>
+
+<p><a href="https://texturegroup.org/docs/containers-aspagernode.html">log message</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[先进技术]]></title>
+    <link href="https://acefish.github.io/15697378626983.html"/>
+    <updated>2019-09-29T14:17:42+08:00</updated>
+    <id>https://acefish.github.io/15697378626983.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">ASVisibility</h2>
+
+<p><code>ASNavigationController</code>和<code>ASTabBarController</code>都实现了<code>ASVisibility</code>协议。即使没有<code>ASDisplayNodes</code>，也可以使用这些类，从而使他们称为继承层次结构的合适基类。对于任何作为<code>ASViewControllers</code>的子视图控制器，这些类都知道视图控制器可见所需的确切用户点击次数(如果当前可见，则为0)</p>
+
+<p>当知道了视图控制器的可见性深度后，</p>
+
+<ol>
+<li>视图控制器可以在用户接近或离开用户时自动采取适当的措施。</li>
+<li>app的非默认Tabs可能会预加载某些数据；</li>
+<li>导航堆栈中深3层的控制器可能会主动释放使用的图像、文本和提取内存中的数据</li>
+</ol>
+
+<p>任何视图控制器容器类都可以实现一个简单的协议来集成。例如，<code>ASNavigationController</code>将为只需要点击一个后退按钮即可显示该可见性的视图控制器返回其自己的<code>visibleDepth+1</code>的可见性深度，</p>
+
+<p>可以通过在<code>ASViewControllers</code>上自动启用<code>AdjustRangeModeBasedOnViewEvents</code>来自动选择某些行为。启用此功能呢后，如果视图控制器和节点符合<code>ASRangeControllerUpdateRangeProtocol</code>(ASCollectionNode和ASTableNode默认遵循)，范围会随着可见深度的增加而自动减小以节省内存</p>
+
+<h2 id="toc_1">ASRunLoopQueue</h2>
+
+<p>即使在主线程，Texture扔可以通过相当出色的<code>ASRunLoopQueue</code>大大减少对用户体验的影响</p>
+
+<p><code>ASRunloopQueue</code>将必须在主线程执行的操作分解我更小的块，轻松的达到原本大小的1/10，从而可以分散例如初始化UIView甚至销毁对象的操作，使runLoop 更加频繁的运转。这种周期性的运转使设备更加频繁的检查用户是否已经已经开始触摸或动画计时器是否有新的帧需要绘制，这样即使设备非常繁忙并正在处理大量主线程，也会提供更高的响应速度</p>
+
+<p>运行Texture时 会默认启用<code>ASRunLoopQueue</code></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[工具]]></title>
+    <link href="https://acefish.github.io/15695667474220.html"/>
+    <updated>2019-09-27T14:45:47+08:00</updated>
+    <id>https://acefish.github.io/15695667474220.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">点击范围可视化</h2>
+
+<h3 id="toc_1">ASControlNode的可点击区域</h3>
+
+<p>这个调试功能会在任何包含点击区域，<code>target：action：</code>或者手势识别器的<code>ASControlNode</code>上添加半透明的高亮覆盖。<br/>
+可点击范围定义为:<code>ASControlNode</code>框架及<code>.hitTestSlop UIEdgeInsets</code></p>
+
+<h3 id="toc_2">限制</h3>
+
+<p>可点击区域的绿色边框，表示其点击区域是被其父视图的点击区域限制</p>
+
+<p>可点击区域的橙色边框，表示点击区域是被被其父结构层次限制</p>
+
+<h3 id="toc_3">使用方法</h3>
+
+<p>在<code>AppDelegate.m</code>文件中</p>
+
+<ul>
+<li> 引入<code>AsyncDisplayKit+Debug.h</code></li>
+<li> 在<code>didFinishLaunchingWithOptions</code>方法中添加<code>[ASControlNode setEnableHitTestDebug:YES]</code></li>
+</ul>
+
+<blockquote>
+<p>注意</p>
+
+<p>确保在初始化任何Node之前 初始化该方法</p>
+</blockquote>
+
+<h2 id="toc_4">图像缩放</h2>
+
+<h3 id="toc_5">可视化ASImageNode.image 像素缩放</h3>
+
+<p>这个调试功能，当图像大小(以像素为单位)和边界大小(以像素为单位)不匹配时，此调试功能会在<code>ASImageNode</code>的右下角添加红色文本</p>
+
+<p>这个debug可以帮助我们快速:</p>
+
+<ul>
+<li>是否下载和渲染了过多的数据</li>
+<li>是否放大了低质量图像</li>
+</ul>
+
+<h3 id="toc_6">使用方法</h3>
+
+<p>在<code>AppDelegate.m</code>文件中</p>
+
+<ul>
+<li> 引入<code>AsyncDisplayKit+Debug.h</code></li>
+<li> 在<code>didFinishLaunchingWithOptions</code>方法中添加<code>[ASImageNode setShouldShowImageScalingOverlay:YES]</code></li>
+</ul>
+
+<h2 id="toc_7">范围可视化</h2>
+
+<h3 id="toc_8">可视化ASRangeController</h3>
+
+<p>这个调试功能功能会在<code>shared Application的keyWindow</code>右下角添加了一个半透明的子视图，这个子视图会为屏幕上的每个<code>ASRangeController</code>实例显示<code>ASLayoutRangeType</code>的<code>ASRangeTuningParameters</code></p>
+
+<ul>
+<li>ASRangeController实例表示为条形</li>
+<li>在滚动时 绿色(可见区域)、黄色(display区域)、红色(获取数据区域)，在相对于彼此进行移动</li>
+<li><code>RangeController</code>的侧的白色箭头表示的滚动方向，帮助你确定头尾的<code>tuning parameters</code></li>
+<li>上栏的白色标签显示了<code>RangeController</code>中的数据类名，区分嵌套式图</li>
+</ul>
+
+<blockquote>
+<p>注意</p>
+
+<p>仅展示屏幕上的<code>ASRangeControllers</code><br/>
+各个比例是相对的 不同的条形图之前并无法比较大小的</p>
+</blockquote>
+
+<h3 id="toc_9">使用方法</h3>
+
+<p>在<code>Appdelegate.h</code>文件中</p>
+
+<ul>
+<li><code>import AsyncDisplayKit+Debug.h</code></li>
+<li>在顶部添加<code>[ASDisplayNode setShouldShowRangeDebugOverlay:YES]</code>方法</li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[优化]]></title>
+    <link href="https://acefish.github.io/15694018519470.html"/>
+    <updated>2019-09-25T16:57:31+08:00</updated>
+    <id>https://acefish.github.io/15694018519470.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">Layer 支持</h2>
+
+<p>在某些情况下 使用<code>Layer</code>代替<code>View</code>能显著提高app的性能。建议在不需要任何触摸处理的自定义节点中启用<code>layer-backing</code></p>
+
+<p>在UIKit中，因为API的不同， 手动将基于View的视图转换为layer是非常费力的。并且如果将来需要启用触摸处理，就只能将所有内容都转换回去</p>
+
+<p>在<code>Texture</code>中，可以很简单的将整个view树转换为layer树，如果想要改回用view，直接删掉这行代码即可</p>
+
+<pre><code class="language-objectivec">rootNode.isLayerBacked = YES;
+</code></pre>
+
+<h2 id="toc_1">子树光栅化</h2>
+
+<p>将整个视图层次结构展平为一个图层，可以提高性能。但是，当使用UIKit时，可维护性和层次结构受到冲击</p>
+
+<pre><code class="language-objectivec">[rootNode enableSubtreeRasterization];
+</code></pre>
+
+<p>这行代码将会造成该节点的整个节点层次结构呈现为一层。</p>
+
+<h2 id="toc_2">同步并发</h2>
+
+<p><code>ASViewController</code>和<code>ASCellNode</code>中都有<code>neverShowPlaceholders</code>属性</p>
+
+<p>设置该属性为YES后，主线程将会被阻塞只到<code>cell</code>或者<code>VC的view</code>被展示完成</p>
+
+<p>虽然使用这个选项会类似UIKit阻塞主线程直到绘制完成，但是并没有减少Texture带来的优化。因为预加载的存在，一个node当到达屏幕显示范围时，已经几乎加载完成，因此阻塞主线程的时间也会很短。即使<code>rangeTuningParameters</code>属性被设置为0，其表现效果也好于<code>UIKit</code>。而且，因为主线程处于阻塞等待状态，所有的子节点都会并发的的diaplay。因此叫做<mark>同步并发</mark></p>
+
+<pre><code class="language-objectivec">node.neverShowPlaceholders = YES;
+</code></pre>
+
+<p>通常，当cell在到达屏幕展示范围还没有完成展示渲染时，将会展示占位图直到内容被绘制完成。设置该属性为YES后，node或者<code>ASViewController</code>滚动起来更像UIKit.(事实上，除了Texture更快之外，并没有其他什么区别)</p>
+
+<h2 id="toc_3">圆角</h2>
+
+<p>我们经常会使用<code>CALayer</code>的<code>.cornerRadius</code>属性在实现圆角。不幸的是，这个方便的属性会造成严重的性能损失，因此只在别无选择时才会选择使用。</p>
+
+<h3 id="toc_4">为什么.cornerRadius如此昂贵</h3>
+
+<p>使用<code>CALayer</code>的<code>.cornerRadius</code>属性会触发离屏渲染，即每帧(当滚动时为60FPS)都执行剪切操作，即使此时该内容区域的内容并没有变化。这意味着GPU必须在每帧之间切换上下文，在合成整个帧与使用.cornerRadius的附加遍历之间</p>
+
+<p>重要的是，这些消耗并不会显示在<code>Time Profile</code>中，因为它影响的是CoreAnimation Render Server在App自身的工作完成。这会影响许多设备的性能。</p>
+
+<h3 id="toc_5">使用圆角策略需要考虑的情况</h3>
+
+<ol>
+<li>在圆角之下是否存在背景移动: 指的是拐角位置之后的任何运动</li>
+<li>是否存在穿过圆角区域的移动:</li>
+<li>是否4个角处于相同的node，并且拐角区域没有和其它节点相交</li>
+</ol>
+
+<blockquote>
+<p>注意</p>
+
+<p>可以再圆角内部有移动 而无需穿过拐角区域。例如，当移动插入时，其边距大小为角半径大小，因此当内容滚动时，也不会在拐角移动。我们也可以利用这种策略消除拐角的移动，</p>
+</blockquote>
+
+<h3 id="toc_6">圆角预合成</h3>
+
+<p>圆角预合成是指使用贝塞尔曲线绘制角点，然后在<code>CGContet/UIGraphicsContext</code>中剪切内容(<code>[path clip]</code>)。此时圆角就成为了图像的一部分并且被渲染到单个CALayer中。有两种类型的预合成圆角:</p>
+
+<ol>
+<li>最好的预合成圆角是使用预合成的不透明角，这是最有效的方法，可以实现零alpha混合。可惜这种方法并不灵活，如果圆角图像需要在其顶部移动，则其圆角后的背景需要为纯色。</li>
+<li>第二种方法涉及使用带有预合成Alpha角的贝塞尔曲线路径。这个方法就很灵活了，是最常用的方法之一，但是增加了整个内容上Alpha混合的成本，虽然比不透明的预合成增加25%的内存，但是在现代设备上这些影响很小</li>
+</ol>
+
+<p>这些预合成圆角的关键是，圆角只能接触一个节点，而且能与其他圆角相交。如果上面所说的存在任何一种情况，则必须使用夹角</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>Texture node对<code>.corenerRaduis</code>具有特殊的优化，仅仅当启用<code>shouldRasterizeDescendants</code>时(启用光栅化)，自动实现预合成</p>
+
+<p>Texture提供了方便的方法来创建简单、纯色的圆角矩形或圆形。<br/>
+可以看<code>UIImage + ASConveniences.h</code>类，了解使用预合成的角(包括alpha和不透明)创建纯色、圆角可调整的图像。这对于使用image node作为<code>placeholders</code>或者ASButtonNode作为背景</p>
+</blockquote>
+
+<h3 id="toc_7">夹角</h3>
+
+<p>(即用4个角将四周覆盖)<br/>
+这个解决策略包含了将4个单独的不透明角图层放置在四角。这个方法非常灵活，并且性能很好。它具有4个单独层的CPU开销</p>
+
+<p>这种夹角策略适合两种主要类型的圆角情况:</p>
+
+<ul>
+<li>圆角接触了多个节点或者与任何节点相交的情况下的圆角</li>
+<li>在固定的Texture或者照片背景上增加圆角。虽然夹角方法很复杂，但是很有用哦</li>
+</ul>
+
+<h3 id="toc_8">使用CALayer的.cornerRadius属性</h3>
+
+<p>在一些极少数情况下，很适合使用<code>.cornerRaduis</code>属性，包括当动态内容同时在内部和圆角移动。对于某些动画，这是不可避免的。但是在很多情况下，可以通过调整设计消除运动源。</p>
+
+<p>对于没有任何移动的屏幕，使用<code>.cornerRadius</code>危害也会小很多，也可以作为快捷方式。然而当屏幕上有任何移动，甚至不涉及角的移动，都将会造成<code>.cornerRadius</code>的性能折扣。例如：在导航栏中存在一个圆形元素，在其下方存在滚动视图，即使它们不重叠 也会造成影响。即使用户不与其进行互动，也会对屏幕中的所有内容进行动画处理。此外，任何屏幕上刷新都会造成圆角成本消耗</p>
+
+<h3 id="toc_9">光栅化和图层支持</h3>
+
+<p>并不能随便使用<code>.shouldRasterize</code>来提高<code>.cornerRaduis</code>属性性能。只要没有造成重新的光栅化的操作(例如，移动、点击更改颜色、不在移动的table之上等)，就是可以使用的。通常，不鼓励这么做，很容易导致性能下降。</p>
+
+<p><code>CALayer</code>的<code>.shouldRasterize</code>和<code>Texture</code>的<code>node.shouldRasterizeDescendents.</code>无关。启用时，<code>.shouldRasterizeDescendents</code>将会阻止创建子节点子级的实际图层和层。</p>
+
+<h3 id="toc_10">圆角策略选取</h3>
+
+<p><img src="media/15694018519470/15695659459083.png" alt=""/></p>
+
+<h3 id="toc_11">Texture对圆角的支持</h3>
+
+<ol>
+<li><p>使用<code>.cornerRadius</code></p>
+<pre><code class="language-objectivec">CGFloat cornerRadius = 20.0;
+_photoImageNode.cornerRoundingType = ASCornerRoundingTypeDefaultSlowCALayer;<br/>
+_photoImageNode.cornerRadius = cornerRadius;
+</code></pre></li>
+<li><p>使用预合成的圆角</p>
+<pre><code class="language-objectivec">CGFloat cornerRadius = 20.0;
+_photoImageNode.cornerRoundingType = ASCornerRoundingTypePrecomposited;<br/>
+_photoImageNode.cornerRadius = cornerRadius;
+</code></pre></li>
+<li><p>使用夹角 圆角</p>
+<pre><code class="language-objectivec">CGFloat cornerRadius = 20.0;
+_photoImageNode.cornerRoundingType = ASCornerRoundingTypeClipping;<br/>
+_photoImageNode.backgroundColor = [UIColor whiteColor];<br/>
+_photoImageNode.cornerRadius = cornerRadius;
+</code></pre></li>
+<li><p>使用<code>willDisplayNodeContentWithRenderingContext</code>设置内容的剪切路径和圆角</p>
+<pre><code class="language-objectivec">CGFloat cornerRadius = 20.0;
+// Use the screen scale for corner radius to respect content scale<br/>
+CGFloat screenScale = UIScreen.mainScreen.scale;<br/>
+_photoImageNode.willDisplayNodeContentWithRenderingContext = ^(CGContextRef context, id drawParameters) {<br/>
+    CGRect bounds = CGContextGetClipBoundingBox(context);<br/>
+    CGFloat radius = cornerRadius * screenScale; <br/>
+    UIImage *overlay = [UIImage as_resizableRoundedImageWithCornerRadius:radius<br/>
+                                                             cornerColor:[UIColor clearColor]<br/>
+                                                               fillColor:[UIColor clearColor]];<br/>
+    [overlay drawInRect:bounds];<br/>
+    [[UIBezierPath bezierPathWithRoundedRect:bounds cornerRadius:radius] addClip];<br/>
+};
+</code></pre></li>
+<li><p>使用<code>ASImageNode</code> 使图像变圆 并添加边框<br/>
+    这非常适合头像图片的圆角</p>
+<pre><code class="language-objectivec">CGFloat cornerRadius = 20.0;
+_photoImageNode.imageModificationBlock = ASImageNodeRoundBorderModificationBlock(5.0, [UIColor orangeColor])
+</code></pre></li>
+</ol>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Teture的便捷性]]></title>
+    <link href="https://acefish.github.io/15693141187091.html"/>
+    <updated>2019-09-24T16:35:18+08:00</updated>
+    <id>https://acefish.github.io/15693141187091.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">Hit Test Slop</h2>
+
+<p><code>ASDisplayNode</code>提供了<code>UIEdgeInset</code>类型的属性，当设置为非0的inset时，提高点击命中范围，使其更容易点击或执行手势</p>
+
+<p>因为<code>ASDisplayNode</code>是所有node的基类，因此所有的<code>texture</code>node都有这个属性</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>这个属性影响了<code>-hitTest</code>和<code>-pointInside</code>，所以在重写这个方法时 建议调用<code>super</code></p>
+</blockquote>
+
+<p>节点捕获触摸事件的能力受到父节点的边界和父级<code>hitTestSlop</code>属性的限制。如果你想让子项的<code>hitTestSlop</code>扩展到父项的边界之外，只需要扩展父节点的<code>hitTestSlop</code>即可</p>
+
+<p>示例：<br/>
+当有一个文本节点作为按钮时，通常，文本节点高度通常不会达到要求的最低44的点击高度，此时，可以计算出区域差，并对标签应用inset来增加点击区域</p>
+
+<pre><code class="language-objectivec">ASTextNode *textNode = [[ASTextNode alloc] init];
+CGFloat padding = (44.0 - button.bounds.size.height)/2.0;
+textNode.hitTestSlop = UIEdgeInsetsMake(-padding, 0, -padding, 0);
+</code></pre>
+
+<h2 id="toc_1">批量获取API</h2>
+
+<p>Texture的批量获取API，用于批量获取数据块。这个通常在会写在<code>-scrollViewDidScroll:</code>方法中，但是<code>Texture</code>提供了更结构化的机制</p>
+
+<p>默认，当用户滑动table或者collection，当那里距离屏幕底部2个屏幕远时，会试着获取更多的数据。我们可以通过调整<code>ASTableView</code>或者<code>ASCollectionView</code>的<code>leadingScreensForBatching</code>属性</p>
+
+<pre><code class="language-objectivec">tableNode.view.leadingScreensForBatching = 3.0;  // overriding default of 2.0
+</code></pre>
+
+<h3 id="toc_2">代理方法</h3>
+
+<p>实现该代理方法  决定是否需要加载新内容数据</p>
+
+<pre><code class="language-objectivec">- (BOOL)shouldBatchFetchForTableNode:(ASTableNode *)tableNode
+{
+  if (_weNeedMoreContent) {
+    return YES;
+  }
+
+  return NO;
+}
+</code></pre>
+
+<p>当用户滚动到批量获取范围时，会调用该方法，我们通常根据是否还有数据需要获取来决定是否需要会进行批量获取请求，当返回YES时 就会进行接下来的步骤:</p>
+
+<pre><code class="language-objectivec">-tableNode:willBeginBatchFetchWithContext:
+-collectionNode:willBeginBatchFetchWithContext:
+</code></pre>
+
+<p>我们在这个方法中 执行数据获取(从网络或者本地数据库获取数据)</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>这个方法总是在后台线程中调用，意味着如果需要工作在主线程中，就需要dispatch其到主线程</p>
+</blockquote>
+
+<pre><code class="language-objectivec">- (void)tableNode:(ASTableNode *)tableNode willBeginBatchFetchWithContext:(ASBatchContext *)context 
+{
+  // Fetch data most of the time asynchronously from an API or local database
+  NSArray *newPhotos = [SomeSource getNewPhotos];
+
+  // Insert data into table or collection node
+  [self insertNewRowsInTableNode:newPhotos];
+
+  // Decide if it&#39;s still necessary to trigger more batch fetches in the future
+  _stillDataToFetch = ...;
+
+  // Properly finish the batch fetch
+  [context completeBatchFetching:YES];
+}
+</code></pre>
+
+<p>当完成数据获取时，需要调用<code>-completeBatchFetching:</code>方法传递参数YES来通知已经结束数据获取。这确保了批量获取机制可以同步进行，并且下次批量获取可以发生了。只有传递YES，context才知道可以尝试另外一批更新。</p>
+
+<h2 id="toc_3">自动节点管理</h2>
+
+<p><a href="https://texturegroup.org/docs/automatic-subnode-mgmt.html">自动节点管理</a></p>
+
+<p>当我们需要使用<code>Layout Transition api</code>时，就需要启用自动节点管理功能。然而，不需要动画的功能，也会从代码量的减小中受益</p>
+
+<p>启用了自动节点管理功能，说明我们不再需要再调用<code>addNode</code>或者<code>removeNode</code>方法。节点的存在与否完全由<code>layoutSpecThatFits:</code>方法决定</p>
+
+<h3 id="toc_4">更新ASLayoutSpec</h3>
+
+<p>当需要更改<code>ASLayoutSepec</code>时，我们需要手动调用<code>setNeedLayout</code>。这个等效于<code>Transition Layout API</code>中的<code>transitionLayout: duration:0</code>。</p>
+
+<p>正确构造的<code>ASLayoutSpec</code>知道需要添加、删除或设置动画的子节点。</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>在启用的自动节点管理后，就不能再调用<code>addSubnode:</code>和<code>removeFromSupernode</code>方法</p>
+</blockquote>
+
+<h2 id="toc_5">反转</h2>
+
+<p><code>ASTableNide</code>和<code>ASCollectionNide</code>具有BOOL类型的反转属性，当设置为YES时，将自动反转内容可以自下向上布局(即indexPath为(0,0)的位于底部)，这对于聊天应用是十分方便的，而且仅需要一个属性</p>
+
+<pre><code class="language-objectivec"> CGFloat inset = [self topBarsHeight];
+ self.tableNode.view.contentInset = UIEdgeInsetsMake(0, 0, inset, 0);
+ self.tableNode.view.scrollIndicatorInsets = UIEdgeInsetsMake(0, 0, inset, 0);
+  
+</code></pre>
+
+<h2 id="toc_6">图像修改block</h2>
+
+<p>大多数时候，我们在主线程进行大量修改图像外观的操作，我们当然希望将其移动到后台</p>
+
+<p>通过给<code>imageNode</code>设置<code>imageModificationBlock</code>,定义一系列的转换，这些转换与imageNode上设置的图像异步发生</p>
+
+<pre><code class="language-objectivec">//举例
+_backgroundImageNode.imageModificationBlock = ^(UIImage *image) {
+    UIImage *newImage = [image applyBlurWithRadius:30
+        tintColor:[UIColor colorWithWhite:0.5 alpha:0.3]
+        saturationDeltaFactor:1.8
+        maskImage:nil];
+    return newImage ?: image;
+};
+
+//some time later...
+
+_backgroundImageNode.image = someImage;
+</code></pre>
+
+<p>此时，每当把照片分配给imageNode前，都需要进行异步处理</p>
+
+<h3 id="toc_7">添加图像效果</h3>
+
+<p>利用<code>imageModificationBlock</code>给图像添加效果是很有效的，当提供了block时，可以再显示阶段对图像执行绘制操作。由于显示是在后台执行的，因此不会阻塞主线程</p>
+
+<p><code>imageModificationBlock</code>可以非常方便的用于添加各种图像效果</p>
+
+<p>举个例子：<br/>
+我们有一个图像节点，并且<code>imageNode</code>需要被切圆角。我们可以提供一个<code>imageModificationBlock</code>，可以方便的将传入的图像切圆并且返回</p>
+
+<pre><code class="language-objectivec">- (instancetype)init
+{
+// ...
+  _userAvatarImageNode.imageModificationBlock = ^UIImage *(UIImage *image) {
+    CGSize profileImageSize = CGSizeMake(USER_IMAGE_HEIGHT, USER_IMAGE_HEIGHT);
+    return [image makeCircularImageWithSize:profileImageSize];
+  };
+  // ...
+}
+
+//绘图代码抽象为UIImage的匪类中
+@implementation UIImage (Additions)
+- (UIImage *)makeCircularImageWithSize:(CGSize)size
+{
+  // make a CGRect with the image&#39;s size
+  CGRect circleRect = (CGRect) {CGPointZero, size};
+
+  // begin the image context since we&#39;re not in a drawRect:
+  UIGraphicsBeginImageContextWithOptions(circleRect.size, NO, 0);
+
+  // create a UIBezierPath circle
+  UIBezierPath *circle = [UIBezierPath bezierPathWithRoundedRect:circleRect cornerRadius:circleRect.size.width/2];
+
+  // clip to the circle
+  [circle addClip];
+
+  // draw the image in the circleRect *AFTER* the context is clipped
+  [self drawInRect:circleRect];
+
+  // get an image from the image context
+  UIImage *roundedImage = UIGraphicsGetImageFromCurrentImageContext();
+
+  // end the image context since we&#39;re not in a drawRect:
+  UIGraphicsEndImageContext();
+
+  return roundedImage;
+}
+@end
+</code></pre>
+
+<h2 id="toc_8">Placeholders</h2>
+
+<p>任何<code>ASDisplayNode</code>的子类都实现了<code>-placeholderImage</code>方法，提供了一个覆盖内容的的占位图，直到node内容显示。<br/>
+通过设置<code>.placeholderEnabled = YES</code>以及可选属性<code>.placeholderFadeDuration</code><br/>
+对于image drawing，使用node的<code>.calculateSize</code>属性</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>因为<code>placeholderImage</code>函数有可能在后台调用，因此我们需要保证其线程安全。注意，利用 <code>-[UIImage imageNamed:]</code>使用image asset不是线程安全,可以代替的使用<code>-[UIImage imageWithContentsOfFile:]</code></p>
+</blockquote>
+
+<p><code>Texture</code>中的<code>UIImage + ASConvenience</code>类别方法是创建占位符图像的理想资源，包括圆形，矩形，单色或简单的方角图像。</p>
+
+<h3 id="toc_9">.neverShowPlaceholders</h3>
+
+<h3 id="toc_10">ASNetworkImageNode also have Default Images</h3>
+
+<p>对于<code>ASNetworkImageNode</code>除了展位图像还有 <code>.defaultImage</code>属性。虽然占位符是暂时的，但如果图像节点.URL属性是nil或者URL加载失败，则默认图像将保留。建议使用默认图像</p>
+
+<h2 id="toc_11">Accessibility</h2>
+
+<h2 id="toc_12">UICollectionViewCell的互通性</h2>
+
+<p><code>Texture</code>提供了<code>UICollectionViewCell</code>和<code>ASCellNodes</code>的互通性</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>UIKit中的cell即使混杂在<code>ASCollectionNode</code>中，也并不会有类似<code>ASCellNodes</code>的便捷收益(类似，预加载，异步布局，异步绘图等)</p>
+</blockquote>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Layout]]></title>
+    <link href="https://acefish.github.io/15688983880412.html"/>
+    <updated>2019-09-19T21:06:28+08:00</updated>
+    <id>https://acefish.github.io/15688983880412.html</id>
+    <content type="html"><![CDATA[
+<p>学习自<a href="https://texturegroup.org/docs/layout2-quickstart.html">Texture-Quickstart</a></p>
+
+<p>因为UIKit的<code>Auto Layout</code>框架 在视图层次变得复杂的时候，布局成本会成倍增加。(已经在iOS12中修复)</p>
+
+<p><code>Texture</code>提供的layout的api相比有很多优点</p>
+
+<ol>
+<li>与手动使用layout布局一样快速</li>
+<li>布局可以在后台计算，因此不会影响用户交互</li>
+<li>布局采用了 不可变数据结构声明。</li>
+<li>布局结果是不可变的数据结构，就可以提前预计算并缓存，提高用户体验</li>
+<li>可扩展</li>
+</ol>
+
+<h4 id="toc_0">Layout Specs</h4>
+
+<p><code>layout specs</code>并没有物理呈现。它通过了解这些子布局元素如何相互关联来充当其他布局元素的容器，完成对布局元素的位置排列。</p>
+
+<p><code>Texture</code>提供了一些<code>ASLayoutSpec</code>的子类，包括从插入一个简单的布局规范到在不同堆栈中布置元素的的复杂规范</p>
+
+<h4 id="toc_1">Layout Elements</h4>
+
+<p><code>Layout spec</code>包含<code>Layout Elements</code>，并且对<code>LayoutElements</code>进行整理</p>
+
+<p>所有的<code>ASDisplayNode</code>和<code>ASLayoutSec</code>遵循<code>&lt;ASLayoutElement&gt;</code>协议。意味着我们可以通过不同的node或者layout Specs来组成其它布局规范</p>
+
+<p><code>&lt;ASLayoutElement&gt;</code>协议有一些属性用于创建非常复杂的布局。</p>
+
+<h3 id="toc_2">组合Layout Specs和Layout Elements 进行布局</h3>
+
+<h2 id="toc_3">Layout Specs</h2>
+
+<h3 id="toc_4">ASWrapperLayoutSpec</h3>
+
+<p><code>ASLayoutSpec</code>的一个简单的子类，可以封装一个<code>ASLayoutElement</code>元素并且根据Element上设置的大小计算元素的布局</p>
+
+<p>通常用于在<code>layyoutSpecThatFits:</code>方法中返回一个单一的元素。这个元素可以设置大小布局信息。但是，如果你想设置postion而不仅仅只是大小，可以使用<code>ASAbsoluteLayoutSpec</code></p>
+
+<h3 id="toc_5">ASStackLayoutSpec</h3>
+
+<p>这个<code>spec</code>是最有用的。<code>ASStackLayoutSpec</code>使用flexbox布局算法 决定子元素的位置和大小。</p>
+
+<p><code>ASStackLayoutSpec</code>有7个属性</p>
+
+<ul>
+<li>direction： 指定stack方向。当指定<code>horizontalAligment/verticalAligment</code>属性时，会被重新解析，而造成<code>justifyContent</code>和<code>alignItems</code>相应更新</li>
+<li>spacing：每个子元素的间距</li>
+<li>horizontalAligment：指定子元素如何水平对齐，根据堆栈方向，设置对齐方式会导致<code>justifyContent</code>和<code>alignItems</code>更新。即使direction更改，此属性将会仍然有效。</li>
+<li>verticalAligment</li>
+<li>justifyContent： 指定在主轴上的对齐方式</li>
+<li>aligItems： 横轴上的对齐方式</li>
+<li>flexWrap： 是否子元素被堆栈为单行或者多行。默认为单行</li>
+<li>aligContent：</li>
+</ul>
+
+<blockquote>
+<p>注意</p>
+
+<p>与CSS中的flex 默认方向不同 而且并没有<code>flex</code>参数</p>
+</blockquote>
+
+<h3 id="toc_6">ASInsetLayoutSpec</h3>
+
+<p><code>ASInsetLayoutSpec</code>将其<code>constrainedSize.max</code>减去insets之后得到的<code>CGSize</code>传递给子节点，一旦子节点去定了它的size，<code>insetSpec</code>将最终size作为子节点的<code>size</code>和<code>margin</code></p>
+
+<p>如果将<code>UIEdgeInsets</code>中的一个值设置为INFINITY，则将只使用子节点的固有大小</p>
+
+<h3 id="toc_7">ASOverlayLayoutSpec</h3>
+
+<p><code>ASOverlayLayoutSpec</code>则会将上面子节点延伸，覆盖一个子节点</p>
+
+<p><code>OverlayLayoutSpec</code>的size根据字节点size计算，子节点是被覆盖的底层，然后将子节点的size作为<code>constrainedSize</code>传递给叠加的子节点。因此，被覆盖的子节点必须有固定大小或者明确设置的大小</p>
+
+<h3 id="toc_8">ASBackgroundLayoutSpec</h3>
+
+<p>与<code>ASOverlayLayoutSpec</code>刚好相反，其设置一个子节点内容，并将另外一个子节点拉伸为背景</p>
+
+<p><code>ASBackgroundLayoutSpec</code>的size根据子节点的size确定，子节点size作为<code>constrainedSize</code>传递给背景子节点。因此 自己子节点也必须有固定大小或者明确设置的size</p>
+
+<h3 id="toc_9">ASCenterLayoutSpec</h3>
+
+<p><code>ASCenterLayoutSpec</code>将其子节点的中心设置为最大<code>constrainedSize</code>的中心</p>
+
+<p>如果<code>ASCenterLayoutSpec</code>的宽度和高度没有约定，则会缩放到和子节点高度和宽度一致</p>
+
+<p>属性：</p>
+
+<ul>
+<li>centeringOptions：决定如何在<code>ASCenterLayoutSpec</code>中居中，可选值包括<code>NONE  X  Y  XY</code></li>
+<li>sizingOptions: 决定<code>ASCenterLayoutSpec</code>占用 多少空间，可选值为<code>Default,  minimun X, minimun Y, minimun XY</code></li>
+</ul>
+
+<h3 id="toc_10">ASRatioLayoutSpec</h3>
+
+<p>以固定的宽高比来缩放子节点。这个规则必须传一个高度或者宽度给他作为<code>constrainedSize</code>，进行计算</p>
+
+<p>使用<code>ASRatioLayoutSpec</code>为<code>ASNetworkImageNode</code>和<code>ASVideoNode</code>提供固有大小是非常常见的，因为两者在内容从服务器返回之前没有固定大小</p>
+
+<h3 id="toc_11">ASRelativeLayoutSpec</h3>
+
+<h3 id="toc_12">ASAbsoluteLayoutSpec</h3>
+
+<p>通过设置他们的<code>layoutPosition</code>属性来指定其子节点的横纵坐标。</p>
+
+<p>属性：</p>
+
+<ul>
+<li>sizing： 确定<code>ASAbsoluteLayoutSpec</code>将占用多少空间，可选值<code>Default, Size to Fit</code> </li>
+</ul>
+
+<h3 id="toc_13">ASLayoutSpec</h3>
+
+<p>所有布局规则的父类，负责处理和管理所有的子类，也可以用来创建自定义布局规则。不建议自定义子类，如果有这方面需求可以将提供的布局规则进行组合来实现</p>
+
+<p><code>ASLayoutSpec</code>中应用了<code>.flexShrink</code>和<code>.flexGrow</code>，在<code>ASStackLayoutSpec</code>作为一个<code>spacer</code>和其它节点一起使用</p>
+
+<h2 id="toc_14">Layout Element 属性</h2>
+
+<h3 id="toc_15">ASStackLayoutElement 属性</h3>
+
+<p>只有在<code>ASStackLayout</code>的<code>subnode</code>上生效</p>
+
+<ul>
+<li><p><code>.style.spacingBefore</code> </p>
+<p>CGFloat类型，direction与前一个node的间隔</p></li>
+<li><p><code>.style.spacingAfter</code></p>
+<p><code>CGFloat</code>类型，direction与后一个node的间隔</p></li>
+<li><p><code>.style.flexGrow</code></p>
+<p><code>Bool</code>类型，子节点尺寸总和小于minimum 即存在剩余空间时，是否放大</p></li>
+<li><p><code>style.flexShrink</code></p>
+<p><code>Bool</code>类型，子节点综合大于maximum，即空间不足时，是否缩小</p></li>
+<li><p><code>.style.flexBasis</code><br/>
+<code>ASDimension</code>类型，在应用<code>flexGrow/flexShrink</code>属性 并且分配剩余空间之前，以堆栈水平或垂直尺寸指定此对象的初始大小</p></li>
+<li><p><code>.style.alignSelf</code><br/>
+<code>ASStackLayoutAlignSelf</code>类型， 指定对象在次轴方向上的布局，会覆盖<code>alignItems</code>。可选值有<code>ASStackLayoutAlignSelfAuto, ASStackLayoutAlignSelfStart, ASStackLayoutAlignSelfEnd, ASStackLayoutAlignSelfCenter, ASStackLayoutAlignSelfStretch</code></p></li>
+<li><p><code>.style.ascender</code><br/>
+<code>CGFloat</code>类型，用于基线对齐，描述对象从顶部到其基线的距离</p></li>
+<li><p><code>.style.descender</code><br/>
+<code>CGFloat</code>类型，英语基线对齐，描述对象从基线到底部距离</p></li>
+</ul>
+
+<h3 id="toc_16">ASAbsoluteLayoutElement Properties</h3>
+
+<p>只在<code>ASAbsolute</code>的subnode中才能生效</p>
+
+<p><code>.style.layoutPosition</code></p>
+
+<p><code>CGFloat</code>类型，描述该对象在<code>ASAbsoluteLayoutSpec</code>父规则中的位置</p>
+
+<h3 id="toc_17">ASLayoutElement Properties</h3>
+
+<p>适用于所有布局元素</p>
+
+<ul>
+<li><p><code>.style.width</code><br/>
+<code>ASDimension</code>类型，width描述内容区域的宽度。默认值为<code>ASDimensionAuto</code><br/>
+<code>minWidth</code>和<code>maxWidth</code>属性会覆盖<code>width</code></p></li>
+<li><p><code>.style.height</code><br/>
+<code>ASDImension</code>类型，height描述内容区域的高度。默认值为<code>ASDimensionAuto</code>。<br/>
+<code>minHeight</code>和<code>maxHeight</code>属性会覆盖<code>height</code></p></li>
+<li><p><code>style.minWidth</code><br/>
+<code>ASDImension</code>类型，用于设置一个特定布局元素的最小宽度。默认值为<code>ASDimensionAuto</code>。</p></li>
+<li><p><code>style.maxWidth</code><br/>
+<code>ASDImension</code>类型，用于设置一个特定布局元素的最大宽度。默认值为<code>ASDimensionAuto</code>。</p></li>
+<li><p><code>.style.minHeight</code><br/>
+<code>ASDImension</code>类型，用于设置一个特定布局元素的最小高度。默认值为<code>ASDimensionAuto</code>。</p></li>
+<li><p><code>.style.maxHeight</code><br/>
+<code>ASDImension</code>类型，用于设置一个特定布局元素的最大高度。默认值为<code>ASDimensionAuto</code>。</p></li>
+<li><p><code>.style.preferredSize</code><br/>
+<code>CGSize</code>类型， 建议布局元素的size。minSize和maxSize会限制和覆盖该属性。如果未提供，默认会使用<code>calculateSizeThatFits:</code>方法提供的固有大小</p>
+<p>该属性是可选的，但是对于没有固定大小或需要用于固有大小不同的size进行布局的节点，则必须指定<code>preferredSize</code>或<code>preferredLayoutSize</code>中一个，比如这个属性可以在<code>ASImageNode</code>上设置，使这个节点的size和图片的size不同</p>
+<blockquote>
+<p>注意</p>
+<p>当size的宽度和高度时相对值时  调用getter进行断言</p>
+</blockquote></li>
+<li><p><code>.style.minSize</code><br/>
+<code>CGSize</code>类型，可选属性，为布局元素提供最小尺寸，</p></li>
+<li><p><code>.style.maxSize</code><br/>
+<code>CGSize</code>类型，可选属性，为布局元素提供最大尺寸</p></li>
+<li><p><code>.style.preferredLayoutSize</code><br/>
+<code>ASLayoutSize</code>类型，为布局提供建议的size。<br/>
+使用百分比而不是点来指定布局。</p></li>
+<li><p><code>.style.minLayoutSize</code><br/>
+<code>ASLayoutSize</code>类型，可选属性，为布局提供最小相对尺寸</p></li>
+<li><p><code>.style.maxLayoutSize</code><br/>
+<code>ASLayoutSize</code>类型，可选属性，为布局提供最大相对尺寸</p></li>
+</ul>
+
+<h2 id="toc_18">Layout API Sizing</h2>
+
+<h3 id="toc_19">ASDimension</h3>
+
+<p>为一个<code>CGFloat</code>表示一个pt值、一个百分比或者一个自动值,这个单位允许一个API同时使用固定值或者相对值</p>
+
+<pre><code class="language-objectivec">// 返回一个相对值
+ASDimensionMake(&quot;50%&quot;)
+ASDimensionMakeWithFraction(0.5)
+
+// 返回一个 pt 值
+ASDimensionMake(&quot;70pt&quot;)
+ASDimensionMake(70)
+ASDimensionMakeWithPoints(70)
+</code></pre>
+
+<h3 id="toc_20">CGSize、ASLayoutSize</h3>
+
+<p><code>ASLayoutSize</code>类似于<code>CGSize</code>，只是其高度和宽度可以同时使用pt值或百分比，宽度和高度是独立的，它们的值类型可以不同。</p>
+
+<p>允许同一个的API采用绝对值和相对值</p>
+
+<pre><code class="language-objectivec">ASLayoutSizeMake(ASDimension width, ASDimension height);
+
+//例如
+ASDimension width = ASDimensionMake(ASDimensionUnitAuto, 0);  
+ASDimension height = ASDimensionMake(@&quot;50%&quot;);
+layoutElement.style.preferredLayoutSize = ASLayoutSizeMake(width, height);
+</code></pre>
+
+<p>也可以使用<code>preferredSize、minSize、maxSize</code>属性</p>
+
+<pre><code class="language-objectivec">layoutElement.style.preferredSize = CGSize(width: 30, height: 60)
+</code></pre>
+
+<p>但是大多数情况下，不需要限制宽度和高度。如果需要，可以使用<code>ASDimension</code>值单独设置布局的size属性</p>
+
+<pre><code class="language-objectivec">layoutElement.style.width     = ASDimensionMake(&quot;50%&quot;)
+layoutElement.style.minWidth  = ASDimensionMake(&quot;50%&quot;)
+layoutElement.style.maxWidth  = ASDimensionMake(&quot;50%&quot;)
+
+layoutElement.style.height    = ASDimensionMake(&quot;50%&quot;)
+layoutElement.style.minHeight = ASDimensionMake(&quot;50%&quot;)
+layoutElement.style.maxHeight = ASDimensionMake(&quot;50%&quot;)
+</code></pre>
+
+<h3 id="toc_21">ASSizeRange</h3>
+
+<p>因为在UIKit并没有提供机制 绑定最大和最小的Size，因此，为了支持，创建了<code>ASSizeRange</code></p>
+
+<p><code>ASSizeRange</code>通常用于layout的API内部，作为输入传递给layoutSpecThatFits：的constrainedSize值是ASSizeRange</p>
+
+<pre><code class="language-objectivec">- (ASLayoutSpec *)layoutSpecThatFits:(ASSizeRange)constrainedSize;
+</code></pre>
+
+<p>传递的<code>constrainedSize</code>是node最合适的最大和最小尺寸，constrainedSize中包含的最小和最大CGSize可用于调整节点的布局元素的大小</p>
+
+<h2 id="toc_22">Layout Transition API</h2>
+
+<p><a href="https://texturegroup.org/docs/layout-transition-api.html">参考Layout Transition API</a></p>
+
+<p>帮助我们使所有动画 变得简单，甚至将一个试图集转为另外一个完全不同的视图集</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>使用<code>Layout Transition API</code>必须使用<code>自动节点管理功能</code></p>
+</blockquote>
+
+<h3 id="toc_23">Layout 之间的动画</h3>
+
+<p>在这个过程中没有使用<code>addSubnode:</code>或<code>removeFromSupernode:</code>。 Layout Transition API 会分析旧布局和新布局之间节点层次结构的差异，通过自动子节点管理隐式的执行节点插入和删除。</p>
+
+<p>通过更新属性，来让展示不同的lauout specs。并且，调用<code>transitionLayoutWithAnimation：</code>调用动画方法。默认实现的API中，布局会重新计算布局，并且调整子节点的大小和位置，而不设置动画。此时我们需要自定义动画block，当通过<code>transitionLayoutWithAnimation</code>计算出新的布局后，会调用<code>- (void)animateLayoutTransition:(id&lt;ASContextTransitioning&gt;)context</code>我们在其中自定义动画</p>
+
+<pre><code class="language-objectivec">- (void)animateLayoutTransition:(id&lt;ASContextTransitioning&gt;)context
+{
+  if (self.fieldState == SignupNodeName) {
+    CGRect initialNameFrame = [context initialFrameForNode:self.ageField];
+    initialNameFrame.origin.x += initialNameFrame.size.width;
+    self.nameField.frame = initialNameFrame;
+    self.nameField.alpha = 0.0;
+    CGRect finalAgeFrame = [context finalFrameForNode:self.nameField];
+    finalAgeFrame.origin.x -= finalAgeFrame.size.width;
+    [UIView animateWithDuration:0.4 animations:^{
+      self.nameField.frame = [context finalFrameForNode:self.nameField];
+      self.nameField.alpha = 1.0;
+      self.ageField.frame = finalAgeFrame;
+      self.ageField.alpha = 0.0;
+    } completion:^(BOOL finished) {
+      [context completeTransition:finished];
+    }];
+  } else {
+    CGRect initialAgeFrame = [context initialFrameForNode:self.nameField];
+    initialAgeFrame.origin.x += initialAgeFrame.size.width;
+    self.ageField.frame = initialAgeFrame;
+    self.ageField.alpha = 0.0;
+    CGRect finalNameFrame = [context finalFrameForNode:self.ageField];
+    finalNameFrame.origin.x -= finalNameFrame.size.width;
+    [UIView animateWithDuration:0.4 animations:^{
+      self.ageField.frame = [context finalFrameForNode:self.ageField];
+      self.ageField.alpha = 1.0;
+      self.nameField.frame = finalNameFrame;
+      self.nameField.alpha = 0.0;
+    } completion:^(BOOL finished) {
+      [context completeTransition:finished];
+    }];
+  }
+}
+</code></pre>
+
+<p><code>ASContextTransitioning</code>中包含了过渡前和过度后的node状态信息。<br/>
+动画完成后必须调用<code>[context completeTransition:finished];</code>,这会使其内部执行必要步骤，将计算的布局变为当前布局</p>
+
+<p>在实现animateLayoutTransition：之前插入了节点，这是在开始动画之前手动管理层次结构的好地方。在context对象上调用completeTransition：之后，将在didCompleteLayoutTransition：中执行删除。如果您需要手动执行删除，请覆盖didCompleteLayoutTransition：并执行自定义操作。请注意，这将覆盖默认行为，建议调用super或遍历上下文对象中的RemovedSubnodes getter以执行清理。</p>
+
+<p>将NO传递给<code>transitionLayoutWithAnimation：</code>仍将通过<code>[context isAnimated]</code>属性设置为NO的<code>animateLayoutTransition：</code>和<code>didCompleteLayoutTransition：</code>实现运行。您可以选择如何处理此案件（如果有的话）。提供默认实现的一种简单方法是调用super</p>
+
+<pre><code class="language-objectivec">- (void)animateLayoutTransition:(id&lt;ASContextTransitioning&gt;)context
+{
+  if ([context isAnimated]) {
+    // perform animation
+  } else {
+    [super animateLayoutTransition:context];
+  }
+}
+</code></pre>
+
+<h3 id="toc_24">限制大小更改动画</h3>
+
+<p>当只是想对node的边界更改作出相应，并为其重新计算layout 动画效果。此时可以在节点上调用<code>transitionLayoutWithSizeRange:animated:</code></p>
+
+<p>与<code>transitionLayoutWithAnimation:</code>类似，但是如果传递的ASSizeRange和当前的相同，则不会触发动画，这对旋转视图好更改控制器大小非常有效果：</p>
+
+<pre><code class="language-objectivec">- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id&lt;UIViewControllerTransitionCoordinator&gt;)coordinator
+{
+  [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+  [coordinator animateAlongsideTransition:^(id&lt;UIViewControllerTransitionCoordinatorContext&gt;  _Nonnull context) {
+    [self.node transitionLayoutWithSizeRange:ASSizeRangeMake(size, size) animated:YES];
+  } completion:nil];
+}
+</code></pre>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[子类]]></title>
+    <link href="https://acefish.github.io/15686206334500.html"/>
+    <updated>2019-09-16T15:57:13+08:00</updated>
+    <id>https://acefish.github.io/15686206334500.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">ASDisplayNode</h2>
+
+<p>虽然使用类似于<code>UIView</code> 但是我们需要遵循一些使用规则 帮助更好的使用并按照预期运行</p>
+
+<h4 id="toc_1">-init</h4>
+
+<p>当使用<code>nodeBlocks</code>时，此方法在后台线程调用。在init方法完成之前没有其他方法可以运行，因此我们无需在此方法中锁定</p>
+
+<p>需要注意，<code>-init</code>方法能在任何对队列调用。所以我们不应该在初始化过程中初始化任何UIKit对象，调用任何node的view或layer等有关的操作，或者添加任何手势识别器。这些过程可以在<code>-didLoad</code>方法中</p>
+
+<h4 id="toc_2">-didLoad</h4>
+
+<p>这个方法当视图在后台加载完成后执行一次。保证在主线程被调用，因此<mark>是我们运行任何UIKit事务的适当位置</mark>(例如添加手势识别器，触摸视图/图层，初始化UIKit对象)</p>
+
+<h4 id="toc_3">-layoutSpecThatFits:</h4>
+
+<p>这个方法在后台执行繁重的定义布局的计算。这是我们声明、创建和修改<code>ASLayoutSepec</code>布局描述对象的地方，该对象描述节点的size以及子节点的position和size。<mark>这是我们放置大部分布局代码的地方</mark></p>
+
+<p>ASLayoutSpec 对象直到在此方法中返回前是可变的。 在这之后，这个对象将不可改变，需要注意的是你不需要缓存 ASLayoutSpec 对象以备后用，我们建议你在必要时重新创建布局描述。</p>
+
+<p>因为此方法在后台运行，因此不应该在此方法中设置<code>node.view</code>或者<code>node.layer</code>属性。此外，除非您知道自己在做什么，否则不应该再次方法中创建任何节点。与其它方法重写不同，不必在方法开始时调用super方法</p>
+
+<h4 id="toc_4">-layout</h4>
+
+<p>在此方法中调用<code>super</code>，将会使用<code>layoutSpec</code>对象计算布局，所有子节点都将计算其size和position。</p>
+
+<p><code>layout</code>在概念上类似<code>UIViewController</code>的<code>-viewWillLayoutSubviews</code>。可以在这个方法中，更改<code>hidden</code>属性、修改View属性(不是布局属性)、或者背景颜色。假如正好使用UIView，可以再这个方法中修改其<code>frame</code>。然而，我们可以用<code>initWithViewBlock：</code>然后在后台线程的任何地方，调整其大小。</p>
+
+<p>这个方法在主线程上调用。但是最后不要过多使用这个方法，我们更应该在主线程以外做布局</p>
+
+<p>使用<code>-layout</code>的一个重要用途是你需要子节点的<code>size</code>是精确的。例如：当你想要一个<code>collectionNode</code>占满屏幕时，这种情况是不被布局规范所允许的，我们通常手动在方法中添加<code>subnode.frame = self.bounds;</code></p>
+
+<h2 id="toc_5">ASViewController</h2>
+
+<p><code>ASViewController</code>是<code>UIViewController</code>的子类，用来管理nodes。因为是一个<code>UIViewController</code>，所以所有方法都在主线程调用(<code>ASViewController</code>也应该在主线程创建)。</p>
+
+<h4 id="toc_6">-init</h4>
+
+<p>在生命周期的最开始调用一次。与<code>UIViewController</code>相同不要再次方法中访问<code>self.view</code>或者<code>self.node.view</code>，因而为它会强制视图提前创建。可以在<code>viewDidLoad</code>方法中执行任何视图访问</p>
+
+<p>ASViewController 指定的构造器是<code>initWithNode:</code>方法，在调用super方法前初始化node。</p>
+
+<pre><code class="language-objectivec">- (instancetype)init
+{
+  _pagerNode = [[ASPagerNode alloc] init];
+  self = [super initWithNode:_pagerNode];
+  
+  // setup any instance variables or properties here
+  if (self) {
+    _pagerNode.dataSource = self;
+    _pagerNode.delegate = self;
+  }
+  
+  return self;
+}
+</code></pre>
+
+<h4 id="toc_7">-loadView</h4>
+
+<p>不推荐使用此方法，因此相比较<code>viewDidLoad</code>只有缺点没有优点。然而，只要我们在此方法中不将<code>self.view</code>设置为其他值 也可以安全使用的。其super方法会将其<code>UIViewController</code>的view换为<code>ASViewController</code>的<code>node.view</code></p>
+
+<h4 id="toc_8">-viewDidLoad</h4>
+
+<p>这方法在ASViewController的生命周期中，只会在loadView方法后，立即执行一次。此时最方便访问<code>node.view</code>。也可以执行需要访问<code>view/layer</code>的只执行一次的方法(例如添加手势)。</p>
+
+<p>不适合在方法中放置布局视图的代码。因为界面重绘时，该方法也不会被再次调用。</p>
+
+<h4 id="toc_9">-viewWillLayoutSubviews</h4>
+
+<p>与节点node的<code>layout</code>方法同时调用，在ASVC的生命周期中有可能会多次调用。当<code>ASViewController</code>的node边界发生变化(包括旋转、分屏、键盘)以及层次结构发生变化（包括node增加、删除、改变大小）时，都会调用</p>
+
+<p>因为它不经常调用，但是调用及代表页面需要重绘，因此所有布局代码最好放到这个方法中，即使不直接依赖size的UI代码。<br/>
+<mark>为保持一致性，通常将所有布局代码放置在此处。</mark></p>
+
+<h4 id="toc_10">-viewWillAppear: / -viewDidDisappear:</h4>
+
+<p>方法在<code>ASViewController</code>的node出现在屏幕之前 和 从视图层次中删除之后调用。通常在方法中开始或者停止动画，或者记录用户操作。</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Node]]></title>
+    <link href="https://acefish.github.io/15686140907064.html"/>
+    <updated>2019-09-16T14:08:10+08:00</updated>
+    <id>https://acefish.github.io/15686140907064.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">Node Containers</h2>
+
+<ul>
+<li><code>ASCollectionNode</code>  类似UIKit中的<code>UICollectionView</code></li>
+<li><code>ASPagerNode</code>  类似UIKit中的<code>UIPageViewController</code></li>
+<li><code>ASTableNode</code> 类似UIKit中的<code>UITableView</code></li>
+<li><code>ASViewController</code> 类似UIKit中的<code>UIViewController</code></li>
+<li><code>ASNavigationController</code> 类似UIKit中的<code>UINavigationController</code>，遵循了<code>ASVisibility</code>协议</li>
+<li><code>ASTabBarController</code> 类似UIKit中<code>UITabBarController</code> 遵循了<code>ASVisibility</code>协议</li>
+</ul>
+
+<p>节点容器作用：</p>
+
+<p>节点容器自动福安里其子节点实现智能预加载，这意味着节点所有布局计算、数据读取，解码和渲染都将会异步完成，这也是为什么建议将节点放到节点容器中使用的原因。<br/>
+而容器外的node只会在屏幕出现时才开始渲染，类似UIKit的做法，这会导致性能下降和内容闪烁。</p>
+
+<h2 id="toc_1">Node Subclasses</h2>
+
+<p>使用node代替UIKit组件的一个关键优势就是  所有的节点都在主线程之外布局和显示，以便主线程可以立即响应用户事件</p>
+
+<p><code>ASDisplayNode</code>   替代<code>UIView</code> ，其为根node，其它node均继承自其</p>
+
+<p><code>ASCellNode</code> 替代 <code>UITalbeViewCell</code>和<code>UICollectionCell</code>。其被用于<code>ASTableNode、ASCollectionNode、ASPageNode</code></p>
+
+<p><code>ASScrollNode</code> 替代 <code>UIScrollView</code>   此node用于创建包含其他节点的自定义可滚动区域</p>
+
+<p><code>ASEditableTextNode</code> 替代 <code>UITextView</code></p>
+
+<p><code>ASTextNode</code> 替代 <code>UILabel</code></p>
+
+<p><code>ASImageNode、 ASNetworkImageNode、 ASMultiplexImageNode</code> 替代 <code>UIImageView</code></p>
+
+<p><code>ASVideoNode</code> 替代 <code>AVPlayerLayer</code><br/>
+<code>ASVideoPlayerNode</code> 替代 <code>UIMoviePlayer</code></p>
+
+<p><code>ASControlNode</code> 替代 <code>UIControl</code> </p>
+
+<p><code>ASButtonNode</code> 替代 <code>UIButton</code></p>
+
+<p><code>ASMapNode</code>  替代 <code>MKMapView</code></p>
+
+<p>Texture的node相比UIKit的组件通常提供了更加便利的功能。例如，ASNetworkImageNode执行自动加载和缓存管理，甚至支持渐进式jpeg和GIF动画</p>
+
+<h3 id="toc_2">Node继承关系</h3>
+
+<p><img src="media/15686140907064/15686201072605.png" alt=""/></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[智能预加载]]></title>
+    <link href="https://acefish.github.io/15682782807154.html"/>
+    <updated>2019-09-12T16:51:20+08:00</updated>
+    <id>https://acefish.github.io/15682782807154.html</id>
+    <content type="html"><![CDATA[
+<p>学习自<a href="https://texturegroup.org/docs/intelligent-preloading.html">Texture官方文档</a></p>
+
+<p>虽然异步并发渲染和FlexBox布局已经足够强大，但是Texture还做了另外的智能预加载的思想</p>
+
+<p>我们通常不在<code>node container</code>外使用node，因为所有的node都有当前的<code>interface state</code>概念。<br/>
+<code>interface state</code>属性由<code>ASRangeController</code>更新和维护，ASRangeController又由所有的<code>node container</code>在内部创建和维护。<br/>
+当我们在contain外部使用node时，就不会有<code>ASRangeController</code>更新其状态，这个有时会导致渲染时node闪烁，这是因为这些容器外的节点因为状态的错误，在节点被渲染到屏幕上后又进行了一次渲染。</p>
+
+<h1 id="toc_0">接口状态范围</h1>
+
+<p><img src="media/15682782807154/15682794649845.jpg" alt="" style="width:497px;"/><br/>
+当nodes<mark>添加到滚动或者分页界面时</mark>，会处在上面所处的几个状态之一。意味着当视图滚动时，他们的状态将会更新</p>
+
+<p>Preload： 预加载，离可见区域最远的内容，在这个地方收集其他的输入源信息<br/>
+Display： 在这个地方展示例如文字光栅化、图片解码等任务<br/>
+Visible： 在屏幕上展示至少一个像素</p>
+
+<h3 id="toc_1">ASRangeTuningParameters</h3>
+
+<p>这些状态范围的大小是可调整的。默认大小适合于大多数情况，我们也可以设置滚动范围参数调整其大小</p>
+
+<p>在下面图片中我们可以看到，当用户向下滚动时，滚动方向的范围比尾部方向内容大得多。当用户改变滚动方向时，则首尾将会动态交换，以保持内存最佳使用率。这使得我们只需要关系首尾方向的range size大小，而不需担心用户更改滚动方向<br/>
+<img src="media/15682782807154/15682825633985.jpg" alt="" style="width:500px;"/></p>
+
+<h2 id="toc_2">接口状态回调</h2>
+
+<p>当用户滚动时 node会在这三个状态范围中切换 并且通过加载数据或者渲染做出反应。自己的node子类可以通过实现相应的回调方法来利用这种机制</p>
+
+<pre><code class="language-objectivec">-didEnterVisibleState
+-didExitVisibleState
+
+-didEnterDisplayState
+-didExitDisplayState
+
+-didEnterPreloadState
+-didExitPreloadState
+//记得都要调用super
+</code></pre>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Texture]]></title>
+    <link href="https://acefish.github.io/15681914341057.html"/>
+    <updated>2019-09-11T16:43:54+08:00</updated>
+    <id>https://acefish.github.io/15681914341057.html</id>
+    <content type="html"><![CDATA[
+<p>学习自<a href="https://texturegroup.org/docs/getting-started.html">Texture官方文档</a></p>
+
+<p><a href="https://juejin.im/post/5a16acf56fb9a04509092ce5#heading-39">掘金[译] AsyncDisplayKit/Texture 官方文档</a></p>
+
+<p><code>Texure</code>的基本单元是node。<code>ASDisplayNode</code>是一个对<code>UIView</code>的抽象，而<code>UIView</code>还是<code>CALayer</code>的的上层抽象。</p>
+
+<p>不同之处在于：<br/>
+View只能在主线程使用，但是node是线程安全的: <code>Node</code>可以亦不会只，并且线程安全的。可以在异步线程中实例化和配置层级结构</p>
+
+<p>一般程序以每秒60帧进行呈现是iOS的黄金标准.意味着主线程执行所有布局和绘图代码只有16毫秒,并且由于系统开销,如果布局绘图代码执行超过10ms就会引起掉帧</p>
+
+<p><code>Texture</code>允许我们将图像解码、文字调整和绘制等其它昂贵的UI操作，移到主线程外，保证主线程可以一直响应用户操作，等。</p>
+
+<h2 id="toc_0">Node</h2>
+
+<p><code>UIView</code>中的绝大多数方法，node都有其对应的映射。当UIViw和CALayer的方法名有冲突时，默认使用<code>UIView</code>的命名。(唯一例外的是 node使用position代替center)</p>
+
+<p>可以再确保在主线程执行的基础上，调用<code>node.view</code>或者<code>node.layer</code>方法</p>
+
+<h2 id="toc_1">Node Containers</h2>
+
+<p>当将Texture集成到项目中时，不能将<code>Node</code>直接添加到已有视图中，这样会导致节点在渲染时闪烁。</p>
+
+<p>应该把节点添加到<code>Node</code>容器中，由Node容器负责管理这节点，可以将Node容器理解为UIKit和Texture之间的桥梁</p>
+
+<h2 id="toc_2">Layout Engine</h2>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[AFSecurityPolicy]]></title>
@@ -1452,1338 +3461,6 @@ NSURLSessionDataTask *task = [session dataTaskWithRequest:request
     - [NSURLSessionDataTask resume]
 </code></pre>
 <p>在#3出调用了系统的请求方法，返回dataTask 然后调用<code>resume</code>方法执行请求，并在某些实践之星时通知代理<code>AFURLSessionManagerTaskDelegate</code></p></li>
-</ol>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[]]></title>
-    <link href="https://acefish.github.io/15669011764410.html"/>
-    <updated>2019-08-27T18:19:36+08:00</updated>
-    <id>https://acefish.github.io/15669011764410.html</id>
-    <content type="html"><![CDATA[
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Reactive Cocoa Tutorial]]></title>
-    <link href="https://acefish.github.io/15647325396059.html"/>
-    <updated>2019-08-02T15:55:39+08:00</updated>
-    <id>https://acefish.github.io/15647325396059.html</id>
-    <content type="html"><![CDATA[
-<p>学习地址  sunnyxx<a href="http://blog.sunnyxx.com/2014/03/06/rac_1_macros/">Reactive Cocoa Tutorial</a></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Texture(AsynDisplayKit)]]></title>
-    <link href="https://acefish.github.io/15647308243504.html"/>
-    <updated>2019-08-02T15:27:04+08:00</updated>
-    <id>https://acefish.github.io/15647308243504.html</id>
-    <content type="html"><![CDATA[
-<p>学习自 <a href="https://time.geekbang.org/column/article/92384">iOS开发高手课</a></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[图像解压缩]]></title>
-    <link href="https://acefish.github.io/15646478175328.html"/>
-    <updated>2019-08-01T16:23:37+08:00</updated>
-    <id>https://acefish.github.io/15646478175328.html</id>
-    <content type="html"><![CDATA[
-<p>学习自<a href="http://www.cocoachina.com/articles/18784">谈谈 iOS 中图片的解压缩</a></p>
-
-<p>从磁盘加载一张照片，并且将其显示到屏幕上，需要的工作流如下:</p>
-
-<ol>
-<li>假设适应+imageWithContentFile：从磁盘加载一张照片，这是图片还没有解压缩</li>
-<li>将生成的UIImage赋值给UIImageView</li>
-<li>一个隐式的CATransaction捕获到了UIImageView图层树的变化</li>
-<li>主线程的下一个runloop 到来时，CoreAnimation提交这个隐式的transaction。这个过程可能对图片执行copy操作，而受图片是否字节对齐等因素的影响，这个copy操作会涉及以下部分或全部步骤:
-<ul>
-<li>分配内存缓冲区用于管理文件IO和解压缩操作</li>
-<li>将文件数据从磁盘读到内存中</li>
-<li>将压缩的图片数据解码成未压缩的位图形式，这是非常耗时的cpu操作</li>
-<li>最后<code>Core Animation</code>使用未压缩的位图数据渲染UIImageView图层</li>
-</ul></li>
-</ol>
-
-<blockquote>
-<p>图片解压缩是一个非常耗时的CPU操作，并且默认是在主线程中执行的。当在主线程需要加载图片较多时，就会对应用响应性造成严重影响，尤其在快速滑动的列表中</p>
-</blockquote>
-
-<h3 id="toc_0">图片的解压缩</h3>
-
-<p>图片是无法直接显示到屏幕上，需要转换为位图。<strong>位图就是一个像素数组，没个像素就代表图片中的一个点。</strong><br/>
-<strong>解压缩后的图片大小与原始文件是大小之间没有任何关系，而只与图片的像素有关</strong><br/>
-<code>解压缩后的图片大小 = 图片的像素宽  * 图片的像素高 * 每个像素所占的字节数 4</code></p>
-
-<p>不论是JPEG还是PNG图片都是压缩的位图形式，只不过PNG是无损压缩并且支持alpha听到，而JPEG图片是有损压缩，可以指定0-100%的压缩比。<br/>
-因此，将磁盘中的图片渲染到屏幕上之前，必须得到图片的原始像素数据，才能执行后续绘制操作，也就是必须解压缩之后才能渲染了</p>
-
-<h2 id="toc_1">强制解压缩</h2>
-
-<p>为了不在主线程解压缩，影响性能，我们可以在子线程提前对图片进行解压缩，图片已经解压缩再渲染是，系统就不会图片再执行解压缩了</p>
-
-<p><strong>强制解压缩的原理就是对图片进行重新绘制，得到新的解压缩后的位图，用到最核心的就是<code>CGBitmapContextCreat</code></strong></p>
-
-<pre><code class="language-objectivec">CG_EXTERN CGContextRef __nullable CGBitmapContextCreate(void * __nullable data,
-    size_t width, size_t height, size_t bitsPerComponent, size_t bytesPerRow,
-    CGColorSpaceRef cg_nullable space, uint32_t bitmapInfo)
-    CG_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0);
-</code></pre>
-
-<h4 id="toc_2">pixel Format</h4>
-
-<p>位图是一个像素数组，而<em>像素格式</em>则是用来描述每个像素的组成格式，它包括了:</p>
-
-<p><code>Bits per component</code>：一个像素中每个独立的颜色分量使用的 bit 数；<br/>
-<code>Bits per pixel</code>: 像素深度: 存储每个像素所用的位数，也可以用它度量图像的分辨率<br/>
-<code>Bytes per row</code>: 位图中每一行使用的字节数</p>
-
-<p>对于位图来说，像素格式并不是随意组合的，目前只有一下17种特定组合:</p>
-
-<p><img src="media/15646478175328/15646579123618.jpg" alt="" style="width:769px;"/></p>
-
-<p>而iOS只支持其中的8中像素格式。颜色空间为Null的1种，Gary的2种，RGB的5种，即iOS不支持CMYK颜色空间。</p>
-
-<h4 id="toc_3">颜色空间</h4>
-
-<p>颜色空间用来使用一组值表示颜色。比如：<code>0、0、1</code>在RGB下表示蓝色，在brg下表示红色等。</p>
-
-<p>.<br/>
-.<br/>
-.<br/>
-.</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[]]></title>
-    <link href="https://acefish.github.io/15646313097300.html"/>
-    <updated>2019-08-01T11:48:29+08:00</updated>
-    <id>https://acefish.github.io/15646313097300.html</id>
-    <content type="html"><![CDATA[
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[包大小]]></title>
-    <link href="https://acefish.github.io/15645609012102.html"/>
-    <updated>2019-07-31T16:15:01+08:00</updated>
-    <id>https://acefish.github.io/15645609012102.html</id>
-    <content type="html"><![CDATA[
-<p>学习自 <a href="https://time.geekbang.org/column/article/88573">iOS开发高手课-包大小：如何从资源和代码层面实现全方位瘦身？</a></p>
-
-<p>APPStore对大于150M的应用无法再OTA环境下载，这就只能在wifi环境下下载，因此150M就是App的生死线</p>
-
-<p>如果App要兼容iOS7和iOS8的话，苹果规定主二进制 text 段的大小不能超过 60MB，如果没有达到这个标准，甚至无法提交AppStore</p>
-
-<h2 id="toc_0">App Thinning</h2>
-
-<p><code>App Thinning</code>是苹果公司推出的一项可以改善APP下载进程的新技术，主要为解决用户下载APP耗费流量过高，并节省用户iOS设备存储空间</p>
-
-<p>因为iOS设备的屏幕尺寸和分辨率 越来越多样化，就需要更多资源来匹配不同尺寸和分辨率。同时，App也会有32位、64位不同芯片架构的优化版本。如果这些都在同一个包中，那么用户下载包的大小势必就会变得更大</p>
-
-<p>而苹果提供的<code>App Thinning</code>就是针对不同的设备只选择适合当前设备的内容进行下载。比如，iPhone6只下载2x资源，而iPhone6 P则只下载3x图片资源</p>
-
-<p>在之前，每个app包会包含多个芯片的指令集架构文件。在而使用<code>App Thinning</code>后，用户下载时就只会下载一个适合自己设备的芯片指令集架构文件</p>
-
-<p>下图为所有设备的芯片指令集以及支持的最高和最低版本<br/>
-<img src="media/15645609012102/15645634237337.png" alt=""/></p>
-
-<p><strong><code>App Thinning</code>有三种方式，包括： App Slicing、Bitcode、On-Demand Resource</strong></p>
-
-<ul>
-<li>App Slicing：会在你向iTunnes Connrct上传App后，对App做切个，创建不同的变体，来适应不同的设备</li>
-<li>On-Demand Resource，主要是为游戏多关卡场景服务。可以根据用户的关卡进度下载随后关卡资源，并且删除已过关的资源，来减少出装app的大小</li>
-<li>Bitcode， 针对特定设备进行包大小优化，优化并不明显</li>
-</ul>
-
-<h3 id="toc_1">App Thinning的使用</h3>
-
-<p>使用App Thinning很简单，只需要通过Xcode添加 xcassets目录，然后将资源文件放进来即可：</p>
-
-<p>即添加<code>Asset Catalog</code>模板，按照模板添加资源即可，apple会创建不同的变体来减少app安装体积</p>
-
-<h2 id="toc_2">图片资源优化</h2>
-
-<p>图片资源的优化空间主要体现在删除无用图片和图片资源压缩两方面。</p>
-
-<h3 id="toc_3">查找无用图片资源</h3>
-
-<ol>
-<li>通过find获取App安装包中所有资源文件 </li>
-<li>设置用到的资源类型，比如jpg、gif、png、webp</li>
-<li>使用正则表达式匹配在源码中找出使用到的资源名，比如<code>pattern=@&quot;@&quot;(.+?)&quot;&quot;</code></li>
-<li>使用find命令找到所有资源文件，再去掉代码中使用到的资源文件，剩下的就是未使用到的了</li>
-<li>对于按照规则设置的资源名字，我们需要在匹配使用资源的正则表达式里，添加响应的规则，比如<code>image_%d</code></li>
-<li>确认无用资源后，就可以对无用资源执行删除操作了，这个删除操作可以使用<code>NSFileManager</code>系统类功能完成</li>
-</ol>
-
-<p>可以使用一些开源的工具，推荐的为<a href="https://github.com/tinymind/LSUnusedResources">LSUnusedResources</a>,其还可以对使用编号规则的图片，直接添加规则处理</p>
-
-<p><img src="media/15645609012102/15645678390885.gif" alt="" style="width:500px;"/></p>
-
-<h3 id="toc_4">图片资源压缩</h3>
-
-<p>在App中 图片资源总是占大头的。因此我们最好在不损失图片质量的前提下，尽可能的压缩。目前最好的压缩方案就是，将图片转为<a href="https://developers.google.com/speed/webp/">webP</a>(其是谷歌的一个开源项目)。</p>
-
-<ul>
-<li>WebP压缩率高，而且肉眼看不出来差异，同时支持有损和无损两种压缩模式。比如，将Gif专务Anumated WebP，有损模式下会减少64%大小，无损模式下会减少19%大小</li>
-<li>WebP支持Alpha透明和24-bit颜色数，不会像PNG8那样因为颜色不够而出现毛边</li>
-</ul>
-
-<h4 id="toc_5">将图片转为webP</h4>
-
-<p>Google提供了<code>cwebp</code>工具来将其它图片转成WebP。cwebp只需根据图片情况设置相应参数即可：</p>
-
-<pre><code class="language-text">cwebp [options] input_file -o output_file.webp
-
-//比如无损压缩文件命令如下   -lossless表示无损压缩
-cwebp -lossless original.png -o new.webp
-</code></pre>
-
-<p>注意：<br/>
-在图片色值不同的情况下，可以选择用-q参数进行设置，在不损失图片质量情况下进行最大化压缩：</p>
-
-<ul>
-<li>小于256色适合无损压缩，压缩率高，参数使用-lossless -q 100</li>
-<li>大于256色适合用75%的有损压缩，参数使用-q 75</li>
-<li>远大于256色 适合使用75%一下的压缩率，参数-q 50 -m 6</li>
-</ul>
-
-<p>除了使用google提供的cwebp工具外，可以使用企鹅公司开发的<a href="http://isparta.github.io/">iSparta</a>图形化工具，实现PNG到WebP转换，还可以批量处理和记录操作配置。至于其他格式图片，那就先转png再转webP即可</p>
-
-<h4 id="toc_6">显示WebP图片</h4>
-
-<p>在图片压缩完成后，还需要在项目中显示图片，使用<code>libwebp</code>进行解析。可以参考<a href="https://github.com/carsonmcdonald/WebP-iOS-example">这个iOS项目范例</a></p>
-
-<p>当然，因为WebP进行了压缩，因此在CPU消耗和解码时间上是会比PNG大两倍。所以，需要在性能和体积上做出取舍</p>
-
-<p><strong>建议： 如果图片大小超过100K，考虑使用WebP；小于100K时，可以使用网页工具<a href="https://tinypng.com/">TinyPng</a>或者图形化工具<a href="https://imageoptim.com/mac">ImageOptim</a>进行图片压缩。这两种工具的压缩率没有WebP高，不会改变图片压缩方式，相应的解析式对性能损耗也不会增加</strong></p>
-
-<h2 id="toc_7">代码瘦身</h2>
-
-<p>App的安装包之中主要就是资源文件和可执行文件，而我们在掌握了对图片资源的优化之后，就需要学习怎么优化可执行文件了</p>
-
-<p>可执行文件就是一个<code>Mach-O</code>文件了，大小由其代码量决定。通常，<strong>对可执行文件瘦身就是，删除无用代码的过程</strong></p>
-
-<ul>
-<li>首先，找出方法和类的全集</li>
-<li>然后，找到使用过的方法和类</li>
-<li>接下来，取二者的差集即为无用代码</li>
-<li>最后人工确认进行删除</li>
-</ul>
-
-<h3 id="toc_8">LinkMap 结合 Mach-O找到无用代码</h3>
-
-<h4 id="toc_9">LinkMap 来获得所有的代码类和方法的信息</h4>
-
-<p>通过在build setting中打开<code>Write Link Map</code>然后指定其path 可以获得编译后的LinkMapp文件，其主要分为 <code>Object File</code>、<code>Section</code>、<code>Symbols</code></p>
-
-<ul>
-<li>Object File：主要包含了代码工程的所有文件</li>
-<li>Section：描述代码段在生成的Mach-O里的偏移位置和大小</li>
-<li>Symbols会列出每个方法、类、block、以及它们的大小</li>
-</ul>
-
-<h4 id="toc_10">通过Mach-O获取所有使用过的方法和类</h4>
-
-<p>iOS方法都是通过<code>objc_send</code>方法调用的。而，objc_msgSend在Mach-O文件中是通过<code>__objc_selrefs</code>这个section来获取selector这个参数的</p>
-
-<p>因此: <strong>__Objc_selrefs里是调用过的方法。_objc_classrefs里是调用过的类，_objc_superrefs里是调用过super的类。因此，通过_objc_classrefs和_objc_superrefs就可以获取所有使用过的类和子类</strong></p>
-
-<p>想要查看Mach-O文件中的信息 我们可以通过<a href="https://sourceforge.net/projects/machoview/">MachOView这个软件</a>查看文件中的信息，其<a href="https://github.com/gdbinit/MachOView">源码地址</a></p>
-
-<p><img src="media/15645609012102/15646435135341.jpg" alt="" style="width:690px;"/></p>
-
-<p>因为可能存在运行时调用，所以这种方法并不完美，需要做二次确认，而且人工量太大，不适合频繁检测</p>
-
-<h3 id="toc_11">AppCode找出无用代码</h3>
-
-<p>AppCode当代码量过百万时，就无法做静态分析了。但是当项目工程量不大时，是可以直接用<code>AppCode</code>来做静态分析的。毕竟当代码量达到百万行级别的团队，是会自己通过Clang静态分析来开发工具，检查无用的方法和类</p>
-
-<p>使用很简单 在AppCode中选择Code-&gt;Inspect Code就可以进行静态分析<br/>
-静态分析之后，可以再Ununsed Code中看到所有的无用代码<br/>
-<img src="media/15645609012102/15646441469049.jpg" alt="" style="width:538px;"/></p>
-
-<p>其中包括了</p>
-
-<ul>
-<li>无用类：Unused class 无用类，Unused import statement 无用类引用声明， Unused property 无用的属性</li>
-<li>无用方法：Unused method 无用的方法 Unused parameter 无用参数 Unused instance variable无用的实例变量 Unused local variable无用的局部变量 Unused value 无用值</li>
-<li>无用宏： Unused macro 无用的宏</li>
-<li>无用全局： Unused global declation 是无用的全局声明</li>
-</ul>
-
-<p>注意，AppCode检查存在的问题:</p>
-
-<ul>
-<li>JSONModel里定义了未使用的协议会被判定为无用协议</li>
-<li>子类使用了父类的方法，那这个服类方法并不会任务被使用了</li>
-<li>通过点方式使用的属性，该属性会被认为没有使用</li>
-<li>使用performSelector方法调用的方法，是检查不出的</li>
-<li>运行时声明类的情况检查不出来</li>
-</ul>
-
-<p>因此，Appcode检查的无用代码也请 人工二次确认之后才能安全删除</p>
-
-<h3 id="toc_12">运行时检查类是否真的被使用</h3>
-
-<p>通过ObjC的runtime源码，我们可以找到怎么判断一个类是否初始化过的函数:</p>
-
-<pre><code class="language-objectivec">#define RW_INITIALIZED (1&lt;&lt;29)
-bool isInitialized() {
-   return getMeta()-&gt;data()-&gt;flags &amp; RW_INITIALIZED;
-}
-</code></pre>
-
-<p><code>isInitialized</code>的结果会保存到元类的class_rw_t结构体的flags信息里，flags的1&lt;&lt;29位记录的就是这个类是否初始化的信息。而flags的其他位记录的信息</p>
-
-<pre><code class="language-objectivec">// 类的方法列表已修复
-#define RW_METHODIZED         (1&lt;&lt;30)
-
-// 类已经初始化了
-#define RW_INITIALIZED        (1&lt;&lt;29)
-
-// 类在初始化过程中
-#define RW_INITIALIZING       (1&lt;&lt;28)
-
-// class_rw_t-&gt;ro 是 class_ro_t 的堆副本
-#define RW_COPIED_RO          (1&lt;&lt;27)
-
-// 类分配了内存，但没有注册
-#define RW_CONSTRUCTING       (1&lt;&lt;26)
-
-// 类分配了内存也注册了
-#define RW_CONSTRUCTED        (1&lt;&lt;25)
-
-// GC：class 有不安全的 finalize 方法
-#define RW_FINALIZE_ON_MAIN_THREAD (1&lt;&lt;24)
-
-// 类的 +load 被调用了
-#define RW_LOADED             (1&lt;&lt;23)
-</code></pre>
-
-<p>这样就能够找出哪些类是没有初始化的，找到真实环境中没有用到的类并清理。具体实施时，可以线下测试检查所有类，测出那些类没有使用，然后上线针对没有用到的类进行多版本检测，判断合理性后二次确认，并且最终将真正没有用到的类进行删除</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[AsyncDisplayKit]]></title>
-    <link href="https://acefish.github.io/15645543599204.html"/>
-    <updated>2019-07-31T14:25:59+08:00</updated>
-    <id>https://acefish.github.io/15645543599204.html</id>
-    <content type="html"><![CDATA[
-<p>即刻团队的 <a href="https://medium.com/jike-engineering/asyncdisplaykit%E4%BB%8B%E7%BB%8D-%E4%B8%80-6b871d29e005">AsyncDisplayKit介绍</a></p>
-
-<p><a href="https://texturegroup.org/docs/getting-started.html">AsyncDisplayKit-TextTrue</a></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[离屏渲染]]></title>
-    <link href="https://acefish.github.io/15644708593081.html"/>
-    <updated>2019-07-30T15:14:19+08:00</updated>
-    <id>https://acefish.github.io/15644708593081.html</id>
-    <content type="html"><![CDATA[
-<p>学习自即刻团队的<a href="https://zhuanlan.zhihu.com/p/72653360">离屏渲染</a></p>
-
-<h2 id="toc_0">iOS渲染架构</h2>
-
-<p>在WWDC的Advanced Graphics and Animations for iOS Apps（WWDC14 419，关于UIKit和Core Animation基础的session在早年的WWDC中比较多）中有这样一张图：</p>
-
-<p><img src="media/15644708593081/15644710697530.jpg" alt=""/></p>
-
-<p>可以看到是CPU和GPU协作完成了渲染操作。CPU主要在Application这一层操作，之后在RenderServer线程，CoreAnimation会将具体操作转换成发送GPU的draw calls（以前是call OpenGL 现在有部分转为Metal）,进行渲染</p>
-
-<h2 id="toc_1">离屏渲染</h2>
-
-<p>当需要在屏幕上显示内容时，至少需要一块与屏幕像素数据量一样大的<code>frame buffer</code>，作为像素数据存储区域，而这也是GPU存储渲染结果的地方。如果有时因为面临限制，无法把渲染结果直接写入frame buffer，而是先暂存在另外的内存区域，之后在写入<code>frame buffer</code>，这个过程就被称为<strong>离屏渲染</strong></p>
-
-<h3 id="toc_2">CPU&quot;离屏渲染&quot;？</h3>
-
-<p>在UIView中自己执行的drawRect方法，cpu会申请一块内存区域等待有可能到来的绘画操作。<br/>
-在CPU中进行的光栅化操作（如文字渲染、图片解码）等<br/>
-都无法直接绘制到GPU掌管的frame buffer，只能暂存在另外一块内存中<br/>
-这些发生在CPU中这些“离屏渲染”并不是真正意义上的，而是属于&quot;软件渲染&quot;范畴的</p>
-
-<h3 id="toc_3">GPU离屏渲染</h3>
-
-<p>我们知道，渲染主要由CoreAnimation的Render Server模块，通过调用显卡驱动提供的OpenGL/Metal接口执行。在执行渲染时，<code>Render Server</code>遵循画家算法，layer按照次序输出至frameBuffer，覆盖即刻得到最终的显示结果，然后交由GPU进行渲染显示到屏幕上</p>
-
-<p>但是有部分场景是无法这样实现的，因为GPU虽然可以按照画家算法进行输出，但是无法再某曾渲染完成后，再回头擦除或者改变其中的某部分。这就意味着，对于layer如果不能单词遍历就完成渲染，那就只能另开一块内存，借助这个临时中转区域来完成多次的修改/剪裁操作(这就是离屏渲染了)。</p>
-
-<h3 id="toc_4">常见离屏渲染场景</h3>
-
-<ol>
-<li><strong>corenerRadus+clipsToBounds</strong>
-因为此时子layer也会被裁减，但是在没有统一组合后也是无法获得统一裁剪后的图像，因此需要开辟另外一块内存，在渲染和切角完成后，输出到frame buffer中<br/>
-注意如果没有clipsToBounds，也不会触发离屏渲染了</li>
-<li><strong>shadow</strong>
-原因其实与圆角差不多，在没有将画布上所有内容组合完成之前也是无法知道阴影形状的，因此需要额外的内存空间。<br/>
-当然，如果我们能在整个画布都没有渲染完成之前就知道阴影部分的形状（设置阴影的shadowPath），也可以绘制阴影而不触发离屏渲染</li>
-<li><p><strong>group opacity</strong><br/>
-此时的alpha并不是加到某一层，而是整个layer树，因此只能等渲染完成再加上alpha，最后和底下的其它layer相折叠，得到实际的颜色。因此这也是需要另外开辟存储空间的</p></li>
-<li><p><strong>mask</strong></p>
-<p>mask由layer和其上的子layer组合，而且可能有透明度，因此是会触发离屏渲染的</p></li>
-<li><p><strong>UIBlurEffect</strong><br/>
-<img src="media/15644708593081/15645419693084.jpg" alt="" style="width:500px;"/></p></li>
-</ol>
-
-<h3 id="toc_5">离屏渲染解决方案</h3>
-
-<p>因为离屏渲染开销很大，特别是在滚动视图中，每帧都会触发cell的重绘，因此在无法避免时，就尽量降低性能影响，通过<code>CALayer</code>提供的<code>shouldRasterize</code>设置其为true后，<code>Render Server</code>会强制吧layer的渲染结果(包括其子layer，以及圆角、阴影、group opacity等等)保存在一块内存中，这样接下来就可以被复用，而不会再次离屏渲染了</p>
-
-<p>注意:</p>
-
-<ul>
-<li><code>shouldRasterize</code>主旨在于降低性能损失，但是至少会触发一次离屏渲染，如果layer本不复杂，也没有圆角 阴影等，打开这个只会没必要的多一次离屏渲染</li>
-<li>一旦缓存超过100ms没有被使用，会被自动废弃</li>
-<li>layer的内容必须是静态的，因为一旦发生变化缓存就失效了，就有需要重新离屏渲染，然后缓存，这就需要我们极力避免的情况</li>
-</ul>
-
-<h3 id="toc_6">CPU渲染的使用</h3>
-
-<p>因为GPU对图形处理的更高性能，以及其更好的并行计算能里，我们倾向于让GPU完成渲染任务，而CPU有更多时间来处理复杂的app的复杂逻辑。</p>
-
-<p>但是针对一些特殊情况，比如文字渲染(CoreText),图片渲染(ImageIO),因为此时GPU并不擅长此类工作，因为需要先由CPU处理好之后，将结果作为<a href="https://texturegroup.org/docs/automatic-layout-examples-2.html">texture</a>传给GPU.</p>
-
-<p>比如，我们可以使用<code>CoreGraphic</code>来给图形设置圆角(将圆角以外的部分设置为透明)，这样的话就全部由CPU完成，不再需要使用<code>corerRadius</code>。而且这样的话，我们也可以做到灵活控制裁剪和缓存的时机，避开CPU和GPU繁忙，平衡性能波动</p>
-
-<p>注意：</p>
-
-<ol>
-<li>渲染不是CPU强项，调用CoreGraphics会消耗其相当一部分时间，因此通常将CPU渲染放在后台完成(AsyncDisplayKit的实现思想)。然后再回到主线程，将渲染结果传给CoreAnimation</li>
-<li>CPU渲染性能不够 只能渲染静态的元素，如文字、图片等</li>
-<li>渲染结果的bitmap数据量较大，占用较大内存，应该在使用完成后，及时释放，否则容易OOM</li>
-<li>使用CPU渲染就不要再触发离屏渲染了</li>
-<li>多使用Instuments工具测试性能</li>
-</ol>
-
-<h2 id="toc_7">即刻团队对即刻APP的优化</h2>
-
-<ol>
-<li>即刻大量应用AsyncDisplayKit(Texture)作为主要渲染框架，对于文字和图片的异步渲染操作交由框架来处理。</li>
-<li>对于图片的圆角，统一采用“precomposite”的策略，也就是不经由容器来做剪切，而是预先使用CoreGraphics为图片裁剪圆角</li>
-<li>对于视频的圆角，由于实时剪切非常消耗性能，我们会创建四个白色弧形的layer盖住四个角，从视觉上制造圆角的效果</li>
-<li>对于view的圆形边框，如果没有backgroundColor，可以放心使用cornerRadius来做</li>
-<li>对于所有的阴影，使用shadowPath来规避离屏渲染</li>
-<li>对于特殊形状的view，使用layer mask并打开shouldRasterize来对渲染结果进行缓存</li>
-<li>对于模糊效果，不采用系统提供的UIVisualEffect，而是另外实现模糊效果（CIGaussianBlur），并手动管理渲染结果</li>
-</ol>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[渲染]]></title>
-    <link href="https://acefish.github.io/15643878437057.html"/>
-    <updated>2019-07-29T16:10:43+08:00</updated>
-    <id>https://acefish.github.io/15643878437057.html</id>
-    <content type="html"><![CDATA[
-<p>学习自 <a href="https://time.geekbang.org/column/article/101639">iOS开发高手课</a></p>
-
-<h2 id="toc_0">渲染原理</h2>
-
-<p>App界面是由CPU和GPU共同计算处理</p>
-
-<p>CPU内部流水线结构拥有并行计算能力，一般用于显示内容的计算。而GPU的并行计算能力更强，能够通过计算将图形结果显示到屏幕像素中。<strong>渲染就是将内存中的图形数据经过转换显示到屏幕上的过程。而负责执行这个过程的就是GPU</strong></p>
-
-<p>在渲染的过程中，GPU是需要处理屏幕上的每个像素点，并保证这些像素点的更新时流畅的</p>
-
-<p>GPU的主要工作就是将3D坐标转换为2D坐标，再把2D坐标转为实际像素，实现的过程分为: <strong>顶点着色器（确定形状的点）、形状装配（确定形状的线）、几何着色器（确定三角形个数）、光栅化（确定屏幕像素点）、片段着色器（对像素点着色）、测试与混合（检查深度和透明度）六个阶段</strong></p>
-
-<p>而我们<code>OpenGL</code>的标准库提供了编程能力，为了更方便的操作控制GPU</p>
-
-<p>在渲染的过程中，<code>CPU</code>主要用来处理渲染内容的计算，比如<em>视图创建、布局、图片解码</em>等，内容计算完成后，再传给GPU进行渲染。CPU和GPU的相互配合，充分利用手机硬件来提升用户使用app的体验。而我们见到的界面卡顿等，就是以内CPU的计算时间超过屏幕刷新率的时间</p>
-
-<blockquote>
-<p>在对比原生、大前端和Flutter谁更流畅，不就是对比在渲染过程中CPU计算内容谁会更快，谁就会更流畅了</p>
-</blockquote>
-
-<h2 id="toc_1">原生渲染流程</h2>
-
-<p>原生的界面渲染，主要分为一下四步:</p>
-
-<ol>
-<li>更新视图树，同步视图树</li>
-<li>CPU计算要显示的内容，包括视图创建（设置Layer属性）、布局计算、视图绘制（创建Lay的Backing Image）、图像解码转换等。当runLoop在<code>BeforeWaiting</code>和<code>Exit</code>时，通知注册的监听，然后对图层打包，打包完成后，将打包数据发送给一个独立负责渲染的进程<code>Render Server</code></li>
-<li>数据在到达renderServer后会被反序列化，得到图层树，按照图层树的图层顺序、RGBA值,图层frame过滤图层中被遮挡的部分，过滤后将图层树转换为渲染树，渲染树的信息会转换为OpenGL ES/Metal。前面CPU所处理的这些事情统称为<code>Commit Transaction</code></li>
-<li><code>Render Server</code>会调用GPU,GPU开始进行前面提到的顶点着色器，形状装配、几何着色、光栅化、片段着色、测试与混合六个阶段。完成这6个阶段后，再将CPU和GPU计算后的数据显示在屏幕的每个像素点上。</li>
-</ol>
-
-<p><img src="media/15643878437057/15644670559791.jpg" alt="" style="width:648px;"/></p>
-
-<p>补充:</p>
-
-<blockquote>
-<p>渲染过程中的<code>Commit Trasaction</code>的布局计算会重载视图的<code>LayoutSubViews</code>方法，以及执行<code>addSubviews</code>方法来添加视图。视图绘制会重载视图的<code>drawReact</code>方法。这个方法都是iOS开发中常用的</p>
-
-<p>我们执行的移动视图、删除视图、隐藏、显示视图、调用setNeedsDispaly或者setNeedsDispalyInRect方法 都会触发界面更新，执行渲染流程</p>
-</blockquote>
-
-<h2 id="toc_2">大前端渲染</h2>
-
-<p>大前端的开发框架主要有两类：基于webView的和类似React Native的</p>
-
-<p>第一类的WebView的大前端渲染，主要在webKit中完成。webKit的渲染层来自以前MacOS的LayerRendering架构，而iOS也基于这一套架构。所以本质上来看WebKit和iOS的原生渲染差别不大</p>
-
-<p>ReactNative渲染直接走的原生渲染</p>
-
-<p>至于我们觉得大前端渲染比原生慢的原因主要是：</p>
-
-<ol>
-<li><p>从第一次内容加载来看，即使本地加载，<strong>大前端也比原生多出脚本代码解析工作</strong>。webView需要额外解析<code>HTML+CSS+Javascript</code>代码，而类React Native方案则需要解析<code>Json+Javascript</code>。 当然<code>HTML+CSS</code>的复杂度要高于<code>JSON</code>,因此解析起来会更加慢一点。即，首次加载时，WebView会比类ReactNative慢</p></li>
-<li><p>从语言的本身解释执行性能来看，<strong>大前端加载后的界面更新会通过Javascript解释执行</strong>，而Javascript解释执行性能要比原生差，特别是解释执行复杂逻辑或大量计算时。所以大前端的运算速度，要比原生慢上不少</p></li>
-<li><p>除了首次加载解析耗时外，js语言本身解释慢导致的性能问题这两点之外，WebView的渲染进程是单独的，每帧的更新都要通过IPC调用GPU进程。而频繁的IPC进程通信也会有性能损耗</p></li>
-<li><p>webView的单独渲染进程还无法访问GPU的context，这样两个进程就么法共享纹理资源。纹理资源无法直接使用GPU的Context光栅化，那就只能通过IPC传给GPU进程，这也导致可GPU无法发挥自身的性能优势。由于WebView的光栅化无法及时同步到GPU，滑动时就容易出现白屏，就很难避免了。</p></li>
-</ol>
-
-<p>相对于原生渲染来说，webView或者类ReactNative都因为脚本语言本身的西恩那个问题而存在性能差距。</p>
-
-<h2 id="toc_3">Flutter渲染</h2>
-
-<p>Flutter界面是由<code>Widget</code>组成，所有的Widget组成<code>Widget Tree</code>，界面更新时会更新<code>Widget Tree</code>，然后再更新<code>Element Tree</code>，最后更新<code>RenderObject Tree</code></p>
-
-<p>接下来的渲染流程，Flutter渲染在FrameWork层会有Build、Widget Tree、Element Tree、RenderObject Tree、Layout、Paint、Composited Layed等几个阶段。将Layer进行组合，生成纹理，使用OpenGL接口像GPU提交渲染内容进行光栅化与合成，是在Flutter的C++层，使用的时<code>Skia</code>库。包括提交到GPU进程后，合成计算，显示屏幕的过程和iOS原生基本是类似的，因此性能相差不多</p>
-
-<p>Flutter的主要优势是在于，它可以同时运行于Android和iOS两个平台。但是苹果公司在WWDC 2019上退出SwiftUI和Preview后，Flutter界面编写和Hot Reload的有事会逐渐降低</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[RACDelegateProxy]]></title>
-    <link href="https://acefish.github.io/15611008346251.html"/>
-    <updated>2019-06-21T15:07:14+08:00</updated>
-    <id>https://acefish.github.io/15611008346251.html</id>
-    <content type="html"><![CDATA[
-<p>将代理用<code>RACDelegateProxy</code>实现</p>
-
-<pre><code class="language-objectivec">RACDelegateProxy *proxy = [[RACDelegateProxy alloc] initWithProtocol:@protocol(UITableViewDelegate)];
-objc_setAssociatedObject(self, _cmd, proxy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-proxy.rac_proxiedDelegate = self;
-[[proxy rac_signalForSelector:@selector(tableView:didSelectRowAtIndexPath:)]
- subscribeNext:^(RACTuple *value) {
-     [value.first deselectRowAtIndexPath:value.second animated:YES];
- }];
-self.tableView.delegate = (id&lt;UITableViewDelegate&gt;)proxy;
-
-//等效于
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
-}
-</code></pre>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[RACChannel]]></title>
-    <link href="https://acefish.github.io/15609354619260.html"/>
-    <updated>2019-06-19T17:11:01+08:00</updated>
-    <id>https://acefish.github.io/15609354619260.html</id>
-    <content type="html"><![CDATA[
-<p><code>RACChannel</code>是一对一的双向的数据流</p>
-
-<h2 id="toc_0">RACChannel</h2>
-
-<p>在channel中向外暴露的有两个属性<code>terminal</code></p>
-
-<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) RACChannelTerminal&lt;ValueType&gt; *leadingTerminal;
-@property (nonatomic, strong, readonly) RACChannelTerminal&lt;ValueType&gt; *followingTerminal;
-</code></pre>
-
-<p>初始化<code>terminal</code>方法 </p>
-
-<pre><code class="language-objectivec">- (instancetype)init {
-    self = [super init];
-
-    RACReplaySubject *leadingSubject = [RACReplaySubject replaySubjectWithCapacity:0];
-    RACReplaySubject *followingSubject = [RACReplaySubject replaySubjectWithCapacity:1];
-    
-    [[leadingSubject ignoreValues] subscribe:followingSubject];
-    [[followingSubject ignoreValues] subscribe:leadingSubject];
-
-    _leadingTerminal = [[RACChannelTerminal alloc] initWithValues:leadingSubject otherTerminal:followingSubject];
-    _followingTerminal = [[RACChannelTerminal alloc] initWithValues:followingSubject otherTerminal:leadingSubject]
-    return self;
-}
-</code></pre>
-
-<ol>
-<li>可以看到<code>leadingSubject</code>是由<code>Capacity:0</code>的<code>RACReplaySubject</code> 而 <code>followingSubject</code>是由<code>Capacity:1</code>的<code>RACReplaySubject</code></li>
-<li><code>ignoreValues</code>通过订阅相互信号的错误信息，当一端出现错误信息能保证相互发送，防止当一方出错时 另外一方还在工作</li>
-<li><code>followingSubject</code>的<code>Capacity</code>为1，有初始值，因此当订阅followingTerminal信息时 可以直接进行初始化状态</li>
-</ol>
-
-<h2 id="toc_1">RACChannelTerminal: RACSignal&lt; RACSubscriber&gt;</h2>
-
-<h3 id="toc_2">初始化</h3>
-
-<p><code>ChannelTerminal</code>初始化,使用一个用于subcribe的<code>RACSignal</code>的value 和一个用于发送值的<code>id&lt;RACSubscriber&gt;</code>的otherTerminal</p>
-
-<p>期指那个<code>value</code>表示当前端点，<code>otherTerminal</code>表示远程端点</p>
-
-<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) RACSignal&lt;ValueType&gt; *values;
-@property (nonatomic, strong, readonly) id&lt;RACSubscriber&gt; otherTerminal;
-
-- (instancetype)initWithValues:(RACSignal *)values otherTerminal:(id&lt;RACSubscriber&gt;)otherTerminal {
-    self = [super init];
-    _values = values;
-    _otherTerminal = otherTerminal;
-    return self;
-}
-</code></pre>
-
-<h3 id="toc_3">订阅信号</h3>
-
-<p>订阅信号 其实订阅和接收的是<code>self.values</code>的信号，即订阅的时当前信号消息</p>
-
-<pre><code class="language-objectivec">- (RACDisposable *)subscribe:(id&lt;RACSubscriber&gt;)subscriber {
-    return [self.values subscribe:subscriber];
-}
-</code></pre>
-
-<h3 id="toc_4">发送</h3>
-
-<p>如果向<code>Terminal</code>发送消息  会被转发到远程端点上，因此当前端点的订阅者并不能接收到当前端点发送的消息</p>
-
-<pre><code class="language-objectivec">- (void)sendNext:(id)value {
-    [self.otherTerminal sendNext:value];
-}
-</code></pre>
-
-<h3 id="toc_5">使用</h3>
-
-<p>我们不应该直接初始化<code>RACChannelTerminal</code>实例，而可以通过 初始化RACChannle的方式生成</p>
-
-<h2 id="toc_6">RACChannel的使用</h2>
-
-<h3 id="toc_7">RACChannel+UIControl</h3>
-
-<pre><code class="language-objectivec">UIControl rac_channelForControlEvents:(UIControlEvents)controlEvents key:(NSString *)key nilValue:(nullable id)nilValue {
-    RACChannel *channel = [[RACChannel alloc] init];
-    
-    RACSignal *eventSignal = [[[self
-        rac_signalForControlEvents:controlEvents]
-        mapReplace:key]
-        takeUntil:[[channel.followingTerminal
-            ignoreValues]
-            catchTo:RACSignal.empty]];
-            
-            [[self
-        rac_liftSelector:@selector(valueForKey:) withSignals:eventSignal, nil]
-        subscribe:channel.followingTerminal];
-        
-        RACSignal *valuesSignal = [channel.followingTerminal
-        map:^(id value) {
-            return value ?: nilValue;
-        }];
-    [self rac_liftSelector:@selector(setValue:forKey:) withSignals:valuesSignal, [RACSignal return:key], nil];
-
-    return channel.leadingTerminal;
-}
-
-</code></pre>
-
-<ol>
-<li><code>eventSignal</code> 获取事件触发的<code>signal</code> 并将error转换为empty信号，发送的值即为key</li>
-<li><code>rac_liftSelector:with:</code> 执行一个<code>selector</code>方法,<code>rac_liftSelector:@selector(valueForKey:)</code>即为获取<code>UIControl</code>的事件的<code>key</code>的值</li>
-<li><code>subscribe:channel.followingTerminal</code> 即为 channel的<code>followingTerminal</code>订阅， 综合起来就是 每次事件触发时 获取<code>key</code>的value值 然后发送<code>followingTerminal</code>  而followTerminal的<code>sendNext</code>，触发leadingSubject的<code>sendNext</code>，即将事件触发时获取到的value值发送给leadingSubject的订阅者 即 leadingTerminal的订阅者</li>
-<li><p><code>valueSignal</code> 订阅<code>followingTerminal</code>即 订阅 followSubject的消息，即为收到leadingTerminal发送的消息</p></li>
-<li><p><code>[self rac_liftSelector:@selector(setValue:forKey:) withSignals:valuesSignal, [RACSignal return:key], nil];</code>  收到<code>leadingTerminal</code>发送的消息后将收到的值传给当前的控件，保证数据同步</p></li>
-</ol>
-
-<p>综合起来来说，就是在<code>controlEvent</code>事件发生时，将key的value值发送给<code>followingTerminal</code>，并在接收来自<code>leadingTerminal</code>消息后，更新控件的key属性对应的value值</p>
-
-<h4 id="toc_8">UITextField+TextChannel</h4>
-
-<pre><code class="language-objectivec">- (RACChannelTerminal *)rac_newTextChannel {
-    return [self rac_channelForControlEvents:UIControlEventAllEditingEvents key:@keypath(self.text) nilValue:@&quot;&quot;];
-}
-</code></pre>
-
-<h3 id="toc_9">RACChannel+KVO</h3>
-
-<p>RACChannel提供了<code>RACKVOChannel</code>来实现对象的某个属性值进行观测， 常可以用来进行与UIKit组件或者其他对象属性进行高效的双向绑定</p>
-
-<h4 id="toc_10">RACKVOChannel :RACChannel</h4>
-
-<p>在KVO的channel中 我们常通过<code>RACChannelTo</code>宏定义来直接使用，观测某对象属性</p>
-
-<pre><code class="language-objectivec">//参数分别为 对象、属性和默认值
-#define RACChannelTo_(TARGET, KEYPATH, NILVALUE)
-
-    [[RACKVOChannel alloc] initWithTarget:(TARGET) 
-    keyPath:@keypath(TARGET, KEYPATH) nilValue:(NILVALUE)]
-    [@keypath(RACKVOChannel.new, followingTerminal)]
-</code></pre>
-
-<p>例如：</p>
-
-<pre><code class="language-objectivec">RACChannelTerminal *integerChannel = [[RACKVOChannel alloc] initWithTarget:self keyPath:@&quot;integerProperty&quot; nilValue:@42][@&quot;followingTerminal&quot;];
-</code></pre>
-
-<p>先来看<code>RACKVOChannel</code>的初始化方法</p>
-
-<pre><code class="language-objectivec">- (instancetype)initWithTarget:(__weak NSObject *)target keyPath:(NSString *)keyPath nilValue:(id)nilValue {
-
-    //KVO对象属性值并发送
-    [strongTarget rac_observeKeyPath:keyPath options:NSKeyValueObservingOptionInitial observer:nil block:^(id value, NSDictionary *change, BOOL causedByDealloc, BOOL affectedOnlyLastComponent) {
-        [self.leadingTerminal sendNext:value];
-    }]
-    
-    // 收到订阅值 并设置对象的属性值
-    [[self.leadingTerminal
-        finally:^{
-            [observationDisposable dispose];
-        }]
-        subscribeNext:^(id x) {
-            NSObject *object = (keyPathComponentsCount &gt; 1 ? [self.target valueForKeyPath:keyPathByDeletingLastKeyPathComponent] : self.target);
-            if (object == nil) return;
-            [object setValue:x ?: nilValue forKey:lastKeyPathComponent];
-        } error:^(NSError *error) {
-        }];
-    
-}
-</code></pre>
-
-<p>使用RACKVOChannel的初始化方法即获得了一个Channel对象，对此对象执行 <code>[@keypath(RACKVOChannel.new, followingTerminal)]</code>来获取terminal对象是因为重写了以下两个方法:</p>
-
-<pre><code class="language-objectivec">- (RACChannelTerminal *)objectForKeyedSubscript:(NSString *)key {
-    RACChannelTerminal *terminal = [self valueForKey:key];
-    return terminal;
-}
-
-- (void)setObject:(RACChannelTerminal *)otherTerminal forKeyedSubscript:(NSString *)key {
-    RACChannelTerminal *selfTerminal = [self objectForKeyedSubscript:key];
-    [otherTerminal subscribe:selfTerminal];
-    [[selfTerminal skip:1] subscribe:otherTerminal];
-}
-</code></pre>
-
-<p>重写这两个方法 就会使在调用<code>setObject: forKeyedSubscript:</code>时执行<code>-subscribe:</code>方法完成双向绑定</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[RACMulticastConnection: NSObject]]></title>
-    <link href="https://acefish.github.io/15609234167437.html"/>
-    <updated>2019-06-19T13:50:16+08:00</updated>
-    <id>https://acefish.github.io/15609234167437.html</id>
-    <content type="html"><![CDATA[
-<p><code>RACMulticastConnection</code>用于信号的一对多传播</p>
-
-<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) RACSignal&lt;ValueType&gt; *signal;
-{
-RACSubject *_signal;
-}
-@property (nonatomic, readonly, strong) RACSignal *sourceSignal;
-
-</code></pre>
-
-<p>这个signal属性即为对外开发的信号，其实现是使用RACSubject对象，而<code>sourceSignal</code>即为订阅的原信号</p>
-
-<p>在初始化方法中初始化这两个对象:</p>
-
-<pre><code class="language-objectivec">- (instancetype)initWithSourceSignal:(RACSignal *)source subject:(RACSubject *)subject { 
-    _sourceSignal = source;
-    _signal = subject;
-}
-</code></pre>
-
-<h2 id="toc_0">使用</h2>
-
-<p>我们不应该直接初始化<code>RACMulticastConnection</code>对象  使用<code>RACSignal</code>的实例化方法初始化这个实例对象:</p>
-
-<pre><code class="language-objectivec">- (RACMulticastConnection *)publish {
-    RACSubject *subject = [RACSubject subject];
-    RACMulticastConnection *connection = [self multicast:subject];
-    return connection;
-}
-
-- (RACMulticastConnection *)multicast:(RACSubject *)subject {
-    RACMulticastConnection *connection = [[RACMulticastConnection alloc] initWithSourceSignal:self subject:subject];
-    return connection;
-}
-</code></pre>
-
-<p>可以很简单的看出来这两个方法只是简单的声明了<code>RACSubject</code>对象，并初始化一个<code>RACMulticastConnection</code>对象并返回</p>
-
-<h2 id="toc_1">connect &amp;&amp; autoconnect</h2>
-
-<p>具体信号的订阅是在connect方法中，只有执行了connect方法 才会订阅该信号 才能接收信号</p>
-
-<pre><code class="language-objectivec">- (RACDisposable *)connect {
-    self.serialDisposable.disposable = [self.sourceSignal subscribe:_signal];
-}
-</code></pre>
-
-<p><code>autoconnect</code>方法返回一个信号  当订阅了该信号时就会执行connect方法 订阅<code>sourceSignal</code>从而收到信号值</p>
-
-<pre><code class="language-objectivec">- (RACSignal *)autoconnect {
-
-    return [RACSignal
-        createSignal:^(id&lt;RACSubscriber&gt; subscriber) {
-            RACDisposable *subscriptionDisposable = [self.signal subscribe:subscriber];
-            [self connect];
-            }];
-        }]
-}
-</code></pre>
-
-<h2 id="toc_2">补充</h2>
-
-<p>当使用<code>publish</code>方法返回的<code>RACMulticastConnection</code>对象时，只有当<code>connect</code>之前订阅的才能收到消息，而在connect之后订阅的对象并不能收到消息</p>
-
-<p>因此此时我们可以使用<code>RACReplaySubject</code>对象，可以通过<code>[RACSignal replay]</code>方法实现</p>
-
-<pre><code class="language-objectivec">- (RACSignal *)replay {
-    RACReplaySubject *subject = [RACReplaySubject subject];
-    RACMulticastConnection *connection = [self multicast:subject];
-    [connection connect];
-    return connection.signal;
-}
-</code></pre>
-
-<p>除此之外 还有</p>
-
-<p>Capacity:1 的ReplaySubject</p>
-
-<pre><code class="language-objectivec">- (RACSignal *)replayLast {
-    RACReplaySubject *subject = [RACReplaySubject replaySubjectWithCapacity:1];
-    RACMulticastConnection *connection = [self multicast:subject];
-    [connection connect];
-    return connection.signal;
-}
-</code></pre>
-
-<p>只有在返回的信号在被第一次订阅时 才会执行connect方法</p>
-
-<pre><code class="language-objectivec">- (RACSignal *)replayLazily {
-    RACMulticastConnection *connection = [self multicast:[RACReplaySubject subject]];
-    return [RACSignal
-        defer:^{
-            [connection connect];
-            return connection.signal;
-        }];
-}
-</code></pre>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[RACCommand: NSObject]]></title>
-    <link href="https://acefish.github.io/15608261485816.html"/>
-    <updated>2019-06-18T10:49:08+08:00</updated>
-    <id>https://acefish.github.io/15608261485816.html</id>
-    <content type="html"><![CDATA[
-<p><code>RACCommand</code> 继承自<code>NSObject</code> 用于管理<code>RACSignal</code>信号</p>
-
-<h2 id="toc_0">RACCommand使用示例</h2>
-
-<pre><code class="language-objectivec">RACCommand *command = [[RACCommand alloc] initWithSignalBlock:^RACSignal * _Nonnull(id  _Nullable input) {
-        return [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
-            NSInteger integer = [input integerValue];
-            for (NSInteger i = 0; i &lt; integer; i++) {
-                [subscriber sendNext:@(i)];
-            }
-            [subscriber sendCompleted];
-            return [RACDisposable disposableWithBlock:^{
-                NSLog(@&quot;信号销毁了&quot;);
-            }];
-        }];
-    }];
-    
-    [[command.executionSignals switchToLatest] subscribeNext:^(id  _Nullable x) {
-        NSLog(@&quot;收到消息---%@&quot;,x);
-    } error:^(NSError * _Nullable error) {
-        NSLog(@&quot;error了&quot;);
-    } completed:^{
-        NSLog(@&quot;completed了&quot;);
-    }];
-    
-    [command execute:@1];
-    [RACScheduler.mainThreadScheduler afterDelay:0.1
-                                        schedule:^{
-                                            [command execute:@2];
-                                        }];
-    [RACScheduler.mainThreadScheduler afterDelay:0.2
-                                        schedule:^{
-                                            [command execute:@3];
-                                        }];
-                                        
-                            
-    //log结果
-    收到消息---0
-    信号销毁了
-    收到消息---0
-    收到消息---1
-    信号销毁了
-    收到消息---0
-    收到消息---1
-    收到消息---2
-    信号销毁了
-    completed了
-</code></pre>
-
-<ol>
-<li>通过<code>switchToLatest</code>方法来获取信号中的信号</li>
-<li>因为默认情况下<code>RACCommand</code>是不支持并发操作的，需要在上次命令发送完成后，再发送下次信号</li>
-</ol>
-
-<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) RACSignal&lt;RACSignal&lt;ValueType&gt; *&gt; *executionSignals;
-</code></pre>
-
-<p>通过以上示例可以看出整个流程中，传入一个block，这个block通过传入值生成对应的<code>signal</code>, 而command属性<code>executionSignals</code>即为这些信号的信号</p>
-
-<p>通过 <code>execute</code>方法 出入值 </p>
-
-<h2 id="toc_1">RACCommand</h2>
-
-<p>在<code>Command</code>内部 是由几个很重要的信号组成的</p>
-
-<h3 id="toc_2">初始化</h3>
-
-<p>初始化方法需要传入<code>signalBlock</code>， 该block通过input传入值 生成一个<code>RACSignal</code><br/>
- 在初始化方法中初始化了重要的信号</p>
-
-<pre><code class="language-objectivec"> RACCommand initWithEnabled:(RACSignal *)enabledSignal signalBlock:(RACSignal&lt;id&gt; * (^)(id input))signalBlock {
-    _addedExecutionSignalsSubject = [RACSubject new];
-    _allowsConcurrentExecutionSubject = [RACSubject new];
-    _signalBlock = [signalBlock copy];
-    _executionSignals =...
-    _errors = ...
-    _executing = ...
-    _immediateEnabled = ...
-    _enabled = ...
- }
-</code></pre>
-
-<h3 id="toc_3">addedExecutionSignalsSubject</h3>
-
-<p><code>addedExecutionSignalsSubject</code>即为包含信号的信号 当传入值时通过signalblock生成的signal即包含在改信号中</p>
-
-<p><code>addedExecutionSignalsSubject</code>信号在<code>execute:</code>执行时，对信号进行订阅和发送</p>
-
-<pre><code class="language-objectivec">- (RACSignal *)execute:(id)input { 
-    BOOL enabled = [[self.immediateEnabled first] boolValue];
-    if (!enabled) {
-        return [RACSignal error:error];
-    }
-    RACSignal *signal = self.signalBlock(input);
-    //订阅信号
-    RACMulticastConnection *connection = [[signal
-        subscribeOn:RACScheduler.mainThreadScheduler]
-        multicast:[RACReplaySubject subject]];
-    //发送信号
-    [self.addedExecutionSignalsSubject sendNext:connection.signal];
-    [connection connect];
-    return connection.signal;
-}
-</code></pre>
-
-<h3 id="toc_4">immediateExecuting &amp;&amp; _executing 表示当前有操作执行的信号</h3>
-
-<p>immediateExecuting的逻辑是：<br/>
-    1. <code>catchTo</code>捕获<code>addedExecutionSignalsSubject</code>信号中的error信号，转换为empty<br/>
-    2. <code>flattenMap:</code>将每个信号的开始和结束时间点转为1和-1信号（<code>start为1 then为-1</code>）<br/>
-    3. <code>scanWithStart:@0 reduce:</code> 将上一步得到的1和-1进行叠加得到0 或者 非0<br/>
-        1. <code>map:</code>将0/非0 转为 NO/YES 表示当前是否有信号正在处理</p>
-
-<pre><code class="language-objectivec">RACSignal *immediateExecuting = [[[[self.addedExecutionSignalsSubject
-        flattenMap:^(RACSignal *signal) {
-            return [[[signal
-                catchTo:[RACSignal empty]]
-                then:^{
-                    return [RACSignal return:@-1];
-                }]
-                startWith:@1];
-        }]
-        scanWithStart:@0 reduce:^(NSNumber *running, NSNumber *next) {
-            return @(running.integerValue + next.integerValue);
-        }]
-        map:^(NSNumber *count) {
-            return @(count.integerValue &gt; 0);
-        }]
-        startWith:@NO];
-</code></pre>
-
-<p>将immediateExecuting 信号进行优化  <strong>表示当前是否有任务执行</strong></p>
-
-<pre><code class="language-objectivec">_executing = [[[[immediateExecuting
-        deliverOn:RACScheduler.mainThreadScheduler]
-        // This is useful before the first value arrives on the main thread.
-        startWith:@NO]
-        distinctUntilChanged]
-        replayLast]
-</code></pre>
-
-<h3 id="toc_5">moreExecutionsAllowed  表示是否允许更多信号执行</h3>
-
-<p>简单来看就是 当不允许并发时（默认不允许并发），<code>[immediateExecuting not]</code></p>
-
-<pre><code class="language-objectivec">RACSignal *moreExecutionsAllowed = [RACSignal
-        if:[self.allowsConcurrentExecutionSubject startWith:@NO]
-        then:[RACSignal return:@YES]
-        else:[immediateExecuting not]];
-</code></pre>
-
-<h3 id="toc_6">executionSignals</h3>
-
-<pre><code class="language-objectivec"> @property (nonatomic, strong, readonly) RACSignal&lt;RACSignal&lt;ValueType&gt; *&gt; *executionSignals;
-</code></pre>
-
-<p><code>executionSignals</code>是一个包含信号的信号<br/>
-executionSignals 只是简单的将<code>self.addedExecutionSignalsSubject</code>信号中的所有错误信号<code>NSError</code>转换为了<code>empty</code>信号</p>
-
-<pre><code class="language-objectivec">_executionSignals = [[self.addedExecutionSignalsSubject
-        map:^(RACSignal *signal) {
-            return [signal catchTo:[RACSignal empty]];
-        }]
-        deliverOn:RACScheduler.mainThreadScheduler]
-</code></pre>
-
-<h3 id="toc_7">_enabled 信号 表示当前命令是否可以被再次执行</h3>
-
-<pre><code class="language-objectivec">RACSignal *enabledSignal = [RACSignal return:@YES];
-
-_immediateEnabled = [[[[RACSignal
-    combineLatest:@[ enabledSignal, moreExecutionsAllowed ]]
-    and]
-    takeUntil:self.rac_willDeallocSignal]
-    replayLast];
-    
-//保证信号中的第一个值在订阅线程，而其他值在主线程派发
-_enabled = [[[[self.immediateEnabled
-    take:1]
-    concat:[[self.immediateEnabled skip:1] deliverOn:RACScheduler.mainThreadScheduler]]
-    distinctUntilChanged]
-    replayLast]
-</code></pre>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[RACSignal信号的订阅与发送]]></title>
-    <link href="https://acefish.github.io/15604257329990.html"/>
-    <updated>2019-06-13T19:35:32+08:00</updated>
-    <id>https://acefish.github.io/15604257329990.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">RACSignal</h2>
-
-<h4 id="toc_1">订阅信号</h4>
-
-<p>订阅信号动作 就是创建一个遵循<code>&lt;RACSubscriber&gt;</code>代理的对象 该对象将接受到信号时要做的动作block保存起来</p>
-
-<pre><code class="language-objectivec">RACSignal subscribeNext:(void (^)(id x))nextBlock error:(void (^)(NSError *error))errorBlock completed:(void (^)(void))completedBlock {
-    
-    RACSubscriber *subscriber = [[self alloc] init];
-    subscriber-&gt;_next = [next copy];
-    subscriber-&gt;_error = [error copy]    
-    subscriber-&gt;_completed = [completed copy];
-    
-    [self subscribe:subscriber];
-    
-}
-</code></pre>
-
-<p>具体订阅该信号要做的事情  因为不同子类的信号发送事件不同  需要被子类重写</p>
-
-<pre><code class="language-objectivec">RACSignal subscribe:(id&lt;RACSubscriber&gt;)subscriber {
-    //被子类重写
-}
-</code></pre>
-
-<h3 id="toc_2">RACSubscriber<RACSubscriber></h3>
-
-<p>遵循<code>RACSubscriber</code>代理 即可发送信号值</p>
-
-<pre><code class="language-objectivec">- (void)sendNext:(id)value {
-    self.nextBlock(value);
-}
-- (void)sendError:(NSError *)e{
-    self.errorBlock(e);
-}
-- (void)sendCompleted {
-    self.completedBlock();
-}
-</code></pre>
-
-<p>发送信号值 即执行保存的执行事件block</p>
-
-<h3 id="toc_3">RACDynamicSignal</h3>
-
-<p>DynamicSignal 即在创建信号时要发送的的信号值已经设定  而在重写<code>subscribe</code>方法时只需要将其发送的值与 next、error、completed block进行匹配执行即可</p>
-
-<h4 id="toc_4">创建信号</h4>
-
-<p><code>DynamicSignal</code>创建信号 创建时已经包含了信号已经要发送的值<br/>
-将<code>id&lt;RACSubscriber&gt;</code>信号发送者要发送的值的事件block 存起来，存到signal的<code>_didSubscribe</code>block属性中</p>
-
-<pre><code class="language-objectivec">RACDynamicSignal createSignal:(RACDisposable * (^)(id&lt;RACSubscriber&gt; subscriber))didSubscribe {
-    RACDynamicSignal *signal = [[self alloc] init];
-      signal-&gt;_didSubscribe = [didSubscribe copy];
-}
-</code></pre>
-
-<h4 id="toc_5">订阅信号</h4>
-
-<p>订阅信号 即 执行创建信号时保存起来的<code>didSubscribe</code> block  send创建信号时发送的值 </p>
-
-<pre><code class="language-objectivec">RACDynamicSignal subscribe:(id&lt;RACSubscriber&gt;)subscriber  {
-    self.didSubscribe(subscriber);
-}
-</code></pre>
-
-<h2 id="toc_6">RASSubject &lt; RACSubscriber &gt;: RACSignal</h2>
-
-<p><code>Subject</code>维持一个数组保存所有需要sendEvent的<code>Subscriber</code>,当需要发送</p>
-
-<h4 id="toc_7">订阅信号</h4>
-
-<p>因为继承自<code>RACSignal</code> 需要重写<code>subscribe:</code>方法</p>
-
-<pre><code class="language-objectivec">RASSubject )subscribe:(id&lt;RACSubscriber&gt;)subscriber {
-    [self.subscribers addObject:subscriber];
-}
-</code></pre>
-
-<h4 id="toc_8">发送信号</h4>
-
-<p>发送信号值 即 遍历数组中的Subcriber 依次send 然后执行subscriber 中保存的nextBlock事件block</p>
-
-<pre><code class="language-objectivec">- (void)sendNext:(id)value {
-    [self enumerateSubscribersUsingBlock:^(id&lt;RACSubscriber&gt; subscriber) {
-        [subscriber sendNext:value];
-    }];
-}
-</code></pre>
-
-<h3 id="toc_9">RACBehaviorSubject &amp;&amp; RACReplaySubject</h3>
-
-<h4 id="toc_10">RACBehaviorSubject</h4>
-
-<p>在内部的<code>currentValue</code>属性会保存上次发送的值 这样在订阅该信号时即能收到最后发送的信号值，进行初始化</p>
-
-<pre><code class="language-objectivec">+ (instancetype)behaviorSubjectWithDefaultValue:(id)value {
-    RACBehaviorSubject *subject = [self subject];
-    subject.currentValue = value;
-    return subject;
-}
-</code></pre>
-
-<h5 id="toc_11">发送信号</h5>
-
-<p>在发送信号时 保存信号作为最后发送的信号</p>
-
-<pre><code class="language-objectivec">- (void)sendNext:(id)value {
-    self.currentValue = value;
-    [super sendNext:value];
-}
-</code></pre>
-
-<h5 id="toc_12">订阅信号</h5>
-
-<p>重写<code>subscribe</code>方法  在每次订阅信号时 发送当前保存的值即最后发送的信号</p>
-
-<pre><code class="language-objectivec">RACBehaviorSubject  subscribe:(id&lt;RACSubscriber&gt;)subscriber {
-    [super subscribe:subscriber];
-       [subscriber sendNext:self.currentValue];
-}
-</code></pre>
-
-<h4 id="toc_13">RACReplaySubject</h4>
-
-<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) NSMutableArray *valuesReceived;
-</code></pre>
-
-<p>内部有个数组保存了一定量发送过的信号 默认为<code>RACReplaySubjectUnlimitedCapacity</code>（NSUIntegerMax），即保存所有已经发送过的信号，也可以通过<code>initWithCapacity</code>初始化，制动保存多少个已经发送过的信号</p>
-
-<pre><code class="language-objectivec">- (instancetype)initWithCapacity:(NSUInteger)capacity {
-    self = [super init];
-    
-    _capacity = capacity;
-    _valuesReceived = (capacity == RACReplaySubjectUnlimitedCapacity ? [NSMutableArray array] : [NSMutableArray arrayWithCapacity:capacity]);
-    
-    return self;
-}
-</code></pre>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[RACSignal]]></title>
-    <link href="https://acefish.github.io/15578383647199.html"/>
-    <updated>2019-05-14T20:52:44+08:00</updated>
-    <id>https://acefish.github.io/15578383647199.html</id>
-    <content type="html"><![CDATA[
-<p>本文学习自<a href="https://github.com/halfrost/Analyze/blob/master/contents/ReactiveObjC/RACSignal.md">『状态』驱动的世界：ReactiveCocoa</a></p>
-
-<p><code>RACSignal</code>继承自<code>RACStream</code>，对该抽象类的方法进行了重写实现</p>
-
-<h3 id="toc_0"><code>return</code>方法</h3>
-
-<pre><code class="language-objectivec">+ (RACSignal *)return:(id)value {
-    return [RACReturnSignal return:value];
-}
-/**
-RACReturnSignal *signal = [[self alloc] init];
-signal-&gt;_value = value;
-*/
-</code></pre>
-
-<h3 id="toc_1"><code>-bind</code>方法</h3>
-
-<pre><code class="language-objectivec">
-/**
-实现过程
-1. 订阅原始信号值
-2. 当原信号发送值时，使用bindblock对其进行转换
-3. 如果bindblock返回一个信号，订阅该信号，并在收到该信号值时，将所有值传递给接收者subscriber
-4. 如果bindblock请求终止就向原信号发出`-sendError:`消息
-5. 当所有信号完成，向订阅者发送`-sendCompleted`
-6. 无论何时 当信号发生错误，向订阅者发送-sendError: 消息
-*/
-
-- (RACSignal *)bind:(RACSignalBindBlock (^)(void))block
-</code></pre>
-
-<p><code>-bind</code>方法在原始信号每次发出消息时，执行<code>RACSignalBindBlock</code>对其进行变换生成一个新的信号</p>
-
-<p>示例:</p>
-
-<pre><code class="language-objectivec">//示例1：
-RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
-    [subscriber sendNext:@1];
-    [subscriber sendNext:@2];
-    [subscriber sendNext:@3];
-    [subscriber sendNext:@4];
-    [subscriber sendCompleted];
-    return nil;
-}];
-RACSignal *bindSignal = [signal bind:^RACSignalBindBlock _Nonnull{
-    return ^(NSNumber *value, BOOL *stop) {
-        //简单的利用bind将 原始信号的值进行了一个变换
-        value = @(value.integerValue * value.integerValue);
-        return [RACSignal return:value];
-    };
-}];
-[signal subscribeNext:^(id  _Nullable x) {
-    NSLog(@&quot;signal: %@&quot;, x);
-}];
-[bindSignal subscribeNext:^(id  _Nullable x) {
-    NSLog(@&quot;bindSignal: %@&quot;, x);
-}];
-</code></pre>
-
-<h3 id="toc_2">-concat方法</h3>
-
-<pre><code class="language-objectivec">- (RACSignal *)concat:(RACSignal *)signal {
-    return [[RACSignal createSignal:^(id&lt;RACSubscriber&gt; subscriber) {
-
-        [self subscribeNext:^(id x) {
-            [subscriber sendNext:x];
-        } error:^(NSError *error) {
-            [subscriber sendError:error];
-        } completed:^{
-            [signal subscribe:subscriber];
-        }];
-    }] setNameWithFormat:@&quot;[%@] -concat: %@&quot;, self.name, signal];
-}
-</code></pre>
-
-<p>当原始信号<code>completed</code>后 subcribe contact的信号</p>
-
-<h3 id="toc_3">-zipWith方法</h3>
-
-<ul>
-<li>(RACSignal *)zipWith:(RACSignal *)signal<br/>
-将两个信号值进行zip 即每次发出一个为<code>RACTuple</code>值为[signal1value, signal2value]的值 当其中一个error或者completed即停止zipSignal</li>
-</ul>
-
-<h2 id="toc_4">信号的创建</h2>
-
-<p>RACSignal的<code>createSignal</code>方法</p>
-
-<pre><code class="language-objectivec">//RACSignal
-+ (RACSignal *)createSignal:(RACDisposable * (^)(id&lt;RACSubscriber&gt; subscriber))didSubscribe {
-    return [RACDynamicSignal createSignal:didSubscribe];
-}
-
-//RACDynamicSignal
-+ (RACSignal *)createSignal:(RACDisposable * (^)(id&lt;RACSubscriber&gt; subscriber))didSubscribe {
-    RACDynamicSignal *signal = [[self alloc] init];
-    signal-&gt;_didSubscribe = [didSubscribe copy];
-    return [signal setNameWithFormat:@&quot;+createSignal:&quot;];
-}
-</code></pre>
-
-<p>signal保存了<code>didSubscribe</code>并在每次有订阅者订阅当前信号时 都会执行一遍，向订阅者发送消息</p>
-
-<h3 id="toc_5">RACSignal类簇</h3>
-
-<p><code>RACSignal</code>拥有不同功能的子类</p>
-
-<ol>
-<li><p><code>RACDynamicSignal</code>：用于 <code>+ createSignal:</code></p></li>
-<li><p><code>RACEmptySignal</code> 用于 <code>+ empty</code></p>
-<pre><code class="language-objectivec">+ (RACSignal *)empty {
-    return [[[self alloc] init] setNameWithFormat:@&quot;+empty&quot;];<br/>
-}<br/>
-- (RACDisposable *)subscribe:(id&lt;RACSubscriber&gt;)subscriber {<br/>
-    return [RACScheduler.subscriptionScheduler schedule:^{<br/>
-        [subscriber sendCompleted];<br/>
-    }];<br/>
-}
-</code></pre></li>
-<li><p><code>RACReturnSignal</code>  用于 <code>+ return</code></p>
-<pre><code class="language-objectivec">+ (RACSignal *)return:(id)value {
-    RACReturnSignal *signal = [[self alloc] init];<br/>
-      signal-&gt;_value = value;<br/>
-      return signal;<br/>
-}<br/>
-//将value简单保存 在有其它订阅者时 向订阅者发送value<br/>
-- (RACDisposable *)subscribe:(id&lt;RACSubscriber&gt;)subscriber {<br/>
-        NSCParameterAssert(subscriber != nil);<br/>
-        return [RACScheduler.subscriptionScheduler schedule:^{<br/>
-            [subscriber sendNext:self.value];<br/>
-            [subscriber sendCompleted];<br/>
-        }];<br/>
-}
-</code></pre></li>
-<li><p><code>RACErrorSignal</code>  用于 <code>+ error</code></p>
-<pre><code class="language-objectivec">+ (RACSignal *)error:(NSError *)error {
-    RACErrorSignal *signal = [[self alloc] init];<br/>
-    signal-&gt;_error = error;<br/>
-#ifdef DEBUG<br/>
-    [signal setNameWithFormat:@&quot;+error: %@&quot;, error];<br/>
-#else<br/>
-    signal.name = @&quot;+error:&quot;;<br/>
-#endif<br/>
-    return signal;<br/>
-}<br/>
-- (RACDisposable *)subscribe:(id&lt;RACSubscriber&gt;)subscriber {<br/>
-       return [RACScheduler.subscriptionScheduler schedule:^{<br/>
-    [subscriber sendError:self.error];<br/>
-}];<br/>
-}
-</code></pre></li>
 </ol>
 
 ]]></content>

@@ -82,133 +82,13 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15560883411509.html">MatrixiOS学习</a></h1>
-			<p class="meta"><time datetime="2019-04-24T14:45:41+08:00" 
-			pubdate data-updated="true">2019/4/24</time></p>
+		  	<h1 class="entry-title"><a href="15647325396059.html">Reactive Cocoa Tutorial</a></h1>
+			<p class="meta"><time datetime="2019-08-02T15:55:39+08:00" 
+			pubdate data-updated="true">2019/8/2</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">学习到的知识点</h2>
-
-<h4 id="toc_1">1.使用协议和继承进行规范开发</h4>
-
-<p>在项目中定义了plugin的基类<code>MatrixPlugin</code>继承自协议<code>MatrixPluginProtocol</code>，而接下来的组件开发，只需要继承自<code>MatrixPlugin</code>，然后实现协议中的方法即可</p>
-
-<p>而当回调时，也不需要知道具体是哪个<code>plugin</code>，只需指定其实一个继承了协议的插件即可:<br/>
-<code>- (void)onInit:(id&lt;MatrixPluginProtocol&gt;)plugin</code>,就可以使用其在协议中指定的方法</p>
-
-<h4 id="toc_2">2.利用运行时实现NSCoding协议</h4>
-
-<p>利用运行时方法获取对象类以及父类的所有属性变量属性变量，执行<code>encodeObject</code>和<code>decodeObjectForKey</code>方法</p>
-
-<p><a href="media/15560883411509/MatrixBaseModel.mm">MatrixBaseMode</a></p>
-
-<h4 id="toc_3">3. 对于app中常用文件路径可以专门写个工具类，为避免每次都访问使用单例</h4>
-
-<pre><code class="language-objectivec">+ (NSString *)matrixCacheRootPath
-{
-    static NSString *s_rootPath;
-    static dispatch_once_t onceToken;
-    dispatch_once(&amp;onceToken, ^{
-        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
-        s_rootPath = [paths[0] stringByAppendingString:@&quot;/Matrix&quot;];
-        if ([[NSFileManager defaultManager] fileExistsAtPath:s_rootPath] == NO) {
-            [[NSFileManager defaultManager] createDirectoryAtPath:s_rootPath withIntermediateDirectories:YES attributes:nil error:nil];
-        }
-    });
-    return s_rootPath;
-}
-</code></pre>
-
-<h4 id="toc_4">4.判断app是否处于调试环境下</h4>
-
-<pre><code class="language-objectivec">+ (BOOL)isBeingDebugged
-{
-    // Returns true if the current process is being debugged (either
-    // running under the debugger or has a debugger attached post facto).
-    int                 junk;
-    int                 mib[4];
-    struct kinfo_proc   info;
-    size_t              size;
-    
-    // Initialize the flags so that, if sysctl fails for some bizarre
-    // reason, we get a predictable result.
-    
-    info.kp_proc.p_flag = 0;
-    
-    // Initialize mib, which tells sysctl the info we want, in this case
-    // we&#39;re looking for information about a specific process ID.
-    
-    mib[0] = CTL_KERN;
-    mib[1] = KERN_PROC;
-    mib[2] = KERN_PROC_PID;
-    mib[3] = getpid();
-    
-    // Call sysctl.
-    
-    /**
-     *int sysctl(int *name, u_int namelen, void *old, size_t *oldlen, void *newp, size_t newlen);
-     *name参数是一个用以指定查询的信息数组；
-     *namelen用以指定name数组的元素个数；
-     *old是用以函数返回的缓冲区；
-     *oldlen用以指定oldp缓冲区长度；
-     *newp和newlen在设置时使用；
-     *当进程被调试器依附时，kinfo_proc结构下有一个kp_proc结构域，
-     kp_proc的p_flag的被调试标识将被设置，即会进行类似如下的设置：
-     kinfo_proc.kp_proc.p_flag&amp;P_TRACED
-     其中P_TRACED的定义如下：
-     #define P_TRACED        0x00000800
-     */
-    
-    
-    size = sizeof(info);
-    junk = sysctl(mib, sizeof(mib) / sizeof(*mib), &amp;info, &amp;size, NULL, 0);
-    assert(junk == 0);
-    
-    // We&#39;re being debugged if the P_TRACED flag is set.
-    return ((info.kp_proc.p_flag &amp; P_TRACED) != 0);
-}
-</code></pre>
-
-<p>以及一些获取app基本信息的方法<br/>
-<a href="media/15560883411509/MatrixDeviceInfo.mm">MatrixDeviceInfo</a></p>
-
-<h4 id="toc_5">5. atexit(func)在app正常退出时调用函数</h4>
-
-<p><code>atexit</code>函数是一个特殊的函数，它在正常退出程序时调用的函数<br/>
-atexit设置的函数会在exit过程中被调用，exit调用终止处理函数的顺序和atexit登记的顺序相反</p>
-
-<p>进程终止的方式有8种:</p>
-
-<ol>
-<li>从main函数返回</li>
-<li>调⽤用exit函数</li>
-<li>调⽤用_exit或_Exit； </li>
-<li>最后⼀一个线程从启动例程返回；</li>
-<li>最后⼀一个线程调⽤用pthread_exit</li>
-<li>调⽤用abort函数； </li>
-<li>接到一个信号并终⽌； </li>
-<li>最后⼀一个线程对取消请求做出响应<br/>
-其中前5种为正常终止，而后3种为异常终止</li>
-</ol>
-
-<p><code>_exit</code>和<code>_Exit</code>立即进入内核，而exit会进行一些清理工作<br/>
-exit函数运行时首先会执行由atexit()函数登记的函数，然后会做一些自身的清理工作，同时刷新所有输出流、关闭所有打开的流并且关闭通过标准I/O函数tmpfile()创建的临时文件。 </p>
-
-<h4 id="toc_6">6. 使用dispatch_block_cancel()来取消执行某些未来执行的block</h4>
-
-<h4 id="toc_7">7. MatrixAppRebootAnalyzer中对App启动和关闭状态的监控</h4>
-
-<p>Matrix中对应用被杀原因检测<br/>
-<img src="media/15560883411509/15562491518956.jpg" alt="" style="width:500px;"/></p>
-
-<h4 id="toc_8">8.获取CPU</h4>
-
-<p><code>WCCPUHandler</code>文件中对于CPU usage的计算</p>
-
-<h4 id="toc_9">9.获取线程信息</h4>
-
-<p><code>WCGetMainThreadUtil</code>文件中使用基于KSCrash获取堆栈</p>
+		  	<p>学习地址  sunnyxx<a href="http://blog.sunnyxx.com/2014/03/06/rac_1_macros/">Reactive Cocoa Tutorial</a></p>
 
 
 		</div>
@@ -231,8 +111,10 @@ exit函数运行时首先会执行由atexit()函数登记的函数，然后会�
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -246,7 +128,7 @@ exit函数运行时首先会执行由atexit()函数登记的函数，然后会�
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -342,31 +224,31 @@ exit函数运行时首先会执行由atexit()函数登记的函数，然后会�
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

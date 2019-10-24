@@ -82,97 +82,89 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15644708593081.html">离屏渲染</a></h1>
-			<p class="meta"><time datetime="2019-07-30T15:14:19+08:00" 
-			pubdate data-updated="true">2019/7/30</time></p>
+		  	<h1 class="entry-title"><a href="15686206334500.html">子类</a></h1>
+			<p class="meta"><time datetime="2019-09-16T15:57:13+08:00" 
+			pubdate data-updated="true">2019/9/16</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>学习自即刻团队的<a href="https://zhuanlan.zhihu.com/p/72653360">离屏渲染</a></p>
+		  	<h2 id="toc_0">ASDisplayNode</h2>
 
-<h2 id="toc_0">iOS渲染架构</h2>
+<p>虽然使用类似于<code>UIView</code> 但是我们需要遵循一些使用规则 帮助更好的使用并按照预期运行</p>
 
-<p>在WWDC的Advanced Graphics and Animations for iOS Apps（WWDC14 419，关于UIKit和Core Animation基础的session在早年的WWDC中比较多）中有这样一张图：</p>
+<h4 id="toc_1">-init</h4>
 
-<p><img src="media/15644708593081/15644710697530.jpg" alt=""/></p>
+<p>当使用<code>nodeBlocks</code>时，此方法在后台线程调用。在init方法完成之前没有其他方法可以运行，因此我们无需在此方法中锁定</p>
 
-<p>可以看到是CPU和GPU协作完成了渲染操作。CPU主要在Application这一层操作，之后在RenderServer线程，CoreAnimation会将具体操作转换成发送GPU的draw calls（以前是call OpenGL 现在有部分转为Metal）,进行渲染</p>
+<p>需要注意，<code>-init</code>方法能在任何对队列调用。所以我们不应该在初始化过程中初始化任何UIKit对象，调用任何node的view或layer等有关的操作，或者添加任何手势识别器。这些过程可以在<code>-didLoad</code>方法中</p>
 
-<h2 id="toc_1">离屏渲染</h2>
+<h4 id="toc_2">-didLoad</h4>
 
-<p>当需要在屏幕上显示内容时，至少需要一块与屏幕像素数据量一样大的<code>frame buffer</code>，作为像素数据存储区域，而这也是GPU存储渲染结果的地方。如果有时因为面临限制，无法把渲染结果直接写入frame buffer，而是先暂存在另外的内存区域，之后在写入<code>frame buffer</code>，这个过程就被称为<strong>离屏渲染</strong></p>
+<p>这个方法当视图在后台加载完成后执行一次。保证在主线程被调用，因此<mark>是我们运行任何UIKit事务的适当位置</mark>(例如添加手势识别器，触摸视图/图层，初始化UIKit对象)</p>
 
-<h3 id="toc_2">CPU&quot;离屏渲染&quot;？</h3>
+<h4 id="toc_3">-layoutSpecThatFits:</h4>
 
-<p>在UIView中自己执行的drawRect方法，cpu会申请一块内存区域等待有可能到来的绘画操作。<br/>
-在CPU中进行的光栅化操作（如文字渲染、图片解码）等<br/>
-都无法直接绘制到GPU掌管的frame buffer，只能暂存在另外一块内存中<br/>
-这些发生在CPU中这些“离屏渲染”并不是真正意义上的，而是属于&quot;软件渲染&quot;范畴的</p>
+<p>这个方法在后台执行繁重的定义布局的计算。这是我们声明、创建和修改<code>ASLayoutSepec</code>布局描述对象的地方，该对象描述节点的size以及子节点的position和size。<mark>这是我们放置大部分布局代码的地方</mark></p>
 
-<h3 id="toc_3">GPU离屏渲染</h3>
+<p>ASLayoutSpec 对象直到在此方法中返回前是可变的。 在这之后，这个对象将不可改变，需要注意的是你不需要缓存 ASLayoutSpec 对象以备后用，我们建议你在必要时重新创建布局描述。</p>
 
-<p>我们知道，渲染主要由CoreAnimation的Render Server模块，通过调用显卡驱动提供的OpenGL/Metal接口执行。在执行渲染时，<code>Render Server</code>遵循画家算法，layer按照次序输出至frameBuffer，覆盖即刻得到最终的显示结果，然后交由GPU进行渲染显示到屏幕上</p>
+<p>因为此方法在后台运行，因此不应该在此方法中设置<code>node.view</code>或者<code>node.layer</code>属性。此外，除非您知道自己在做什么，否则不应该再次方法中创建任何节点。与其它方法重写不同，不必在方法开始时调用super方法</p>
 
-<p>但是有部分场景是无法这样实现的，因为GPU虽然可以按照画家算法进行输出，但是无法再某曾渲染完成后，再回头擦除或者改变其中的某部分。这就意味着，对于layer如果不能单词遍历就完成渲染，那就只能另开一块内存，借助这个临时中转区域来完成多次的修改/剪裁操作(这就是离屏渲染了)。</p>
+<h4 id="toc_4">-layout</h4>
 
-<h3 id="toc_4">常见离屏渲染场景</h3>
+<p>在此方法中调用<code>super</code>，将会使用<code>layoutSpec</code>对象计算布局，所有子节点都将计算其size和position。</p>
 
-<ol>
-<li><strong>corenerRadus+clipsToBounds</strong>
-因为此时子layer也会被裁减，但是在没有统一组合后也是无法获得统一裁剪后的图像，因此需要开辟另外一块内存，在渲染和切角完成后，输出到frame buffer中<br/>
-注意如果没有clipsToBounds，也不会触发离屏渲染了</li>
-<li><strong>shadow</strong>
-原因其实与圆角差不多，在没有将画布上所有内容组合完成之前也是无法知道阴影形状的，因此需要额外的内存空间。<br/>
-当然，如果我们能在整个画布都没有渲染完成之前就知道阴影部分的形状（设置阴影的shadowPath），也可以绘制阴影而不触发离屏渲染</li>
-<li><p><strong>group opacity</strong><br/>
-此时的alpha并不是加到某一层，而是整个layer树，因此只能等渲染完成再加上alpha，最后和底下的其它layer相折叠，得到实际的颜色。因此这也是需要另外开辟存储空间的</p></li>
-<li><p><strong>mask</strong></p>
-<p>mask由layer和其上的子layer组合，而且可能有透明度，因此是会触发离屏渲染的</p></li>
-<li><p><strong>UIBlurEffect</strong><br/>
-<img src="media/15644708593081/15645419693084.jpg" alt="" style="width:500px;"/></p></li>
-</ol>
+<p><code>layout</code>在概念上类似<code>UIViewController</code>的<code>-viewWillLayoutSubviews</code>。可以在这个方法中，更改<code>hidden</code>属性、修改View属性(不是布局属性)、或者背景颜色。假如正好使用UIView，可以再这个方法中修改其<code>frame</code>。然而，我们可以用<code>initWithViewBlock：</code>然后在后台线程的任何地方，调整其大小。</p>
 
-<h3 id="toc_5">离屏渲染解决方案</h3>
+<p>这个方法在主线程上调用。但是最后不要过多使用这个方法，我们更应该在主线程以外做布局</p>
 
-<p>因为离屏渲染开销很大，特别是在滚动视图中，每帧都会触发cell的重绘，因此在无法避免时，就尽量降低性能影响，通过<code>CALayer</code>提供的<code>shouldRasterize</code>设置其为true后，<code>Render Server</code>会强制吧layer的渲染结果(包括其子layer，以及圆角、阴影、group opacity等等)保存在一块内存中，这样接下来就可以被复用，而不会再次离屏渲染了</p>
+<p>使用<code>-layout</code>的一个重要用途是你需要子节点的<code>size</code>是精确的。例如：当你想要一个<code>collectionNode</code>占满屏幕时，这种情况是不被布局规范所允许的，我们通常手动在方法中添加<code>subnode.frame = self.bounds;</code></p>
 
-<p>注意:</p>
+<h2 id="toc_5">ASViewController</h2>
 
-<ul>
-<li><code>shouldRasterize</code>主旨在于降低性能损失，但是至少会触发一次离屏渲染，如果layer本不复杂，也没有圆角 阴影等，打开这个只会没必要的多一次离屏渲染</li>
-<li>一旦缓存超过100ms没有被使用，会被自动废弃</li>
-<li>layer的内容必须是静态的，因为一旦发生变化缓存就失效了，就有需要重新离屏渲染，然后缓存，这就需要我们极力避免的情况</li>
-</ul>
+<p><code>ASViewController</code>是<code>UIViewController</code>的子类，用来管理nodes。因为是一个<code>UIViewController</code>，所以所有方法都在主线程调用(<code>ASViewController</code>也应该在主线程创建)。</p>
 
-<h3 id="toc_6">CPU渲染的使用</h3>
+<h4 id="toc_6">-init</h4>
 
-<p>因为GPU对图形处理的更高性能，以及其更好的并行计算能里，我们倾向于让GPU完成渲染任务，而CPU有更多时间来处理复杂的app的复杂逻辑。</p>
+<p>在生命周期的最开始调用一次。与<code>UIViewController</code>相同不要再次方法中访问<code>self.view</code>或者<code>self.node.view</code>，因而为它会强制视图提前创建。可以在<code>viewDidLoad</code>方法中执行任何视图访问</p>
 
-<p>但是针对一些特殊情况，比如文字渲染(CoreText),图片渲染(ImageIO),因为此时GPU并不擅长此类工作，因为需要先由CPU处理好之后，将结果作为<a href="https://texturegroup.org/docs/automatic-layout-examples-2.html">texture</a>传给GPU.</p>
+<p>ASViewController 指定的构造器是<code>initWithNode:</code>方法，在调用super方法前初始化node。</p>
 
-<p>比如，我们可以使用<code>CoreGraphic</code>来给图形设置圆角(将圆角以外的部分设置为透明)，这样的话就全部由CPU完成，不再需要使用<code>corerRadius</code>。而且这样的话，我们也可以做到灵活控制裁剪和缓存的时机，避开CPU和GPU繁忙，平衡性能波动</p>
+<pre><code class="language-objectivec">- (instancetype)init
+{
+  _pagerNode = [[ASPagerNode alloc] init];
+  self = [super initWithNode:_pagerNode];
+  
+  // setup any instance variables or properties here
+  if (self) {
+    _pagerNode.dataSource = self;
+    _pagerNode.delegate = self;
+  }
+  
+  return self;
+}
+</code></pre>
 
-<p>注意：</p>
+<h4 id="toc_7">-loadView</h4>
 
-<ol>
-<li>渲染不是CPU强项，调用CoreGraphics会消耗其相当一部分时间，因此通常将CPU渲染放在后台完成(AsyncDisplayKit的实现思想)。然后再回到主线程，将渲染结果传给CoreAnimation</li>
-<li>CPU渲染性能不够 只能渲染静态的元素，如文字、图片等</li>
-<li>渲染结果的bitmap数据量较大，占用较大内存，应该在使用完成后，及时释放，否则容易OOM</li>
-<li>使用CPU渲染就不要再触发离屏渲染了</li>
-<li>多使用Instuments工具测试性能</li>
-</ol>
+<p>不推荐使用此方法，因此相比较<code>viewDidLoad</code>只有缺点没有优点。然而，只要我们在此方法中不将<code>self.view</code>设置为其他值 也可以安全使用的。其super方法会将其<code>UIViewController</code>的view换为<code>ASViewController</code>的<code>node.view</code></p>
 
-<h2 id="toc_7">即刻团队对即刻APP的优化</h2>
+<h4 id="toc_8">-viewDidLoad</h4>
 
-<ol>
-<li>即刻大量应用AsyncDisplayKit(Texture)作为主要渲染框架，对于文字和图片的异步渲染操作交由框架来处理。</li>
-<li>对于图片的圆角，统一采用“precomposite”的策略，也就是不经由容器来做剪切，而是预先使用CoreGraphics为图片裁剪圆角</li>
-<li>对于视频的圆角，由于实时剪切非常消耗性能，我们会创建四个白色弧形的layer盖住四个角，从视觉上制造圆角的效果</li>
-<li>对于view的圆形边框，如果没有backgroundColor，可以放心使用cornerRadius来做</li>
-<li>对于所有的阴影，使用shadowPath来规避离屏渲染</li>
-<li>对于特殊形状的view，使用layer mask并打开shouldRasterize来对渲染结果进行缓存</li>
-<li>对于模糊效果，不采用系统提供的UIVisualEffect，而是另外实现模糊效果（CIGaussianBlur），并手动管理渲染结果</li>
-</ol>
+<p>这方法在ASViewController的生命周期中，只会在loadView方法后，立即执行一次。此时最方便访问<code>node.view</code>。也可以执行需要访问<code>view/layer</code>的只执行一次的方法(例如添加手势)。</p>
+
+<p>不适合在方法中放置布局视图的代码。因为界面重绘时，该方法也不会被再次调用。</p>
+
+<h4 id="toc_9">-viewWillLayoutSubviews</h4>
+
+<p>与节点node的<code>layout</code>方法同时调用，在ASVC的生命周期中有可能会多次调用。当<code>ASViewController</code>的node边界发生变化(包括旋转、分屏、键盘)以及层次结构发生变化（包括node增加、删除、改变大小）时，都会调用</p>
+
+<p>因为它不经常调用，但是调用及代表页面需要重绘，因此所有布局代码最好放到这个方法中，即使不直接依赖size的UI代码。<br/>
+<mark>为保持一致性，通常将所有布局代码放置在此处。</mark></p>
+
+<h4 id="toc_10">-viewWillAppear: / -viewDidDisappear:</h4>
+
+<p>方法在<code>ASViewController</code>的node出现在屏幕之前 和 从视图层次中删除之后调用。通常在方法中开始或者停止动画，或者记录用户操作。</p>
 
 
 		</div>
@@ -195,8 +187,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -210,7 +204,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -306,31 +300,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

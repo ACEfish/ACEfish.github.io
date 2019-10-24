@@ -82,122 +82,273 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15536896283260.html">网络层架构</a></h1>
-			<p class="meta"><time datetime="2019-03-27T20:27:08+08:00" 
-			pubdate data-updated="true">2019/3/27</time></p>
+		  	<h1 class="entry-title"><a href="14903384285214.html">显式动画</a></h1>
+			<p class="meta"><time datetime="2017-03-24T14:53:48+08:00" 
+			pubdate data-updated="true">2017/3/24</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>文章看自<a href="https://casatwy.com/iosying-yong-jia-gou-tan-kai-pian.html">这里</a></p>
+		  	<p>隐式动画是在iOS平台创建动态用户界面的一种直接方式，也是UIKit动画机制的基础<br/>
+显式动画，它能够对一些属性做指定的自定义动画，或者创建非线性动画</p>
 
-<h2 id="toc_0">网络层设计需要注意</h2>
+<h3 id="toc_0">属性动画</h3>
 
-<h3 id="toc_1">1. 以什么样的方式将数据交付给业务层</h3>
+<p><code>core animation</code>里面有个很重要的类<code>CAPropertyAnimation</code>(属性动画)，它有两个子类，<code>CABasicAnimation</code>和<code>CAKeyFrameAnimation</code>。</p>
 
-<p>Delegate block notification</p>
+<h4 id="toc_1">属性动画</h4>
 
-<p>尽量不要使用notification，这要会导致可能的跨层访问导致耦合性增加；notification的一对多关系，导致问题难以追踪</p>
+<p><code>CAAnimation</code>在动画结束时会属性会回到原值所以<br/>
+我们在做了显式动画后可以用<code>CAAnimationDelegate</code>中<code>- animationDidStop:finished:</code>方法来更新图层属性（一般设置其为终值）,更新属性的时候我们需要一个新的事务并且禁用图层行为.否则会有两次动画.</p>
 
-<p>block比较难追踪、维护；block会延长对象的生命周期；</p>
-
-<p>在离散场景下，因为每次回调时做的任务，在每次回调时都是一致的，因此不要用block，使用delegate最好<br/>
-在集约型调用时，因为每次请求类型都不一样，回调做的业务也不一致，因此使用block较好</p>
-
-<p>在网络请求和网络层接受请求地方，采用block没问题，但是在获得数据交给业务方时，最好还是通过delegate去通知业务方,因为使用block的话 会导致调用请求的逻辑和获得结果的处理逻辑在同一个地方，代码变长，同时包含调用前和调用后的两部分逻辑，一次使用delegate，请求API地方只写请求的逻辑，在回调地方 只写回调的逻辑</p>
-
-<h3 id="toc_2">2.交付什么样的数给业务层</h3>
-
-<p>不要交付直接转换好的对象模型给业务层，可以交付json或者NSDictionary或者array，然后业务层通过特定的工具类转换为自己需要的数据(这个工具类可能是遵循了同一个协议的很多类，每个类有自己的转换方法，以及转换结果)</p>
-
-<p>如果直接下发模型给业务层，那么在API请求层可能会有很多转换性能消耗，而且需要引入很多模型类，导致维护灾难</p>
-
-<p>使用统一的工具类转换: 1. 可以使转换的逻辑集中，2. 将数据网络请求的数据直接转换为我们View需要展示的方便的数据，一步到位 3. 可以将业务数据和业务隔离，如果业务逻辑有修改，直接修改或者替换这个工具类即可，而UI有修改时，也不影响该转换工具类</p>
-
-<p>转化出来的数据是直接可用的数据，不限定于dictionary或者model，也可以是view或者tableCell等</p>
-
-<h3 id="toc_3">3.调用API应该是集约型还是离散型</h3>
-
-<p>集约型: 所有api调用的是同一个类<br/>
-离散型: 每一个请求api对应初始化一个请求类的对象</p>
-
-<p>推荐离散型原因:</p>
-
-<ol>
-<li>可以方便做到正在进行的请求的取消</li>
-<li>离散型可以针对不同的请求做不同的处理方式</li>
-<li>当请求的着陆点消失时，离散型可以直接在请求类中感知并取消请求<br/>
-如果是离散型的API调用，取消请求的代码写到APIManager里面就可以了，然后随着ViewController的回收进程，APIManager也会被跟着回收，这部分代码就得到了调用的机会。</li>
-<li>离散型的请求可以给业务方提供更灵活性</li>
-</ol>
-
-<p>综上，关于集约型的API调用和离散型的API调用，我倾向于这样：对外提供一个BaseAPIManager来给业务方做派生，在BaseManager里面采用集约化的手段组装请求，放飞请求，然而业务方调用API的时候，则是以离散的API调用方式来调用。如果你的App只提供了集约化的方式，而没有离散方式的通道，那么我建议你再封装一层，便于业务方使用离散的API调用方式来放飞请求。</p>
-
-<p>关于集约型的API调用和离散型的API调用，我倾向于这样：对外提供一个BaseAPIManager来给业务方做派生，在BaseManager里面采用集约化的手段组装请求，放飞请求，然而业务方调用API的时候，则是以离散的API调用方式来调用。</p>
-
-<p>当我们不得已要实现继承时，最好使用协议方式来规范子类的重载方法，使用IOP方式来限制派生类的重载</p>
-
-<p>总结</p>
-
-<ol>
-<li>使用delegate来做数据对接，仅在必要时采用Notification来做跨层访问</li>
-<li>提供reformer机制来处理网络层反馈的数据，这个机制很重要，好处极多</li>
-<li>网络层上部分使用离散型设计，下部分使用集约型设计</li>
-<li>设计合理的继承机制，让派生出来的APIManager受到限制，避免混乱</li>
-</ol>
-
-<h2 id="toc_4">网络层的安全</h2>
-
-<h2 id="toc_5">网络层优化方案</h2>
-
-<p>优化入手切点:</p>
-
-<ol>
-<li>针对链路建立环节的优化</li>
-<li>针对链路传输数据量的优化</li>
-<li>针对链路复用的优化</li>
-</ol>
-
-<h3 id="toc_6">针对链路建立环节的优化</h3>
-
-<p>请求建立的步骤：</p>
-
-<ol>
-<li>发起请求</li>
-<li>DNS解析得到域名</li>
-<li>根据IP进行3次或者4次(HTTPS)握手</li>
-</ol>
-
-<p>优化方案1.1： 缓存一些时效性比较长数据，减少请求发起的次数，将把API名字和参数拼成一个字符串然后取MD5作为key，存储对应数据； 清除数据策略:超时清理或者缓存数据过大清理，可以根据APP的操作日志决定；缓存可以存储在内存中，或者磁盘上<br/>
-优化方案1.2： 减少请求发起的次数；1）比如多次下拉刷新，在一次请求没落地前剩下的没必要继续请求发送了 2）而类似条件筛选的，就可以取消前面的发送的请求 3）对于某些请求，没必要频繁发送的，可以先在本地记录，等数据满多少条后，上传数据；app每次启动时，上传上次的一流数据</p>
-
-<p>优化方案2.1: 因为移动端的信号源常变，因此DNS链路的缓存经常变化，导致缓存的作用一般，另外因为很多应用app网络请求操作，属于你的app的DNS缓存很快被其他应用使用、覆盖，因此在解析DNS时，会耗费时间，优化方案就是：直接使用ip请求</p>
-
-<p>对于建立链接时候的第三步，国内的网络环境分北网通南电信（当然实际情况更复杂，这里随便说说），不同服务商之间的连接，延时是很大的，我们需要想办法让用户在最适合他的IP上给他提供服务，那么就针对我们绕过DNS服务的手段有一个额外要求：尽可能不要让用户使用对他来说很慢的IP。</p>
-
-<p>所以综上所述，方案就应该是这样：本地有一份IP列表，这些IP是所有提供API的服务器的IP，每次应用启动的时候，针对这个列表里的所有IP取ping延时时间，然后取延时时间最小的那个IP作为今后发起请求的IP地址。</p>
-
-<pre><code class="language-objectivec">针对建立连接的优化手段其实是跟DNS域名解析的优化手段是一样的。不过这需要你的服务器提供
-服务的网络情况要多，一般现在的服务器都是双网卡，电信和网通。由于中国特色的互联网ISP分
-布，南北网络之间存在瓶颈，而我们App针对链接的优化手段主要就是着手于如何减轻这个瓶颈对
-App产生的影响，所以需要维护一个IP列表，这样就能就近连接了，就起到了优化的效果。
-
-我们一般都是在应用启动的时候获得本地列表中所有IP的ping值，然后通过NSURLProtocol的
-手段将URL中的HOST修改为我们找到的最快的IP。另外，这个本地IP列表也会需要通过一个API
-来维护，一般是每天第一次启动的时候读一次API，然后更新到本地。
-
+<pre><code class="language-objectivec">- (void)animationDidStop:(CABasicAnimation *)anim finished:(BOOL)flag
+{
+    //set the backgroundColor property to match animation toValue
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.colorLayer.backgroundColor = (__bridge CGColorRef)anim.toValue;
+    [CATransaction commit];
+}
 </code></pre>
 
-<h3 id="toc_7">针对链接复用的优化</h3>
+<p>但是如果我们有多个动画这个代理回调是无法区分是哪个图层的调用.<br/>
+1.因为这个代理传进来的动画的深拷贝,所以没有办法通过设置动画属性来分辨.<br/>
+2.使用<code>-addAnimation:forKey:</code>给动画设置不同key,<code>-animationForKey:</code>找到对应的key来对比，可实现但是比较复杂<br/>
+3.最简单的方法,<code>CAAnimation</code>实现了KVC,但是更像一个 NSDictionary ，可以让你<strong>随意设置键值对</strong>，即使和你使用的动画类所声明的属性并不匹配。</p>
 
-<h2 id="toc_8">自己的一些思考</h2>
+<pre><code class="language-objectivec">//初始化动画时用KVC设置键值对
+CABasicAnimation *animation = [CABasicAnimation animation];
+[self updateHandsAnimated:NO];
+animation.keyPath = @&quot;transform&quot;;
+animation.toValue = [NSValue valueWithCATransform3D:transform];
+animation.duration = 0.5;
+animation.delegate = self;
+[animation setValue:handView forKey:@&quot;handView&quot;];
+[handView.layer addAnimation:animation forKey:nil];
+- (void)animationDidStop:(CABasicAnimation *)anim finished:(BOOL)flag
+{
+    //通过kvc获取存储的值
+    UIView *handView = [anim valueForKey:@&quot;handView&quot;];
+    handView.layer.transform = [anim.toValue CATransform3DValue];
+}
+</code></pre>
 
-<ol>
-<li><p>转化网络层下发数据的一些思考:<br/>
-业务层通过特定的工具类转换为自己需要的数据(这个工具类可能是遵循了同一个协议的很多类，每个类有自己的转换方法，以及转换结果)</p></li>
-<li><p>使用离散型请求，关于多模块共享数据</p>
-<p>我们可以使用离散型请求，在业务层获取到数据后，如果该数据需要共享，则可以业务层告诉一个共享模块(单例模块)，将此数据存储（此共享模块数据Model层，提供数据的存。取、删、该等功能）</p></li>
-<li></li>
-</ol>
+<p><code>CABasicAnimation</code>只能作用于一个属性,只能有初始值和结束值</p>
+
+<h4 id="toc_2">关键帧动画</h4>
+
+<p><code>CABasicAnimation</code>揭示了大多数隐式动画背后依赖的机制,但是显式地给图层添加<code>CABasicAnimation</code>相较于<code>隐式动画</code>而言，只能说费力不讨好。</p>
+
+<p><code>CAKeyframeAnimation</code>和<code>CABasicAnimation</code> 类似同样是<code>CAPropertyAnimation</code> 的一个子类它依然作用于单一的一个属性,但是它不限制于设置一个起始和结束的值，而是可以根据一连串随意的值来做动画。</p>
+
+<p><code>CAKeyframeAnimation</code>关键帧动画:只我们只需要绘制关键帧的动画，然后<code>Core Animation</code>在每帧之间进行插入。</p>
+
+<pre><code class="language-objectivec">- (IBAction)changeColor
+{
+    //create a keyframe animation
+    CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
+    animation.keyPath = @&quot;backgroundColor&quot;;
+    animation.duration = 2.0;
+    animation.values = @[
+    (__bridge id)[UIColor blueColor].CGColor,
+    (__bridge id)[UIColor redColor].CGColor,
+    (__bridge id)[UIColor greenColor].CGColor,
+    (__bridge id)[UIColor blueColor].CGColor ];
+    //apply animation to layer
+    [self.colorLayer addAnimation:animation forKey:nil];
+}
+</code></pre>
+
+<p>是因为<code>CAKeyframeAnimation</code>并不能自动把当前值作为第一帧（就像<code>CABasicAnimation</code> 那样把 <code>fromValue</code> 设为 <code>nil</code> ），所以动画会在开始的时候突然由原来色变为蓝色,结束时又突然由结束色变为原来色.</p>
+
+<p>上面是使用<code>animation.values</code>来设置关键帧，我还可以用<code>path 属性</code>指定运动序列.<br/>
+我们要绘制一个<code>CGPath</code>的三次贝塞尔曲线，可以通过使用一个基于C的<code>Core Graphics</code>绘图指令来创建，不过用<code>UIKit</code>提供的<code>UIBezierPath</code>类会更简单.</p>
+
+<pre><code class="language-objectivec">UIBezierPath *bezierPath = [[UIBezierPath alloc] init];
+[bezierPath moveToPoint:CGPointMake(0, 150)];
+[bezierPath addCurveToPoint:CGPointMake(300, 150) controlPoint1:CGPointMake(75, 0) controlPoint2:CGPointMake(225, 300)];
+CAKeyframeAnimation *animation = [CAKeyframeAnimation animation];
+animation.keyPath = @&quot;position&quot;;
+animation.duration = 4.0;
+animation.path = bezierPath.CGPath;
+[shipLayer addAnimation:animation forKey:nil];
+</code></pre>
+
+<p>苹果很人性化的给我们提供了<code>rotationMode</code>属性,设置它为常量 <code>kCAAnimationRotateAuto</code>图层将会根据曲线的切线自动旋转。<br/>
+<code>animation.rotationMode = kCAAnimationRotateAuto;</code></p>
+
+<h4 id="toc_3">虚拟属性</h4>
+
+<p>属性动画实际上是针对于关键路径而不是一个键,这就意味着可以对<code>子属性</code>甚至是<code>虚拟属性</code>做动画.</p>
+
+<p>例如:想要对物体做旋转动画,需要作用于<code>transform</code> 属性，因为<code>CALayer</code>没有显式提供角度或者方向之类的属性</p>
+
+<pre><code class="language-objectivec">CABasicAnimation *animation = [CABasicAnimation animation];
+animation.keyPath = @&quot;transform&quot;;
+animation.duration = 2.0;
+animation.toValue = [NSValue valueWithCATransform3D: CATransform3DMakeRotation(M_PI, 0, 0, 1)];
+[shipLayer addAnimation:animation forKey:nil];
+/**
+这样确实会旋转180°但是如果我们把M_PI改为2*M_PI就不会旋转了
+即使我们设置了byValue也无效,因为变换矩阵并不会像角度值一样叠加
+*/
+</code></pre>
+
+<p>对于<code>CATransform3D</code>因为0度旋转和360度旋转的矩阵完全相同,所以<code>fromValue</code> = <code>toValue</code>因此不会旋转的</p>
+
+<p>我们当然可以用关键帧动画,修改<code>transform</code>属性，实时地重新计算每个时间点的每个变换效果。这是非常复杂的，不推荐</p>
+
+<p>推荐:<br/>
+我们可以<br/>
+对<code>transform.rotation</code>关键路径应用动画，而不是<code>transform</code>本身</p>
+
+<pre><code class="language-objectivec">CABasicAnimation *animation = [CABasicAnimation animation];
+animation.keyPath = @&quot;transform.rotation&quot;;
+animation.duration = 2.0;
+animation.byValue = @(M_PI * 2);
+[shipLayer addAnimation:animation forKey:nil];
+</code></pre>
+
+<p>这样我们就可以简单使用角度而不用复杂的矩阵,就可以使用<code>byValue</code>了. 还可以额外使用<code>transform.position</code> 或者<code>transform.scale</code></p>
+
+<p><code>transform.rotation</code>属性其实并不存在,这是因为<code>CATransform3D</code>不是对象而是结构体，它就是一个 <code>CALayer</code> 用于处理动画变换的虚拟属性。当我们<code>transform.rotation</code>等虚拟属性做动画时，<code>Core Animation</code>自动地根据通过 <code>CAValueFunction</code> 来计算的值来更新<code>transform</code> 属性。<br/>
+<code>CAValueFunction</code>用于把我们赋给虚拟的 <code>transform.rotation</code>简单浮点值转换成真正的用于摆放图层的<code>CATransform3D</code> 矩阵值。可以通过设置 <code>CAPropertyAnimation</code> 的<code>valueFunction</code>属性来改变，于是你设置的函数将会覆盖默认的函数。</p>
+
+<h3 id="toc_4">动画组</h3>
+
+<h4 id="toc_5">动画组</h4>
+
+<p><code>属性动画</code>仅仅作用于单独的属性,<code>CAAnimationGroup</code>是另一个继承于 <code>CAAnimation</code> 的子类，它添加了一个 <code>animations</code> 数组的属性，用来组合别的动画。</p>
+
+<pre><code class="language-objectivec">CAKeyframeAnimation *animation1 = [CAKeyframeAnimation animation];
+animation1.keyPath = @&quot;position&quot;;
+animation1.path = bezierPath.CGPath;
+animation1.rotationMode = kCAAnimationRotateAuto;
+//create the color animation
+CABasicAnimation *animation2 = [CABasicAnimation animation];
+animation2.keyPath = @&quot;backgroundColor&quot;;
+animation2.toValue = (__bridge id)[UIColor redColor].CGColor;
+//create group animation
+CAAnimationGroup *groupAnimation = [CAAnimationGroup animation];
+groupAnimation.animations = @[animation1, animation2];
+groupAnimation.duration = 4.0;
+//add the animation to the color layer
+[colorLayer addAnimation:groupAnimation forKey:nil];
+</code></pre>
+
+<h3 id="toc_6">过渡</h3>
+
+<p><strong>属性动画只对图层的可动画属性起作用</strong>，所以如果要改变一个不能动画的属性（比如图片），或者从层级关系中添加或者移除图层，属性动画将不起作用。</p>
+
+<p>因为隐式动画或者属性动画都只能对图层的可动画属性做动画,如果这个属性不可动画，这时候我们就需要<code>过渡</code>了。过渡动画会影响到整个图层的变化,它首先展示的之前的图层外观,然后通过一个交换过渡到新的外观.</p>
+
+<p>我们用<code>CATransition</code>来创建过渡动画,它也是<code>CAAnimation</code>子类,有一个<code>type</code>和<code>subtype</code>来标识变换效果。</p>
+
+<pre><code class="language-objectivec">//type:
+kCATransitionFade//默认,淡入淡出
+kCATransitionMoveIn //新图层从顶部滑入
+kCATransitionPush //推出老图层
+kCATransitionReveal //滑动出原图层，显示新外观,而不是滑动入新图层
+//这是系统提供的,我们也可以自定义过渡动画效果
+</code></pre>
+
+<p><code>type</code>过渡类型都有一个默认的动画方向（从左侧滑入）,可以通过<code>subtype</code>控制方向</p>
+
+<pre><code class="language-text">//subtype
+kCATransitionFromRight
+kCATransitionFromLeft//
+kCATransitionFromTop
+kCATransitionFromBottom
+</code></pre>
+
+<p><strong>注意</strong><br/>
+与属性动画类似我们通过<code>-addAnimation:forKey:</code>方法，但是它对指定图层一次只能用一次<code>CATransition</code>，因此，过渡动画都会对它的键设置成“transition”，也就是常量 kCATransition 。</p>
+
+<h4 id="toc_7">隐式过渡</h4>
+
+<p>过渡动画和属性动画类似也是有隐式,如果设置了<code>CALayer</code>的<code>contents</code>属性,但是对于与视图关联的图层隐式过渡动画是被禁用的,但是如果是自己创建的图层<code>contents</code>图片做的改动都会自动附上淡入淡出的动画。</p>
+
+<p><strong>注意</strong><br/>
+虽然我们用<code>过渡动画</code>来对图层的某些不可动画属性做动画,但是也不是说过渡动画不能对可动画属性做动画.</p>
+
+<pre><code class="language-objectivec">    CATransition *transition = [CATransition animation];
+    transition.type = kCATransitionPush;
+    transition.subtype = kCATransitionFromRight;
+    [self.containerView.layer addAnimation:transition forKey:nil];
+    self.containerView.backgroundColor = [UIColor redColor];
+</code></pre>
+
+<h4 id="toc_8">图层树动画</h4>
+
+<p>添加过渡动画<code>不需要指定属性</code>,它涉及到整个图层树的改变,因此我们可以在即使不能准确得知图层改变什么的情况下对图层做动画.</p>
+
+<p>确保<code>CATransition</code>添加到的图层在过渡动画发生时不会在树状结构中被移除，否则<code>CATransition</code>将会和图层一起被移除。一般来说，你只需要将动画添加到被影响图层的<code>superlayer</code>。</p>
+
+<h4 id="toc_9">自定义动画</h4>
+
+<p><code>UIView</code>也有提供过渡动画函数:<br/>
+ <code>UIView +transitionFromView:toView:duration:options:completion:</code>和 <code>+transiti<br/>
+onWithView:duration:options:animations:</code></p>
+
+<p>这些过渡方法中<code>options</code>参数可以由如下常量指定：</p>
+
+<pre><code class="language-objectivec">UIViewAnimationOptionTransitionFlipFromLeft//以Y轴从左向右旋转
+UIViewAnimationOptionTransitionFlipFromRight
+UIViewAnimationOptionTransitionCurlUp//从上向下翻页效果
+UIViewAnimationOptionTransitionCurlDown
+UIViewAnimationOptionTransitionCrossDissolve//溶解渐变效果
+UIViewAnimationOptionTransitionFlipFromTop//以X轴从下向上旋转
+UIViewAnimationOptionTransitionFlipFromBottom
+</code></pre>
+
+<p>因此只需要根据要实现效果<code>CATransition</code>还是<code>UIView</code>的过渡方法就行了.</p>
+
+<p>如果真的要实现自定义的过渡效果:<br/>
+因为过渡动画的原则就是对原始的图层外观截图，然后添加一段动画，平滑过渡到图层改变之后那个截图的效果。如果我们会对图层截图,就可以用属性动画来代替过渡动画了.</p>
+
+<p>对图层截图的方法:<code>CALayer</code>有一个 <code>- renderInContext:</code>方法，可以通过把它绘制到<code>Core Graphics</code>的上下文中捕获当前内容的图片，然后在另外的视图中显示出来。如果我们把这个截屏视图置于原始视图之上，就可以遮住真实视图的所有变化，于是重新创建了一个简单的过渡效果。</p>
+
+<pre><code class="language-objectivec">- (IBAction)performTransition
+{
+    //preserve the current view snapshot
+    UIGraphicsBeginImageContextWithOptions(self.view.bounds.size, YES, 0.0);
+    [self.view.layer renderInContext:UIGraphicsGetCurrentContext()];
+    UIImage *coverImage = UIGraphicsGetImageFromCurrentImageContext();
+    //insert snapshot view in front of this one
+    UIView *coverView = [[UIImageView alloc] initWithImage:coverImage];
+    coverView.frame = self.view.bounds;
+    [self.view addSubview:coverView];
+    //update the view (we&#39;ll simply randomize the layer background color)
+    CGFloat red = arc4random() / (CGFloat)INT_MAX;
+    CGFloat green = arc4random() / (CGFloat)INT_MAX;
+    CGFloat blue = arc4random() / (CGFloat)INT_MAX;
+    self.view.backgroundColor = [UIColor colorWithRed:red green:green blue:blue alpha:1.0];
+    //perform animation (anything you like)
+    [UIView animateWithDuration:1.0 animations:^{
+        //scale, rotate and fade the view
+        CGAffineTransform transform = CGAffineTransformMakeScale(0.01, 0.01);
+        transform = CGAffineTransformRotate(transform, M_PI_2);
+        coverView.transform = transform;
+        coverView.alpha = 0.0;
+    } completion:^(BOOL finished) {
+        //remove the cover view now we&#39;re finished with it
+        [coverView removeFromSuperview];
+    }];
+}
+</code></pre>
+
+<p><strong>注意</strong><br/>
+<code>- renderInContext:</code>捕获了图层的图片和子图层，但是不能对子图层正确地处理变换效果，而且对视频和OpenGL内容也不起作用。但是用<code>CATransition</code>，或者用私有的截屏方式就没有这个限制了。</p>
+
+<h3 id="toc_10">动画过程中取消动画</h3>
+
+<p>添加动画:<code>-addAnimation:forKey:</code><br/>
+检索动画:<code>- (CAAnimation *)animationForKey:(NSString *)key</code><br/>
+<em>不支持动画过程中修改动画</em><br/>
+移除指定动画:<code>- (void)removeAnimationForKey:(NSString *)key;</code><br/>
+移除所有动画:<code>- (void)removeAllAnimations;</code></p>
+
+<p><strong>注意</strong><br/>
+一般说来，动画在结束之后被自动移除，除非设置<code>removedOnCompletion</code>为<code>NO</code>，如果你设置动画在结束之后不被自动移除，那么当它不需要的时候你要手动移除它；否则它会一直存在于内存中，直到图层被销毁。</p>
 
 
 		</div>
@@ -220,8 +371,10 @@ App产生的影响，所以需要维护一个IP列表，这样就能就近连接
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -235,7 +388,7 @@ App产生的影响，所以需要维护一个IP列表，这样就能就近连接
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -331,31 +484,31 @@ App产生的影响，所以需要维护一个IP列表，这样就能就近连接
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

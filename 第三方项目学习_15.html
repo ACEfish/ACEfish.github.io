@@ -82,69 +82,298 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15529084547270.html">ReactObjc常用</a></h1>
-			<p class="meta"><time datetime="2019-03-18T19:27:34+08:00" 
-			pubdate data-updated="true">2019/3/18</time></p>
+		  	<h1 class="entry-title"><a href="15680194937623.html">AFSecurityPolicy</a></h1>
+			<p class="meta"><time datetime="2019-09-09T16:58:13+08:00" 
+			pubdate data-updated="true">2019/9/9</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">常用信号</h2>
+		  	<h2 id="toc_0">AFSSLPinningMode</h2>
 
-<pre><code class="language-objectivec">//按钮点击事件信号
-RACSignal *controlUpdate = [myButton rac_signalForControlEvents:UIControlEventTouchUpInside];
+<pre><code class="language-objectivec">typedef NS_ENUM(NSUInteger, AFSSLPinningMode) {
+    AFSSLPinningModeNone,
+    AFSSLPinningModePublicKey,
+    AFSSLPinningModeCertificate,
+};
+</code></pre>
 
-//监测textField改变信号
-RACSignal *textChange = [myTextField rac_textSignal];
+<p>设置了3中验证服务器是否受信任的方式</p>
 
-//alertView UIActionSheet UIImagePickerControl 监测信号
-//例如对alertView  UIActionSheet 等监测返回的就是点击的按钮index
-RACSignal *alertButtonClicked = [myAlertView rac_buttonClickedSignal];
+<ul>
+<li>AFSSLPinningModeNone： 默认的认证方式，只会在系统的信任证书列表中对服务器返回的证书进行验证</li>
+<li>AFSSLPinningModePublicKey：需要客户端预先保存服务器的证书</li>
+<li>AFSSLPinningModeCertificate： 需要客户端事先保存服务器端发送的证书，但是只会验证证书中的公钥是否正确</li>
+</ul>
 
-//监测对象某个事件的执行
-RACSignal *viewAppeared = [self rac_signalForSelector:@selector(viewDidAppear:)];
+<h2 id="toc_1">AFSecurityPolicy初始化</h2>
+
+<pre><code class="language-objectivec">+ (instancetype)policyWithPinningMode:(AFSSLPinningMode)pinningMode withPinnedCertificates:(NSSet *)pinnedCertificates {
+    AFSecurityPolicy *securityPolicy = [[self alloc] init];
+    securityPolicy.SSLPinningMode = pinningMode;
+
+    [securityPolicy setPinnedCertificates:pinnedCertificates];
+
+    return securityPolicy;
+}
+
+
+- (void)setPinnedCertificates:(NSSet *)pinnedCertificates {
+    _pinnedCertificates = pinnedCertificates;
+
+    if (self.pinnedCertificates) {
+        NSMutableSet *mutablePinnedPublicKeys = [NSMutableSet setWithCapacity:[self.pinnedCertificates count]];
+        for (NSData *certificate in self.pinnedCertificates) {
+            id publicKey = AFPublicKeyForCertificate(certificate);
+            if (!publicKey) {
+                continue;
+            }
+            [mutablePinnedPublicKeys addObject:publicKey];
+        }
+        self.pinnedPublicKeys = [NSSet setWithSet:mutablePinnedPublicKeys];
+    } else {
+        self.pinnedPublicKeys = nil;
+    }
+}
 
 </code></pre>
 
-<h2 id="toc_1">UI控件展示与对象属性的绑定</h2>
+<p>初始化Policy<br/>
+在调用<code>PinnedCertificates</code>的setter方法时，调用了<code>AFPublicKeyForCertificate</code>C函数，对证书进行操作获取公钥，取出全部的公钥保存到<code>pinnedPublicKeys</code>属性中</p>
 
-<pre><code class="language-objectivec">//将label内容与model属性绑定  之后当model属性改变即会改变label内容，
-//RACObserve 是采用了KVO方式，因此改变userFullName属性方法需要出发setter方法 
-RAC(self.userNameLabel, text) = RACObserve(self.viewModel, userFullName);
+<h2 id="toc_2">操作 SecTrustRef</h2>
 
-//当要赋值的属性类型不一致时，可以使用map将属性调整一致
-RAC(self.countLabel, text) = [RACObserve(cellVM, count) map:^id _Nullable(NSNumber *  _Nullable value) {
-    return value.stringValue;
-}];
+<p>对<code>SecTrustRef</code>的操作都是C的API，定义在<code>Security</code>模块中</p>
 
-//将UI控件内容绑定到对象属性
-//将Textfield内容绑定到self.viewModel的userName属性 
-//rac_textSignal默认检测textEditingEvent 因此代码级别改变Textfield内容不会触发此信号
-RAC(self.viewModel, username) = [myTextfield rac_textSignal];
+<pre><code class="language-objectivec">static id AFPublicKeyForCertificate(NSData *certificate) {
+    //初始化临时变量
+    id allowedPublicKey = nil;
+    SecCertificateRef allowedCertificate;
+    SecPolicyRef policy = nil;
+    SecTrustRef allowedTrust = nil;
+    SecTrustResultType result;
+    //通过`DER`表示的数据生成一个`secCertificateRef`
+    allowedCertificate = SecCertificateCreateWithData(NULL, (__bridge CFDataRef)certificate);
+    //判断返回值是否为空
+    __Require_Quiet(allowedCertificate != NULL, _out);
+
+    //创建一个默认的符合 X509 标准的 SecPolicyRef
+    policy = SecPolicyCreateBasicX509();
+    //通过默认的SecPolicyRef和证书创建一个SecTrustRef用于信任评估，对该对象进行信任评估，确认生成的 SecTrustRef 是值得信任的
+    __Require_noErr_Quiet(SecTrustCreateWithCertificates(allowedCertificate, policy, &amp;allowedTrust), _out);
+    //确认生成的对象是值得信任的
+    __Require_noErr_Quiet(SecTrustEvaluate(allowedTrust, &amp;result), _out);
+    //获取公钥
+    allowedPublicKey = (__bridge_transfer id)SecTrustCopyPublicKey(allowedTrust);
+
+_out:
+    //释放指针
+    if (allowedTrust) {
+        CFRelease(allowedTrust);
+    }
+
+    if (policy) {
+        CFRelease(policy);
+    }
+
+    if (allowedCertificate) {
+        CFRelease(allowedCertificate);
+    }
+
+    return allowedPublicKey;
+}
 </code></pre>
 
-<h2 id="toc_2">UI事件与对象数据绑定</h2>
+<blockquote>
+<p>注意</p>
 
-<pre><code class="language-objectivec">//订阅数据改变的信号 当数据信号改变时刷新tableView 这样之后我们只需要改变数据即可 无需手动调用tableView刷新事件
-//因为这里tableView的刷新绑定两个属性 因此我们需要对这两个信号执行merge
-//因为多个信号 同时改变的话可能会导致多次刷新 因此`bufferWithTime`
-//设置在指定时间内只执行一次 当设置为0时 在下次屏幕刷新之前(即一个runloop中) 只执行一次 而不会多次刷新
-@weakify(self);
-[[[RACSignal merge:@[RACObserve(self.viewModel, tweets),
-                    RACObserve(self.viewModel, allTweetsLoaded)]]
-bufferWithTime:0 onScheduler:[RACScheduler mainThreadScheduler]]
-subscribeNext:^(id value) {
-    @strongify(self);
-    [self.tableView reloadData];
-}];
+<p>每个SecTrustRef对象都包含多个<code>SecCertificateRef</code>和<code>SecPolicyRef</code>。其中<code>SecCertificateRef</code>可以使用DER进行表示，并且其中存储着公钥信息</p>
+</blockquote>
 
+<p>除此之外 还有操作还有<code>AFCertificateTrustChainForServerTrust</code>和<code>AFPublicKeyTrustChainForServerTrust</code>函数<br/>
+但是调用了几乎相同的API</p>
 
-//按钮点击事件
-[[self.goButton rac_signalForControlEvents:UIControlEventTouchUpInside]
-subscribeNext: ^(id value) {
-    @strongify(self);
-    [self.viewModel getTweetsForCurrentUsername];
-}];
+<ul>
+<li><code>SecTrustGetCertificateAtIndex</code> 获取SecTrustRef中的证书</li>
+<li><p><code>SecCertificateCopyData</code> 从证书或者DER中表示的数据</p>
+<pre><code class="language-objectivec">static NSArray * AFCertificateTrustChainForServerTrust(SecTrustRef serverTrust) {
+    CFIndex certificateCount = SecTrustGetCertificateCount(serverTrust);<br/>
+    NSMutableArray *trustChain = [NSMutableArray arrayWithCapacity:(NSUInteger)certificateCount];<br/>
+    for (CFIndex i = 0; i &lt; certificateCount; i++) {<br/>
+        SecCertificateRef certificate = SecTrustGetCertificateAtIndex(serverTrust, i);<br/>
+        [trustChain addObject:(__bridge_transfer NSData *)SecCertificateCopyData(certificate)];<br/>
+    }<br/>
+    return [NSArray arrayWithArray:trustChain];<br/>
+}<br/>
+static NSArray * AFPublicKeyTrustChainForServerTrust(SecTrustRef serverTrust) {<br/>
+    SecPolicyRef policy = SecPolicyCreateBasicX509();<br/>
+    CFIndex certificateCount = SecTrustGetCertificateCount(serverTrust);<br/>
+    NSMutableArray *trustChain = [NSMutableArray arrayWithCapacity:(NSUInteger)certificateCount];<br/>
+    for (CFIndex i = 0; i &lt; certificateCount; i++) {<br/>
+        SecCertificateRef certificate = SecTrustGetCertificateAtIndex(serverTrust, i);<br/>
+        SecCertificateRef someCertificates[] = {certificate};<br/>
+        CFArrayRef certificates = CFArrayCreate(NULL, (const void **)someCertificates, 1, NULL);<br/>
+        SecTrustRef trust;<br/>
+        __Require_noErr_Quiet(SecTrustCreateWithCertificates(certificates, policy, &amp;trust), _out);<br/>
+        SecTrustResultType result;<br/>
+        __Require_noErr_Quiet(SecTrustEvaluate(trust, &amp;result), _out);<br/>
+        [trustChain addObject:(__bridge_transfer id)SecTrustCopyPublicKey(trust)];<br/>
+    _out:<br/>
+        if (trust) {<br/>
+            CFRelease(trust);<br/>
+        }<br/>
+        if (certificates) {<br/>
+            CFRelease(certificates);<br/>
+        }<br/>
+        continue;<br/>
+    }<br/>
+    CFRelease(policy);<br/>
+    return [NSArray arrayWithArray:trustChain];<br/>
+}
+</code></pre></li>
+</ul>
+
+<h2 id="toc_3">验证服务端是否受信</h2>
+
+<p>通过<code>[AFSecurityPolicy evaluateServerTrust:forDomain:]</code>来验证服务器端是否受信</p>
+
+<pre><code class="language-objectivec">- (BOOL)evaluateServerTrust:(SecTrustRef)serverTrust
+                  forDomain:(NSString *)domain {
+
+    #1: 不能隐式的信任自己签发的证书
+    #2: 设置policy
+    #3: 验证证书是否有效
+    #4: 根据SSLPinningMode对服务端进行验证
+    
+    return NO；
+}
 </code></pre>
+
+<ol>
+<li><p>不能隐式的信任自己签发的证书</p>
+<pre><code class="language-objectivec">if (domain &amp;&amp; self.allowInvalidCertificates &amp;&amp; self.validatesDomainName &amp;&amp; (self.SSLPinningMode == AFSSLPinningModeNone || [self.pinnedCertificates count] == 0)) {
+NSLog(@&quot;In order to validate a domain name for self signed certificates, you MUST use pinning.&quot;);<br/>
+return NO;<br/>
+}
+</code></pre>
+<p>因此如果没有提供证书或者不验证证书，并且还设置<code>allowInvalidCertificates</code>为真，满足上面所有条件 说明这次验证是不安全的  返回NO</p></li>
+<li><p>设置Policy</p>
+<pre><code class="language-objectivec">NSMutableArray *policies = [NSMutableArray array];
+if (self.validatesDomainName) {<br/>
+    [policies addObject:(__bridge_transfer id)SecPolicyCreateSSL(true, (__bridge CFStringRef)domain)];<br/>
+} else {<br/>
+    [policies addObject:(__bridge_transfer id)SecPolicyCreateBasicX509()];<br/>
+}
+</code></pre>
+<p>如果要验证域名的话，就以域名为参数创建一个SecPolicyRef，否则会创建一个符合X509标注的默认<code>DecPlocyRef</code>对象</p></li>
+<li><p>验证证书有效性</p>
+<pre><code class="language-objectivec">if (self.SSLPinningMode == AFSSLPinningModeNone) {
+    return self.allowInvalidCertificates || AFServerTrustIsValid(serverTrust);<br/>
+} else if (!AFServerTrustIsValid(serverTrust) &amp;&amp; !self.allowInvalidCertificates) {<br/>
+    return NO;<br/>
+}
+</code></pre>
+<ul>
+<li>如果只根据信任列表中证书进行验证，即<code>self.SSLPinningMode == AFSSLPinningModeNone</code>。如果允许无效的证书 就返回YES。不允许的话就对服务端进行验证</li>
+<li>如果服务器信任无效，并且不允许无效证书，就返回NO</li>
+</ul></li>
+<li><p>根据<code>SSLPingMode</code>对服务器信任进行验证</p>
+<pre><code class="language-objectivec">
+</code></pre>
+<ul>
+<li><code>AFSSLPinningModeNone</code>直接返回NO</li>
+<li><p><code>AFSSLPinningModeCertificate</code></p>
+<pre><code class="language-objectivec">case AFSSLPinningModeCertificate: {
+    NSMutableArray *pinnedCertificates = [NSMutableArray array];<br/>
+    for (NSData *certificateData in self.pinnedCertificates) {<br/>
+        [pinnedCertificates addObject:(__bridge_transfer id)SecCertificateCreateWithData(NULL, (__bridge CFDataRef)certificateData)];<br/>
+    }<br/>
+    SecTrustSetAnchorCertificates(serverTrust, (__bridge CFArrayRef)pinnedCertificates);<br/>
+    if (!AFServerTrustIsValid(serverTrust)) {<br/>
+        return NO;<br/>
+    }<br/>
+    // obtain the chain after being validated, which *should* contain the pinned certificate in the last position (if it&#39;s the Root CA)<br/>
+    NSArray *serverCertificates = AFCertificateTrustChainForServerTrust(serverTrust);<br/>
+    for (NSData *trustChainCertificate in [serverCertificates reverseObjectEnumerator]) {<br/>
+        if ([self.pinnedCertificates containsObject:trustChainCertificate]) {<br/>
+            return YES;<br/>
+        }<br/>
+    }<br/>
+    return NO;<br/>
+}
+</code></pre>
+<p>a. 从<code>self.pinnedCertificates</code>中获取DER表示的数据<br/>
+b. 使用<code>SecTrustSetAnchorCertigicates</code>为服务器信任设置证书<br/>
+c. 判断服务器信任的有效性<br/>
+d. 使用<code>AFCertificateTrustChainForServerTrust</code>获取服务器信任中的全部DER表示的整数<br/>
+e. 如果pinnedCertificated中有相同的整数，就会返回YES</p></li>
+<li><p><code>AFSSLPinningModePublicKey</code></p>
+<pre><code class="language-objectivec">case AFSSLPinningModePublicKey: {
+    NSUInteger trustedPublicKeyCount = 0;<br/>
+    NSArray *publicKeys = AFPublicKeyTrustChainForServerTrust(serverTrust);<br/>
+    for (id trustChainPublicKey in publicKeys) {<br/>
+        for (id pinnedPublicKey in self.pinnedPublicKeys) {<br/>
+            if (AFSecKeyIsEqualToKey((__bridge SecKeyRef)trustChainPublicKey, (__bridge SecKeyRef)pinnedPublicKey)) {<br/>
+                trustedPublicKeyCount += 1;<br/>
+            }<br/>
+        }<br/>
+    }<br/>
+    return trustedPublicKeyCount &gt; 0;<br/>
+}
+</code></pre>
+<p>与<code>AFSSLPinningModeCertificate</code>的不同点在于:</p>
+<ul>
+<li>从服务器信任中获取公钥</li>
+<li><code>pinnedPublicKeys</code>中的公钥与服务器信任中的公钥相同的属性大于0 返回真</li>
+</ul></li>
+</ul></li>
+</ol>
+
+<h2 id="toc_4">与 AFURLSessionManager 协作</h2>
+
+<p>在<code>NSURLSessionDelegate</code>代理方法中 调用运行这段代码</p>
+
+<pre><code class="language-objectivec"> - (void)URLSession:(NSURLSession *)session
+didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
+ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential))completionHandler
+{
+    NSURLSessionAuthChallengeDisposition disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+    __block NSURLCredential *credential = nil;
+
+    if (self.sessionDidReceiveAuthenticationChallenge) {
+        disposition = self.sessionDidReceiveAuthenticationChallenge(session, challenge, &amp;credential);
+    } else {
+        if ([challenge.protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust]) {
+            if ([self.securityPolicy evaluateServerTrust:challenge.protectionSpace.serverTrust forDomain:challenge.protectionSpace.host]) {
+                credential = [NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust];
+                if (credential) {
+                    disposition = NSURLSessionAuthChallengeUseCredential;
+                } else {
+                    disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+                }
+            } else {
+                disposition = NSURLSessionAuthChallengeCancelAuthenticationChallenge;
+            }
+        } else {
+            disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+        }
+    }
+
+    if (completionHandler) {
+        completionHandler(disposition, credential);
+    }
+}
+</code></pre>
+
+<p><code>NSURLAuthenticationChallenge</code>表示一个认证的挑战，提供了关于这次认证的全部信息。<br/>
+ 其中的<code>protectionSpace</code>属性，保存了需要认证的保护空间，每个<code>NSURLProtectionSpace</code>对象都保存了主机地址、端口和认证方法等重要信息</p>
+
+<p>如果保护空间的认证方法为<code>NSURLAuthenticationMethodServerTrust</code>，那么就会使用在上面提到的方法<code>- [AFSecurityPolicy evaluateServerTrust:forDomain:]</code> 对保护空间的<code>serverTrust</code>以及域名<code>host</code>进行认证</p>
+
+<p>根据认证的结果，在<code>completionHandler</code>中传入不同的<code>disposition</code>和<code>credential</code>参数</p>
+
+<h2 id="toc_5">小结</h2>
+
+<p>AFSecurityPolicy 同样也作为一个即插即用的模块，在 AFNetworking 中作为验证 HTTPS 证书是否有效的模块存在    </p>
 
 
 		</div>
@@ -167,8 +396,10 @@ subscribeNext: ^(id value) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -182,7 +413,7 @@ subscribeNext: ^(id value) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -278,31 +509,31 @@ subscribeNext: ^(id value) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

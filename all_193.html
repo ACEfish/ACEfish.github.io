@@ -82,179 +82,301 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14883679213714.html">图层树和寄宿图</a></h1>
-			<p class="meta"><time datetime="2017-03-01T19:32:01+08:00" 
-			pubdate data-updated="true">2017/3/1</time></p>
+		  	<h1 class="entry-title"><a href="15057532270985.html">访问控制</a></h1>
+			<p class="meta"><time datetime="2017-09-19T00:47:07+08:00" 
+			pubdate data-updated="true">2017/9/19</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>注意点:</p>
-
-<ol>
-<li><code>contentsScale</code> 并不关心屏幕的拉伸因素而总是默认为1.0。如果我们想以Retina的质量来渲染图层，我们就得手动设置图层的 contentsScale 属性。</li>
-</ol>
-
-<p><code>textLayer.contentsScale = [UIScreen mainScreen].scale;</code></p>
-
-<ol>
-<li></li>
-</ol>
-
-<h2 id="toc_0">图层、视图</h2>
-
-<p>iOS中所有的视图都从UIView中派生而来。<code>UIView</code> 可以处理触摸事件，可以支持基于<code>Core Graphics</code>绘图，可以做仿射变换（例如旋转或者缩放），或者简单的类似于滑动或者渐变的动画。</p>
-
-<p><em><code>CALay</code>与UIView最大的不同是不处理用户的交互</em>，并不清楚具体的响应链（iOS通过视图层级关系用来传送触摸事件的机制），于是它并不能够响应事件，即使它提供了一些方法来判断是否一个触点在图层的范围之内</p>
-
-<p>每一个 UIView 都有一个 CALayer 实例的图层属性，视图的职责就是创建并管理这个图层，以确保当子视图在层级关系中添加或者被移除的时候，他们关联的图层也同样对应在层级关系树当中有相同的操作<br/>
-实际上视图的这些背后关联的图层才是真正用来在屏幕上显示和做动画， UIView 仅仅是对它的一个封装，提供了一些iOS类似于处理触摸的具体功能，以及<code>CoreAnimation</code>底层方法的高级接口。</p>
-
-<p>实际上，这里并不是两个层级关系，而是四个，每一个都扮演不同的角色，<strong>除了<br/>
-视图层级和图层树之外，还存在呈现树和渲染树</strong>。</p>
-
-<p>我们用CALayer处理UIView没有暴露出来的功能(UIView没有响应的高级接口，我们只能介入底层):</p>
+		  	<p>访问控制：限定其他源文件或者模块代码对你的代码的访问级别</p>
 
 <ul>
-<li>阴影，圆角，带颜色的边框</li>
-<li>3D变换</li>
-<li>非矩形范围</li>
-<li>透明遮罩</li>
-<li>多级非线性动画</li>
+<li>明确的给单个类型(类,结构体,枚举)设置访问级别</li>
+<li>给类型的属性、方法、构造器、下标等设置访问级别</li>
+<li>限定协议在一定范围使用，包括协议中的全局变量、常亮、函数</li>
 </ul>
 
-<p>标准的<code>Xcode</code>项目模板并没有包含<code>Core Animation</code>相关头文件。所以如果我们不给项目添加合适的库，是不能够使用任何图层相关的方法或者访问它的属性。所以首先需要添加<code>QuartzCore</code>框架</p>
+<p><code>Swift</code>有显式提供多种访问级别，也有为场景提供了默认的访问级别</p>
 
-<p><strong>视图中的子视图就是图层中的子图层</strong></p>
+<h2 id="toc_0">模块和源文件</h2>
 
-<h2 id="toc_1">寄宿图</h2>
+<p><strong><code>Swift</code>中的访问控制基于模块和源文件</strong></p>
 
-<p>CALayer的寄宿图（即<strong>图层中包含的图</strong>）</p>
+<p><mark>模块</mark>指的是独立的代码单元，框架或应用程序会作为一个独立的模块来构建和发布。在 Swift 中，一个模块可以使用<code>import</code>关键字导入另外一个模块。</p>
 
-<h3 id="toc_2">contents属性</h3>
+<p>在 Swift 中，Xcode 的每个目标（例如框架或应用程序）都被当作独立的模块处理。如果你是为了实现某个通用的功能，或者是为了封装一些常用方法而将代码打包成独立的框架，这个框架就是 Swift 中的一个模块。当它被导入到某个应用程序或者其他框架时，框架内容都将属于这个独立的模块。</p>
 
-<p>CALayer 有一个属性叫做<code>contents</code>，这个属性的类型被定义为<code>id</code>，意味着它可以是任何类型的对象。但是,在实践中，如果你给<code>contents</code>赋的不是<code>CGImage</code>，那么你得到的图层将是空白的。<br/>
-实际上真正应该赋值的类型是<code>CGImageRef</code>,它是指向<code>CGImage</code>的指针。<br/>
-UIImage有一个<code>CGImage</code>属性，它返回一个&quot;<code>CGImageRef</code>&quot;,如果你想把这个值直接赋值给<code>CALayer</code>的 <code>contents</code> ，那你将会得到一个编译错误。因为<code>CGImageRef</code>并不是一个真正的<code>Cocoa</code>对象，而是一个<code>Core Foundation</code>类型。</p>
+<p><mark>源文件</mark>就是 Swift 中的源代码文件，它通常属于一个模块，即一个应用程序或者框架。尽管我们一般会将不同的类型分别定义在不同的源文件中，但是同一个源文件也可以包含多个类型、函数之类的定义。</p>
 
-<pre><code class="language-objectivec">/**
-尽管Core Foundation类型跟Cocoa对象在运行时貌似很像（被称作toll-freebridging），
-他们并不是类型兼容的，不过你可以通过bridged关键字转换。
-*/
-layer.contents = (__bridge id)image.CGImage;
-/**
-    利用CALayer在一个普通的UIView中显示了一张图片。这不是一个UIImageView，它不是我们通常用来展示图片的方法。
-*/
-</code></pre>
+<h2 id="toc_1">访问级别</h2>
 
-<h4 id="toc_3">contentGravity</h4>
-
-<p>我们这样设置的图片也会适应视图拉伸，CALay也有个属性<code>contentsGravity</code>,它是个NSString类型，<br/>
-类似于UIView的<code>contentMode</code>，<code>contentsGravity</code> 的目的是为了决定内容在图层的边界<br/>
-中怎么对齐，我们将使用<code>kCAGravityResizeAspect</code>，它的效果等同于<br/>
-<code>UIViewContentModeScaleAspectFit</code>.</p>
-
-<pre><code class="language-objectivec">self.layerView.layer.contentsGravity = kCAGravityResizeAspect;
-</code></pre>
-
-<h4 id="toc_4">contentScale</h4>
-
-<p><code>contentsScale</code>属性其实属于支持高分辨率（又称Hi-DPI或Retina）屏幕机制的一部分。它用来判断在绘制图层的时候应该为寄宿图创建的空间大小，和需要显示的图片的拉伸度（假设并没有设置<code>contentsGravity</code>属性）。UIView有一个类似功能但是非常少用到的<code>contentScaleFactor</code>属性。<br/>
-如果<code>contentsScale</code>设置为1.0，将会以每个点1个像素绘制图片，如果设置为2.0，则会以每个点2个像素绘制图片，这就是我们熟知的<code>Retina</code>屏幕。这并不会对我们在使用<code>kCAGravityResizeAspect</code>时产生任何影响，因为它就是拉伸图片以适应图层而已，根本不会考虑到分辨率问题。但是如果我们把<code>contentsGravity</code>设置为<code>kCAGravityCenter</code>（这个值并不会拉伸图片），那将会有很明显的变化</p>
-
-<pre><code class="language-objectivec">self.layerView.layer.contentsGravity = kCAGravityCenter;
-self.layerView.layer.contentsScale = image.scale;
-
-/**
-当用代码的方式来处理寄宿图的时候，一定要记住要手动的设置图层的 contentsScale 属性
-，否则，你的图片在Retina设备上就显示得不正确啦
-*/
-layer.contentsScale = [UIScreen mainScreen].scale;
-</code></pre>
-
-<h4 id="toc_5">maskToBounds</h4>
-
-<p>UIView有一个叫做<code>clipsToBounds</code>的属性可以用来决定是否显示超出边界的内容，CALayer对应的属性叫做<code>masksToBounds</code></p>
-
-<h4 id="toc_6">contentRect</h4>
-
-<p>CALayer的 <code>contentsRect</code> 属性允许我们在图层边框里显示寄宿图的一个子域。<br/>
-它使用单位坐标,指定0到1之间是一个相对值（像素和点就是绝对值）,相对于寄宿图的尺寸</p>
-
-<p>默认<code>contentRect</code>是{0，0，1，1},着整个寄宿图默认都是可见的，如果我们指定一个小一点的矩形，图片就会被裁剪<br/>
-事实上给 contentsRect 设置一个负数的原点或是大于{1, 1}的尺寸也是可以的。这种情况下，最外面的像素会被拉伸以填充剩下的区域。</p>
-
-<p><strong>iOS中的坐标系统:</strong></p>
+<p><code>Swift</code>提供了5种访问级别</p>
 
 <ul>
-<li>点 —— 在iOS和Mac OS中最常见的坐标体系。点就像是虚拟的像素，也被称作逻辑像素。在标准设备上，一个点就是一个像素，但是在Retina设备上，一个点等于2*2个像素。iOS用点作为屏幕的坐标测算体系就是为了在Retina设备和普通设备上能有一致的视觉效果。</li>
-<li>像素 —— 物理像素坐标并不会用来屏幕布局，但是仍然与图片有相对关系。UIImage是一个屏幕分辨率解决方案，所以指定点来度量大小。但是一些底层的图片表示如CGImage就会使用像素，所以你要清楚在Retina设备和普通设备上，他们表现出来了不同的大小。</li>
-<li>单位 —— 对于与图片大小或是图层边界相关的显示，单位坐标是一个方便的度量方式， 当大小改变的时候，也不需要再次调整。单位坐标在OpenGL这种纹理坐标系统中用得很多，Core Animation中也用到了单位坐标。</li>
+<li><strong>开放访问和公开访问</strong>(open、public):可以访问同一模块源文件中的任何实体，在模块外也可以导入该模块来访问源文件中的所有实体。我们通常将框架中的某个接口可以被任何使用时,设置为此级别</li>
+<li><strong>内部访问</strong>(internal)：可以访问同一模块源文件的任何实体，但是不能从外部访问该模块源文件中的实体。用于某接口只在应用程序或者内部使用时</li>
+<li><strong>文件私有访问限制</strong>(filepart)：限值实体只能被所定义的<em>文件</em>内部访问。当需要把这些细节被整个文件使用的时候，使用文件私有访问隐藏了一些特定功能的实现细节。</li>
+<li><strong>私有访问限值</strong>(private)： 限值实体只能在所定义的<em>作用域</em>使用,需要把这些细节被整个作用域使用的时候，使用文件私有访问隐藏了一些特定功能的实现细节。</li>
 </ul>
 
-<h4 id="toc_7">contentsCenter</h4>
+<p>Open为最高访问级别(限制最少)  Private为最低访问级别 限制最多</p>
 
-<p><code>contentsCenter</code>是一个CGRect,定义了一个固定的边框和一个在图层上可拉伸的区域.</p>
+<p>Open和Public区别:(Open只作用于类和类的成员)</p>
 
-<p>默认是{0，0，1，1},即当视图大小改变时会均匀大小的拉伸,但是当我们改变这个rect后,横向或者纵向拉伸图片时就只会拉伸我们选定的区域（是rect的区域被拉伸而不是rect之外区域被拉伸）</p>
+<ul>
+<li>Public或者其他更严访问级别的类，只能在它们定义的模块内部被继承。</li>
+<li>Public或者其他更严访问级别的类成员，只能在它们定义的模块内部的子类中重写。</li>
+<li>Open的类，可以在它们定义的模块中被继承，也可以在引用它们的模块中被继承。</li>
+<li>Open的类成员，可以在它们定义的模块中子类中重写，也可以在引用它们的模块中的子类重写。</li>
+</ul>
 
-<p>工作起来的效果和<code>UIImage</code>里的<code>-resizableImageWithCapInsets:</code>方法效果非常类似，只是它可以运用到任何寄宿图，甚至包括在Core Graphics运行时绘制的图形</p>
+<p>把一个类标记为Open，显式地表明，你认为其他模块中的代码使用此类作为父类，然后你已经设计好了你的类的代码了。</p>
 
-<p><strong>注意</strong><br/>
-这个属性我们是可以在xib中直接设置的:<br/>
-<img src="media/14883679213714/14891971745538.jpg" alt=""/></p>
+<h3 id="toc_2">访问级别基本原则</h3>
 
-<h4 id="toc_8">Custom Drawing</h4>
+<p><strong>基本原则：实体不可以在某个实体中定义访问级别更低（限制更多）的实体</strong></p>
 
-<p>当然我们设置寄宿图的方法不仅仅只有给<code>content</code>赋值CGImage，我们也可以用Core Grapic直接绘制。我们可以通过继承UIView并且重写<code>-drawRect:</code>方法进行自定义绘制  </p>
+<p>例如:函数的访问级别不能高于他的参数类型或者返回类型的访问级别。</p>
 
-<p><code>drawRect</code>方法并没有默认实现，因为对于UIView来说,寄宿图并不是必须的，但是当UIView检测到<code>-drawRect:</code>被调用就会为视图分配一个寄宿图，寄宿图的像素尺寸等于视图大小乘以 <code>contentsScale</code>的值。如果不需要寄宿图就没必要创建这个方法会造成cpu、内存浪费，空的方法也不行.  </p>
+<h3 id="toc_3">默认访问级别</h3>
 
-<p>当视图在屏幕上出现的时候 <code>-drawRect:</code>方法就会被自动调用。<code>-drawRect:</code> 方法里面的代码利用<code>Core Graphics</code>去绘制一个寄宿图，然后内容就会被缓存起来直到它需要被更新(通常是因为开发者调用了<code>-setNeedsDisplay</code>方法,尽管影响到表现效果属性值被更改时，视图类型会自动重绘，如bounds属性)。  </p>
+<p>如果不为代码中的实体指定访问级别,默认为<code>internal</code>级别。<br/>
+大多数情况下我们不需要显示指定实体的访问级别</p>
 
-<p>虽然<code>-drawRect:</code>方法是一个UIView方法，事实上都是底层的<code>CALayer</code>安排了重绘工作和保存了因此产生的图片。</p>
+<h3 id="toc_4">单target应用程序的访问级别</h3>
 
-<h4 id="toc_9">CALayeDelegate</h4>
+<p>对于单目标应用程序,应用的所有功能都为该应用进行服务而不需要提供给其他应用或者模块进行使用,因此使用默认的<code>internal</code>即可。也可以使用文件私有访问或者私有访问级别来进行一些功能的实现细节的隐藏</p>
 
-<p><strong>CALaye的代理</strong></p>
+<h3 id="toc_5">框架访问级别</h3>
 
-<p><strong>这个并不常用</strong></p>
+<p>在开发框架时需要将对外的接口定义为Open或者Public级别，即为对外的接口API</p>
 
-<p>实现了 <code>CALayerDelegate</code> 协议，当<code>CALayer</code>需要一个内容特定的信息时，就会从协议中请求.<br/>
-当需要被重绘的时候，CALayer会请求他的代理给他一个寄宿图来显示.</p>
+<blockquote>
+<p>注意</p>
 
-<pre><code class="language-objectivec">//如果想直接设置contents属性时,可以这样
--(void)displayLayer:(CALayerCALayer *)layer;
-//如果代理不实现 -displayLayer: 方法 就会调用
-- (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx;
-/**
-    在调用这个方法之前CALayer创建一个合适尺寸的空寄宿图（尺寸由bounds
-    和contentScale决定）和一个coreGraphic绘制的上下文环境ctx
-*/ 
+<p>框架内部实现仍使用默认的内部访问级别internal，当需要对框架内部其他部分隐藏的细节可以使用<code>private</code>或者<code>fileprivate</code>。对于框架对外api部分，需要设置为<code>open</code>或<code>public</code></p>
+</blockquote>
+
+<h3 id="toc_6">单元测试目标的访问级别</h3>
+
+<p>当我们用单元测试目标去访问程序代码，为了访问那些非公开访问或者开发访问代码,可以在导入的应用程序模块的语句前使用<code>@testable</code>特性，然后在允许测试的编译设置<code>（Build Options -&gt; Enable Testability）</code>下编译这个应用程序模块，单元测试目标就可以访问应用程序模块中所有内部级别的实体。</p>
+
+<h2 id="toc_7">访问控制语法</h2>
+
+<pre><code class="language-swift">//声明实体访问级别
+public class SomePublicClass {}
+internal class SomeInternalClass {}
+fileprivate class SomeFilePrivateClass {}
+private class SomePrivateClass {}
+public var somePublicVariable = 0
+internal let someInternalConstant = 0
+fileprivate func someFilePrivateFunction() {}
+private func somePrivateFunction() {}
+//默认为内部访问级别
+class SomeInternalClass {} // 隐式内部访问级别
+var someInternalConstant = 0 // 隐式内部访问级别
 </code></pre>
 
-<p>举个栗子:</p>
+<h2 id="toc_8">自定义类型</h2>
 
-<pre><code class="language-objectivec">CALayer *blueLayer = [CALayer layer];
-[self.layerView.layer addSublayer:blueLayer];
-[blueLayer display];//强制layer重绘
+<p>在自定义类型时指定访问的级别，然后这个类型就在访问级别限制范围内进行使用</p>
 
-//代理
-- (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx
-{
-    //draw a thick red circle
-    CGContextSetLineWidth(ctx, 10.0f);
-    CGContextSetStrokeColorWithColor(ctx, [UIColor redColor].CGColor);
-    CGContextStrokeEllipseInRect(ctx, layer.bounds);
+<p><mark>定义的类型访问级别会影响到类型成员(属性、方法、构造器、下标)的默认访问级别</mark>。如果你将类型指定为私有或者文件私有级别，那么该类型的所有成员的默认访问级别也会变成私有或者文件私有级别。如果你将类型为公开或者内部访问级别（或者不明确指定访问级别，而使用默认的内部访问级别），那么该类型的所有成员的默认访问级别将是内部访问。</p>
+
+<blockquote>
+<p>注意：</p>
+
+<p>必须显式指定才能将成员设置为公开访问类型，避免不消息暴露内部使用接口</p>
+</blockquote>
+
+<h3 id="toc_9">元组类型</h3>
+
+<p>元组的访问级别 是由元组中访问级别最严格的类型来约定。</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>元组不同股类、结构体、枚举、函数那样有单独的定义。其访问级别在被使用时自动推断出，而无法明确指定</p>
+</blockquote>
+
+<h3 id="toc_10">函数类型</h3>
+
+<p>函数的访问类型由访问级别最严格的参数类型或者返回类型的访问级别决定</p>
+
+<p>如果访问级别不复合函数定义的环境的默认访问级别，那么就需要明确指定该函数的访问级别</p>
+
+<pre><code class="language-swift">//定义一个函数
+func someFunction() -&gt; (SomeInternalClass, SomePrivateClass) {
 }
+/**
+    这样是无法通过编译的,这个函数返回了一个元组,元组中包含了两个自定义类，根据元组访问
+    级别,元组为privite的，因此函数也为private访问级别，因此并不是默认的internal级
+    别，因此需要用private修饰符明确指出函数访问级别
+*/
 
+private func someFunction() -&gt; (SomeInternalClass, SomePrivateClass) {
+    // 此处是函数实现部分
+}
 </code></pre>
 
-<p><strong>注意</strong><br/>
-我们在blueLayer上显式地调用了<code>-display</code>。不同于UIView，当图层显示在屏幕上时，CALayer不会自动重绘它的内容。它把重绘的决定权交给了开发者。</p>
+<h3 id="toc_11">枚举类型</h3>
 
-<p>除非你创建了一个单独的图层，你几乎没有机会用到CALayerDelegate协议,因为当UIView创建了它的宿主图层时，它就会自动地把图层的<code>delegate</code>设置为它自己，并提供了一个<code>-displayLayer:</code>的实现</p>
+<p>枚举成员的访问级别与枚举类型相同，不能单独指定美剧成员的访问级别</p>
 
-<p>当使用寄宿了视图的图层的时候，你也不必实现<code>-displayLayer:</code>和<code>-drawLayer:inContext:</code>方法来绘制你的寄宿图。通常做法是实现UIView的<code>-drawRect:</code>方法，UIView就会帮你做完剩下的工作，包括在需要重绘的时候调用<code>-display</code>方法。</p>
+<h4 id="toc_12">原始值和关联值</h4>
+
+<p>枚举定义中的任何原始值或关联值的类型的访问级别至少不能低于枚举类型的访问级别。</p>
+
+<p>例如不能在<code>internal</code>的枚举中定义<code>private</code>的原始值类型</p>
+
+<h3 id="toc_13">嵌套类型</h3>
+
+<p>如果在 private 级别的类型中定义嵌套类型，那么该嵌套类型就自动拥有 private 访问级别。如果在 public 或者 internal 级别的类型中定义嵌套类型，那么该嵌套类型自动拥有internal 访问级别。如果想让嵌套类型拥有 public 访问级别，那么需要明确指定该嵌套类型的访问级别。</p>
+
+<h2 id="toc_14">子类</h2>
+
+<p><strong>子类的访问级别也不能高于父类</strong></p>
+
+<p>可以通过重写为继承来的类成员(方法、属性、下标、构造器等)提供更高的访问级别</p>
+
+<pre><code class="language-swift">public class A {
+    private func someMethod() {}
+}
+internal class B: A {
+    override internal func someMethod() {}
+}
+//类B继承自A，重写了类A中的方法将访问级别指定为更高的访问级别  
+//将someMethod方法 由private级别重写为internal级别
+</code></pre>
+
+<p>我们甚至可以在子类中，用子成员去访问级别更低的父类成员，只要这一操作在相应访问级别的限制范围内(即，在同一源文件中访问父类<code>fileprivate</code>级别的成员，在同一模块中内访问父类<code>internal</code>级别成员)</p>
+
+<pre><code class="language-swift">public class A {
+    private func someMethod() {}
+}
+internal class B: A {
+    override internal func someMethod() {
+        super.someMethod()
+    }
+}
+//子类中访问父类中级别更低成员（保证操作在相应访问级别的限值范围内）
+</code></pre>
+
+<h3 id="toc_15">常亮、变量、属性、下标</h3>
+
+<p>常量、变量、属性不能有比类型（成员的定义类型）更高的访问级别，</p>
+
+<p>下标也不能有比索引类型或返回类型更高的访问级别</p>
+
+<h3 id="toc_16">Getter和Setter</h3>
+
+<p>常量、变量、属性、下标的<code>Getters</code>和<code>Setters</code>的访问级别和它们所属类型的访问级别相同</p>
+
+<p><code>Setter</code>的访问级别可以低于<code>Getter</code>的访问级别，这样就可以控制变量、属性或下标的读写权限。<br/>
+在var或者subscript关键字之前，可以通过添加<code>fileprivate(set)</code>、<code>private(set)</code>、<code>internal(set)</code>来为写入指定更低权限</p>
+
+<blockquote>
+<p>注意：</p>
+
+<p>这个规则同时适用于存储型和计算型属性。<br/>
+即使你不明确指定存储型的<code>Getter</code>和<code>Seeter</code>，<code>Swift</code>也会隐式为其创建<code>Getter</code>和<code>Setter</code>，用于访问该属性的后备存储。<br/>
+使用<code>fileprivate(set)</code>,<code>private(set)</code>和<code>internal(set)</code>可以改变<code>Setter</code>的访问级别，这对计算属性同样适用</p>
+</blockquote>
+
+<pre><code class="language-swift">struct TrackedString {
+    private(set) var numberOfEdits = 0
+    var value: String = &quot;&quot; {
+        didSet {
+            numberOfEdits += 1
+        }
+    }
+}
+</code></pre>
+
+<p>因为结构体的<code>numberOfEdits</code>属性采用了<code>private(set)</code>修饰符，意味着<code>numberOfEdits</code>属性只能在结构体定义中赋值。此时<code>numberOfEdits</code>属性<code>Getter</code>依然是是默认的访问级别<code>internal</code>，但是<code>Setter</code>的访问级别是<code>private</code>，这表示该属性只能在内部修改，而在结构体外部则表现为一个只读属性。</p>
+
+<h2 id="toc_17">构造器</h2>
+
+<p>自定义构造器的访问级别可以低于或等于其所属的的类型的访问级别</p>
+
+<p>但是<mark>必要构造器</mark>的访问级别必须和所属的类型的访问级别相同</p>
+
+<h3 id="toc_18">默认构造器</h3>
+
+<p>默认构造器的访问级别和所属类型的访问级别相同，除非类型的访问级别是<code>public</code>。<br/>
+当类型级别为<code>public</code>，那么默认构造器的访问级别将为<code>internal</code><br/>
+如果想要在其他模块使用<code>public</code>的无参构造器，你只能自己提供一个</p>
+
+<h3 id="toc_19">结构体默认的成员逐一构造器</h3>
+
+<p>如果结构体中任意存储型属性的访问级别为<code>private</code>，那么该结构体默认的成员逐一构造器的访问级别就是<code>private</code>。否则，这种构造器的访问级别依然是 <code>internal</code>。</p>
+
+<p>与默认构造器类似，如果希望一个<code>public</code>级别的结构体也能在其他模块中使用默认的成员逐一构造器，你依然只能自己提供一个public级别的成员逐一构造器</p>
+
+<h2 id="toc_20">协议</h2>
+
+<p>在定义协议时指定协议的访问级别,限制协议只能在适当访问级别范围内被遵循</p>
+
+<p>协议中的每一个要求都具有和该协议相同的访问级别。你不能将协议中的要求设置为其他访问级别，这样才能确保该协议的所有要求对于任意遵循着都将会可用</p>
+
+<blockquote>
+<p>注意：</p>
+
+<p>如果定义一个public级别的协议，则其协议的所有实现也会是public级别的。不同于其他类型，例如，当类型时<code>public</code>级别，其成员的访问级别却只是<code>internal</code></p>
+</blockquote>
+
+<h3 id="toc_21">协议继承</h3>
+
+<p>如果定义一个继承自其他协议的新协议，那么该新协议的访问级别最高只能和父协议相同，而不能高于父协议</p>
+
+<h3 id="toc_22">协议遵循</h3>
+
+<ol>
+<li><p>一个类型可以遵循级别比它更低的协议。<br/>
+例如，你可以定义一个<code>public</code>级别类型，它可以在其他模块中使用，同时它也可以采纳一个<code>internal</code>级别的协议，但是只能在该协议所在的模块中作为符合该协议的类型使用。</p></li>
+<li><p>遵循协议的上下文级别是类型和协议中级别中较小的那个。<br/>
+例如：类型是public级别，但它要遵循的协议是<code>internal</code>级别，那么这个类型对该协议的遵循上下文就是internal级别</p></li>
+<li><p>当编写或者扩展一个类型让它遵循一个协议时，必须保证该类型对协议中每个要求的实现，至少与遵循协议的上下文级别一致。<br/>
+例如：一个public类型遵循一个internal协议，这个类型对协议的所有实现至少都已应该是internal级别的</p></li>
+</ol>
+
+<h2 id="toc_23">Extension</h2>
+
+<ol>
+<li>可以在访问级别允许的情况下对类、结构体、枚举进行扩展。扩展成员具有和原始类型成员一致的访问级别</li>
+<li>可以明确指定扩展的访问级别(例如：<code>private extension</code>)，从而给扩展中成员一个新的访问级别,但是新的默认访问级别仍会被单独指定的级别覆盖</li>
+</ol>
+
+<h3 id="toc_24">通过扩展添加协议一致性</h3>
+
+<p>通过扩展来采纳协议，那么你就不能显式指定该扩展的访问级别了。协议拥有相应的访问级别，并会为该扩展中所有协议要求的实现提供默认的访问级别。</p>
+
+<h3 id="toc_25">Extension的私有成员</h3>
+
+<p>扩展同一文件内的类、结构体或者枚举，extension里的代码会表现的和声明在元类型里一模一样。</p>
+
+<ul>
+<li>在类型的声明里声明一个私有成员，在同一文件的extension里访问</li>
+<li>在extension里声明一个私有成员，在同一文件的另一个extension里访问</li>
+<li>在extension里声明一个私有成员，在同一文件的类型声明里访问</li>
+</ul>
+
+<h2 id="toc_26">泛型</h2>
+
+<p>泛型类型或泛型函数的访问级别取决于泛型类型或泛型函数本身的访问级别，还需结合类型参数的类型约束的访问级别，根据这些访问级别中的最低访问级别来确定。</p>
+
+<h2 id="toc_27">类型别名</h2>
+
+<p>定义的任何类型别名都会被当做不同的类型，以便进行访问控制。<br/>
+类型别名的访问级别不可高于其表示的类型的访问级别。</p>
+
+<p>例如： private 级别的类型别名可以作为 private、file-private、internal、public 或者 open 类型的别名，但是 public 级别的类型别名只能作为 public 类型的别名，不能作为 internal、file-private 或 private 类型的别名。</p>
+
+<blockquote>
+<p>注意：</p>
+
+<p>这条规则 也适用于为满足协议遵循而将类型别名用于关联类型的情况</p>
+</blockquote>
 
 
 		</div>
@@ -277,8 +399,10 @@ layer.contentsScale = [UIScreen mainScreen].scale;
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -292,7 +416,7 @@ layer.contentsScale = [UIScreen mainScreen].scale;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -388,31 +512,31 @@ layer.contentsScale = [UIScreen mainScreen].scale;
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

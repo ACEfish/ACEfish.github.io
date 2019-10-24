@@ -82,19 +82,61 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15651698942201.html">Block值捕获和__block总结</a></h1>
-			<p class="meta"><time datetime="2019-08-07T17:24:54+08:00" 
-			pubdate data-updated="true">2019/8/7</time></p>
+		  	<h1 class="entry-title"><a href="15555568072278.html">后台任务超时崩溃</a></h1>
+			<p class="meta"><time datetime="2019-04-18T11:06:47+08:00" 
+			pubdate data-updated="true">2019/4/18</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<ol>
-<li><p>block的值捕获<br/>
-block可以捕获调用处的局部变量，在block内部使用<br/>
-因为block对变量进行了值copy，将其从栈区拷贝到堆区，当然对于本来就在堆区的对象只是进行了引用计数加1，然后作为参数传递到block内部进行使用，苹果做了限制，无法修改其指向的内存地址，因此无法修改其值</p></li>
-<li><p>__block<br/>
- <code>__block</code>其实是新建了一个struct结构体，结构体内指向了局部变量值，将结构体作为参数传递给block，这样就可以通过该结构体访问和修改值了</p></li>
+		  	<h2 id="toc_0">信号不可捕获的崩溃</h2>
+
+<ol>
+<li><p>后台任务超时</p></li>
+<li><p>内存打爆</p></li>
+<li><p>主线程卡顿超阈值<br/>
+如果主线程超过系统规定的时间无响应，就会被<code>Watchdog</code>杀掉,这是崩溃对应的异常编码为<code>0x8badf00d</code></p></li>
 </ol>
+
+<h2 id="toc_1">后台崩溃</h2>
+
+<p>当App退到后台后，即使代码逻辑没有问题，也容易导致崩溃。这是以内系统强杀某些进程导致，而这些情况由于系统原因没有办法捕获到</p>
+
+<p>我们通常在应用进入后台时，通过调用<code>beginBackgroundTaskWithExpirationHandler</code>方法来延长应用存活</p>
+
+<pre><code class="language-objectivec">- (void)applicationDidEnterBackground:(UIApplication *)application {
+    //正常app 退到后台只有几秒时间执行代码，接下来就会被系统挂起
+    
+    //通过backgroud task方法延长后台时间 这个方法必须与endBackgroundTask一一对象
+    self.backgroundTaskIdentifier = [application beginBackgroundTaskWithExpirationHandler:^{
+        //如果在最后时间到了之前仍然没有调用endBackgroundTask方法 就会执行此回调
+        //通常时间为3分钟，如果时间到期之前调用endBackgroundTask方法 就会强制杀掉进程，就会造成崩溃
+        
+        /*
+         * 因此我们可以加一个定时器 在3分钟将要到达时 判断是否后台应用程序还在执行
+         * 如果还在执行的话，就可以认为快要崩溃 进行记录 上报
+         */
+
+        self.backGroundTimer = [NSTimer scheduledTimerWithTimeInterval:2*60 target:self selector:@selector(threeMinuteTimeOut) userInfo:nil repeats:NO];
+        
+        
+    }];
+    
+    NSLog(@&quot;开始执行后台任务&quot;);
+    //此处为执行任务代码 通常用来保存应用程序关键数据数据
+    //当任务执行完成时 调用endBackgroundTask方法 调用后就会将app挂起 
+//    [application endBackgroundTask:self.backgroundTaskIdentifier];
+
+
+}
+</code></pre>
+
+<blockquote>
+<p>可以在应用程序的任何时候 多次调用<code>beginBackgroundTaskWithExpirationHandler</code>方法，此时建议使用<code>beginBackgroundTaskWithName：expirationHandler：</code>方法，来给每个单独指定名称，方便调试。此时，每个任务都需要用返回的标识符，单独结束</p>
+
+<p>假如不支持后台任务 该方法返回<code>UIBackgroundTaskInvalid</code></p>
+
+<p>挂起状态是指:应用处在后台，并且已停止执行代码。当处在此状态时，应用依然驻留内存但不执行任何程序代码。当系统发生低内存告警时，系统将会将处 于Suspended状态的应用清除出内存以为正在前台运行的应用提供足够的内存。</p>
+</blockquote>
 
 
 		</div>
@@ -117,8 +159,10 @@ block可以捕获调用处的局部变量，在block内部使用<br/>
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -132,7 +176,7 @@ block可以捕获调用处的局部变量，在block内部使用<br/>
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -228,31 +272,31 @@ block可以捕获调用处的局部变量，在block内部使用<br/>
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

@@ -82,51 +82,75 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15331791133617.html">NetworkExtension</a></h1>
-			<p class="meta"><time datetime="2018-08-02T11:05:13+08:00" 
-			pubdate data-updated="true">2018/8/2</time></p>
+		  	<h1 class="entry-title"><a href="15537578174693.html">本地持久化</a></h1>
+			<p class="meta"><time datetime="2019-03-28T15:23:37+08:00" 
+			pubdate data-updated="true">2019/3/28</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>Network Extension框架包含可用于定制和扩展iOS和macOS核心网络功能的API。</p>
+		  	<p>文章看自<a href="https://casatwy.com/iosying-yong-jia-gou-tan-kai-pian.html">这里</a></p>
 
-<h2 id="toc_0">常用功能:</h2>
+<p>model和model层的区别，model可以称为dataModel 只是业务数据建模形式的一种<br/>
+<img src="media/15537578174693/15537578741705.jpg" alt="" style="width:1109px;"/></p>
+
+<p><a href="https://github.com/casatwy/CTPersistance">参考CTPersistance的持久层和业务层交互</a><br/>
+<img src="media/15537578174693/15537586256064.jpg" alt="" style="width:1176px;"/></p>
+
+<p>dataCenter协调持久层和业务层，他通过调用持久层的弱业务逻辑，来给业务层提供强业务逻辑数据</p>
+
+<p>Virtual Record就是前面提到的一个既能够被业务层理解，也能够被持久层理解的数据载体。Virtual Record事实上并不是一个对象，它只是一个protocol，这就是它Virtual的原因。一个对象只要实现了Virtual Record，它就可以直接被持久层当作Record进行操作，所以它也是一个Record。连起来就是Virtual Record了。所以，Virtual Record的实现者可以是任何对象，这个对象一般都是业务层对象。</p>
+
+<p>datacenter一般被Controller持有，因此不适合作为单例，datacenter可以根据业务作出分化，每个业务提供一个dataCenter然后在相关controller下去调度</p>
+
+<p>通过dataCenter可以将强业务逻辑和若业务逻辑区分开</p>
+
+<h3 id="toc_0">总结</h3>
+
+<p>在交互方案设计中，需要区别强业务逻辑和弱业务逻辑，把传统的dataModel区分为Table和Record，由DataCenter去实现强业务，Table去实现弱业务。由于DataCenter是强业务相关，所以在实际编码中，业务工程师负责创建DataCenter，并向业务层提供业务友好的方法，然后再在DataCenter中操作Table来完成业务层交付的需求</p>
+
+<p>在具体与业务层交互时，采用Virtual Record的设计思路来设计Record，由具体的业务对象来实现Virtual Record，以它作为DataCenter和业务层之间的数据媒介进行交互。而不是使用传统的数据模型来与业务层做交互。</p>
+
+<h2 id="toc_1">数据同步方案</h2>
+
+<p><a href="https://casatwy.com/iosying-yong-jia-gou-tan-ben-di-chi-jiu-hua-fang-an-ji-dong-tai-bu-shu.html">自行参阅</a></p>
+
+<h3 id="toc_2">单向数据同步</h3>
+
+<p>主要针对消息类应用</p>
 
 <ol>
-<li><p>Network Extension Hotspot Entitlements<br/>
-当需要使用<code>NEHotspotHelper</code>这个类时,这个就是必须的 需要向apple申请，也是这边文章重点</p></li>
-<li><p>Personal VPN<br/>
-<code>NEVPNManager</code>API 帮助app创建个人VPN，通常用于向用户提供服务,保护其因特网浏览活动。</p></li>
-<li><p>About Always-on VPN<br/>
-Always-on VPN </p></li>
-<li><p>Network Tunneling Protocol Client<br/>
-<code>NETunnelProvider</code>系列API将iOS和macOS设备连接到使用非标准网络隧道协议的VPN服务器，例如SSL-VPN服务器。<br/>
-帮助app自定义vpn服务</p></li>
-<li><p>Wi-Fi Hotspot Authentication and Configuration<br/>
-<code>NEFilterProvider</code>API帮助过滤网络服务内容</p></li>
-<li><p>Wi-Fi Hotspot Authentication and Configuration<br/>
-<code>NEHotspotHelper</code>API使您的应用能够为Wi-Fi热点执行自定义身份验证<br/>
-<code>NEHotspotConfiguration</code>API可让您的应用配置这些热点。</p></li>
+<li>改造的时候添加identifier(操作的唯一标识，而不是数据的唯一标识)，isDirty，isDeleted字段。如果在请求期间依旧允许对数据做操作，那么就要把identifier和primaryKey再放到一个新的表中</li>
+<li>每次生成数据之后对应生成一个identifier，然后只要是针对数据的操作，就修改一次isDirty或isDeleted，然后发起请求带上identifier和操作指令去告知服务器执行相关的操作。如果是复杂的同步方式，那么每一次修改数据时就新生成一次identifier，然后再发起请求带上相关数据告知服务器</li>
+<li>服务器根据请求包的identifier等数据执行操作，操作完毕回复给客户端确认</li>
+<li>收到服务器的确认包之后，根据服务器给到的identifier（有的时候也会有tablename，取决于你的具体实现）找到对应的记录，如果是删除操作，直接把数据删除就好。如果是插入和更新操作，就把isDirty置为NO。如果有额外的表记录了更新操作，直接把identifier对应的这个操作记录删掉就行。</li>
 </ol>
 
-<h2 id="toc_1">常用类</h2>
+<h3 id="toc_3">双向数据同步</h3>
 
-<p>本文只介绍和<code>NEHotspotHelper</code>相关类</p>
+<p>主要针对笔记、日程类应用</p>
+
+<h4 id="toc_4">封装操作对象</h4>
+
+<p>需要通过封装操作对象,封装的对象中需要有:</p>
 
 <ol>
-<li><p>NEHotspotHelper<br/>
-注册本app为网络助手应用</p></li>
-<li><p>NEHotspotHelperCommand<br/>
-app要处理的命令类</p></li>
-<li><p>NEHotspotHelperResponse<br/>
-对<code>NEHotspotHelperCommand</code>命令的响应</p></li>
-<li><p>NEHotspotNetwork<br/>
-NEHotspotNetwork将有关网络的信息传达给Hotspot Helper应用程序。</p></li>
+<li>操作的唯一标识</li>
+<li>数据的唯一标识</li>
+<li>操作的类型</li>
+<li>具体的数据，主要是在Insert和Update的时候会用到</li>
+<li>操作的依赖标识</li>
+<li>用户执行这项操作时的时间戳</li>
 </ol>
 
-<h2 id="toc_2">NEHotspotHelper</h2>
+<h4 id="toc_5">增加待操作数据表和待同步数据表</h4>
 
-<p>帮助app参与wifi热点过程成为热点帮助程序,<code>Hotspot Helper</code>要在后台接收命令，参与wifi状态变化处理,参考<a href="https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/Hotspot_Network_Subsystem_Guide/Contents/Introduction.html#//apple_ref/doc/uid/TP40016639">Hotspot Network Subsystem Programming Guide.</a></p>
+<h4 id="toc_6">拉去待执行列表实际</h4>
+
+<ol>
+<li>每次要把本地数据丢到服务器去同步之前，都要拉取一次待执行列表，执行完毕之后再上传本地同步数据</li>
+<li>每次进入相关页面的时候都更新一次，看有没有新的操作</li>
+<li>对实时性要求比较高的，要么客户端本地起一个线程做轮询，要么服务器通过长链接将待执行操作推送过来</li>
+</ol>
 
 
 		</div>
@@ -149,8 +173,10 @@ NEHotspotNetwork将有关网络的信息传达给Hotspot Helper应用程序。</
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -164,7 +190,7 @@ NEHotspotNetwork将有关网络的信息传达给Hotspot Helper应用程序。</
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -260,31 +286,31 @@ NEHotspotNetwork将有关网络的信息传达给Hotspot Helper应用程序。</
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

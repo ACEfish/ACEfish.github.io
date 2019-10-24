@@ -82,404 +82,241 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14873146865194.html">NSOperation</a></h1>
-			<p class="meta"><time datetime="2017-02-17T14:58:06+08:00" 
-			pubdate data-updated="true">2017/2/17</time></p>
+		  	<h1 class="entry-title"><a href="14892022301750.html">图层几何学、视觉效果</a></h1>
+			<p class="meta"><time datetime="2017-03-11T11:17:10+08:00" 
+			pubdate data-updated="true">2017/3/11</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><a href="http://www.jianshu.com/p/4b1d77054b35">NSOperation</a><br/>
-与GCD相比好处:</p>
+		  	<p>遗忘点:</p>
 
 <ol>
-<li>NSOperation是基于GCD之上的更高一层封装, 拥有更多的API(e.g. suspend, resume, cancel等等).</li>
-<li>在NSOperationQueue中, 可以指定各个NSOperation之间的依赖关系</li>
-<li>用KVO可以方便的监测NSOperation的状态(isExecuted, isFinished, isCancelled).</li>
-<li>更高的可定制能力, 你可以继承NSOperation实现可复用的逻辑模块.</li>
+<li>用作mask的layer不一定非要静态的,只要有layer的都可以作为蒙版</li>
 </ol>
 
-<h2 id="toc_0">NSOperation和NSOperationQueue</h2>
+<p>2.<code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；我们常用这个方法获取点击位置的视图（判断点击在了哪个视图）</p>
 
-<p>NSOpration是苹果公司对GCD的封装，NSOperation和MSOprationQueue分别对应GCD中的任务和队列<br/><br/>
-因此操作步骤如下：  </p>
-
-<ol>
-<li>将要执行的任务封装到NSOperation对象中</li>
-<li>将任务添加到一个NSOprationQueue对象中<br/>
-###添加任务
-<code>NSOperation</code>是一个抽象类，所以不能封装任务。但他有两个子类可以封装任务。分别为：NSInvocationOperation和NSBlockOperation。创建之后需要start启动，默认<strong>在当前队列同步执行</strong>当然也可以用<code>cancle</code>在中途取消任务</li>
-</ol>
-
-<p>在不使用NSOperationQueue，单独使用NSOperation的情况下系统同步执行操作:</p>
-
-<pre><code class="language-text">//1.创建NSInvocationOperation对象
-  NSInvocationOperation *operation = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(run) object:nil];
-
-  //2.开始执行
-  [operation start];   
+<pre><code class="language-text">CALayer *layer = [self.layerView.layer hitTest:point];
 </code></pre>
 
-<pre><code class="language-object-c">/**[]()
-    在没有使用NSOperationQueue、单独使用NSInvocationOperation的情况下，
-    NSInvocationOperation在主线程执行操作，并没有开启新线程。
-*/
+<h2 id="toc_0">图层几何学</h2>
+
+<h3 id="toc_1">布局</h3>
+
+<p>UIView布局属性:<code>frame</code> <code>bounds</code> <code>center</code><br/><br/>
+与之对应<br/>
+CALayer布局属性:<code>frame</code> <code>bounds</code> <code>position</code><br/>
+center和postion是一样的值，都代表了相对于父图层 <code>anchorPoint</code> 所在的位置</p>
+
+<p>视图的布局属性仅仅是存取方法，对其进行改变其实是改变视图下方CALayer的frame  </p>
+
+<p>视图或者图层的frame是根据其bounds，position和transform计算而来的，其中任意一值发生改变都会导致其frame改变  </p>
+
+<p><img src="media/14892022301750/14892031426669.jpg" alt=""/></p>
+
+<h3 id="toc_2">锚点</h3>
+
+<p>视图的<code>center</code>属性和图层的<code>position</code>属性都指定了<code>anchorPoint</code>相对于父图层的位置。</p>
+
+<p><code>anchorPoint</code>是用来移动图层的把柄</p>
+
+<p>默认<code>anchorPoint</code>是在图层的中心,这个属性UIView并没有暴露出来,这也是视图的<code>position</code>属性被叫做“center”的原因。但是图层的锚点可以移动，锚点的移动会导致frame的改变即位置改变</p>
+
+<p><img src="media/14892022301750/14893741880682.jpg" alt=""/></p>
+
+<p>anchorPoint也是单位坐标，默认是{0.5，0.5}，可以通过指定大于或者小于1，使其在图层范围之外</p>
+
+<p>改变<code>anchorPoint</code>常用于做不随着中心点做动画的动画使用,比如 时钟的表针旋转</p>
+
+<p><strong>注意</strong><br/>
+中心和锚点（即position或者center和anchorPoint没有任何关系），锚点的改变不会影响中心点位置，只会影响frame</p>
+
+<pre><code class="language-objectivec">position.x = frame.origin.x + anchorPoint.x * bounds.size.width；  
+position.y = frame.origin.y + anchorPoint.y * bounds.size.height；
+
+frame.origin.x = position.x - anchorPoint.x * bounds.size.width；  
+frame.origin.y = position.y - anchorPoint.y * bounds.size.height；
 </code></pre>
 
-<pre><code class="language-text">   在swift中这种方法是不是类型安全的（推荐第二种）
+<h3 id="toc_3">坐标系转换</h3>
 
+<p>CALayer提供了转换坐标系的方法（视图也有）</p>
 
-//1.创建NSBlockOperation对象
-  NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
-      NSLog(@&quot;%@&quot;, [NSThread currentThread]);
-  }];
-
-  //2.开始任务
-  [operation start];
+<pre><code class="language-objectivec">- (CGPoint)convertPoint:(CGPoint)point fromLayer:(CALayer *)layer;
+- (CGPoint)convertPoint:(CGPoint)point toLayer:(CALayer *)layer;
+- (CGRect)convertRect:(CGRect)rect fromLayer:(CALayer *)layer;
+- (CGRect)convertRect:(CGRect)rect toLayer:(CALayer *)layer;
 </code></pre>
 
-<p>默认会在当前线程中执行。但是<code>NSBlockOperation</code>还有一个方法<code>addExecutionBlock:</code>，通过这个方法会给Operation添加多个执行Block。这样的话Operation中的任务会并发执行，他会在主线程和其他多个线程执行这些任务</p>
+<h3 id="toc_4">Z坐标</h3>
 
-<pre><code class="language-objectivec"> //1.创建NSBlockOperation对象
-  NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
-      NSLog(@&quot;%@&quot;, [NSThread currentThread]);
-  }];
+<p>UIView是二维坐标 而CALayer则是三维的<br/><br/>
+因此CALayer还有两个属性:<code>zPosition</code> <code>anchorPointZ</code> 在Z轴上描述图层位置的浮点类型<br/>
+<code>zPosition</code>最实用的功能就是改变图层的显示顺序了，一般给图层增加<code>1.f</code>就可以控制显示顺序了</p>
 
-  //添加多个Block
-  for (NSInteger i = 0; i &lt; 5; i++) {
-      [operation addExecutionBlock:^{
-          NSLog(@&quot;第%ld次：%@&quot;, i, [NSThread currentThread]);
-      }];
-  }
+<h3 id="toc_5">HIT Testing</h3>
 
-  //2.开始任务
-  [operation start];
-  /**
-    可以看出，blockOperationWithBlock:方法中的操作是在主线程中执行的，而
-    addExecutionBlock:方法中的操作是在其他线程中执行的。
-  */
-</code></pre>
+<p><code>CALayer</code>并不关心任何响应链事件，所以不能直接处理触摸事件或者手势。但是它有一系列的方法帮你处理事件：<code>-containsPoint:</code>和<code>-hitTest:</code>。    </p>
 
-<hr/>
+<p><code>-containsPoint:</code> 接受一个在本图层坐标系吓得一个CGPoint，如果这个点在图层frame内就返回YES。注意必须将这个点转为每个图层坐标系下的坐标</p>
 
-<h2 id="toc_1">自定义Operation</h2>
+<p><code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；</p>
 
-<p>除了上面的两种 Operation 以外，我们还可以自定义 Operation。自定义 Operation 需要继承 NSOperation 类，并实现其 main() 方法，因为在调用 start() 方法的时候，内部会调用 main() 方法完成相关逻辑。<br/>
-在没有使用NSOperationQueue、单独使用自定义子类的情况下，是在主线程执行操作，并没有开启新线程。</p>
-
-<p>注意:<br/>
-<code>NSOperation</code>可以自己独立执行(直接调用<code>[operation start]</code>), 也可以放到<code>NSOperationQueue</code>里面执行, 这两种情况下是否并发执行是不同的.</p>
-
-<h5 id="toc_2">1. non-concurrent</h5>
-
-<p>NSOperation默认是非并发的(non-concurrent),果你把operation放到某个线程执行, 它会一直block住该线程, 直到<code>operation finished</code>.<br/>
-对于非并发的operation你只需要继承NSOperation, 然后重写main()方法即可<br/>
-示例:下载一张:</p>
-
-<pre><code class="language-object-c">/**
-    由于NSOperation是可以cancel的, 所以你需要在operation程序内部执行过程中判断当前
-    operation是否已经被cancel了(isCancelled). 如果已经被cancel那就不往下执行了. 当你在外面
-    调用[operation cancel]后, isCancelled会被置为YES.
-*/
-
-@implementation YourOperation 
-
-- (void)main 
+<pre><code class="language-objectivec">//举个栗子
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
-    @autoreleasepool {
-
-        if (self.isCancelled) return;
-
-        NSData *imageData = [[NSData alloc] initWithContentsOfURL:imageURL];
-
-        if (self.isCancelled) { imageData = nil; return; }
-
-        if (imageData) {
-            UIImage *downloadedImage = [UIImage imageWithData:imageData];
-        }
-
-        imageData = nil;
-
-        if (self.isCancelled) return;
-
-        [self.delegate performSelectorOnMainThread:@selector(imageDownloaderDidFinish:)                                                                  
-                                        withObject:downloadedImage
-                                     waitUntilDone:NO];
+    //get touch position
+    CGPoint point = [[touches anyObject] locationInView:self.view];
+    //get touched layer
+    //获取这个点击的layer
+    CALayer *layer = [self.layerView.layer hitTest:point];
+    //get layer using hitTest
+    if (layer == self.blueLayer) {
+        [[[UIAlertView alloc] initWithTitle:@&quot;Inside Blue Layer&quot; message:nil delegate:nil cancelButtonTitle:@&quot;OK&quot; otherButtonTitles:nil] show];
+    } else if (layer == self.layerView.layer) {
+        [[[UIAlertView alloc] initWithTitle:@&quot;Inside White Layer&quot;
+        message:nil
+        delegate:nil
+        cancelButtonTitle:@&quot;OK&quot;
+        otherButtonTitles:nil] show];
     }
 }
 
-@end
 </code></pre>
 
-<h5 id="toc_3">1. Concurrent</h5>
+<p><strong>注意</strong></p>
 
-<p>NSOperation有三个状态量isCancelled, isExecuting和isFinished. isCancelled上面解释过. main函数执行完成后, isExecuting会被置为NO, 而isFinished则被置为YES.</p>
+<ol>
+<li>当调用图层的<code>-hitTest:</code>方法时，测算的顺序严格依赖于图层树当中的图层顺序（和<code>UIView</code>处理事件类似）。之前提到的<code>zPosition</code>属性可以明显改变屏幕上图层的顺序，但不能改变事件传递的顺序。<br/></li>
+<li>这两个方法是layer的实例方法 我们可以直接用layer调用而不需要作为系统判断方法</li>
+</ol>
 
-<p>那肿么实现并发(concurrent)的NSOperation呢? 也很简单:<br/>
-1). 重写isConcurrent函数, 返回YES, 这个告诉系统各单位注意了我这个operation是要并发的.<br/>
-2). 重写start()函数.<br/>
-3). 重写isExecuting和isFinished函数<br/>
-4). 有必要时需要重写isCanceled函数</p>
+<h3 id="toc_6">自动布局</h3>
 
-<blockquote>
-<p>为什么在并发情况下需要自己来设定isExecuting和isFinished这两个状态量呢? 因为在并发情况下系统不知道operation什么时候finished, operation里面的task一般来说是异步执行的, 也就是start函数返回了operation不一定就是finish了, 这个你自己来控制, 你什么时候将isFinished置为YES(发送相应的KVO消息), operation就什么时候完成了.</p>
-</blockquote>
+<p>对于UIView如果想要自动布局我们可以使用<code>UIViewAutoresizingMask</code>  和<code>NSLayoutConstraint</code>API<br/><br/>
+CALayer没有自动布局办法<br/>
+如果想要随意控制CALayer的布局，我们可以用CALayerDelegate方法:  </p>
 
-<pre><code class="language-object-c">- (BOOL)isConcurrent {
-    return YES;
-}
-
-- (void)start 
-{
-    [self willChangeValueForKey:@&quot;isExecuting&quot;];
-    _isExecuting = YES;
-    [self didChangeValueForKey:@&quot;isExecuting&quot;];
-
-    NSURLRequest * request = [NSURLRequest requestWithURL:imageURL];
-    _connection = [[NSURLConnection alloc] initWithRequest:request
-                                                  delegate:self];
-    if (_connection == nil) [self finish];
-}
-
-- (void)finish
-{
-    self.connection = nil;
-
-    [self willChangeValueForKey:@&quot;isExecuting&quot;];
-    [self willChangeValueForKey:@&quot;isFinished&quot;];
-
-    _isExecuting = NO;
-    _isFinished = YES;
-
-    [self didChangeValueForKey:@&quot;isExecuting&quot;];
-    [self didChangeValueForKey:@&quot;isFinished&quot;];
-}
-
-#pragma mark - NSURLConnection delegate
-- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
-    // to do something...
-}
-
-- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
-    // to do something...
-}
-
-- (void)connectionDidFinishLoading:(NSURLConnection *)connection {
-    [self finish];
-}
-
-- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
-    [self finish];
-}
-
-@end
+<pre><code class="language-objectivec">- (void)layoutSublayersOfLayer:(CALayer *)layer;
+/**当图层的 bounds 发生改变，或者图层的 -setNeedsLayout 方法被调用的时候，这个函数将会被执
+行。（但是也没法做大自适应屏幕等自动布局,这也是为什么我们用UIView来布局）*/
 </code></pre>
 
-<p>还有以下几点需要注意:</p>
+<h2 id="toc_7">视觉效果</h2>
+
+<h3 id="toc_8">圆角</h3>
+
+<p>CALayer有一个叫做<code>conrnerRadius</code>的属性控制着图层角的曲率。它是一个浮点数，默认为0（为0的时候就是直角）,默认这个值不影响背景图片或者子图层,但是如果设置<code>maskToBounds</code>为<code>YES</code>,图层中东西都会被截取.</p>
+
+<h3 id="toc_9">图层边框</h3>
+
+<p><code>borderWidth</code>和<code>borderColor</code>，这条线（stroke）沿着图层的bounds绘制,同时也包含图层的角.<br/>
+<code>borderWith</code>以点为单位的浮点数<br/><br/>
+<code>borderColor</code>边框的颜色默认黑色,<code>CGColorRef</code>类型，不是UIColor所以不是<code>Cocoa</code>内置对象  </p>
+
+<pre><code class="language-objectivec">// CGColorRef 属性即便是强引用也只能通过assign关键字来声明
+@property(nullable) CGColorRef borderColor;
+</code></pre>
+
+<p><strong>注意</strong></p>
+
+<ol>
+<li>边框是绘制在图层边界里面的，而且在所有子内容之前，也在子图层之前。（这个之前是显示最前而不是在最前绘制被遮盖）</li>
+<li>边框是跟随图层的边界变化的，而不是图层里面的内容</li>
+<li>
+<img src="media/14892022301750/14893838391060.jpg" alt=""/></li>
+</ol>
+
+<h3 id="toc_10">阴影</h3>
+
+<p><code>shadowOpacity</code>默认0。他是一个必须在<code>0.0</code>（不可见）和<code>1.0</code>（完全不透明）之间的浮点数。  </p>
+
+<p>阴影的另外三个属性:<br/><br/>
+<code>shadowColor</code>控制阴影的颜色，和 borderColor 和 backgroundColor 一样，它的类型也是 CGColorRef，默认黑色<br/><br/>
+<code>shadowOffset</code>阴影的方向和距离 CGSize类型，宽度为阴影横向位移，高度为纵向位移，默认{0,-3},即相对Y轴有3个点的向上位移<br/><br/>
+<code>shadowRadius</code>控制着阴影的模糊度，当它的值是0的时候，阴影就和视图一样有一个非常确定的边界线。我们推荐为大于0的值,值越大阴影越模糊,图层层次更明显.</p>
+
+<p><img src="media/14892022301750/14893848191222.jpg" alt=""/></p>
+
+<h4 id="toc_11">阴影裁剪</h4>
+
+<p>与边框不同,图层的阴影继承自内容的外形，CoreAnimation会将寄宿图（包括子视图）来结合图层形状创建一个阴影。<br/><br/>
+但是由于他们的不同,我们在包括子图层创建阴影后,如果按照边框进行裁剪就会导致部分阴影没有了，这时候我们只能额外创建一个裁剪后的图层形状的阴影图层（可以作为最外层的父图层）来实现效果。</p>
+
+<h3 id="toc_12">shadowPath属性</h3>
+
+<p>因为实时计算阴影是非常消耗资源的,我们可以通过事先指定<code>shadowPath</code>来提高性能.<code>shadowPath</code>是一个<code>CGPathRef</code>类型（一个指向<code>CGPath</code>的指针）。<code>CGPath</code> 是一个<code>Core Graphics</code>对象，用来指定任意的一个矢量图形。我们可以用这个属性在图层形状之外指定阴影形状.  </p>
+
+<p>举个栗子:</p>
+
+<pre><code class="language-objectivec">
+CGMutablePathRef squarePath = CGPathCreateMutable();
+CGPathAddRect(squarePath, NULL, self.layerView1.bounds);
+self.layerView1.layer.shadowPath = squarePath;
+//需要我们手动释放
+CGPathRelease(squarePath);
+//create a circular shadow
+CGMutablePathRef circlePath = CGPathCreateMutable();
+CGPathAddEllipseInRect(circlePath, NULL, self.layerView2.bounds);
+self.layerView2.layer.shadowPath = circlePath; 
+CGPathRelease(circlePath);
+</code></pre>
+
+<p><code>CGPath</code>适合搭建比较简单的形状,比如举行或者圆,但是如果是复杂的图形推荐<strong>使用<code>UIBezierPath</code></strong>，它是一个由UIKit提供的在<code>CGPath</code>基础上的<code>Objective-C</code>包装类</p>
+
+<h3 id="toc_13">图层蒙版</h3>
+
+<p>CALayer的<code>mask</code>属性是一个CALayer类型,它类似于一个自图层，mask图层定义了父图层的可见区域。  </p>
+
+<p>mask图层的color没用,轮廓才是重要的。对于mask图层中的部分会保留下来,其他部分会被抛弃（对于视图View其实你可以看做其他部分还在只不过颜色为透明色,但是这部分还会拦截点击事件）  </p>
+
+<p>这个<code>Mask</code><strong>不仅仅局限于静态图</strong>，任何有图层的构成都可以作为Mask，因此我们甚至可以用一个动画的layer作为蒙版.</p>
+
+<h3 id="toc_14">拉伸过滤</h3>
+
+<p>这里牵涉到<code>minificationFilter</code>和<code>magnificationFilter</code>属性。  </p>
+
+<p>当图片需要显示不同大小的时候,这种拉伸算法就起到作用。它作用于原图的像素上并根据需要生成新的像素显示在屏幕上。</p>
+
+<p><code>CALayer</code>提供给我们三种拉伸过滤方法:</p>
 
 <ul>
-<li> operation的executing和finished状态量需要用willChangeValueForKey/didChangeValueForKey来触发KVO消息.</li>
-<li> 在调用完NSURLConnection之后start函数就返回了, 后面就坐等connection的回调了</li>
-<li> 在connection的didFinish或didFail回调里面设置operation的finish状态, 告诉系统operation执行完毕了.</li>
+<li>kCAFilterLinear </li>
+<li>kCAFilterNearest</li>
+<li>kCAFilterTrilinear</li>
 </ul>
 
-<p><strong>注意:</strong><br/>
-如果你是在主线程调用的这个并发的operation, 那一切都是非常的perfect, 就算你当前在操作UI也不影响operation的下载操作. BUT, 如果你是在子线程调用的, 或者把operation加到了非main queue, 那么问题来了, 你会发现这货的NSURLConnection delegate不走了.</p>
+<p><code>minification</code>（缩小图片）和<code>magnification</code>（放大图片）默认的过滤器都是<code>kCAFilterLinear</code></p>
 
-<blockquote>
-<p>这是runLoop的原因，主线程会自动创建一个RunLoop来保证程序一直运行. 但子线程默认不创建NSRunLoop, 所以子线程的任务一旦返回, 线程就over了.上面的并发operation当start函数返回后子线程就退出了, 当NSURLConnection的delegate回调时, 线程已经木有了, 所以你也就收不到回调了. 为了保证子线程持续live(等待connection回调), 你需要在子线程中加入RunLoop, 来保证它不会被kill掉.<br/>
-详细关于RunLoop的知识可以查看 <a href="%5B%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B%E3%80%81NSThread&amp;GCD&amp;NSOpration&amp;runLoop%5D(14871584203378.html)">并发编程Runloop</a></p>
-</blockquote>
+<p><code>kCAFilterLinear</code>双线性滤波，大多数情况下表现良好，但是当放大倍数较大时会比较模糊不清  </p>
 
-<p>对于这个问题:我们解决办法</p>
+<p><code>kCAFilterTrilinear</code>和<code>kCAFilterLinear</code>很相似，是三线性滤波<br/>
+<img src="media/14892022301750/14893953542514.jpg" alt=""/></p>
 
-<ol>
-<li><p>让start函数在主线程运行(即使[operation start]是在子线程调用的).</p>
-<pre><code class="language-object-c">- (void)start 
-{<br/>
-    if (![NSThread isMainThread]) {<br/>
-        [self performSelectorOnMainThread:@selector(start)<br/>
-                           withObject:nil<br/>
-                        waitUntilDone:NO];<br/>
-        return;<br/>
- }<br/>
-    // set up NSURLConnection...<br/>
-}<br/>
-或者<br/>
-   - (void)start<br/>
-   {<br/>
-       [[NSOperationQueue mainQueue] addOperationWithBlock:^{<br/>
-       self.connection = [NSURLConnection connectionWithRequest:self.request delegate:self];<br/>
-       }];<br/>
-   }
-</code></pre></li>
-<li><p>方法二是:让<code>operation</code>的start函数在子线程运行, 但是我们为它创建一个RunLoop. 然后把<code>URL connection schedule</code>到上面去. （这种方法不推荐）</p>
-<pre><code class="language-object-c">    //参考AFNetWorking的做法
-    + (void)networkRequestThreadEntryPoint:(id)__unused object <br/>
-    {<br/>
-        @autoreleasepool {<br/>
-            [[NSThread currentThread] setName:@&quot;AFNetworking&quot;];<br/>
-            NSRunLoop *runLoop = [NSRunLoop currentRunLoop];<br/>
-            [runLoop addPort:[NSMachPort port] forMode:NSDefaultRunLoopMode];<br/>
-            [runLoop run];<br/>
-        }<br/>
-    }<br/>
-    + (NSThread *)networkRequestThread <br/>
-    {<br/>
-        static NSThread *_networkRequestThread = nil;<br/>
-        static dispatch_once_t oncePredicate;<br/>
-        dispatch_once(&amp;oncePredicate, ^{<br/>
-            _networkRequestThread = [[NSThread alloc] initWithTarget:self selector:@selector(networkRequestThreadEntryPoint:) object:nil];<br/>
-            [_networkRequestThread start];<br/>
-        });<br/>
-        return _networkRequestThread;<br/>
-    }<br/>
-    - (void)start <br/>
-    {<br/>
-        [self.lock lock];<br/>
-        if ([self isCancelled]) {<br/>
-            [self performSelector:@selector(cancelConnection) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];<br/>
-        } else if ([self isReady]) {<br/>
-            self.state = AFOperationExecutingState;<br/>
-            [self performSelector:@selector(operationDidStart) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];<br/>
-        }<br/>
-        [self.lock unlock];<br/>
-    }
-</code></pre>
-<p>AFNetworking创建了一个新的子线程(在子线程中调用NSRunLoop *runloop = [NSRunLoop currentRunLoop]; 获取RunLoop对象的时候, 就会创建RunLoop), 然后把它加到RunLoop里面来保证它一直运行.</p>
-<blockquote>
-<p>这边我们可以简单的判断下当前start()的线程是子线程还是主线程, 如果是子线程则调用[NSRunLoop currentRunLoop]创新RunLoop, 否则就直接调用[NSRunLoop mainRunLoop], 当然在主线程下就没必要调用[runLoop run]了, 因为它本来就是一直run的.<br/>
-我们还可以使用CFRunLoop来启动和停止RunLoop<br/>
-<code>[self.connection scheduleInRunLoop:[NSRunLoop currentRunLoop]<br/>
-                       forMode:NSRunLoopCommonModes];<br/>
-CFRunLoopRun();<br/>
-</code><br/>
-等到该Operation结束的时候, 一定要记得调用<strong>CFRunLoopStop()</strong>停止当前线程的RunLoop, 让当前线程在operation finished之后可以退出.</p>
-</blockquote></li>
-</ol>
+<p><code>kCAFilterNearest</code> 最近过滤 ，就是取样最近的单像素点而不管其他的颜色。总的来说，对于比较小的图或者是差异特别明显，极少斜线的大图，最近过滤算法会保留这种差异明显的特质以呈现更好的结果。但是对于大多数的图尤其是有很多斜线或是曲线轮廓的图片来说，最近过滤算法会导致更差的结果。换句话说，线性过滤保留了形状，最近过滤则保留了像素的差异。<br/>
+<img src="media/14892022301750/14893958244715.jpg" alt=""/></p>
 
-<hr/>
+<h3 id="toc_15">组透明</h3>
 
-<h2 id="toc_4">NSOperationQueue</h2>
+<p>UIView用<code>alpha</code>属性设置透明度<br/>
+CALayy用<code>opacity</code>设置图层透明度<br/>
+这两个属性都是影响子层级的，比如我们设置一个图层透明度为50%，图层的每个像素都会一半显示自己的颜色，另一半显示图层下面的颜色。。但是如果图层包含一个同样显示50%透明的子图层时，你所看到的视图，50%来自子视图，25%来了图层本身的颜色，另外的25%则来自背景色。因此经常导致我们我们视图颜色的不协调。</p>
 
-<p>看过上面的内容就知道，我们可以调用一个 NSOperation 对象的 <code>start()</code> 方法来启动这个任务，但是这样做他们默认是 同步执行 的。就算是 <code>addExecutionBlock</code> 方法，也会在 当前线程和其他线程 中执行，也就是说还是会占用当前线程。这是就要用到队列 <code>NSOperationQueue</code> 了。而且，按类型来说的话一共有两种类型：主队列、其他队列。只要添加到队列，会自动调用任务的 <code>start()</code> 方法</p>
+<p>这时候我们可以<br/><br/>
+方法一：<br/><br/>
+通过设置<code>Info.plist</code>文件中的 <code>UIViewGroupOpacity</code>为<code>YES</code>来达到这个效果，但是这个设置会影响到这个应用，整个app可能会受到不良影响。</p>
 
-<p>一旦NSOperation被add到Queue里面那么我们就不care它自身是不是并发设计的了, 因为被add到Queue里面的operation必定是并发的. 而且我们可以设置Queue的maxConcurrentOperationCount来指定最大的并发数(也就是几个operation可以同时被执行, <strong>如果这个值设为1, 那这个Queue就是串行队列了</strong>).<br/>
- Queue会为每一个add到队列里面的operation创建一个线程来运行其start函数, 这样每个start都分布在不同的线程里面来实现operation们的并发执行.<br/>
-注意:<br/>
-** 我们这边所说的并发都是指NSOperation之间的并发(多个operation同时执行), 如果maxConcurrentOperationCount设置为1或者把operation放到[NSOperationQueue mainQueue]里面执行, 那它们只会顺序(Serial)执行, 当然就不可能并发了.**</p>
+<p>方法二：（推荐）<br/><br/>
+设置CALayer的一个叫做<code>shouldRasterize</code>属性来实现组透明的效果，如果它被设置为YES，在应用透明度之前，图层及其子图层都会被整合成一个整体的图片，这样就没有透明度混合的问题了</p>
 
-<h5 id="toc_5">* 主队列</h5>
+<p>为了启用<code>shouldRasterize</code>属性，我们设置了图层的<code>rasterizationScale</code>属性。默认情况下，所有图层拉伸都是1.0， 所以如果你使用了<code>shouldRasterize</code>属性，你就要确保你设置了 <code>rasterizationScale</code> 属性去匹配屏幕，以防止出现Retina屏幕像素化的问题。</p>
 
-<p>细心同学会发现，每套多线程方案都会有一个主线程。这是一个特殊的线程必须串行。凡是添加到主队列中的任务（NSOperation），都会放到主线程中执行<br/><br/>
-    //OBJECTIVE-C<br/>
-    NSOperationQueue *queue = [NSOperationQueue mainQueue];</p>
-
-<pre><code class="language-text">//SWIFT
-let queue = NSOperationQueue.mainQueue()
+<pre><code class="language-objectivec">button2.layer.shouldRasterize = YES;
+button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
 </code></pre>
 
-<h5 id="toc_6">* 其他队列</h5>
-
-<p>通过初始化产生的队列就是其他队列了，其他队列不需要名字<br/>
-<strong>注意：</strong>其他队列会在其他线程中并行执行</p>
-
-<pre><code class="language-object-c">    //1.创建一个其他队列    
-    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
-    
-    //2.创建NSBlockOperation对象
-    NSBlockOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
-        NSLog(@&quot;%@&quot;, [NSThread currentThread]);
-    }];
-    
-    //3.添加多个Block
-    for (NSInteger i = 0; i &lt; 5; i++) {
-        [operation addExecutionBlock:^{
-            NSLog(@&quot;第%ld次：%@&quot;, i, [NSThread currentThread]);
-        }];
-    }
-
-    //4.队列添加任务
-    [queue addOperation:operation];
-    /**
-       NSInvocationOperation和NSOperationQueue结合后能够开启新线程，进行并发执行
-       NSBlockOperation和NSOperationQueue也能够开启新线程，进行并发执行
-    */
-</code></pre>
-
-<p><code>- (void)addOperationWithBlock:(void (^)(void))block;</code><br/>
-无需先创建任务，在block中添加任务，直接将任务block加入到队列中,能够开启新线程，进行并发执行。</p>
-
-<hr/>
-
-<p>这时如果我们想要任务在其他线程串行执行<br/><br/>
-<code>NSOperationQueue</code>有个参数<code>maxConcurrentOperationCount</code>最大并发数，设置为1时就是串行了<br/><br/>
-<code>maxConcurrentOperationCount</code>默认情况下为-1，表示不进行限制，默认为并发执行。<br/>
-<code>maxConcurrentOperationCount</code>大于1时，进行并发执行，当然这个值不应超过系统限制，即使自己设置一个很大的值，系统也会自动调整</p>
-
-<h3 id="toc_7">操作依赖</h3>
-
-<p><code>NSOperation</code>还有个实用功能添加依赖。比如有 3 个任务：A: 从服务器上下载一张图片，B：给这张图片加个水印，C：把图片返回给服务器。这时就可以用到依赖了:</p>
-
-<pre><code class="language-object-c">    //1.任务一：下载图片
-    NSBlockOperation *operation1 = [NSBlockOperation blockOperationWithBlock:^{
-        NSLog(@&quot;下载图片 - %@&quot;, [NSThread currentThread]);
-        [NSThread sleepForTimeInterval:1.0];
-    }];
-    
-    //2.任务二：打水印
-    NSBlockOperation *operation2 = [NSBlockOperation blockOperationWithBlock:^{
-        NSLog(@&quot;打水印   - %@&quot;, [NSThread currentThread]);
-        [NSThread sleepForTimeInterval:1.0];
-    }];
-    
-    //3.任务三：上传图片
-    NSBlockOperation *operation3 = [NSBlockOperation blockOperationWithBlock:^{
-        NSLog(@&quot;上传图片 - %@&quot;, [NSThread currentThread]);
-        [NSThread sleepForTimeInterval:1.0];
-    }];
-    
-    //4.设置依赖
-    [operation2 addDependency:operation1];      //任务二依赖任务一
-    [operation3 addDependency:operation2];      //任务三依赖任务二
-    
-    //5.创建队列并加入任务
-    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
-    [queue addOperations:@[operation3, operation2, operation1] waitUntilFinished:NO];
-</code></pre>
-
-<p>注意不能添加互相依赖否则会锁死<br/><br/>
-可以用<code>removeDependency</code>来解除依赖</p>
-
-<p><strong>注意:</strong><br/>
-如果我在子线程调用[operation start]函数, 或者把operation放到非MainQueue里面执行, 但是在operation的内部把start抛到主线程来执行(利用主线程的main run loop), 那多个operation其实不都是要在主线程执行的么, 这样还能并发? Luckily, 仍然是并发执行的,当然这个并发指的是狭义并发也就是主线程进行伪并行<br/>
-<img src="media/14873146865194/14873217004353.jpg" alt=""/></p>
-
-<hr/>
-
-<h3 id="toc_8">其他方法</h3>
-
-<ul>
-<li><h5 id="toc_9">NSOperation</h5>
-<pre><code class="language-text">BOOL executing; //判断任务是否正在执行
-BOOL finished; //判断任务是否完成<br/>
-void (^completionBlock)(void); //用来设置完成后需要执行的操作<br/>
-- (void)cancel; //取消任务 `NSOperation`提供的方法，可取消单个操作<br/>
-- (void)waitUntilFinished; //阻塞当前线程直到此任务执行完毕
-</code></pre></li>
-<li><h5 id="toc_10">NSOperationQueue</h5>
-<pre><code class="language-text">NSUInteger operationCount; //获取队列的任务数
-- (void)cancelAllOperations; //取消队列中所有的任务<br/>
-- (void)waitUntilAllOperationsAreFinished; //阻塞当前线程直到此队列中的所有任务执行完毕<br/>
-[queue setSuspended:YES]; // 暂停queue<br/>
-[queue setSuspended:NO]; // 继续queue
-</code></pre></li>
-</ul>
-
-<hr/>
-
-<h3 id="toc_11">与君共勉</h3>
-
-<p><img src="media/14873146865194/14876658479087.jpg" alt=""/></p>
+<p><strong>注意</strong><br/>
+当<code>shouldRasterize</code>和<code>UIViewGroupOpacity</code>一起的时候，会出现性能问题（但是好像影响不大）</p>
 
 
 		</div>
@@ -502,8 +339,10 @@ void (^completionBlock)(void); //用来设置完成后需要执行的操作<br/>
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -517,7 +356,7 @@ void (^completionBlock)(void); //用来设置完成后需要执行的操作<br/>
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -613,31 +452,31 @@ void (^completionBlock)(void); //用来设置完成后需要执行的操作<br/>
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

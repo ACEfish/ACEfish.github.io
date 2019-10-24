@@ -82,27 +82,49 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15611008346251.html">RACDelegateProxy</a></h1>
-			<p class="meta"><time datetime="2019-06-21T15:07:14+08:00" 
-			pubdate data-updated="true">2019/6/21</time></p>
+		  	<h1 class="entry-title"><a href="15682782807154.html">智能预加载</a></h1>
+			<p class="meta"><time datetime="2019-09-12T16:51:20+08:00" 
+			pubdate data-updated="true">2019/9/12</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>将代理用<code>RACDelegateProxy</code>实现</p>
+		  	<p>学习自<a href="https://texturegroup.org/docs/intelligent-preloading.html">Texture官方文档</a></p>
 
-<pre><code class="language-objectivec">RACDelegateProxy *proxy = [[RACDelegateProxy alloc] initWithProtocol:@protocol(UITableViewDelegate)];
-objc_setAssociatedObject(self, _cmd, proxy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-proxy.rac_proxiedDelegate = self;
-[[proxy rac_signalForSelector:@selector(tableView:didSelectRowAtIndexPath:)]
- subscribeNext:^(RACTuple *value) {
-     [value.first deselectRowAtIndexPath:value.second animated:YES];
- }];
-self.tableView.delegate = (id&lt;UITableViewDelegate&gt;)proxy;
+<p>虽然异步并发渲染和FlexBox布局已经足够强大，但是Texture还做了另外的智能预加载的思想</p>
 
-//等效于
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
-}
+<p>我们通常不在<code>node container</code>外使用node，因为所有的node都有当前的<code>interface state</code>概念。<br/>
+<code>interface state</code>属性由<code>ASRangeController</code>更新和维护，ASRangeController又由所有的<code>node container</code>在内部创建和维护。<br/>
+当我们在contain外部使用node时，就不会有<code>ASRangeController</code>更新其状态，这个有时会导致渲染时node闪烁，这是因为这些容器外的节点因为状态的错误，在节点被渲染到屏幕上后又进行了一次渲染。</p>
+
+<h1 id="toc_0">接口状态范围</h1>
+
+<p><img src="media/15682782807154/15682794649845.jpg" alt="" style="width:497px;"/><br/>
+当nodes<mark>添加到滚动或者分页界面时</mark>，会处在上面所处的几个状态之一。意味着当视图滚动时，他们的状态将会更新</p>
+
+<p>Preload： 预加载，离可见区域最远的内容，在这个地方收集其他的输入源信息<br/>
+Display： 在这个地方展示例如文字光栅化、图片解码等任务<br/>
+Visible： 在屏幕上展示至少一个像素</p>
+
+<h3 id="toc_1">ASRangeTuningParameters</h3>
+
+<p>这些状态范围的大小是可调整的。默认大小适合于大多数情况，我们也可以设置滚动范围参数调整其大小</p>
+
+<p>在下面图片中我们可以看到，当用户向下滚动时，滚动方向的范围比尾部方向内容大得多。当用户改变滚动方向时，则首尾将会动态交换，以保持内存最佳使用率。这使得我们只需要关系首尾方向的range size大小，而不需担心用户更改滚动方向<br/>
+<img src="media/15682782807154/15682825633985.jpg" alt="" style="width:500px;"/></p>
+
+<h2 id="toc_2">接口状态回调</h2>
+
+<p>当用户滚动时 node会在这三个状态范围中切换 并且通过加载数据或者渲染做出反应。自己的node子类可以通过实现相应的回调方法来利用这种机制</p>
+
+<pre><code class="language-objectivec">-didEnterVisibleState
+-didExitVisibleState
+
+-didEnterDisplayState
+-didExitDisplayState
+
+-didEnterPreloadState
+-didExitPreloadState
+//记得都要调用super
 </code></pre>
 
 
@@ -126,8 +148,10 @@ self.tableView.delegate = (id&lt;UITableViewDelegate&gt;)proxy;
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -141,7 +165,7 @@ self.tableView.delegate = (id&lt;UITableViewDelegate&gt;)proxy;
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -237,31 +261,31 @@ self.tableView.delegate = (id&lt;UITableViewDelegate&gt;)proxy;
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

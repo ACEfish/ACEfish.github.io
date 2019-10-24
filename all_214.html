@@ -82,48 +82,30 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15540299299293.html">CodeGen IR LLVM</a></h1>
-			<p class="meta"><time datetime="2019-03-31T18:58:49+08:00" 
-			pubdate data-updated="true">2019/3/31</time></p>
+		  	<h1 class="entry-title"><a href="15541064037153.html">Swift编译流</a></h1>
+			<p class="meta"><time datetime="2019-04-01T16:13:23+08:00" 
+			pubdate data-updated="true">2019/4/1</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">CodeGen生成IR代码</h2>
+		  	<p>Swift编译流和Clang一样都是编译前端，和 Clang 一样代码会被解析成语法数 AST，接下来会比 Clang 多一步，通过 SILGen 生成 SIL 这一次方便做些 Swift 特定的优化，SIL 会被传递给 IR 生成阶段生成 LLVM IR，最后由 LLVM 解决余下事情。</p>
 
-<p>将语法树翻译成LLVM IR中间代码，作为LLVM Backend输入的桥接语言。方便LLVM Backend可以做到与语言无关的优化</p>
+<pre><code class="language-swift">//生成程序
+swiftc toy.swift
 
-<p><strong>这个过程还会与runtime进行桥接</strong></p>
+//生成检查 AST
+swiftc -dump-ast toy.swift
 
-<ul>
-<li>各种类、方法、成员变量等的结构体的生成，将其放到对应的Mach-O的Section中</li>
-<li>Non-Fragile ABI合成OBJC_IVAR_$_偏移值常量</li>
-<li>ObjCMessageExpr(AST树结构)翻译生成相应版本的objc_msgSend、super翻译生成objc_msgSendSuper</li>
-<li>strong、weak、copy、atomic、nonatomic、readwrite等合成@property自动实现setter和getter</li>
-<li>@synthesize 的处理</li>
-<li>生成block_layout数据结构(即block对应的结构体)</li>
-<li><strong>block和</strong>weak处理</li>
-<li>_block_invoke</li>
-<li>ARC的处理，即插入objc_storeStrong和objc_storeWeak等ARC代码;ObjCAutoreleasePoolStmt 转 objc_autorealeasePoolPush / Pop;自动添加 [super dealloc];给每个 ivar 的类合成 .cxx_destructor 方法自动释放类的成员变量</li>
-</ul>
+//可以还原之前函数名
+swiftc -emit-silgen toy.swift | xcrun swift-demangle
 
-<p><strong>不管编译的语言时 Objective-C 还是 Swift 也不管对应机器是什么，亦或是即时编译，LLVM 里唯一不变的是中间语言 LLVM IR</strong></p>
+//llvm ir 和汇编的生成
+swiftc -emit-ir toy.swift
+swiftc -emit-assembly toy.swift
 
-<h3 id="toc_1">LLVM IR</h3>
-
-<p>LLVM IR有三种表示格式，第一种是bitcode这样的存储格式，以.bc做后缀；第二种是可读的.ll；第三种是用于开发是操作LLVM IR的内存格式</p>
-
-<p>一个编译单元即一个文件在IR里就是一个<code>Module</code>，Module里有<code>Global variable</code>和<code>Function</code>，在Function里有<code>Basic Block</code>，<code>Basic Block</code>里有指令<code>Instructions</code><br/>
-这样的话，如果想要开发一门新的语言只需要完成语法解析后，通过LLVM提供的丰富接口在内存中生成IR就可以直接运行在各个不同的平台</p>
-
-<h3 id="toc_2">LLVM IR的优化</h3>
-
-<p>选择不同的O2、O3这样的优化回调用对应的Pass进行处理，比如死代码清理、内联化、表达式重组、循环变量移动等这样的Pass，可以通过命令<code>llvm -opt</code>调用LLVM优化相关的库</p>
-
-<h3 id="toc_3">SSA</h3>
-
-<p>LLVM IR是SSA形式的，维护双向def-use信息，user-def是通过普通指针实现信息维护，def-user通过内存跳表和链表来实现，便于forward dataflow analysis和backward dataflow analysis。</p>
-
-<p>llc 编译器是专门编译 LLVM IR 的编译器用来生成汇编文件。</p>
+//生成可执行的脚本
+xcrun -sdk macosx swiftc toy.swift -o toy
+</code></pre>
 
 
 		</div>
@@ -146,8 +128,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -161,7 +145,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -257,31 +241,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

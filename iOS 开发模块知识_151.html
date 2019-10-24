@@ -82,132 +82,122 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15541213204265.html">dyld动态链接</a></h1>
-			<p class="meta"><time datetime="2019-04-01T20:22:00+08:00" 
-			pubdate data-updated="true">2019/4/1</time></p>
+		  	<h1 class="entry-title"><a href="15536896283260.html">网络层架构</a></h1>
+			<p class="meta"><time datetime="2019-03-27T20:27:08+08:00" 
+			pubdate data-updated="true">2019/3/27</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>生成可执行文件后，就是在启动时进行动态链接了,进行符号和地址的绑定。首先会加载所依赖的<code>dylibs</code>，修正地址偏移，因为iOS会用 ASLR 来做地址偏移避免攻击，确定<code>Non-Lazy Pointer</code>地址进行符号地址绑定，加载所有类，最后执行<code>load</code>方法和<code>clang attribute</code> 的<code>constructor</code>修饰函数。</p>
+		  	<p>文章看自<a href="https://casatwy.com/iosying-yong-jia-gou-tan-kai-pian.html">这里</a></p>
 
-<p>每个函数、全局变量和类都是通过符号的形式来定义和使用的，当把目标文件链接为一个执行文件时，链接器在目标文件和动态库之间对符号做解析处理</p>
+<h2 id="toc_0">网络层设计需要注意</h2>
 
-<p>查看一个可链接文件的符号表<br/>
-<code>xcrun nm -nm SayHi.o</code></p>
+<h3 id="toc_1">1. 以什么样的方式将数据交付给业务层</h3>
 
-<pre><code class="language-c">                 (undefined) external _OBJC_CLASS_$_Foo
-                 (undefined) external _objc_autoreleasePoolPop
-                 (undefined) external _objc_autoreleasePoolPush
-                 (undefined) external _objc_msgSend
-0000000000000000 (__TEXT,__text) external _main
+<p>Delegate block notification</p>
+
+<p>尽量不要使用notification，这要会导致可能的跨层访问导致耦合性增加；notification的一对多关系，导致问题难以追踪</p>
+
+<p>block比较难追踪、维护；block会延长对象的生命周期；</p>
+
+<p>在离散场景下，因为每次回调时做的任务，在每次回调时都是一致的，因此不要用block，使用delegate最好<br/>
+在集约型调用时，因为每次请求类型都不一样，回调做的业务也不一致，因此使用block较好</p>
+
+<p>在网络请求和网络层接受请求地方，采用block没问题，但是在获得数据交给业务方时，最好还是通过delegate去通知业务方,因为使用block的话 会导致调用请求的逻辑和获得结果的处理逻辑在同一个地方，代码变长，同时包含调用前和调用后的两部分逻辑，一次使用delegate，请求API地方只写请求的逻辑，在回调地方 只写回调的逻辑</p>
+
+<h3 id="toc_2">2.交付什么样的数给业务层</h3>
+
+<p>不要交付直接转换好的对象模型给业务层，可以交付json或者NSDictionary或者array，然后业务层通过特定的工具类转换为自己需要的数据(这个工具类可能是遵循了同一个协议的很多类，每个类有自己的转换方法，以及转换结果)</p>
+
+<p>如果直接下发模型给业务层，那么在API请求层可能会有很多转换性能消耗，而且需要引入很多模型类，导致维护灾难</p>
+
+<p>使用统一的工具类转换: 1. 可以使转换的逻辑集中，2. 将数据网络请求的数据直接转换为我们View需要展示的方便的数据，一步到位 3. 可以将业务数据和业务隔离，如果业务逻辑有修改，直接修改或者替换这个工具类即可，而UI有修改时，也不影响该转换工具类</p>
+
+<p>转化出来的数据是直接可用的数据，不限定于dictionary或者model，也可以是view或者tableCell等</p>
+
+<h3 id="toc_3">3.调用API应该是集约型还是离散型</h3>
+
+<p>集约型: 所有api调用的是同一个类<br/>
+离散型: 每一个请求api对应初始化一个请求类的对象</p>
+
+<p>推荐离散型原因:</p>
+
+<ol>
+<li>可以方便做到正在进行的请求的取消</li>
+<li>离散型可以针对不同的请求做不同的处理方式</li>
+<li>当请求的着陆点消失时，离散型可以直接在请求类中感知并取消请求<br/>
+如果是离散型的API调用，取消请求的代码写到APIManager里面就可以了，然后随着ViewController的回收进程，APIManager也会被跟着回收，这部分代码就得到了调用的机会。</li>
+<li>离散型的请求可以给业务方提供更灵活性</li>
+</ol>
+
+<p>综上，关于集约型的API调用和离散型的API调用，我倾向于这样：对外提供一个BaseAPIManager来给业务方做派生，在BaseManager里面采用集约化的手段组装请求，放飞请求，然而业务方调用API的时候，则是以离散的API调用方式来调用。如果你的App只提供了集约化的方式，而没有离散方式的通道，那么我建议你再封装一层，便于业务方使用离散的API调用方式来放飞请求。</p>
+
+<p>关于集约型的API调用和离散型的API调用，我倾向于这样：对外提供一个BaseAPIManager来给业务方做派生，在BaseManager里面采用集约化的手段组装请求，放飞请求，然而业务方调用API的时候，则是以离散的API调用方式来调用。</p>
+
+<p>当我们不得已要实现继承时，最好使用协议方式来规范子类的重载方法，使用IOP方式来限制派生类的重载</p>
+
+<p>总结</p>
+
+<ol>
+<li>使用delegate来做数据对接，仅在必要时采用Notification来做跨层访问</li>
+<li>提供reformer机制来处理网络层反馈的数据，这个机制很重要，好处极多</li>
+<li>网络层上部分使用离散型设计，下部分使用集约型设计</li>
+<li>设计合理的继承机制，让派生出来的APIManager受到限制，避免混乱</li>
+</ol>
+
+<h2 id="toc_4">网络层的安全</h2>
+
+<h2 id="toc_5">网络层优化方案</h2>
+
+<p>优化入手切点:</p>
+
+<ol>
+<li>针对链路建立环节的优化</li>
+<li>针对链路传输数据量的优化</li>
+<li>针对链路复用的优化</li>
+</ol>
+
+<h3 id="toc_6">针对链路建立环节的优化</h3>
+
+<p>请求建立的步骤：</p>
+
+<ol>
+<li>发起请求</li>
+<li>DNS解析得到域名</li>
+<li>根据IP进行3次或者4次(HTTPS)握手</li>
+</ol>
+
+<p>优化方案1.1： 缓存一些时效性比较长数据，减少请求发起的次数，将把API名字和参数拼成一个字符串然后取MD5作为key，存储对应数据； 清除数据策略:超时清理或者缓存数据过大清理，可以根据APP的操作日志决定；缓存可以存储在内存中，或者磁盘上<br/>
+优化方案1.2： 减少请求发起的次数；1）比如多次下拉刷新，在一次请求没落地前剩下的没必要继续请求发送了 2）而类似条件筛选的，就可以取消前面的发送的请求 3）对于某些请求，没必要频繁发送的，可以先在本地记录，等数据满多少条后，上传数据；app每次启动时，上传上次的一流数据</p>
+
+<p>优化方案2.1: 因为移动端的信号源常变，因此DNS链路的缓存经常变化，导致缓存的作用一般，另外因为很多应用app网络请求操作，属于你的app的DNS缓存很快被其他应用使用、覆盖，因此在解析DNS时，会耗费时间，优化方案就是：直接使用ip请求</p>
+
+<p>对于建立链接时候的第三步，国内的网络环境分北网通南电信（当然实际情况更复杂，这里随便说说），不同服务商之间的连接，延时是很大的，我们需要想办法让用户在最适合他的IP上给他提供服务，那么就针对我们绕过DNS服务的手段有一个额外要求：尽可能不要让用户使用对他来说很慢的IP。</p>
+
+<p>所以综上所述，方案就应该是这样：本地有一份IP列表，这些IP是所有提供API的服务器的IP，每次应用启动的时候，针对这个列表里的所有IP取ping延时时间，然后取延时时间最小的那个IP作为今后发起请求的IP地址。</p>
+
+<pre><code class="language-objectivec">针对建立连接的优化手段其实是跟DNS域名解析的优化手段是一样的。不过这需要你的服务器提供
+服务的网络情况要多，一般现在的服务器都是双网卡，电信和网通。由于中国特色的互联网ISP分
+布，南北网络之间存在瓶颈，而我们App针对链接的优化手段主要就是着手于如何减轻这个瓶颈对
+App产生的影响，所以需要维护一个IP列表，这样就能就近连接了，就起到了优化的效果。
+
+我们一般都是在应用启动的时候获得本地列表中所有IP的ping值，然后通过NSURLProtocol的
+手段将URL中的HOST修改为我们找到的最快的IP。另外，这个本地IP列表也会需要通过一个API
+来维护，一般是每天第一次启动的时候读一次API，然后更新到本地。
+
 </code></pre>
 
-<ul>
-<li><code>OBJC_CLASS$_Foo</code>表示<code>Foo</code>的<code>OC</code>符号</li>
-<li><code>(undefined) external</code>表示未实现非私有，如果是私有就是<code>non-external</code></li>
-<li><code>external _main</code> 表示<code>main()</code>函数，处理<code>0</code>地址，将要到 <strong>TEXT,</strong>text section</li>
-</ul>
+<h3 id="toc_7">针对链接复用的优化</h3>
 
-<pre><code class="language-text">xcrun nm -nm Foo.o
-</code></pre>
+<h2 id="toc_8">自己的一些思考</h2>
 
-<pre><code class="language-c">                 (undefined) external _NSLog
-                 (undefined) external _OBJC_CLASS_$_NSObject
-                 (undefined) external _OBJC_METACLASS_$_NSObject
-                 (undefined) external ___CFConstantStringClassReference
-                 (undefined) external __objc_empty_cache
-0000000000000000 (__TEXT,__text) non-external -[Foo say]
-0000000000000060 (__DATA,__objc_const) non-external l_OBJC_METACLASS_RO_$_Foo
-00000000000000a8 (__DATA,__objc_const) non-external l_OBJC_$_INSTANCE_METHODS_Foo
-00000000000000c8 (__DATA,__objc_const) non-external l_OBJC_CLASS_RO_$_Foo
-0000000000000110 (__DATA,__objc_data) external _OBJC_METACLASS_$_Foo
-0000000000000138 (__DATA,__objc_data) external _OBJC_CLASS_$_Foo
-</code></pre>
-
-<p>undefine符号表示该文件类未实现的，所以在目标文件和<code>Function framework</code>动态库做链接处理时，链接器尝试解析所有的undefined符号</p>
-
-<p>链接器通过动态库解析成符号会记录是通过哪个动态库解析的，路径也会一起记录。对比下a.out符号表，看看可执行文件是怎么解析符号的</p>
-
-<pre><code class="language-text">xcrun nm -nm a.out
-</code></pre>
-
-<pre><code class="language-c">                 (undefined) external _NSLog (from Foundation)
-                 (undefined) external _OBJC_CLASS_$_NSObject (from CoreFoundation)
-                 (undefined) external _OBJC_METACLASS_$_NSObject (from CoreFoundation)
-                 (undefined) external ___CFConstantStringClassReference (from CoreFoundation)
-                 (undefined) external __objc_empty_cache (from libobjc)
-                 (undefined) external _objc_autoreleasePoolPop (from libobjc)
-                 (undefined) external _objc_autoreleasePoolPush (from libobjc)
-                 (undefined) external _objc_msgSend (from libobjc)
-                 (undefined) external dyld_stub_binder (from libSystem)
-0000000100000000 (__TEXT,__text) [referenced dynamically] external __mh_execute_header
-0000000100000e90 (__TEXT,__text) external _main
-0000000100000f10 (__TEXT,__text) non-external -[Foo say]
-0000000100001130 (__DATA,__objc_data) external _OBJC_METACLASS_$_Foo
-0000000100001158 (__DATA,__objc_data) external _OBJC_CLASS_$_Foo
-</code></pre>
-
-<p>undefined 符号 有了更多信息，可以知道在哪个库能够找到<br/>
-通过otool可以找到所需要的库在哪</p>
-
-<pre><code class="language-text">xcrun otool -L a.out
-</code></pre>
-
-<pre><code class="language-text">a.out:
-    /System/Library/Frameworks/Foundation.framework/Versions/C/Foundation (compatibility version 300.0.0, current version 1349.25.0)
-    /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1238.0.0)
-    /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation (compatibility version 150.0.0, current version 1348.28.0)
-    /usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
-</code></pre>
-
-<p>dylib这种格式表示是动态链接的，即动态库，编译时不会被编译到执行文件中，在程序执行时才link，这样就不用算到包的大小中,而且也能够不更新执行程序就能更新库</p>
-
-<p>打印什么库被加载了</p>
-
-<pre><code class="language-text">(export DYLD_PRINT_LIBRARIES=; ./a.out )
-</code></pre>
-
-<pre><code class="language-text">dyld: loaded: /Users/didi/Downloads/./a.out
-dyld: loaded: /System/Library/Frameworks/Foundation.framework/Versions/C/Foundation
-dyld: loaded: /usr/lib/libSystem.B.dylib
-dyld: loaded: /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation
-…
-</code></pre>
-
-<p>因为Fundation库依赖一些其他库,其他库还会依赖更多，因此为了减少处理的时间,系统上的动态链接器会共享缓存,共享的缓存在<code>/var/db/dyld/</code>，这样，当加载Mach-O文件时动态链接器会先检查共享内存是否有。每个进程都会有自己地址空间映射这些共享缓存，可以优化启动速度</p>
-
-<h3 id="toc_0">dyld做了什么事情</h3>
-
-<ul>
-<li>kernel做启动程序初始准备,开始由dyld负责</li>
-<li>基于非常简单的原始栈为kernel设置进程来启动自身</li>
-<li>使用共享缓存来处理递归依赖带来的性能问题,ImageLoader会读取二进制文件,其中包含了我们的类,方法等各种符号</li>
-<li>立即绑定non-lazy的符号并设置用于lazy bind的必要表，将这些库link到执行文件里</li>
-<li>为可执行文件运行静态初始化</li>
-<li>设置参数到可执行文件的 main 函数并调用它</li>
-<li>在执行期间，<strong>通过绑定符号处理对<code>lazily-bound</code>符号存根的调用提供runtime动态加载服务(通过 dl*() 这个 API ），并为gdb和其它调试器提供钩子以获得关键信息。runtime会调用map_images做解析和处理,load_images来调用call_load_methods方法遍历所有加载了的Class，按照继承层级依次调用+load方法；</strong></li>
-<li>在main函数返回后运行 static terminator</li>
-<li>在某些情况下,一旦main函数返回就需要调用<code>libSystem</code>的_exit</li>
-</ul>
-
-<p>查看运行时的调用 map_images 和 调用 +load 方法的相关 runtime 处理可以通过 RetVal 的可debug 的 objc/runtime<a href="https://github.com/RetVal/objc-runtime">RetVal/objc-runtime: objc runtime 706</a> 来进行断点查看调用的runtime方法具体实现。在 debug-objc 下创建一个类，在 +load 方法里断点查看走到这里调用的堆栈如下：</p>
-
-<pre><code class="language-objectivec">0 +[someclass load]
-1  call_class_loads()
-2  ::call_load_methods
-3  ::load_images(const char *path __unused, const struct mach_header *mh)
-4  dyld::notifySingle(dyld_image_states, ImageLoader const*, ImageLoader::InitializerTimingList*)
-11 _dyld_start
-</code></pre>
-
-<p>在<code>load_images</code>方法里断点 p path 可以打印出所有加载的动态链接库，这个方法的<code>hasLoadMethods</code>用于快速判断是否有<code>+load</code>方法。</p>
-
-<p><code>prepare_load_methods</code>这个方法会获取所有类的列表然后收集其中的<code>+load</code>方法，在代码里可以发现<code>Class</code>的<code>+load</code>是先执行的，然后执行<code>Category</code>的<code>+load</code>方法。为什么这样做，原因可以通过<code>prepare_load_methods</code>这个方法看出，在遍历<code>Class</code>的<code>+load</code>方法时会执行<code>schedule_class_load</code>这个方法，这个方法会递归到根节点来满足<code>Class</code>收集完整关系树的需求。<br/>
-最后<code>call_load_methods</code>会创建一个<code>autoreleasePool</code>使用函数指针来动态调用类和<code>Category</code>的<code>+load</code>方法</p>
-
-<p>如果想了解<code>Cocoa</code>的<code>Fundation</code>库可以通过<a href="https://github.com/AaronYi/gnustep-base">GNUStep</a>源码来学习。比如 NSNotificationCenter 发送通知是按什么顺序发送的可以查看 NSNotificationCenter.m 里的 addObserver 方法和 postNotification 方法，看看观察者是怎么添加的和怎么被遍历通知到的</p>
-
-<p>dyld 是开源的： <a href="https://github.com/opensource-apple/dyld**">GitHub - opensource-apple/dyld</a></p>
+<ol>
+<li><p>转化网络层下发数据的一些思考:<br/>
+业务层通过特定的工具类转换为自己需要的数据(这个工具类可能是遵循了同一个协议的很多类，每个类有自己的转换方法，以及转换结果)</p></li>
+<li><p>使用离散型请求，关于多模块共享数据</p>
+<p>我们可以使用离散型请求，在业务层获取到数据后，如果该数据需要共享，则可以业务层告诉一个共享模块(单例模块)，将此数据存储（此共享模块数据Model层，提供数据的存。取、删、该等功能）</p></li>
+<li></li>
+</ol>
 
 
 		</div>
@@ -230,8 +220,10 @@ dyld: loaded: /System/Library/Frameworks/CoreFoundation.framework/Versions/A/Cor
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -245,7 +237,7 @@ dyld: loaded: /System/Library/Frameworks/CoreFoundation.framework/Versions/A/Cor
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -341,31 +333,31 @@ dyld: loaded: /System/Library/Frameworks/CoreFoundation.framework/Versions/A/Cor
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

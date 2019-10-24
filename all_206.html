@@ -82,172 +82,199 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15553153173429.html">Cocoa基本内存管理规则</a></h1>
-			<p class="meta"><time datetime="2019-04-15T16:01:57+08:00" 
-			pubdate data-updated="true">2019/4/15</time></p>
+		  	<h1 class="entry-title"><a href="15031302948355.html">可选链式调用</a></h1>
+			<p class="meta"><time datetime="2017-08-19T16:11:34+08:00" 
+			pubdate data-updated="true">2017/8/19</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><a href="https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/MemoryMgmt/Articles/MemoryMgmt.html">官方文档地址</a></p>
+		  	<p><strong>可选链式调用</strong>是在当前值可能为<code>nil</code>的可选值上请求和调用属性、方法以及下标的方法。如果可选值不为空,调用成功,否则如果可选值为<code>nil</code>，那么调用将返回<code>nil</code>。多个调用可以结合为一个调用链,若任何一个节点为<code>nil</code>。整个调用链都会失败</p>
 
-<h2 id="toc_0">基本内存管理规则</h2>
+<h2 id="toc_0">可选链式调用代替强制展开</h2>
 
-<p>内存管理是基于对象所有权进行管理的，任一对象都可能有1个或者多个持有者，只要至少有一个持有者，该对象就会一直存在，否则加入没有了持有者，运行时系统就会将其自动销毁，为确保你可以清楚管理自己持有对象，<code>Cocoa</code>设置了基本的内存分配原则:</p>
-
-<h3 id="toc_1">自己生成的对象，自己持有</h3>
-
-<pre><code class="language-text">当你使用`alloc`、`new`、`copy`、`mutableCopy`开头的方法创建一个对象时
-
-alloc或者new就自己生成对象并持有
-copy方法利用基于`NSCopying`协议约定，由各类实现`copyWithZone:`方法生成并持有对象副本；mutableCopy方法与其类似，只是其利用基于`NSMutableCopying`协议约定，由各类实现`mutableCopyWithZone:`方法生成并持有对象的副本。而两者区别在于：copy生成的时可变对象，而mutableCopy生成了可变更对象。虽然生成的是副本，但是仍然是生成并持有对象
-</code></pre>
-
-<h3 id="toc_2">非自己生成的对象，自己也可以使用<code>retain</code>持有</h3>
-
-<pre><code class="language-text">用除了上面的方法外生成的对象，所以并非自己生成的对象持有，可以使用retain进行持有
-
-为了保证接收到的对象在接收到的方法中保持有效，并且该方法也可以安全的将对象返回给其调用者。通常需要在以下两种情况下`retain`:
-1. 在访问器方法和初始化方法实现中，对想要作为属性存储的对象进行持有
-2. 防止对象因为其他操作的副作用而失效(例如从数组移除或父对象被删除)
-</code></pre>
-
-<h3 id="toc_3">当你不再需要该对象，释放</h3>
-
-<pre><code class="language-text">自己持有的对象，当不再需要时需要，通过`release`或者`autorelease`方法放弃对象的持有权
-</code></pre>
-
-<h3 id="toc_4">非自己持有的对象无法释放</h3>
-
-<p>例如:</p>
-
-<pre><code class="language-objectivec">id obj = [NSMutableArray array];
-//释放了非自己持有的对象
-[obj release];
-</code></pre>
-
-<h2 id="toc_5">内存管理方法的实现</h2>
-
-<p>苹果管理对象内存引用计数的方法大概是通过散列表(引用计数表)的方式，这张表的键位内存块地址的散列值(hash值)，而值即为该对象内存的引用计数</p>
-
-<p>而至于<code>retainCount/retain/release</code>方法实现是通过CoreFoundation中的<code>__CFDoExternRefOperation（）</code>函数，通过不同的操作将表中对象内存地址对应的引用计数进行操作</p>
-
-<h2 id="toc_6">示例</h2>
-
-<h4 id="toc_7">0.可以通过retainCount获取对象引用计数</h4>
-
-<pre><code class="language-objectivec">//可以通过retainCount获取对象引用计数
-id obj = [[NSObject alloc] init];
-NSLog(@&quot;%ld&quot;, [obj retainCount]);
-</code></pre>
-
-<h4 id="toc_8">1.不在需要时使用release释放</h4>
-
-<pre><code class="language-objectivec">//自己生成持有的对象 自己释放
-{
-    id obj = [[NSObject alloc] init];
-    [obj release];
-}
-//非自己生成持有的对象，自己释放
-{
-    id array = [NSMutableArray array];
-    [array retain];
-    [array release];
-}
-</code></pre>
-
-<h4 id="toc_9">2. 使用autorelease来延时释放</h4>
-
-<p>当需要用某个方法生成对象，并返回给调用方:</p>
-
-<pre><code class="language-objectivec">
-- (id)allocObject {
-    id obj = [[NSObject alloc] init];
-    return obj;
-}
-</code></pre>
-
-<p>因为调用方法名满足以<code>alloc</code>开头条件，因此返回生成并持有的对象，就可以让调用方也持有该对象</p>
-
-<p>那么类似[NSMutableArray Array]生成对象，但是不持有对象是如何实现的：</p>
-
-<pre><code class="language-objectivec">- (NSString *)fullName {
-    NSString *string = [[[NSString alloc] initWithFormat:@&quot;%@ %@&quot;,
-                                          self.firstName, self.lastName] autorelease];
-    return string;
-}
-</code></pre>
-
-<p>根据内存管理规则，你必须释放<code>alloc</code>对象，但是如果直接<code>release</code>，string就会在返回前被deallocated(方法就会返回一个无效对象),因此我们可以使用<code>autorelease</code>,表示想要释放对象，但是允许方法调用者在释放之前使用方法的返回值</p>
+<p>在想调用的属性、方法、下标的可选值后加上<code>?</code>来定义一个可选链。</p>
 
 <blockquote>
-<p><code>autorelease</code>会使对象继续存在 但是自己并不持有对象<br/>
-这种方法的命名开头不能为<code>alloc/mew/copy/mutablerCopy</code></p>
+<p>很像在可选值后面放一个叹号（<code>!</code>）来强制展开它的值。它们的主要区别在于当可选值为空时可选链式调用只会调用失败，然而强制展开将会触发运行时错误</p>
 </blockquote>
 
-<p>还可以这么写:</p>
+<p>可选链式调用,不论调用的属性、方法及下标返回值的类型,返回结果都是具有相同类型的可选值,可以利用这个可选返回值来判断链式调用是否成功,有值则返回成功，<code>nil</code>表示调用失败</p>
 
-<pre><code class="language-objectivec">- (NSString *)fullName {
-    NSString *string = [NSString stringWithFormat:@&quot;%@ %@&quot;,
-                                 self.firstName, self.lastName];
-    return string;
+<pre><code class="language-swift">class Person {
+    var residence: Residence?
+}
+class Residence {
+    var numberOfRooms = 1
+}
+let john = Person()
+</code></pre>
+
+<p>我们直接<code>let roomCount = john.residence!.numberOfRooms</code>因为<code>residence</code>为<code>nil</code>强制展开的话是会触发运行时错误的</p>
+
+<p>这时我们可以采用可选链式调用来访问<code>numberOfRooms</code>用<code>?</code>代替<code>!</code></p>
+
+<pre><code class="language-swift">if let roomCount = john.residence?.numberOfRooms {
+    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
+} else {
+    print(&quot;Unable to retrieve the number of rooms.&quot;)
 }
 </code></pre>
 
-<p>此时<code>string</code>对象自己并不持有，因此也不负责释放，可以安全的返回给方法的调用者</p>
+<p><strong>添加问号之后，Swift 就会在<code>residence</code>不为<code>nil</code>的情况下访问<code>numberOfRooms</code></strong></p>
 
-<h4 id="toc_10">3.你不持有通过引用返回的对象</h4>
+<p>即使<code>numberOfRooms</code>是非可选类型<code>Int</code>，只要使用可选链式调用就意味着<code>numberOfRooms</code>会返回<code>Int?</code>而不是<code>Int</code></p>
 
-<p>在<code>cocoa</code>方法中一些对象通过<strong>引用</strong>返回(即这些方法有参数为<code>class **</code>或者<code>id *</code>),例如常用的<code>NSError</code>对象</p>
+<h2 id="toc_1">为可选链式调用定义模型类</h2>
 
-<pre><code class="language-objectivec">NSString *fileName = &lt;#Get a file name#&gt;;
-NSError *error;
-NSString *string = [[NSString alloc] initWithContentsOfFile:fileName
-                        encoding:NSUTF8StringEncoding error:&amp;error];
-if (string == nil) {
-    // Deal with error...
+<h2 id="toc_2">通过可选链式调用访问属性</h2>
+
+<p>通过可选链式调用<strong>访问可能不存在实例的属性</strong>:</p>
+
+<pre><code class="language-swift">//john.residence实例可能为nil
+let john = Person()
+if let roomCount = john.residence?.numberOfRooms {
+    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
+} else {
+    print(&quot;Unable to retrieve the number of rooms.&quot;)
 }
-// ...
-[string release];
 </code></pre>
 
-<p>当你调用这些方法时，你并不创建<code>NSError</code>对象，你并不持有该对象，因此也无需release</p>
+<p>通过可选链式调用<strong>设置属性值</strong></p>
 
-<h3 id="toc_11">使用dealloc放弃对象的所有权</h3>
-
-<p><code>NSObject</code>类中定义了<code>dealloc</code>方法，当对象没有了持有者或者需要被回收时，就会调用该方法.其作用是释放对象内存，并且处置其拥有的资源，包括释放其持有的所有对象</p>
-
-<pre><code class="language-objectivec">@interface Person : NSObject
-@property (retain) NSString *firstName;
-@property (retain) NSString *lastName;
-@property (assign, readonly) NSString *fullName;
-@end
- 
-@implementation Person
-// ...
-- (void)dealloc
-    [_firstName release];
-    [_lastName release];
-    [super dealloc];
-}
-@end
+<pre><code class="language-swift">//john.residence实例可能为nil
+let someAddress = Address()
+john.residence?.address = someAddress
 </code></pre>
 
 <blockquote>
-<ol>
-<li>不要主动调用另外一个对象的dealloc方法</li>
-<li>在dealloc方法后必须主动调用super(MRC环境下)</li>
-<li>不要将系统资源的管理与对象声明周期相关联</li>
-<li>当应用被杀死时，对象不会收到<code>dealloc</code>方法，因为应用进程内存都会在退出时进行清理</li>
-</ol>
+<p>注意:</p>
+
+<p>可以通过可选属性值 设置属性值</p>
 </blockquote>
 
-<h3 id="toc_12">Core Foundation的内存管理规则比较</h3>
+<p>对于这种可选链式调用的赋值,如果<code>john.residence</code>为<code>nil</code>，获取<code>address</code>属性失败，那么右侧的代码是不会被执行的</p>
 
-<p><code>Core Foundation</code>对象的<a href="https://developer.apple.com/library/archive/documentation/CoreFoundation/Conceptual/CFMemoryMgmt/CFMemoryMgmt.html#//apple_ref/doc/uid/10000127i">内存管理规则</a>和Cocoa相似，但是其命名约定是不同的,特别是Core Foundation的Create Rule不适用于返回Objective-C对象的方法。<br/>
-例如：</p>
+<h2 id="toc_3">通过可选链式调用调用方法</h2>
 
-<pre><code class="language-objectivec">MyClass *myInstance = [MyClass createInstance];
+<p>对于<code>Residence</code>类中定义的方法</p>
+
+<pre><code class="language-swift">func printNumberOfRooms() {
+    print(&quot;The number of rooms is \(numberOfRooms)&quot;)
+}
 </code></pre>
+
+<p>这个方法没有返回值,那就是具有隐式的返回值<code>Void</code><br/>
+那么如果用可选链式调用这个方法，返回值就为<code>Void?</code></p>
+
+<pre><code class="language-swift">//john.residence 为Residence类 可能为nil的实例
+if john.residence?.printNumberOfRooms() != nil {
+    print(&quot;It was possible to print the number of rooms.&quot;)
+} else {
+    print(&quot;It was not possible to print the number of rooms.&quot;)
+}
+//可以根据返回值是否为nil 判断调用是否成功
+</code></pre>
+
+<p>对实例中的属性赋值 也会返回一个可选类型</p>
+
+<pre><code class="language-swift">if (john.residence?.address = someAddress) != nil {
+print(&quot;It was possible to set the address.&quot;)
+} else {
+print(&quot;It was not possible to set the address.&quot;)
+}
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>没有返回值的函数可选链式调用后返回的时 <code>void?</code></p>
+</blockquote>
+
+<h2 id="toc_4">通过可选链式调用访问下标</h2>
+
+<p>可以在一个可选值上访问下标,判断下标是否成功</p>
+
+<pre><code class="language-swift">//john.residence可能为nil
+//问号放在下标前面表示john.residence是可选值
+if let firstRoomName = john.residence?[0].name {
+    print(&quot;The first room name is \(firstRoomName).&quot;)
+} else {
+    print(&quot;Unable to retrieve the first room name.&quot;)
+}
+</code></pre>
+
+<blockquote>
+<p>注意:</p>
+
+<p>可选链式调用访问可选值下标时，将问号放在下标方括号的前面而不是后面</p>
+</blockquote>
+
+<pre><code class="language-swift">john.residence?[0] = Room(name: &quot;Bathroom&quot;)
+</code></pre>
+
+<p><code>john.residence</code>为nil时，赋值仍然会失败</p>
+
+<h3 id="toc_5">访问可选类型的下标</h3>
+
+<p>如果下标返回可选类型值,可以在下标的结尾括号后面放一个问号来在其可选返回值上进行可选链式调用</p>
+
+<pre><code class="language-swift">var testScores = [&quot;Dave&quot;: [86, 82, 84], &quot;Bev&quot;: [79, 94, 81]]
+testScores[&quot;Dave&quot;]?[0] = 91
+testScores[&quot;Bev&quot;]?[0] += 1
+testScores[&quot;Brian&quot;]?[0] = 72
+</code></pre>
+
+<p>定义一个字典,包含两个键值对，因为字典下标返回的是可选类型值,对于<code>testScores[&quot;Brian&quot;]</code>因为字典中没有这个键，所以返回为<code>nil</code>，调用失败</p>
+
+<blockquote>
+<p>注意:</p>
+
+<p>如果下表返回可选类型值，可以在下标结尾括号后放<code>?</code></p>
+</blockquote>
+
+<h2 id="toc_6">连接多层可选链式调用</h2>
+
+<p>可以连接多个可选链式调用在更深模型层级中访问属性、方法、下标，但是是不会增加返回值的可选层级的</p>
+
+<ul>
+<li>通过可选链式调用访问一个 Int 值，将会返回 Int? ，无论使用了多少层可选链式调用</li>
+<li>通过可选链式调用访问 Int? 值，依旧会返回 Int? 值，并不会返回 Int??</li>
+</ul>
+
+<pre><code class="language-swift">if let johnsStreet = john.residence?.address?.street {
+    print(&quot;John&#39;s street name is \(johnsStreet).&quot;)
+} else {
+    print(&quot;Unable to retrieve the address.&quot;)
+}
+</code></pre>
+
+<p><code>john.residence.address</code>为<code>nil</code>因此调用失败<br/>
+尽管<code>street</code>属性为<code>String？</code>  返回值仍然为<code>String?</code></p>
+
+<h2 id="toc_7">在方法的可选返回值上进行可选链式调用</h2>
+
+<pre><code class="language-swift">if let buildingIdentifier = john.residence?.address?.buildingIdentifier() {
+    print(&quot;John&#39;s building identifier is \(buildingIdentifier).&quot;)
+}
+</code></pre>
+
+<p>在可选值的基础上调用<code>buildingIdentifier()</code>方法  返回<code>String?</code>类型值</p>
+
+<pre><code class="language-swift">if let beginsWithThe =
+john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
+    if beginsWithThe {
+        print(&quot;John&#39;s building identifier begins with \&quot;The\&quot;.&quot;)
+    } else {
+        print(&quot;John&#39;s building identifier does not begin with \&quot;The\&quot;.&quot;)
+    }
+}
+</code></pre>
+
+<p>在方法的返回值基础上进行可选链式调用 </p>
+
+<blockquote>
+<p>在方法的圆括号后面加上问号即可</p>
+</blockquote>
 
 
 		</div>
@@ -270,8 +297,10 @@ if (string == nil) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -285,7 +314,7 @@ if (string == nil) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -381,31 +410,31 @@ if (string == nil) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

@@ -82,238 +82,66 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15541132912435.html">Mach-O文件</a></h1>
-			<p class="meta"><time datetime="2019-04-01T18:08:11+08:00" 
-			pubdate data-updated="true">2019/4/1</time></p>
+		  	<h1 class="entry-title"><a href="14879241904124.html">Method Swizzling</a></h1>
+			<p class="meta"><time datetime="2017-02-24T16:16:30+08:00" 
+			pubdate data-updated="true">2017/2/24</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>记录编译后的可执行文件、对象代码、共享库、动态加载代码和内存转储的文件格式<br/>
-是二进制数据文件，里面有不同的包含元信息的数据块，比如字节顺序，cpu类型，块大小等。文件内容不可修改，因为在.app目录中有<code>_CodeSignature</code>目录，里面包含了程序代码的签名，这个签名的作用就是保证.app里的文件，包括资源文件，Mach-O文件都不能更改</p>
+		  	<blockquote>
+<p>本文是由发表在南峰子博客的翻译由Mattt Thompson发表于<code>nshipster</code>的Method Swizzling文章</p>
+</blockquote>
 
-<p>Mach-O文件包含三个区域</p>
+<p><code>Method Swizzling</code>是改变一个selector的实际实现的技术。通过这一技术，我们可以在运行时通过修改类的分发表中<code>selector</code>对应的函数，来修改方法的实现。</p>
 
-<ul>
-<li><code>Mach-O Header</code>：包含字节顺序，magic，cpu类型，加载指令的数量等</li>
-<li><code>Load Commands</code>：包含很多内容的表，包括区域的位置，符号表，动态符号表。每个加载指令包含一个元信息，比如指令类型，名称，在二进制中的位置</li>
-<li><code>data</code>: 文件中最大的部分，包含了代码，数据，比如符号表、动态符号表</li>
-</ul>
+<p>本文讲一些Method Swiling中需要注意的问题:</p>
 
-<p><img src="media/15541132912435/15541134009742.jpg" alt="" style="width:415px;"/></p>
+<h2 id="toc_0">Swizzling应该总是在+load中执行</h2>
 
-<p><img src="media/15541132912435/15541204613989.jpg" alt="" style="width:636px;"/></p>
+<p>在Objective-C中，运行时会自动调用每个类的两个方法。+load会在类初始加载时调用，+initialize会在第一次调用类的类方法或实例方法之前被调用。这两个方法是可选的，且只有在实现了它们时才会被调用。由于method swizzling会影响到类的全局状态，因此要尽量避免在并发处理中出现竞争的情况。+load能保证在类的初始化过程中被加载，并保证这种改变应用级别的行为的一致性。相比之下，+initialize在其执行时不提供这种保证–事实上，如果在应用中没为给这个类发送消息，则它可能永远不会被调用。</p>
 
-<h2 id="toc_0">Mach-O 文件的解析</h2>
+<h2 id="toc_1">Swizzling应该总是在dispatch_once中执行</h2>
 
-<p>自己创建一个test.c文件</p>
+<p>因为swizzling会改变全局状态，所以我们需要在运行时采取一些预防措施。原子性就是这样一种措施，它确保代码只被执行一次，不管有多少个线程。GCD的dispatch_once可以确保这种行为，我们应该将其作为method swizzling的最佳实践。</p>
 
-<pre><code class="language-c">#include &lt;stdio.h&gt;
-int main(int argc, char *argv[])
-{
-    printf(&quot;hi there!\n&quot;);
-    return 0;
+<h2 id="toc_2">选择器、方法与实现</h2>
+
+<p>在Objective-C中，选择器(selector)、方法(method)和实现(implementation)是运行时中一个特殊点，虽然在一般情况下，这些术语更多的是用在消息发送的过程描述中。</p>
+
+<p>以下是<code>Objective-C Runtime Reference</code>中的对这几个术语一些描述：  </p>
+
+<pre><code class="language-text">1. Selector(typedef struct objc_selector *SEL)：用于在运行时中表示一个方法的名称。一个方法选择器是一个C字符串，它是在Objective-C运行时被注册的。选择器由编译器生成，并且在类被加载时由运行时自动做映射操作。
+2. Method(typedef struct objc_method *Method)：在类定义中表示方法的类型
+3. Implementation(typedef id (*IMP)(id, SEL, ...))：这是一个指针类型，指向方法实现函数的开始位置。这个函数使用为当前CPU架构实现的标准C调用规范。每一个参数是指向对象自身的指针(self)，第二个参数是方法选择器。然后是方法的实际参数。
+</code></pre>
+
+<p>理解这几个术语之间的关系最好的方式是：一个类维护一个运行时可接收的消息分发表；分发表中的每个入口是一个方法(Method)，其中key是一个特定名称，即选择器(SEL)，其对应一个实现(IMP)，即指向底层C函数的指针。</p>
+
+<p>为了swizzle一个方法，我们可以在分发表中将一个方法的现有的选择器映射到不同的实现，而将该选择器对应的原始实现关联到一个新的选择器中。（要将原来的实现映射到一个新的）</p>
+
+<h2 id="toc_3">调用_cmd</h2>
+
+<p>我们自己的实现代码:</p>
+
+<pre><code class="language-objectivec">- (void)xxx_viewWillAppear:(BOOL)animated {
+    [self xxx_viewWillAppear:animated];
+    NSLog(@&quot;viewWillAppear: %@&quot;, NSStringFromClass([self class]));
 }
 </code></pre>
 
-<pre><code class="language-c">//将test.c 编译汇编链接成一个可执行文件 未指定输出文件 即默认为a.out
-xcrun clang test.c 
-</code></pre>
+<p>咋看上去是会导致无限循环的。但令人惊奇的是，并没有出现这种情况。在<code>swizzling</code>的过程中，方法中的<code>[self xxx_viewWillAppear:animated]</code>已经被重新指定到UIViewController类的-<code>viewWillAppear:</code>中。在这种情况下，不会产生无限循环。不过如果我们调用的是<code>[self viewWillAppear:animated]</code>，则会产生无限循环，因为这个方法的实现在运行时已经被重新指定为<code>xxx_viewWillAppear:</code>了。</p>
 
-<hr/>
+<h3 id="toc_4">注意事项</h3>
 
-<p>使用size工具查看a.out中的section</p>
+<p>Swizzling通常被称作是一种黑魔法，容易产生不可预知的行为和无法预见的后果。虽然它不是最安全的，但如果遵从以下几点预防措施的话，还是比较安全的：</p>
 
-<pre><code class="language-c">xcrun size -x -l -m a.out
-</code></pre>
-
-<pre><code class="language-c">Segment __PAGEZERO: 0x100000000 (vmaddr 0x0 fileoff 0)
-Segment __TEXT: 0x1000 (vmaddr 0x100000000 fileoff 0)
-    Section __text: 0x34 (addr 0x100000f50 offset 3920)
-    Section __stubs: 0x6 (addr 0x100000f84 offset 3972)
-    Section __stub_helper: 0x1a (addr 0x100000f8c offset 3980)
-    Section __cstring: 0xa (addr 0x100000fa6 offset 4006)
-    Section __unwind_info: 0x48 (addr 0x100000fb0 offset 4016)
-    total 0xa6
-Segment __DATA: 0x1000 (vmaddr 0x100001000 fileoff 4096)
-    Section __nl_symbol_ptr: 0x10 (addr 0x100001000 offset 4096)
-    Section __la_symbol_ptr: 0x8 (addr 0x100001010 offset 4112)
-    total 0x18
-Segment __LINKEDIT: 0x1000 (vmaddr 0x100002000 fileoff 8192)
-total 0x100003000
-</code></pre>
-
-<p>有4个segment和多个section<br/>
-当运行时，虚拟内存会把segment映射到进程的地址空间，虚拟内存会避免将全部执行文件全部加载到内存</p>
-
-<p><code>__PAGEZERO sement</code>的大小是4GB，不是文件真实大小，是规定进程地址空间前4GB被映射为不可执行文件，不可读、不可写</p>
-
-<p><code>__TEXT segment</code>包含被执行的代码以只读和可执行的方式映射</p>
-
-<ul>
-<li>__text section 包含编译后的机器码</li>
-<li><strong>stubs和</strong>stub_hepler是给动态链接器dyld使用，可以允许延迟链接</li>
-<li>__csstring 可执行文件中的字符串</li>
-<li>__const不可变的常量</li>
-</ul>
-
-<p><code>__DATA segment</code>以可读写和不可执行的方式映射,里面是会被更改的数据</p>
-
-<ul>
-<li>__nl_symbol_ptr 非延迟指针.可执行文件加载同时加载</li>
-<li>__la_symbol_ptr延迟符号指针.延迟用于可执行文件汇总调用未定义的函数，可执行文件里没有包含的函数会延迟加载</li>
-<li>__const 需要重定向的常量  例如 char * const c = “foo”; c指针指向可变的数据</li>
-<li>__bbs不用初始化的静态变量</li>
-<li>__common包含外部全局变量。例如在函数外定义 int i；</li>
-<li>__dyld是section占位符，用于动态链接器</li>
-</ul>
-
-<hr/>
-
-<p>查看<strong>section中的内容</strong></p>
-
-<pre><code class="language-text">xcrun otool -s __TEXT __text a.out
-</code></pre>
-
-<p>显示的为二进制数据，我们可以反汇编,查看汇编信息 -s __TEXT __text 有个缩写 -t</p>
-
-<pre><code class="language-text">xcrun otool -v -t a.out
-</code></pre>
-
-<pre><code class="language-c">a.out:
-(__TEXT,__text) section
-_main:
-0000000100000f50    pushq    %rbp
-0000000100000f51    movq    %rsp, %rbp
-0000000100000f54    subq    $0x20, %rsp
-0000000100000f58    leaq    0x47(%rip), %rax
-0000000100000f5f    movl    $0x0, -0x4(%rbp)
-0000000100000f66    movl    %edi, -0x8(%rbp)
-0000000100000f69    movq    %rsi, -0x10(%rbp)
-0000000100000f6d    movq    %rax, %rdi
-0000000100000f70    movb    $0x0, %al
-0000000100000f72    callq    0x100000f84
-0000000100000f77    xorl    %ecx, %ecx
-0000000100000f79    movl    %eax, -0x14(%rbp)
-0000000100000f7c    movl    %ecx, %eax
-0000000100000f7e    addq    $0x20, %rsp
-0000000100000f82    popq    %rbp
-0000000100000f83    retq
-</code></pre>
-
-<hr/>
-
-<p>使用otool查看可执行文件的头部,即header</p>
-
-<pre><code class="language-c">otool -v -h a.out
-</code></pre>
-
-<p>得到 <strong>头部信息</strong></p>
-
-<pre><code class="language-text">Mach header
-      magic cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
-MH_MAGIC_64  X86_64        ALL LIB64     EXECUTE    15       1200   NOUNDEFS DYLDLINK TWOLEVEL PIE
-</code></pre>
-
-<p>mach_header 结构体</p>
-
-<pre><code class="language-text">struct mach_header {
-  uint32_t      magic; 
-  cpu_type_t    cputype; 
-  cpu_subtype_t cpusubtype;
-  uint32_t      filetype;
-  uint32_t      ncmds;
-  uint32_t      sizeofcmds;
-  uint32_t      flags;
-};
-</code></pre>
-
-<p>cputype 和 cpusubtype 规定可执行文件可以在哪些目标架构运行。ncmds 和 sizeofcmds 是加载命令<code>LoadCommand</code></p>
-
-<hr/>
-
-<p><strong>查看LoadCommands</strong>使用命令 <code>otool -v -l a.out</code></p>
-
-<pre><code class="language-c">...
-...
-Load command 1
-      cmd LC_SEGMENT_64
-  cmdsize 472
-  segname __TEXT
-   vmaddr 0x0000000100000000
-   vmsize 0x0000000000001000
-  fileoff 0
- filesize 4096
-  maxprot rwx
- initprot r-x
-   nsects 5
-    flags (none)
-Section
-  Section
-  sectname __text
-   segname __TEXT
-      addr 0x0000000100000f50 //代码的位置地址 和上面反汇编的地址是一样的
-      size 0x0000000000000034 
-    offset 3920 //在文件中的偏移量
-     align 2^4 (16)
-    reloff 0
-    nreloc 0
-      type S_REGULAR
-attributes PURE_INSTRUCTIONS SOME_INSTRUCTIONS
- reserved1 0
- reserved2 0
-Section
-  sectname __stubs
-   segname __TEXT
-      addr 0x0000000100000f88
-      size 0x0000000000000006
-    offset 3976
-     align 2^1 (2)
-    reloff 0
-    nreloc 0
-      type S_SYMBOL_STUBS
-attributes PURE_INSTRUCTIONS SOME_INSTRUCTIONS
- reserved1 0 (index into indirect symbol table)
- reserved2 6 (size of stubs)
- ...
- ...
-</code></pre>
-
-<p>加载命令的结构体</p>
-
-<pre><code class="language-text">struct segment_command {
-  uint32_t  cmd;
-  uint32_t  cmdsize;
-  char      segname[16];
-  uint32_t  vmaddr;
-  uint32_t  vmsize;
-  uint32_t  fileoff;
-  uint32_t  filesize;
-  vm_prot_t maxprot;
-  vm_prot_t initprot; //权限 例如r-x
-  uint32_t  nsects;
-  uint32_t  flags;
-};
-</code></pre>
-
-<hr/>
-
-<h2 id="toc_1">逆向Mach-O文件</h2>
-
-<p>需要先安装 tweak，安装越狱可以通过 cydia，不越狱直接打包成 ipa 安装包。越狱的话会安装一个 mobilesubstrate 的动态库，使用 theos 开发工具，非越狱的直接把这个库打包进 ipa 中或者直接修改汇编代码。</p>
-
-<p>Mobilesubstrate 提供了三个模块来方便开发。</p>
-
-<p>MobileHooker：利用 method swizzling 技术定义一些宏和函数来替换系统或者目标函数。<br/>
-MobileLoader：在程序启动时将我们写的破解程序用的第三方库注入进去。怎么注入的呢，还记得先前说的 clang attribute 里的一个 attribute((constructor)) 么，它会在 main 执行之前执行，所以把我们的 hook 放在这里就可以了。<br/>
-Safe mode：类似安全模式，会禁用的改动。<br/>
-先前提到 Mach-O 的结构有 Header，Load commands 和 Data，Mobileloader 会通过修改二进制的 loadCommands 来先把自己注入然后再把我们写的第三方库注入进去，这样破解程序就会放在 Load commands 段里面了。</p>
-
-<p>当然如果是我们自己的程序我们是知道要替换哪些方法的，既然是逆向肯定是别人的程序了，这个时候就需要去先分析下我们想替换方法是哪个，网络相关的分析可以用常用那些抓包工具，比如 Charles，WireShark 等，静态的可以通过砸壳，反汇编，classdump 头文件来分析 app 的架构，对应的常用工具dumpdecrypted，hopper disassembler 和 class_dump。运行时的分析可用工具有运行时控制台cycript，远程断点调试lldb+debugserver，logify。</p>
-
-<ul>
-<li>入门文章可以看看这篇: <a href="https://github.com/zhengmin1989/MyArticles/tree/master/iOS%E5%86%B0%E4%B8%8E%E7%81%AB%E4%B9%8B%E6%AD%8C"> MyArticles/iOS冰与火之歌 at master · zhengmin1989/MyArticles · GitHub</a></li>
-<li><a href="http://blog.imjun.net/posts/convert-iOS-app-to-dynamic-library/">黑科技：把第三方 iOS 应用转成动态库 - Jun’s Blog</a>  <a href="http://blog.imjun.net/posts/restore-symbol-of-iOS-app/"> iOS符号表恢复&amp;逆向支付宝 - Jun’s Blog</a></li>
-</ul>
+<ol>
+<li>总是调用方法的原始实现(除非有更好的理由不这么做)：API提供了一个输入与输出约定，但其内部实现是一个黑盒。Swizzle一个方法而不调用原始实现可能会打破私有状态底层操作，从而影响到程序的其它部分。</li>
+<li><p>避免冲突：给自定义的分类方法加前缀，从而使其与所依赖的代码库不会存在命名冲突。</p></li>
+<li><p>明白是怎么回事：简单地拷贝粘贴swizzle代码而不理解它是如何工作的，不仅危险，而且会浪费学习Objective-C运行时的机会。阅读Objective-C Runtime Reference和查看<objc/runtime.h>头文件以了解事件是如何发生的。</p></li>
+<li><p>小心操作：无论我们对Foundation, UIKit或其它内建框架执行Swizzle操作抱有多大信心，需要知道在下一版本中许多事可能会不一样。</p></li>
+<li></li>
+</ol>
 
 
 		</div>
@@ -336,8 +164,10 @@ Safe mode：类似安全模式，会禁用的改动。<br/>
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -351,7 +181,7 @@ Safe mode：类似安全模式，会禁用的改动。<br/>
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -447,31 +277,31 @@ Safe mode：类似安全模式，会禁用的改动。<br/>
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

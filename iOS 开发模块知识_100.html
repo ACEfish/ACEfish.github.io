@@ -82,198 +82,140 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15553160787382.html">内存管理实践</a></h1>
-			<p class="meta"><time datetime="2019-04-15T16:14:38+08:00" 
-			pubdate data-updated="true">2019/4/15</time></p>
+		  	<h1 class="entry-title"><a href="14861704124969.html">iOS 滤镜</a></h1>
+			<p class="meta"><time datetime="2017-02-04T09:06:52+08:00" 
+			pubdate data-updated="true">2017/2/4</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>尽管内存管理规则是简单的，但是我们可以通过一些实用的步骤来使内存管理更加稳健、高效</p>
+		  	<hr/>
 
-<h2 id="toc_0">使用访问器方法来简化内存管理</h2>
+<h3 id="toc_0">CIFilter实现滤镜效果</h3>
 
-<p>假如类有一个对象属性时，我们需要确保赋值给属性的对象不会被<code>deallocted</code>，因此需要持有该对象而且需要释放当前属性对象；我们应该使用访问器方法来避免在代码中大量使用<code>release</code>和<code>retain</code>方法</p>
+<p>参考网址:<a href="http://www.jianshu.com/p/98ba256b034a" title="CoreImage滤镜学习 - 简书">CoreImage滤镜学习</a> </p>
 
-<pre><code class="language-objectivec">@interface Counter : NSObject
-@property (nonatomic, retain) NSNumber *count;
-@end;
+<h5 id="toc_1">CoreImage框架介绍</h5>
 
-//get访问器方法 只需要直接返回该对象，无需retain或者release
-- (NSNumber *)count {
-    return _count;
-}
+<p>1.是一个图片框架 基于<code>OpenGL</code>顶层创建，底层用着色器来处理图像<br/><br/>
+2.利用GPU基于硬件加速来处理图像<br/><br/>
+3.CoreImage中有很多滤镜<br/><br/>
+4.它们能够一次给予一张图像或者视频帧多种视觉效果 -&gt; 滤镜链<br/><br/>
+5.滤镜可以连接起来组成一个滤镜链 把滤镜效果叠加起来处理图像</p>
 
-//set访问器方法，需要先持有newCount 释放oldCount的持有权
-- (void)setCount:(NSNumber *)newCount {
-    [newCount retain];
-    [_count release];
-    // Make the new assignment.
-    _count = newCount;
-}
-</code></pre>
-
-<blockquote>
-<p>因为在OC中是可以给nil发送消息的，因此即使newCount为空也是有效的<br/>
-必须先retain后release，因为避免两个count为同一个对象，导致对象不经意间被释放</p>
-</blockquote>
-
-<h3 id="toc_1">使用访问器方法设置属性值</h3>
-
-<p>假如想要重置属性值可以使用以下两种方法</p>
-
-<pre><code class="language-objectivec">//因为使用alloc 所以需要release
-- (void)reset {
-    NSNumber *zero = [[NSNumber alloc] initWithInteger:0];
-    [self setCount:zero];
-    [zero release];
-}
-
-- (void)reset {
-    NSNumber *zero = [NSNumber numberWithInteger:0];
-    [self setCount:zero];
-}
-</code></pre>
-
-<p>以上两种方法都使用了set访问器方法</p>
-
-<p>应该尽量避免下面的写法,虽然其在简单情况下也会正常，但是这样做很容易导致出错</p>
-
-<pre><code class="language-objectivec">- (void)reset {
-    NSNumber *zero = [[NSNumber alloc] initWithInteger:0];
-    [_count release];
-    _count = zero;
-}
-</code></pre>
-
-<blockquote>
-<p>假如你使用KVO，这样写是不符合KVO标准的</p>
-</blockquote>
-
-<h3 id="toc_2">不要在初始化方法和dealloc方法中使用访问器方法</h3>
-
-<p><strong>唯一不应该使用访问器方法设置实例变量的地方就是在初始化方法和dealloc方法中</strong></p>
-
-<pre><code class="language-objectivec">- init {
-    self = [super init];
-    if (self) {
-        _count = [[NSNumber alloc] initWithInteger:0];
-    }
-    return self;
-}
-
-- initWithCount:(NSNumber *)startingCount {
-    self = [super init];
-    if (self) {
-        _count = [startingCount copy];
-    }
-    return self;
-}
-</code></pre>
-
-<p>因为<code>Counter Class</code>有一个实例变量对象，所以必须完成<code>dealloc</code>方法来释放所有的实例变量对象</p>
-
-<pre><code class="language-objectivec">- (void)dealloc {
-    [_count release];
-    [super dealloc];
-}
-</code></pre>
-
-<h2 id="toc_3">使用弱引用避免循环引用</h2>
-
-<p>当retain一个对象时就对该对象创建一个<em>强引用</em>。一个对象在它的所有的强引用被释放前不会被<code>deallocated</code>。因此，假如两个对象互相引用(或者引用链最后一个对象又引用第一个对象)就有可能造成循环引用</p>
-
-<p>解决循环引用就是使用<em>弱引用</em>，弱引用中源对象并不持有引用对象；因此按照Cocoa惯例:&quot;父对象&quot;强引用他的&quot;子对象&quot;，而&quot;子对象&quot;弱引用&quot;父对象&quot;<br/>
-<img src="media/15553160787382/15553237100030.jpg" alt="" style="width:300px;"/></p>
-
-<p>常用的弱引用:  table data sources、视图、notication observers、delegate等</p>
-
-<p>使用弱引用需要注意，避免向已经<code>deallocated</code>的对象发送消息，否则会引起崩溃；因此弱引用对象使用时一般知道另外对象对其的弱引用，并在对象deallocated时通知两外一个对象。例如，向<code>notification center</code>注册接收对象时，通知中心会保留对该对象的弱引用，来在通知时给其发送通知消息。而在<code>deallocated</code>后，向<code>notification center</code>注销该对象，避免再次向其发送消息; 同样的，当取消分配的delegate时，需要<code>setDelegate：</code>为<code>nil</code>，这些消息常在<code>deallco</code>方法中发送。</p>
-
-<h2 id="toc_4">避免正在使用的对象内存销毁</h2>
-
-<p>我们在使用内存规则时保证对象在使用时是有效的，但是注意在以下两种情况可能导致出现异常情况:</p>
+<h5 id="toc_2">CIFilter使用介绍</h5>
 
 <ol>
-<li><p>当一个对象从集合中移除</p>
-<pre><code class="language-objectivec">heisenObject = [array objectAtIndex:n];
-[array removeObjectAtIndex:n];<br/>
-//heisenObject 此时可能已经无效了
-</code></pre>
-<p>当对象从集合汇总移除时，会发送一个<code>release</code>消息，此时如果集合是该对象唯一持有者，该对象就会被销毁</p></li>
-<li><p>当&quot;父对象&quot;被销毁时</p>
-<pre><code class="language-objectivec">id parent = &lt;#create a parent object#&gt;;
-// ...<br/>
-heisenObject = [parent child] ;<br/>
-[parent release]; // Or, for example: self.parent = nil;<br/>
-// heisenObject could now be invalid.
-</code></pre>
-<p>当使用子对象时，其父对象被释放导致被销毁，那么子对象也会被释放，而如果其父对象是其唯一的持有者，那么子对象也会被同时销毁</p></li>
-</ol>
-
-<p>为了避免出现以上两种情况，应该在收到该对象时retain，而在不再使用时release</p>
-
-<pre><code class="language-objectivec">heisenObject = [[array objectAtIndex:n] retain];
-[array removeObjectAtIndex:n];
-// Use heisenObject...
-[heisenObject release];
-</code></pre>
-
-<h2 id="toc_5">不要在dealloc中管理稀缺系统资源</h2>
-
-<p>不应该在<code>dealloc</code>中管理稀缺资源，例如文件描述符、网络连接以及缓冲区和缓存。更不应该在你认为dealloc将调用是调用dealloc方法，因为dealloc的调用可能会因为bug或者应用终止而导致延迟或者不调用</p>
-
-<p>相反，可以设计一个类，在不再需要这些稀缺系统资源时，进行“清理”。</p>
-
-<p>在dealloc中进行资源管理可能会导致以下问题:</p>
-
-<ol>
-<li><p>视图拆除的顺序的依赖性<br/>
-对象视图拆除机制本质上是无序的。虽然我们经常会获得期待的拆除顺序，但是这会给项目带来脆弱性。例如如果对象因为意外autorelease而不是release，拆除顺序就有可能改变</p></li>
-<li><p>稀缺资源的未回收<br/>
-内存管理时，内存泄漏是应该修复的错误，但是通常不会立刻致命。但是如果是该释放的资源没有立即释放就有可能遇到更严重的问题。例如，用完了文件描述符导致应用无法再存储数据</p></li>
-<li><p>清理逻辑在错误的线程中执行</p>
-<p>如果<strong>一个对象意外的autorelease，它将会在释放时碰巧遇到的任何线程的自动释放池中释放</strong>。而这对于那些只能在某个线程中释放的资源，是很致命的</p></li>
-</ol>
-
-<h2 id="toc_6">集合持有它所包含的元素对象</h2>
-
-<p>将对象添加到集合中，集合就会持有该对象，即强引用该对象。而当集合中移除对象或者该集合本身被释放，集合将release该对象。因此，例如，假如你想要创建一组数组集合，可以这么做:</p>
-
-<pre><code class="language-objectivec">NSMutableArray *array = &lt;#Get a mutable array#&gt;;
-NSUInteger i;
-// ...
-for (i = 0; i &lt; 10; i++) {
-    NSNumber *convenienceNumber = [NSNumber numberWithInteger:i];
-    [array addObject:convenienceNumber];
+<li><p><code>CIFilter</code>滤镜类中有很多的滤镜效果 这里不一一列举，可以按住command 点击CIFilter 进入接口文件 找到第128行-148行全部都是 效果分类  </p></li>
+<li><p>常用效果<br/><br/>
+我们使用时需要先找到需要的效果类型 比如我们使用<code>kCICategoryDistortionEffect</code>失真的效果类型，有了效果类型我们需要找到里面我们需要的效果.<br/><br/>
+<code>NSLog -&gt; [CIFilter filterNamesInCategory:刚才拷贝的分类];</code><br/><br/>
+比如<code>CIColorMonochrome </code>,然后就可以使用这个滤镜效果<br/><br/>
+<code>CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome”];</code><br/><br/>
+然后打印这个效果中包含了那些属性:<br/><br/>
+<code>NSLog(@&quot;%@&quot;,filter.attributes);</code><br/><br/>
+在里面我们可以看到好多属性，里面是多个字典的形式，找到我们想要修改的属性(key值) 然后在他对应的value里面查看一下他的属性类型，比如我们打印的CIColorMonochrome里面有一个inputColor，他是一个CIColor类型的，有默认值，这里我们写了一个CIColor来给他进行赋值.<br/><br/>
+赋值时需要用kvc的方式:<br/><br/>
+<code>[filter setValue:colorforKey:kCIInputColorKey];</code><br/><br/>
+<img src="media/14861704124969/DraggedImage.png" alt="DraggedImage"/></p></li>
+<li><p>实现滤镜效果代码<br/><br/>
+首先我们创建一个全局变量的UIImageView，然后让他初始化出来,这个就是我们要处理的图片 一般我们从手机相册中取出来:<br/><br/>
+ @interface ViewController ()&lt;UINavigationControllerDelegate,UIImagePickerControllerDelegate&gt;<br/>
+    {<br/>
+         UIImageView *imageView;<br/>
+    }<br/>
+    @end<br/>
+    然后我们需要从相册中取出一张图片,保存起来:<br/>
+    //跳转相册的触发方法<br/>
+    - (void)doit{<br/>
+    UIImagePickerController *vc = [[UIImagePickerController alloc]init];<br/>
+    vc.delegate = self;<br/>
+    [self presentViewController:vc animated:YES completion:nil];</p>
+<pre><code class="language-text">}
+//让图片显示在VC上面的方法<br/>
+- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary&lt;NSString *,id&gt; *)info<br/>
+{<br/>
+NSLog(@&quot;%@&quot;,info);<br/>
+//获得选中的图像<br/>
+UIImage *chooseImage = info[UIImagePickerControllerOriginalImage];<br/>
+//先是在试图空间上<br/>
+imageView.image = chooseImage;<br/>
+[self dismissViewControllerAnimated:YES completion:nil];<br/>
 }
 </code></pre>
-
-<p>这样写，因为不是alloc调用的的，因此不必release。而我们也必要retain数字对象，因为数组会对其进行retain</p>
-
-<pre><code class="language-objectivec">NSMutableArray *array = &lt;#Get a mutable array#&gt;;
-NSUInteger i;
-// ...
-for (i = 0; i &lt; 10; i++) {
-    NSNumber *allocedNumber = [[NSNumber alloc] initWithInteger:i];
-    [array addObject:allocedNumber];
-    [allocedNumber release];
+<p><strong>接下来就是对图片进行滤镜处理:</strong><br/>
+    - (void)addColorFilter{<br/>
+    //CIImage 保存图像数据的类<br/>
+    CIImage <em>inputImage = [CIImage imageWithCGImage:imageView.image.CGImage];<br/>
+    //先打印NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);进去找到需要设置的属性(查询效果分类中都有什么效果)  可以设置什么效果<br/>
+    //然后通过[CIFilter filterWithName:@&quot;&quot;];找到属性   具体效果的属性<br/>
+    //然后通过KVC的方式设置属性<br/>
+    NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);<br/>
+    /</em><br/>
+     1.查询 效果分类中 包含什么效果：filterNamesInCategory:<br/>
+     2.查询 使用的效果中 可以设置什么属性（KVC） attributes</p>
+<pre><code class="language-text"> 使用步骤
+ 1.需要添加滤镜的源图<br/>
+ 2.初始化一个滤镜 设置滤镜（根据查询到的属性来设置）<br/>
+ 3.把滤镜 输出的图像 和滤镜  合并 CIContext -&gt; 得到一个合成之后的图像<br/>
+ 4.展示<br/>
+ */<br/>
+//CIFilter 滤镜类  图片属性进行细节处理的类<br/>
+CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome&quot;];<br/>
+NSLog(@&quot;%@&quot;,filter.attributes);<br/>
+//这个属性是必须赋值的，假如你处理的是图片的话<br/>
+[filter setValue:inputImage forKey:kCIInputImageKey];<br/>
+CIColor *color = [CIColor colorWithRed:1.000 green:0.759 blue:0.592 alpha:1];<br/>
+[filter setValue:color forKey:kCIInputColorKey];<br/>
+//CIContext 上下文是实现对图像处理的具体对象 用来把滤镜和图片合成成为一张图片 滤镜对象输出的图像并不是合成之后的图像，需要使用图片处理的上下文 合并输出图像<br/>
+    CIContext *context = [CIContext contextWithOptions:nil];<br/>
+CIImage *outPutImage = filter.outputImage;<br/>
+//CGImageRef-&gt;图像中的数据<br/>
+    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+    imageView.image = [UIImage imageWithCGImage:image];<br/>
+ }
+</code></pre>
+<p>注意：<br/><br/>
+对滤镜进行赋值之后图片就有了，但是我们这个时候拿出这个图片的时候发现他并没有发生变化，因为它只是单一进行了滤镜处理，还没有和原图片进行一个糅合。使用CIContext找到上下文对他进行糅合：<br/><br/>
+//extent得到图像的尺寸    合并一个包含源图   滤镜效果的图片<br/>
+    //1 滤镜输出的图像    2.合成之后图像的尺寸   图像.extent<br/>
+    CGImageRef imageRef = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+注意:<br/><br/>
+假如你的图片消失了，请检查一下，第一步获取图片的时候一定要获得图片的CGImage再来来获取，不要直接使用imageView.image.CGImage。</p></li>
+<li><p>滤镜链:<br/><br/>
+在给一张图片添加多种滤镜效果的时候，我们把它称为<code>滤镜链</code>，我们再添加滤镜链的时候，就是把图片添加一层滤镜，然后，和原图片糅合处理，然后在处理之后的图片上再添加一层滤镜，并不是直接给一张图片添加了两层路径，所以称为滤镜链。<br/><br/>
+我们继续使用这个图片，在它添加第一层滤镜的时候做一些修改:  </p>
+<pre><code class="language-text">//上接给效果属性赋值
+//把下面注释的给注释掉，然后添加一个方法<br/>
+    //CIContext<br/>
+//    CIContext *context = [CIContext contextWithOptions:nil];<br/>
+CIImage *outPutImage = filter.outputImage;<br/>
+[self addFilterLinkerWithImage:outPutImage];<br/>
+//    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+//    imageView.image = [UIImage imageWithCGImage:image];<br/>
+//再次添加滤镜  -&gt;  形成滤镜链<br/>
+- (void)addFilterLinkerWithImage:(CIImage *)image<br/>
+{<br/>
+CIFilter *filter = [CIFilter filterWithName:@&quot;CISepiaTone&quot;];<br/>
+[filter setValue:image forKey:kCIInputImageKey];<br/>
+CIContext *context = [CIContext contextWithOptions:nil];<br/>
+CGImageRef resultImage = [context createCGImage:filter.outputImage fromRect:filter.outputImage.extent];<br/>
+imageView.image = [UIImage imageWithCGImage:resultImage];<br/>
+//把添加好滤镜效果的图片   保存到相册<br/>
+//不可以直接保存 outputImage  -&gt;  这是一个没有吧滤镜效果和源图合成的图像<br/>
+UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishSavingWithError:contextInfo:), nil);<br/>
+ }<br/>
+//保存图片回调<br/>
+- (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo<br/>
+{<br/>
+    NSLog(@&quot;保存成功&quot;);<br/>
 }
 </code></pre>
+<p>这样就是一个双重的滤镜效果,同时保存到了相册.</p></li>
+</ol>
 
-<p>在这个例子中，for循环中，因为是<code>allocNumber</code>产生的对象因此需要release进行平衡</p>
+<hr/>
 
-<h2 id="toc_7">使用引用计数来进行持有策略</h2>
-
-<p>引用计数，通常在retain后称为保留计数，每个对象都有一个保留计数</p>
-
-<ul>
-<li>创建对象时，保留计数为1</li>
-<li>向对象发送保留消息，其保留计数加1</li>
-<li>向对象发送释放消息，保留计数减1</li>
-<li>向对象发送自动释放消息，保留计数在当前自动释放池末尾，保留计数减1</li>
-<li>当保留计数为0，则将其<code>deallocated</code>即销毁对象释放内存<br/>
-</li>
-</ul>
+<h3 id="toc_3">系统自带简单的滤镜效果</h3>
 
 
 		</div>
@@ -296,8 +238,10 @@ for (i = 0; i &lt; 10; i++) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -311,7 +255,7 @@ for (i = 0; i &lt; 10; i++) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -407,31 +351,31 @@ for (i = 0; i &lt; 10; i++) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

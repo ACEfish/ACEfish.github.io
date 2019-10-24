@@ -82,271 +82,179 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14913623029277.html">基于定时器的动画</a></h1>
-			<p class="meta"><time datetime="2017-04-05T11:18:22+08:00" 
-			pubdate data-updated="true">2017/4/5</time></p>
+		  	<h1 class="entry-title"><a href="14883679213714.html">图层树和寄宿图</a></h1>
+			<p class="meta"><time datetime="2017-03-01T19:32:01+08:00" 
+			pubdate data-updated="true">2017/3/1</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>缓冲主要学习<code>CAMediaTimingFunction</code>通过来做加速减速等增强现实感.</p>
+		  	<p>注意点:</p>
 
-<p>本章学习精确地控制一帧一帧展示的基于定时器的动画,来更加真实模拟物理交互或者根据用户输入来改变动画</p>
+<ol>
+<li><code>contentsScale</code> 并不关心屏幕的拉伸因素而总是默认为1.0。如果我们想以Retina的质量来渲染图层，我们就得手动设置图层的 contentsScale 属性。</li>
+</ol>
 
-<h3 id="toc_0">定时帧</h3>
+<p><code>textLayer.contentsScale = [UIScreen mainScreen].scale;</code></p>
 
-<p>iOS按照每秒60次刷新屏幕,<code>CAAnimation</code>计算出需要展示的新的帧。</p>
+<ol>
+<li></li>
+</ol>
 
-<h4 id="toc_1">NSTimer</h4>
+<h2 id="toc_0">图层、视图</h2>
 
-<p>我们可以用NStimer来一秒钟更新60次，来做动画.</p>
+<p>iOS中所有的视图都从UIView中派生而来。<code>UIView</code> 可以处理触摸事件，可以支持基于<code>Core Graphics</code>绘图，可以做仿射变换（例如旋转或者缩放），或者简单的类似于滑动或者渐变的动画。</p>
 
-<p>用<code>NSTimer</code>做动画的话需要几个属性来存储动画的<code>fromValue</code> ，<code>toValue</code>，<code>duration</code>和当前的 <code>timeOffset</code>。</p>
+<p><em><code>CALay</code>与UIView最大的不同是不处理用户的交互</em>，并不清楚具体的响应链（iOS通过视图层级关系用来传送触摸事件的机制），于是它并不能够响应事件，即使它提供了一些方法来判断是否一个触点在图层的范围之内</p>
 
-<p><code>示例代码省略</code></p>
+<p>每一个 UIView 都有一个 CALayer 实例的图层属性，视图的职责就是创建并管理这个图层，以确保当子视图在层级关系中添加或者被移除的时候，他们关联的图层也同样对应在层级关系树当中有相同的操作<br/>
+实际上视图的这些背后关联的图层才是真正用来在屏幕上显示和做动画， UIView 仅仅是对它的一个封装，提供了一些iOS类似于处理触摸的具体功能，以及<code>CoreAnimation</code>底层方法的高级接口。</p>
 
-<p>但是用<code>NSTimer</code>并不是一个很好的方案</p>
+<p>实际上，这里并不是两个层级关系，而是四个，每一个都扮演不同的角色，<strong>除了<br/>
+视图层级和图层树之外，还存在呈现树和渲染树</strong>。</p>
 
-<p>iOS中每个线程都管理了一个<code>NSRunloop</code>，通过循环来完成一些任务列表</p>
-
-<p>但是主线程的任务有:</p>
-
-<ul>
-<li>处理触摸事件</li>
-<li>发送和接受网络数据包</li>
-<li>执行使用gcd的代码</li>
-<li>处理定时器行为</li>
-<li>屏幕重绘</li>
-</ul>
-
-<p>当我们设置了一个NSTimer,会被插入到当前任务列表中,指定时间过去后才被执行.但是何时启动定时器并没有一个时间上限，而且它只会在列表中上一个任务完成之后开始执行。这通常会导致有几毫秒的延迟，但是如果上一个任务过了很久才完成就会导致延迟很长一段时间。</p>
-
-<p>屏幕重绘的频率是一秒钟六十次，但是和定时器行为一样，如果列表中上一个执行了很长时间，它也会延迟。这些延迟都是一个随机值，于是就不能保证定时器精准地一秒钟执行六十次。有时候发生在屏幕重绘之后，这就会使得更新屏幕会有个延迟，看起来就是动画卡壳了。有时候定时器会在屏幕更新的时候执行两次，于是动画看起来就跳动了。</p>
-
-<p>优化方法:</p>
+<p>我们用CALayer处理UIView没有暴露出来的功能(UIView没有响应的高级接口，我们只能介入底层):</p>
 
 <ul>
-<li>我们可以用 CADisplayLink 让更新频率严格控制在每次屏幕刷新之后。</li>
-<li>基于真实帧的持续时间而不是假设的更新频率来做动画。</li>
-<li>调整动画计时器的 <code>run loop</code> 模式，这样就不会被别的事件干扰。</li>
+<li>阴影，圆角，带颜色的边框</li>
+<li>3D变换</li>
+<li>非矩形范围</li>
+<li>透明遮罩</li>
+<li>多级非线性动画</li>
 </ul>
 
-<h4 id="toc_2">CADisplayLink</h4>
+<p>标准的<code>Xcode</code>项目模板并没有包含<code>Core Animation</code>相关头文件。所以如果我们不给项目添加合适的库，是不能够使用任何图层相关的方法或者访问它的属性。所以首先需要添加<code>QuartzCore</code>框架</p>
 
-<p><code>CADisplayLink</code>是<code>CoreAnimation</code>提供的另一个类似<code>NSTimer</code>类,总是在屏幕完成一次更新之前启动,它和<code>NSTimer</code>的内部实现相同,只不过它不是以时间间隔秒为单位,<code>CADisplayLink</code> 有一个整型的<code>frameInterval</code> 属性，指定了间隔多少帧之后才执行。默认值是1，意味着每次屏幕更新之前都会执行一次。(我们可以根据动画的执行时间来确定多少帧执行一次)</p>
+<p><strong>视图中的子视图就是图层中的子图层</strong></p>
 
-<p>虽然<code>CADisplayLink</code>也不能保证每帧都按计划执行,出现丢帧情况,但是和<code>NSTimer</code>不同的是<code>NSTimer</code>一有机会就会开启,而<code>CADisplayLink</code>如果丢帧的话会直接忽略它们,在下一次更新时接着运行;</p>
+<h2 id="toc_1">寄宿图</h2>
 
-<pre><code class="language-objectivec">self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+<p>CALayer的寄宿图（即<strong>图层中包含的图</strong>）</p>
 
-- (void)step:(CADisplayLink *)timer
-{
-    //calculate time delta
-    CFTimeInterval thisStep = CACurrentMediaTime();
-    CFTimeInterval stepDuration = thisStep - self.lastStep;
-    self.lastStep = thisStep;
-    
-    self.timeOffset = MIN(self.timeOffset + stepDuration, self.duration);
-    //get normalized time offset (in range 0 - 1)
-    float time = self.timeOffset / self.duration;
-    //apply easing
-    time = bounceEaseOut(time);
-    //interpolate position
-    id position = [self interpolateFromValue:self.fromValue toValue:self.toValue
-    time:time];
-    //move ball view to new position
-    self.ballView.center = [position CGPointValue];
-    //stop the timer if we&#39;ve reached the end of the animation
-    if (self.timeOffset &gt;= self.duration) {
-        [self.timer invalidate];
-        self.timer = nil;
-    }
-}
-</code></pre>
+<h3 id="toc_2">contents属性</h3>
 
-<h4 id="toc_3">Run Loop 模式</h4>
+<p>CALayer 有一个属性叫做<code>contents</code>，这个属性的类型被定义为<code>id</code>，意味着它可以是任何类型的对象。但是,在实践中，如果你给<code>contents</code>赋的不是<code>CGImage</code>，那么你得到的图层将是空白的。<br/>
+实际上真正应该赋值的类型是<code>CGImageRef</code>,它是指向<code>CGImage</code>的指针。<br/>
+UIImage有一个<code>CGImage</code>属性，它返回一个&quot;<code>CGImageRef</code>&quot;,如果你想把这个值直接赋值给<code>CALayer</code>的 <code>contents</code> ，那你将会得到一个编译错误。因为<code>CGImageRef</code>并不是一个真正的<code>Cocoa</code>对象，而是一个<code>Core Foundation</code>类型。</p>
 
-<p>创建Run Loop时需要指定mode,iOS会根据指定的优先级,，而且当UI很活跃的时候的确会暂停一些别的任务.</p>
-
-<ul>
-<li>NSDefaultRunLoopMode - 标准优先级</li>
-<li>NSRunLoopCommonModes - 高优先级</li>
-<li>UITrackingRunLoopMode - 用于 UIScrollView 和别的控件的动画</li>
-</ul>
-
-<pre><code class="language-objectivec">/*我们可以同时加入 NSDefaultRunLoopMode 和 UITrackingRunLoopMode 
-    来保证它不会被滑动打断，也不会被其他UIKit控件动画影响性能
-**/
-self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-[self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:UITrackingRunLoop];
-</code></pre>
-
-<h3 id="toc_4">物理模拟</h3>
-
-<p>我们在上面的方法中，关键帧的实现中我们提前加计算了所有帧,这次我们按需要进行计算,这样我们可以根据用户输入实时修改动画的逻辑，或者和别的实时动画系统例如物理引擎进行整合。</p>
-
-<h4 id="toc_5">Chipmunk</h4>
-
-<p>基于物理学创建一个真实的重力模拟效果来取代当前基于缓冲的弹性动画,因为模拟物理效果太复杂了，我们直接使用开源的物理引擎,我这里使用<code>Chipmunk</code>，有很多版本包括和<code>Objective-C</code>绑定的<code>“indie”</code>版本<a href="http://chipmunk-physics.net/">下载地址</a></p>
-
-<p>我们只简单使用这个引擎中的几个类:</p>
-
-<ul>
-<li>cpSpace - 所有的物理结构体的容器。它有一个大小和一个可选的重力矢量</li>
-<li>cpBody - 一个固态无弹力的刚体。它有一个坐标，以及其他物理属性，例如质量，运动和摩擦系数等等。</li>
-<li>cpShape - 一个抽象的几何形状，用来检测碰撞。可以给结构体添加一个多边形，而且<code>cpShape</code>有各种子类来代表不同形状的类型。</li>
-</ul>
-
-<p>因为C语言是不支持引用计数的所以为了准确的创建和释放我们将<code>cpShape</code>和<code>cpBody</code>和<code>Crate</code>（木箱）类进行绑定，在木箱的<code>- init</code>方法中创建,<code>-dealloc</code>中释放。用视图控制器来管理<code>cpSpace</code></p>
-
-<p><code>Chipmunk</code>使用了一个和<code>UIKit</code>颠倒的坐标系（Y轴向上为正方向）。我们可以使用<code>geometryFlipped</code>属性翻转容器视图的集合坐标,这样模型和视图就共享一个坐标系了<br/>
-<strong>geometryFlipped</strong>设置layer的这个属性可以调整坐标系Y轴方向</p>
-
-<p>代码示例:</p>
-
-<pre><code class="language-objectivec">//创建木箱的image对象
-@interface Crate : UIImageView
-@property (nonatomic, assign) cpBody *body;
-@property (nonatomic, assign) cpShape *shape;
-@end
-
-@implementation Crate
-#define MASS 100
-- (id)initWithFrame:(CGRect)frame
-{
-    if ((self = [super initWithFrame:frame])) {
-        //set image
-        self.image = [UIImage imageNamed:@&quot;Crate.png&quot;];
-        self.contentMode = UIViewContentModeScaleAspectFill;
-        //create the body
-        self.body = cpBodyNew(MASS, cpMomentForBox(MASS, frame.size.width, frame.size.height));
-        //create the shape
-        cpVect corners[] = {
-            cpv(0, 0),
-            cpv(0, frame.size.height),
-            cpv(frame.size.width, frame.size.height),
-            cpv(frame.size.width, 0),
-        };
-    self.shape = cpPolyShapeNew(self.body, 4, corners, cpv(-frame.size.width/2, -frame.size.height/2));
-    //set shape friction &amp; elasticity
-    cpShapeSetFriction(self.shape, 0.5);
-    cpShapeSetElasticity(self.shape, 0.8);
-    //link the crate to the shape
-    //so we can refer to crate from callback later on
-    self.shape-&gt;data = (__bridge void *)self;
-    //set the body position to match view
-    cpBodySetPos(self.body, cpv(frame.origin.x + frame.size.width/2, 300 - frame.origin.y - frame.size.height/2));
-    }
-    return self;
-}
-- (void)dealloc
-{
-    //release shape and body
-    cpShapeFree(_shape);
-    cpBodyFree(_body);
-}
-@end
-
-//创建重力空间
-@interface ViewController ()
-@property (nonatomic, weak) IBOutlet UIView *containerView;
-@property (nonatomic, assign) cpSpace *space;
-@property (nonatomic, strong) CADisplayLink *timer;
-@property (nonatomic, assign) CFTimeInterval lastStep;
-@end
-
-@implementation ViewController
-#define GRAVITY 1000
-- (void)viewDidLoad
-{
-    //invert view coordinate system to match physics
-    self.containerView.layer.geometryFlipped = YES;
-    //set up physics space
-    self.space = cpSpaceNew();
-    cpSpaceSetGravity(self.space, cpv(0, -GRAVITY));
-    //add a crate
-    Crate *crate = [[Crate alloc] initWithFrame:CGRectMake(100, 0, 100, 100)];
-    [self.containerView addSubview:crate];
-    cpSpaceAddBody(self.space, crate.body);
-    cpSpaceAddShape(self.space, crate.shape);
-    //start the timer
-    self.lastStep = CACurrentMediaTime();
-    self.timer = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
-    [self.timer addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-}
-
-void updateShape(cpShape *shape, void *unused)
-{
-    //get the crate object associated with the shape
-    Crate *crate = (__bridge Crate *)shape-&gt;data;
-    //update crate view position and angle to match physics shape
-    cpBody *body = shape-&gt;body;
-    crate.center = cpBodyGetPos(body);
-    crate.transform = CGAffineTransformMakeRotation(cpBodyGetAngle(body));
-}
-
-- (void)step:(CADisplayLink *)timer
-{
-    //calculate step duration
-    CFTimeInterval thisStep = CACurrentMediaTime();
-    CFTimeInterval stepDuration = thisStep - self.lastStep;
-    self.lastStep = thisStep;
-    //update physics
-    cpSpaceStep(self.space, stepDuration);
-    //update all the shapes
-    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
-}
-@end
-</code></pre>
-
-<h4 id="toc_6">添加用户交互</h4>
-
-<p>为了使木箱不掉落到屏幕外 我们在屏幕周围添加四条线来限制范围;</p>
-
-<p>通过给<code>cpSpace</code>添加四个<code>cpSegmentShape</code>对象（<code>cpSegmentShape</code>代表一条直线，所以四个拼起来就是一个矩形）。然后赋值给空间的<code>staticBody</code>属性(这是不受重力的结构体)，而不是像木箱那样会受重力的<code>cpBody</code>实例，因为我们不想这线画出屏幕或者被木箱击中消失。</p>
-
-<p>通过添加一个加速器,可以通过倾斜手机来调整重力矢量,在横屏模式下，要交换加速计矢量的x和y值，竖屏模式下再换回来.</p>
-
-<pre><code class="language-text">代码省略
-</code></pre>
-
-<h4 id="toc_7">模拟时间以及固定的时间步长</h4>
-
-<p>在上面我们做动画的缓冲效果来说,都是计算每帧的持续时间，这样的话两个时间步长就是可变的,对于模拟物理效果并不理想:</p>
-
-<p>因此我们通过<strong>固定的时间步长</strong>来计算物理效果，还要保证在屏幕发生重绘时能够同步更新视图</p>
-
-<p>因为刚好我们的模型（在这个例子中就是Chipmunk的 cpSpace 中的 cpBody ）被视图（就是屏幕上代表木箱的 UIView 对象）分离，于是就很简单了。我们只需要根据屏幕刷新的时间跟踪时间步长，然后根据每帧去计算一个或者多个模拟出来的效果。</p>
-
-<pre><code class="language-objectivec">
-/**
-    通过每次 CADisplayLink 的启动来通知屏幕将要刷新，然后记录下当前的
-    CACurrentMediaTime() 。
-    在一个小增量中提前重复物理模拟（这里用120分之一秒）直到赶上显示的时间。然后更新我们的视图，
-    在屏幕刷新的时候匹配当前物理结构体的显示位置。
+<pre><code class="language-objectivec">/**
+尽管Core Foundation类型跟Cocoa对象在运行时貌似很像（被称作toll-freebridging），
+他们并不是类型兼容的，不过你可以通过bridged关键字转换。
 */
-
-#define SIMULATION_STEP (1/120.0)
-- (void)step:(CADisplayLink *)timer
-{
-    //calculate frame step duration
-    CFTimeInterval frameTime = CACurrentMediaTime();
-    //update simulation
-    while (self.lastStep &lt; frameTime) {
-        cpSpaceStep(self.space, SIMULATION_STEP);
-        self.lastStep += SIMULATION_STEP;
-    }
-    //update all the shapes
-    cpSpaceEachShape(self.space, &amp;updateShape, NULL);
-}
+layer.contents = (__bridge id)image.CGImage;
+/**
+    利用CALayer在一个普通的UIView中显示了一张图片。这不是一个UIImageView，它不是我们通常用来展示图片的方法。
+*/
 </code></pre>
 
-<h4 id="toc_8">避免死亡螺旋</h4>
+<h4 id="toc_3">contentGravity</h4>
 
-<p>在上面例子中我们随意选择了1/120秒来模拟物理效果,但是我们在场景很复杂，<code>cpSpaceStp()</code>计算也会超出1/120秒,这样就会造成延迟帧率,帧延迟的话，我们需要更多时间来同步真实时间,这样就越来越慢，直到应用程序卡死,这就是所谓的<code>死亡螺旋</code></p>
+<p>我们这样设置的图片也会适应视图拉伸，CALay也有个属性<code>contentsGravity</code>,它是个NSString类型，<br/>
+类似于UIView的<code>contentMode</code>，<code>contentsGravity</code> 的目的是为了决定内容在图层的边界<br/>
+中怎么对齐，我们将使用<code>kCAGravityResizeAspect</code>，它的效果等同于<br/>
+<code>UIViewContentModeScaleAspectFit</code>.</p>
 
-<p>为了避免这种情况 我们需要留下足够的时间容错，如果物理计算超过了模拟时间的50%，就需要考虑增加模拟时间步长（或者简化场景）。如果模拟时间步长增加到超过1/60秒（一个完整的屏幕更新时间），你就需要减少动画帧率到一秒30帧或者增加<code>CADisplayLink</code>的<code>frameInterval</code>来保证不会随机丢帧，不然你的动画将会看起来不平滑。</p>
+<pre><code class="language-objectivec">self.layerView.layer.contentsGravity = kCAGravityResizeAspect;
+</code></pre>
+
+<h4 id="toc_4">contentScale</h4>
+
+<p><code>contentsScale</code>属性其实属于支持高分辨率（又称Hi-DPI或Retina）屏幕机制的一部分。它用来判断在绘制图层的时候应该为寄宿图创建的空间大小，和需要显示的图片的拉伸度（假设并没有设置<code>contentsGravity</code>属性）。UIView有一个类似功能但是非常少用到的<code>contentScaleFactor</code>属性。<br/>
+如果<code>contentsScale</code>设置为1.0，将会以每个点1个像素绘制图片，如果设置为2.0，则会以每个点2个像素绘制图片，这就是我们熟知的<code>Retina</code>屏幕。这并不会对我们在使用<code>kCAGravityResizeAspect</code>时产生任何影响，因为它就是拉伸图片以适应图层而已，根本不会考虑到分辨率问题。但是如果我们把<code>contentsGravity</code>设置为<code>kCAGravityCenter</code>（这个值并不会拉伸图片），那将会有很明显的变化</p>
+
+<pre><code class="language-objectivec">self.layerView.layer.contentsGravity = kCAGravityCenter;
+self.layerView.layer.contentsScale = image.scale;
+
+/**
+当用代码的方式来处理寄宿图的时候，一定要记住要手动的设置图层的 contentsScale 属性
+，否则，你的图片在Retina设备上就显示得不正确啦
+*/
+layer.contentsScale = [UIScreen mainScreen].scale;
+</code></pre>
+
+<h4 id="toc_5">maskToBounds</h4>
+
+<p>UIView有一个叫做<code>clipsToBounds</code>的属性可以用来决定是否显示超出边界的内容，CALayer对应的属性叫做<code>masksToBounds</code></p>
+
+<h4 id="toc_6">contentRect</h4>
+
+<p>CALayer的 <code>contentsRect</code> 属性允许我们在图层边框里显示寄宿图的一个子域。<br/>
+它使用单位坐标,指定0到1之间是一个相对值（像素和点就是绝对值）,相对于寄宿图的尺寸</p>
+
+<p>默认<code>contentRect</code>是{0，0，1，1},着整个寄宿图默认都是可见的，如果我们指定一个小一点的矩形，图片就会被裁剪<br/>
+事实上给 contentsRect 设置一个负数的原点或是大于{1, 1}的尺寸也是可以的。这种情况下，最外面的像素会被拉伸以填充剩下的区域。</p>
+
+<p><strong>iOS中的坐标系统:</strong></p>
+
+<ul>
+<li>点 —— 在iOS和Mac OS中最常见的坐标体系。点就像是虚拟的像素，也被称作逻辑像素。在标准设备上，一个点就是一个像素，但是在Retina设备上，一个点等于2*2个像素。iOS用点作为屏幕的坐标测算体系就是为了在Retina设备和普通设备上能有一致的视觉效果。</li>
+<li>像素 —— 物理像素坐标并不会用来屏幕布局，但是仍然与图片有相对关系。UIImage是一个屏幕分辨率解决方案，所以指定点来度量大小。但是一些底层的图片表示如CGImage就会使用像素，所以你要清楚在Retina设备和普通设备上，他们表现出来了不同的大小。</li>
+<li>单位 —— 对于与图片大小或是图层边界相关的显示，单位坐标是一个方便的度量方式， 当大小改变的时候，也不需要再次调整。单位坐标在OpenGL这种纹理坐标系统中用得很多，Core Animation中也用到了单位坐标。</li>
+</ul>
+
+<h4 id="toc_7">contentsCenter</h4>
+
+<p><code>contentsCenter</code>是一个CGRect,定义了一个固定的边框和一个在图层上可拉伸的区域.</p>
+
+<p>默认是{0，0，1，1},即当视图大小改变时会均匀大小的拉伸,但是当我们改变这个rect后,横向或者纵向拉伸图片时就只会拉伸我们选定的区域（是rect的区域被拉伸而不是rect之外区域被拉伸）</p>
+
+<p>工作起来的效果和<code>UIImage</code>里的<code>-resizableImageWithCapInsets:</code>方法效果非常类似，只是它可以运用到任何寄宿图，甚至包括在Core Graphics运行时绘制的图形</p>
+
+<p><strong>注意</strong><br/>
+这个属性我们是可以在xib中直接设置的:<br/>
+<img src="media/14883679213714/14891971745538.jpg" alt=""/></p>
+
+<h4 id="toc_8">Custom Drawing</h4>
+
+<p>当然我们设置寄宿图的方法不仅仅只有给<code>content</code>赋值CGImage，我们也可以用Core Grapic直接绘制。我们可以通过继承UIView并且重写<code>-drawRect:</code>方法进行自定义绘制  </p>
+
+<p><code>drawRect</code>方法并没有默认实现，因为对于UIView来说,寄宿图并不是必须的，但是当UIView检测到<code>-drawRect:</code>被调用就会为视图分配一个寄宿图，寄宿图的像素尺寸等于视图大小乘以 <code>contentsScale</code>的值。如果不需要寄宿图就没必要创建这个方法会造成cpu、内存浪费，空的方法也不行.  </p>
+
+<p>当视图在屏幕上出现的时候 <code>-drawRect:</code>方法就会被自动调用。<code>-drawRect:</code> 方法里面的代码利用<code>Core Graphics</code>去绘制一个寄宿图，然后内容就会被缓存起来直到它需要被更新(通常是因为开发者调用了<code>-setNeedsDisplay</code>方法,尽管影响到表现效果属性值被更改时，视图类型会自动重绘，如bounds属性)。  </p>
+
+<p>虽然<code>-drawRect:</code>方法是一个UIView方法，事实上都是底层的<code>CALayer</code>安排了重绘工作和保存了因此产生的图片。</p>
+
+<h4 id="toc_9">CALayeDelegate</h4>
+
+<p><strong>CALaye的代理</strong></p>
+
+<p><strong>这个并不常用</strong></p>
+
+<p>实现了 <code>CALayerDelegate</code> 协议，当<code>CALayer</code>需要一个内容特定的信息时，就会从协议中请求.<br/>
+当需要被重绘的时候，CALayer会请求他的代理给他一个寄宿图来显示.</p>
+
+<pre><code class="language-objectivec">//如果想直接设置contents属性时,可以这样
+-(void)displayLayer:(CALayerCALayer *)layer;
+//如果代理不实现 -displayLayer: 方法 就会调用
+- (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx;
+/**
+    在调用这个方法之前CALayer创建一个合适尺寸的空寄宿图（尺寸由bounds
+    和contentScale决定）和一个coreGraphic绘制的上下文环境ctx
+*/ 
+</code></pre>
+
+<p>举个栗子:</p>
+
+<pre><code class="language-objectivec">CALayer *blueLayer = [CALayer layer];
+[self.layerView.layer addSublayer:blueLayer];
+[blueLayer display];//强制layer重绘
+
+//代理
+- (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx
+{
+    //draw a thick red circle
+    CGContextSetLineWidth(ctx, 10.0f);
+    CGContextSetStrokeColorWithColor(ctx, [UIColor redColor].CGColor);
+    CGContextStrokeEllipseInRect(ctx, layer.bounds);
+}
+
+</code></pre>
+
+<p><strong>注意</strong><br/>
+我们在blueLayer上显式地调用了<code>-display</code>。不同于UIView，当图层显示在屏幕上时，CALayer不会自动重绘它的内容。它把重绘的决定权交给了开发者。</p>
+
+<p>除非你创建了一个单独的图层，你几乎没有机会用到CALayerDelegate协议,因为当UIView创建了它的宿主图层时，它就会自动地把图层的<code>delegate</code>设置为它自己，并提供了一个<code>-displayLayer:</code>的实现</p>
+
+<p>当使用寄宿了视图的图层的时候，你也不必实现<code>-displayLayer:</code>和<code>-drawLayer:inContext:</code>方法来绘制你的寄宿图。通常做法是实现UIView的<code>-drawRect:</code>方法，UIView就会帮你做完剩下的工作，包括在需要重绘的时候调用<code>-display</code>方法。</p>
 
 
 		</div>
@@ -369,8 +277,10 @@ void updateShape(cpShape *shape, void *unused)
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -384,7 +294,7 @@ void updateShape(cpShape *shape, void *unused)
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -480,31 +390,31 @@ void updateShape(cpShape *shape, void *unused)
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

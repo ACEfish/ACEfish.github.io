@@ -82,164 +82,50 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15578383647199.html">RACSignal</a></h1>
-			<p class="meta"><time datetime="2019-05-14T20:52:44+08:00" 
-			pubdate data-updated="true">2019/5/14</time></p>
+		  	<h1 class="entry-title"><a href="15682782807154.html">智能预加载</a></h1>
+			<p class="meta"><time datetime="2019-09-12T16:51:20+08:00" 
+			pubdate data-updated="true">2019/9/12</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>本文学习自<a href="https://github.com/halfrost/Analyze/blob/master/contents/ReactiveObjC/RACSignal.md">『状态』驱动的世界：ReactiveCocoa</a></p>
+		  	<p>学习自<a href="https://texturegroup.org/docs/intelligent-preloading.html">Texture官方文档</a></p>
 
-<p><code>RACSignal</code>继承自<code>RACStream</code>，对该抽象类的方法进行了重写实现</p>
+<p>虽然异步并发渲染和FlexBox布局已经足够强大，但是Texture还做了另外的智能预加载的思想</p>
 
-<h3 id="toc_0"><code>return</code>方法</h3>
+<p>我们通常不在<code>node container</code>外使用node，因为所有的node都有当前的<code>interface state</code>概念。<br/>
+<code>interface state</code>属性由<code>ASRangeController</code>更新和维护，ASRangeController又由所有的<code>node container</code>在内部创建和维护。<br/>
+当我们在contain外部使用node时，就不会有<code>ASRangeController</code>更新其状态，这个有时会导致渲染时node闪烁，这是因为这些容器外的节点因为状态的错误，在节点被渲染到屏幕上后又进行了一次渲染。</p>
 
-<pre><code class="language-objectivec">+ (RACSignal *)return:(id)value {
-    return [RACReturnSignal return:value];
-}
-/**
-RACReturnSignal *signal = [[self alloc] init];
-signal-&gt;_value = value;
-*/
+<h1 id="toc_0">接口状态范围</h1>
+
+<p><img src="media/15682782807154/15682794649845.jpg" alt="" style="width:497px;"/><br/>
+当nodes<mark>添加到滚动或者分页界面时</mark>，会处在上面所处的几个状态之一。意味着当视图滚动时，他们的状态将会更新</p>
+
+<p>Preload： 预加载，离可见区域最远的内容，在这个地方收集其他的输入源信息<br/>
+Display： 在这个地方展示例如文字光栅化、图片解码等任务<br/>
+Visible： 在屏幕上展示至少一个像素</p>
+
+<h3 id="toc_1">ASRangeTuningParameters</h3>
+
+<p>这些状态范围的大小是可调整的。默认大小适合于大多数情况，我们也可以设置滚动范围参数调整其大小</p>
+
+<p>在下面图片中我们可以看到，当用户向下滚动时，滚动方向的范围比尾部方向内容大得多。当用户改变滚动方向时，则首尾将会动态交换，以保持内存最佳使用率。这使得我们只需要关系首尾方向的range size大小，而不需担心用户更改滚动方向<br/>
+<img src="media/15682782807154/15682825633985.jpg" alt="" style="width:500px;"/></p>
+
+<h2 id="toc_2">接口状态回调</h2>
+
+<p>当用户滚动时 node会在这三个状态范围中切换 并且通过加载数据或者渲染做出反应。自己的node子类可以通过实现相应的回调方法来利用这种机制</p>
+
+<pre><code class="language-objectivec">-didEnterVisibleState
+-didExitVisibleState
+
+-didEnterDisplayState
+-didExitDisplayState
+
+-didEnterPreloadState
+-didExitPreloadState
+//记得都要调用super
 </code></pre>
-
-<h3 id="toc_1"><code>-bind</code>方法</h3>
-
-<pre><code class="language-objectivec">
-/**
-实现过程
-1. 订阅原始信号值
-2. 当原信号发送值时，使用bindblock对其进行转换
-3. 如果bindblock返回一个信号，订阅该信号，并在收到该信号值时，将所有值传递给接收者subscriber
-4. 如果bindblock请求终止就向原信号发出`-sendError:`消息
-5. 当所有信号完成，向订阅者发送`-sendCompleted`
-6. 无论何时 当信号发生错误，向订阅者发送-sendError: 消息
-*/
-
-- (RACSignal *)bind:(RACSignalBindBlock (^)(void))block
-</code></pre>
-
-<p><code>-bind</code>方法在原始信号每次发出消息时，执行<code>RACSignalBindBlock</code>对其进行变换生成一个新的信号</p>
-
-<p>示例:</p>
-
-<pre><code class="language-objectivec">//示例1：
-RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
-    [subscriber sendNext:@1];
-    [subscriber sendNext:@2];
-    [subscriber sendNext:@3];
-    [subscriber sendNext:@4];
-    [subscriber sendCompleted];
-    return nil;
-}];
-RACSignal *bindSignal = [signal bind:^RACSignalBindBlock _Nonnull{
-    return ^(NSNumber *value, BOOL *stop) {
-        //简单的利用bind将 原始信号的值进行了一个变换
-        value = @(value.integerValue * value.integerValue);
-        return [RACSignal return:value];
-    };
-}];
-[signal subscribeNext:^(id  _Nullable x) {
-    NSLog(@&quot;signal: %@&quot;, x);
-}];
-[bindSignal subscribeNext:^(id  _Nullable x) {
-    NSLog(@&quot;bindSignal: %@&quot;, x);
-}];
-</code></pre>
-
-<h3 id="toc_2">-concat方法</h3>
-
-<pre><code class="language-objectivec">- (RACSignal *)concat:(RACSignal *)signal {
-    return [[RACSignal createSignal:^(id&lt;RACSubscriber&gt; subscriber) {
-
-        [self subscribeNext:^(id x) {
-            [subscriber sendNext:x];
-        } error:^(NSError *error) {
-            [subscriber sendError:error];
-        } completed:^{
-            [signal subscribe:subscriber];
-        }];
-    }] setNameWithFormat:@&quot;[%@] -concat: %@&quot;, self.name, signal];
-}
-</code></pre>
-
-<p>当原始信号<code>completed</code>后 subcribe contact的信号</p>
-
-<h3 id="toc_3">-zipWith方法</h3>
-
-<ul>
-<li>(RACSignal *)zipWith:(RACSignal *)signal<br/>
-将两个信号值进行zip 即每次发出一个为<code>RACTuple</code>值为[signal1value, signal2value]的值 当其中一个error或者completed即停止zipSignal</li>
-</ul>
-
-<h2 id="toc_4">信号的创建</h2>
-
-<p>RACSignal的<code>createSignal</code>方法</p>
-
-<pre><code class="language-objectivec">//RACSignal
-+ (RACSignal *)createSignal:(RACDisposable * (^)(id&lt;RACSubscriber&gt; subscriber))didSubscribe {
-    return [RACDynamicSignal createSignal:didSubscribe];
-}
-
-//RACDynamicSignal
-+ (RACSignal *)createSignal:(RACDisposable * (^)(id&lt;RACSubscriber&gt; subscriber))didSubscribe {
-    RACDynamicSignal *signal = [[self alloc] init];
-    signal-&gt;_didSubscribe = [didSubscribe copy];
-    return [signal setNameWithFormat:@&quot;+createSignal:&quot;];
-}
-</code></pre>
-
-<p>signal保存了<code>didSubscribe</code>并在每次有订阅者订阅当前信号时 都会执行一遍，向订阅者发送消息</p>
-
-<h3 id="toc_5">RACSignal类簇</h3>
-
-<p><code>RACSignal</code>拥有不同功能的子类</p>
-
-<ol>
-<li><p><code>RACDynamicSignal</code>：用于 <code>+ createSignal:</code></p></li>
-<li><p><code>RACEmptySignal</code> 用于 <code>+ empty</code></p>
-<pre><code class="language-objectivec">+ (RACSignal *)empty {
-    return [[[self alloc] init] setNameWithFormat:@&quot;+empty&quot;];<br/>
-}<br/>
-- (RACDisposable *)subscribe:(id&lt;RACSubscriber&gt;)subscriber {<br/>
-    return [RACScheduler.subscriptionScheduler schedule:^{<br/>
-        [subscriber sendCompleted];<br/>
-    }];<br/>
-}
-</code></pre></li>
-<li><p><code>RACReturnSignal</code>  用于 <code>+ return</code></p>
-<pre><code class="language-objectivec">+ (RACSignal *)return:(id)value {
-    RACReturnSignal *signal = [[self alloc] init];<br/>
-      signal-&gt;_value = value;<br/>
-      return signal;<br/>
-}<br/>
-//将value简单保存 在有其它订阅者时 向订阅者发送value<br/>
-- (RACDisposable *)subscribe:(id&lt;RACSubscriber&gt;)subscriber {<br/>
-        NSCParameterAssert(subscriber != nil);<br/>
-        return [RACScheduler.subscriptionScheduler schedule:^{<br/>
-            [subscriber sendNext:self.value];<br/>
-            [subscriber sendCompleted];<br/>
-        }];<br/>
-}
-</code></pre></li>
-<li><p><code>RACErrorSignal</code>  用于 <code>+ error</code></p>
-<pre><code class="language-objectivec">+ (RACSignal *)error:(NSError *)error {
-    RACErrorSignal *signal = [[self alloc] init];<br/>
-    signal-&gt;_error = error;<br/>
-#ifdef DEBUG<br/>
-    [signal setNameWithFormat:@&quot;+error: %@&quot;, error];<br/>
-#else<br/>
-    signal.name = @&quot;+error:&quot;;<br/>
-#endif<br/>
-    return signal;<br/>
-}<br/>
-- (RACDisposable *)subscribe:(id&lt;RACSubscriber&gt;)subscriber {<br/>
-       return [RACScheduler.subscriptionScheduler schedule:^{<br/>
-    [subscriber sendError:self.error];<br/>
-}];<br/>
-}
-</code></pre></li>
-</ol>
 
 
 		</div>
@@ -262,8 +148,10 @@ RACSignal *bindSignal = [signal bind:^RACSignalBindBlock _Nonnull{
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -277,7 +165,7 @@ RACSignal *bindSignal = [signal bind:^RACSignalBindBlock _Nonnull{
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -373,31 +261,31 @@ RACSignal *bindSignal = [signal bind:^RACSignalBindBlock _Nonnull{
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

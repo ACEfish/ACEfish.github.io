@@ -82,151 +82,451 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15604257329990.html">RACSignal信号的订阅与发送</a></h1>
-			<p class="meta"><time datetime="2019-06-13T19:35:32+08:00" 
-			pubdate data-updated="true">2019/6/13</time></p>
+		  	<h1 class="entry-title"><a href="15676621460215.html">AFURLSessionManager</a></h1>
+			<p class="meta"><time datetime="2019-09-05T13:42:26+08:00" 
+			pubdate data-updated="true">2019/9/5</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">RACSignal</h2>
+		  	<p>根据作者:<br/>
+<code>AFURLSessionManager</code>是基于一个指定的<code>NSURLSessionConfiguration</code>对象创建的用于管理<code>NSURLSession</code>对象。 其遵循了<code>NSURLSessionTaskDelegate、NSURLSessionDataDelegate、NSURLSessionDownloadDelegate、NSURLSessionDelegate</code>协议</p>
 
-<h4 id="toc_1">订阅信号</h4>
+<pre><code class="language-objectivec">## NSURLSession &amp; NSURLSessionTask Delegate Methods
 
-<p>订阅信号动作 就是创建一个遵循<code>&lt;RACSubscriber&gt;</code>代理的对象 该对象将接受到信号时要做的动作block保存起来</p>
+ `AFURLSessionManager` implements the following delegate methods:
 
-<pre><code class="language-objectivec">RACSignal subscribeNext:(void (^)(id x))nextBlock error:(void (^)(NSError *error))errorBlock completed:(void (^)(void))completedBlock {
+ ### `NSURLSessionDelegate`
+
+ - `URLSession:didBecomeInvalidWithError:`
+ - `URLSession:didReceiveChallenge:completionHandler:`
+ - `URLSessionDidFinishEventsForBackgroundURLSession:`
+
+ ### `NSURLSessionTaskDelegate`
+
+ - `URLSession:willPerformHTTPRedirection:newRequest:completionHandler:`
+ - `URLSession:task:didReceiveChallenge:completionHandler:`
+ - `URLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:`
+ - `URLSession:task:needNewBodyStream:`
+ - `URLSession:task:didCompleteWithError:`
+
+ ### `NSURLSessionDataDelegate`
+
+ - `URLSession:dataTask:didReceiveResponse:completionHandler:`
+ - `URLSession:dataTask:didBecomeDownloadTask:`
+ - `URLSession:dataTask:didReceiveData:`
+ - `URLSession:dataTask:willCacheResponse:completionHandler:`
+
+ ### `NSURLSessionDownloadDelegate`
+
+ - `URLSession:downloadTask:didFinishDownloadingToURL:`
+ - `URLSession:downloadTask:didWriteData:totalBytesWritten:totalBytesWritten:totalBytesExpectedToWrite:`
+ - `URLSession:downloadTask:didResumeAtOffset:expectedTotalBytes:`
+
+ If any of these methods are overridden in a subclass, they _must_ call the `super` implementation first.
+
+</code></pre>
+
+<h2 id="toc_0">基本功能</h2>
+
+<ol>
+<li>创建和管理<code>NSURLSession</code></li>
+<li>管理<code>NSURLSessionTask</code></li>
+<li>实现<code>NSURLSessionDelegate</code>等协议中的代理方法</li>
+<li>使用<code>AFURLSessionManagerTaskDelegate</code>管理进度</li>
+<li>使用<code>_AFURLSessionTaskSwizzling</code>调剂方法</li>
+<li>引入<code>AFSecurityPolicy</code>保证请求的安全</li>
+<li>引入<code>AFNetworkReachabilityManager</code>监控网络状态</li>
+</ol>
+
+<h2 id="toc_1">创建和管理NSURLSession</h2>
+
+<p>初始化方法</p>
+
+<pre><code class="language-objectivec">- (instancetype)initWithSessionConfiguration:(NSURLSessionConfiguration *)configuration {
+
+    //配置会话设置
+    if (!configuration) {
+        configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
+    }
+    self.sessionConfiguration = configuration;
     
-    RACSubscriber *subscriber = [[self alloc] init];
-    subscriber-&gt;_next = [next copy];
-    subscriber-&gt;_error = [error copy]    
-    subscriber-&gt;_completed = [completed copy];
+    self.operationQueue = [[NSOperationQueue alloc] init];
+    self.operationQueue.maxConcurrentOperationCount = 1;
     
-    [self subscribe:subscriber];
+    //设置NSURLSessionDelegate代理 和 代理queue
+    self.session = [NSURLSession sessionWithConfiguration:self.sessionConfiguration delegate:self delegateQueue:self.operationQueue];
     
-}
-</code></pre>
+    //初始化响应序列
+    self.responseSerializer = [AFJSONResponseSerializer serializer];
+    
+    //初始化安全认证
+    self.securityPolicy = [AFSecurityPolicy defaultPolicy];
+    
+    #if !TARGET_OS_WATCH
+    //初始化网络监测状态
+    self.reachabilityManager = [AFNetworkReachabilityManager sharedManager];
+    #endif
 
-<p>具体订阅该信号要做的事情  因为不同子类的信号发送事件不同  需要被子类重写</p>
+    //初始化保存dataTask的字典
+    self.mutableTaskDelegatesKeyedByTaskIdentifier = [[NSMutableDictionary alloc] init];
+    
+    self.lock = [[NSLock alloc] init];
+    self.lock.name = AFURLSessionManagerLockName;
+    
+    //为已有task设置代理  
+    [self.session getTasksWithCompletionHandler:^(NSArray *dataTasks, NSArray *uploadTasks, NSArray *downloadTasks) {
+        for (NSURLSessionDataTask *task in dataTasks) {
+            [self addDelegateForDataTask:task uploadProgress:nil downloadProgress:nil completionHandler:nil];
+        }
 
-<pre><code class="language-objectivec">RACSignal subscribe:(id&lt;RACSubscriber&gt;)subscriber {
-    //被子类重写
-}
-</code></pre>
+        for (NSURLSessionUploadTask *uploadTask in uploadTasks) {
+            [self addDelegateForUploadTask:uploadTask progress:nil completionHandler:nil];
+        }
 
-<h3 id="toc_2">RACSubscriber<RACSubscriber></h3>
-
-<p>遵循<code>RACSubscriber</code>代理 即可发送信号值</p>
-
-<pre><code class="language-objectivec">- (void)sendNext:(id)value {
-    self.nextBlock(value);
-}
-- (void)sendError:(NSError *)e{
-    self.errorBlock(e);
-}
-- (void)sendCompleted {
-    self.completedBlock();
-}
-</code></pre>
-
-<p>发送信号值 即执行保存的执行事件block</p>
-
-<h3 id="toc_3">RACDynamicSignal</h3>
-
-<p>DynamicSignal 即在创建信号时要发送的的信号值已经设定  而在重写<code>subscribe</code>方法时只需要将其发送的值与 next、error、completed block进行匹配执行即可</p>
-
-<h4 id="toc_4">创建信号</h4>
-
-<p><code>DynamicSignal</code>创建信号 创建时已经包含了信号已经要发送的值<br/>
-将<code>id&lt;RACSubscriber&gt;</code>信号发送者要发送的值的事件block 存起来，存到signal的<code>_didSubscribe</code>block属性中</p>
-
-<pre><code class="language-objectivec">RACDynamicSignal createSignal:(RACDisposable * (^)(id&lt;RACSubscriber&gt; subscriber))didSubscribe {
-    RACDynamicSignal *signal = [[self alloc] init];
-      signal-&gt;_didSubscribe = [didSubscribe copy];
-}
-</code></pre>
-
-<h4 id="toc_5">订阅信号</h4>
-
-<p>订阅信号 即 执行创建信号时保存起来的<code>didSubscribe</code> block  send创建信号时发送的值 </p>
-
-<pre><code class="language-objectivec">RACDynamicSignal subscribe:(id&lt;RACSubscriber&gt;)subscriber  {
-    self.didSubscribe(subscriber);
-}
-</code></pre>
-
-<h2 id="toc_6">RASSubject &lt; RACSubscriber &gt;: RACSignal</h2>
-
-<p><code>Subject</code>维持一个数组保存所有需要sendEvent的<code>Subscriber</code>,当需要发送</p>
-
-<h4 id="toc_7">订阅信号</h4>
-
-<p>因为继承自<code>RACSignal</code> 需要重写<code>subscribe:</code>方法</p>
-
-<pre><code class="language-objectivec">RASSubject )subscribe:(id&lt;RACSubscriber&gt;)subscriber {
-    [self.subscribers addObject:subscriber];
-}
-</code></pre>
-
-<h4 id="toc_8">发送信号</h4>
-
-<p>发送信号值 即 遍历数组中的Subcriber 依次send 然后执行subscriber 中保存的nextBlock事件block</p>
-
-<pre><code class="language-objectivec">- (void)sendNext:(id)value {
-    [self enumerateSubscribersUsingBlock:^(id&lt;RACSubscriber&gt; subscriber) {
-        [subscriber sendNext:value];
+        for (NSURLSessionDownloadTask *downloadTask in downloadTasks) {
+            [self addDelegateForDownloadTask:downloadTask progress:nil destination:nil completionHandler:nil];
+        }
     }];
 }
 </code></pre>
 
-<h3 id="toc_9">RACBehaviorSubject &amp;&amp; RACReplaySubject</h3>
+<h2 id="toc_2">NSURLSessionTask</h2>
 
-<h4 id="toc_10">RACBehaviorSubject</h4>
+<p><code>AFURLSessionManager</code>中提供了一系列的获取dataTask的方法</p>
 
-<p>在内部的<code>currentValue</code>属性会保存上次发送的值 这样在订阅该信号时即能收到最后发送的信号值，进行初始化</p>
+<pre><code class="language-objectivec">//upload 
+- (NSURLSessionUploadTask *)uploadTaskWithRequest:(NSURLRequest *)request
+                                         fromFile:(NSURL *)fileURL
+                                         progress:(void (^)(NSProgress *uploadProgress)) uploadProgressBlock
+                                completionHandler:(void (^)(NSURLResponse *response, id responseObject, NSError *error))completionHandler
 
-<pre><code class="language-objectivec">+ (instancetype)behaviorSubjectWithDefaultValue:(id)value {
-    RACBehaviorSubject *subject = [self subject];
-    subject.currentValue = value;
-    return subject;
+//download                                
+- (NSURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request
+                                             progress:(void (^)(NSProgress *downloadProgress)) downloadProgressBlock
+                                          destination:(NSURL * (^)(NSURL *targetPath, NSURLResponse *response))destination
+                                    completionHandler:(void (^)(NSURLResponse *response, NSURL *filePath, NSError *error))completionHandler
+
+
+//
+- (NSURLSessionDataTask *)dataTaskWithRequest:(NSURLRequest *)request
+                               uploadProgress:(nullable void (^)(NSProgress *uploadProgress)) uploadProgressBlock
+                             downloadProgress:(nullable void (^)(NSProgress *downloadProgress)) downloadProgressBlock
+                            completionHandler:(nullable void (^)(NSURLResponse *response, id _Nullable responseObject,  NSError * _Nullable error))completionHandler {
+
+    __block NSURLSessionDataTask *dataTask = nil;
+    url_session_manager_create_task_safely(^{
+        dataTask = [self.session dataTaskWithRequest:request];
+    });
+
+    [self addDelegateForDataTask:dataTask uploadProgress:uploadProgressBlock downloadProgress:downloadProgressBlock completionHandler:completionHandler];
+
+    return dataTask;
 }
 </code></pre>
 
-<h5 id="toc_11">发送信号</h5>
+<p>使用<code>url_session_manager_create_task_safely</code>的原因是 苹果的框架的<a href="https://github.com/AFNetworking/AFNetworking/issues/2093">bug</a>，在并行队列中创建task时，因为可能返回的taskIdentifier，先前的complectionHandel被替换为新的，即对第二个任务调用第一个响应.（在iOS8之后问题已修复）</p>
 
-<p>在发送信号时 保存信号作为最后发送的信号</p>
+<p>调用了<code>addDelegateForDataTask: uploadProgress: downloadProgress: completionHandler:</code>方法</p>
 
-<pre><code class="language-objectivec">- (void)sendNext:(id)value {
-    self.currentValue = value;
-    [super sendNext:value];
+<pre><code class="language-objectivec">- (void)addDelegateForDataTask:(NSURLSessionDataTask *)dataTask
+                uploadProgress:(nullable void (^)(NSProgress *uploadProgress)) uploadProgressBlock
+              downloadProgress:(nullable void (^)(NSProgress *downloadProgress)) downloadProgressBlock
+             completionHandler:(void (^)(NSURLResponse *response, id responseObject, NSError *error))completionHandler
+{
+    AFURLSessionManagerTaskDelegate *delegate = [[AFURLSessionManagerTaskDelegate alloc] initWithTask:dataTask];
+    delegate.manager = self;
+    delegate.completionHandler = completionHandler;
+
+    dataTask.taskDescription = self.taskDescriptionForSessionTasks;
+    [self setDelegate:delegate forTask:dataTask];
+
+    delegate.uploadProgressBlock = uploadProgressBlock;
+    delegate.downloadProgressBlock = downloadProgressBlock;
+}
+
+- (void)setDelegate:(AFURLSessionManagerTaskDelegate *)delegate
+            forTask:(NSURLSessionTask *)task
+{
+    NSParameterAssert(task);
+    NSParameterAssert(delegate);
+
+    [self.lock lock];
+    self.mutableTaskDelegatesKeyedByTaskIdentifier[@(task.taskIdentifier)] = delegate;
+    [self addNotificationObserverForTask:task];
+    [self.lock unlock];
+}
+
+- (void)addNotificationObserverForTask:(NSURLSessionTask *)task {
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(taskDidResume:) name:AFNSURLSessionTaskDidResumeNotification object:task];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(taskDidSuspend:) name:AFNSURLSessionTaskDidSuspendNotification object:task];
 }
 </code></pre>
 
-<h5 id="toc_12">订阅信号</h5>
+<p>创建了一个<code>AFURLSessionManagerTaskDelegate</code>对象 <br/>
+并在其内部执行了<code>setDelegate</code>来设置代理</p>
 
-<p>重写<code>subscribe</code>方法  在每次订阅信号时 发送当前保存的值即最后发送的信号</p>
+<p><code>AFURLSessionManager</code>就是通过字典<code>mutableTaskDelegatesKeyedByTaskIdentifier</code>来存储和管理每一个<code>NSURLSessionTask</code>，它以<code>taskIdentifier</code>为键存储task</p>
 
-<pre><code class="language-objectivec">RACBehaviorSubject  subscribe:(id&lt;RACSubscriber&gt;)subscriber {
-    [super subscribe:subscriber];
-       [subscriber sendNext:self.currentValue];
+<h2 id="toc_3">NSURLSessionDelegate</h2>
+
+<p>前面说过<code>AFURLSessionManager</code>遵循了一下代理</p>
+
+<ul>
+<li>NSURLSessionDelegate</li>
+<li>NSURLSessionTaskDelegate</li>
+<li>NSURLSessionDataDelegate</li>
+<li>NSURLSessionDownloadDelegate</li>
+</ul>
+
+<p>我们在使用<code>AFURLSessionManager</code>的初始化方法时 设置 session的delegate为self</p>
+
+<pre><code class="language-objectivec">- (void)URLSession:(NSURLSession *)session didBecomeInvalidWithError:(NSError *)error {
+    if (self.sessionDidBecomeInvalid) {
+        self.sessionDidBecomeInvalid(session, error);
+    }
+
+    [[NSNotificationCenter defaultCenter] postNotificationName:AFURLSessionDidInvalidateNotification object:session];
 }
-</code></pre>
 
-<h4 id="toc_13">RACReplaySubject</h4>
-
-<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) NSMutableArray *valuesReceived;
-</code></pre>
-
-<p>内部有个数组保存了一定量发送过的信号 默认为<code>RACReplaySubjectUnlimitedCapacity</code>（NSUIntegerMax），即保存所有已经发送过的信号，也可以通过<code>initWithCapacity</code>初始化，制动保存多少个已经发送过的信号</p>
-
-<pre><code class="language-objectivec">- (instancetype)initWithCapacity:(NSUInteger)capacity {
-    self = [super init];
+- (void)URLSession:(NSURLSession *)session
+didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
+ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential))completionHandler {
     
-    _capacity = capacity;
-    _valuesReceived = (capacity == RACReplaySubjectUnlimitedCapacity ? [NSMutableArray array] : [NSMutableArray arrayWithCapacity:capacity]);
+ }
+</code></pre>
+
+<p>遵循这些协议实现其方法，然后将其提供更简洁的block接口<br/>
+将block存在对应属性中，当代理方法调用时，执行对应的block</p>
+
+<pre><code class="language-objectivec">- (void)setSessionDidBecomeInvalidBlock:(void (^)(NSURLSession *session, NSError *error))block {
+    self.sessionDidBecomeInvalid = block;
+}
+
+- (void)setSessionDidReceiveAuthenticationChallengeBlock:(NSURLSessionAuthChallengeDisposition (^)(NSURLSession *session, NSURLAuthenticationChallenge *challenge, NSURLCredential * __autoreleasing *credential))block {
+    self.sessionDidReceiveAuthenticationChallenge = block;
+}
+</code></pre>
+
+<h2 id="toc_4">AFURLSessionManagerTaskDelegate管理进度</h2>
+
+<p>主要为task提供进度管理功能，并在task结束时回调，即调用<code>completionHandel</code></p>
+
+<pre><code class="language-objectivec">- (instancetype)initWithTask:(NSURLSessionTask *)task {
+    _mutableData = [NSMutableData data];
+    _uploadProgress = [[NSProgress alloc] initWithParent:nil userInfo:nil];
+    _downloadProgress = [[NSProgress alloc] initWithParent:nil userInfo:nil];
     
+    __weak __typeof__(task) weakTask = task;
+    for (NSProgress *progress in @[ _uploadProgress, _downloadProgress ])
+    {
+        progress.totalUnitCount = NSURLSessionTransferSizeUnknown;
+        progress.cancellable = YES;
+        progress.cancellationHandler = ^{
+            [weakTask cancel];
+        };
+        progress.pausable = YES;
+        progress.pausingHandler = ^{
+            [weakTask suspend];
+        };
+#if AF_CAN_USE_AT_AVAILABLE
+        if (@available(iOS 9, macOS 10.11, *))
+#else
+        if ([progress respondsToSelector:@selector(setResumingHandler:)])
+#endif
+        {
+            progress.resumingHandler = ^{
+                [weakTask resume];
+            };
+        }
+        
+        [progress addObserver:self
+                   forKeyPath:NSStringFromSelector(@selector(fractionCompleted))
+                      options:NSKeyValueObservingOptionNew
+                      context:NULL];
+    }
     return self;
 }
 </code></pre>
+
+<p>主要设置了<code>uploadProgress</code>和<code>downloadProgress</code>的回调，当NSProgress的状态改变时，调用相应的task方法，如：resume和suspend来改变task状态</p>
+
+<h3 id="toc_5">代理方法 URLSession:task:didCompleteWithError:</h3>
+
+<p>当sessionManager收到代理,将消息转发给task对应的<code>AFURLSessionManagerTaskDelegate</code></p>
+
+<pre><code class="language-objectivec">- (void)URLSession:(NSURLSession *)session
+              task:(NSURLSessionTask *)task
+didCompleteWithError:(NSError *)error {
+    if (delegate) {
+        [delegate URLSession:session task:task didCompleteWithError:error];
+        [self removeDelegateForTask:task];
+    }
+
+    if (self.taskDidComplete) {
+        self.taskDidComplete(session, task, error);
+    }
+}
+</code></pre>
+
+<p><code>AFURLSessionManagerTaskDelegate</code>主要调用传入的<code>completionHandle</code>,然后发出<code>AFNetworkingTaskDidCompleteNotification</code>通知</p>
+
+<pre><code class="language-objectivec">- (void)URLSession:(__unused NSURLSession *)session
+              task:(NSURLSessionTask *)task
+didCompleteWithError:(NSError *)error {
+    __strong AFURLSessionManager *manager = self.manager;
+    //从mutableData取出数据 设置UserInfo
+    __block NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+    userInfo[AFNetworkingTaskDidCompleteResponseSerializerKey] = manager.responseSerializer;
+    NSData *data = nil;
+    if (self.mutableData) {
+        data = [self.mutableData copy];
+        self.mutableData = nil;
+    }
+    if (self.downloadFileURL) {
+        userInfo[AFNetworkingTaskDidCompleteAssetPathKey] = self.downloadFileURL;
+    } else if (data) {
+        userInfo[AFNetworkingTaskDidCompleteResponseDataKey] = data;
+    }
+    //使用 complectionGroup或者complectionQueue 否则创建一个group和主线程调用completionHandler，并在主线程发出通知
+    if (error) {
+        dispatch_group_async(manager.completionGroup, manager.completionQueue, ^{
+            self.completionHandler(task.response, responseObject, error);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[NSNotificationCenter defaultCenter] postNotificationName:AFNetworkingTaskDidCompleteNotification object:task userInfo:userInfo];
+            });
+        })
+    } else {
+        dispatch_async(url_session_manager_processing_queue(), ^{
+            responseObject = [manager.responseSerializer responseObjectForResponse:task.response data:data error:&amp;serializationError];
+            dispatch_group_async(manager.completionGroup, manager.completionQueue, ^{
+            self.completionHandler(task.response, responseObject, error);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[NSNotificationCenter defaultCenter] postNotificationName:AFNetworkingTaskDidCompleteNotification object:task userInfo:userInfo];
+            });
+        })
+        }
+    }
+
+}
+</code></pre>
+
+<h3 id="toc_6">代理方法 URLSession:dataTask:didReceiveData: 和 - URLSession:downloadTask:didFinishDownloadingToURL:</h3>
+
+<pre><code class="language-objectivec">//在收到数据时调用
+- (void)URLSession:(__unused NSURLSession *)session
+          dataTask:(__unused NSURLSessionDataTask *)dataTask
+    didReceiveData:(NSData *)data
+{
+    self.downloadProgress.totalUnitCount = dataTask.countOfBytesExpectedToReceive;
+    self.downloadProgress.completedUnitCount = dataTask.countOfBytesReceived;
+
+    [self.mutableData appendData:data];
+}
+
+//在下载对应文件时调用
+- (void)URLSession:(NSURLSession *)session
+      downloadTask:(NSURLSessionDownloadTask *)downloadTask
+didFinishDownloadingToURL:(NSURL *)location
+{
+    self.downloadFileURL = nil;
+
+    if (self.downloadTaskDidFinishDownloading) {
+        self.downloadFileURL = self.downloadTaskDidFinishDownloading(session, downloadTask, location);
+        if (self.downloadFileURL) {
+            NSError *fileManagerError = nil;
+
+            if (![[NSFileManager defaultManager] moveItemAtURL:location toURL:self.downloadFileURL error:&amp;fileManagerError]) {
+                [[NSNotificationCenter defaultCenter] postNotificationName:AFURLSessionDownloadTaskDidFailToMoveFileNotification object:downloadTask userInfo:fileManagerError.userInfo];
+            }
+        }
+    }
+}
+</code></pre>
+
+<h2 id="toc_7">_AFURLSessionTaskSwizzling调剂方法</h2>
+
+<p><code>_AFURLSessionTaskSwizzling</code>功能就是修改<code>NSURLSessionTask</code>的<code>resume</code>和<code>suspend</code>方法，替换原有的实现</p>
+
+<pre><code class="language-objectivec">- (void)af_resume {
+    NSAssert([self respondsToSelector:@selector(state)], @&quot;Does not respond to state&quot;);
+    NSURLSessionTaskState state = [self state];
+    [self af_resume];
+    
+    if (state != NSURLSessionTaskStateRunning) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:AFNSURLSessionTaskDidResumeNotification object:self];
+    }
+}
+
+- (void)af_suspend {
+    NSAssert([self respondsToSelector:@selector(state)], @&quot;Does not respond to state&quot;);
+    NSURLSessionTaskState state = [self state];
+    [self af_suspend];
+    
+    if (state != NSURLSessionTaskStateSuspended) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:AFNSURLSessionTaskDidSuspendNotification object:self];
+    }
+}
+</code></pre>
+
+<p>这是为了在调用方法时 发出通知</p>
+
+<p>在load时执行方法替换操作，但是因为NSURLSessionTask在iOS7和8的实现有所不同 导致以下代码有点复杂</p>
+
+<p>在iOS7上，<code>localDataTask</code>是一个<code>__NSCFLocalDataTask</code>，它继承自<code>__NSCFLocalSessionTask</code>，它继承自<code>__NSCFURLSessionTask</code><br/>
+在iOS8上，<code>localDataTask</code>是一个<code>__NSCFLocalDataTask</code>，它继承自<code>__NSCFLocalSessionTask</code>，它继承自<code>NSURLSessionTask</code><br/>
+在iOS7上，<code>__ NSCFLocalSessionTask</code>和<code>__NSCFURLSessionTask</code>是唯一具有自己的<code>resume</code>和<code>suspend</code>实现的两个类，而__NSCFLocalSessionTask<code>则不会调用超级。这意味着两个类都需要调整。<br/>
+在iOS 8上，</code>NSURLSessionTask<code>是唯一实现</code>resume<code>和</code>suspend`的类。这意味着这是唯一需要调整的类。</p>
+
+<p>因为<code>NSURLSession</code>是使用类群实现的，因此从API请求的类并不是将获得的类的类型.所以直接简单的使用<code>[NSURLSessionTask class]</code>将不起作用的。需要用<code>NSURLSession</code>来实际创建一个对象，并从该对象处获取该类</p>
+
+<p>因此实现方案如下</p>
+
+<ol>
+<li>通过获取<code>NSURLSession</code>实例来获取<code>_NSCFLocalDataTask</code>实例</li>
+<li>获取指向<code>af_resume</code>的原始实现指针</li>
+<li>检查当前类是否有<code>resume</code>实现 如果有继续执行步骤4</li>
+<li>获取当前类的父类</li>
+<li>获取父类的<code>resume</code>实现指针</li>
+<li>获取当前类的<code>resume</code>实现指针</li>
+<li>加入当前类的resume实现与父类不同，并且当前类的resume实现和<code>af_resume</code>实现不同，则替换两个方法实现</li>
+<li>设置当前类为父类 重复步骤3-8</li>
+</ol>
+
+<pre><code class="language-objectivec">+ (void)load {
+    if (NSClassFromString(@&quot;NSURLSessionTask&quot;)) {
+        NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration ephemeralSessionConfiguration];
+        NSURLSession * session = [NSURLSession sessionWithConfiguration:configuration];
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored &quot;-Wnonnull&quot;
+        NSURLSessionDataTask *localDataTask = [session dataTaskWithURL:nil];
+#pragma clang diagnostic pop
+        IMP originalAFResumeIMP = method_getImplementation(class_getInstanceMethod([self class], @selector(af_resume)));
+        Class currentClass = [localDataTask class];
+        
+        while (class_getInstanceMethod(currentClass, @selector(resume))) {
+            Class superClass = [currentClass superclass];
+            IMP classResumeIMP = method_getImplementation(class_getInstanceMethod(currentClass, @selector(resume)));
+            IMP superclassResumeIMP = method_getImplementation(class_getInstanceMethod(superClass, @selector(resume)));
+            if (classResumeIMP != superclassResumeIMP &amp;&amp;
+                originalAFResumeIMP != classResumeIMP) {
+                [self swizzleResumeAndSuspendMethodForClass:currentClass];
+            }
+            currentClass = [currentClass superclass];
+        }
+        
+        [localDataTask cancel];
+        [session finishTasksAndInvalidate];
+    }
+}
+</code></pre>
+
+<h2 id="toc_8">引入AFSecurityPolicy来保证请求的安全</h2>
+
+<p>调用了<code>-[AFSecurityPolicy evaluateServerTrust:forDomain:]</code>方法来判断当前服务器是否被信任</p>
+
+<h2 id="toc_9">引入AFNetworkReachabilityManager监控网络状态</h2>
+
+<p><code>AFURLSessionManager</code>的网络状态由<code>AFNetworkReachabilityManager</code>监控，并持有一个该对象</p>
 
 
 		</div>
@@ -249,8 +549,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -264,7 +566,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -360,31 +662,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

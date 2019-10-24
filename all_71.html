@@ -82,43 +82,69 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15476278367929.html">Proxy</a></h1>
-			<p class="meta"><time datetime="2019-01-16T16:37:16+08:00" 
-			pubdate data-updated="true">2019/1/16</time></p>
+		  	<h1 class="entry-title"><a href="15529084547270.html">ReactObjc常用</a></h1>
+			<p class="meta"><time datetime="2019-03-18T19:27:34+08:00" 
+			pubdate data-updated="true">2019/3/18</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>用<code>Proxy</code>关键字来实现</p>
+		  	<h2 id="toc_0">常用信号</h2>
 
-<p><code>Proxy</code>来实现对目标对象的一些操作进行拦截 改写</p>
+<pre><code class="language-objectivec">//按钮点击事件信号
+RACSignal *controlUpdate = [myButton rac_signalForControlEvents:UIControlEventTouchUpInside];
 
-<pre><code class="language-javascript">const person = {name: &quot;lyy&quot;, age: 26}
+//监测textField改变信号
+RACSignal *textChange = [myTextField rac_textSignal];
 
-const personProxy = new Proxy(person, {
-        //拦截get方法
-    get(target, key) {
-        if (key == &quot;name&quot;) {
-            return target[key].toLocaleUpperCase()
-        } else if (key == &quot;age&quot;) {
-            return target[key]+100
-        } 
-    },   
-    //拦截set方法
-    set(target, key, value) {
-        if (key == &quot;name&quot;) {
-            target[key] = value.trim()
-        } 
-    }
-    
-})
+//alertView UIActionSheet UIImagePickerControl 监测信号
+//例如对alertView  UIActionSheet 等监测返回的就是点击的按钮index
+RACSignal *alertButtonClicked = [myAlertView rac_buttonClickedSignal];
 
-personProxy.name = &quot;    l y y   &quot;
-console.log(personProxy.name) //LYY
-console.log(personProxy.age)//126
+//监测对象某个事件的执行
+RACSignal *viewAppeared = [self rac_signalForSelector:@selector(viewDidAppear:)];
 
 </code></pre>
 
-<h2 id="toc_0">Example</h2>
+<h2 id="toc_1">UI控件展示与对象属性的绑定</h2>
+
+<pre><code class="language-objectivec">//将label内容与model属性绑定  之后当model属性改变即会改变label内容，
+//RACObserve 是采用了KVO方式，因此改变userFullName属性方法需要出发setter方法 
+RAC(self.userNameLabel, text) = RACObserve(self.viewModel, userFullName);
+
+//当要赋值的属性类型不一致时，可以使用map将属性调整一致
+RAC(self.countLabel, text) = [RACObserve(cellVM, count) map:^id _Nullable(NSNumber *  _Nullable value) {
+    return value.stringValue;
+}];
+
+//将UI控件内容绑定到对象属性
+//将Textfield内容绑定到self.viewModel的userName属性 
+//rac_textSignal默认检测textEditingEvent 因此代码级别改变Textfield内容不会触发此信号
+RAC(self.viewModel, username) = [myTextfield rac_textSignal];
+</code></pre>
+
+<h2 id="toc_2">UI事件与对象数据绑定</h2>
+
+<pre><code class="language-objectivec">//订阅数据改变的信号 当数据信号改变时刷新tableView 这样之后我们只需要改变数据即可 无需手动调用tableView刷新事件
+//因为这里tableView的刷新绑定两个属性 因此我们需要对这两个信号执行merge
+//因为多个信号 同时改变的话可能会导致多次刷新 因此`bufferWithTime`
+//设置在指定时间内只执行一次 当设置为0时 在下次屏幕刷新之前(即一个runloop中) 只执行一次 而不会多次刷新
+@weakify(self);
+[[[RACSignal merge:@[RACObserve(self.viewModel, tweets),
+                    RACObserve(self.viewModel, allTweetsLoaded)]]
+bufferWithTime:0 onScheduler:[RACScheduler mainThreadScheduler]]
+subscribeNext:^(id value) {
+    @strongify(self);
+    [self.tableView reloadData];
+}];
+
+
+//按钮点击事件
+[[self.goButton rac_signalForControlEvents:UIControlEventTouchUpInside]
+subscribeNext: ^(id value) {
+    @strongify(self);
+    [self.viewModel getTweetsForCurrentUsername];
+}];
+</code></pre>
 
 
 		</div>
@@ -141,8 +167,10 @@ console.log(personProxy.age)//126
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -156,7 +184,7 @@ console.log(personProxy.age)//126
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -252,31 +280,31 @@ console.log(personProxy.age)//126
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

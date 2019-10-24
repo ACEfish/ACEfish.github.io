@@ -82,142 +82,127 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15082349866219.html">ARSession</a></h1>
-			<p class="meta"><time datetime="2017-10-17T18:09:46+08:00" 
-			pubdate data-updated="true">2017/10/17</time></p>
+		  	<h1 class="entry-title"><a href="15293961047296.html">组件属性一</a></h1>
+			<p class="meta"><time datetime="2018-06-19T16:15:04+08:00" 
+			pubdate data-updated="true">2018/6/19</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><code>ARSession</code>是连接底层与AR视图的桥梁，<code>ARCNView</code>内部所有的代理方法都是ARSession提供的</p>
+		  	<h2 id="toc_0">View</h2>
 
-<p><img src="media/15082349866219/15082365566677.png" alt=""/></p>
-
-<h2 id="toc_0">获取相机位置的方法</h2>
+<h3 id="toc_1">颜色与边框</h3>
 
 <ol>
-<li>实时不断的获取相机位置,然后由<code>ARSession</code>告知用户</li>
+<li>backgroundColor: 背景颜色</li>
+<li>opacity: 0~1透明度</li>
+<li><p>borderStyle: 边框风格</p>
+<ul>
+<li>solid: default 实线边框</li>
+<li>dotted: 点状边框</li>
+<li>dashed: 虚线边框</li>
+</ul></li>
+<li><p>borderColor: 边框颜色,可以单独定义上下左右</p></li>
+<li><p>borderRadius: 定义圆角边框,可单独定义四个角</p></li>
 </ol>
 
-<p>//获取相机位置<br/>
-<code>- (void)session:(ARSession *)session didUpdateFrame:(ARFrame *)frame</code></p>
+<blockquote>
+<p>大部分组件继承了View的属性</p>
+</blockquote>
+
+<h3 id="toc_2">视觉效果</h3>
+
+<h4 id="toc_3">阴影</h4>
 
 <ol>
-<li>用户想要时主动去获取,通过其<code>currentFrame</code>属性获取</li>
+<li>shadowColor</li>
+<li>shadowOffset</li>
+<li>shadowOpacity</li>
+<li>shadowRadius</li>
 </ol>
 
-<h2 id="toc_1">API</h2>
+<h4 id="toc_4">overflow</h4>
 
-<pre><code class="language-objectivec">/**
- 代理
- */
-@property (nonatomic, weak) id &lt;ARSessionDelegate&gt; delegate;
+<p>取值为 visible和hidden(默认),定义子组件产出父组件部分的是否显示，当设置为visible时，仅对ios平台有效,显示超出父组件部分</p>
 
-/**
-指定代理执行的线程（主线程不会有延迟，子线程会有延迟），不指定的话默认主线程
- */
-@property (nonatomic, strong, nullable) dispatch_queue_t delegateQueue;
+<h4 id="toc_5">elevation</h4>
 
-/**
-相机当前的位置（是由会话追踪配置计算出来的）
- */
-@property (nonatomic, copy, nullable, readonly) ARFrame *currentFrame;
+<p>Android平台特有效果,在组件周围渲染阴影</p>
 
-/**
- 会话追踪配置
- */
-@property (nonatomic, copy, nullable, readonly) ARSessionConfiguration *configuration;
+<h3 id="toc_6">变形</h3>
 
-/**
-运行会话（这行代码就是开启AR的关键所在）
- */
-- (void)runWithConfiguration:(ARSessionConfiguration *)configuration NS_SWIFT_UNAVAILABLE(&quot;Use run(_:options:)&quot;);
+<p>利用<code>transform</code>设置组件的变形,包括<code>translate</code>平移,<code>scale</code>缩放,<code>rotate</code>旋转,<code>skew</code>倾斜</p>
 
-/**
-运行会话，只是多了一个参数ARSessionRunOptions：作用就是会话断开重连时的行为。
-ARSessionRunOptionResetTracking：表示重置追踪  
-ARSessionRunOptionRemoveExistingAnchors：移除现有锚点
- */
-- (void)runWithConfiguration:(ARSessionConfiguration *)configuration options:(ARSessionRunOptions)options NS_SWIFT_NAME(run(_:options:));
-
-/**
-暂停会话
- */
-- (void)pause;
-
-/**
-添加锚点
- */
-- (void)addAnchor:(ARAnchor *)anchor NS_SWIFT_NAME(add(anchor:));
-
-/**
-移除锚点
- */
-- (void)removeAnchor:(ARAnchor *)anchor NS_SWIFT_NAME(remove(anchor:));
-
-@end
-
-//session代理分类两部分，一个是观察者（KVO） 一个是委托者（代理）
-#pragma mark - ARSessionObserver
-
-
-//session KVO观察者
-@protocol ARSessionObserver &lt;NSObject&gt;
-
-@optional
-
-/**
- session失败
- */
-- (void)session:(ARSession *)session didFailWithError:(NSError *)error;
-
-/**
-相机改变追踪状态
- */
-- (void)session:(ARSession *)session cameraDidChangeTrackingState:(ARCamera *)camera;
-
-/**
- session意外断开（如果开启ARSession之后，APP退到后台就有可能导致会话断开）
- */
-- (void)sessionWasInterrupted:(ARSession *)session;
-
-/**
-session会话断开恢复（短时间退到后台再进入APP会自动恢复）
- */
-- (void)sessionInterruptionEnded:(ARSession *)session;
-
-@end
-
-#pragma mark - ARSessionDelegate
-
-
-
-@protocol ARSessionDelegate &lt;ARSessionObserver&gt;
-
-@optional
-
-/**
- 更新相机位置
- */
-- (void)session:(ARSession *)session didUpdateFrame:(ARFrame *)frame;
-
-/**
-添加锚点
- */
-- (void)session:(ARSession *)session didAddAnchors:(NSArray&lt;ARAnchor*&gt;*)anchors;
-
-/**
-刷新锚点
- */
-- (void)session:(ARSession *)session didUpdateAnchors:(NSArray&lt;ARAnchor*&gt;*)anchors;
-
-/**
-移除锚点
- */
-- (void)session:(ARSession *)session didRemoveAnchors:(NSArray&lt;ARAnchor*&gt;*)anchors;
-
-@end
-
+<pre><code class="language-javascript">const styles = StyleSheet.create({
+    view1Style: {
+        ....
+        transform: [{scale:2}, {rotateZ:&quot;45deg&quot;}]
+    }
+})
+//Xdeg 表示角度 取值0-360
 </code></pre>
+
+<h3 id="toc_7">回调函数</h3>
+
+<p>回调函数命名 onB 即B事件发生的回调函数</p>
+
+<h4 id="toc_8">onLayOut</h4>
+
+<p>当View组件被加载或者改变布局时</p>
+
+<h4 id="toc_9">onTouchStart、onTouchMove、onTouchEnd</h4>
+
+<p>开始触摸事件、触摸点移动事件、触摸结束事件<br/>
+三个回调函数带一个event参数,</p>
+
+<pre><code class="language-javascript">//Event结构有用对象
+{
+ timeStamp: aNumber, //时间戳
+ nativeEvent: {
+    locationX: aNumber,
+    locationY: aNumber,
+ }
+}
+</code></pre>
+
+<pre><code class="language-javascript">//示例 demo
+constructor(props) {
+        super(props)
+        this._onTouchStart = this._onTouchStart.bind(this)
+    }
+
+    _onTouchStart(event) {
+        console.log( event.nativeEvent.locationX)
+    }
+
+    render() {
+        return(
+            &lt;View style={styles.containStyle}&gt;
+                &lt;View style={styles.view1Style} onTouchStart={this._onTouchStart}&gt;
+
+                &lt;/View&gt;
+            &lt;/View&gt;
+        )
+    }
+</code></pre>
+
+<h4 id="toc_10">removeClippedSubviews</h4>
+
+<p>布尔属性，与性能有关的，属性为true将允许释放不在显示范围内的子组件，需要将overflow设置为hidden才会生效</p>
+
+<h3 id="toc_11">onLayOut</h3>
+
+<p>应用通过<code>Dimension</code>获取屏幕宽高，Dimensions.get(&#39;window&#39;).width/height,获取到的宽和高是实时屏幕的宽和高,当横置时宽大于高</p>
+
+<h3 id="toc_12">pointEvents</h3>
+
+<p>在RN中 触摸事件总是传递给最上层的组件，当被遮盖的组件需要向银行触摸事件，就需要从View继承的<code>pointEvents</code></p>
+
+<p>可以取值为<code>none</code> <code>box-none</code> <code>box-only</code> <code>auto</code></p>
+
+<p><strong>none:</strong> 发生在本组件和子组件的触摸事件交给本组件的父组件处理<br/>
+<strong>box-none:</strong> 本组件显示范围内，非子组件显示范围内的时间交给本组件父组件处理,子组件显示范围交给子组件处理<br/>
+<strong>box-only:</strong> 本组件显示范围内的所有触摸事件都交给本组件处理<br/>
+<strong>auto:</strong> 视组件不同而不同 不是所有组件都支持box-none和box-only</p>
 
 
 		</div>
@@ -240,8 +225,10 @@ session会话断开恢复（短时间退到后台再进入APP会自动恢复）
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -255,7 +242,7 @@ session会话断开恢复（短时间退到后台再进入APP会自动恢复）
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -351,31 +338,31 @@ session会话断开恢复（短时间退到后台再进入APP会自动恢复）
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

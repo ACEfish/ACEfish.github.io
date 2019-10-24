@@ -1,0 +1,401 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>
+    
+  子类 - ACEfish-Blog
+  
+
+  </title>
+  <meta name="author" content="">
+  <meta name="description" content="学习记录">
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link href="asset/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+  <script src="asset/js/modernizr-2.0.js"></script>
+  <script src="asset/js/jquery.min.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/solarized_light.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  <style type="text/css">
+  .cat-children-p{ padding: 6px 0px;}
+  .hljs{background: none;}
+  </style>
+  <script type="text/javascript">
+  var isAddSildbar = true;
+  </script>
+  <script src="asset/js/octopress.js" type="text/javascript"></script>
+</head>
+<script type="text/javascript">
+//链接新开窗口
+function addBlankTargetForLinks () {
+  $('a[href^="http"]').each(function(){
+      $(this).attr('target', '_blank');
+  });
+}
+$(document).ready(function(event) {
+  addBlankTargetForLinks();
+});
+</script>
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="index.html">ACEfish-Blog</a></h1>
+  
+    <h2>学习记录</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:acefish.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+
+  <li id=""><a target="_self" href="index.html">首页</a></li>
+
+  <li id=""><a target="_self" href="archives.html">归档</a></li>
+
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content"> 
+<div>
+	<article class="hentry" role="article">
+	<header>
+			  	<h1 class="entry-title">子类</h1>
+				<p class="meta"><time datetime="2019-09-16T15:57:13+08:00" pubdate data-updated="true">2019/9/16</time></p>
+			 </header>
+		  	<div class="entry-content">
+			  	<h2 id="toc_0">ASDisplayNode</h2>
+
+<p>虽然使用类似于<code>UIView</code> 但是我们需要遵循一些使用规则 帮助更好的使用并按照预期运行</p>
+
+<h4 id="toc_1">-init</h4>
+
+<p>当使用<code>nodeBlocks</code>时，此方法在后台线程调用。在init方法完成之前没有其他方法可以运行，因此我们无需在此方法中锁定</p>
+
+<p>需要注意，<code>-init</code>方法能在任何对队列调用。所以我们不应该在初始化过程中初始化任何UIKit对象，调用任何node的view或layer等有关的操作，或者添加任何手势识别器。这些过程可以在<code>-didLoad</code>方法中</p>
+
+<h4 id="toc_2">-didLoad</h4>
+
+<p>这个方法当视图在后台加载完成后执行一次。保证在主线程被调用，因此<mark>是我们运行任何UIKit事务的适当位置</mark>(例如添加手势识别器，触摸视图/图层，初始化UIKit对象)</p>
+
+<h4 id="toc_3">-layoutSpecThatFits:</h4>
+
+<p>这个方法在后台执行繁重的定义布局的计算。这是我们声明、创建和修改<code>ASLayoutSepec</code>布局描述对象的地方，该对象描述节点的size以及子节点的position和size。<mark>这是我们放置大部分布局代码的地方</mark></p>
+
+<p>ASLayoutSpec 对象直到在此方法中返回前是可变的。 在这之后，这个对象将不可改变，需要注意的是你不需要缓存 ASLayoutSpec 对象以备后用，我们建议你在必要时重新创建布局描述。</p>
+
+<p>因为此方法在后台运行，因此不应该在此方法中设置<code>node.view</code>或者<code>node.layer</code>属性。此外，除非您知道自己在做什么，否则不应该再次方法中创建任何节点。与其它方法重写不同，不必在方法开始时调用super方法</p>
+
+<h4 id="toc_4">-layout</h4>
+
+<p>在此方法中调用<code>super</code>，将会使用<code>layoutSpec</code>对象计算布局，所有子节点都将计算其size和position。</p>
+
+<p><code>layout</code>在概念上类似<code>UIViewController</code>的<code>-viewWillLayoutSubviews</code>。可以在这个方法中，更改<code>hidden</code>属性、修改View属性(不是布局属性)、或者背景颜色。假如正好使用UIView，可以再这个方法中修改其<code>frame</code>。然而，我们可以用<code>initWithViewBlock：</code>然后在后台线程的任何地方，调整其大小。</p>
+
+<p>这个方法在主线程上调用。但是最后不要过多使用这个方法，我们更应该在主线程以外做布局</p>
+
+<p>使用<code>-layout</code>的一个重要用途是你需要子节点的<code>size</code>是精确的。例如：当你想要一个<code>collectionNode</code>占满屏幕时，这种情况是不被布局规范所允许的，我们通常手动在方法中添加<code>subnode.frame = self.bounds;</code></p>
+
+<h2 id="toc_5">ASViewController</h2>
+
+<p><code>ASViewController</code>是<code>UIViewController</code>的子类，用来管理nodes。因为是一个<code>UIViewController</code>，所以所有方法都在主线程调用(<code>ASViewController</code>也应该在主线程创建)。</p>
+
+<h4 id="toc_6">-init</h4>
+
+<p>在生命周期的最开始调用一次。与<code>UIViewController</code>相同不要再次方法中访问<code>self.view</code>或者<code>self.node.view</code>，因而为它会强制视图提前创建。可以在<code>viewDidLoad</code>方法中执行任何视图访问</p>
+
+<p>ASViewController 指定的构造器是<code>initWithNode:</code>方法，在调用super方法前初始化node。</p>
+
+<pre><code class="language-objectivec">- (instancetype)init
+{
+  _pagerNode = [[ASPagerNode alloc] init];
+  self = [super initWithNode:_pagerNode];
+  
+  // setup any instance variables or properties here
+  if (self) {
+    _pagerNode.dataSource = self;
+    _pagerNode.delegate = self;
+  }
+  
+  return self;
+}
+</code></pre>
+
+<h4 id="toc_7">-loadView</h4>
+
+<p>不推荐使用此方法，因此相比较<code>viewDidLoad</code>只有缺点没有优点。然而，只要我们在此方法中不将<code>self.view</code>设置为其他值 也可以安全使用的。其super方法会将其<code>UIViewController</code>的view换为<code>ASViewController</code>的<code>node.view</code></p>
+
+<h4 id="toc_8">-viewDidLoad</h4>
+
+<p>这方法在ASViewController的生命周期中，只会在loadView方法后，立即执行一次。此时最方便访问<code>node.view</code>。也可以执行需要访问<code>view/layer</code>的只执行一次的方法(例如添加手势)。</p>
+
+<p>不适合在方法中放置布局视图的代码。因为界面重绘时，该方法也不会被再次调用。</p>
+
+<h4 id="toc_9">-viewWillLayoutSubviews</h4>
+
+<p>与节点node的<code>layout</code>方法同时调用，在ASVC的生命周期中有可能会多次调用。当<code>ASViewController</code>的node边界发生变化(包括旋转、分屏、键盘)以及层次结构发生变化（包括node增加、删除、改变大小）时，都会调用</p>
+
+<p>因为它不经常调用，但是调用及代表页面需要重绘，因此所有布局代码最好放到这个方法中，即使不直接依赖size的UI代码。<br/>
+<mark>为保持一致性，通常将所有布局代码放置在此处。</mark></p>
+
+<h4 id="toc_10">-viewWillAppear: / -viewDidDisappear:</h4>
+
+<p>方法在<code>ASViewController</code>的node出现在屏幕之前 和 从视图层次中删除之后调用。通常在方法中开始或者停止动画，或者记录用户操作。</p>
+
+			</div>
+
+		
+	  
+		<footer>
+		 <p class="meta">
+
+			<strong>Categories:</strong>&nbsp; 
+			<span class="categories">
+			
+			    <a class='category' href='AsyncDisplayKit.html'>AsyncDisplayKit</a>&nbsp;
+			 
+			</span>
+		    </p>
+		    <p class="meta">
+		      
+		 </p>
+	    
+		<div class="sharing">
+		  
+          
+
+          
+
+		</div>
+
+	    <p class="meta">
+	    
+	        <a class="basic-alignment left" href="15688983880412.html" 
+	        title="Previous Post: Layout">&laquo; Layout</a>
+	    
+	    
+	        <a class="basic-alignment right" href="15686140907064.html" 
+	        title="Next Post: Node">Node &raquo;</a>
+	    
+	    </p>
+	  </footer>
+	</article>
+</div>
+ <aside class="sidebar"> 
+
+	<section>
+	  <h1>Categories</h1>
+	  <ul id="recent_posts">
+	  
+	      <li class="post">
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
+	        
+	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Cocoapods.html">Cocoapods&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E6%A8%A1%E5%9D%97%E5%8C%96%E7%9F%A5%E8%AF%86%E5%AD%A6%E4%B9%A0.html">模块化知识学习&nbsp;(26)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Instrument%E5%AD%A6%E4%B9%A0.html">Instrument学习&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E7%82%B9.html">知识点&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E8%A1%A5%E5%85%85-1.html">补充&nbsp;(9)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E9%9D%A2%E8%AF%95.html">面试&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Computer-programming.html"><strong>计算机编程&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="iOSDevelop.html"><strong>iOSDevelop&nbsp;(27)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html">iOS 小知识&nbsp;(14)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html">iOS开发知识&nbsp;(12)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html">知识普及&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Flex.html">Flex&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
+	        
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="React-Native.html"><strong>React-Native&nbsp;(6)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Python.html"><strong>Python&nbsp;(14)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	   
+	  </ul>
+	</section>
+	<section>
+	  <h1>Recent Posts</h1>
+	  <ul id="recent_posts">
+	  
+	      
+		      <li class="post">
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710248960458.html">Layout Specs</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707800044047.html">Node Lifecycle</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707737201639.html">线程</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15698393226216.html">Nodes</a>
+		      </li>
+	     
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	   
+	  </ul>
+	</section>
+	
+</aside> </div></div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 -  -
+  <span class="credit">Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a> &nbsp;&nbsp; Theme by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+
+  
+    
+
+
+
+
+</body>
+</html>

@@ -82,13 +82,157 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15646313097300.html"></a></h1>
-			<p class="meta"><time datetime="2019-08-01T11:48:29+08:00" 
-			pubdate data-updated="true">2019/8/1</time></p>
+		  	<h1 class="entry-title"><a href="15694018519470.html">优化</a></h1>
+			<p class="meta"><time datetime="2019-09-25T16:57:31+08:00" 
+			pubdate data-updated="true">2019/9/25</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	
+		  	<h2 id="toc_0">Layer 支持</h2>
+
+<p>在某些情况下 使用<code>Layer</code>代替<code>View</code>能显著提高app的性能。建议在不需要任何触摸处理的自定义节点中启用<code>layer-backing</code></p>
+
+<p>在UIKit中，因为API的不同， 手动将基于View的视图转换为layer是非常费力的。并且如果将来需要启用触摸处理，就只能将所有内容都转换回去</p>
+
+<p>在<code>Texture</code>中，可以很简单的将整个view树转换为layer树，如果想要改回用view，直接删掉这行代码即可</p>
+
+<pre><code class="language-objectivec">rootNode.isLayerBacked = YES;
+</code></pre>
+
+<h2 id="toc_1">子树光栅化</h2>
+
+<p>将整个视图层次结构展平为一个图层，可以提高性能。但是，当使用UIKit时，可维护性和层次结构受到冲击</p>
+
+<pre><code class="language-objectivec">[rootNode enableSubtreeRasterization];
+</code></pre>
+
+<p>这行代码将会造成该节点的整个节点层次结构呈现为一层。</p>
+
+<h2 id="toc_2">同步并发</h2>
+
+<p><code>ASViewController</code>和<code>ASCellNode</code>中都有<code>neverShowPlaceholders</code>属性</p>
+
+<p>设置该属性为YES后，主线程将会被阻塞只到<code>cell</code>或者<code>VC的view</code>被展示完成</p>
+
+<p>虽然使用这个选项会类似UIKit阻塞主线程直到绘制完成，但是并没有减少Texture带来的优化。因为预加载的存在，一个node当到达屏幕显示范围时，已经几乎加载完成，因此阻塞主线程的时间也会很短。即使<code>rangeTuningParameters</code>属性被设置为0，其表现效果也好于<code>UIKit</code>。而且，因为主线程处于阻塞等待状态，所有的子节点都会并发的的diaplay。因此叫做<mark>同步并发</mark></p>
+
+<pre><code class="language-objectivec">node.neverShowPlaceholders = YES;
+</code></pre>
+
+<p>通常，当cell在到达屏幕展示范围还没有完成展示渲染时，将会展示占位图直到内容被绘制完成。设置该属性为YES后，node或者<code>ASViewController</code>滚动起来更像UIKit.(事实上，除了Texture更快之外，并没有其他什么区别)</p>
+
+<h2 id="toc_3">圆角</h2>
+
+<p>我们经常会使用<code>CALayer</code>的<code>.cornerRadius</code>属性在实现圆角。不幸的是，这个方便的属性会造成严重的性能损失，因此只在别无选择时才会选择使用。</p>
+
+<h3 id="toc_4">为什么.cornerRadius如此昂贵</h3>
+
+<p>使用<code>CALayer</code>的<code>.cornerRadius</code>属性会触发离屏渲染，即每帧(当滚动时为60FPS)都执行剪切操作，即使此时该内容区域的内容并没有变化。这意味着GPU必须在每帧之间切换上下文，在合成整个帧与使用.cornerRadius的附加遍历之间</p>
+
+<p>重要的是，这些消耗并不会显示在<code>Time Profile</code>中，因为它影响的是CoreAnimation Render Server在App自身的工作完成。这会影响许多设备的性能。</p>
+
+<h3 id="toc_5">使用圆角策略需要考虑的情况</h3>
+
+<ol>
+<li>在圆角之下是否存在背景移动: 指的是拐角位置之后的任何运动</li>
+<li>是否存在穿过圆角区域的移动:</li>
+<li>是否4个角处于相同的node，并且拐角区域没有和其它节点相交</li>
+</ol>
+
+<blockquote>
+<p>注意</p>
+
+<p>可以再圆角内部有移动 而无需穿过拐角区域。例如，当移动插入时，其边距大小为角半径大小，因此当内容滚动时，也不会在拐角移动。我们也可以利用这种策略消除拐角的移动，</p>
+</blockquote>
+
+<h3 id="toc_6">圆角预合成</h3>
+
+<p>圆角预合成是指使用贝塞尔曲线绘制角点，然后在<code>CGContet/UIGraphicsContext</code>中剪切内容(<code>[path clip]</code>)。此时圆角就成为了图像的一部分并且被渲染到单个CALayer中。有两种类型的预合成圆角:</p>
+
+<ol>
+<li>最好的预合成圆角是使用预合成的不透明角，这是最有效的方法，可以实现零alpha混合。可惜这种方法并不灵活，如果圆角图像需要在其顶部移动，则其圆角后的背景需要为纯色。</li>
+<li>第二种方法涉及使用带有预合成Alpha角的贝塞尔曲线路径。这个方法就很灵活了，是最常用的方法之一，但是增加了整个内容上Alpha混合的成本，虽然比不透明的预合成增加25%的内存，但是在现代设备上这些影响很小</li>
+</ol>
+
+<p>这些预合成圆角的关键是，圆角只能接触一个节点，而且能与其他圆角相交。如果上面所说的存在任何一种情况，则必须使用夹角</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>Texture node对<code>.corenerRaduis</code>具有特殊的优化，仅仅当启用<code>shouldRasterizeDescendants</code>时(启用光栅化)，自动实现预合成</p>
+
+<p>Texture提供了方便的方法来创建简单、纯色的圆角矩形或圆形。<br/>
+可以看<code>UIImage + ASConveniences.h</code>类，了解使用预合成的角(包括alpha和不透明)创建纯色、圆角可调整的图像。这对于使用image node作为<code>placeholders</code>或者ASButtonNode作为背景</p>
+</blockquote>
+
+<h3 id="toc_7">夹角</h3>
+
+<p>(即用4个角将四周覆盖)<br/>
+这个解决策略包含了将4个单独的不透明角图层放置在四角。这个方法非常灵活，并且性能很好。它具有4个单独层的CPU开销</p>
+
+<p>这种夹角策略适合两种主要类型的圆角情况:</p>
+
+<ul>
+<li>圆角接触了多个节点或者与任何节点相交的情况下的圆角</li>
+<li>在固定的Texture或者照片背景上增加圆角。虽然夹角方法很复杂，但是很有用哦</li>
+</ul>
+
+<h3 id="toc_8">使用CALayer的.cornerRadius属性</h3>
+
+<p>在一些极少数情况下，很适合使用<code>.cornerRaduis</code>属性，包括当动态内容同时在内部和圆角移动。对于某些动画，这是不可避免的。但是在很多情况下，可以通过调整设计消除运动源。</p>
+
+<p>对于没有任何移动的屏幕，使用<code>.cornerRadius</code>危害也会小很多，也可以作为快捷方式。然而当屏幕上有任何移动，甚至不涉及角的移动，都将会造成<code>.cornerRadius</code>的性能折扣。例如：在导航栏中存在一个圆形元素，在其下方存在滚动视图，即使它们不重叠 也会造成影响。即使用户不与其进行互动，也会对屏幕中的所有内容进行动画处理。此外，任何屏幕上刷新都会造成圆角成本消耗</p>
+
+<h3 id="toc_9">光栅化和图层支持</h3>
+
+<p>并不能随便使用<code>.shouldRasterize</code>来提高<code>.cornerRaduis</code>属性性能。只要没有造成重新的光栅化的操作(例如，移动、点击更改颜色、不在移动的table之上等)，就是可以使用的。通常，不鼓励这么做，很容易导致性能下降。</p>
+
+<p><code>CALayer</code>的<code>.shouldRasterize</code>和<code>Texture</code>的<code>node.shouldRasterizeDescendents.</code>无关。启用时，<code>.shouldRasterizeDescendents</code>将会阻止创建子节点子级的实际图层和层。</p>
+
+<h3 id="toc_10">圆角策略选取</h3>
+
+<p><img src="media/15694018519470/15695659459083.png" alt=""/></p>
+
+<h3 id="toc_11">Texture对圆角的支持</h3>
+
+<ol>
+<li><p>使用<code>.cornerRadius</code></p>
+<pre><code class="language-objectivec">CGFloat cornerRadius = 20.0;
+_photoImageNode.cornerRoundingType = ASCornerRoundingTypeDefaultSlowCALayer;<br/>
+_photoImageNode.cornerRadius = cornerRadius;
+</code></pre></li>
+<li><p>使用预合成的圆角</p>
+<pre><code class="language-objectivec">CGFloat cornerRadius = 20.0;
+_photoImageNode.cornerRoundingType = ASCornerRoundingTypePrecomposited;<br/>
+_photoImageNode.cornerRadius = cornerRadius;
+</code></pre></li>
+<li><p>使用夹角 圆角</p>
+<pre><code class="language-objectivec">CGFloat cornerRadius = 20.0;
+_photoImageNode.cornerRoundingType = ASCornerRoundingTypeClipping;<br/>
+_photoImageNode.backgroundColor = [UIColor whiteColor];<br/>
+_photoImageNode.cornerRadius = cornerRadius;
+</code></pre></li>
+<li><p>使用<code>willDisplayNodeContentWithRenderingContext</code>设置内容的剪切路径和圆角</p>
+<pre><code class="language-objectivec">CGFloat cornerRadius = 20.0;
+// Use the screen scale for corner radius to respect content scale<br/>
+CGFloat screenScale = UIScreen.mainScreen.scale;<br/>
+_photoImageNode.willDisplayNodeContentWithRenderingContext = ^(CGContextRef context, id drawParameters) {<br/>
+    CGRect bounds = CGContextGetClipBoundingBox(context);<br/>
+    CGFloat radius = cornerRadius * screenScale; <br/>
+    UIImage *overlay = [UIImage as_resizableRoundedImageWithCornerRadius:radius<br/>
+                                                             cornerColor:[UIColor clearColor]<br/>
+                                                               fillColor:[UIColor clearColor]];<br/>
+    [overlay drawInRect:bounds];<br/>
+    [[UIBezierPath bezierPathWithRoundedRect:bounds cornerRadius:radius] addClip];<br/>
+};
+</code></pre></li>
+<li><p>使用<code>ASImageNode</code> 使图像变圆 并添加边框<br/>
+    这非常适合头像图片的圆角</p>
+<pre><code class="language-objectivec">CGFloat cornerRadius = 20.0;
+_photoImageNode.imageModificationBlock = ASImageNodeRoundBorderModificationBlock(5.0, [UIColor orangeColor])
+</code></pre></li>
+</ol>
+
 
 		</div>
 
@@ -110,8 +254,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -125,7 +271,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -221,31 +367,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

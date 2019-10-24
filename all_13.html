@@ -82,79 +82,50 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15643878437057.html">渲染</a></h1>
-			<p class="meta"><time datetime="2019-07-29T16:10:43+08:00" 
-			pubdate data-updated="true">2019/7/29</time></p>
+		  	<h1 class="entry-title"><a href="15682782807154.html">智能预加载</a></h1>
+			<p class="meta"><time datetime="2019-09-12T16:51:20+08:00" 
+			pubdate data-updated="true">2019/9/12</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>学习自 <a href="https://time.geekbang.org/column/article/101639">iOS开发高手课</a></p>
+		  	<p>学习自<a href="https://texturegroup.org/docs/intelligent-preloading.html">Texture官方文档</a></p>
 
-<h2 id="toc_0">渲染原理</h2>
+<p>虽然异步并发渲染和FlexBox布局已经足够强大，但是Texture还做了另外的智能预加载的思想</p>
 
-<p>App界面是由CPU和GPU共同计算处理</p>
+<p>我们通常不在<code>node container</code>外使用node，因为所有的node都有当前的<code>interface state</code>概念。<br/>
+<code>interface state</code>属性由<code>ASRangeController</code>更新和维护，ASRangeController又由所有的<code>node container</code>在内部创建和维护。<br/>
+当我们在contain外部使用node时，就不会有<code>ASRangeController</code>更新其状态，这个有时会导致渲染时node闪烁，这是因为这些容器外的节点因为状态的错误，在节点被渲染到屏幕上后又进行了一次渲染。</p>
 
-<p>CPU内部流水线结构拥有并行计算能力，一般用于显示内容的计算。而GPU的并行计算能力更强，能够通过计算将图形结果显示到屏幕像素中。<strong>渲染就是将内存中的图形数据经过转换显示到屏幕上的过程。而负责执行这个过程的就是GPU</strong></p>
+<h1 id="toc_0">接口状态范围</h1>
 
-<p>在渲染的过程中，GPU是需要处理屏幕上的每个像素点，并保证这些像素点的更新时流畅的</p>
+<p><img src="media/15682782807154/15682794649845.jpg" alt="" style="width:497px;"/><br/>
+当nodes<mark>添加到滚动或者分页界面时</mark>，会处在上面所处的几个状态之一。意味着当视图滚动时，他们的状态将会更新</p>
 
-<p>GPU的主要工作就是将3D坐标转换为2D坐标，再把2D坐标转为实际像素，实现的过程分为: <strong>顶点着色器（确定形状的点）、形状装配（确定形状的线）、几何着色器（确定三角形个数）、光栅化（确定屏幕像素点）、片段着色器（对像素点着色）、测试与混合（检查深度和透明度）六个阶段</strong></p>
+<p>Preload： 预加载，离可见区域最远的内容，在这个地方收集其他的输入源信息<br/>
+Display： 在这个地方展示例如文字光栅化、图片解码等任务<br/>
+Visible： 在屏幕上展示至少一个像素</p>
 
-<p>而我们<code>OpenGL</code>的标准库提供了编程能力，为了更方便的操作控制GPU</p>
+<h3 id="toc_1">ASRangeTuningParameters</h3>
 
-<p>在渲染的过程中，<code>CPU</code>主要用来处理渲染内容的计算，比如<em>视图创建、布局、图片解码</em>等，内容计算完成后，再传给GPU进行渲染。CPU和GPU的相互配合，充分利用手机硬件来提升用户使用app的体验。而我们见到的界面卡顿等，就是以内CPU的计算时间超过屏幕刷新率的时间</p>
+<p>这些状态范围的大小是可调整的。默认大小适合于大多数情况，我们也可以设置滚动范围参数调整其大小</p>
 
-<blockquote>
-<p>在对比原生、大前端和Flutter谁更流畅，不就是对比在渲染过程中CPU计算内容谁会更快，谁就会更流畅了</p>
-</blockquote>
+<p>在下面图片中我们可以看到，当用户向下滚动时，滚动方向的范围比尾部方向内容大得多。当用户改变滚动方向时，则首尾将会动态交换，以保持内存最佳使用率。这使得我们只需要关系首尾方向的range size大小，而不需担心用户更改滚动方向<br/>
+<img src="media/15682782807154/15682825633985.jpg" alt="" style="width:500px;"/></p>
 
-<h2 id="toc_1">原生渲染流程</h2>
+<h2 id="toc_2">接口状态回调</h2>
 
-<p>原生的界面渲染，主要分为一下四步:</p>
+<p>当用户滚动时 node会在这三个状态范围中切换 并且通过加载数据或者渲染做出反应。自己的node子类可以通过实现相应的回调方法来利用这种机制</p>
 
-<ol>
-<li>更新视图树，同步视图树</li>
-<li>CPU计算要显示的内容，包括视图创建（设置Layer属性）、布局计算、视图绘制（创建Lay的Backing Image）、图像解码转换等。当runLoop在<code>BeforeWaiting</code>和<code>Exit</code>时，通知注册的监听，然后对图层打包，打包完成后，将打包数据发送给一个独立负责渲染的进程<code>Render Server</code></li>
-<li>数据在到达renderServer后会被反序列化，得到图层树，按照图层树的图层顺序、RGBA值,图层frame过滤图层中被遮挡的部分，过滤后将图层树转换为渲染树，渲染树的信息会转换为OpenGL ES/Metal。前面CPU所处理的这些事情统称为<code>Commit Transaction</code></li>
-<li><code>Render Server</code>会调用GPU,GPU开始进行前面提到的顶点着色器，形状装配、几何着色、光栅化、片段着色、测试与混合六个阶段。完成这6个阶段后，再将CPU和GPU计算后的数据显示在屏幕的每个像素点上。</li>
-</ol>
+<pre><code class="language-objectivec">-didEnterVisibleState
+-didExitVisibleState
 
-<p><img src="media/15643878437057/15644670559791.jpg" alt="" style="width:648px;"/></p>
+-didEnterDisplayState
+-didExitDisplayState
 
-<p>补充:</p>
-
-<blockquote>
-<p>渲染过程中的<code>Commit Trasaction</code>的布局计算会重载视图的<code>LayoutSubViews</code>方法，以及执行<code>addSubviews</code>方法来添加视图。视图绘制会重载视图的<code>drawReact</code>方法。这个方法都是iOS开发中常用的</p>
-
-<p>我们执行的移动视图、删除视图、隐藏、显示视图、调用setNeedsDispaly或者setNeedsDispalyInRect方法 都会触发界面更新，执行渲染流程</p>
-</blockquote>
-
-<h2 id="toc_2">大前端渲染</h2>
-
-<p>大前端的开发框架主要有两类：基于webView的和类似React Native的</p>
-
-<p>第一类的WebView的大前端渲染，主要在webKit中完成。webKit的渲染层来自以前MacOS的LayerRendering架构，而iOS也基于这一套架构。所以本质上来看WebKit和iOS的原生渲染差别不大</p>
-
-<p>ReactNative渲染直接走的原生渲染</p>
-
-<p>至于我们觉得大前端渲染比原生慢的原因主要是：</p>
-
-<ol>
-<li><p>从第一次内容加载来看，即使本地加载，<strong>大前端也比原生多出脚本代码解析工作</strong>。webView需要额外解析<code>HTML+CSS+Javascript</code>代码，而类React Native方案则需要解析<code>Json+Javascript</code>。 当然<code>HTML+CSS</code>的复杂度要高于<code>JSON</code>,因此解析起来会更加慢一点。即，首次加载时，WebView会比类ReactNative慢</p></li>
-<li><p>从语言的本身解释执行性能来看，<strong>大前端加载后的界面更新会通过Javascript解释执行</strong>，而Javascript解释执行性能要比原生差，特别是解释执行复杂逻辑或大量计算时。所以大前端的运算速度，要比原生慢上不少</p></li>
-<li><p>除了首次加载解析耗时外，js语言本身解释慢导致的性能问题这两点之外，WebView的渲染进程是单独的，每帧的更新都要通过IPC调用GPU进程。而频繁的IPC进程通信也会有性能损耗</p></li>
-<li><p>webView的单独渲染进程还无法访问GPU的context，这样两个进程就么法共享纹理资源。纹理资源无法直接使用GPU的Context光栅化，那就只能通过IPC传给GPU进程，这也导致可GPU无法发挥自身的性能优势。由于WebView的光栅化无法及时同步到GPU，滑动时就容易出现白屏，就很难避免了。</p></li>
-</ol>
-
-<p>相对于原生渲染来说，webView或者类ReactNative都因为脚本语言本身的西恩那个问题而存在性能差距。</p>
-
-<h2 id="toc_3">Flutter渲染</h2>
-
-<p>Flutter界面是由<code>Widget</code>组成，所有的Widget组成<code>Widget Tree</code>，界面更新时会更新<code>Widget Tree</code>，然后再更新<code>Element Tree</code>，最后更新<code>RenderObject Tree</code></p>
-
-<p>接下来的渲染流程，Flutter渲染在FrameWork层会有Build、Widget Tree、Element Tree、RenderObject Tree、Layout、Paint、Composited Layed等几个阶段。将Layer进行组合，生成纹理，使用OpenGL接口像GPU提交渲染内容进行光栅化与合成，是在Flutter的C++层，使用的时<code>Skia</code>库。包括提交到GPU进程后，合成计算，显示屏幕的过程和iOS原生基本是类似的，因此性能相差不多</p>
-
-<p>Flutter的主要优势是在于，它可以同时运行于Android和iOS两个平台。但是苹果公司在WWDC 2019上退出SwiftUI和Preview后，Flutter界面编写和Hot Reload的有事会逐渐降低</p>
+-didEnterPreloadState
+-didExitPreloadState
+//记得都要调用super
+</code></pre>
 
 
 		</div>
@@ -177,8 +148,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -192,7 +165,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -288,31 +261,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

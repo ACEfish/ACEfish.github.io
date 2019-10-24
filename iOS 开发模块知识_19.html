@@ -82,84 +82,79 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15578193513091.html">RACStream</a></h1>
-			<p class="meta"><time datetime="2019-05-14T15:35:51+08:00" 
-			pubdate data-updated="true">2019/5/14</time></p>
+		  	<h1 class="entry-title"><a href="15675682575589.html">AFNetworking</a></h1>
+			<p class="meta"><time datetime="2019-09-04T11:37:37+08:00" 
+			pubdate data-updated="true">2019/9/4</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><code>RACStream</code>是继承自NSObject最基础的类，其它的子类例如<code>RCSignal</code>、<code>RACSequence</code>均继承自该类</p>
+		  	<h2 id="toc_0">NSURLSession</h2>
 
-<p><code>RACStream</code>作为一个抽象类存在，本身并不提供任何方法的实现，内部方法均为抽象方法，在调用时抛出异常</p>
+<p><code>NSURLSession</code>获取HTTP请求数据步骤：</p>
 
-<pre><code class="language-objectivec">+ (__kindof RACStream *)empty {
-    NSString *reason = [NSString stringWithFormat:@&quot;%@ must be overridden by subclasses&quot;, NSStringFromSelector(_cmd)];
-    @throw [NSException exceptionWithName:NSInternalInconsistencyException reason:reason userInfo:nil];
-}
-- (__kindof RACStream *)bind:(RACStreamBindBlock (^)(void))block
-// return 根据该value 返回一个RACStream对象
-+ (__kindof RACStream *)return:(id)value
-- (__kindof RACStream *)concat:(RACStream *)stream
-- (__kindof RACStream *)zipWith:(RACStream *)stream
+<ol>
+<li>实例化一个<code>NSURLRequest/NSMutalbeRequest</code>,设置要请求的url</li>
+<li>获取NSUrlSession实例</li>
+<li>通过<code>dataWithRequest:completionHandle:</code>返回一个<code>dataTask</code></li>
+<li>向该对象发送消息<code>resume</code>执行这个任务</li>
+<li>在<code>completion</code>中 将对象编码 返回字符串</li>
+</ol>
 
+<pre><code class="language-objectivec">NSMutableURLRequest *request = [[NSMutableURLRequest alloc] initWithURL:[[NSURL alloc] initWithString:@&quot;https://github.com&quot;]];
+NSURLSession *session = [NSURLSession sharedSession];
+NSURLSessionDataTask *task = [session dataTaskWithRequest:request
+                                       completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+                                           NSString *dataStr = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+                                           NSLog(@&quot;%@&quot;, dataStr);
+                                       }];
+[task resume];
 </code></pre>
 
-<p>但是在RACStream的Operations分类<code>RACStream (Operations)</code>提供了更丰富的方法</p>
+<h2 id="toc_1">AFNetworking</h2>
 
-<pre><code class="language-objectivec">//对信号的值进行map映射
-- (__kindof RACStream *)flattenMap:(__kindof RACStream * (^)(id value))block {
-    Class class = self.class;
-
-    return [[self bind:^{
-        return ^(id value, BOOL *stop) {
-            id stream = block(value) ?: [class empty];
-            NSCAssert([stream isKindOfClass:RACStream.class], @&quot;Value returned from -flattenMap: is not a stream: %@&quot;, stream);
-
-            return stream;
-        };
-    }] setNameWithFormat:@&quot;[%@] -flattenMap:&quot;, self.name];
-}
-- (__kindof RACStream *)flatten
-- (__kindof RACStream *)map:(id (^)(id value))block
-- (__kindof RACStream *)mapReplace:(id)object
-
-//根据规则过滤
-- (__kindof RACStream *)filter:(BOOL (^)(id value))block
-- (__kindof RACStream *)ignore:(id)value
-
-//对RACTuple中每个值进行处理 
-- (__kindof RACStream *)reduceEach:(RACReduceBlock)reduceBlock
-
-//将RACStream 前拼上一个新的值
-- (__kindof RACStream *)startWith:(id)value
-
-//跳过固定个数的值
-- (__kindof RACStream *)skip:(NSUInteger)skipCount
-//接收前固定个数的值
-- (__kindof RACStream *)take:(NSUInteger)count
-
-//将一组Stream按照block的规则合并为一个  
-+ (__kindof RACStream *)join:(id&lt;NSFastEnumeration&gt;)streams block:(RACStream * (^)(id, id))block
-+ (__kindof RACStream *)zip:(id&lt;NSFastEnumeration&gt;)streams
-+ (__kindof RACStream *)zip:(id&lt;NSFastEnumeration&gt;)streams reduce:(RACGenericReduceBlock)reduceBlock
-
-//一组Stream contact(连接)
-+ (__kindof RACStream *)concat:(id&lt;NSFastEnumeration&gt;)streams
-
-//用初始值开始reduce 返回每次block之后的结果
-- (__kindof RACStream *)scanWithStart:(id)startingValue reduceWithIndex:(id (^)(id, id, NSUInteger))reduceBlock
-
-//忽略不符合条件的
-- (__kindof RACStream *)takeUntilBlock:(BOOL (^)(id x))predicate
-- (__kindof RACStream *)takeWhileBlock:(BOOL (^)(id x))predicate
-
-//忽略不符合条件的 直到第一个符合条件的
-- (__kindof RACStream *)skipUntilBlock:(BOOL (^)(id x))predicate
-- (__kindof RACStream *)skipWhileBlock:(BOOL (^)(id x))predicate
-
-//忽略未改变值的改变
-- (__kindof RACStream *)distinctUntilChanged
+<pre><code class="language-objectivec">AFHTTPSessionManager *manager = [[AFHTTPSessionManager alloc] initWithBaseURL:[[NSURL alloc] initWithString:@&quot;hostname&quot;]];
+[manager GET:@&quot;relative_url&quot; parameters:nil progress:nil
+    success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        NSLog(@&quot;%@&quot; ,responseObject);
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        NSLog(@&quot;%@&quot;, error);
+    }];
 </code></pre>
+
+<p>AFNetworking默认接收json格式的响应，如果想要其它格式的 设置<code>acceptableContentTypes</code></p>
+
+<h2 id="toc_2">AFNetworking的调用栈</h2>
+
+<ol>
+<li><p><code>AFHTTPSessionManager</code>的初始化方法<code>- initWithBaseURL:</code></p>
+<pre><code class="language-objectivec">- [AFHTTPSessionManager initWithBaseURL:]
+    - [AFHTTPSessionManager initWithBaseURL:sessionConfiguration:]<br/>
+        - [AFURLSessionManager initWithSessionConfiguration:]<br/>
+            - [NSURLSession sessionWithConfiguration:delegate:delegateQueue:]<br/>
+            - [AFJSONResponseSerializer serializer] // 负责序列化响应<br/>
+            - [AFSecurityPolicy defaultPolicy] // 负责身份认证<br/>
+            - [AFNetworkReachabilityManager sharedManager] // 查看网络连接情况<br/>
+        - [AFHTTPRequestSerializer serializer] // 负责序列化请求<br/>
+        - [AFJSONResponseSerializer serializer] // 负责序列化响应
+</code></pre>
+<ul>
+<li>其中<code>AFURLSessionManager</code>是<code>AFHTTPSessionManager</code>的父类</li>
+<li><code>AFURLSessionManager</code>负责生成<code>NSURLSession</code>实例，并且管理<code>AFSecurityPolicy</code>和<code>AFNetworkReachabilityManager</code>，来保证请求的安全和查看网络连接情况，<code>AFJSONResponseSerializer</code>实例用来序列号HTTP响应</li>
+<li><code>AFHTTPSessionManager</code>有自己的<code>AFHTTPRequestSerializer</code>和<code>AFJSONResponseSerializer</code>来管理请求和响应的序列化，同时依赖父类提供的接口保证安全、监控网络状态，实现发送HTTP</li>
+</ul></li>
+<li><p><code>GET:Params:progress:success:</code>的调用栈</p>
+<pre><code class="language-objectivec">- [AFHTTPSessionManager GET:parameters:process:success:failure:]
+    - [AFHTTPSessionManager dataTaskWithHTTPMethod:parameters:uploadProgress:downloadProgress:success:failure:] // 返回 NSURLSessionDataTask #1<br/>
+        - [AFHTTPRequestSerializer requestWithMethod:URLString:parameters:error:] // 返回 NSMutableURLRequest<br/>
+        - [AFURLSessionManager dataTaskWithRequest:uploadProgress:downloadProgress:completionHandler:] // 返回 NSURLSessionDataTask #2<br/>
+            - [NSURLSession dataTaskWithRequest:] // 返回 NSURLSessionDataTask #3<br/>
+            - [AFURLSessionManager addDelegateForDataTask:uploadProgress:downloadProgress:completionHandler:]<br/>
+                - [AFURLSessionManagerTaskDelegate init]<br/>
+                - [AFURLSessionManager setDelegate:forTask:]<br/>
+    - [NSURLSessionDataTask resume]
+</code></pre>
+<p>在#3出调用了系统的请求方法，返回dataTask 然后调用<code>resume</code>方法执行请求，并在某些实践之星时通知代理<code>AFURLSessionManagerTaskDelegate</code></p></li>
+</ol>
 
 
 		</div>
@@ -182,8 +177,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -197,7 +194,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -293,31 +290,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

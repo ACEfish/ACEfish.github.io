@@ -82,64 +82,137 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15541023147431.html">LLVM Backend</a></h1>
-			<p class="meta"><time datetime="2019-04-01T15:05:14+08:00" 
-			pubdate data-updated="true">2019/4/1</time></p>
+		  	<h1 class="entry-title"><a href="15037348375137.html">类型转换</a></h1>
+			<p class="meta"><time datetime="2017-08-26T16:07:17+08:00" 
+			pubdate data-updated="true">2017/8/26</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>整个编译流程中 LLVM Backend的位置<br/>
-<img src="media/15541023147431/15541023747982.jpg" alt="" style="width:707px;"/></p>
+		  	<p>在<code>Swift</code>中通过<code>is</code>和<code>as</code>操作符来实现<strong>类型转换</strong>，可以来检查值的类型或者转换类型</p>
 
-<p>LLVM Backend的流程图<br/>
-<img src="media/15541023147431/15541050358473.jpg" alt="" style="width:715px;"/></p>
+<p>也可以用它检查一个类型是否实现了某个协议</p>
 
-<h3 id="toc_0">CodeGen 阶段</h3>
+<blockquote>
+<p>注意:</p>
 
-<ul>
-<li>Instruction Selection 指令选择：将IR转化成目标平台指令组成的定向非循环图 DAG（Directed Acyclic Graph）</li>
-<li>Scheduling and Formation 调度与排序：读取 DAG，将 DAG 的指令排成 MachineInstr 的队列</li>
-<li>SSA 优化：多个基于 SSA（Static Single Assignment） 的 Pass 组成。比如 modulo-scheduling 和 peephole optimization 都是在这个阶段完成的</li>
-<li>Register allocation 寄存器分配：将 Virtual Register 映射到 Physical Register 或内存上 Prolog / Epilog 生成</li>
-<li>确定所需堆栈大小：Machine Code</li>
-<li>晚期优化：最后一次优化机会</li>
-<li>Code Emission：输出代码，可以选择汇编或者二进制机器码。</li>
-</ul>
+<p>as适用于从子类向上转型，此时一定会转型成功(否则会发生编译错误)<br/>
+as? 和 as!用于向下转型，此时不一定转型成功  as!包含了强制解包操作</p>
+</blockquote>
 
-<h3 id="toc_1">SelectionDAG</h3>
+<h2 id="toc_0">定义一个类层次作为例子</h2>
 
-<ul>
-<li>构建最初的 DAG：把 IR 里的 add 指令转成 SelectionDAG 的 add 节点</li>
-<li>优化构建好的 DAG：把一些平台支持的 meta instructions 比如 Rotates，div / rem 指令识别出</li>
-<li>Legalization SelectionDAG 类型：比如某些平台只有64位浮点和32位整数运算指令，那么就需要把所有 f32 都提升到 f64，i1/i8/i16 都提升到 i32，同时还要把 i64 拆分成两个 i32 来存储，操作符的合法化，比如 SDIV 在 x86 上回转成 SDIVREM。这个过程结果可以通过 llc -view-dag-combine2-dags sum.ll 看到</li>
-<li>指令选择 instruction selector（ISel）：将平台无关的 DAG 通过 TableGen 读入 .tb 文件并且生成对应的模式匹配代码从而转成平台相关的 DAG</li>
-<li>SelectionDAG Scheduling and Formation：因为 CPU 是没法执行 DAG，所以需要将指令从 DAG 中提取依据一定规则比如 minimal register pressure 或隐藏指令延迟重排成指令队列。（DAG -&gt; linear list（SSA form） -&gt; MachineInstr -&gt; MC Layer API MCInst MCStreamr -&gt; MCCodeEmitter -&gt; Binary Instr）</li>
-</ul>
+<p>在数组中存了一个父类的两个子类的实例</p>
 
-<h3 id="toc_2">Register Allocation 寄存器分配</h3>
+<blockquote>
+<p>在数组中存在两种子类类型,会推断这个数组为共同的父类类型<br/>
+此时虽然数组中存的是子类类型实例,但是迭代的话取出的实例会为父类类型，此时我们需要判断和转换类型</p>
+</blockquote>
 
-<h4 id="toc_3">寄存器在 LLVM 中的表达</h4>
+<h2 id="toc_1">检查类型</h2>
 
-<p>物理寄存器在 LLVM 里均有 1 - 1023 范围内的编号。</p>
+<p>用类型检查操作符<code>is</code> 检查实例是否属于特定子类型，返回<code>bool</code>值</p>
 
-<h4 id="toc_4">虚拟寄存器到物理寄存器的映射</h4>
+<pre><code class="language-swift">for item in library {
+    if item is Movie { //判断实例是否为 Movie类型
+        movieCount += 1
+    } else if item is Song { //判断实例是否为 Song类型
+        songCount += 1
+    }
+}
+</code></pre>
 
-<p>直接映射使用 TargetRegisterInfo 和 MachineOperand 中的 API。间接映射的API用 VirtRegMap 以正确插入读写指令实现内存调度</p>
+<h2 id="toc_2">向下转型</h2>
 
-<h4 id="toc_5">LLVM 自带的寄存器分配算法</h4>
+<p>当某类型的实例属于一个子类,可以用<code>as?</code>或者<code>as!</code>将其向下转换位子类类型</p>
 
-<p><code>llc -regalloc=Greedy add.bc -o ln.s</code></p>
+<p>因为向下转型可能失败，因此提供<code>as?</code>和<code>as!</code>(带上强制解包操作)，当不确定是否成功时用<code>as?</code> 确定一定成功时<code>as!</code></p>
 
-<ul>
-<li>Fast - debug 默认，尽可能保存寄存器。</li>
-<li>Basic - 增量分配</li>
-<li>Greedy - LLVM 默认寄存器分配算法，对 Basic 算法变量生存期进行分裂进行高度优化</li>
-<li>PBQP - 将寄存器分配描述成分区布尔二次规划</li>
-</ul>
+<pre><code class="language-swift">for item in library {
+    if let movie = item as? Movie {
+        print(&quot;Movie: &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
+    } else if let song = item as? Song {
+        print(&quot;Song: &#39;\(song.name)&#39;, by \(song.artist)&quot;)
+    }
+}
+</code></pre>
 
-<h3 id="toc_6">Code Emission</h3>
+<p><code>if let movie = item as? Movie</code>尝试将<code>item</code>转为<code>Movie</code>类型。若成功，设置一个新的临时常量<code>movie</code>来存储返回的可选<code>Movie</code>中的值</p>
 
-<p><img src="media/15541023147431/15541063937960.jpg" alt="" style="width:706px;"/></p>
+<blockquote>
+<p>注意</p>
+
+<p>转换并没有真的改变实例和它的值。根本的保持实力保持不变；只是简单的把它作为它被转换成的类型来使用</p>
+</blockquote>
+
+<h2 id="toc_3">Any和AnyObject的类型转换</h2>
+
+<p>不确定类型的表达方式:</p>
+
+<ol>
+<li><code>Any</code>可以表示任何类型，包括函数类型。</li>
+<li><code>AnyObject</code>可以表示任何<strong>类类型</strong>的实例</li>
+</ol>
+
+<p>建议只在确定需要使用时才使用<code>Any</code>和<code>AnyObject</code></p>
+
+<pre><code class="language-swift">var things = [Any]()
+
+things.append(0)
+things.append(0.0)
+things.append(42)
+things.append(3.14159)
+things.append(&quot;hello&quot;)
+things.append((3.0, 5.0))
+things.append(Movie(name: &quot;Ghostbusters&quot;, director: &quot;Ivan Reitman&quot;))
+things.append({ (name: String) -&gt; String in &quot;Hello, \(name)&quot; })
+</code></pre>
+
+<p>然后我们可以在<code>switch</code>表达式的</p>
+
+<pre><code class="language-swift">for thing in things {
+    switch thing {
+    case 0 as Int:
+        print(&quot;zero as an Int&quot;)
+    case 0 as Double:
+        print(&quot;zero as a Double&quot;)
+    case let someInt as Int:
+        print(&quot;an integer value of \(someInt)&quot;)
+    case let someDouble as Double where someDouble &gt; 0:
+        print(&quot;a positive double value of \(someDouble)&quot;)
+    case is Double:
+        print(&quot;some other double value that I don&#39;t want to print&quot;)
+    case let someString as String:
+        print(&quot;a string value of \&quot;\(someString)\&quot;&quot;)
+    case let (x, y) as (Double, Double):
+        print(&quot;an (x, y) point at \(x), \(y)&quot;)
+    case let movie as Movie:
+        print(&quot;a movie called &#39;\(movie.name)&#39;, dir. \(movie.director)&quot;)
+    case let stringConverter as String -&gt; String:
+        print(stringConverter(&quot;Michael&quot;))
+    default:
+        print(&quot;something else&quot;)
+    }
+}
+// zero as an Int
+// zero as a Double
+// an integer value of 42
+// a positive double value of 3.14159
+// a string value of &quot;hello&quot;
+// an (x, y) point at 3.0, 5.0
+// a movie called &#39;Ghostbusters&#39;, dir. Ivan Reitman
+// Hello, Michael
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p><code>Any</code>是可以表示所有类型的值,包括可选类型,当你在用<code>Any</code>类型来表示一个可选值时,会给出警告，此时可以用<code>as</code>操作符显示转换为<code>Any</code></p>
+</blockquote>
+
+<pre><code class="language-text">let optionalNumber: Int? = 3
+things.append(optionalNumber) // 会有警告
+things.append(optionalNumber as Any) // 没有警告
+</code></pre>
 
 
 		</div>
@@ -162,8 +235,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -177,7 +252,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -273,31 +348,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

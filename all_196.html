@@ -82,238 +82,105 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15541132912435.html">Mach-O文件</a></h1>
-			<p class="meta"><time datetime="2019-04-01T18:08:11+08:00" 
-			pubdate data-updated="true">2019/4/1</time></p>
+		  	<h1 class="entry-title"><a href="15659410303124.html">不透明类型</a></h1>
+			<p class="meta"><time datetime="2019-08-16T15:37:10+08:00" 
+			pubdate data-updated="true">2019/8/16</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>记录编译后的可执行文件、对象代码、共享库、动态加载代码和内存转储的文件格式<br/>
-是二进制数据文件，里面有不同的包含元信息的数据块，比如字节顺序，cpu类型，块大小等。文件内容不可修改，因为在.app目录中有<code>_CodeSignature</code>目录，里面包含了程序代码的签名，这个签名的作用就是保证.app里的文件，包括资源文件，Mach-O文件都不能更改</p>
+		  	<p>具有不透明返回类型的函数或方法会隐藏返回值的类型信息。此时，函数不再提供具体的类型作为返回类型，而是根据它支持的协议来描述返回值。</p>
 
-<p>Mach-O文件包含三个区域</p>
+<p>在处理模块和调用代码之间关系时，异常类型信息非常有用，此时返回的底层数据类型仍然可以保持私有。而且不同于返回协议类型，不透明类型可以保证类型一致性--表一起能获取到类型信息，但是模块使用者却不能获取到</p>
 
-<ul>
-<li><code>Mach-O Header</code>：包含字节顺序，magic，cpu类型，加载指令的数量等</li>
-<li><code>Load Commands</code>：包含很多内容的表，包括区域的位置，符号表，动态符号表。每个加载指令包含一个元信息，比如指令类型，名称，在二进制中的位置</li>
-<li><code>data</code>: 文件中最大的部分，包含了代码，数据，比如符号表、动态符号表</li>
-</ul>
+<h2 id="toc_0">不透明类型解决的问题</h2>
 
-<p><img src="media/15541132912435/15541134009742.jpg" alt="" style="width:415px;"/></p>
+<h2 id="toc_1">返回不透明类型</h2>
 
-<p><img src="media/15541132912435/15541204613989.jpg" alt="" style="width:636px;"/></p>
+<p>可以认为不透明类型和泛型相反。</p>
 
-<h2 id="toc_0">Mach-O 文件的解析</h2>
+<p>泛型允许调用一个方法，为这个方法的形参和返回值制定一个与实现无关的类型，例如</p>
 
-<p>自己创建一个test.c文件</p>
+<pre><code class="language-swift">func max&lt;T&gt;(_ x: T, _ y: T) -&gt; T where T: Comparable { ... }
+</code></pre>
 
-<pre><code class="language-c">#include &lt;stdio.h&gt;
-int main(int argc, char *argv[])
-{
-    printf(&quot;hi there!\n&quot;);
-    return 0;
+<p>类型T由调用方法的代码决定，函数内部也要通过通用的方式写代码，才能应对调用者传入的各种类型</p>
+
+<p>返回不透明类型函数中，不透明类型允许函数实现时，选择一个与调用代码无关的返回类型，比如：下面例子返回了一个梯形，但是却没直接输出梯形的底层类型</p>
+
+<pre><code class="language-swift">struct Square: Shape {
+    var size: Int
+    func draw() -&gt; String {
+        let line = String(repeating: &quot;*&quot;, count: size)
+        let result = Array&lt;String&gt;(repeating: line, count: size)
+        return result.joined(separator: &quot;\n&quot;)
+    }
+}
+
+func makeTrapezoid() -&gt; some Shape {
+    let top = Triangle(size: 2)
+    let middle = Square(size: 2)
+    let bottom = FlippedShape(shape: top)
+    let trapezoid = JoinedShape(
+        top: top,
+        bottom: JoinedShape(top: middle, bottom: bottom)
+    )
+    return trapezoid
+}
+let trapezoid = makeTrapezoid()
+print(trapezoid.draw())
+</code></pre>
+
+<p>返回值定义为<code>some Shape</code>；因此，该函数返回遵循<code>Shape</code>协议的给定类型，而不需要指定任何具体类型。<br/>
+这样写<code>makeTrapezoid()</code>函数可以表明它公共接口的基本性质 --返回的是一个几何图形 -- 而不是部分的公共接口生成的特殊类型。</p>
+
+<p><code>makeTrapezoid()</code>函数可以返回任意它需要的类型，只要其遵循<code>Shape</code>协议即可，类似泛型函数的实现代码，其调用代码需要采用通用的方式，使其返回的任何<code>Shape</code>类型值都能被正常使用</p>
+
+<pre><code class="language-swift">//泛型和不透明类型相结合
+func flip&lt;T: Shape&gt;(_ shape: T) -&gt; some Shape {
+    return FlippedShape(shape: shape)
 }
 </code></pre>
 
-<pre><code class="language-c">//将test.c 编译汇编链接成一个可执行文件 未指定输出文件 即默认为a.out
-xcrun clang test.c 
+<blockquote>
+<p>注意:</p>
+
+<p>如果函数内部有多个地方返回不透明类型，那么需要保证返回的均为同一类型，否则会报错</p>
+</blockquote>
+
+<h2 id="toc_2">不透明类型和协议类型区别</h2>
+
+<p>虽然使用不透明类型作为函数返回值，看起来和返回协议类型非常相似，但这两者有一个主要区别，就在于是否需要保证类型一致性。</p>
+
+<p>一个不透明类型只能对应一个具体的类型，即使函数调用者并不知道是哪种类型。<br/>
+协议类型可以对应多个类型，只要他们遵循同一协议<br/>
+不透明类型则比啊留了底层类型的唯一性，swift能够推断出来关联类型</p>
+
+<pre><code class="language-swift">protocol Container {
+    associatedtype Item
+    var count: Int { get }
+    subscript(i: Int) -&gt; Item { get }
+}
+extension Array: Container { }
+
+// 错误：有关联类型的协议不能作为返回类型。
+func makeProtocolContainer&lt;T&gt;(item: T) -&gt; Container {
+    return [item]
+}
+
+// 错误：没有足够多的信息来推断 C 的类型。
+func makeProtocolContainer&lt;T, C: Container&gt;(item: T) -&gt; C {
+    return [item]
+}
+
+
+func makeOpaqueContainer&lt;T&gt;(item: T) -&gt; some Container {
+    return [item]
+}
+let opaqueContainer = makeOpaqueContainer(item: 12)
+let twelve = opaqueContainer[0]
+print(type(of: twelve))
+// 输出 &quot;Int&quot;
 </code></pre>
-
-<hr/>
-
-<p>使用size工具查看a.out中的section</p>
-
-<pre><code class="language-c">xcrun size -x -l -m a.out
-</code></pre>
-
-<pre><code class="language-c">Segment __PAGEZERO: 0x100000000 (vmaddr 0x0 fileoff 0)
-Segment __TEXT: 0x1000 (vmaddr 0x100000000 fileoff 0)
-    Section __text: 0x34 (addr 0x100000f50 offset 3920)
-    Section __stubs: 0x6 (addr 0x100000f84 offset 3972)
-    Section __stub_helper: 0x1a (addr 0x100000f8c offset 3980)
-    Section __cstring: 0xa (addr 0x100000fa6 offset 4006)
-    Section __unwind_info: 0x48 (addr 0x100000fb0 offset 4016)
-    total 0xa6
-Segment __DATA: 0x1000 (vmaddr 0x100001000 fileoff 4096)
-    Section __nl_symbol_ptr: 0x10 (addr 0x100001000 offset 4096)
-    Section __la_symbol_ptr: 0x8 (addr 0x100001010 offset 4112)
-    total 0x18
-Segment __LINKEDIT: 0x1000 (vmaddr 0x100002000 fileoff 8192)
-total 0x100003000
-</code></pre>
-
-<p>有4个segment和多个section<br/>
-当运行时，虚拟内存会把segment映射到进程的地址空间，虚拟内存会避免将全部执行文件全部加载到内存</p>
-
-<p><code>__PAGEZERO sement</code>的大小是4GB，不是文件真实大小，是规定进程地址空间前4GB被映射为不可执行文件，不可读、不可写</p>
-
-<p><code>__TEXT segment</code>包含被执行的代码以只读和可执行的方式映射</p>
-
-<ul>
-<li>__text section 包含编译后的机器码</li>
-<li><strong>stubs和</strong>stub_hepler是给动态链接器dyld使用，可以允许延迟链接</li>
-<li>__csstring 可执行文件中的字符串</li>
-<li>__const不可变的常量</li>
-</ul>
-
-<p><code>__DATA segment</code>以可读写和不可执行的方式映射,里面是会被更改的数据</p>
-
-<ul>
-<li>__nl_symbol_ptr 非延迟指针.可执行文件加载同时加载</li>
-<li>__la_symbol_ptr延迟符号指针.延迟用于可执行文件汇总调用未定义的函数，可执行文件里没有包含的函数会延迟加载</li>
-<li>__const 需要重定向的常量  例如 char * const c = “foo”; c指针指向可变的数据</li>
-<li>__bbs不用初始化的静态变量</li>
-<li>__common包含外部全局变量。例如在函数外定义 int i；</li>
-<li>__dyld是section占位符，用于动态链接器</li>
-</ul>
-
-<hr/>
-
-<p>查看<strong>section中的内容</strong></p>
-
-<pre><code class="language-text">xcrun otool -s __TEXT __text a.out
-</code></pre>
-
-<p>显示的为二进制数据，我们可以反汇编,查看汇编信息 -s __TEXT __text 有个缩写 -t</p>
-
-<pre><code class="language-text">xcrun otool -v -t a.out
-</code></pre>
-
-<pre><code class="language-c">a.out:
-(__TEXT,__text) section
-_main:
-0000000100000f50    pushq    %rbp
-0000000100000f51    movq    %rsp, %rbp
-0000000100000f54    subq    $0x20, %rsp
-0000000100000f58    leaq    0x47(%rip), %rax
-0000000100000f5f    movl    $0x0, -0x4(%rbp)
-0000000100000f66    movl    %edi, -0x8(%rbp)
-0000000100000f69    movq    %rsi, -0x10(%rbp)
-0000000100000f6d    movq    %rax, %rdi
-0000000100000f70    movb    $0x0, %al
-0000000100000f72    callq    0x100000f84
-0000000100000f77    xorl    %ecx, %ecx
-0000000100000f79    movl    %eax, -0x14(%rbp)
-0000000100000f7c    movl    %ecx, %eax
-0000000100000f7e    addq    $0x20, %rsp
-0000000100000f82    popq    %rbp
-0000000100000f83    retq
-</code></pre>
-
-<hr/>
-
-<p>使用otool查看可执行文件的头部,即header</p>
-
-<pre><code class="language-c">otool -v -h a.out
-</code></pre>
-
-<p>得到 <strong>头部信息</strong></p>
-
-<pre><code class="language-text">Mach header
-      magic cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
-MH_MAGIC_64  X86_64        ALL LIB64     EXECUTE    15       1200   NOUNDEFS DYLDLINK TWOLEVEL PIE
-</code></pre>
-
-<p>mach_header 结构体</p>
-
-<pre><code class="language-text">struct mach_header {
-  uint32_t      magic; 
-  cpu_type_t    cputype; 
-  cpu_subtype_t cpusubtype;
-  uint32_t      filetype;
-  uint32_t      ncmds;
-  uint32_t      sizeofcmds;
-  uint32_t      flags;
-};
-</code></pre>
-
-<p>cputype 和 cpusubtype 规定可执行文件可以在哪些目标架构运行。ncmds 和 sizeofcmds 是加载命令<code>LoadCommand</code></p>
-
-<hr/>
-
-<p><strong>查看LoadCommands</strong>使用命令 <code>otool -v -l a.out</code></p>
-
-<pre><code class="language-c">...
-...
-Load command 1
-      cmd LC_SEGMENT_64
-  cmdsize 472
-  segname __TEXT
-   vmaddr 0x0000000100000000
-   vmsize 0x0000000000001000
-  fileoff 0
- filesize 4096
-  maxprot rwx
- initprot r-x
-   nsects 5
-    flags (none)
-Section
-  Section
-  sectname __text
-   segname __TEXT
-      addr 0x0000000100000f50 //代码的位置地址 和上面反汇编的地址是一样的
-      size 0x0000000000000034 
-    offset 3920 //在文件中的偏移量
-     align 2^4 (16)
-    reloff 0
-    nreloc 0
-      type S_REGULAR
-attributes PURE_INSTRUCTIONS SOME_INSTRUCTIONS
- reserved1 0
- reserved2 0
-Section
-  sectname __stubs
-   segname __TEXT
-      addr 0x0000000100000f88
-      size 0x0000000000000006
-    offset 3976
-     align 2^1 (2)
-    reloff 0
-    nreloc 0
-      type S_SYMBOL_STUBS
-attributes PURE_INSTRUCTIONS SOME_INSTRUCTIONS
- reserved1 0 (index into indirect symbol table)
- reserved2 6 (size of stubs)
- ...
- ...
-</code></pre>
-
-<p>加载命令的结构体</p>
-
-<pre><code class="language-text">struct segment_command {
-  uint32_t  cmd;
-  uint32_t  cmdsize;
-  char      segname[16];
-  uint32_t  vmaddr;
-  uint32_t  vmsize;
-  uint32_t  fileoff;
-  uint32_t  filesize;
-  vm_prot_t maxprot;
-  vm_prot_t initprot; //权限 例如r-x
-  uint32_t  nsects;
-  uint32_t  flags;
-};
-</code></pre>
-
-<hr/>
-
-<h2 id="toc_1">逆向Mach-O文件</h2>
-
-<p>需要先安装 tweak，安装越狱可以通过 cydia，不越狱直接打包成 ipa 安装包。越狱的话会安装一个 mobilesubstrate 的动态库，使用 theos 开发工具，非越狱的直接把这个库打包进 ipa 中或者直接修改汇编代码。</p>
-
-<p>Mobilesubstrate 提供了三个模块来方便开发。</p>
-
-<p>MobileHooker：利用 method swizzling 技术定义一些宏和函数来替换系统或者目标函数。<br/>
-MobileLoader：在程序启动时将我们写的破解程序用的第三方库注入进去。怎么注入的呢，还记得先前说的 clang attribute 里的一个 attribute((constructor)) 么，它会在 main 执行之前执行，所以把我们的 hook 放在这里就可以了。<br/>
-Safe mode：类似安全模式，会禁用的改动。<br/>
-先前提到 Mach-O 的结构有 Header，Load commands 和 Data，Mobileloader 会通过修改二进制的 loadCommands 来先把自己注入然后再把我们写的第三方库注入进去，这样破解程序就会放在 Load commands 段里面了。</p>
-
-<p>当然如果是我们自己的程序我们是知道要替换哪些方法的，既然是逆向肯定是别人的程序了，这个时候就需要去先分析下我们想替换方法是哪个，网络相关的分析可以用常用那些抓包工具，比如 Charles，WireShark 等，静态的可以通过砸壳，反汇编，classdump 头文件来分析 app 的架构，对应的常用工具dumpdecrypted，hopper disassembler 和 class_dump。运行时的分析可用工具有运行时控制台cycript，远程断点调试lldb+debugserver，logify。</p>
-
-<ul>
-<li>入门文章可以看看这篇: <a href="https://github.com/zhengmin1989/MyArticles/tree/master/iOS%E5%86%B0%E4%B8%8E%E7%81%AB%E4%B9%8B%E6%AD%8C"> MyArticles/iOS冰与火之歌 at master · zhengmin1989/MyArticles · GitHub</a></li>
-<li><a href="http://blog.imjun.net/posts/convert-iOS-app-to-dynamic-library/">黑科技：把第三方 iOS 应用转成动态库 - Jun’s Blog</a>  <a href="http://blog.imjun.net/posts/restore-symbol-of-iOS-app/"> iOS符号表恢复&amp;逆向支付宝 - Jun’s Blog</a></li>
-</ul>
 
 
 		</div>
@@ -336,8 +203,10 @@ Safe mode：类似安全模式，会禁用的改动。<br/>
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -351,7 +220,7 @@ Safe mode：类似安全模式，会禁用的改动。<br/>
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -447,31 +316,31 @@ Safe mode：类似安全模式，会禁用的改动。<br/>
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

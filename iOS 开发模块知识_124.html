@@ -82,147 +82,106 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14873831706932.html">OCMock</a></h1>
-			<p class="meta"><time datetime="2017-02-18T09:59:30+08:00" 
-			pubdate data-updated="true">2017/2/18</time></p>
+		  	<h1 class="entry-title"><a href="15539566553487.html">Target在build中的控制</a></h1>
+			<p class="meta"><time datetime="2019-03-30T22:37:35+08:00" 
+			pubdate data-updated="true">2019/3/30</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h3 id="toc_0">Mock介绍</h3>
+		  	<p>在<code>Xcode</code>的<code>Project editor</code>中的<code>Build Setting</code>、<code>Build Phases</code>和<code>Build Rules</code>用来控制整个编译过程</p>
 
-<p>对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。</p>
+<h2 id="toc_0">Build Phases</h2>
 
-<h3 id="toc_1">OCMock介绍</h3>
+<p>构建可执行文件规则。</p>
 
-<p><a href="http://ocmock.org/features/">官方网站</a><br/>
-根据要mock的对象的class来创建一个对应的对象，并且设置好该对象的属性和调用预定方法后的动作（例如返回一个值，调用代码块，发送消息等等），然后将其记录到一个数组中，接下来开发者主动调用该方法，最后做一个verify（验证），从而判断该方法是否被调用，或者调用过程中是否抛出异常等。</p>
+<p><code>Target Dependencies</code><br/>
+指定target的依赖项目，在targrt build之前需要先build的依赖</p>
 
-<h4 id="toc_2">1.OCMock中简单使用</h4>
+<p><code>Compile Source</code><br/>
+指定所有必须编译的文件,这些文件会根据<code>build Setting</code>和<code>Builsd Rules</code>里的设置来处理</p>
+
+<p><code>Link Binary With Libraries</code><br/>
+列出所有的静态库和动态库，和编译生成文件进行链接</p>
+
+<p><code>Copy Bundle Resources</code><br/>
+指定要copy的资源文件</p>
+
+<h2 id="toc_1">Build Rules</h2>
+
+<p>指定不同文件类型如何编译。每条build rule 指定了该类型怎么处理立即输出在哪。可以增加一条新规则对特定类型文件类型添加处理方法</p>
+
+<h2 id="toc_2">Build Setting</h2>
+
+<p>在<code>build</code>的过程中各个阶段的选项的设置</p>
+
+<h2 id="toc_3">pbxproj工程文件</h2>
+
+<p><code>.xcodeproj</code>包中的工程文件<code>project.pbxproj</code>里包含了build过程中的设置.</p>
 
 <ol>
-<li><p>class mock一个对象</p>
-<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
-//创建mock object当做类的实例
-</code></pre></li>
-<li><p>Stubbing methods that return objects</p>
-<pre><code class="language-object-c">/**
-意的就是有参数的方法，参数是可以具体指定的，也就是说只有满足你指定的具体参数的调用才会被mock指定的返回值。例子中的[OCMArg any]是指任意参数。<br/>
-*/<br/>
-//没有参数的方法<br/>
-OCMStub([mockClass someMethod]).andReturn(anObject);<br/>
-//有参数的方法<br/>
-OCMStub([mockClass someMethod:[OCMArg any]]).andReturn(anObject);
-</code></pre>
-<p>注意:<br/>
-<strong>OCMock会在mock实例上没有找到相同名字的实例方法的时候去找同名的类方法。</strong></p></li>
-<li><p>Verify-after-running<br/>
-有些时候需要验证我们执行的代码流程是否调用了某个外部的方法，这个时候用OCMock就比较简单来实现。如果没有调用过这个方法的话，会立即抛一个异常出来。</p>
-<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
-//...<br/>
-//some code<br/>
-//...<br/>
-OCMVerify([mockClass someMethod]);
-</code></pre></li>
-<li><p>验证mock方法没有被调用<br/>
-验证代码没有调用某个方法<br/>
-如果方法被调用了，就将isCalled设置为YES，这样最后assert的时候就会报错。</p>
-<pre><code class="language-object-c">static BOOL isCalled = false;
-id mockClass = OCMClassMock([SomeClass class]);<br/>
-OCMStub([mockClass someMethod]).andDo(^(NSInvocation *invocation){<br/>
-isCalled = YES;<br/>
-});<br/>
-//...<br/>
-//some code<br/>
-//...<br/>
-XCTAssertFalse(isCalled);
-</code></pre></li>
-<li><p>验证mock方法传入的参数<br/>
-验证传递给外部调用的参数是否符合预期</p>
-<pre><code class="language-objec-c">id mockClass = OCMClassMock([SomeClass class]);
-OCMStub([mockClass someMethod:[OCMArg checkWithBlock:^BOOL(id obj) {<br/>
-//...<br/>
-//some code<br/>
-//...<br/>
-return YES;<br/>
-]]);
-</code></pre></li>
-<li><p>mock单例</p>
-<p>如果我们mock的类是个单例的话，那么使用之前的方法进行mock是不会生效的。不过OCMock提供了一个很简单的解决方法，那就是调用单例返回mock</p>
-<pre><code class="language-object-c">id mockClass = OCMClassMock([SomeClass class]);
-OCMStub([mockClass instanceMethod]).andReturn(mockClass);
-</code></pre></li>
-<li><p>The any constraint</p>
-<pre><code class="language-object-c">OCMStub([mock someMethodWithAnArgument:[OCMArg any]])
-OCMStub([mock someMethodWithPointerArgument:[OCMArg anyPointer]])<br/>
-OCMStub([mock someMethodWithSelectorArgument:[OCMArg anySelector]])
-</code></pre></li>
-<li><p>处理block参数<br/>
-OCMock也可以处理block回调参数。block回调通常用于网络代码，数据库代码，或者在任何异步操作中。在这个例子中，思考下下面的方法：<br/>
-<code>- (void)downloadWeatherDataForZip:(NSString *)zip callback:(void (^)(NSDictionary *response))callback;</code></p></li>
+<li>在这个文件中，首先找到rootObject的值
+<code>
+rootObject = CFE011DA22409055007FEEDD /* Project object */;
+</code></li>
+<li>根据CFE011DA22409055007FEEDD代表的proect找到这个工程,这里面包括了部分这个工程的信息
+<code>
+/* Begin PBXProject section */<br/>
+    CFE011DA22409055007FEEDD /* Project object */ = {<br/>
+        isa = PBXProject;<br/>
+        attributes = {<br/>
+            LastUpgradeCheck = 1010;<br/>
+            ORGANIZATIONNAME = universalCertification;<br/>
+            TargetAttributes = {<br/>
+                CFE011E122409055007FEEDD = {<br/>
+                    CreatedOnToolsVersion = 10.1;<br/>
+                };<br/>
+            };<br/>
+        };<br/>
+        buildConfigurationList = CFE011DD22409055007FEEDD /* Build configuration list for PBXProject &quot;RSSReader&quot; */;<br/>
+        compatibilityVersion = &quot;Xcode 9.3&quot;;<br/>
+        developmentRegion = en;<br/>
+        hasScannedForEncodings = 0;<br/>
+        knownRegions = (<br/>
+            en,<br/>
+            Base,<br/>
+        );<br/>
+        mainGroup = CFE011D922409055007FEEDD;<br/>
+        productRefGroup = CFE011E322409055007FEEDD /* Products */;<br/>
+        projectDirPath = &quot;&quot;;<br/>
+        projectRoot = &quot;&quot;;<br/>
+        targets = (<br/>
+            CFE011E122409055007FEEDD /* RSSReader */,<br/>
+        );<br/>
+    };<br/>
+/* End PBXProject section */
+</code></li>
+<li>然后根据工程中的<code>targets</code>可以找到对应target
+<code>
+/* Begin PBXNativeTarget section */<br/>
+        CFE011E122409055007FEEDD /* RSSReader */ = {<br/>
+            isa = PBXNativeTarget;<br/>
+            buildConfigurationList = CFE011F822409056007FEEDD /* Build configuration list for PBXNativeTarget &quot;RSSReader&quot; */;<br/>
+            buildPhases = (<br/>
+                47F7B3ABDF3263B6EDCA68AD /* [CP] Check Pods Manifest.lock */,<br/>
+                CFE011DE22409055007FEEDD /* Sources */,<br/>
+                CFE011DF22409055007FEEDD /* Frameworks */,<br/>
+                CFE011E022409055007FEEDD /* Resources */,<br/>
+            );<br/>
+            buildRules = (<br/>
+            );<br/>
+            dependencies = (<br/>
+            );<br/>
+            name = RSSReader;<br/>
+            productName = RSSReader;<br/>
+            productReference = CFE011E222409055007FEEDD /* RSSReader.app */;<br/>
+            productType = &quot;com.apple.product-type.application&quot;;<br/>
+        };<br/>
+/* End PBXNativeTarget section */
+</code></li>
+<li>可以根据这些信息查看更详细的编译信息<br/>
+比如:
+<code>buildConfigurationList</code>指向了debug和release的详细配置信息</li>
 </ol>
-
-<p>在这个例子中，我们有一个下载天气压缩数据的方法，并且把下载下来的dictionary代理到一个block的回调中。在测试中，我们通过预定义的天气数据来测试回调处理。这也是明智的测试失败场景。你永远不会知道网络上会返回你什么东西！</p>
-
-<pre><code class="language-object">OCMStub([groupModelMock downloadWeatherDataForZip:@&quot;80304&quot; callback:[OCMArg any]]]).andDo(^(NSInvocation *invocation){
-        //2. declare a block with same signature
-        void (^weatherStubResponse)(NSDictionary *dict);
-        //3. link argument 3 with with our block callback
-        [invoke getArgument:&amp;weatherStubResponse atIndex:3];
-        //4. invoke block with pre-defined input
-        NSDictionary *testResponse = @{@&quot;high&quot;: 43 , @&quot;low&quot;: 12};
-        weatherStubResponse(groupMemberMock);
-    });
-    /**
-        1.这个mock对象使用带NSInvocation参数的“andDo”方法。一个NSInvocation对象代表一
-        个‘objectivetified’（实在不知道这个什么鬼）表现的方法调用。通过这个NSinvocation对
-        象，使得拦截传递给我们的方法的block参数变得可能。
-        2.用与我们测试的方法中相同的方法签名声明一个block参数。
-        3.NSInvocation实例方法&quot;getArgument:atIndex:&quot;将赋值后的块函数传递都原始函数中定义
-        的块函数中。注意：在Objective-C中，传递给任意方法的前两个参数都是“self”和“_cmd”.这是
-        一个运行时的小功能以及用下标来获取NSInvocation参数时我们需要考虑的东西。
-        4.最后，传递这个回调的预定义字典。
-    */
-</code></pre>
-
-<h4 id="toc_3">2.OCMock简单示例</h4>
-
-<p><img src="media/14873831706932/14873839517952.png" alt=""/></p>
-
-<p>示例2：</p>
-
-<pre><code class="language-object-c">- (void)testStrictMock3{
-
-    id classMock = OCMClassMock([TweetView class]);
-
-    //设置期望或预设，这个classMock需要执行addTweet方法且参数不为nil。  不然的话会抛出异常
-    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
-    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
-
-    /* 如果不执行以下代码的话会抛出异常 */
-    Tweet *testTweet = [[Tweet alloc] init];
-    testTweet.userName = @&quot;齐滇大圣&quot;;
-    [classMock addTweet:testTweet];
-
-    OCMVerifyAll(classMock);
-}
-</code></pre>
-
-<p>这表示一种友好的mock，不会在没有OCMExpect或OCMStub设置类的所有方法时抛出异常。以上代码把OCMExpect和OCMStub注释掉时不会报错。</p>
-
-<p>还有一种表示严格的mock：OCMStrictClassMock，如果把OCMExpect和OCMStub注释掉时会报错，它要求你执行类中的所有方法，所以比较适合用来测试必须实现的方法，代码如下：</p>
-
-<pre><code class="language-object-c">- (void)testStrictMock3{
-    id classMock = OCMStrictClassMock([TweetView class]);
-    //OCMExpect([classMock addTweet:[OCMArg isNotNil]]);
-    //OCMStub([classMock addTweet:[OCMArg isNotNil]]);
-
-    Tweet *testTweet = [[Tweet alloc] init];
-    testTweet.userName = @&quot;齐滇大圣&quot;;
-    [classMock addTweet:testTweet]; 
-
-    OCMVerifyAll(classMock);
-}
-</code></pre>
 
 
 		</div>
@@ -245,8 +204,10 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -260,7 +221,7 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -356,31 +317,31 @@ OCMock也可以处理block回调参数。block回调通常用于网络代码，�
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

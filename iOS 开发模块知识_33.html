@@ -82,90 +82,84 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15542146663946.html">APP启动优化</a></h1>
-			<p class="meta"><time datetime="2019-04-02T22:17:46+08:00" 
-			pubdate data-updated="true">2019/4/2</time></p>
+		  	<h1 class="entry-title"><a href="15578193513091.html">RACStream</a></h1>
+			<p class="meta"><time datetime="2019-05-14T15:35:51+08:00" 
+			pubdate data-updated="true">2019/5/14</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">App启动主要包括三个阶段</h2>
+		  	<p><code>RACStream</code>是继承自NSObject最基础的类，其它的子类例如<code>RCSignal</code>、<code>RACSequence</code>均继承自该类</p>
 
-<ol>
-<li>main()函数执行前</li>
-<li>main()函数执行后</li>
-<li>首屏渲染完成</li>
-</ol>
+<p><code>RACStream</code>作为一个抽象类存在，本身并不提供任何方法的实现，内部方法均为抽象方法，在调用时抛出异常</p>
 
-<h3 id="toc_1">main函数执行前</h3>
+<pre><code class="language-objectivec">+ (__kindof RACStream *)empty {
+    NSString *reason = [NSString stringWithFormat:@&quot;%@ must be overridden by subclasses&quot;, NSStringFromSelector(_cmd)];
+    @throw [NSException exceptionWithName:NSInternalInconsistencyException reason:reason userInfo:nil];
+}
+- (__kindof RACStream *)bind:(RACStreamBindBlock (^)(void))block
+// return 根据该value 返回一个RACStream对象
++ (__kindof RACStream *)return:(id)value
+- (__kindof RACStream *)concat:(RACStream *)stream
+- (__kindof RACStream *)zipWith:(RACStream *)stream
 
-<ul>
-<li>加载可执行文件</li>
-<li>加载动态链接库</li>
-<li>Objc运行时的初始处理，包括Objc相关类的注册、category注册、selector唯一性检查等</li>
-<li>初始化，包括执行+load()方法，attribute((constructor))修饰的函数调用、创建C++静态全局变量</li>
-</ul>
+</code></pre>
 
-<p>因此可做的优化:</p>
+<p>但是在RACStream的Operations分类<code>RACStream (Operations)</code>提供了更丰富的方法</p>
 
-<ul>
-<li>减少动态库加载。每个库本身都有依赖关系,使用更少的动态库，如果使用的动态库数量较多，尽量将多个动态库合并。苹果支持做多可以支持6个非系统动态库合并为一个</li>
-<li>减少加载启动后不会去使用的类或者方法</li>
-<li>+load()方法内容可以放到首屏渲染完成后再执行，或者使用<code>+initialize()</code>方法替换。因为，在一个<code>+load()</code>方法中，进行运行时方法替换操作会带来4好眠的消耗，避免积少成多，对启动速度带来影响</li>
-<li>控制C++全局变量的数量</li>
-</ul>
+<pre><code class="language-objectivec">//对信号的值进行map映射
+- (__kindof RACStream *)flattenMap:(__kindof RACStream * (^)(id value))block {
+    Class class = self.class;
 
-<h3 id="toc_2">main函数执行后</h3>
+    return [[self bind:^{
+        return ^(id value, BOOL *stop) {
+            id stream = block(value) ?: [class empty];
+            NSCAssert([stream isKindOfClass:RACStream.class], @&quot;Value returned from -flattenMap: is not a stream: %@&quot;, stream);
 
-<p>main()执行后的阶段，从main()函数执行开始，到<code>appDelegate</code>中<code>didFinishLaunchingWithOptions</code>方法里首屏渲染相关方法执行完成</p>
+            return stream;
+        };
+    }] setNameWithFormat:@&quot;[%@] -flattenMap:&quot;, self.name];
+}
+- (__kindof RACStream *)flatten
+- (__kindof RACStream *)map:(id (^)(id value))block
+- (__kindof RACStream *)mapReplace:(id)object
 
-<p>这个阶段主要为首页需要的业务代码，包括：</p>
+//根据规则过滤
+- (__kindof RACStream *)filter:(BOOL (^)(id value))block
+- (__kindof RACStream *)ignore:(id)value
 
-<ul>
-<li>首屏初始化所需配置文件读写操作</li>
-<li>首屏列表大数据的读取</li>
-<li>首屏渲染的大量计算等</li>
-</ul>
+//对RACTuple中每个值进行处理 
+- (__kindof RACStream *)reduceEach:(RACReduceBlock)reduceBlock
 
-<p>我们不应该把各种初始化都放在这个时候，应该只在这个时候放置首屏渲染必须的任务</p>
+//将RACStream 前拼上一个新的值
+- (__kindof RACStream *)startWith:(id)value
 
-<h3 id="toc_3">首屏渲染完成后</h3>
+//跳过固定个数的值
+- (__kindof RACStream *)skip:(NSUInteger)skipCount
+//接收前固定个数的值
+- (__kindof RACStream *)take:(NSUInteger)count
 
-<p>非首屏其它业务模块的初始化，监听的注册、配置文件的读取等。即，截止到<code>didFinishLaunchingWithOptions</code>方法作用域执行收评渲染之后所有方法执行完成。</p>
+//将一组Stream按照block的规则合并为一个  
++ (__kindof RACStream *)join:(id&lt;NSFastEnumeration&gt;)streams block:(RACStream * (^)(id, id))block
++ (__kindof RACStream *)zip:(id&lt;NSFastEnumeration&gt;)streams
++ (__kindof RACStream *)zip:(id&lt;NSFastEnumeration&gt;)streams reduce:(RACGenericReduceBlock)reduceBlock
 
-<h2 id="toc_4">优化</h2>
+//一组Stream contact(连接)
++ (__kindof RACStream *)concat:(id&lt;NSFastEnumeration&gt;)streams
 
-<h3 id="toc_5">功能级别优化</h3>
+//用初始值开始reduce 返回每次block之后的结果
+- (__kindof RACStream *)scanWithStart:(id)startingValue reduceWithIndex:(id (^)(id, id, NSUInteger))reduceBlock
 
-<p>main（）函数开始执行后，到首屏渲染完成前只处理首屏相关的业务，其他非首屏业务的初始化、监听注册、配置文件读取等都放到首屏渲染完成后去做</p>
+//忽略不符合条件的
+- (__kindof RACStream *)takeUntilBlock:(BOOL (^)(id x))predicate
+- (__kindof RACStream *)takeWhileBlock:(BOOL (^)(id x))predicate
 
-<h3 id="toc_6">方法级别的优化</h3>
+//忽略不符合条件的 直到第一个符合条件的
+- (__kindof RACStream *)skipUntilBlock:(BOOL (^)(id x))predicate
+- (__kindof RACStream *)skipWhileBlock:(BOOL (^)(id x))predicate
 
-<p>即检查首屏渲染完成前主线程有哪些耗时的方法，将耗时方法滞后或者异步。</p>
-
-<blockquote>
-<p>常见的耗时方法通常是计算大量数据时，即加载、编辑、存储图片和文件等资源时，但是也有可能为其它方法类似load方法太多的堆积耗时</p>
-</blockquote>
-
-<h4 id="toc_7">1. 定时抓取主线程上的方法堆栈，计算一段时间内各个方法的耗时</h4>
-
-<p>Xcode中的Time Profiler就是这种方式</p>
-
-<p>这种方法需要考虑设置抓取的定时间隔，间隔长了会漏掉一些方法，导致检查出来耗时不准确；而设置的短了，抓取堆栈方法本身调用过多也会影响整体耗时，导致结果不准确</p>
-
-<p>一般将时间设置为0.01s，这样对整体耗时影响小，虽然此时很多耗时方法不准确了，但是因为整体耗时更加重要，这也是够用的</p>
-
-<h4 id="toc_8">2. 对obcc_msdSend方法进行hook掌握所有方法的执行耗时</h4>
-
-<p>hook <code>objc_msgSend</code>优点是非常精确，而缺点即只能针对OC方法，对C方法和block方法需要使用<code>libffi</code>的<code>ffi_call</code>来hook了，但是编写维护相关工具门槛较高</p>
-
-<p><strong>原理</strong>:<br/>
-OC中的每个对象都会指向一个类，每个类也都有一个方法类表，方法列表中的方法由<code>selector</code>函数指针<code>metadata</code>组成，objc_msgSend就是在运行时根据对象和方法的selector去找相应的函数指针，然后执行，然后执行，因此objc_msgSend是OC放大执行的必经之路<br/>
-objc_msgSend调用频率最高，本身是用汇编语言写的，可以提高app生命周期的性能，也可以实现未知参数跳转到任意函数指针的功能</p>
-
-<h2 id="toc_9">Hook objc_msgSend方法</h2>
-
-<p>Fackbook开源了一个库，可以再iOS上运行的Mach-O二进制文件中动态地重新绑定符号，<strong>fishhook</strong><a href="https://github.com/facebook/fishhook">源码地址</a></p>
-
+//忽略未改变值的改变
+- (__kindof RACStream *)distinctUntilChanged
+</code></pre>
 
 
 		</div>
@@ -188,8 +182,10 @@ objc_msgSend调用频率最高，本身是用汇编语言写的，可以提高ap
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -203,7 +199,7 @@ objc_msgSend调用频率最高，本身是用汇编语言写的，可以提高ap
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -299,31 +295,31 @@ objc_msgSend调用频率最高，本身是用汇编语言写的，可以提高ap
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

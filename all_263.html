@@ -82,66 +82,155 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14872918920673.html">并发编程中的问题</a></h1>
-			<p class="meta"><time datetime="2017-02-17T08:38:12+08:00" 
-			pubdate data-updated="true">2017/2/17</time></p>
+		  	<h1 class="entry-title"><a href="14901598468257.html">隐式动画</a></h1>
+			<p class="meta"><time datetime="2017-03-22T13:17:26+08:00" 
+			pubdate data-updated="true">2017/3/22</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>使用并发编程会带来许多陷阱<br/>
-优先级反转:也就是说低优先级的线程一直阻塞着高优先级的线程</p>
+		  	<p>我们在前面介绍了图层的相关知识,现在我们开始学本次的重点<strong>动画</strong><br/>
+<strong>注意</strong><br/>
+<code>CALayer</code>呈现图层&lt;--&gt;模型图层<br/>
+我们在创建<code>CALayer</code>对象存储了我们设置的属性值（只是存值所以是模型图层）,但是模型图层显示或者说是呈现时就会基于模型图层创建一个呈现图层,然后我们所能看到的都是基于这个呈现图层的.</p>
 
-<h4 id="toc_0">1.资源共享</h4>
+<h3 id="toc_0">事务</h3>
 
-<p>并发编程中许多问题的根源就是在多线程中访问共享资源。资源可以是一个属性、一个对象，通用的内存、网络设备或者一个文件等等。<br/>
-这里我们举了一个<a href="https://en.wikipedia.org/wiki/Race_condition#Software">竞态条件</a>的例子:<br/>
-<img src="media/14872918920673/14872931592764.jpg" alt=""/><br/>
-这个时候我们需要保证线程B必须等线程A访问完该共享资源才会开始访问共享资源.这时候我们需要一种互斥机制:</p>
+<p><code>Core Animation</code>基于一个假设，说屏幕上的任何东西都可以（或者可能）做动画。动画并不需要你在<code>Core Animation</code>中手动打开，相反需要明确地关闭，否则他会一直存在。</p>
 
-<h4 id="toc_1">2.互斥锁</h4>
+<p>当我们改变了<code>CALayer</code>的一个可做动画的属性时,但是他并不会立刻在屏幕上显示出来。它默认会从先前的值平滑过渡到新值,不需要做额外操作。这就是<code>隐式动画</code>,之所以叫<strong><code>隐式</code>是因为我们并没有指定任何动画的类型</strong>.我们改变属性之后是<code>Core Animation</code>来决定如何并且何时去做动画（这是隐式当然也可以显式动画）.</p>
 
-<p><strong>互斥访问的意思就是同一时刻，只允许一个线程访问某个特定资源</strong><br/>
-首先需要获得一个共享资源的互斥锁，一旦某个线程对资源完成了操作，就释放掉这个互斥锁，这样别的线程就有机会访问该共享资源<br/>
-<img src="media/14872918920673/14872933923493.jpg" alt=""/><br/>
-因为现代 CPU 为了优化目的，往往会改变向内存读写数据的顺序（<a href="https://en.wikipedia.org/wiki/Out-of-order_execution">乱序执行</a>）因此还需要解决代码无序执行所带来的问题。如果不能确保 CPU 访问内存的顺序跟编程时的代码指令一样，那么仅仅依靠互斥访问是不够的。为了解决由 CPU 的优化策略引起的副作用，还需要引入<a href="https://en.wikipedia.org/wiki/Memory_barrier">内存屏障</a>。通过设置内存屏障，来确保没有无序执行的指令能跨过屏障而执行。</p>
+<p>隐式动画的动画执行的时间取决于当前<code>事务</code>的设置，动画类型取决于图层行为。</p>
 
-<p>(<a href="https://en.wikipedia.org/wiki/Lock_%28computer_science%29#Granularity">锁的竞争</a>是这样产生的：当一个或者多个线程尝试获取一个已经被别的线程获取过了的锁)<br/>
-获取和释放锁所是要带来开销的，因此你需要确保你不会频繁地进入和退出临界区段（比如获取和释放锁）。同时，如果你获取锁之后要执行一大段代码，这将带来锁竞争的风险：其它线程可能必须等待获取资源锁而无法工作。</p>
+<p><code>事务</code>是<strong><code>Core Animation</code>用来包含一系列属性动画集合的机制</strong>，当用事务去改变可以做动画的图层属性都不会立刻变化,而是等到这个事务提交之后,才开始图层属性过渡到新值的动画.</p>
 
-<p>对于你的代码会如何在多核上运行的预测往往十分重要，你可以使用 Instrument 的 CPU strategy view 来检查是否有效的利用了 CPU 的可用核数，进而得出更好的想法，以此来优化代码。</p>
+<p>我们用<code>CATransaction</code>类来管理<code>事务</code>,这个类管理的事务并不能访问,也没有属性或者实例方法，并且也不能用<code>+alloc</code> 和<code>-init</code>方法创建它。但是可以用 <code>+begin</code> 和 <code>+commit</code> 分别来入栈或者出栈。</p>
 
-<h4 id="toc_2">3.死锁</h4>
+<p>任何可以做动画的图层属性的改变都会被添加到目前<code>栈顶</code>的<code>事务</code>中.我们可以用<code>+setAnimationDuration:</code>设置 或者<code>+animationDuration</code>获取当前的栈顶事务的动画时间(默认0.25秒)</p>
 
-<p>互斥锁解决了竞态条件的问题，但很不幸同时这也引入了一些其他问题，其中一个就是死锁。当多个线程在相互等待着对方的结束时，就会发生死锁，这时程序可能会被卡住。<br/>
-<img src="media/14872918920673/14872940417124.jpg" alt=""/><br/>
-你在线程之间共享的资源越多，你使用的锁也就越多，同时程序被死锁的概率也会变大。这也是为什么我们需要尽量减少线程间资源共享，并确保共享的资源尽量简单的原因之一。建议阅读一下底层<a href="https://objccn.io/issue-2-3/">并发编程 API</a> 中的全部使用异步分发一节。</p>
+<p><code>Core Animation</code>会在每个<code>run loop</code>周期中自动开始一次新的事务,，即使你不显式的用<code>[CATransaction begin]</code> 开始一次事务，任何在一次<code>run loop</code>循环中属性的改变都会被集中起来，然后做一次0.25秒的动画。  </p>
 
-<h4 id="toc_3">4.资源饥饿（Starvation）</h4>
+<pre><code class="language-objectivec">/*我们在设置某个属性动画的事务属性（比如时间）时,我们通常会自己创建一个新的事务,
+否则会有可能影响到事务中其他属性动画*/
+[CATransaction begin];
+//set the animation duration to 1 second
+[CATransaction setAnimationDuration:1.0];
 
-<p>锁定的共享资源会引起<a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writers_problem">读写问题</a>，大多数情况下，限制资源一次只能有一个线程进行读取访问其实是非常浪费的。因此，在资源上没有写入锁的时候，持有一个读取锁是被允许的。这种情况下，如果一个持有读取锁的线程在等待获取写入锁的时候，其他希望读取资源的线程则因为无法获得这个读取锁而导致<a href="https://en.wikipedia.org/wiki/Starvation_(computer_science)">资源饥饿</a>的发生。</p>
+self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
+//commit the transaction
+[CATransaction commit];
+</code></pre>
 
-<p>为了解决这个问题，我们需要使用一个比简单的读/写锁更聪明的方法，例如给定一个 <a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writer_lock">writer preference</a>，或者使用 <a href="https://en.wikipedia.org/wiki/Read-copy-update">read-copy-update</a> 算法。Daniel 在底层并发编程 API 中有介绍了如何用 GCD 实现一个多读取单写入的模式，这样就不会被写入资源饥饿的问题困扰了。</p>
+<p><strong>补充</strong><br/>
+<code>UIView</code>有两个方法，<code>+beginAnimations:context:</code>和<code>+commitAnimations</code>，就是通过设置 <code>CATransaction</code>实现的,至于UIView的另外一个<code>+animateWithDuration:animations:</code>，只是将这些属性动画做成了一个block以避免开发者由于对<code>+begin</code> 和<code>+commit</code> 匹配的失误.</p>
 
-<h4 id="toc_4">5.优先级反转</h4>
+<h3 id="toc_1">完成块</h3>
 
-<p><code>优先级反转</code>是指程序在运行时低优先级的任务阻塞了高优先级的任务，有效的反转了任务的优先级。由于 GCD 提供了拥有不同优先级的后台队列，甚至包括一个 I/O 队列，所以我们最好了解一下优先级反转的可能性。</p>
+<p>我们在做基于<code>UIView</code>的<code>block</code>动画时可以在动画结束时提供一个完成动作. <br/>
+<code>CATranscation</code>接口提供的<code>+setCompletionBlock:</code>方法也有同样的功能。</p>
 
-<blockquote>
-<p>高优先级和低优先级的任务之间共享资源时，就可能发生优先级反转。当低优先级的任务获得了共享资源的锁时，该任务应该迅速完成，并释放掉锁，这样高优先级的任务就可以在没有明显延时的情况下继续执行。然而高优先级任务会在低优先级的任务持有锁的期间被阻塞。如果这时候有一个中优先级的任务(该任务不需要那个共享资源)，那么它就有可能会抢占低优先级任务而被执行，因为此时高优先级任务是被阻塞的，所以中优先级任务是目前所有可运行任务中优先级最高的。此时，中优先级任务就会阻塞着低优先级任务，导致低优先级任务不能释放掉锁，这也就会引起高优先级任务一直在等待锁的释放。</p>
+<pre><code class="language-objectivec">[CATransaction begin];
+[CATransaction setAnimationDuration:1.0];
+[CATransaction setCompletionBlock:^{
+//rotate the layer 90 degrees
+CGAffineTransform transform = self.colorLayer.affineTransform;
+transform = CGAffineTransformRotate(transform, M_PI_2);
+self.colorLayer.affineTransform = transform;
+}];
+self.colorLayer.backgroundColor = [UIColor redColor];
+[CATransaction commit];
+/**
+注意旋转动画要比颜色渐变快得多，这是因为完成块是在颜色渐变的事务提交并出
+栈之后才被执行，于是，用默认的事务做变换，默认的时间也就变成了0.25秒。
+*/
+</code></pre>
 
-<p>解决这个问题的方法，通常就是不要使用不同的优先级。通常最后你都会以让高优先级的代码等待低优先级的代码来解决问题。当你使用 GCD 时，总是使用默认的优先级队列（直接使用，或者作为目标队列）。如果你使用不同的优先级，很可能实际情况会让事情变得更糟糕。</p>
-</blockquote>
+<h3 id="toc_2">图层行为</h3>
 
-<p><img src="media/14872918920673/14872951554551.jpg" alt=""/></p>
+<p><code>UIKit</code>默认禁用了隐式动画.即UIView把它关联的图层属性改编动画特性关闭了</p>
 
-<h3 id="toc_5">总结:</h3>
+<p>我们先来看一下<code>隐式动画</code>是怎么实现的:<br/>
+<strong>我们把改变属性时<code>CALayer</code>自动应用的动画称作<code>行为</code>.</strong><br/>
+当我们改变了<code>CALayer</code>的属性时，会调用<code>-actionForKey:</code>方法，传递属性的名称。然后</p>
 
-<p>我们希望通过本文你能够了解到并发编程带来的复杂性和相关问题。并发编程中，无论是看起来多么简单的 API ，它们所能产生的问题会变得非常的难以观测，而且要想调试这类问题往往也都是非常困难的。</p>
+<ul>
+<li>图层首先检测它是否有委托，并且是否实现 CALayerDelegate 协议指定的 <code>-actionForLayer:forKey</code> 方法。如果有，直接调用并返回结果。</li>
+<li>如果没有委托，或者委托没有实现<code>-actionForLayer:forKey</code>方法，图层接着检查包含属性名称对应行为映射的<code>actions</code>字典。</li>
+<li>如果<code>actions</code>字典 没有包含对应的属性，那么图层接着在它的<code>style</code>字典接着搜索属性名。</li>
+<li>最后，如果在 <code>style</code> 里面也找不到对应的行为，那么图层将会直接调用定义了每个属性的标准行为的<code>-defaultActionForKey:</code>方法。</li>
+</ul>
 
-<p>但另一方面，并发实际上是一个非常棒的工具。它充分利用了现代多核 CPU 的强大计算能力。在开发中，关键的一点就是尽量让并发模型保持简单，这样可以限制所需要的锁的数量。</p>
+<p><code>-actionForKey:</code>是用来找这个属性对应的动画(action),要么返回空（这种情况下将不会有动画发生），要么是<code>CAAction</code>协议对应的对象，最后<code>CALayer</code>拿这个结果去对先前和当前的值做动画。</p>
 
-<p>我们建议采纳的安全模式是这样的：<br/>
-<strong>从主线程中提取出要使用到的数据，并利用一个操作队列在后台处理相关的数据，最后回到主队列中来发送你在后台队列中得到的结果。使用这种方式，你不需要自己做任何锁操作，这也就大大减少了犯错误的几率。</strong></p>
+<p>UIKit禁用隐式动画的方法就是,：每个<code>UIView</code> 对它关联的图层都扮演了一个委托，并且提供了<code>-actionForLayer:forKey</code> 的实现方法。当不在一个动画块的实现中，<code>UIView</code> 对所有图层行为返回 <code>nil</code>，但是在动画<code>block</code>范围之内，它就返回了一个非空值。</p>
+
+<p><strong>注意</strong></p>
+
+<ol>
+<li>这里所说的关联是指UIView关联的图层即宿主图层,而对于其他add的图层并不是关联的图层所以是没有禁用隐式动画的</li>
+</ol>
+
+<p>当然对于<code>CATransacition</code>我们可以用<code>+setDisableActions:</code>来选择关闭/打开隐式动画<br/>
+<code>[CATransaction setDisableActions:YES]; //关闭隐式动画</code></p>
+
+<ul>
+<li>UIView 关联的图层禁用了隐式动画，对这种图层做动画的办法就是使用 <code>UIView</code> 的动画函数（而不是依赖 <code>CATransaction</code> ），或者继承 <code>UIView</code> ，并覆盖<code>-actionForLayer:forKey:</code>方法，或者直接创建一个显式动画（具体细节见第八章）。</li>
+<li>对于单独存在的图层，我们可以通过实现图层的<code>-actionForLayer:forKey:</code>委托方法，或者提供一个<code>actions</code> 字典来控制隐式动画(actions 字典可以写更少的代码)。</li>
+</ul>
+
+<p><code>行为</code>通常是一个被Core Animation隐式调用的显式动画对象。<br/>
+我们来改变一个图层属性的行为:</p>
+
+<pre><code class="language-objectivec">/**
+我们使用的是一个实现了 CATransaction 的实例，叫做推进过渡
+改变了CALayer的背景颜色属性行为.改变背景颜色，新的色块都是从左侧滑入，
+而不是默认的渐变效果
+*/
+CATransition *transition = [CATransition animation];
+transition.type = kCATransitionPush;
+transition.subtype = kCATransitionFromLeft;
+self.colorLayer.actions = @{@&quot;backgroundColor&quot;: transition};
+//add it to our view
+[self.layerView.layer addSublayer:self.colorLayer];
+</code></pre>
+
+<h3 id="toc_3">呈现与模型</h3>
+
+<p>我们在改变一个<code>CALayer</code>的属性时，属性值确实会立即更新(这个属性值在设置时就会立刻生效)但是苹果并没有立即呈现出来。</p>
+
+<p>当设置<code>CALayer</code>的属性，实际上是在定义当前事务结束之后图层如何显示的<code>模型</code>。而<code>Core Animation</code>则负责根据图层<code>行为</code>和<code>事务设置</code>去更新视图的这些属性在屏幕上的状态.</p>
+
+<p>我们的手机屏幕是每60秒重绘一次,如果我们要做的动画时长大于1/60,就需要在新值之前对屏幕重绘,即知道当前属性值.<strong>每个图层属性的显示值都被存储在一个叫做呈现图层的独立图层当中</strong>,可以通过<code>-presentationLayer</code>方法来访问.</p>
+
+<p>图层树(模型图层树)&lt;---&gt;呈现树:呈现树通过图层树中所有图层的呈现图层所形成。只有在图层首次在屏幕上呈现时候才会被创建,在之前获取呈现图层时会返回nil的.</p>
+
+<p>在模型图层上调用<code>- presentationLayer</code>能获取呈现图层,同样的调用<code>–modelLayer</code>是会获取模型图层(通常是self).</p>
+
+<p><img src="media/14901598468257/14903368056823.jpg" alt=""/></p>
+
+<p>通常我们只需要和模型图层交互即可让<code>Core Animation</code>更新显示.<br/>
+但是以下两种情况下呈现图层会很有效：  </p>
+
+<ul>
+<li>实现一个基于定时器的动画,而不仅仅是基于事务的动画，这个时候准确地知道在某一时刻图层显示在什么位置就会对正确摆放图层很有用了。</li>
+<li>如果你想让你做动画的图层响应用户输入，你可以使用<code>-hitTest:</code>方法来判断指定图层是否被触摸，这时候对呈现图层而不是模型图层调用 <code>-hitTest:</code> 会显得更有意义</li>
+</ul>
+
+<pre><code class="language-objectivec">- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    //get the touch point
+    CGPoint point = [[touches anyObject] locationInView:self.view];
+    //check if we&#39;ve tapped the moving layer
+    if ([self.colorLayer.presentationLayer hitTest:point]) {
+        self.colorLayer.backgroundColor = [UIColor redColor].CGColor;
+    } else {
+        //otherwise (slowly) move the layer to new position
+        [CATransaction begin];
+        [CATransaction setAnimationDuration:4.0];
+        self.colorLayer.position = point;
+        [CATransaction commit];
+    }
+}
+</code></pre>
 
 
 		</div>
@@ -164,8 +253,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -179,7 +270,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -275,31 +366,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

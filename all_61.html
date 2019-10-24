@@ -82,103 +82,87 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15487460996181.html">Refs</a></h1>
-			<p class="meta"><time datetime="2019-01-29T15:14:59+08:00" 
-			pubdate data-updated="true">2019/1/29</time></p>
+		  	<h1 class="entry-title"><a href="15541349160713.html">常用工程架构</a></h1>
+			<p class="meta"><time datetime="2019-04-02T00:08:36+08:00" 
+			pubdate data-updated="true">2019/4/2</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>在React中我们的数据流是从上至下，通过传递给子组件<code>props</code>来重新渲染它</p>
+		  	<p>学习自<a href="https://github.com/ming1016/study/wiki/%E6%9E%84%E5%BB%BAiOS%E7%A8%B3%E5%AE%9A%E5%BA%94%E7%94%A8%E6%9E%B6%E6%9E%84%E6%97%B6%E6%96%B9%E6%A1%88%E9%80%89%E6%8B%A9%E7%9A%84%E6%80%9D%E8%80%83">构建iOS稳定应用架构时方案选择的思考</a></p>
 
-<p>但是，有时候我们需要获取某些组件或者DOM元素，强制修改,这时我们可以使用<code>Refs</code></p>
+<p>主要分为基础层和展现层两大层结构,主要思想是将基础层的最下一层当做零部件，将业务层最下层当做组装大部件，通过流程串起来形成一个完整的产品，做零件时按照做出一个就扔进对应基础层的篮子里思路来，目录结构也可以按照这种来进行。这两大层的最下层按照零件拆得越小越容易应对需求变化越容易保护巩固上层的思路来就好。</p>
 
-<p>我们应该使用声明式实现，避免使用<code>refs</code>，尽量只在一下几种情况下使用:</p>
+<pre><code class="language-text">基础层
+－ 网络
+－－ 收发数据
+－－－单例（持续使用数据）
+－－－本地（缓存和持续化存储数据对业务的封装输出）
+－－－单次使用（API接口Model封装输出和业务逻辑封装的ViewModel，将这些做为业务零件）
+－ 存储
+－－－ NSUserDefault（对轻量需要存储的添加下一层业务零件封装）
+－－－ keychain（对安全级别较高需要存储的添加下一层业务零件封装）
+－－－ 文件存储（对时效需求短的需要存储的添加下一层业务零件封装）
+－－－ 数据库存储（对数据量大的需要存储的添加下一层业务零件封装，业务层上一层加一层封装CoreData或SQLite方便日后切换数据库用）
+－ 动画（下层将动画框架输出成各个可以复用的动画功能小零件）
+－ 视图风格
+－ 列表控件
+－－ 上拉加载更多
+－－ 下拉刷新
+－－ GuideView
+－ WebView控件
+－ AlertView
+－ iOS系统空间封装
+－－ 拍照控件
+－－ 通讯录
+－ 二维码
+－ 语音
+－ 安全
+－ 支付
+－ 统计
+－ 日志
 
-<ul>
-<li>处理焦点、文本选择或媒体控制</li>
-<li>触发强制动画</li>
-<li>集成第三方 DOM 库</li>
-</ul>
-
-<h2 id="toc_0">添加Ref</h2>
-
-<pre><code class="language-javascript">import React from &quot;react&quot;
-
-class CustomTextInput extends React.Component {
-
-    constructor(props) {
-        super(props)
-        this.focus = this.focus.bind(this)
-    }
-
-    focus() {
-        this.textInput.focus()
-    }
-
-    render() {
-        return(
-            &lt;div&gt;
-                //通过ref设置textInput 为此DOM元素
-                &lt;input type=&quot;text&quot; ref={input =&gt; this.textInput = input} &gt;&lt;/input&gt;
-                &lt;input type=&quot;button&quot; value=&quot;获得焦点&quot; onClick={this.focus} &gt;&lt;/input&gt;
-            &lt;/div&gt;
-        )
-    }
-
-}
-
-export default  CustomTextInput
+展现层
+－ 首页
+－－ 订阅
+－－ 扫描二维码
+－－ 发布视频
+－ 列表
+－－ 时间轴列表
+－－－ Listview头部封面
+－－－ 外链情况Cell
+－－－ 图片Cell
+－－－ 广告插入Cell
+－－－ 留言评论
+－－－ 赞区域
+－－ 我的列表
+－－ 订阅列表
+－－ 文章列表
+－ 详细页
+－－ 分享
+－－ 内容区
+－－ 评论
+－ 登录
+－－ 注册
+－－ 登录
+－－ 忘记密码
+－－ 条款
+－－ 上传头像
+－－ 个人信息修改
 </code></pre>
 
-<p><code>ref={input =&gt; this.textInput = input}</code>  ref属性 会在DOM元素加载时将此元素传入ref,卸载时传入null</p>
+<p>基础层中各个模块上层可以使用类似CocoaPod或Cathage方式，下一层再对其引用进行业务封装。</p>
 
-<blockquote>
-<p>这种声明方式只对DOM元素和用class声明的组件有效<br/>
-在函数式组件上，因为没有实例，所以不能使用ref属性</p>
-</blockquote>
+<p>这里注意最下层需要拆的粒度越细越好。减少横向依赖。类似Common这样的东西可以拆到基础层的对应模块里，比如说配置文件里和统计相关的放到基础层的统计里，网络相关的放到网络里，颜色字体放到视图风格里，不要都堆在一个文件里。<strong>再或者是各种第三方的Category也放到对应的组里，比如说UIView+Additions和UIColor+Expanded就放到视图风格这个模块中，不要专门搞个Category放所有的Category。</strong></p>
 
-<h2 id="toc_1">对父组件暴露DOM节点</h2>
+<h2 id="toc_0">MVVM</h2>
 
-<p>当我们想要向从父组件访问子组件节点时,我们可以将传递给子组件一个特殊的函数属性,然后将这个函数属性作为ref属性传入子节点，可以通过这个函数将子节点赋值给父节点的属性</p>
+<p>MVVM正好介于VIPER和MVCS之间，从ViewController里拆出来的ViewModel能够将数据经过逻辑处理用于View的显示，View有操作用过ReactiveCocoa将信号传给ViewModel来处理。</p>
 
-<pre><code class="language-javascript">class CustomTextInput extends React.Component {
-    render() {
-        return(
-            &lt;div&gt;
-                &lt;input type=&quot;text&quot; ref={this.props.inputRef} &gt;&lt;/input&gt;
-            &lt;/div&gt;
-        )
-    }
+<p>MVVM按照先前对应用的结构分层，会将View和ViewController放到展现层的最下面的两层里，将ViewModel和Model放到基础层对应模块的最下面一层中。最后要说的是无论选择哪种，只要是按照减少ViewController大小，将改胖的地方放到Model或View都是可以的，</p>
 
-}
+<p>一个模块很简单就用MVC，一般复杂就用MVVM，要是项目本身业务非常庞大可以整体采用VIPER来进行ViewController的完全拆分。</p>
 
-class ParentCompnent extends React.Component {
-    constructor(props) {
-        super(props)
-        this.focus = this.focus.bind(this)
-    }
-
-    focus() {
-        this.textInput.focus()
-    }
-    render() {
-        return(
-            &lt;div&gt;
-                &lt;input type=&quot;button&quot; value=&quot;获得焦点&quot; onClick={this.focus} &gt;&lt;/input&gt;
-                &lt;CustomTextInput inputRef={refCom =&gt; this.textInput = refCom}&gt;&lt;/CustomTextInput&gt;
-            &lt;/div&gt;
-        )
-    }
-}
-
-export default  ParentCompnent
-</code></pre>
-
-<p><code>&lt;CustomTextInput inputRef={refCom =&gt; this.textInput = refCom}&gt;&lt;/CustomTextInput&gt;</code>设置子组件的ref属性回调此函数，将子组件设置为父组件的<code>this.textInput</code>属性</p>
-
-<blockquote>
-<p>如果有更深的层级结构 我们只需要一级一级传递即可</p>
-</blockquote>
+<p><img src="media/15541349160713/15541355614614.jpg" alt="" style="width:773px;"/></p>
 
 
 		</div>
@@ -201,8 +185,10 @@ export default  ParentCompnent
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -216,7 +202,7 @@ export default  ParentCompnent
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -312,31 +298,31 @@ export default  ParentCompnent
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

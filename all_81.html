@@ -82,75 +82,254 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15470311819265.html">解构</a></h1>
-			<p class="meta"><time datetime="2019-01-09T18:53:01+08:00" 
-			pubdate data-updated="true">2019/1/9</time></p>
+		  	<h1 class="entry-title"><a href="15477172571640.html">React元素&组件</a></h1>
+			<p class="meta"><time datetime="2019-01-17T17:27:37+08:00" 
+			pubdate data-updated="true">2019/1/17</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">对象解构</h2>
+		  	<h2 id="toc_0">元素</h2>
 
-<p>为了方便一次性取出对象中的多个值,而不需要一一的取值赋值</p>
+<p>React元素是普通的对象,其与浏览的的DOM元素不同，而<code>React DOM</code>的作用是确保浏览器的数据内容与React元素保持一致</p>
 
-<pre><code class="language-javascript">const fk = {
-    name: &quot;fankai&quot;,
-    age: 26,
-    family: {
-        farther: &quot;fkfarther&quot;,
-        mother: &quot;fkmother&quot;,
-        brother: &quot;lyy&quot;
-    }
+<p>通常我们设置一个 id为root的div 将其内容都由<code>React DOM</code>来管理,就称之为根节点</p>
+
+<h3 id="toc_1">元素渲染</h3>
+
+<p>React元素是<strong>不可变</strong>的,当被创建后无法改变其内容和属性，我们可以通过设置不同的react元素挂载到根节点来更新界面</p>
+
+<pre><code class="language-javascript">function tick() {
+    const element = (
+        &lt;div&gt;
+            &lt;h1&gt; hello lyy!&lt;/h1&gt;
+            &lt;h2&gt; It is {new Date().toLocaleTimeString()}&lt;/h2&gt;
+        &lt;/div&gt;
+    )
+    ReactDOM.render(element, document.getElementById(&#39;root&#39;))
+}
+
+setInterval(() =&gt; {
+    tick()
+}, 1000);
+</code></pre>
+
+<p>但是我们通常在项目中只挂载一次,因此我们想要更新元素,就需要使用到<strong>有状态组件</strong></p>
+
+<blockquote>
+<p>ReactDOM为了节约性能 会比较前后元素的不同后，只会渲染改变的部分,因此对于上面的例子 即使每秒钟都创建了新的元素 也只会渲染改变的部分而不是整个页面</p>
+</blockquote>
+
+<h2 id="toc_2">组件</h2>
+
+<p>组件是一个或者多个React元素的组合,接受任意的输入值(props)在页面上进行展示</p>
+
+<p>定义组件方法:</p>
+
+<p><code>{name: &quot;liyuyuan&quot;}</code>作为<code>props</code>传给新的组件</p>
+
+<pre><code class="language-javascript">//使用函数
+function Welcome(props) {
+  return &lt;h1&gt;Hello, {props.name}&lt;/h1&gt;
+}
+
+//使用class
+class Welcome extends React.Component {
+  render() {
+    return &lt;h1&gt;Hello, svg, {this.props.name}&lt;/h1&gt;
+  }
+    
+    //设置挂载点为 Welcome 组件 
+  ReactDOM.render(&lt;Welcome name=&quot;liyuyuan&quot;/&gt;, document.getElementById(&#39;root&#39;));
+
 }
 </code></pre>
 
-<p>常用的对象解构</p>
+<p>组件也可以作为<code>React</code>元素</p>
 
-<pre><code class="language-javascript">const {name, age} = fk
-console.log(name) //fankai
-console.log(name) //26
+<pre><code class="language-javascript">  const element = &lt;Welcome name=&quot;zhe shi shen me?&quot; /&gt;
 
-//当变量已经被声明过
-let name
-//使用括号括起来 否则js会认为是语句
-({name, age} = fk)
 </code></pre>
 
-<p>使用与属性名不同的变量名</p>
+<p>组件返回只能为一个根元素，因此需要把这几个元素用<code>div</code>进行包裹</p>
 
-<pre><code class="language-javascript">const {farther: far, mother: mon, brother} = fk.family
-console.log(far)
+<pre><code class="language-javascript">function WelcomeTest(props) {
+  return (
+    &lt;div&gt;
+        &lt;Welcome name=&quot;zhe 第一行?&quot; /&gt;
+        &lt;Welcome name=&quot;zhe 第二行&quot; /&gt;
+        &lt;Welcome name=&quot;zhe 第三行&quot; /&gt;
+
+    &lt;/div&gt;
+  )
+}
 </code></pre>
 
-<p>当变量对应属性不存在时(即必须为undefined),使用默认值</p>
+<h3 id="toc_3">Props属性是只读的</h3>
 
-<pre><code class="language-javascript">const {farther, sister = &quot;hava no sisiter&quot;} = fk.family
-console.log(sister) //hava no sisiter
+<p>组件不能修改自己的<code>props</code>，意思是不能改变自己的输入值,当输入值相同时一定得到相同的输出结果(纯函数)</p>
+
+<h2 id="toc_4">条件渲染</h2>
+
+<p>可以根据条件渲染不同的组件</p>
+
+<pre><code class="language-javascript">render() {
+    let element
+    if(true) {
+        element = &lt;a href=&quot;#&quot; onClick={this.actionClick}&gt; Click Me &lt;/a&gt;
+    } else {
+        element = &lt;a href=&quot;http://www.baidu.com&quot; onClick={this.actionClick}&gt; Click Me &lt;/a&gt;
+    }
+    return element
+    
+}
 </code></pre>
 
-<h3 id="toc_1">数组解构</h3>
+<p>在jsx代码中嵌入逻辑js代码和React元素 条件渲染元素</p>
 
-<p>可以一次性从数组中取出多个值</p>
+<pre><code class="language-javascript">render() {
+    return(
+        &lt;div&gt;
+            {true &amp;&amp; &lt;h1&gt; 条件渲染 &lt;/h1&gt;}
+        &lt;/div&gt;
+    )
+}
+</code></pre>
 
-<pre><code class="language-javascript">const numbers = [&quot;one&quot;, &quot;two&quot;, &quot;three&quot;, &quot;four&quot;]
+<p>条件性不渲染元素</p>
 
-//数组解构
-const [a, b] = numbers
-console.log(a) //one
-console.log(b) //two
+<pre><code class="language-javascript">    render() {
+        if (true) {
+            return null
+        } else {
+            return (
+                &lt;h1&gt;条件渲染&lt;/h1&gt;
+            )
+        }
+        
+    }
+</code></pre>
 
-//如果有可以用空,来越过数组中变量
-const [m, ,n] = numbers
-console.log(m) //one
-console.log(n) //three
+<blockquote>
+<p>当不渲染元素时 可以返回null<br/>
+当返回null时 并不影响组件的声明周期函数</p>
+</blockquote>
 
-//...onthers 来获取剩下所有值
-const [c, ...others] = numbers
-console.log(c) //one
-console.log(others) //[&quot;two&quot;, &quot;three&quot;, &quot;four&quot;]
+<h2 id="toc_5">列表组件</h2>
 
-//当不存在该值 即 该值为undefined时 使用默认值
-const [d, g, , ,f=&quot;five&quot;] = numbers
-console.log(f) //five
+<p>利用js中的map函数 创建一个元素列表组件</p>
+
+<pre><code class="language-javascript">function NumberList(props) {
+    const numbers = props.numbers;
+    const listItems = numbers.map((number) =&gt;
+    //创建一个元素，需要加一个特殊的key值
+      &lt;li key={number.toString()}&gt;{number}&lt;/li&gt;
+    );
+    return (
+      &lt;ul&gt;{listItems}&lt;/ul&gt;
+    );
+}
+</code></pre>
+
+<h3 id="toc_6">元素的key</h3>
+
+<p>我们在创建列表元素时, 当该元素有多个兄弟元素时，需要给元素增加标识即 <code>key</code> ，帮助在DOM中元素发生变化后识别哪些元素发生了变化.元素的key应该在兄弟元素间是唯一的(并不需要全局唯一,即多个非兄弟关系的元素之间key可以相同) 通常使用数据id(如果没有id就用下标index)作为元素的<code>key</code></p>
+
+<pre><code class="language-javascript">const todoItems = todos.map((todo) =&gt;
+  &lt;li key={todo.id}&gt;
+    {todo.text}
+  &lt;/li&gt;
+);
+
+const todoItems = todos.map((todo, index) =&gt;
+  // Only do this if items have no stable IDs
+  &lt;li key={index}&gt;
+    {todo.text}
+  &lt;/li&gt;
+);
+
+//在jsx代码中嵌入js表达式
+function NumberList(props) {
+    const numbers = props.numbers;
+
+    return (&lt;ul&gt;
+        { numbers.map((num) =&gt; (&lt;li key={num}&gt;
+            {2*num}
+        &lt;/li&gt;)) }
+    &lt;/ul&gt;)
+}
+</code></pre>
+
+<h2 id="toc_7">表单</h2>
+
+<h3 id="toc_8">受控组件</h3>
+
+<p>受控组件:即将组件的每个状态改变都有与之相关的处理函数,控制其行为</p>
+
+<h4 id="toc_9">Form</h4>
+
+<p>我们将表单改变为一个可控的组件 将值的改变包括在组件的<code>state</code>中，通过state改变组件的渲染<br/>
+改变submit时会自动刷新页面的行为即阻止默认行为</p>
+
+<pre><code class="language-javascript">export default class FormElement extends React.Component {
+
+    constructor(props) {
+        super(props)
+        this.state = {value: &#39;&#39;};
+
+        this.handleChange = this.handleChange.bind(this)
+        this.handleSubmit = this.handleSubmit.bind(this)
+    }
+
+    handleChange(event) {
+        this.setState({value: event.target.value})
+    }
+    
+    handleSubmit(event) {
+        //阻止提交表单的默认行为
+        event.preventDefault();
+    }
+
+    render() {
+        return(
+            &lt;form  onSubmit={this.handleSubmit}&gt;
+                &lt;label&gt;
+                    Name:
+                    &lt;input type=&quot;text&quot; value={this.state.value} onChange={this.handleChange}&gt;&lt;/input&gt;
+                &lt;/label&gt;
+                &lt;input type=&quot;submit&quot; value=&quot;Submit&quot;&gt;&lt;/input&gt;
+            &lt;/form&gt;
+        )
+    }
+    
+}
+</code></pre>
+
+<blockquote>
+<p>event.preventDefault(); 阻止默认行为</p>
+</blockquote>
+
+<p>当一个控件中存在多个受控元素,我们可以给元素指定<code>name</code>属性，让处理函数根据<code>event.target.name</code>值来选择做什么</p>
+
+<pre><code class="language-javascript">constructor(props) {
+    super(props);
+    this.state = {
+      isGoing: true,
+      numberOfGuests: 2
+    };
+
+    this.handleInputChange = this.handleInputChange.bind(this);
+  }
+
+  handleInputChange(event) {
+    const target = event.target;
+    const value = target.type === &#39;checkbox&#39; ? target.checked : target.value;
+    const name = target.name;
+
+    this.setState({
+    //利用计算属性名 来设置状态值的键
+      [name]: value
+    });
+  }
 </code></pre>
 
 
@@ -174,8 +353,10 @@ console.log(f) //five
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -189,7 +370,7 @@ console.log(f) //five
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -285,31 +466,31 @@ console.log(f) //five
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

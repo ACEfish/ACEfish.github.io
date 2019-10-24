@@ -82,171 +82,278 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15663537912476.html">引用计数</a></h1>
-			<p class="meta"><time datetime="2019-08-21T10:16:31+08:00" 
-			pubdate data-updated="true">2019/8/21</time></p>
+		  	<h1 class="entry-title"><a href="14993105877642.html">闭包</a></h1>
+			<p class="meta"><time datetime="2017-07-06T11:09:47+08:00" 
+			pubdate data-updated="true">2017/7/6</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">引用计数规则</h2>
+		  	<p>闭包是自包含的函数代码块,可以在代码中被传递和使用<br/>
+<code>Swift</code>中的闭包与<code>C</code>和<code>Objective-C</code>中的代码块（<code>blocks</code>）以及其他一些编程语言中的匿名函数比较相似</p>
 
-<h3 id="toc_1">自己生成的对象 自己持有</h3>
-
-<p>使用以下名称开头的方法名，意味自己生成的对象只有自己持有：</p>
-
-<ul>
-<li>alloc</li>
-<li>new</li>
-<li>copy</li>
-<li>mutableCopy</li>
-</ul>
-
-<pre><code class="language-objectivec">id obj = [[NSObject alloc] init]
-id obj = [NSObject new]
-</code></pre>
-
-<p>自己生成并持有对象，指向生成并持有对象的指针被复制给变量<code>obj</code></p>
-
-<h3 id="toc_2">非自己生成的对象 自己也能持有</h3>
-
-<p>用上面👆所述的几个方法之外取得的对象，因为是非自己生成并持有的，所以自己并不是对象的持有者</p>
-
-<pre><code class="language-objectivec">//取得的对象存在 但是自己并不持有该对象
-id obj = [NSMutableArray array]
-
-//自己持有该对象
-[obj  retain]
-</code></pre>
-
-<p>通过<code>retain</code>方法  非自己生成的对象跟用<code>alloc/new/copy/mutablecopy</code>一样，称为自己持有的对象</p>
-
-<h3 id="toc_3">不再需要自己持有的对象时释放</h3>
-
-<p>自己持有的对象，一旦不再需要，持有者有义务释放该对象，释放使用<code>release</code>方法</p>
-
-<ol>
-<li><p>自己生成并持有对象 自己释放</p>
-<pre><code class="language-objectivec">//自己生成并持有对象
-id obj = [[NSObject alloc] init]<br/>
-//释放对象<br/>
-[obj release]<br/>
-/*<br/>
-* 释放对象<br/>
-* 指向对象的指针仍然被保留在变量obj中，貌似能够访问<br/>
-* 但对象一经释放绝对不可访问<br/>
-*/
-</code></pre></li>
-<li><p>非自己生成并持有的对象 也可以通过<code>release</code>释放</p>
-<pre><code class="language-objectivec">//取的对象 但是自己并不持有
-id obj = [[NSObject alloc] init]<br/>
-//自己持有对象<br/>
-[obj retain]<br/>
-//释放对象<br/>
-[obj release]
-</code></pre>
-<p>用retian方法持有的对象 一旦不再寻妖 务必用<code>release</code>方法进行释放</p></li>
-<li><p>调用<code>alloc/new/copy/mutablecopy</code>开头方法生成对象，并将其返回该方法调用方</p>
-<pre><code class="language-objectivec">-(id)allocObject {
-    //自己生成并且持有对象<br/>
-    id obj = [[NSObject alloc] init]<br/>
-    return obj<br/>
-}<br/>
-//自己持有对象<br/>
-id obj1 = [obj0 allocObject]
-</code></pre>
-<p>原封不动的返回alloc方法生成并且持有的对象 就能让调用方也持有该对象<br/>
-<code>allocObject</code>是符合前面的命名规则的  因此调用该方法也能自己生成并且持有该对象</p></li>
-<li><p>调用非<code>alloc/new/copy/mutablecopy</code>开头方法生成对象</p>
-<p>此类型的方法 就是我们常用的<code>[NSArray array]</code>方法类似</p>
-<pre><code class="language-objectivec">-(id)object {
-//自己生成并持有对象<br/>
-id obj = [[NSObject alloc] init]<br/>
-//取得对象存在 但自己不持有对象<br/>
-[obj autorelease]<br/>
-//返回对象<br/>
-return obj<br/>
-}<br/>
-//取得的对象存在 但是自己不持有对象<br/>
-id obj1 = [obj0 object]<br/>
-//自己持有对象<br/>
-[obj1 retain]
-</code></pre>
-<p>使用<code>autorelease</code>方法，可以取得对象存在，但自己不持有对象。<br/>
-<code>autorelease</code>，使对象在超出指定生存范围时 能自动并且正确释放</p>
-<blockquote>
-<p>注意</p>
-<p>这些谁都不持有的对象的方法名不能以<code>alloc/new/copy/mutablecopy</code>开头</p>
-</blockquote></li>
-</ol>
-
-<h3 id="toc_4">无法释放非自己持有的对象</h3>
-
-<p>用<code>alloc/new/copy/mutablecopy</code>开头获得的对象 或者  <code>retain</code>方法持有的对象 持有者是自己<br/>
-当持有者是自己时 在不需要的时候将其释放  除此之外，得到的而对象绝对不能释放</p>
-
-<h2 id="toc_5">alloc/retain/release/dealloc实现过程</h2>
-
-<h3 id="toc_6">GUNStep中的实现方式</h3>
-
-<p>用alloc类方法初始化对象时，初始化开辟内存大小为对象大小加上一个 记录引用计数的结构体大小的空间。</p>
-
-<p>用该结构体中的<code>retained</code>整数来保存引用计数，并将其写到对象内存头部。通过对该结构体中的数值进行操作，来获取、增加、减少引用数值</p>
-
-<ul>
-<li>在<code>Object-C</code>对象存有引用计数这一数值</li>
-<li>调用alloc方法或retain方法 引用计数加1</li>
-<li>调用release后  引用计数减1</li>
-<li>引用计数为0  调用dealloc方法废弃该对象</li>
-</ul>
-
-<h3 id="toc_7">苹果的实现</h3>
-
-<p>在<code>NSObject</code>类方法上设置断点，列出<code>alloc</code>方法执行的函数</p>
-
-<pre><code class="language-objectivec">+alloc
-+allocWithZone
-class_creatInstance
-calloc
-</code></pre>
-
-<p>alloc方法先调用<code>+allocWithZone</code>方法，然后调用运行时中的<code>class_createInstance</code>函数，最后调用<code>calloc</code>来分配内存块</p>
-
-<p><code>retaincount/retain/release</code>操作的实现  apple是维护了以个散列表(引用计数表)来管理引用计数<br/>
-散列表中 键值为内存块地址的散列值</p>
-
-<h2 id="toc_8">autorelease</h2>
-
-<p><code>autorelease</code>像C语言的自动变量那样来对待对象实例，当超出作用域，对象实例release方法被调用，编程人员可以设定变量的作用域</p>
-
-<pre><code class="language-objectivec">NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init]
-id obj = [[NSObject alloc] init]
-[obj autorelease]
-//等效于执行了 [obj release]
-[pool drain]
-</code></pre>
-
-<p>在Cocoa框架中，相当于程序主循环的<code>NSRunLoop</code>或者在其他程序可运行的地方，对<code>NSAutoreleasePool</code>对象进行生成，持有和废弃处理。因此，程序开发者不一定非要使用<code>NSAutoreleasePool</code>对象进行开发处理工作</p>
+<p><strong>闭包可以捕获和存储其所在上下文中任意常量和变量的引用。被称为包裹常量和变量。 Swift 会为你管理在捕获过程中涉及到的所有内存操作。</strong></p>
 
 <blockquote>
-<p>注意:</p>
-
-<p>虽然runloop会自动废弃<code>NSRunloop</code>对象，但是在大量产生对象时 也会产生内存不足的现象，需要在使用完后，手动及时释放对象</p>
+<p>在函数章节中介绍的全局和嵌套函数实际上也是特殊的闭包</p>
 </blockquote>
 
-<p>在cocoa框架中，很多类方法 用于返回autorelease对象</p>
+<p>闭包的形式：</p>
 
-<pre><code class="language-objectivec">id array = [NSMutableArray arrayWithCapacity:1];
-//相当于以下源代码
-id array = [[NSMutableArray arrayWithCapacity:1] autorelease];
+<ul>
+<li>全局函数是一个有名字但不会捕获任何值的闭包</li>
+<li>嵌套函数是一个有名字并可以捕获其封闭函数域内值的闭包</li>
+<li>闭包表达式是一个利用轻量级语法所写的可以捕获其上下文中变量或常量值的匿名闭包</li>
+</ul>
+
+<p>闭包可以进行一定语法优化，常见优化:</p>
+
+<ul>
+<li>利用上下文推断参数和返回值类型</li>
+<li>隐式返回<code>单表达式</code>闭包，即单表达式闭包可以省略<code>return</code>关键字</li>
+<li>参数名称缩写</li>
+<li>尾随闭包语法</li>
+</ul>
+
+<h2 id="toc_0">闭包表达式</h2>
+
+<p>闭包表达式是一种利用简洁语法构建内联闭包的方式。</p>
+
+<h3 id="toc_1">sorted方法</h3>
+
+<p><code>Swift</code>的<code>sorted(by:)</code>方法根据提供的排序的闭包函数.将数组排序后返回一个同样大小排序后的数组,原数组不变</p>
+
+<p><code>let names = [&quot;Chris&quot;, &quot;Alex&quot;, &quot;Ewa&quot;, &quot;Barry&quot;, &quot;Daniella&quot;]</code><br/>
+对于数组这个用于排序的闭包函数类型为<code>(String, String) -&gt; Bool</code>通过返回bool值决定第一个参数在前还是在后</p>
+
+<pre><code class="language-swift">func backward(_ s1: String, _ s2: String) -&gt; Bool {
+    return s1 &gt; s2
+}
+var reversedNames = names.sorted(by: backward)
+// reversedNames 为 [&quot;Ewa&quot;, &quot;Daniella&quot;, &quot;Chris&quot;, &quot;Barry&quot;, &quot;Alex&quot;]
+</code></pre>
+
+<p>为了写<code>return s1 &gt; s2</code>这么简单的表达式却需要写函数太过繁琐,我们可以使用闭包表达式语法</p>
+
+<h3 id="toc_2">闭包表达式语法</h3>
+
+<pre><code class="language-swift">{ (parameters) -&gt; returnType in
+    statements
+}
+</code></pre>
+
+<p>闭包表达式参数 可以是<code>in-out</code>参数，但不能设定默认值。可以使用可变参数但是要放到参数最后</p>
+
+<p>闭包的函数体部分由关键字<code>in</code>引入。该关键字表示闭包的参数和返回值类型定义已经完成，闭包函数体即将开始。（<code>in</code>前为闭包定义,后为闭包函数体）</p>
+
+<pre><code class="language-swift">reversedNames = names.sorted(by: { (s1: String, s2: String) -&gt; Bool in
+    return s1 &gt; s2
+})
+</code></pre>
+
+<h3 id="toc_3">根据上下文推断类型</h3>
+
+<p>因为这个闭包函数的作为方法参数传入,因此其类型已经确定为<code>(String, String) -&gt; Bool</code>,因此我们可以省略这些类型声明,因为可以被正确推断出来</p>
+
+<pre><code class="language-swift">reversedNames = names.sorted(by: { s1, s2 in return s1 &gt; s2 } )
+//我们将闭包作为函数或方法的参数时,其类型总是可以推断出来的
+//推荐完整格式闭包,增加代码可读性
+</code></pre>
+
+<h3 id="toc_4">单表达式闭包隐式返回</h3>
+
+<p>如果闭包内只有一行单一表达式,并且明确了需要的返回类型,可以省略<code>return</code>关键字</p>
+
+<pre><code class="language-swift">//
+reversedNames = names.sorted(by: { s1, s2 in s1 &gt; s2 } )
+</code></pre>
+
+<h3 id="toc_5">参数名称缩写</h3>
+
+<p><code>Swift</code>自动为内联闭包提供了参数名称缩写功能，你可以直接通过<code>$0</code>，<code>$1</code>，<code>$2</code>来顺序调用闭包的参数</p>
+
+<p>如果使用参数名称缩写,那么在闭包定义中也可以省略参数列表,对应的参数名称缩写的类型也可以推断出来,这样的话<code>in</code>关键字也可以省略</p>
+
+<pre><code class="language-swift">//此时闭包表达式只剩下闭包函数体
+reversedNames = names.sorted(by: { $0 &gt; $1 } )
 </code></pre>
 
 <blockquote>
 <p>注意</p>
 
-<p>在OC中 也就是Foundation框架时，无论调用那一个对象的autorelease方法，实现上是调用NSObject类的autorelease实例方法。但是对于NSAutoreleasePool类，该方法已经被重载，因此运行时会报错</p>
+<p>只有在必要中</p>
 </blockquote>
 
-<h3 id="toc_9">autorelease的实现</h3>
+<h3 id="toc_6">运算符方法</h3>
+
+<p><code>Swift</code>的<code>String</code>类型定义了关于大于号<code>（ &gt; ）</code>的字符串实现，其作为一个函数接受两个<code>String</code>类型的参数并返回<code>Bool</code>类型的值。而这正好与<code>sorted(by:)</code>方法的参数需要的函数类型相符合。因此，你可以简单地传递一个大于号，Swift 可以自动推断出你想使用大于号的字符串函数实现：</p>
+
+<pre><code class="language-swift">reversedNames = names.sorted(by: &gt;)
+</code></pre>
+
+<h2 id="toc_7">尾随闭包</h2>
+
+<p>如果要将一个很长的闭包作为函数最后一个参数,可以使用<code>尾随闭包</code>的方式来调用函数<br/>
+尾随闭包是书写在函数圆括号之后的闭包表达式，使用尾随闭包可以不用写出它的参数标签</p>
+
+<pre><code class="language-swift">func someFunctionThatTakesAClosure(closure: () -&gt; Void) {
+    // 函数体部分
+}
+// 以下是不使用尾随闭包进行函数调用
+someFunctionThatTakesAClosure(closure: {
+    // 闭包主体部分
+})
+// 以下是使用尾随闭包进行函数调用
+someFunctionThatTakesAClosure() {
+    // 闭包主体部分
+}
+
+reversedNames = names.sorted() { $0 &gt; $1 }
+//如果闭包函数是函数的唯一参数我们还可以省略（）
+reversedNames = names.sorted { $0 &gt; $1 }
+</code></pre>
+
+<pre><code class="language-swift">//举栗子
+let strings = numbers.map {
+    (number) -&gt; String in
+    var number = number
+    var output = &quot;&quot;
+    repeat {
+        output = digitNames[number % 10]! + output
+        number /= 10
+    } while number &gt; 0
+    return output
+}
+// strings 常量被推断为字符串类型数组，即 [String]
+// 其值为 [&quot;OneSix&quot;, &quot;FiveEight&quot;, &quot;FiveOneZero&quot;]
+</code></pre>
+
+<h2 id="toc_8">值捕获</h2>
+
+<p>闭包可以在被定义的上下文捕获常量或变量,即使定义这些常量和变量的原作用域已经不存在，闭包仍然可以在闭包函数体内引用和修改这些值</p>
+
+<p>最简单的捕获值的闭包形式是嵌套函数</p>
+
+<pre><code class="language-swift">func makeIncrementer(forIncrement amount: Int) -&gt; () -&gt; Int {
+    var runningTotal = 0
+    func incrementer() -&gt; Int {
+        runningTotal += amount
+    return runningTotal
+    }
+    return incrementer
+}
+</code></pre>
+
+<p><code>makeIncrementer</code>的返回类型是<code>() -&gt; Int</code>说明要返回一个函数</p>
+
+<p>对于嵌套函数<code>incrementer()</code>并没有参数，而是捕获了<code>runningTotal</code>和<code>amount</code>变量的引用.捕获引用保证了<code>runningTotal</code>和<code>amount</code>变量在调用完<code>makeIncrementer</code>后不会消失，并且保证了在下一次执行<code>incrementer</code>函数时，<code>runningTotal</code>依旧存在。</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>为了优化，如果一个值不会被闭包改变，或者在闭包创建后不会改变，Swift 可能会改为捕获并保存一份对值的拷贝。</p>
+
+<p>Swift 也会负责被捕获变量的所有内存管理工作，包括释放不再需要的变量。</p>
+</blockquote>
+
+<pre><code class="language-swift">let incrementByTen = makeIncrementor(forIncrement: 10)
+incrementByTen()// 返回的值为10
+incrementByTen()// 返回的值为20
+incrementByTen()// 返回的值为30
+</code></pre>
+
+<p>这个常量函数每次调用都会将<code>runningTotal</code>变量增加<code>10</code></p>
+
+<h2 id="toc_9">闭包是引用类型</h2>
+
+<p><code>函数</code>和<code>闭包</code>都是引用类型，因此我们设置的常量或者变量是设置的对应函数或闭包的引用，而不是闭包内容本身</p>
+
+<h2 id="toc_10">逃逸闭包</h2>
+
+<p>将闭包作为参数传递到另一个函数中,但是这个闭包在函数返回后才执行,则这个闭包从函数中<code>逃逸</code>，我们可以通过在函数名之前标注<code>@escaping</code>表示这个闭包允许<code>逃逸</code></p>
+
+<p>一种能使闭包“逃逸”出函数的方法是，将这个闭包保存在一个函数外部定义的变量中。例如：逃逸闭包我们常用于在一个函数需要异步执行操作,通常会让函数返回,在异步操作完成后再调用执行这个闭包,因为闭包需要在函数返回之后被调用,所以需要逃逸闭包</p>
+
+<p>逃逸闭包必须将函数参数标记为<code>@escaping</code>，否则会得到一个编译错误</p>
+
+<pre><code class="language-swift">var completionHandlers: [() -&gt; Void] = []
+func someFunctionWithEscapingClosure(completionHandler: @escaping () -&gt; Void) {
+    completionHandlers.append(completionHandler)
+}
+
+func someFunctionWithNonescapingClosure(closure: () -&gt; Void) {
+    closure()
+}
+class SomeClass {
+    var x = 10
+    func doSomething() {
+        //逃逸闭包
+        someFunctionWithEscapingClosure { self.x = 100 }
+        //非逃逸闭包
+        someFunctionWithNonescapingClosure { x = 200 }
+    }
+}
+let instance = SomeClass()
+instance.doSomething()
+print(instance.x)
+// 打印出 &quot;200&quot;
+completionHandlers.first?()
+print(instance.x)
+</code></pre>
+
+<p><strong>在逃逸闭包中 你需要显式的引用<code>self</code></strong></p>
+
+<h2 id="toc_11">自动闭包</h2>
+
+<p>一种自动创建的闭包，用于包装传递给函数作为参数的表达式。不接受任何参数，当它被调用的时候，会返回被包装在其中的表达式的值。这样帮我们省略掉花括号,用一个普通表达式代替显式的闭包</p>
+
+<p>我们经常会调用采用自动闭包的函数，但是很少去实现这样的函数。举个例子来说，<code>assert(condition:message:file:line:)</code>函数接受自动闭包作为它的<code>condition</code>参数和 <code>message</code>参数；它的<code>condition</code>参数仅会在<code>debug</code>模式下被求值，它的<code>message</code>参数仅当 <code>condition</code>参数为<code>false</code>时被计算求值。</p>
+
+<p>自动闭包让你能够延迟求值，因为直到你调用这个闭包，代码段才会被执行。</p>
+
+<pre><code class="language-swift">var customersInLine = [&quot;Chris&quot;, &quot;Alex&quot;, &quot;Ewa&quot;, &quot;Barry&quot;, &quot;Daniella&quot;]
+print(customersInLine.count)
+// 打印出“5”
+
+//这句返回一个闭包 因此不会立即执行删除操作
+//customerProvider 的 类型并不是 String  而是 （）=&gt;String
+let customerProvider = { customersInLine.remove(at: 0) }
+print(customersInLine.count)
+// 打印出“5”
+//执行闭包
+print(&quot;Now serving \(customerProvider())!&quot;)
+// Prints &quot;Now serving Chris!&quot;
+print(customersInLine.count)
+// 打印出“4”
+</code></pre>
+
+<p>当使用<code>@autoclosure</code>标记为接收自动闭包，此时可以将该函数当做接受String类型参数的函数来调用</p>
+
+<pre><code class="language-swift">// customersInLine is [&quot;Alex&quot;, &quot;Ewa&quot;, &quot;Barry&quot;, &quot;Daniella&quot;]
+//未使用自动闭包
+func serve(customer customerProvider: () -&gt; String) {
+    print(&quot;Now serving \(customerProvider())!&quot;)
+}
+serve(customer: { customersInLine.remove(at: 0) } )
+// 打印出 &quot;Now serving Alex!&quot;
+
+//使用自动闭包
+func serve(customer customerProvider: @autoclosure () -&gt; String) {
+print(&quot;Now serving \(customerProvider())!&quot;)
+}
+serve(customer: customersInLine.remove(at: 0))
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>过度使用 autoclosures 会让你的代码变得难以理解。上下文和函数名应该能够清晰地表明求值是被延迟执行的</p>
+</blockquote>
+
+<pre><code class="language-swift">//可以通过同时加上@autoclosure @escaping 自动闭包可以“逃逸”
+func collectCustomerProviders(_ customerProvider: @autoclosure @escaping () -&gt; String) {
+    customerProviders.append(customerProvider)
+}
+</code></pre>
 
 
 		</div>
@@ -269,8 +376,10 @@ id array = [[NSMutableArray arrayWithCapacity:1] autorelease];
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -284,7 +393,7 @@ id array = [[NSMutableArray arrayWithCapacity:1] autorelease];
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -380,31 +489,31 @@ id array = [[NSMutableArray arrayWithCapacity:1] autorelease];
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

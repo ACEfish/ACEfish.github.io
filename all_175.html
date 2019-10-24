@@ -82,175 +82,184 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14861705181412.html">小知识</a></h1>
-			<p class="meta"><time datetime="2017-02-04T09:08:38+08:00" 
-			pubdate data-updated="true">2017/2/4</time></p>
+		  	<h1 class="entry-title"><a href="14882730004281.html">拾遗</a></h1>
+			<p class="meta"><time datetime="2017-02-28T17:10:00+08:00" 
+			pubdate data-updated="true">2017/2/28</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h3 id="toc_0">1. 判断字符character是不是英文字母 是的话返回1 否则返回0</h3>
+		  	<h2 id="toc_0">super</h2>
 
-<pre><code class="language-text">isalpha(chanracter)
+<p>在Objective-C中，如果我们需要在类的方法中调用父类的方法时，通常都会用到<code>super</code></p>
+
+<p>首先我们需要知道的是super与self不同。<code>self</code>是类的一个隐藏参数，每个方法的实现的第一个参数即为self。而<code>super</code>并不是隐藏参数，它实际上只是一个”编译器标示符”，它负责告诉编译器，当调用<code>viewDidLoad</code>方法时，去调用父类的方法，而不是本类中的方法。而它实际上与self指向的是相同的消息接收者。</p>
+
+<pre><code class="language-objectivec">struct objc_super { id receiver; Class superClass; };
 </code></pre>
 
-<h3 id="toc_1">2. 判断一个字符串是否全为空格</h3>
+<p><code>receiver</code>：即消息的实际接收者<br/>
+<code>superClass</code>：指针当前类的父类</p>
 
-<pre><code class="language-object-c">[[string stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]] length]==0
+<p>当我们使用super来接收消息时，编译器会生成一个<code>objc_super</code>结构体。就上面的例子而言，这个结构体的<code>receiver</code>就是<code>MyViewController</code>对象，与<code>self</code>相同；<code>superClass</code>指向<code>MyViewController的父类UIViewController</code>。</p>
+
+<p>接下来，发送消息时，不是调用<code>objc_msgSend</code>函数，而是调用<code>objc_msgSendSuper</code>函数，其声明如下：</p>
+
+<pre><code class="language-objectivec">id objc_msgSendSuper ( struct objc_super *super, SEL op, ... );
 </code></pre>
 
-<h3 id="toc_2">3. 数组排序方法</h3>
+<p>该函数实际的操作是：从objc_super结构体指向的superClass的方法列表开始查找viewDidLoad的selector，找到后以objc-&gt;receiver去调用这个selector：</p>
 
-<pre><code class="language-objectivec">NSSortDescriptor *timeDescriptor = [[NSSortDescriptor alloc] initWithKey:@&quot;creatTime&quot; ascending:NO];
-NSArray *inviteNoticeArray = [noticeRecordModelArray sortedArrayUsingDescriptors:@[timeDescriptor]];
+<pre><code class="language-objectivec">objc_msgSend(objc_super-&gt;receiver, @selector(viewDidLoad))
 </code></pre>
 
-<h3 id="toc_3">4. 自动调节字体大小</h3>
+<p>由于<code>objc_super-&gt;receiver</code>就是<code>self</code>本身，所以该方法实际与下面这个调用是相同的：</p>
 
-<pre><code class="language-text">`adjustsFontSizeToFitWidth`这个属性的意思是根据UILabel的宽度来自动适应字体大小，但要注意的是，这个属性不会让字体变大，只会缩小，所以开始的时候，可以设置字体fontSize大一点。
+<p><code>objc_msgSend(self, @selector(viewDidLoad))</code></p>
+
+<pre><code class="language-text">![](media/14882730004281/14883295157748.jpg)
 </code></pre>
 
-<h3 id="toc_4">5. %s 为c语言字符串的输入输出控制格式</h3>
+<h2 id="toc_1">库相关操作</h2>
 
-<h3 id="toc_5">6. NSString 转化为 char *</h3>
+<p>库相关的操作主要是用于获取由系统提供的库相关的信息，主要包含以下函数</p>
 
-<pre><code class="language-text">```objc
-NSString * str＝ @“Test”;
-const char * a =[str UTF8String];
-```
+<pre><code class="language-objectivec">// 获取所有加载的Objective-C框架和动态库的名称
+const char ** objc_copyImageNames ( unsigned int *outCount );
+// 获取指定类所在动态库
+const char * class_getImageName ( Class cls );
+// 获取指定库或框架中所有类的类名
+const char ** objc_copyClassNamesForImage ( const char *image, unsigned int *outCount );
 </code></pre>
 
-<h3 id="toc_6">7. 按属性字段排序</h3>
+<p>通过这几个函数，我们可以了解到某个类所有的库，以及某个库中包含哪些类。</p>
 
-<pre><code class="language-objectivec">    NSSortDescriptor *timeDescriptor = [[NSSortDescriptor alloc] initWithKey:@&quot;createTime&quot; ascending:NO];
-    NSArray *noticesArray = [[UserDataManager sharedInstance].userNotifyInfoArray sortedArrayUsingDescriptors:@[timeDescriptor]];
+<pre><code class="language-objectivec">NSLog(@&quot;获取指定类所在动态库&quot;);
+NSLog(@&quot;UIView&#39;s Framework: %s&quot;, class_getImageName(NSClassFromString(@&quot;UIView&quot;)));
+NSLog(@&quot;获取指定库或框架中所有类的类名&quot;);
+const char ** classes = objc_copyClassNamesForImage(class_getImageName(NSClassFromString(@&quot;UIView&quot;)), &amp;outCount);
+for (int i = 0; i &lt; outCount; i++) {
+    NSLog(@&quot;class name: %s&quot;, classes[i]);
+}
+//输出结果
+2014-11-08 12:57:32.689 [747:184013] 获取指定类所在动态库
+2014-11-08 12:57:32.690 [747:184013] UIView&#39;s Framework: /System/Library/Frameworks/UIKit.framework/UIKit
+2014-11-08 12:57:32.690 [747:184013] 获取指定库或框架中所有类的类名
+2014-11-08 12:57:32.691 [747:184013] class name: UIKeyboardPredictiveSettings
+2014-11-08 12:57:32.691 [747:184013] class name: _UIPickerViewTopFrame
+2014-11-08 12:57:32.691 [747:184013] class name: _UIOnePartImageView
+2014-11-08 12:57:32.692 [747:184013] class name: _UIPickerViewSelectionBar
+2014-11-08 12:57:32.692 [747:184013] class name: _UIPickerWheelView
+2014-11-08 12:57:32.692 [747:184013] class name: _UIPickerViewTestParameters
+......
 </code></pre>
 
-<h3 id="toc_7">8. auyolayout拉伸压缩</h3>
+<h2 id="toc_2">块操作</h2>
 
-<pre><code class="language-text">`Content Hugging Priority`(控件抗拉伸优先级) 优先级越高越不容易被拉伸，默认是250。
-`Content Compression Resistance Priority`(控件抗压缩优先级) 和拉伸一样，优先级越高的越不容易和压缩，默认是750。
+<p>block给我们带到极大的方便，苹果也不断提供一些使用block的新的API。同时，苹果在runtime中也提供了一些函数来支持针对block的操作，这些函数包括：</p>
+
+<pre><code class="language-objectivec">// 创建一个指针函数的指针，该函数调用时会调用特定的block
+IMP imp_implementationWithBlock ( id block );
+// 返回与IMP(使用imp_implementationWithBlock创建的)相关的block
+id imp_getBlock ( IMP anImp );
+// 解除block与IMP(使用imp_implementationWithBlock创建的)的关联关系，并释放block的拷贝
+BOOL imp_removeBlock ( IMP anImp );
 </code></pre>
 
-<h3 id="toc_8">9. 从字符串中获取类名</h3>
+<p><code>imp_implementationWithBlock</code>函数：参数block的签名必须是<code>method_return_type ^(id self, method_args …)</code>形式的。该方法能让我们使用block作为IMP。如下代码所示：</p>
 
-<p>NSClassFromString(@&quot;UIView&quot;)</p>
+<p>举个栗子：</p>
 
-<h3 id="toc_9">10. 视图点击拦截</h3>
+<pre><code class="language-objectivec">@interface MyRuntimeBlock : NSObject
+@end    
+@implementation MyRuntimeBlock
+@end
+// 测试代码
+IMP imp = imp_implementationWithBlock(^(id obj, NSString *str) {
+    NSLog(@&quot;%@&quot;, str);
+});
+class_addMethod(MyRuntimeBlock.class, @selector(testBlock:), imp, &quot;v@:@&quot;);
+MyRuntimeBlock *runtime = [[MyRuntimeBlock alloc] init];
+[runtime performSelector:@selector(testBlock:) withObject:@&quot;hello world!&quot;];
 
-<p>对于一个视图遮盖另外一个视图,如果上面视图是hidden或者alpha值为0是可以点击到后面的视图,但是如果上面的视图是clearColor 那么是点不到后面的视图的</p>
-
-<h3 id="toc_10">11. CGRectInset、 CGRectOffset</h3>
-
-<pre><code class="language-objectivec">    //该结构体的应用是以原rect为中心，再参考dx，dy，进行缩放或者放大。
-    CGRect CGRectInset (
-        CGRect rect,
-        CGFloat dx,
-        CGFloat dy
-    );
+//输出结果
+2014-11-09 14:03:19.779 [1172:395446] hello world!
 </code></pre>
 
-<pre><code class="language-objectivec">    // 相对于源矩形原点rect（左上角的点）沿x轴和y轴偏移, 再rect基础上沿x轴和y轴偏移
-    CGRect CGRectOffset(
-　 　 CGRect rect,
-　　  CGFloat dx,
-　 　 CGFloat dy
-    );
+<h2 id="toc_3">弱引用操作</h2>
+
+<pre><code class="language-objectivec">// 加载弱引用指针引用的对象并返回
+id objc_loadWeak ( id *location );
+// 存储__weak变量的新值
+id objc_storeWeak ( id *location, id obj );
 </code></pre>
 
-<h3 id="toc_11">12. 无限重复动画</h3>
+<p><code>objc_loadWeak</code>函数：该函数加载一个弱指针引用的对象，并在对其做retain和autoreleasing操作后返回它。这样，对象就可以在调用者使用它时保持足够长的生命周期。该函数典型的用法是在任何有使用<code>__weak</code>变量的表达式中使用。</p>
 
-<pre><code class="language-objectivec">//我们可以通过指定这个“options:UIViewAnimationOptionRepeat”实现无限重复动画
-//注意这个‘delay’是动画开始前的延迟而不是动画重复之间的延时,动画重复之间的延时这里是没法设置的
-[UIView animateWithDuration:offset/50 delay:2 options:UIViewAnimationOptionRepeat animations:^{
-        self.firstLabel.transform = CGAffineTransformMakeTranslation(-offset, 0);
-        self.secondLabel.transform = CGAffineTransformMakeTranslation(-offset, 0);
-    } completion:^(BOOL finished) {
-        self.firstLabel.transform = CGAffineTransformIdentity;
-        self.secondLabel.transform = CGAffineTransformIdentity;
-    }];
+<p><code>objc_storeWeak</code>函数：该函数的典型用法是用于<code>__weak</code>变量做为赋值对象时。</p>
+
+<h2 id="toc_4">宏定义</h2>
+
+<p>在runtime中，还定义了一些宏定义供我们使用，有些值我们会经常用到，如表示<code>BOOL</code>值的<code>YES/NO</code>；而有些值不常用，如<code>OBJC_ROOT_CLASS</code>。在此我们做一个简单的介绍。</p>
+
+<h3 id="toc_5">布尔值</h3>
+
+<pre><code class="language-objectivec">#define YES  (BOOL)1
+#define NO   (BOOL)0
 </code></pre>
 
-<h3 id="toc_12">13. KVC</h3>
+<p>这两个宏定义定义了表示布尔值的常量，需要注意的是YES的值是1，而不是非0值。</p>
 
-<p>所有的<code>NSObject</code>子类实现了KVC（键-值-编码）协议，可以用 <code>- setValue:forKey:</code>和<code>-valueForKey:</code>方法来存取属性，但是这个类需要有与之对应的属性.。但是<code>CAAnimation</code> 有一个不同的性能：它更像一个<code>NSDictionary</code>，可以让你随意设置键值对，即使和你使用的动画类所声明的属性并不匹配。</p>
+<h3 id="toc_6">空值</h3>
 
-<h3 id="toc_13">14.改变push动画效果</h3>
-
-<p>[self.navigationController.view.layer addAnimation:transition forKey:nil];</p>
-
-<h3 id="toc_14">15. 设置cell的accessView</h3>
-
-<p>设置cell的 accessView相当于把cell变短了<br/>
-<img src="media/14861705181412/14918746728664.jpg" alt=""/></p>
-
-<h3 id="toc_15">设置tableView分割线颜色</h3>
-
-<p>tableView.separatorColor = ICColorOfDividingLine;</p>
-
-<h3 id="toc_16">Json格式化option</h3>
-
-<p>//option为0 解析出来的字符串是没有被格式化的即没有回车换行<br/>
-[NSJSONSerialization dataWithJSONObject:self options:0 error:nil]</p>
-
-<p>//option为NSJSONWritingPrettyPrinted 解析出来的字符串是被格式化的即存在回车换行方便阅读<br/>
-[NSJSONSerialization dataWithJSONObject:self options:NSJSONWritingPrettyPrinted error:nil]</p>
-
-<h3 id="toc_17">16.retain和strong</h3>
-
-<p><img src="media/14861705181412/14949171761445.jpg" alt=""/></p>
-
-<h3 id="toc_18">17.逆序枚举</h3>
-
-<pre><code class="language-objectivec">//1.原始数组  
-NSMutableArray *array = [NSMutableArray arrayWithObjects:@&quot;1&quot;,@&quot;2&quot;,@&quot;3&quot;,nil];  
-//2.倒序的数组  
-NSArray* reversedArray = [[array reverseObjectEnumerator] allObjects]; 
+<pre><code class="language-objectivec">#define nil  __DARWIN_NULL
+#define Nil  __DARWIN_NULL
 </code></pre>
 
-<pre><code class="language-objectivec">NSLog(@&quot;------- 枚举器法---------&quot;);  
-                                        //ObjectEnumerator        正序  
-                                        //reverseObjectEnumerator 逆序  
-        NSEnumerator *enumerator = [array reverseObjectEnumerator];  
-        id obj = nil;  //不确定数组里面具体对象的类型，所以定义成id 类型指针  
-        while (obj = [enumerator nextObject]) { //通过枚举器，取数组里面的每一个元素  
-            NSLog(@&quot;%@&quot;, obj);                  //将元素赋给 obj， 直到数组结束  
-                                                //取到的结果为nil，退出while  
-        }  
+<p>其中nil用于空的实例对象，而Nil用于空类对象。</p>
+
+<h3 id="toc_7">分发函数原型</h3>
+
+<pre><code class="language-objectivec">#define OBJC_OLD_DISPATCH_PROTOTYPES  1
 </code></pre>
 
-<h3 id="toc_19">18.大端小端</h3>
+<p>该宏指明分发函数是否必须转换为合适的函数指针类型。当值为0时，必须进行转换</p>
 
-<p>对于iPhone采用的是小端模式</p>
+<h3 id="toc_8">Objective-C根类</h3>
 
-<p>补充:<br/>
-<code>Little endian</code>和<code>Big endian</code><br/>
-上一节已经提到，<code>Unicode</code>码可以采用<code>UCS-2</code>格式直接存储。以汉字&quot;严&quot;为例，<code>Unicode</code>码是4E25，需要用两个字节存储，一个字节是4E，另一个字节是25。存储的时候，4E在前，25在后，就是Big endian方式；25在前，4E在后，就是Little endian方式。<br/>
-这两个古怪的名称来自英国作家斯威夫特的《格列佛游记》。在该书中，小人国里爆发了内战，战争起因是人们争论，吃鸡蛋时究竟是从大头(Big-Endian)敲开还是从小头(Little-Endian)敲开。为了这件事情，前后爆发了六次战争，一个皇帝送了命，另一个皇帝丢了王位。<br/>
-因此，第一个字节在前，就是&quot;大头方式&quot;（Big endian），第二个字节在前就是&quot;小头方式&quot;（Little endian）。<br/>
-那么很自然的，就会出现一个问题：计算机怎么知道某一个文件到底采用哪一种方式编码？<br/>
-Unicode规范中定义，每一个文件的最前面分别加入一个表示编码顺序的字符，这个字符的名字叫做&quot;零宽度非换行空格&quot;（ZERO WIDTH NO-BREAK SPACE），用FEFF表示。这正好是两个字节，而且FF比FE大1。<br/>
-如果一个文本文件的头两个字节是FE FF，就表示该文件采用大头方式；如果头两个字节是FF FE，就表示该文件采用小头方式。</p>
+<pre><code class="language-objectivec">#define OBJC_ROOT_CLASS
+</code></pre>
 
-<h3 id="toc_20">19.图片呈现过程</h3>
+<p>如果我们定义了一个Objective-C根类，则编译器会报错，指明我们定义的类没有指定一个基类。这种情况下，我们就可以使用这个宏定义来避过这个编译错误。该宏在iOS 7.0后可用。</p>
 
-<p>1.初始化阶段：从磁盘初始化图片，生成一个未解压缩的 UIImage 对象；<br/>
-2.解压缩阶段:UIImage 对象进行解压缩<br/>
-3.绘制阶段:绘制到屏幕上<br/>
-图片解压缩的过程其实就是将图片的二进制数据转换成像素数据的过程</p>
+<p>其实在NSObject的声明中，我们就可以看到这个宏的身影，如下所示：</p>
 
-<h3 id="toc_21">20.更改视图frame 和 设置transform 进行动画的区别</h3>
+<pre><code class="language-objectivec">__OSX_AVAILABLE_STARTING(__MAC_10_0, __IPHONE_2_0)
+OBJC_ROOT_CLASS
+OBJC_EXPORT
+@interface NSObject &lt;NSObject&gt; {
+    Class isa  OBJC_ISA_AVAILABILITY;
+}
+</code></pre>
 
-<p>对于一个视图 我们更改其frame来做动画 不论子视图是否与其有约束关系 那么子视图frame是不会改变的,即子视图是不会跟着做动画的</p>
+<h3 id="toc_9">局部变量存储时长</h3>
 
-<p>而用transform的话 不论子视图是否与其有约束关系,子视图是会随着其一起变化的</p>
+<pre><code class="language-objectivec">#define NS_VALID_UNTIL_END_OF_SCOPE
+</code></pre>
 
-<h3 id="toc_22">21.运算符重载</h3>
+<p>该宏表明存储在某些局部变量中的值在优化时不应该被编译器强制释放。</p>
 
-<p>运算符重载，就是对已有的运算符重新进行定义，赋予其另一种功能，以适应不同的数据类型。</p>
+<p>我们将局部变量标记为id类型或者是指向ObjC对象类型的指针，以便存储在这些局部变量中的值在优化时不会被编译器强制释放。相反，这些值会在变量再次被赋值之前或者局部变量的作用域结束之前都会被保存。</p>
 
-<h3 id="toc_23">22.unicode utf-8</h3>
+<h3 id="toc_10">关联对象行为</h3>
 
-<p>已知&quot;严&quot;的unicode是4E25（100111000100101），根据上表，可以发现4E25处在第三行的范围内（0000 0800-0000 FFFF），因此&quot;严&quot;的UTF-8编码需要三个字节，即格式是&quot;1110xxxx 10xxxxxx 10xxxxxx&quot;。然后，从&quot;严&quot;的最后一个二进制位开始，依次从后向前填入格式中的x，多出的位补0。这样就得到了，&quot;严&quot;的UTF-8编码是&quot;11100100 10111000 10100101&quot;，转换成十六进制就是E4B8A5。</p>
+<pre><code class="language-objectivec">enum {
+   OBJC_ASSOCIATION_ASSIGN  = 0,
+   OBJC_ASSOCIATION_RETAIN_NONATOMIC  = 1,
+   OBJC_ASSOCIATION_COPY_NONATOMIC  = 3,
+   OBJC_ASSOCIATION_RETAIN  = 01401,
+   OBJC_ASSOCIATION_COPY  = 01403
+};
+</code></pre>
 
 
 		</div>
@@ -273,8 +282,10 @@ Unicode规范中定义，每一个文件的最前面分别加入一个表示编�
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -288,7 +299,7 @@ Unicode规范中定义，每一个文件的最前面分别加入一个表示编�
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -384,31 +395,31 @@ Unicode规范中定义，每一个文件的最前面分别加入一个表示编�
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

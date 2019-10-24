@@ -82,195 +82,89 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15608261485816.html">RACCommand: NSObject</a></h1>
-			<p class="meta"><time datetime="2019-06-18T10:49:08+08:00" 
-			pubdate data-updated="true">2019/6/18</time></p>
+		  	<h1 class="entry-title"><a href="15686206334500.html">子类</a></h1>
+			<p class="meta"><time datetime="2019-09-16T15:57:13+08:00" 
+			pubdate data-updated="true">2019/9/16</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><code>RACCommand</code> 继承自<code>NSObject</code> 用于管理<code>RACSignal</code>信号</p>
+		  	<h2 id="toc_0">ASDisplayNode</h2>
 
-<h2 id="toc_0">RACCommand使用示例</h2>
+<p>虽然使用类似于<code>UIView</code> 但是我们需要遵循一些使用规则 帮助更好的使用并按照预期运行</p>
 
-<pre><code class="language-objectivec">RACCommand *command = [[RACCommand alloc] initWithSignalBlock:^RACSignal * _Nonnull(id  _Nullable input) {
-        return [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
-            NSInteger integer = [input integerValue];
-            for (NSInteger i = 0; i &lt; integer; i++) {
-                [subscriber sendNext:@(i)];
-            }
-            [subscriber sendCompleted];
-            return [RACDisposable disposableWithBlock:^{
-                NSLog(@&quot;信号销毁了&quot;);
-            }];
-        }];
-    }];
-    
-    [[command.executionSignals switchToLatest] subscribeNext:^(id  _Nullable x) {
-        NSLog(@&quot;收到消息---%@&quot;,x);
-    } error:^(NSError * _Nullable error) {
-        NSLog(@&quot;error了&quot;);
-    } completed:^{
-        NSLog(@&quot;completed了&quot;);
-    }];
-    
-    [command execute:@1];
-    [RACScheduler.mainThreadScheduler afterDelay:0.1
-                                        schedule:^{
-                                            [command execute:@2];
-                                        }];
-    [RACScheduler.mainThreadScheduler afterDelay:0.2
-                                        schedule:^{
-                                            [command execute:@3];
-                                        }];
-                                        
-                            
-    //log结果
-    收到消息---0
-    信号销毁了
-    收到消息---0
-    收到消息---1
-    信号销毁了
-    收到消息---0
-    收到消息---1
-    收到消息---2
-    信号销毁了
-    completed了
-</code></pre>
+<h4 id="toc_1">-init</h4>
 
-<ol>
-<li>通过<code>switchToLatest</code>方法来获取信号中的信号</li>
-<li>因为默认情况下<code>RACCommand</code>是不支持并发操作的，需要在上次命令发送完成后，再发送下次信号</li>
-</ol>
+<p>当使用<code>nodeBlocks</code>时，此方法在后台线程调用。在init方法完成之前没有其他方法可以运行，因此我们无需在此方法中锁定</p>
 
-<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) RACSignal&lt;RACSignal&lt;ValueType&gt; *&gt; *executionSignals;
-</code></pre>
+<p>需要注意，<code>-init</code>方法能在任何对队列调用。所以我们不应该在初始化过程中初始化任何UIKit对象，调用任何node的view或layer等有关的操作，或者添加任何手势识别器。这些过程可以在<code>-didLoad</code>方法中</p>
 
-<p>通过以上示例可以看出整个流程中，传入一个block，这个block通过传入值生成对应的<code>signal</code>, 而command属性<code>executionSignals</code>即为这些信号的信号</p>
+<h4 id="toc_2">-didLoad</h4>
 
-<p>通过 <code>execute</code>方法 出入值 </p>
+<p>这个方法当视图在后台加载完成后执行一次。保证在主线程被调用，因此<mark>是我们运行任何UIKit事务的适当位置</mark>(例如添加手势识别器，触摸视图/图层，初始化UIKit对象)</p>
 
-<h2 id="toc_1">RACCommand</h2>
+<h4 id="toc_3">-layoutSpecThatFits:</h4>
 
-<p>在<code>Command</code>内部 是由几个很重要的信号组成的</p>
+<p>这个方法在后台执行繁重的定义布局的计算。这是我们声明、创建和修改<code>ASLayoutSepec</code>布局描述对象的地方，该对象描述节点的size以及子节点的position和size。<mark>这是我们放置大部分布局代码的地方</mark></p>
 
-<h3 id="toc_2">初始化</h3>
+<p>ASLayoutSpec 对象直到在此方法中返回前是可变的。 在这之后，这个对象将不可改变，需要注意的是你不需要缓存 ASLayoutSpec 对象以备后用，我们建议你在必要时重新创建布局描述。</p>
 
-<p>初始化方法需要传入<code>signalBlock</code>， 该block通过input传入值 生成一个<code>RACSignal</code><br/>
- 在初始化方法中初始化了重要的信号</p>
+<p>因为此方法在后台运行，因此不应该在此方法中设置<code>node.view</code>或者<code>node.layer</code>属性。此外，除非您知道自己在做什么，否则不应该再次方法中创建任何节点。与其它方法重写不同，不必在方法开始时调用super方法</p>
 
-<pre><code class="language-objectivec"> RACCommand initWithEnabled:(RACSignal *)enabledSignal signalBlock:(RACSignal&lt;id&gt; * (^)(id input))signalBlock {
-    _addedExecutionSignalsSubject = [RACSubject new];
-    _allowsConcurrentExecutionSubject = [RACSubject new];
-    _signalBlock = [signalBlock copy];
-    _executionSignals =...
-    _errors = ...
-    _executing = ...
-    _immediateEnabled = ...
-    _enabled = ...
- }
-</code></pre>
+<h4 id="toc_4">-layout</h4>
 
-<h3 id="toc_3">addedExecutionSignalsSubject</h3>
+<p>在此方法中调用<code>super</code>，将会使用<code>layoutSpec</code>对象计算布局，所有子节点都将计算其size和position。</p>
 
-<p><code>addedExecutionSignalsSubject</code>即为包含信号的信号 当传入值时通过signalblock生成的signal即包含在改信号中</p>
+<p><code>layout</code>在概念上类似<code>UIViewController</code>的<code>-viewWillLayoutSubviews</code>。可以在这个方法中，更改<code>hidden</code>属性、修改View属性(不是布局属性)、或者背景颜色。假如正好使用UIView，可以再这个方法中修改其<code>frame</code>。然而，我们可以用<code>initWithViewBlock：</code>然后在后台线程的任何地方，调整其大小。</p>
 
-<p><code>addedExecutionSignalsSubject</code>信号在<code>execute:</code>执行时，对信号进行订阅和发送</p>
+<p>这个方法在主线程上调用。但是最后不要过多使用这个方法，我们更应该在主线程以外做布局</p>
 
-<pre><code class="language-objectivec">- (RACSignal *)execute:(id)input { 
-    BOOL enabled = [[self.immediateEnabled first] boolValue];
-    if (!enabled) {
-        return [RACSignal error:error];
-    }
-    RACSignal *signal = self.signalBlock(input);
-    //订阅信号
-    RACMulticastConnection *connection = [[signal
-        subscribeOn:RACScheduler.mainThreadScheduler]
-        multicast:[RACReplaySubject subject]];
-    //发送信号
-    [self.addedExecutionSignalsSubject sendNext:connection.signal];
-    [connection connect];
-    return connection.signal;
+<p>使用<code>-layout</code>的一个重要用途是你需要子节点的<code>size</code>是精确的。例如：当你想要一个<code>collectionNode</code>占满屏幕时，这种情况是不被布局规范所允许的，我们通常手动在方法中添加<code>subnode.frame = self.bounds;</code></p>
+
+<h2 id="toc_5">ASViewController</h2>
+
+<p><code>ASViewController</code>是<code>UIViewController</code>的子类，用来管理nodes。因为是一个<code>UIViewController</code>，所以所有方法都在主线程调用(<code>ASViewController</code>也应该在主线程创建)。</p>
+
+<h4 id="toc_6">-init</h4>
+
+<p>在生命周期的最开始调用一次。与<code>UIViewController</code>相同不要再次方法中访问<code>self.view</code>或者<code>self.node.view</code>，因而为它会强制视图提前创建。可以在<code>viewDidLoad</code>方法中执行任何视图访问</p>
+
+<p>ASViewController 指定的构造器是<code>initWithNode:</code>方法，在调用super方法前初始化node。</p>
+
+<pre><code class="language-objectivec">- (instancetype)init
+{
+  _pagerNode = [[ASPagerNode alloc] init];
+  self = [super initWithNode:_pagerNode];
+  
+  // setup any instance variables or properties here
+  if (self) {
+    _pagerNode.dataSource = self;
+    _pagerNode.delegate = self;
+  }
+  
+  return self;
 }
 </code></pre>
 
-<h3 id="toc_4">immediateExecuting &amp;&amp; _executing 表示当前有操作执行的信号</h3>
+<h4 id="toc_7">-loadView</h4>
 
-<p>immediateExecuting的逻辑是：<br/>
-    1. <code>catchTo</code>捕获<code>addedExecutionSignalsSubject</code>信号中的error信号，转换为empty<br/>
-    2. <code>flattenMap:</code>将每个信号的开始和结束时间点转为1和-1信号（<code>start为1 then为-1</code>）<br/>
-    3. <code>scanWithStart:@0 reduce:</code> 将上一步得到的1和-1进行叠加得到0 或者 非0<br/>
-        1. <code>map:</code>将0/非0 转为 NO/YES 表示当前是否有信号正在处理</p>
+<p>不推荐使用此方法，因此相比较<code>viewDidLoad</code>只有缺点没有优点。然而，只要我们在此方法中不将<code>self.view</code>设置为其他值 也可以安全使用的。其super方法会将其<code>UIViewController</code>的view换为<code>ASViewController</code>的<code>node.view</code></p>
 
-<pre><code class="language-objectivec">RACSignal *immediateExecuting = [[[[self.addedExecutionSignalsSubject
-        flattenMap:^(RACSignal *signal) {
-            return [[[signal
-                catchTo:[RACSignal empty]]
-                then:^{
-                    return [RACSignal return:@-1];
-                }]
-                startWith:@1];
-        }]
-        scanWithStart:@0 reduce:^(NSNumber *running, NSNumber *next) {
-            return @(running.integerValue + next.integerValue);
-        }]
-        map:^(NSNumber *count) {
-            return @(count.integerValue &gt; 0);
-        }]
-        startWith:@NO];
-</code></pre>
+<h4 id="toc_8">-viewDidLoad</h4>
 
-<p>将immediateExecuting 信号进行优化  <strong>表示当前是否有任务执行</strong></p>
+<p>这方法在ASViewController的生命周期中，只会在loadView方法后，立即执行一次。此时最方便访问<code>node.view</code>。也可以执行需要访问<code>view/layer</code>的只执行一次的方法(例如添加手势)。</p>
 
-<pre><code class="language-objectivec">_executing = [[[[immediateExecuting
-        deliverOn:RACScheduler.mainThreadScheduler]
-        // This is useful before the first value arrives on the main thread.
-        startWith:@NO]
-        distinctUntilChanged]
-        replayLast]
-</code></pre>
+<p>不适合在方法中放置布局视图的代码。因为界面重绘时，该方法也不会被再次调用。</p>
 
-<h3 id="toc_5">moreExecutionsAllowed  表示是否允许更多信号执行</h3>
+<h4 id="toc_9">-viewWillLayoutSubviews</h4>
 
-<p>简单来看就是 当不允许并发时（默认不允许并发），<code>[immediateExecuting not]</code></p>
+<p>与节点node的<code>layout</code>方法同时调用，在ASVC的生命周期中有可能会多次调用。当<code>ASViewController</code>的node边界发生变化(包括旋转、分屏、键盘)以及层次结构发生变化（包括node增加、删除、改变大小）时，都会调用</p>
 
-<pre><code class="language-objectivec">RACSignal *moreExecutionsAllowed = [RACSignal
-        if:[self.allowsConcurrentExecutionSubject startWith:@NO]
-        then:[RACSignal return:@YES]
-        else:[immediateExecuting not]];
-</code></pre>
+<p>因为它不经常调用，但是调用及代表页面需要重绘，因此所有布局代码最好放到这个方法中，即使不直接依赖size的UI代码。<br/>
+<mark>为保持一致性，通常将所有布局代码放置在此处。</mark></p>
 
-<h3 id="toc_6">executionSignals</h3>
+<h4 id="toc_10">-viewWillAppear: / -viewDidDisappear:</h4>
 
-<pre><code class="language-objectivec"> @property (nonatomic, strong, readonly) RACSignal&lt;RACSignal&lt;ValueType&gt; *&gt; *executionSignals;
-</code></pre>
-
-<p><code>executionSignals</code>是一个包含信号的信号<br/>
-executionSignals 只是简单的将<code>self.addedExecutionSignalsSubject</code>信号中的所有错误信号<code>NSError</code>转换为了<code>empty</code>信号</p>
-
-<pre><code class="language-objectivec">_executionSignals = [[self.addedExecutionSignalsSubject
-        map:^(RACSignal *signal) {
-            return [signal catchTo:[RACSignal empty]];
-        }]
-        deliverOn:RACScheduler.mainThreadScheduler]
-</code></pre>
-
-<h3 id="toc_7">_enabled 信号 表示当前命令是否可以被再次执行</h3>
-
-<pre><code class="language-objectivec">RACSignal *enabledSignal = [RACSignal return:@YES];
-
-_immediateEnabled = [[[[RACSignal
-    combineLatest:@[ enabledSignal, moreExecutionsAllowed ]]
-    and]
-    takeUntil:self.rac_willDeallocSignal]
-    replayLast];
-    
-//保证信号中的第一个值在订阅线程，而其他值在主线程派发
-_enabled = [[[[self.immediateEnabled
-    take:1]
-    concat:[[self.immediateEnabled skip:1] deliverOn:RACScheduler.mainThreadScheduler]]
-    distinctUntilChanged]
-    replayLast]
-</code></pre>
+<p>方法在<code>ASViewController</code>的node出现在屏幕之前 和 从视图层次中删除之后调用。通常在方法中开始或者停止动画，或者记录用户操作。</p>
 
 
 		</div>
@@ -293,8 +187,10 @@ _enabled = [[[[self.immediateEnabled
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -308,7 +204,7 @@ _enabled = [[[[self.immediateEnabled
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -404,31 +300,31 @@ _enabled = [[[[self.immediateEnabled
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

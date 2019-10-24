@@ -82,248 +82,44 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15543697527242.html">深入理解RunLoop</a></h1>
-			<p class="meta"><time datetime="2019-04-04T17:22:32+08:00" 
-			pubdate data-updated="true">2019/4/4</time></p>
+		  	<h1 class="entry-title"><a href="15541003911598.html">Clang库&&插件</a></h1>
+			<p class="meta"><time datetime="2019-04-01T14:33:11+08:00" 
+			pubdate data-updated="true">2019/4/1</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>学习自Y神的<a href="https://blog.ibireme.com/2015/05/18/runloop/">深入理解RunLoop</a></p>
+		  	<h2 id="toc_0">使用 libclang 来进行语法分析</h2>
 
-<h2 id="toc_0">RunLoop的概念</h2>
+<p>使用<code>libclang</code>里面提供的方法对源文件进行语法分析，分析语法树，遍历语法树上每个节点。</p>
 
-<p>关键点在于:如何管理事件/消息，如何让线程在没有消息处理时休眠避免资源消耗、而在消息到来时被立刻唤醒</p>
+<h2 id="toc_1">LibTooling 对语法树完全的控制</h2>
 
-<p>所以,RunLoop实际上就是一个对象，这个对象管理其需要处理的事件和消息，并提供了一个入口函数执行上面EventLoop逻辑，线程处理了这个函数后，就会一直处于函数内部“接收消息-&gt;等待-&gt;处理”的循环中，知道循环结束，函数返回</p>
-
-<p>系统提供了两个对象:<code>NSRunLoop</code>和<code>CFRunLoopRef</code>。CFRunLoopRef是在CoreFoundation框架内的，提供了纯C函数的API，这些API都是线程安全的(内部有加锁操作);NSRunLoop是基于CFRunLoopRef的封装，提供了面对对象的API，但是这些API不是线程安全的</p>
-
-<blockquote>
-<p>线程安全简而言之就是，一个方法或者一个实例在多线程环境中使用而不会出现问题的</p>
-</blockquote>
-
-<h2 id="toc_1">RunLoop和线程的关系</h2>
-
-<p>iOS开发中有两个线程对象pthread和NSThread<br/>
-苹果不允许直接创建RunLoop，但是提供了两个自动获取的函数:<code>CFRunLoopGetMain()</code> 和 <code>CFRunLoopGetCurrent()</code></p>
-
-<p>线程和runloop之间是一一对应的，其关系保存在一个全局的字典之中，线程刚创建的时候是没有runLoop的，如果不主动获取，就一直不会有，其创建发生在第一次获取时，RunnLoop销毁发生在线程结束时。除了主线程，你只能在线程的内部获取其RunLoop</p>
-
-<h2 id="toc_2">RunLoop对外的接口</h2>
-
-<p>在CF中 RunLoop有五个类</p>
-
-<pre><code class="language-text">CFRunLoopRef
-CFRunLoopModeRef
-CFRunLoopSourceRef
-CFRunLoopTimerRef
-CFRunLoopObserverRef
-</code></pre>
-
-<p>一个RunLoop中包含若干个Mode，每个Mode中包含若干个<code>Source/Timer/Observer</code>，每次调用RunLopp的主函数，只能指定其中一个Mode,即currentMode，如果需要切换Mode，只能退出Loop，再重新指定一个Mode进入，这样就可以分割不同组的Source/Timer/observer,互不影响</p>
-
-<p><strong>CFRunLoopSourceRef</strong>是事件产生的地方，source有两个版本：source0和Source1</p>
+<p>因为LibTooling能够完全控制语法树，那么就可以做很多事情了</p>
 
 <ul>
-<li>source0，之所以这么命名是因为上下文结构的版本字段为0，由应用程序管理，只包含了一个回调指针(函数指针)，不能主动触发事件。使用时，需要先调用<code>CFRunLoopSourceSignal(source)</code>将source标记为待处理，然后调用<code>CFRunLoopWakeUp(runloop)</code>来唤醒RunLoop唤醒RunLoop，让其处理这个事件</li>
-<li>source1，由RunLoop和内和管理，包含了一个mach_port和一个回调指针，被用于内核和其他线程互相发送消息。<strong>这种source能主动唤醒RunLoop的线程</strong></li>
+<li>可以改变clang生成代码的方式</li>
+<li>增加更强的类型检查</li>
+<li>按照自己的定义进行代码的检查分析</li>
+<li>对源码做任意类型分析，甚至重写程序</li>
+<li>给clang添加一些自定义的分析，创建自己的重构器</li>
+<li>基于现有代码做出大量的修改</li>
+<li>基于工程生成相关图形或文档</li>
+<li>检查命名是否规范，还能够进行语言的转换，比如把OC转为JS或者Swift</li>
 </ul>
 
-<p><strong>CFRunLoopTimerRef</strong>是一个特殊的源，基于时间的触发器，和<code>NSTimer</code>是<code>toll-free bridged</code>的,因此二者是可以混用替代的，包含一个时间长苏和回调指针。加入RunLoop后，RunLoop会注册对应时间点，当时间到了，就会被唤醒执行回调；</p>
+<p>官方有个文档开发者可以按照这个里面的说明去构造 LLVM，clang 和其工具： <a href="http://clang.llvm.org/docs/LibASTMatchersTutorial.html">Tutorial for building tools using LibTooling and LibASTMatchers — Clang 4.0 documentation</a></p>
 
-<p><strong>CFRunLoopObserverRef</strong>观察者，每个Observer都包含一个回调，当RunLoop状态发生改变是，就通过回调接受到此变化</p>
+<h2 id="toc_2">Clang Plugin</h2>
 
-<pre><code class="language-c">typedef CF_OPTIONS(CFOptionFlags, CFRunLoopActivity) {
-    kCFRunLoopEntry         = (1UL &lt;&lt; 0), // 即将进入Loop
-    kCFRunLoopBeforeTimers  = (1UL &lt;&lt; 1), // 即将处理 Timer
-    kCFRunLoopBeforeSources = (1UL &lt;&lt; 2), // 即将处理 Source
-    kCFRunLoopBeforeWaiting = (1UL &lt;&lt; 5), // 即将进入休眠
-    kCFRunLoopAfterWaiting  = (1UL &lt;&lt; 6), // 刚从休眠中唤醒
-    kCFRunLoopExit          = (1UL &lt;&lt; 7), // 即将退出Loop
-};
-</code></pre>
+<p>通过自己写个插件，比如上面写的LibTooling的clang工具，可以将这个插件动态的加载到编译器中，对编译进行控制，可以再LLVM的目录看到一些范例<code>llvm/tools/clang/tools</code></p>
 
-<p>这三种被统称为mode item，一个item可以被同时加入多个Mode，但是一个item被重复加入同一个mode不会有效果，如果mode中一个item没有就会直接退出，不进入循环</p>
+<p>动态化方案<code>DynamicCocoa</code>中就是使用了一个将<code>OC</code>源码转<code>JS</code>的插件来进行代码的转换，这里整理了些利用clang转js的库 <a href="https://lmsgsendnilself.github.io/blog/2017/02/28/clangtojszi-yuan/">clangtojs资源 - Lmsgsendnilself</a> ，JSPatch 是直接手写 JS 而没有转换的过程，所以也就没有多出这一步，而鹅厂的OCS更猛，直接在端内写了个编译器。在 C 函数的调用上孙源有个<code>slides</code>可以看看：<a href="http://slides.com/sunnyxx/calling-conventions-in-cocoa#/">Calling Conventions in Cocoa by sunnyxx</a> bang 也有篇文章：<a href="http://blog.cnbang.net/tech/3219/">如何动态调用 C 函数 « bang’s blog </a></p>
 
-<h2 id="toc_3">RunLoop的Mode</h2>
+<ul>
+<li><a href="http://blog.cnbang.net/tech/2808/">JSPatch实现原理详解 « bang’s blog</a></li>
+</ul>
 
-<p>CFRunLoopMode 和 CFRunLoop 的结构大致如下：</p>
-
-<pre><code class="language-c">struct __CFRunLoopMode {
-    CFStringRef _name;            // Mode Name, 例如 @&quot;kCFRunLoopDefaultMode&quot;
-    CFMutableSetRef _sources0;    // Set
-    CFMutableSetRef _sources1;    // Set
-    CFMutableArrayRef _observers; // Array
-    CFMutableArrayRef _timers;    // Array
-    ...
-};
- 
-struct __CFRunLoop {
-    CFMutableSetRef _commonModes;     // Set
-    CFMutableSetRef _commonModeItems; // Set&lt;Source/Observer/Timer&gt;
-    CFRunLoopModeRef _currentMode;    // Current Runloop Mode
-    CFMutableSetRef _modes;           // Set
-    ...
-};
-</code></pre>
-
-<p>CF中有一种特殊的“假”mode即common mode，允许你将一个item添加到多个mode中；如果要指定commod模式，使用<code>kCFRunLoopCommonModes</code>常量作为模式名； 一个mode可以通过<code>CFRunLoopAddCommonMode</code>将mode的名字添加到commonModes中，每个runLoop都有自己独立的common模式集。每当RunLoop内容发生变化时，RunLoop会自动将_commonModeItems里的item同步到有&quot;common&quot;标记的mode</p>
-
-<p>CFRunLoop对外暴露的管理 Mode 接口</p>
-
-<pre><code class="language-c">CFRunLoopAddCommonMode(CFRunLoopRef runloop, CFStringRef modeName);
-//指定当前线程的CFRunLoop对象 运行的mode
-CFRunLoopRunResult CFRunLoopRunInMode(CFRunLoopMode mode, CFTimeInterval seconds, Boolean returnAfterSourceHandled)
-</code></pre>
-
-<p>Mode中管理Item的接口</p>
-
-<pre><code class="language-objectivec">CFRunLoopAddSource(CFRunLoopRef rl, CFRunLoopSourceRef source, CFStringRef modeName);
-CFRunLoopAddObserver(CFRunLoopRef rl, CFRunLoopObserverRef observer, CFStringRef modeName);
-CFRunLoopAddTimer(CFRunLoopRef rl, CFRunLoopTimerRef timer, CFStringRef mode);
-CFRunLoopRemoveSource(CFRunLoopRef rl, CFRunLoopSourceRef source, CFStringRef modeName);
-CFRunLoopRemoveObserver(CFRunLoopRef rl, CFRunLoopObserverRef observer, CFStringRef modeName);
-CFRunLoopRemoveTimer(CFRunLoopRef rl, CFRunLoopTimerRef timer, CFStringRef mode);
-
-</code></pre>
-
-<p>你只能通过<code>mode name</code>来操作内部的<code>mode</code>，当你传入一个新的<code>mode name</code>,但<code>RunLoop</code>内部没有对应 <code>mode</code>时，RunLoop会自动帮你创建对应的 <code>CFRunLoopModeRef</code>。对于一个<code>RunLoop</code>来说，其内部的<code>mode</code>只能增加不能删除。</p>
-
-<p>苹果公开提供的 Mode 有两个：<code>kCFRunLoopDefaultMode (NSDefaultRunLoopMode)</code> 和 <code>UITrackingRunLoopMode</code>，你可以用这两个Mode Name来操作其对应的Mode。主线程的<code>RunLoop</code>是预置这两个的Mode的</p>
-
-<p>同时苹果还提供了一个操作<code>Common</code>标记的字符串：<code>kCFRunLoopCommonModes (NSRunLoopCommonModes)</code>，你可以用这个字符串来操作<code>Common Items</code>，或标记一个<code>Mode</code>为 “Common”。使用时注意区分这个字符串和其他<code>mode name</code>。</p>
-
-<h2 id="toc_4">RunLoop的内部逻辑</h2>
-
-<p><img src="media/15543697527242/15546895686967.png" alt="" style="width:500px;"/></p>
-
-<p>实际上 RunLoop 就是这样一个函数，其内部是一个 do-while 循环。当你调用 CFRunLoopRun() 时，线程就会一直停留在这个循环里；直到超时或被手动停止，该函数才会返回。</p>
-
-<h2 id="toc_5">底层实现</h2>
-
-<p><img src="media/15543697527242/15547182684191.png" alt="" style="width:300px;"/></p>
-
-<p>应用层: 用户能接触到的图形应用，例如:Spotlight、Aqua、SpringBoard等<br/>
-应用框架层: 开发人员接触到的Cocoa等框架<br/>
-核心框架层: 核心框架、OpenGL等内容<br/>
-<strong>Darwin 即操作系统的核心，包括系统内核、驱动、Shell 等内容</strong>，</p>
-
-<p><img src="media/15543697527242/15547185300035.png" alt="" style="width:300px;"/></p>
-
-<p><strong>在硬件层上面的三个组成部分：Mach、BSD、IOKit (还包括一些上面没标注的内容)，共同组成了 XNU 内核</strong>。<br/>
-XNU 内核的内环被称作 Mach，其作为一个微内核，仅提供了诸如处理器调度、IPC (进程间通信)等非常少量的基础服务。<br/>
-BSD 层可以看作围绕 Mach 层的一个外环，其提供了诸如进程管理、文件系统和网络等功能。<br/>
-IOKit 层是为设备驱动提供了一个面向对象(C++)的一个框架。<br/>
-在 Mach 中，所有的东西都是通过自己的对象实现的，进程、线程和虚拟内存都被称为”对象”。和其他架构不同， Mach 的对象间不能直接调用，只能通过消息传递的方式实现对象间的通信。”消息”是 Mach 中最基础的概念，消息在两个端口 (port) 之间传递，这就是 Mach 的 IPC (进程间通信) 的核心。</p>
-
-<p>为了实现消息的发送和接收，mach_msg() 函数实际上是调用了一个 Mach 陷阱 (trap)，即函数mach_msg_trap()，陷阱这个概念在 Mach 中等同于系统调用。当你在用户态调用 mach_msg_trap() 时会触发陷阱机制，切换到内核态；内核态中内核实现的 mach_msg() 函数会完成实际的工作，</p>
-
-<h2 id="toc_6">苹果用RunLoop实现的功能</h2>
-
-<p>系统默认注册了5个Mode:</p>
-
-<ol>
-<li>kCFRunLoopDefaultMode: App的默认 Mode，通常主线程是在这个 Mode 下运行的。</li>
-<li>UITrackingRunLoopMode: 界面跟踪 Mode，用于 ScrollView 追踪触摸滑动，保证界面滑动时不受其他 Mode 影响</li>
-<li>UIInitializationRunLoopMode: 在刚启动 App 时第进入的第一个 Mode，启动完成后就不再使用</li>
-<li>GSEventReceiveRunLoopMode: 接受系统事件的内部 Mode，通常用不到</li>
-<li>kCFRunLoopCommonModes: 这是一个占位的 Mode，没有实际作用</li>
-</ol>
-
-<p>APP中常看到的RunLoop函数:</p>
-
-<pre><code class="language-objectivec">/// 1. 通知Observers，即将进入RunLoop
-    /// 此处有Observer会创建AutoreleasePool: _objc_autoreleasePoolPush();
-    __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopEntry);
-    do {
- 
-        /// 2. 通知 Observers: 即将触发 Timer 回调。
-        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopBeforeTimers);
-        /// 3. 通知 Observers: 即将触发 Source (非基于port的,Source0) 回调。
-        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopBeforeSources);
-        __CFRUNLOOP_IS_CALLING_OUT_TO_A_BLOCK__(block);
- 
-        /// 4. 触发 Source0 (非基于port的) 回调。
-        __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE0_PERFORM_FUNCTION__(source0);
-        __CFRUNLOOP_IS_CALLING_OUT_TO_A_BLOCK__(block);
- 
-        /// 6. 通知Observers，即将进入休眠
-        /// 此处有Observer释放并新建AutoreleasePool: _objc_autoreleasePoolPop(); _objc_autoreleasePoolPush();
-        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopBeforeWaiting);
- 
-        /// 7. sleep to wait msg.
-        mach_msg() -&gt; mach_msg_trap();
-        
- 
-        /// 8. 通知Observers，线程被唤醒
-        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopAfterWaiting);
- 
-        /// 9. 如果是被Timer唤醒的，回调Timer
-        __CFRUNLOOP_IS_CALLING_OUT_TO_A_TIMER_CALLBACK_FUNCTION__(timer);
- 
-        /// 9. 如果是被dispatch唤醒的，执行所有调用 dispatch_async 等方法放入main queue 的 block
-        __CFRUNLOOP_IS_SERVICING_THE_MAIN_DISPATCH_QUEUE__(dispatched_block);
- 
-        /// 9. 如果如果Runloop是被 Source1 (基于port的) 的事件唤醒了，处理这个事件
-        __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE1_PERFORM_FUNCTION__(source1);
- 
- 
-    } while (...);
- 
-    /// 10. 通知Observers，即将退出RunLoop
-    /// 此处有Observer释放AutoreleasePool: _objc_autoreleasePoolPop();
-    __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopExit);
-</code></pre>
-
-<h3 id="toc_7">1. AutoreleasePool</h3>
-
-<p>App启动后，苹果在主线程<code>RunLoop</code>中注册了两个Observer，回调为<code>_wrapRunLoopWithAutoreleasePoolHandler()</code></p>
-
-<p>第一个Observer是在进入Loop时(Entry)，回调内部会调用<code>_objc_autoreleasePoolPush（）</code>创建自动释放池，其order是-2147483647，优先级最高，保证自动释放池在其他回调之前</p>
-
-<p>第二个Observer监视两个事件: <code>BeforeWaiting</code>(准备进入休眠) 时调用<code>_objc_autoreleasePoolPop()</code> 和 <code>_objc_autoreleasePoolPush()</code> 释放旧的池并创建新池；<code>Exit</code>(即将退出Loop) 时调用 <code>_objc_autoreleasePoolPop()</code> 来释放自动释放池。这个<code>Observer</code>的<code>order</code>是 2147483647，优先级最低，保证其释放池子发生在其他所有回调之后。</p>
-
-<p>主线程执行的代码，通常写在诸如事件回调、Timer回调内。这些回调会被RunLoop创建的Autorelease环绕，所以不会出现泄漏</p>
-
-<h3 id="toc_8">2.事件响应</h3>
-
-<p>Source1(基于mach port)用来接收系统事件，回调函数为<code>__IOHIDEventSystemClientQueueCallback()</code></p>
-
-<p>当有一个硬件事件(触摸/锁屏/摇晃等)，先由<code>IOKit.framework</code>生成一个<code>IOHIDEvent</code>事件，并由<code>SpringBoard</code>接收<a href="http://iphonedevwiki.net/index.php/IOHIDFamily">详细信息</a>;然后由<code>mach port</code>转发给需要的App进程,runLoop中Source1就会触发回调<code>__IOHIDEventSystemClientQueueCallback()</code>回调内调用Source0，Source0触发<code>_UIApplicationHandleEventQueue()</code>将<code>IOHIDEvent</code>包装为<code>UIEvent</code>进行处理分发。</p>
-
-<p>可以加一个__IOHIDEventSystemClientQueueCallback()的symblol breakpoint看一下<br/>
-<img src="media/15543697527242/15547372542156.jpg" alt="" style="width:420px;"/></p>
-
-<h3 id="toc_9">3.手势识别</h3>
-
-<p>当上面的<code>_UIApplicationHandleEventQueue()</code>识别了一个手势时，其首先会调用<code>Cancel</code>将当前的<code>touchesBegin/Move/End</code>系列回调打断。随后系统将对应的<code>UIGestureRecognizer</code>标记为待处理。</p>
-
-<p>苹果注册了一个Observer来监测<code>BeforeWaiting</code>事件，回调为<code>_UIGestureRecognizerUpdateObserver()</code>会获取所有被标记为未处理的<code>GestureRecognizer</code>，并执行<code>GestureRecognizer</code></p>
-
-<h3 id="toc_10">4.界面更新</h3>
-
-<p>当在操作UI时，当一个UIView/CALayer改变，就会被标记为待处理，提交到全局容器中。<br/>
-苹果注册了一个Observer监听BeforeWating和Exit事件，回调<code>_ZN2CA11Transaction17observer_callbackEP19__CFRunLoopObservermPv()</code>回调内将所有待处理的UIView/CALayer进行绘制或者调整，更新UI界面</p>
-
-<h3 id="toc_11">5.定时器</h3>
-
-<p>一个NSTimer注册到RunLoop后，RunLoop会为其重复的时间点注册好事件。RunLoop为了节省资源，不会再非常准确的时间回调Timer。Timer有<code>Tolerance</code>属性，标识当前时间点到了之后允许多大的误差，如果执行了一个很长的任务，这个时间点被错过，那么这个时间点也会跳过去，不执行。</p>
-
-<p>NSTimer使用XUN内核的<code>mk_timer</code>驱动</p>
-
-<h3 id="toc_12">6.PerformSelector</h3>
-
-<p><code>performSelecter:afterDelay:</code>其实内部也是创建一个Timer添加到RunLoop中，如果当前线程没有RunLoop，则这个方法也会失效</p>
-
-<h3 id="toc_13">7.GCD</h3>
-
-<p><code>dispatch_async(dispatch_get_main_queue(), block)</code>向主线程发送消息时，libDispatch向主线程RunLoop发送消息，主线程被唤醒，从消息中去的block，在<code>__CFRUNLOOP_IS_SERVICING_THE_MAIN_DISPATCH_QUEUE__（）</code>中执行这个block。</p>
-
-<blockquote>
-<p>仅限于diapatch到主线程 到其他线程还是呦libDispatch处理</p>
-</blockquote>
-
-<h3 id="toc_14">8.网络请求</h3>
+<p>滴滴的王康在做瘦身时也实现了一个自定义的 clang 插件，具体自定义插件的实现可以查看他的这文章 <a href="https://mp.weixin.qq.com/s?__biz=MzUxMzcxMzE5Ng==&amp;mid=2247488360&amp;amp;idx=1&amp;amp;sn=94fba30a87d0f9bc0b9ff94d3fed3386&amp;source=41#wechat_redirect">《基于clang插件的一种iOS包大小瘦身方案》</a></p>
 
 
 		</div>
@@ -346,8 +142,10 @@ IOKit 层是为设备驱动提供了一个面向对象(C++)的一个框架。<br
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -361,7 +159,7 @@ IOKit 层是为设备驱动提供了一个面向对象(C++)的一个框架。<br
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -457,31 +255,31 @@ IOKit 层是为设备驱动提供了一个面向对象(C++)的一个框架。<br
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

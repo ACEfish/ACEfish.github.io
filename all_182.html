@@ -82,105 +82,46 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15659410303124.html">不透明类型</a></h1>
-			<p class="meta"><time datetime="2019-08-16T15:37:10+08:00" 
-			pubdate data-updated="true">2019/8/16</time></p>
+		  	<h1 class="entry-title"><a href="14877247419344.html">Objc Runtime</a></h1>
+			<p class="meta"><time datetime="2017-02-22T08:52:21+08:00" 
+			pubdate data-updated="true">2017/2/22</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>具有不透明返回类型的函数或方法会隐藏返回值的类型信息。此时，函数不再提供具体的类型作为返回类型，而是根据它支持的协议来描述返回值。</p>
+		  	<p>Objective-C语言是一门动态语言，它将很多静态语言在编译和链接时期做的事放到了运行时来处理。<br/>
+当然这就意味着OC的不仅仅需要一个编译器还需要一个运行时的系统来执行编译代码.这个运行时系统即<code>Objc Runtime</code>。<code>Objc Runtime</code>其实是一个<code>Runtime</code>库，它基本上是用C和汇编写的，这个库使得C语言有了面向对象的能力。</p>
 
-<p>在处理模块和调用代码之间关系时，异常类型信息非常有用，此时返回的底层数据类型仍然可以保持私有。而且不同于返回协议类型，不透明类型可以保证类型一致性--表一起能获取到类型信息，但是模块使用者却不能获取到</p>
+<p>Runtime作用：</p>
 
-<h2 id="toc_0">不透明类型解决的问题</h2>
+<ol>
+<li>封装:在这个库中，对象可以用C语言中的结构体表示，而方法可以用C函数来实现，另外再加上了一些额外<br/>
+的特性。这些结构体和函数被runtime函数封装后，我们就可以在程序运行时创建，检查，修改类、对象<br/>
+和它们的方法了。</li>
+<li>找出方法的最终执行代码：当程序执行<code>[object doSomething]</code>时，会向消息接收者<code>(object)</code>发送一条消息(<code>doSomething</code>)，runtime会根据消息接收者是否能响应该消息而做出不同的反应。 </li>
+</ol>
 
-<h2 id="toc_1">返回不透明类型</h2>
+<p>使用方法:<br/>
+通过<code>objc_getClass</code>来获取对象的isa<br/>
+注意:我们在一个类对象调用class方法是无法获取meta-class，它只是返回类而已。</p>
 
-<p>可以认为不透明类型和泛型相反。</p>
+<p>注意:在objc/runtime 方法中是基于c语言的 因此语法大多为c语言  比如：字符串 %s和“”（而不是%@和@“”）,  定义对象也没有*符号<br/>
+    例如:<br/>
+<code>Class MySubClass = objc_allocateClassPair([MyClass class], &quot;MySubClass&quot;, 0);</code></p>
 
-<p>泛型允许调用一个方法，为这个方法的形参和返回值制定一个与实现无关的类型，例如</p>
+<h2 id="toc_0">参阅学习连接</h2>
 
-<pre><code class="language-swift">func max&lt;T&gt;(_ x: T, _ y: T) -&gt; T where T: Comparable { ... }
-</code></pre>
-
-<p>类型T由调用方法的代码决定，函数内部也要通过通用的方式写代码，才能应对调用者传入的各种类型</p>
-
-<p>返回不透明类型函数中，不透明类型允许函数实现时，选择一个与调用代码无关的返回类型，比如：下面例子返回了一个梯形，但是却没直接输出梯形的底层类型</p>
-
-<pre><code class="language-swift">struct Square: Shape {
-    var size: Int
-    func draw() -&gt; String {
-        let line = String(repeating: &quot;*&quot;, count: size)
-        let result = Array&lt;String&gt;(repeating: line, count: size)
-        return result.joined(separator: &quot;\n&quot;)
-    }
-}
-
-func makeTrapezoid() -&gt; some Shape {
-    let top = Triangle(size: 2)
-    let middle = Square(size: 2)
-    let bottom = FlippedShape(shape: top)
-    let trapezoid = JoinedShape(
-        top: top,
-        bottom: JoinedShape(top: middle, bottom: bottom)
-    )
-    return trapezoid
-}
-let trapezoid = makeTrapezoid()
-print(trapezoid.draw())
-</code></pre>
-
-<p>返回值定义为<code>some Shape</code>；因此，该函数返回遵循<code>Shape</code>协议的给定类型，而不需要指定任何具体类型。<br/>
-这样写<code>makeTrapezoid()</code>函数可以表明它公共接口的基本性质 --返回的是一个几何图形 -- 而不是部分的公共接口生成的特殊类型。</p>
-
-<p><code>makeTrapezoid()</code>函数可以返回任意它需要的类型，只要其遵循<code>Shape</code>协议即可，类似泛型函数的实现代码，其调用代码需要采用通用的方式，使其返回的任何<code>Shape</code>类型值都能被正常使用</p>
-
-<pre><code class="language-swift">//泛型和不透明类型相结合
-func flip&lt;T: Shape&gt;(_ shape: T) -&gt; some Shape {
-    return FlippedShape(shape: shape)
-}
-</code></pre>
-
-<blockquote>
-<p>注意:</p>
-
-<p>如果函数内部有多个地方返回不透明类型，那么需要保证返回的均为同一类型，否则会报错</p>
-</blockquote>
-
-<h2 id="toc_2">不透明类型和协议类型区别</h2>
-
-<p>虽然使用不透明类型作为函数返回值，看起来和返回协议类型非常相似，但这两者有一个主要区别，就在于是否需要保证类型一致性。</p>
-
-<p>一个不透明类型只能对应一个具体的类型，即使函数调用者并不知道是哪种类型。<br/>
-协议类型可以对应多个类型，只要他们遵循同一协议<br/>
-不透明类型则比啊留了底层类型的唯一性，swift能够推断出来关联类型</p>
-
-<pre><code class="language-swift">protocol Container {
-    associatedtype Item
-    var count: Int { get }
-    subscript(i: Int) -&gt; Item { get }
-}
-extension Array: Container { }
-
-// 错误：有关联类型的协议不能作为返回类型。
-func makeProtocolContainer&lt;T&gt;(item: T) -&gt; Container {
-    return [item]
-}
-
-// 错误：没有足够多的信息来推断 C 的类型。
-func makeProtocolContainer&lt;T, C: Container&gt;(item: T) -&gt; C {
-    return [item]
-}
-
-
-func makeOpaqueContainer&lt;T&gt;(item: T) -&gt; some Container {
-    return [item]
-}
-let opaqueContainer = makeOpaqueContainer(item: 12)
-let twelve = opaqueContainer[0]
-print(type(of: twelve))
-// 输出 &quot;Int&quot;
-</code></pre>
+<ol>
+<li><p><a href="http://southpeak.github.io/categories/objectivec/">南峰子博客</a></p></li>
+<li><p>常见type:几种取值<a href="https://developer.apple.com/library/prerelease/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtTypeEncodings.html#//apple_ref/doc/uid/TP40008048-CH100">查看</a></p></li>
+<li><p><a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtPropertyIntrospection.html#//apple_ref/doc/uid/TP40008048-CH101-SW6">Property Type String</a>。</p></li>
+<li><p>runtime<a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Introduction/Introduction.html">苹果官方文档</a></p></li>
+<li><p><a href="http://www.cocoanetics.com/2012/06/associated-objects/">关联对象</a></p></li>
+<li><p><a href="http://www.cnblogs.com/kesalin/archive/2011/08/15/objc_method_base.html">深入浅出cocoa消息</a></p></li>
+<li><p><a href="https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Introduction/Introduction.html">苹果官方消息转发文档</a></p></li>
+<li><p><a href="http://blog.csdn.net/itianyi/article/details/8678452">iOS:Objective-C中Self和Super详解</a></p></li>
+<li><p><a href="https://developer.apple.com/reference/objectivec/objective_c_runtime">官方运行时文档</a></p></li>
+<li><p><a href="http://www.cocoachina.com/industry/20130819/6824.html">Objective-C的动态特性</a></p></li>
+</ol>
 
 
 		</div>
@@ -203,8 +144,10 @@ print(type(of: twelve))
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -218,7 +161,7 @@ print(type(of: twelve))
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -314,31 +257,31 @@ print(type(of: twelve))
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

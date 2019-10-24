@@ -82,72 +82,63 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15042543172572.html">嵌套类型</a></h1>
-			<p class="meta"><time datetime="2017-09-01T16:25:17+08:00" 
-			pubdate data-updated="true">2017/9/1</time></p>
+		  	<h1 class="entry-title"><a href="14866309753746.html">iOS中UISearchController</a></h1>
+			<p class="meta"><time datetime="2017-02-09T17:02:55+08:00" 
+			pubdate data-updated="true">2017/2/9</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><strong>嵌套类型:</strong>在支持的类型中定义嵌套的枚举、类和结构体</p>
+		  	<h4 id="toc_0">1. 使用方法</h4>
 
-<p>要在一个类型中嵌套另一个类型,将嵌套类型的定义写在其外部类型的<code>{}</code>内，而且可以根据需要定义多级嵌套</p>
+<pre><code class="language-object-c">SearchResultController *vc = [[SearchResultController alloc] init];
+    self.searchController = [[SearchControllerOfContacts alloc] initWithSearchResultsController:vc];
+    [self.tableView setTableHeaderView:self.searchController.searchBar];
+    [self.searchController setSearchResultsUpdater:vc];
+    [self.searchController.searchBar setPlaceholder:NSLocalizedString(@&quot;昵称、手机号&quot;, nil)];
+    self.resultController = vc;
+</code></pre>
 
-<h2 id="toc_0">嵌套类型实践</h2>
+<p>此处是设置searchBar为tableView的头视图<br/>
+<strong>注意</strong><br/>
+此处的searchConroller 和 searchResultcontroller都必须为该控制器的属性(即强引用住）</p>
 
-<pre><code class="language-swift">struct BlackjackCard {
-    //嵌套的 Suit 枚举//牌的花色
-    enum Suit: Character {
-        case Spades = &quot;块&quot;, Hearts = &quot;心&quot;, Diamonds = &quot;*&quot;, Clubs = &quot;额&quot;
+<h4 id="toc_1">2. 自定义的UISearchController</h4>
+
+<p>我们可以继承自UISearchController，重写其<code>initWithSearchResultsController</code>方法即可:</p>
+
+<pre><code class="language-object-c">- (id)initWithSearchResultsController:(UIViewController *)searchResultsController
+{
+    if (self = [super initWithSearchResultsController:searchResultsController]) {
+        self.searchBar.layer.borderWidth = 1;
+        self.searchBar.layer.borderColor = [ITRGBColor(239.0, 239.0, 244.0, 1.0)CGColor];
+        [self.searchBar setBarTintColor:ITRGBColor(239.0, 239.0, 244.0, 1.0)];
+        [self.searchBar setValue:@&quot;取消&quot; forKey:@&quot;_cancelButtonText&quot;];
+        UITextField *tf = [[[self.searchBar.subviews firstObject] subviews] lastObject];
+        [tf.layer setMasksToBounds:YES];
+        [tf.layer setBorderWidth:0.5f];
+        [tf.layer setBorderColor:[UIColor colorWithWhite:0.5 alpha:0.3].CGColor];
+        [tf.layer setCornerRadius:5.0f];
+        
     }
-    //嵌套的 Rank 枚举
-    enum Rank: Int {
-        case Two = 2, Three, Four, Five, Six, Seven, Eight, Nine, Ten
-        case Jack, Queen, King, Ace
-        struct Values {//用于反应Ace有两种值，而其他只有一个
-            let first: Int, second: Int?
-        }
-        var values: Values {
-            switch self {
-                case .Ace:
-                    return Values(first: 1, second: 11)
-                case .Jack, .Queen, .King:
-                    return Values(first: 10, second: nil)
-                default:
-                    return Values(first: self.rawValue, second: nil)
-            }
-        }
-    }
-    // BlackjackCard 的属性和方法
-    let rank: Rank, suit: Suit
-    var description: String {
-        var output = &quot;suit is \(suit.rawValue),&quot;
-        output += &quot; value is \(rank.values.first)&quot;
-        if let second = rank.values.second {
-            output += &quot; or \(second)&quot;
-        }
-        return output
-    }
+    return self;
 }
 </code></pre>
 
-<p><code>BlackjackCard</code>结构体有默认的成员构造器,可以用默认构造器去初始化常量:</p>
+<h4 id="toc_2">3.深度解析UISearchController 以及其SearchResultControll原理</h4>
 
-<pre><code class="language-swift">/**
-尽管Rank和Suit嵌套在BlackjackCard中,类型可以从上下文推断出来,
-因此可以用`.Ace 和.Spades`引用枚举实例
-*/
-let theAceOfSpades = BlackjackCard(rank: .Ace, suit: .Spades)
-print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
-// 打印 “theAceOfSpades: suit is ?, value is 1 or 11”
-</code></pre>
+<p>当UISearchController出现时，UISearchController也是一个控制器就相当于模态出来一个控制器<br/>
+<img src="media/14866309753746/UISearchController.png" alt="UISearchControlle的层级表示"/><br/>
+<img src="media/14866309753746/searchController_big.png" alt="searchController_big"/></p>
 
-<h2 id="toc_1">引用嵌套类型</h2>
+<p>我们可以看出来 我们首先从原来控制器模态出来我们自己的UISearchController 而UISearchControllView就是这个控制器的View即蓝色部分  而搜索结果的显示即在其上加了一个View这个view即为我们的搜索结果控制器的view<br/>
+因此我们改变这个SearchControllView颜色并不会影响显示 但是如果把其上加上别的视图 就会影响结果的显示的<br/>
+<img src="media/14866309753746/searchController2.png" alt="searchControlle"/><br/>
+可以看到显示结果的View被我们后加的tableView挡住了,这时候我们可以<strong><code>sendSubviewToBack</code></strong>来直接将tableView放置到显示结果的view后面即可了</p>
 
-<p>当想要在外部引用嵌套类型时，在嵌套类型名前加外部类型的类型名作为前缀</p>
+<h4 id="toc_3">3.UISearchController 上的searchBar原理</h4>
 
-<pre><code class="language-swift">let heartsSymbol = BlackjackCard.Suit.Hearts.rawValue
-//红心符号
-</code></pre>
+<p>显示的searchBar是因为searcontroller上有一块searBarContainView 在其上放置了searchBar,还有背景图片 取消按钮等<br/>
+<img src="media/14866309753746/UISearchBar.png" alt="UISearchBa"/></p>
 
 
 		</div>
@@ -170,8 +161,10 @@ print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -185,7 +178,7 @@ print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -281,31 +274,31 @@ print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

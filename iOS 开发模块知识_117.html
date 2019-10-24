@@ -82,122 +82,48 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14905958336865.html">图层时间</a></h1>
-			<p class="meta"><time datetime="2017-03-27T14:23:53+08:00" 
-			pubdate data-updated="true">2017/3/27</time></p>
+		  	<h1 class="entry-title"><a href="15540299299293.html">CodeGen IR LLVM</a></h1>
+			<p class="meta"><time datetime="2019-03-31T18:58:49+08:00" 
+			pubdate data-updated="true">2019/3/31</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>我们可以用<code>CAAnimation</code>和它的子类实现的多种图层动画。但是动画是需要持续时间的,因此我们来学习一下计时的<code>CAMediaTiming</code>，跟踪时间。</p>
+		  	<h2 id="toc_0">CodeGen生成IR代码</h2>
 
-<h3 id="toc_0">CAMediaTiming 协议</h3>
+<p>将语法树翻译成LLVM IR中间代码，作为LLVM Backend输入的桥接语言。方便LLVM Backend可以做到与语言无关的优化</p>
 
-<p><code>CAMediaTiming</code> 协议定义了<strong>在一段动画内用来控制逝去时间的属性的集合</strong>。<code>CALayer</code> 和<code>CAAnimation</code>都实现了这个协议，所以时间可以被任意基于一个图层或者一段动画的类控制。</p>
+<p><strong>这个过程还会与runtime进行桥接</strong></p>
 
-<h4 id="toc_1">持续和重复</h4>
+<ul>
+<li>各种类、方法、成员变量等的结构体的生成，将其放到对应的Mach-O的Section中</li>
+<li>Non-Fragile ABI合成OBJC_IVAR_$_偏移值常量</li>
+<li>ObjCMessageExpr(AST树结构)翻译生成相应版本的objc_msgSend、super翻译生成objc_msgSendSuper</li>
+<li>strong、weak、copy、atomic、nonatomic、readwrite等合成@property自动实现setter和getter</li>
+<li>@synthesize 的处理</li>
+<li>生成block_layout数据结构(即block对应的结构体)</li>
+<li><strong>block和</strong>weak处理</li>
+<li>_block_invoke</li>
+<li>ARC的处理，即插入objc_storeStrong和objc_storeWeak等ARC代码;ObjCAutoreleasePoolStmt 转 objc_autorealeasePoolPush / Pop;自动添加 [super dealloc];给每个 ivar 的类合成 .cxx_destructor 方法自动释放类的成员变量</li>
+</ul>
 
-<p><code>duration</code>(<code>CAMediaTiming</code>的属性之一)是<code>CFTimeInterval</code>类型(双精度浮点型),对将要进行的动画的一次迭代指定了时间。<br/>
-<code>repeatCount</code>(<code>CAMediaTiming</code>的属性之一)，代表动画重复的迭代次数。<br/>
-通过上面两个属性我们可以创建重复动画</p>
+<p><strong>不管编译的语言时 Objective-C 还是 Swift 也不管对应机器是什么，亦或是即时编译，LLVM 里唯一不变的是中间语言 LLVM IR</strong></p>
 
-<p>创建重复动画的另外方式:<br/>
-<code>repeatDuration</code>属性。它让动画重复一个指定的时间，而不是指定次数。如果我们将 <code>repeatDuration</code>设置为<code>INFINITY</code>(无限大)动画无限循环播放，设置<code>repeatCount</code>为<code>INFINITY</code>也有同样的效果。(但是<strong>这两个属性我们只能设置一个</strong>)<br/>
-<code>autoreverses</code>属性,设置是否在每次间隔交替循环过程中自动回放（常用于播放非循环动画）。</p>
+<h3 id="toc_1">LLVM IR</h3>
 
-<h4 id="toc_2">相对时间</h4>
+<p>LLVM IR有三种表示格式，第一种是bitcode这样的存储格式，以.bc做后缀；第二种是可读的.ll；第三种是用于开发是操作LLVM IR的内存格式</p>
 
-<p><code>beginTime</code>指定了动画开始之前的的延迟时间（默认是0即立刻执行）。<br/>
-设置beginTime属性为：要延迟的时间（单位为秒）+ CACurrentMediaTime(); </p>
+<p>一个编译单元即一个文件在IR里就是一个<code>Module</code>，Module里有<code>Global variable</code>和<code>Function</code>，在Function里有<code>Basic Block</code>，<code>Basic Block</code>里有指令<code>Instructions</code><br/>
+这样的话，如果想要开发一门新的语言只需要完成语法解析后，通过LLVM提供的丰富接口在内存中生成IR就可以直接运行在各个不同的平台</p>
 
-<p><code>speed</code>是一个时间的倍数，默认<code>1.0</code>，减少它会减慢图层/动画的时间，增加它会加快速度。如果2.0的速度，那么对于一个 duration 为1的动画，实际上在0.5秒的时候就已经完成了。</p>
+<h3 id="toc_2">LLVM IR的优化</h3>
 
-<p><code>timeOffset</code>和<code>beginTime</code>类似，但是和增加<code>beginTime</code>导致的延迟动画不同，增加<code>timeOffset</code>只是让动画快进到某一点，例如，对于一个持续1秒的动画来说，设置<code>timeOffset</code>为0.5意味着动画将从一半的地方开始。<br/>
-和<code>beginTime</code>不同的是，<code>timeOffset</code>并不受 <code>speed</code> 的影响。所以如果你把<code>speed</code> 设为2.0，把 <code>timeOffset</code> 设置为0.5，那么你的动画将从动画最后结束的地方开始，因为1秒的动画实际上被缩短到了0.5秒。然而即使使用了 <code>timeOffset</code>让动画从结束的地方开始，它仍然播放了一个完整的时长，这个动画仅仅是循环了一圈，然后从头开始播放。</p>
+<p>选择不同的O2、O3这样的优化回调用对应的Pass进行处理，比如死代码清理、内联化、表达式重组、循环变量移动等这样的Pass，可以通过命令<code>llvm -opt</code>调用LLVM优化相关的库</p>
 
-<h4 id="toc_3">fillMode</h4>
+<h3 id="toc_3">SSA</h3>
 
-<p><code>fillMode</code> 属性是一个<code>NSString</code>类型，接受以下常量:</p>
+<p>LLVM IR是SSA形式的，维护双向def-use信息，user-def是通过普通指针实现信息维护，def-user通过内存跳表和链表来实现，便于forward dataflow analysis和backward dataflow analysis。</p>
 
-<pre><code class="language-objectivec">kCAFillModeForwards
-kCAFillModeBackwards
-kCAFillModeBoth
-kCAFillModeRemoved//默认
-</code></pre>
-
-<p>默认是 <code>kCAFillModeRemoved</code>，当动画不再播放的时候就显示图层模型指定的值</p>
-
-<p>向前，向后或者即向前又向后去填充动画状态，使得动画在开始前或者结束后仍然保持开始和结束那一刻的值。<br/>
-这就对避免在动画结束的时候急速返回提供另一种方案。但是，需要把 removeOnCompletion 设置为 NO ，另外需要给动画添加一个非空的键，于是可以在不需要动画的时候把它从图层上移除.</p>
-
-<h3 id="toc_4">层级关系时间</h3>
-
-<p>动画时间也是有层级关系的,每个动画和图层在时间上都有它自己的层级概念,相对于父图层.对图层调整时间将会影响到它本身和子图层的动画，但不会影响到父图层（图层的时间属性）。类似的使用<code>CAAnimationGroup</code>时将动画都被按照层级组合.(CAAnimationGroup将动画层级组合)（动画属性）</p>
-
-<p>对<code>CALayer</code>或者 <code>CAGroupAnimation</code> 调整 <code>duration</code> 和 <code>repeatCount / repeatDuration</code> 属性并不会影响到子动画。但是 <code>beginTime</code>， <code>timeOffset</code> 和 <code>speed</code> 属性将会影响到子动画。<code>beginTime</code>指定了父图层开始动画（或者组合关系中的父动画）和对象将要开始自己动画之间的偏移。调整<code>CALayer</code> 和<code>CAGroupAnimation</code>的 <code>speed</code> 属性将会对动画以及子动画速度应用一个缩放的因子。</p>
-
-<h4 id="toc_5">全局时间和本地时间</h4>
-
-<p>全局时间:<br/>
-CoreAnimation有一个全局时间的概念，也就是所谓的马赫时间（“马赫”实际上是iOS和Mac OS系统内核的命名）（返回了设备自从上次启动后的秒数）。马赫时间在设备上所有进程都是全局的--但是在不同设备上并不是全局的.</p>
-
-<pre><code class="language-objectivec">//CACurrentMediaTime 函数来访问马赫时间
-CFTimeInterval time = CACurrentMediaTime();
-</code></pre>
-
-<p>这个值我们并不关心,但是它对我们的对时间实测提供了一个基准,可以提供相对值.</p>
-
-<p><strong>注意</strong><br/>
-当设备休眠的时候马赫时间会暂停，也就是所有的<code>CAAnimations</code>（基于马赫时间）同样也会暂停。因此马赫时间对长时间测量并不有用。比如用 CACurrentMediaTime 去更新一个实时闹钟并不明智。</p>
-
-<p>本地时间:<br/>
-每个 CALayer 和 CAAnimation 实例都有自己本地时间的概念，是根据父图层/动画层级关系中的 beginTime ， timeOffset 和 speed 属性计算出来的.</p>
-
-<p>类似坐标系转换：</p>
-
-<pre><code class="language-objectivec">- (CFTimeInterval)convertTime:(CFTimeInterval)t fromLayer:(CALayer *)layer;
-- (CFTimeInterval)convertTime:(CFTimeInterval)t toLayer:(CALayer *)layer;
-</code></pre>
-
-<h4 id="toc_6">暂停，倒回和快进</h4>
-
-<p>设置动画的<code>speed</code>属性为0可以暂停动画，但在动画被添加到图层之后不太可能再修改它了，所以不能对正在进行的动画使用这个属性(注意这是动画的speed属性)。</p>
-
-<p>如果移除图层正在进行的动画，图层将会急速返回动画之前的状态。但如果在动画移除之前拷贝呈现图层到模型图层，动画将会看起来暂停在那里。但是不好的地方在于不能再恢复动画了。<br/>
-给图层添加一个<code>CAAnimation</code>实际上是给动画对象做了一个不可改变的拷贝，所以对原始动画对象属性的改变对真实的动画并没有作用。相反，直接用 <code>- animationForKey:</code> 来检索图层正在进行的动画可以返回正确的动画对象，但是修改它的属性将会抛出异常。</p>
-
-<p>暂停的方法：<br/>
-可以利用<code>CAMediaTiming</code>来暂停图层本身。如果把图层的 <code>speed</code> 设置成0，它会暂停任何添加到图层上的动画。类似的，设置<code>speed</code> 大于1.0将会快进，设置成一个负值将会倒回动画。</p>
-
-<p>通过增加主窗口图层的speed，可以暂停整个应用程序的动画.我们可以利用改变speed来加速所有视图动画来进行自动化测试.</p>
-
-<pre><code class="language-objectivec">self.window.layer.speed = 100;
-</code></pre>
-
-<h3 id="toc_7">手动动画</h3>
-
-<p>我们可以通过设置动画<code>speed</code>属性为0,禁用动画的自动播放,然后通过设置<code>timeOffset</code>来显示动画序列.这样就可以运用手势来控制动画.</p>
-
-<p>例如:</p>
-
-<pre><code class="language-objectivec">//设置平移手势
-- (void)pan:(UIPanGestureRecognizer *)pan
-{
-    //get horizontal component of pan gesture
-    CGFloat x = [pan translationInView:self.view].x;
-    //convert from points to animation duration //using a reasonable scale factor
-    x /= 200.0f;
-    //update timeOffset and clamp result
-    CFTimeInterval timeOffset = self.doorLayer.timeOffset;
-    timeOffset = MIN(0.999, MAX(0.0, timeOffset - x));
-    self.doorLayer.timeOffset = timeOffset;
-    //reset pan gesture
-    [pan setTranslation:CGPointZero inView:self.view];
-}
-</code></pre>
-
-<p>其实如果是这样的话,对于比较复杂的动画我们可以这样的方法,但是对于比较简单图层我们完全可以直接用移动手势来设置图层<code>transform</code>,</p>
-
-<p>w</p>
+<p>llc 编译器是专门编译 LLVM IR 的编译器用来生成汇编文件。</p>
 
 
 		</div>
@@ -220,8 +146,10 @@ CFTimeInterval time = CACurrentMediaTime();
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -235,7 +163,7 @@ CFTimeInterval time = CACurrentMediaTime();
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -331,31 +259,31 @@ CFTimeInterval time = CACurrentMediaTime();
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

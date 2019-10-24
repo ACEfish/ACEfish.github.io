@@ -82,50 +82,45 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14872162581601.html">测试</a></h1>
-			<p class="meta"><time datetime="2017-02-16T11:37:38+08:00" 
+		  	<h1 class="entry-title"><a href="14872305472033.html">UI测试</a></h1>
+			<p class="meta"><time datetime="2017-02-16T15:35:47+08:00" 
 			pubdate data-updated="true">2017/2/16</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h5 id="toc_0">1.流行框架</h5>
+		  	<p>关于iOS的UI自动化测试，Xcode 7 Apple从新提供了一个新的框架UITest，使用XCTest.framework，Xcode可以自动录制UI测试的动作流，还有就是可以使用<code>XCTest UI testing API</code></p>
 
-<p>Apple自带的<code>XCTest</code>和第三方的<code>GHUnit</code>.他两之间的区别:XCTest：与Xcode深度集成。而且可以享受Apple后续对XCTest升级的福利。 GHUnit：集成度不如XCTest，安装麻烦。但是有自己的GUI界面。因为XCTest是苹果的，所以我们选择XCTest</p>
+<h4 id="toc_0"><a href="http://www.itnose.net/detail/6507467.html">基础知识</a></h4>
 
-<h5 id="toc_1">2.OCMock</h5>
+<p>核心的三个类:<code>XCUIApplication</code> <code>XCUIElement</code> <code>XCUIElementQuery</code><br/>
+<strong>XCUIApplication类</strong> 是Application的代理，就像我们项目工程中的AppDelegate，这个对象用来启动或者是终止UI测试程序，还可以在启动的时候设置一些启动参数，在获取程序中的UI元素的时候，就是通过这个类的实例。这个类继承自XCUIElement类<br/>
+<strong>XCUIElement类</strong> 是XCTest.framework对应用中的所有UI控件的抽象，在UI测试中，没有UIKit中的UI类型，只是用这个类的实例表示所有的UI控件，以及相应的交互方法，例如：执行手势（tap，press，swipe），滑动控件交互，拾取器交互，这个类采取了XCUIElementAttributes协议（描述UI元素的属性：Identity，Value，Interaction State，Size），XCUIElementTypeQueryProvider协议(为指定类型的子代元素提供ready-made查询，子代元素查询包含button，具体实现是:@property(readonly, copy) XCUIElementQuery *buttons;等一系列对UIKit中元素的映射)<br/>
+<strong>XCUIElementQuery类</strong> 是定位UI元素的查询，这个类使用类似key-value的机制得到XCUIElement的实例，使用Type(XCUIElementType枚举)，Predicate，Identifier创建query，使用elementAtIndex:, elementMatchingPredicate,elementMatchingType: identifier:方法访问匹配到的UI元素，此类采用XCUIElementTypeQueryProvider协议</p>
 
-<p>mock测试是个很神奇而又很酷的技术，在测试过程中，对于一些不容易构造或不容易获取的对象，此时你可以创建一个虚拟的对象（mock object）来完成测试。<br/>
-而我们在进行iOS测试时候是使用<code>OCMock</code>来进行对象的mock</p>
+<p>XCTest一共提供了三种UI测试对象<br/>
+    XCUIApplication 当前测试应用target<br/>
+    XCUIElementQuery 定位查询当前UI中xctuielement的一个类<br/>
+    XCUIElement UI测试中任何一个item项都被抽象成一个XCUIElement类型<br/>
+因此:当我们获取了录制生成的代码以后，根据UITest提供的三种对象，我可以在此来对测试代码进行修改，调试,我们同样可以使用断言语句来进行测试</p>
 
-<h5 id="toc_2">3.断言框架</h5>
+<h4 id="toc_1">UI测试Demo</h4>
 
-<p>Expecta和OCHamcrest这两个都是断言的扩展框架。一开始我选择了Expecta，因为我后来有一段时间将测试文件用BDD框架Specta来写（当然这是后话），而Expecta 和Specta都出自同一个人之手，不论是教程文档都更加丰富。但是后来我废弃了BDD框架，还是用原生的XCTest，Expecta在使用中也遇到了一些问题，我就把我们的断言框架由Expecta切换到了OCHamcrest。<br/>
-原因有两点：<br/>
-<code><br/>
-1.Expecta不成熟，至笔者切换的时候才0.3.1版本，遇到很多框架自身的问题。case跑着跑着验证通不过了，再跑一次又过了，是不是还爆出个Expecta框架内部的crash。<br/>
-2.OCHamcrest更加成熟，而且可扩展性高，可以自定义自己的断言，更灵活。<br/>
-</code><br/>
-比如OCHamcrest不支持superClass验证，我们必须自己去比较，返回一个bool值，然后去判断bool是否为真。很麻烦。自己自定义个superClass的验证，就不需要每次都这么麻烦的写这么多代码了。而如果Expecta不支持的断言，那就永远不能支持了。 我们可以通过OCHamcrest这个特性，做一些符合自己app场景的特有断言。</p>
-
-<h5 id="toc_3">BDD Or Not</h5>
-
-<p>BDD和TDD都是敏捷开发的技术;<br/>
-<strong>BDD</strong>（Behavior Driven Development），也就是行为驱动开发，它旨在解决具体问题，帮助开发人员确定应该测试些什么.此外，它提供了一个 <code>DSL</code>（译者注: Domain-specific language，域特定语言）鼓励开发者弄清楚他们的需求，并且它引入了一个通用语言帮助你轻易理解测试的目的。<br/>
-<strong>TDD</strong>（Test-Driven Development），就是测试驱动开发，通过测试来推动整个开发的进行<br/>
-目前使用比较多得是BDD框架:<br/>
-Cedar，Specta和Kiwi这3个框架就是目前Objc最流行的BDD测试框架<br/>
-    Specta和Kiwi的区别就是Kiwi包含了Specta和OCmock以及Expeata所有的功能<br/>
-除此之外还有Apple的XCTest:XCTest与Xcode深度集成，而且可以享受Apple后续对XCTest升级的福利</p>
-
-<p>XCTest 的优势和缺点都是由于它太简单了。你只需要创建一个类，使用 “test” 作为测试方法名的前缀，只需要这样就可以了，不需要再做其他的。和 Xcode 很好的集成性也是 XCTest 获得青睐的原因。你可以点击边栏上的小菱形按钮来运行测试用例，你也可以很容易的查看所有失败的测试用例，也可以在测试用例列表中点击某一行而快速的跳转到某一个测试用例。</p>
-
-<p>不幸的是，这已经是 XCTest 的全部优点了。在开发和测试中，使用 XCTest 时我们没有碰到任何的障碍，但是经常会想如果它能更方便一些就好了。XCTest 类看起来就像普通的类，而一个 BDD 测试套件的结构和其嵌套的上下文是显而易见的。并且这种为测试创建嵌套上下文的可能性也是最缺失的。嵌套的上下文允许我们在使独立的测试相对简单的情况下创建越来越具体的场景。当然，在 XCTest 中这也是可以的，比如在一些测试用例中调用自定义的 setup 方法，但这并不方便。</p>
-
-<p>BDD 框架的附加功能的重要性是取决于项目的大小。我们的结论是，XCTest 对中小型的工程来说是一个很好的选择，但是对于更大型的工程，就有必要参考一下像 Kiwi 或者 Specta 这样的 BDD 框架。</p>
-
-<h5 id="toc_4">4.UITests</h5>
-
-<p>通过代码化来实现自动点击界面，输入文字等功能</p>
+<ol>
+<li><p>创建项目时勾选UITest</p></li>
+<li><p>打开DemoUiTest.m,创建 - (void)testUI函数,同时将光标留在函数内<br/>
+<img src="media/14872305472033/14872344264789.png" alt=""/><br/>
+点击下面的红色按钮，开始recorder操作，程序运行起来后，点击APP界面进行操作,然后光标处就会生成测试代码</p></li>
+<li><p>进行测试<br/>
+之后我们测试只需要点击test函数前的测试按钮测试这个函数 或者command+u 来进行全部测试<br/>
+此时刚才的一连串动作会一步一步连续执行下来</p></li>
+<li><p>我们此时可以通过修改这段代码来进行我们想要的测试<br/>
+比如：</p>
+<ul>
+<li>通过添加循环语句来测试一直执行是否会出现问题,判断内存问题等</li>
+<li>通过添加断言来判断运行中元素或情况与我们预想是否一致</li>
+</ul></li>
+<li></li>
+</ol>
 
 
 		</div>
@@ -148,8 +143,10 @@ Cedar，Specta和Kiwi这3个框架就是目前Objc最流行的BDD测试框架<br
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -163,7 +160,7 @@ Cedar，Specta和Kiwi这3个框架就是目前Objc最流行的BDD测试框架<br
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -259,31 +256,31 @@ Cedar，Specta和Kiwi这3个框架就是目前Objc最流行的BDD测试框架<br
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

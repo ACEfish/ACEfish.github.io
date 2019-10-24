@@ -82,68 +82,57 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15476342156786.html">Map</a></h1>
-			<p class="meta"><time datetime="2019-01-16T18:23:35+08:00" 
-			pubdate data-updated="true">2019/1/16</time></p>
+		  	<h1 class="entry-title"><a href="15535911821974.html">制作自己的Cocoapods</a></h1>
+			<p class="meta"><time datetime="2019-03-26T17:06:22+08:00" 
+			pubdate data-updated="true">2019/3/26</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><code>map</code>设置键值对</p>
+		  	<p>创建自己私有pod库，官方推荐使用 <code>pod lib create [pod name]</code>命令，会创建一个很详细的文件结构供使用</p>
 
-<blockquote>
-<p>map与对象的一个区别就是 map的键是可以为任意类型,而对象会将属性类型变为字符串</p>
-</blockquote>
+<p>其实自己的Cocopods库和组件的源代码，仅仅只是多了.podspec文件 and LICENSE证书文件</p>
 
-<pre><code class="language-javascript">const people = new Map()
-people.set(&quot;lyy&quot;, 25)   
-people.set(&quot;fk&quot;, 23)
-people.set(&quot;tt&quot;, 20)
-</code></pre>
-
-<p><img src="media/15476342156786/15476346813823.jpg" alt="" style="width:596px;"/></p>
-
-<h2 id="toc_0">常用方法</h2>
-
-<p><code>set()</code>设置map中键值对<br/>
-<code>get()</code>获取key对应的值<br/>
-<code>has()</code>是否包含对应键<br/>
-<code>delete()</code>删除对应键的值<br/>
-<code>clear()</code>清除map<br/>
-可以用<code>for each</code>和<code>for of</code>进行循环</p>
-
-<pre><code class="language-javascript">people.get(&quot;lyy&quot;) //25
-people.delete(&quot;fk&quot;)
-
-for (const [key, value] of people) {
-    console.log(key, value)
-}
-
-people.forEach((value, key, map) =&gt; {
-    console.log(key, value)
-})
-people.size //2 获取数量
-
-people.clear()
-
-//有初始值
-const fruits = new Map([[&quot;apple&quot;, 6], [&quot;banana&quot;, 5]])
-</code></pre>
-
-<blockquote>
-<p>因为map的属性类型可以是任何类型,因此我们经常可以再map中存储关于对象的信息 而不是把信息存储在对象上</p>
-</blockquote>
-
-<h2 id="toc_1">WeakMap</h2>
-
-<p>类似WeakSet</p>
+<p>开发步骤:</p>
 
 <ol>
-<li>WeakMap的键只能为对象</li>
-<li>WeakMap没有Symbol.iterator方法 不能遍历</li>
-<li>WeakMap没有clear()方法 </li>
-<li>当对象置空后 垃圾回收机制会使WeakSet中该对象也会删除 避免出现了内存泄漏</li>
-<li>WeakMap没有size属性 不能获取数量</li>
+<li><p>使用<code>pod lib create [pod name]</code>或者使用<code>pod spec create NAME</code>自己创建.podspec文件 具体文件规则可以查看<a href="https://guides.cocoapods.org/syntax/podspec.html#specification">podspec语法</a>，中文的话推荐<a href="http://studentdeng.github.io/blog/2013/09/13/cocoapods-tutorial/">Cocoapods 入门</a></p></li>
+<li><p>开发，我们使用本地文件路径测试pod功能<br/>
+<code>pod &#39;Name&#39;, :path =&gt; &#39;~/code/Pods/&#39;</code></p></li>
+<li><p>测试，测试你的cocopod库中podspec语法等是否符合规格<br/>
+<code>pod lib lint</code></p></li>
+<li><p>测试，在正式发布之前，需要测试你的库是否可以正常下载<br/>
+将pod库上传到我们的git远程仓库 通过使用git方式，连接远程库<br/>
+<code>pod &#39;NAME&#39;, :git =&gt; &#39;https://example.com/URL/to/repo/NAME.git&#39;</code><br/>
+然后执行pod install 查看执行结果是否符合预期</p></li>
+<li><p>发布 当需要发布时 需要打上tag</p>
+<pre><code class="language-ruby"># 再检查一次
+pod lib lint<br/>
+# 打tag并commit 推送tag<br/>
+git add -A &amp;&amp; git commit -m &quot;Release 0.0.1.&quot;<br/>
+git tag &#39;0.0.1&#39;<br/>
+git push --tags
+</code></pre></li>
+<li><p>可选步骤</p>
+<ul>
+<li><p>发布库到公开源 <br/>
+<code>pod trunk push NAME.podspec</code><br/>
+发布开源库，可能需要您先注册邮箱 设备等 具体可查看相信<a href="https://guides.cocoapods.org/making/getting-setup-with-trunk.html">pod trunk</a></p></li>
+<li><p>发布库为私有源<br/>
+<code>pod repo push [repo] NAME.podspec</code><br/>
+此时pod库为NAME的私有specs</p>
+<p>我们常为项目创建一个私有存储库，来实现共享组件，因此在发布私有源之前 我们需要创建自己的repo库，具体可查看相信<a href="https://guides.cocoapods.org/making/private-cocoapods.html">pod repo</a></p></li>
+</ul></li>
 </ol>
+
+<blockquote>
+<p>检查Podspec是否正确 可以使用 <code>pod lib lint</code>和 <code>pod spec lint</code>，区别是<code>pod lib lint</code>不访问网络，而<code>pod spec lint</code>检查外部repo和相关标记，所以<code>pod lib lint</code>在正式发布前检查 而<code>pod spec lint</code>可以再发布后检查</p>
+
+<p><code>pod repo lint .</code>是用来检查自己要创建的私有库是否符合</p>
+</blockquote>
+
+<h2 id="toc_0">pod lib create NAME</h2>
+
+<p>使用该命令创建库时 会有一些问题需要确认:</p>
 
 
 		</div>
@@ -166,8 +155,10 @@ const fruits = new Map([[&quot;apple&quot;, 6], [&quot;banana&quot;, 5]])
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -181,7 +172,7 @@ const fruits = new Map([[&quot;apple&quot;, 6], [&quot;banana&quot;, 5]])
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -277,31 +268,31 @@ const fruits = new Map([[&quot;apple&quot;, 6], [&quot;banana&quot;, 5]])
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

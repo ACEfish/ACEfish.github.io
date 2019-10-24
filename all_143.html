@@ -82,195 +82,435 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14972592855571.html">Block实现原理</a></h1>
-			<p class="meta"><time datetime="2017-06-12T17:21:25+08:00" 
-			pubdate data-updated="true">2017/6/12</time></p>
+		  	<h1 class="entry-title"><a href="15205769334278.html">JS基础使用</a></h1>
+			<p class="meta"><time datetime="2018-03-09T14:28:53+08:00" 
+			pubdate data-updated="true">2018/3/9</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>原文地址<a href="http://blog.ibireme.com/2013/11/27/objc-block/">objc 中的 block</a></p>
-
-<h2 id="toc_0">block中的数据结构</h2>
-
-<p><code>block</code>的定义:</p>
-
-<pre><code class="language-objectivec">struct Block_descriptor_1 {
-    uintptr_t reserved;
-    uintptr_t size;
-};
- 
-struct Block_layout {
-    void *isa;
-    volatile int32_t flags; // contains ref count
-    int32_t reserved; 
-    void (*invoke)(void *, ...);
-    struct Block_descriptor_1 *descriptor;
-    // imported variables
-};
-</code></pre>
-
-<p>在oc中，凡是首地址是<code>*isa</code>的结构体指针，都可以认为是对象.这样在<code>objc</code>中，<code>block</code>实际上就算是对象。</p>
-
-<pre><code class="language-objectivec">void foo_(){
-    int i = 2;
-    NSNumber *num = @3;
- 
-    long (^myBlock)(void) = ^long() {
-        return i * num.intValue;
-    };
- 
-    long r = myBlock();
-}
-//我们对上面的block的简单使用转换为c形式
-//通用的block数据结构
-struct __block_impl {
-    void *isa;
-    int Flags;
-    int Reserved;
-    void *FuncPtr;
-};
-//通用的block数据结构描述
-struct __foo_block_desc_0 {
-    size_t reserved;
-    size_t Block_size;
-    void (*copy)(struct __foo_block_impl_0*, struct __foo_block_impl_0*);
-    void (*dispose)(struct __foo_block_impl_0*);
-};
- 
-//myBlock的数据结构定义
-struct __foo_block_impl_0 {
-    struct __block_impl impl;//包含通用数据结构定义
-    struct __foo_block_desc_0* Desc;//对本block的结构描述指针
-    int i;  //捕获的变量
-    NSNumber *num;  //捕获的变量
-};
- 
-//block数据的描述
-static struct __foo_block_desc_0 __foo_block_desc_0_DATA = {
-    0,
-    sizeof(struct __foo_block_impl_0), //本block的占的自己空间大小（便分配空间）
-    __foo_block_copy_0,
-    __foo_block_dispose_0 //通用数据结构描述
-};
- 
-//block中的方法
-static long __foo_block_func_0(struct __foo_block_impl_0 *__cself) {//这个函数引用这个block的数据结构
-    int i = __cself-&gt;i; // bound by copy
-    NSNumber *num = __cself-&gt;num; // bound by copy
- 
-    return i * num.intValue;
-}
- 
-void foo(){
-    int i = 2;
-    NSNumber *num = @3;
- 
-    struct __foo_block_impl_0 myBlockT;
-    struct __foo_block_impl_0 *myBlock = &amp;myBlockT;
-    myBlock-&gt;impl.isa = &amp;_NSConcreteStackBlock;
-    myBlock-&gt;impl.Flags = 570425344;
-    myBlock-&gt;impl.FuncPtr = __foo_block_func_0;
-    myBlock-&gt;Desc = &amp;__foo_block_desc_0_DATA;
-    myBlock-&gt;i = i;
-    myBlock-&gt;num = num;
- 
-    long r = myBlock-&gt;impl.FuncPtr(myBlock);
-}
-
-</code></pre>
-
-<p>创建<code>block</code>就是创建了一个结构体,用<code>block捕获的变量</code>来初始化结构体体中数据,block内部的代码提取为block结构体中的c函数,这个c函数参数为一个指向本block的指针,执行时将这个struct指针传过去,通过这个指针获取block捕获的变量进行c函数的计算</p>
-
-<p><code>block</code>中包含了被引用的自由变量(由struct持有)，也包含了控制成分的代码块(由函数指针持有)符合闭包(<code>closure</code>)的概念。</p>
-
-<h2 id="toc_1">block的copy</h2>
-
-<p><code>block</code>中的<code>isa</code>指向的是该<code>block</code>的<code>Class</code>.这些Class都有:</p>
-
-<ul>
-<li>_NSConcreteStackBlock ---- 栈上创建的block</li>
-<li>_NSConcreteMallocBlock ---- 堆上创建的block</li>
-<li>_NSConcreteGlobalBlock ---- 作为全局变量的block</li>
-<li>_NSConcreteWeakBlockVariable ---- 用于GC不再讨论</li>
-<li>_NSConcreteAutoBlock ---- 用于GC不再讨论</li>
-<li>_NSConcreteFinalizingBlock ---- 用于GC不再讨论</li>
-</ul>
-
-<p>1.全局block<br/>
-全局block是当一个block内部没有捕获任何外部变量时，就会是一个全局block类型。此时，这个block与一个函数无异。所以，那么它就应该有和函数一样的静态特性。而且，我们在调用block的时候，其实和普通C函数的调用很相似，都是名称加括号：block()。 全局block的地址是在全局变量常量区的</p>
-
-<p><strong>当struct第一次被创建时，它是存在于该函数的栈帧上的，其Class是固定的_NSConcreteStackBlock。其捕获的变量是会赋值到结构体的成员上，所以当block初始化完成后，捕获到的变量不能更改。</strong></p>
-
-<p>函数返回时，函数的栈帧被销毁，这个<code>block</code>的内存也会被清除。所以在函数结束后仍然需要这个block时，就必须用<code>Block_copy()</code>方法将它拷贝到堆上。这个方法的核心动作很简单：申请内存，将栈数据复制过去，将Class改一下，最后向捕获到的对象发送<code>retain</code>，增加<code>block</code>的引用计数。</p>
-
-<h2 id="toc_2">__block类型变量</h2>
-
-<p>默认捕获到的对象直接赋值给<code>block</code>结构体，不能修改,那么当我们给其加上<code>__block</code>修饰时,原本的捕获的int值位置变为一个<code>struct</code>，这个struct首地址也为<code>*isa</code>.</p>
-
-<p>因此，这个值才能被<code>block</code>共享、并且不受栈帧生命周期的限制、在<code>block</code>被<code>copy</code>后，能够随着<code>block</code>复制到堆上。</p>
-
-<h2 id="toc_3">注意事项:</h2>
-
-<p>1.静态存储区的变量：例如全局变量、方法中的static变量<br/>
-<strong>引用，可修改</strong>。</p>
-
-<p>2.block接受的参数<br/>
-传值，可修改，和一般函数的参数相同。</p>
-
-<p>3.栈变量 (被捕获的上下文变量)<br/>
-const，不可修改。 当block被copy后，block会对 id类型的变量产生强引用。<br/>
-每次执行block时,捕获到的变量都是最初的值。</p>
-
-<p>4.栈变量 (有__block前缀)<br/>
-引用，可以修改。如果时id类型则不会被<code>block retain</code>,必须手动处理其内存管理。<br/>
-如果该类型是C类型变量，<code>block</code>被<code>copy</code>到<code>heap</code>后,该值也会被挪动到<code>heap</code></p>
-
-<h2 id="toc_4">使用注意点:</h2>
+		  	<h2 id="toc_0">基础语法</h2>
 
 <ol>
-<li><p>内存方面</p>
-<p><code>Block_copy()</code>和<code>Block_release()</code>必须一一匹配，否则会内存泄漏或crash。</p>
-<p><code>__block</code>这个修饰词会将原本的简单类型转化为较大的<code>struct</code>，这会给内存、调用带来额外的开销，使用时需要注意。</p></li>
-<li><p>ARC模式下的block使用<br/>
-在ARC模式下我们 不用手动<code>copy/release</code>，<br/>
-但是</p>
-<pre><code class="language-objectivec">void (^aBlock)(void);//定义一个aBlock对象（__strong）
-aBlock = ^{ printf(&quot;ok&quot;); };<br/>
-//只要一个block被赋值给一个strong变量，会自动copy<br/>
-//strong变量就是一个强引用指针  copy到堆后将对地址赋值给这个指针 对象引用着这个block
+<li>JS忽略出现的空格、制表符、空格</li>
+<li>JS中分号是可选的，如果一行只有一句代码，是可以忽略这个分号的</li>
+<li>JS是区分大小写的</li>
+<li><p>JS中单行注释用<code>//</code> 多行注释用<code>/*...*/</code> JS可以识别<code>html</code>注释的开始部分<code>&lt;!--</code>但不能识别html注释的结尾部分<code>--&gt;</code></p>
+<pre><code class="language-javascript">//对于js代码我们可以这样写，在不支持js的浏览器中节省我们的代码
+&lt;!--<br/>
+  var1 = 10<br/>
+//--&gt;
+</code></pre></li>
+</ol>
+
+<h2 id="toc_1">不支持js的警告信息</h2>
+
+<pre><code class="language-javascript">&lt;html&gt;
+    &lt;body&gt;
+
+    &lt;script language=&quot;javascript&quot; type=&quot;text/javascript&quot;&gt;
+    &lt;!--
+       document.write(&quot;Hello World!&quot;)
+    //--&gt;
+    &lt;/script&gt;
+
+
+    &lt;noscript&gt;
+    //对于不支持或者没开启js功能的浏览器会在屏幕上显示这航信息
+      Sorry...JavaScript is needed to go ahead.
+    &lt;/noscript&gt;
+    &lt;/body&gt;
+    &lt;/html&gt;
+
 </code></pre>
-<p>block是对象，所以这个aBlock默认是有__strong修饰符的，即<code>aBlock</code>对该block有<code>strong <br/>
-references</code>。即aBlock在被赋值的那一刻，这个block会被copy。所以，ARC开启后，所能接触到的<br/>
-block基本都是在堆上的。</p>
-<pre><code class="language-objectivec">//对于这个例子
-void (^aBlock)(void) = nil; <br/>
-if (!aBlock) {<br/>
-    aBlock = ^{ printf(&quot;hehe&quot;); };<br/>
-}<br/>
-//block此时block已经被释放,该处留下了一个`dangling pointer`<br/>
-aBlock();
+
+<h2 id="toc_2">JS代码位置</h2>
+
+<ol>
+<li><code>HTML</code>网页的<head>...<head></li>
+<li><code>HTML</code>网页的<body>...<body></li>
+<li><code>HTML</code>网页的<body>...<body>和<head>...<head></li>
+<li>外部文件.js文件,并引用在<head>...<head>中</li>
+</ol>
+
+<pre><code class="language-javascript">&lt;head&gt;
+    &lt;script type=&quot;text/javascript&quot; src=&quot;filename.js&quot; &gt;&lt;/script&gt;
+    &lt;/head&gt;
 </code></pre>
-<p>这种情况 苹果建议尽量避免这种情况。</p></li>
-<li><p>block易引起的循环引用问题</p>
-<p>当block被copy之后(如开启了ARC、或把block放入dispatch queue)，该block对它捕获的对象产生<br/>
-strong references (非ARC下是retain),所以有时需要避免block copy后产生的循环引用。</p>
-<p>如果用self引用了block，block又捕获了self，这样就会有循环引用。因此，需要用weak来声明self</p>
-<pre><code class="language-objectivec">    - (void)configureBlock {
-    XYZBlockKeeper * __weak weakSelf = self;<br/>
-    self.block = ^{<br/>
-    [weakSelf doSomething]; //捕获到的是弱引用<br/>
-    }<br/>
-    }<br/>
-    //当前前对象的成员变量对象，同样也会造成对self的引用<br/>
-    - (void)configureBlock {<br/>
-    id tmpIvar = _ivar; //临时变量,避免了self引用<br/>
-    self.block = ^{<br/>
-    [tmpIvar msg];<br/>
-    }<br/>
+
+<h2 id="toc_3">JS变量</h2>
+
+<p>1.数据类型有<br/>
+    1). 数值类型(未区分整数和浮点数，均用64位浮点格式表示)<br/>
+    2). 字符串类型<br/>
+    3). 布尔类型  true 或者 false</p>
+
+<ol>
+<li>使用<code>var</code>声明变量 必须先声明在使用</li>
+<li>JS变量是对大小写敏感的</li>
+</ol>
+
+<h2 id="toc_4">运算符</h2>
+
+<ol>
+<li>算术运算符 +、-、*、/、%、++、--</li>
+<li>比较运算符 ==、!=、&gt;、&lt;、&gt;=、&lt;=</li>
+<li>逻辑运算符 &amp;&amp;、||、！</li>
+<li>位运算符 &amp;、|、<sup>、~、&lt;&lt;、&gt;&gt;(按最高位进行补位)、&gt;&gt;&gt;(左边补零移位)</sup></li>
+<li>赋值运算符：=、+=、-=、*=、/=、%=</li>
+<li>条件运算符： ？:</li>
+<li>typeof运算符：返回类型的字符串</li>
+</ol>
+
+<h2 id="toc_5">If...Else</h2>
+
+<pre><code class="language-javascript"> &lt;script type=&quot;text/javascript&quot;&gt;
+    &lt;!--
+    var book = &quot;maths&quot;;
+    if( book == &quot;history&quot; ){
+       document.write(&quot;&lt;b&gt;History Book&lt;/b&gt;&quot;);
+    }else if( book == &quot;maths&quot; ){
+       document.write(&quot;&lt;b&gt;Maths Book&lt;/b&gt;&quot;);
+    }else if( book == &quot;economics&quot; ){
+       document.write(&quot;&lt;b&gt;Economics Book&lt;/b&gt;&quot;);
+    }else{
+      document.write(&quot;&lt;b&gt;Unknown Book&lt;/b&gt;&quot;);
+    }
+    //--&gt;
+    &lt;/script&gt;
+</code></pre>
+
+<h2 id="toc_6">Switch Case</h2>
+
+<pre><code class="language-javascript">
+switch (expression)
+    {
+      case condition 1: statement(s)
+    break;
+      case condition 2: statement(s)
+    break;
+       ...
+      case condition n: statement(s)
+    break;
+      default: statement(s)
+    } 
+</code></pre>
+
+<h2 id="toc_7">while循环</h2>
+
+<pre><code class="language-javascript">while(expression){  
+        statement  
+    }
+    
+    do{  
+        statement  
+    }while(expression);  
+    
+</code></pre>
+
+<h2 id="toc_8">for循环</h2>
+
+<pre><code class="language-javascript">for(initialize;test condition;iteration statement)  
+    {  
+        statement;  
     }
 </code></pre>
-<p>为了避免循环引用，可以这样理解<code>block</code>：<code>block</code>就是一个对象，它捕获到的值就是这个对象的<code>@property(strong)</code></p></li>
-</ol>
+
+<h2 id="toc_9">for in循环</h2>
+
+<pre><code class="language-javascript"> for (variablename in object){  
+        statement
+    } 
+</code></pre>
+
+<p>将对象的属性作为参数变量来实现循环</p>
+
+<h2 id="toc_10">循环控制</h2>
+
+<h3 id="toc_11">break</h3>
+
+<p>提前结束整个循环</p>
+
+<h3 id="toc_12">continue</h3>
+
+<p>立即开始下次循环</p>
+
+<h3 id="toc_13">使用标签来控制流</h3>
+
+<p>一个标签可以被用于 break , continue 语句去更精确地控制流<br/>
+在js1.2之后,标签是一个标识符后跟一个冒号,应用于声明或代码块。</p>
+
+<blockquote>
+<p>continue或break语句以及其标签的名字之间不允许有换行符。标签名称和其后循环体之间也不应有任何其他语句</p>
+</blockquote>
+
+<pre><code class="language-javascript">  &lt;script type=&quot;text/javascript&quot;&gt;
+    &lt;!--
+    document.write(&quot;Entering the loop!&lt;br /&gt; &quot;);
+    outerloop:   // This is the label name
+    for (vari = 0; i&lt; 5; i++)
+    {
+    document.write(&quot;Outerloop: &quot; + i + &quot;&lt;br /&gt;&quot;);
+    innerloop:
+    for (var j = 0; j &lt; 5; j++)
+    {
+    if (j &gt;  3 ) break ; // Quit the innermost loop
+    if (i == 2) break innerloop; // Do the same thing
+    if (i == 4) break outerloop; // Quit the outer loop
+    document.write(&quot;Innerloop: &quot; + j + &quot;  &lt;br /&gt;&quot;);
+       }
+    }
+    document.write(&quot;Exiting the loop!&lt;br /&gt; &quot;);
+    //--&gt;
+    &lt;/script&gt;
+</code></pre>
+
+<h2 id="toc_14">函数</h2>
+
+<h3 id="toc_15">定义函数</h3>
+
+<p>使用函数关键字<code>function</code></p>
+
+<pre><code class="language-javascript">//定义函数
+    &lt;script type=&quot;text/javascript&quot;&gt;
+    &lt;!--
+    function functionname(parameter-list)
+    {
+        statements
+    }
+    //--&gt;
+    &lt;/script&gt;
+</code></pre>
+
+<h3 id="toc_16">调用函数</h3>
+
+<pre><code class="language-javascript">  &lt;script type=&quot;text/javascript&quot;&gt;
+    &lt;!--
+    sayHello();
+    //--&gt;
+    &lt;/script&gt;
+</code></pre>
+
+<h3 id="toc_17">函数参数</h3>
+
+<pre><code class="language-javascript">&lt;script type=&quot;text/javascript&quot;&gt;
+    &lt;!--
+    function sayHello(name, age)
+    {
+       alert( name + &quot; is &quot; + age + &quot; years old.&quot;);
+    }
+    //--&gt;
+    &lt;/script&gt;
+    
+    &lt;script type=&quot;text/javascript&quot;&gt;
+    &lt;!--
+    sayHello(&#39;Zara&#39;, 7 );
+    //--&gt;
+    &lt;/script&gt;
+</code></pre>
+
+<h3 id="toc_18">return 语句</h3>
+
+<pre><code class="language-javascript">&lt;script type=&quot;text/javascript&quot;&gt;
+    &lt;!--
+    function concatenate(first, last)
+    {
+       var full;
+
+       full = first + last;
+       return  full;
+    }
+    //--&gt;
+    &lt;/script&gt;
+    
+     &lt;script type=&quot;text/javascript&quot;&gt;
+    &lt;!--
+       var result;
+       result = concatenate(&#39;Zara&#39;, &#39;Ali&#39;);
+       alert(result );
+    //--&gt;
+    &lt;/script&gt;
+</code></pre>
+
+<h2 id="toc_19">事件</h2>
+
+<h3 id="toc_20">onclick事件类型</h3>
+
+<p>当用户点击鼠标左按钮</p>
+
+<pre><code class="language-javascript">&lt;html&gt;
+    &lt;head&gt;
+    &lt;script type=&quot;text/javascript&quot;&gt;
+    &lt;!--
+    function sayHello() {
+       alert(&quot;Hello World&quot;)
+    }
+    //--&gt;
+    &lt;/script&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+    &lt;input type=&quot;button&quot; onclick=&quot;sayHello()&quot; value=&quot;Say Hello&quot; /&gt;
+    &lt;/body&gt;
+    &lt;/html&gt;  
+</code></pre>
+
+<h3 id="toc_21">onsubmit事件类型</h3>
+
+<p>尝试提交一个表单，可以用此事件类型进行表单验证，</p>
+
+<pre><code class="language-javascript">
+&lt;html&gt;
+    &lt;head&gt;
+    &lt;script type=&quot;text/javascript&quot;&gt;
+    &lt;!--
+    function validation() {
+       all validation goes here
+       .........
+       return either true or false
+    }
+    //--&gt;
+    &lt;/script&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+    //当表单中加上 onsubmit=&quot;return false&quot; 可以阻止表单提交
+    &lt;form method=&quot;POST&quot; action=&quot;t.cgi&quot; onsubmit=&quot;return validate()&quot;&gt;
+    .......
+    &lt;input type=&quot;submit&quot; value=&quot;Submit&quot; /&gt;
+    &lt;/form&gt;
+    &lt;/body&gt;
+    &lt;/html&gt;  
+</code></pre>
+
+<h3 id="toc_22">onmouseover 和 onmouseout</h3>
+
+<p>onmouseover 事件发生时,当你把你的鼠标在任何元素上时， onmouseover 事件发生。当你把鼠标从该元素移开时，onmouseout 事件发生</p>
+
+<h2 id="toc_23">Cookies</h2>
+
+<p><a href="http://wiki.jikexueyuan.com/project/javascript/cookies.html">参考资料</a></p>
+
+<h3 id="toc_24">写入cookies</h3>
+
+<p><code>document.cookie = &quot;key1=value;key2=value2;expires=date&quot;;</code></p>
+
+<pre><code class="language-javascript">//写入cookie
+&lt;html&gt;
+&lt;head&gt;
+&lt;script type=&quot;text/javascript&quot;&gt;
+&lt;!--
+function WriteCookie()
+{
+   if( document.myform.customer.value == &quot;&quot; ){
+      alert(&quot;Enter some value!&quot;);
+      return;
+   }
+
+   cookievalue= escape(document.myform.customer.value) + &quot;;&quot;;
+   document.cookie=&quot;name=&quot; + cookievalue;
+   alert(&quot;Setting Cookies : &quot; + &quot;name=&quot; + cookievalue );
+}
+//--&gt;
+&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;form name=&quot;myform&quot; action=&quot;&quot;&gt;
+Enter name: &lt;input type=&quot;text&quot; name=&quot;customer&quot;/&gt;
+&lt;input type=&quot;button&quot; value=&quot;Set Cookie&quot; onclick=&quot;WriteCookie();&quot;/&gt;
+&lt;/form&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+
+<h3 id="toc_25">读取cookies</h3>
+
+<p>document.cookie 对象的值就是 Cookie 的属性值,document.cookie 字符串会保存一系列用分号分开的 name = value 键值对</p>
+
+<pre><code class="language-javascript">&lt;html&gt;
+&lt;head&gt;
+&lt;script type=&quot;text/javascript&quot;&gt;
+&lt;!--
+function ReadCookie()
+{
+   var allcookies = document.cookie;
+   alert(&quot;All Cookies : &quot; + allcookies );
+
+   // Get all the cookies pairs in an array
+   cookiearray  = allcookies.split(&#39;;&#39;);
+
+   // Now take key value pair out of this array
+   for(var i=0; i&lt;cookiearray.length; i++){
+      name = cookiearray[i].split(&#39;=&#39;)[0];
+      value = cookiearray[i].split(&#39;=&#39;)[1];
+      alert(&quot;Key is : &quot; + name + &quot; and Value is : &quot; + value);
+   }
+}
+//--&gt;
+&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;form name=&quot;myform&quot; action=&quot;&quot;&gt;
+&lt;input type=&quot;button&quot; value=&quot;Get Cookie&quot; onclick=&quot;ReadCookie()&quot;/&gt;
+&lt;/form&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+
+</code></pre>
+
+<h3 id="toc_26">设置cookies有效日期</h3>
+
+<pre><code class="language-javascript">&lt;html&gt;
+&lt;head&gt;
+&lt;script type=&quot;text/javascript&quot;&gt;
+&lt;!--
+function WriteCookie()
+{
+   var now = new Date();
+   now.setMonth( now.getMonth() + 1 ); 
+   cookievalue = escape(document.myform.customer.value) + &quot;;&quot;
+   document.cookie=&quot;name=&quot; + cookievalue;
+   document.cookie = &quot;expires=&quot; + now.toUTCString() + &quot;;&quot;
+   alert(&quot;Setting Cookies : &quot; + &quot;name=&quot; + cookievalue );
+}
+//--&gt;
+&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;form name=&quot;formname&quot; action=&quot;&quot;&gt;
+Enter name: &lt;input type=&quot;text&quot; name=&quot;customer&quot;/&gt;
+&lt;input type=&quot;button&quot; value=&quot;Set Cookie&quot; onclick=&quot;WriteCookie()&quot;/&gt;
+&lt;/form&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+
+<h3 id="toc_27">删除cookies</h3>
+
+<p>删除一个 Cookie，从而下次尝试读取 Cookie 信息时会返回一个空值，可以设置 Cookie 的有效生存时间为过去的某个时间的即可。</p>
+
+<pre><code class="language-javascript">&lt;html&gt;
+&lt;head&gt;
+&lt;script type=&quot;text/javascript&quot;&gt;
+&lt;!--
+function WriteCookie()
+{
+   var now = new Date();
+   now.setMonth( now.getMonth() - 1 ); 
+   cookievalue = escape(document.myform.customer.value) + &quot;;&quot;
+   document.cookie=&quot;name=&quot; + cookievalue;
+   document.cookie = &quot;expires=&quot; + now.toUTCString() + &quot;;&quot;
+   alert(&quot;Setting Cookies : &quot; + &quot;name=&quot; + cookievalue );
+}
+//--&gt;
+&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;form name=&quot;formname&quot; action=&quot;&quot;&gt;
+Enter name: &lt;input type=&quot;text&quot; name=&quot;customer&quot;/&gt;
+&lt;input type=&quot;button&quot; value=&quot;Set Cookie&quot; onclick=&quot;WriteCookie()&quot;/&gt;
+&lt;/form&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+
+</code></pre>
 
 
 		</div>
@@ -293,8 +533,10 @@ strong references (非ARC下是retain),所以有时需要避免block copy后产�
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -308,7 +550,7 @@ strong references (非ARC下是retain),所以有时需要避免block copy后产�
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -404,31 +646,31 @@ strong references (非ARC下是retain),所以有时需要避免block copy后产�
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

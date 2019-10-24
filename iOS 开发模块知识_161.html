@@ -82,75 +82,66 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="14925128921601.html">常用动画示例</a></h1>
-			<p class="meta"><time datetime="2017-04-18T18:54:52+08:00" 
-			pubdate data-updated="true">2017/4/18</time></p>
+		  	<h1 class="entry-title"><a href="14872918920673.html">并发编程中的问题</a></h1>
+			<p class="meta"><time datetime="2017-02-17T08:38:12+08:00" 
+			pubdate data-updated="true">2017/2/17</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h3 id="toc_0">1.地震动画</h3>
+		  	<p>使用并发编程会带来许多陷阱<br/>
+优先级反转:也就是说低优先级的线程一直阻塞着高优先级的线程</p>
 
-<p>适合一整个大视图的突然晃动</p>
+<h4 id="toc_0">1.资源共享</h4>
 
-<pre><code class="language-objectivec">- (void)earthquake:(UIView*)itemView {
-    CGFloat t = 2.0;
-    CGAffineTransform leftQuake  = CGAffineTransformTranslate(CGAffineTransformIdentity, t, 0);
-    CGAffineTransform rightQuake = CGAffineTransformTranslate(CGAffineTransformIdentity, -t, 0); //水平晃动
+<p>并发编程中许多问题的根源就是在多线程中访问共享资源。资源可以是一个属性、一个对象，通用的内存、网络设备或者一个文件等等。<br/>
+这里我们举了一个<a href="https://en.wikipedia.org/wiki/Race_condition#Software">竞态条件</a>的例子:<br/>
+<img src="media/14872918920673/14872931592764.jpg" alt=""/><br/>
+这个时候我们需要保证线程B必须等线程A访问完该共享资源才会开始访问共享资源.这时候我们需要一种互斥机制:</p>
 
-    itemView.transform = leftQuake;  // starting point
+<h4 id="toc_1">2.互斥锁</h4>
 
-    [UIView beginAnimations:@&quot;earthquake&quot; context:(__bridge void *)(itemView)];
-    [UIView setAnimationRepeatAutoreverses:YES]; // 如果不加这一句 整个动画感觉不连贯
-    [UIView setAnimationRepeatCount:5];
-    [UIView setAnimationDuration:0.07];
-    [UIView setAnimationDelegate:self];
-    [UIView setAnimationDidStopSelector:@selector(earthquakeEnded:finished:context:)];
+<p><strong>互斥访问的意思就是同一时刻，只允许一个线程访问某个特定资源</strong><br/>
+首先需要获得一个共享资源的互斥锁，一旦某个线程对资源完成了操作，就释放掉这个互斥锁，这样别的线程就有机会访问该共享资源<br/>
+<img src="media/14872918920673/14872933923493.jpg" alt=""/><br/>
+因为现代 CPU 为了优化目的，往往会改变向内存读写数据的顺序（<a href="https://en.wikipedia.org/wiki/Out-of-order_execution">乱序执行</a>）因此还需要解决代码无序执行所带来的问题。如果不能确保 CPU 访问内存的顺序跟编程时的代码指令一样，那么仅仅依靠互斥访问是不够的。为了解决由 CPU 的优化策略引起的副作用，还需要引入<a href="https://en.wikipedia.org/wiki/Memory_barrier">内存屏障</a>。通过设置内存屏障，来确保没有无序执行的指令能跨过屏障而执行。</p>
 
-    itemView.transform = rightQuake; // end here &amp; auto-reverse
+<p>(<a href="https://en.wikipedia.org/wiki/Lock_%28computer_science%29#Granularity">锁的竞争</a>是这样产生的：当一个或者多个线程尝试获取一个已经被别的线程获取过了的锁)<br/>
+获取和释放锁所是要带来开销的，因此你需要确保你不会频繁地进入和退出临界区段（比如获取和释放锁）。同时，如果你获取锁之后要执行一大段代码，这将带来锁竞争的风险：其它线程可能必须等待获取资源锁而无法工作。</p>
 
-    [UIView commitAnimations];
-}
+<p>对于你的代码会如何在多核上运行的预测往往十分重要，你可以使用 Instrument 的 CPU strategy view 来检查是否有效的利用了 CPU 的可用核数，进而得出更好的想法，以此来优化代码。</p>
 
-- (void)earthquakeEnded:(NSString *)animationID finished:(NSNumber *)finished context:(void *)context {
-    if ([finished boolValue]) {
-        UIView* item = (__bridge UIView *)context;
-        item.transform = CGAffineTransformIdentity;
-    }
-}
-</code></pre>
+<h4 id="toc_2">3.死锁</h4>
 
-<h3 id="toc_1">2.图标的抖动效果</h3>
+<p>互斥锁解决了竞态条件的问题，但很不幸同时这也引入了一些其他问题，其中一个就是死锁。当多个线程在相互等待着对方的结束时，就会发生死锁，这时程序可能会被卡住。<br/>
+<img src="media/14872918920673/14872940417124.jpg" alt=""/><br/>
+你在线程之间共享的资源越多，你使用的锁也就越多，同时程序被死锁的概率也会变大。这也是为什么我们需要尽量减少线程间资源共享，并确保共享的资源尽量简单的原因之一。建议阅读一下底层<a href="https://objccn.io/issue-2-3/">并发编程 API</a> 中的全部使用异步分发一节。</p>
 
-<pre><code class="language-objectivec">//开始抖动
--(void)BeginWobble
-{
+<h4 id="toc_3">4.资源饥饿（Starvation）</h4>
 
-    srand([[NSDate date] timeIntervalSince1970]);
-    float rand=(float)random();
-    CFTimeInterval t=rand*0.0000000001;
+<p>锁定的共享资源会引起<a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writers_problem">读写问题</a>，大多数情况下，限制资源一次只能有一个线程进行读取访问其实是非常浪费的。因此，在资源上没有写入锁的时候，持有一个读取锁是被允许的。这种情况下，如果一个持有读取锁的线程在等待获取写入锁的时候，其他希望读取资源的线程则因为无法获得这个读取锁而导致<a href="https://en.wikipedia.org/wiki/Starvation_(computer_science)">资源饥饿</a>的发生。</p>
 
-    [UIView animateWithDuration:0.1 delay:t options:0  animations:^
-     {
-         要抖动的视图.transform=CGAffineTransformMakeRotation(-0.05);
-     } completion:^(BOOL finished)
-     {
-         [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionRepeat|UIViewAnimationOptionAutoreverse|UIViewAnimationOptionAllowUserInteraction  animations:^
-          {
-              要抖动的视图.transform=CGAffineTransformMakeRotation(0.05);
-          } completion:^(BOOL finished) {}];
-     }];
-}
-//停止抖动
--(void)EndWobble
-{
+<p>为了解决这个问题，我们需要使用一个比简单的读/写锁更聪明的方法，例如给定一个 <a href="https://en.wikipedia.org/wiki/Readers%E2%80%93writer_lock">writer preference</a>，或者使用 <a href="https://en.wikipedia.org/wiki/Read-copy-update">read-copy-update</a> 算法。Daniel 在底层并发编程 API 中有介绍了如何用 GCD 实现一个多读取单写入的模式，这样就不会被写入资源饥饿的问题困扰了。</p>
 
-    [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionAllowUserInteraction|UIViewAnimationOptionBeginFromCurrentState animations:^
-     {
-         要抖动的视图.transform=CGAffineTransformIdentity;
-     } completion:^(BOOL finished) {}];
-}
+<h4 id="toc_4">5.优先级反转</h4>
 
-</code></pre>
+<p><code>优先级反转</code>是指程序在运行时低优先级的任务阻塞了高优先级的任务，有效的反转了任务的优先级。由于 GCD 提供了拥有不同优先级的后台队列，甚至包括一个 I/O 队列，所以我们最好了解一下优先级反转的可能性。</p>
+
+<blockquote>
+<p>高优先级和低优先级的任务之间共享资源时，就可能发生优先级反转。当低优先级的任务获得了共享资源的锁时，该任务应该迅速完成，并释放掉锁，这样高优先级的任务就可以在没有明显延时的情况下继续执行。然而高优先级任务会在低优先级的任务持有锁的期间被阻塞。如果这时候有一个中优先级的任务(该任务不需要那个共享资源)，那么它就有可能会抢占低优先级任务而被执行，因为此时高优先级任务是被阻塞的，所以中优先级任务是目前所有可运行任务中优先级最高的。此时，中优先级任务就会阻塞着低优先级任务，导致低优先级任务不能释放掉锁，这也就会引起高优先级任务一直在等待锁的释放。</p>
+
+<p>解决这个问题的方法，通常就是不要使用不同的优先级。通常最后你都会以让高优先级的代码等待低优先级的代码来解决问题。当你使用 GCD 时，总是使用默认的优先级队列（直接使用，或者作为目标队列）。如果你使用不同的优先级，很可能实际情况会让事情变得更糟糕。</p>
+</blockquote>
+
+<p><img src="media/14872918920673/14872951554551.jpg" alt=""/></p>
+
+<h3 id="toc_5">总结:</h3>
+
+<p>我们希望通过本文你能够了解到并发编程带来的复杂性和相关问题。并发编程中，无论是看起来多么简单的 API ，它们所能产生的问题会变得非常的难以观测，而且要想调试这类问题往往也都是非常困难的。</p>
+
+<p>但另一方面，并发实际上是一个非常棒的工具。它充分利用了现代多核 CPU 的强大计算能力。在开发中，关键的一点就是尽量让并发模型保持简单，这样可以限制所需要的锁的数量。</p>
+
+<p>我们建议采纳的安全模式是这样的：<br/>
+<strong>从主线程中提取出要使用到的数据，并利用一个操作队列在后台处理相关的数据，最后回到主队列中来发送你在后台队列中得到的结果。使用这种方式，你不需要自己做任何锁操作，这也就大大减少了犯错误的几率。</strong></p>
 
 
 		</div>
@@ -173,8 +164,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -188,7 +181,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -284,31 +277,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

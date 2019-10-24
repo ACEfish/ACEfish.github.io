@@ -82,65 +82,274 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15077240642559.html">SceneKit</a></h1>
-			<p class="meta"><time datetime="2017-10-11T20:14:24+08:00" 
-			pubdate data-updated="true">2017/10/11</time></p>
+		  	<h1 class="entry-title"><a href="15459662586152.html">ReactiveObjC</a></h1>
+			<p class="meta"><time datetime="2018-12-28T11:04:18+08:00" 
+			pubdate data-updated="true">2018/12/28</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>我们通过<code>ARKit</code>的相机(<code>ARCamera</code>)捕获现实世界图像,利用<code>SceneKit</code>来在图像中展示3D模型</p>
+		  	<h2 id="toc_0">基础知识</h2>
 
-<h2 id="toc_0">SceneKit中常用类及作用</h2>
+<p>常用的 <code>RACSignal</code>为冷信号  <code>RACSubject</code>为热信号<br/>
+冷信号 即为订阅之后才开始执行的消息，订阅几次 就执行几次<br/>
+热信号 为创建信号就开始执行的消息 无需订阅</p>
 
-<ul>
-<li><strong>ARCamera</strong>:用于捕获摄像头画面</li>
-<li><strong>ARSCNView</strong>:视图类用于展示由摄像头捕捉到的现实世界3D场景,继承自<code>SceneKit</code>中的<code>SCNView</code>用于展示3D场景,<code>SCNView</code>继承自<code>UIView</code>视图</li>
-<li><strong>ARSession</strong>: 会话,搭建3D场景</li>
-<li><strong>ARKit</strong>:用于将现实世界转为3D场景</li>
-<li><strong>SceneKit</strong>:用于将虚拟物体构建在3D场景中</li>
-<li><strong>SCNNode</strong>:每个虚拟物体都是一个节点,其作为主节点构成了<code>SCNScene</code>场景,无数个场景构成3D世界</li>
-</ul>
+<h2 id="toc_1">常用类</h2>
 
-<h3 id="toc_1">ARSession</h3>
+<h3 id="toc_2">RCASignal信号</h3>
 
-<p>通过<code>ARSession</code>来沟通<code>ARSCNView</code>和<code>ARCamera</code></p>
+<pre><code class="language-objectivec">//1.创建信号 
 
-<p>我们需要给ARSession会话指定一个<code>会话追踪设置</code>(<code>ARConfiguration</code>),用其来追踪相机在3D世界的位置特征和场景</p>
+//可以在创建信号中立即发送信号 但是不能在block结束返回前销毁该信号
+RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+        [subscriber sendNext:@&quot;发送的消息内容&quot;];
+        return nil;
+}];
+//立即发送给定的错误信息
+NSError *error = [[NSError alloc] init];
+[RACSignal error:error];
+//返回一个信号 该信号立即发送给定值 然后 complete
+[RACSignal return:@&quot;value&quot;];
+//返回信号 该信号直接 complete
+[RACSignal empty];
 
-<p>苹果建议使用<code>ARWorldTrackingConfiguration</code>，该类只支持A9之后芯片</p>
+//2.信号处理
 
-<h4 id="toc_2">ARWorldTrackingConfiguration与ARFrame</h4>
+//2.1 concat 返回一个信号signal3 当signal1 complete时订阅信号就signal2信号变化 我们可以通过订阅 signal3 来收到信号两个信号的值变化
+RACSignal *signal3 = [signal1 concat:signal2]
 
-<p><code>ARWorldTrackingConfiguration</code>得到手机在世界中的位置数据交给<code>ARSession</code>，而相机在的位置数据即<strong>ARFrame</strong></p>
+//2.2  flattenMap 串联信号 当收到第一个消息的值变化时 开始执行第二个信号 此时我们订阅信号2  只会收到信号2值改变信号
+RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(10 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [subscriber sendNext:@&quot;发送的消息内容&quot;];
+        });
+        return nil;
+    }];
+RACSignal *signal2 = [signal flattenMap:^__kindof RACSignal * _Nullable(id  _Nullable value) {
+    return  [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+        [subscriber sendNext:@&quot;signal2 发送的消息内容&quot;];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [subscriber sendNext:@&quot;signal2 3秒后发送的消息内容&quot;];
+        });
+        return nil;
+    }];
+}];
 
-<blockquote>
-<p>用ARSession的currentFrame属性来获取当前位置信息</p>
-</blockquote>
+//2.2 map 对信号1中收到的值进行处理返回信号2 
+RACSignal *signal2 = [signal map:^id _Nullable(NSString *  _Nullable value) {
+    return [value substringFromIndex:2];
+}];
 
-<p><img src="media/15077240642559/15078865839013.png" alt=""/></p>
+//2.3 filter 过滤信号值
+RACSignal *signal2 = [signal filter:^BOOL(NSString *  _Nullable value) {
+    return YES;
+}];
 
-<p><code>ARConfiguration</code>捕捉相机3D位置的意义就在于能够在添加3D物体模型的时候计算出3D物体模型相对于相机的真实的矩阵位置</p>
+//2.4 ignore 忽略特定值的信号
+RACSignal *signal2 = [signal ignore:@&quot;发送的消&quot;];
 
-<p><code>ARKit API</code>支持两种主配置，即只追踪设备定位的<code>ARConfiguration</code>，以及进一步追踪设备位置并检测真实世界表面<code>ARWorldTrackingConfiguration</code>。</p>
+//2.5 startwith: 将这个值 拼接到信号值开头 返回新的信号 
+RACSignal *signal2 = [signal startWith:@&quot;start with发送的消息内容&quot;];
 
-<h2 id="toc_3">ARKit实战</h2>
+//2.6 skip: 忽略开始的count个信号值改变
+RACSignal *signal2 = [signal skip:1];
 
-<p>完整的ARKit环境必须需要:<br/>
-ARSCNView、ARSession、ARSessionConfiguration</p>
+//2.7 take: 返回一个只接收前count个信号的信号值改变  其后发送的信号会失败
+RACSignal *signal2 = [signal take:2];
 
-<p>1.初始化 搭建AR环境</p>
+//2.8  scanWithStart: reduce: 遍历信号1值变化 block中next即为信号1的信号值  
+//      running为累计值 初始为start值 
+RACSignal *signal2 = [signal scanWithStart:@&quot;1&quot; reduce:^NSString * _Nullable(NSString *  _Nullable running, NSString *  _Nullable next) {
+    running = [[NSMutableString stringWithFormat:@&quot;%@%@&quot;, running, next] copy];
+    return running;
+}];
 
-<p>2.开启AR扫描</p>
+//2.9 takeUntilBlock: 忽略这符合条件的信号以及之后的信号
+//     takeWhileBlock: 返回符合条件的信号值
+//      skipUntilBlock: 只返回符合条件以及之后的信号
+//      skipWhileBlock: 忽略符合条件的信号
+RACSignal *signal2 = [signal takeUntilBlock:^BOOL(NSString *  _Nullable x) {
+    return [x hasPrefix:@&quot;3秒&quot;];
+}];
 
-<blockquote>
-<p>苹果推荐将开启的代码写到<code>viewWillAppear</code>而不是<code>viewDidLoad</code></p>
-</blockquote>
+//2.10 distinctUntilChanged 只返回值不一样的信号
+RACSignal *signal2 = [signal distinctUntilChanged];
 
-<p>3.进行自定制操作</p>
 
-<blockquote>
-<p>默认情况下，节点<code>SCNNode</code>的x/y/z位置是(0,0,0),也就是摄像头所在的位置，每一个<code>ARSession</code>在启动时，摄像头的位置就是3D世界的原点，而且这个原点不再随着摄像头的移动而改变，是第一次就永久固定的</p>
-</blockquote>
+//3. 订阅
+
+//subscribeNext： 订阅信号值改变  error 订阅错误信号 completed 订阅完成信号 
+RACDisposable *disposable = [signal3 subscribeNext:^(NSString *  _Nullable x) {
+    NSLog(@&quot;signal3收到订阅值:%@&quot;, x);
+} error:^(NSError * _Nullable error) {
+    NSLog(@&quot;signal3收到错误订阅:%@,&quot; error);
+} completed:^{
+    NSLog(@&quot;signal3收到成功订阅;&quot;);
+}];
+
+//取消订阅
+[disposable dispose];
+
+
+</code></pre>
+
+<h3 id="toc_3">RACSubject信号</h3>
+
+<pre><code class="language-objectivec">//RACSubject 继承于 RACSignal 使用这个对象 可以直接发送和接收信号值改变  而不需要关心 创建信号和注销订阅问题
+RACSubject *subject = [RACSubject subject];
+
+[subject subscribeNext:^(NSString *x) {
+    NSLog(@&quot;接受新值%@&quot;, x);
+} completed:^{
+    NSLog(@&quot;接受完成情况&quot;);
+}];
+
+[subject sendNext:@&quot;新的值1&quot;];
+
+</code></pre>
+
+<h3 id="toc_4">RACTuple 元组</h3>
+
+<p>元组功能</p>
+
+<h3 id="toc_5">NSArray NSDictionary 集合操作</h3>
+
+<p>RAC扩展了NSArray 和  NSDictionary 拥有 <code>rac_sequence</code>(<code>RACSequence</code>类)属性</p>
+
+<h3 id="toc_6">RACSequence</h3>
+
+<pre><code class="language-objectivec">    //1. 获取一个 发送集合中值改变的信号
+    arr.rac_sequence.signal
+    //2. 用信号来遍历集合
+    [arr.rac_sequence.signal subscribeNext:^(id  _Nullable x) {
+        NSLog(@&quot;%@&quot;, x);
+    }];
+    //3. head
+    NSLog(@&quot;第一个元素%@&quot;, arr.rac_sequence.head);
+    //4. tail
+    NSLog(@&quot;除了第一个元素外的所有元素集合%@&quot;, arr.rac_sequence.tail);
+    
+    //5. 从左侧开始遍历 start: 累计的初始值 accumulator: 累计值 value:当前值 count: 最终值
+    NSNumber *count = [intArr.rac_sequence foldLeftWithStart:@(10) reduce:^NSNumber* (NSNumber *accumulator, NSNumber *value) {
+        NSLog(@&quot;%@--- %@&quot;, accumulator, value);
+
+        return @(accumulator.integerValue + value.integerValue);
+    }];
+    NSLog(@&quot;%@&quot;, count);
+    
+    //6. 同样可以从右边开始遍历
+    
+    //7. 遍历集合 判断是否存在符合条件 当遇到block返回YES 返回YES不再执行
+    BOOL exist = [intArr.rac_sequence any:^BOOL(NSNumber *value) {
+        return value.integerValue == 2;
+    }];
+    NSLog(@&quot;%@&quot;, exist ? @&quot;存在&quot; : @&quot;不存在&quot;); //存在
+    //8. 遍历集合 判断是否所有元素都满足条件
+    BOOL pass = [intArr.rac_sequence all:^BOOL(id  _Nullable value) {
+        return [value isKindOfClass:[NSNumber class]];
+    }];
+    NSLog(@&quot;%@&quot;, pass ? @&quot;通过&quot; : @&quot;不通过&quot;); //存在
+    //9. 遍历集合找到第一个符合条件的元素
+    id obj = [intArr.rac_sequence objectPassingTest:^BOOL(id  _Nullable value) {
+        if ([value isKindOfClass:[NSNumber class]]) {
+            NSNumber *value1 = (NSNumber *)value;
+            if (value1.integerValue % 3 == 0) {
+                return YES;
+            }
+        }
+        return NO;
+    }];
+    NSLog(@&quot;第一个通过测试的是%@&quot;, obj); //9
+    
+    //10. 用户动态生成sequenceh headblock和tailblock只会执行一次
+    //是惰性加载生成的
+    //必须保证headblock和tailblock是线程安全的
+    RACSequence *sequence = [RACSequence sequenceWithHeadBlock:^id _Nullable{
+        return @(11);
+    } tailBlock:^RACSequence * _Nonnull{
+        return [RACSequence sequenceWithHeadBlock:^id _Nullable{
+            return @(11);
+        } tailBlock:^RACSequence * _Nonnull{
+            return [RACSequence sequenceWithHeadBlock:^id _Nullable{
+                return @(22);
+            } tailBlock:^RACSequence * _Nonnull{
+                return @[@(33)].rac_sequence;
+            }];
+        }];
+    }];
+    
+    [sequence.signal subscribeNext:^(id  _Nullable x) {
+        NSLog(@&quot;%@&quot;, x);
+    }];
+</code></pre>
+
+<h3 id="toc_7">UI操作</h3>
+
+<h4 id="toc_8">UIControl</h4>
+
+<pre><code class="language-objectivec"> RACSignal *signal = [self.btn rac_signalForControlEvents:UIControlEventTouchUpInside];
+[signal subscribeNext:^(UIButton *  _Nullable x) {
+    NSLog(@&quot;&quot;);
+}];
+</code></pre>
+
+<h4 id="toc_9">UIButton</h4>
+
+<pre><code class="language-objectivec">//当 按钮被点击时 执行 command中的block
+self.btn.rac_command 
+</code></pre>
+
+<h4 id="toc_10">RACCommand</h4>
+
+<pre><code class="language-objectivec">//初始化command 用一个信号
+self.btn.rac_command = [[RACCommand alloc] initWithSignalBlock:^RACSignal * _Nonnull(id  _Nullable input) {
+        return [RACSignal empty];
+    }];
+    
+//executionSignals  属性为 command执行时的信号
+[self.btn.rac_command.executionSignals subscribeNext:^(RACSignal&lt;id&gt; * _Nullable x) {
+    NSLog(@&quot;信号值执行了&quot;);
+}];
+    
+</code></pre>
+
+<h4 id="toc_11">UITextfield</h4>
+
+<pre><code class="language-objectivec">//rac_textSignal 获取textfield内容改变信号
+[self.textfield.rac_textSignal subscribeNext:^(NSString * _Nullable x) {
+    NSLog(@&quot;输出内容%@&quot;, x);
+}];
+</code></pre>
+
+<h3 id="toc_12">NSNotification</h3>
+
+<pre><code class="language-objectivec">//通知事件 无需主动移除通知
+[[[NSNotificationCenter defaultCenter] rac_addObserverForName:@&quot;&quot; object:nil] subscribeNext:^(NSNotification * _Nullable x) {
+    
+}];
+</code></pre>
+
+<h3 id="toc_13">Delegate</h3>
+
+<pre><code class="language-objectivec">[[self.view rac_signalForSelector:@selector(nameBtnDidClick:)] subscribeNext:^(RACTuple * _Nullable x) {
+    
+}];
+</code></pre>
+
+<h3 id="toc_14">KVO</h3>
+
+<pre><code class="language-objectivec">//这样设置KVO 无需主动移除
+//监听btn frame变化 
+[[self.btn rac_valuesForKeyPath:@&quot;frame&quot; observer:self] subscribeNext:^(id  _Nullable x) {
+        
+}];
+
+//使用宏定义快捷设置KVO （推荐）
+[RACObserve(self.btn, frame) subscribeNext:^(id  _Nullable x) {
+    
+}];
+
+</code></pre>
 
 
 		</div>
@@ -163,8 +372,10 @@ ARSCNView、ARSession、ARSessionConfiguration</p>
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -178,7 +389,7 @@ ARSCNView、ARSession、ARSessionConfiguration</p>
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -274,31 +485,31 @@ ARSCNView、ARSession、ARSessionConfiguration</p>
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

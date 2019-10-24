@@ -82,219 +82,93 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15553988088853.html">ARC的修饰符</a></h1>
-			<p class="meta"><time datetime="2019-04-16T15:13:28+08:00" 
-			pubdate data-updated="true">2019/4/16</time></p>
+		  	<h1 class="entry-title"><a href="15556458372058.html">内存监控</a></h1>
+			<p class="meta"><time datetime="2019-04-19T11:50:37+08:00" 
+			pubdate data-updated="true">2019/4/19</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>在ARC有效的环境下，其内存管理规则和手动计数相同</p>
+		  	<h2 id="toc_0">基础概念和知识</h2>
 
-<ul>
-<li>自己生成对象，自己持有</li>
-<li>非自己生成对象，自己也能持有</li>
-<li>自己持有的对象不再需要时释放</li>
-<li>非自己持有的对象无法释放</li>
-</ul>
+<h3 id="toc_1">物理内存和虚拟内存</h3>
 
-<h2 id="toc_0">所有权修饰符</h2>
+<p>因为CPU的寻址范围是有限的，取决于CPU的地址总线，例如在32位平台下，其寻址范围就是2^ 32即4G。但是如果每次开启一个线程都给4G内存空间，因为物理内存是有限的，会导致内存很快就分完了，这样的话没有分配资源的进程就只能等待已分配内存的进程执行完成才能执行</p>
 
-<p>OC中的变量类型有对象类型(即指向OC类的指针<code>NSObject *</code>)和<code>id</code>类型(用于隐藏对象类型类名部分，相当于C语言中的void *)</p>
+<p>因此提出了虚拟内存的概念，它利用磁盘空间虚拟出来一块逻辑内存，而这个用于虚拟内存的磁盘空间被称为交换空间，当内存不足时会使用交换分区的内存空间(即将暂时用不到的资源写入交换空间，将物理内存进行释放)</p>
 
-<p>在ARC有效时，id类型和对象类型与C语言的其他类型不同，必须加上所有权修饰符</p>
-
-<ul>
-<li>__strong 修饰符</li>
-<li>__weak修饰符</li>
-<li>__unsafe __unretained修饰符</li>
-<li>__autoreleasing修饰符</li>
-</ul>
-
-<h2 id="toc_1">__strong修饰符</h2>
-
-<p><code>__strong</code>修饰符是id类型和对象类型的默认修饰符,即</p>
-
-<pre><code class="language-objectivec">id obj = [[NSObject alloc] init];
-//等效于
-id __strong obj = [[NSObject alloc] init];
-//或者
-__strong id obj = [[NSObject alloc] init];
-</code></pre>
-
-<p>__strong修饰符的内存管理:</p>
+<p>此时我们给一个进程只需要分配4G的虚拟内存空间，它是一个连续的内存空间(虚拟上的)。此时进程要访问内存地址可能需要一下流程：</p>
 
 <ol>
-<li><code>__strong</code>修饰符的变量赋值对象，即可完成对自己生成或非自己生成对象的强引用</li>
-<li>当变量超出作用域被废弃、变量所属对象废弃(赋值nil)或者变量赋值即会释放对原有对象的强引用，相当于对对象执行release操作</li>
+<li>访问地址空间上某一地址，需要把地址翻译为实际需要的物理地址</li>
+<li>虽然所有进程共享这一整块物理内存，每个进程只需要把目前需要的虚拟地址映射到物理内存</li>
+<li>进程需要知道哪些地址空间上的数据在物理内存上，哪些不在（可能这部分存储在磁盘上），还有在物理内存上的哪里，这就需要通过页表来记录</li>
+<li>页表的每一个表项分两部分，第一部分记录此页是否在物理内存上，第二部分记录物理内存页的地址（如果在的话）</li>
+<li>当进程访问某个虚拟地址的时候，就会先去看页表，如果发现对应的数据不在物理内存上，就会发生缺页异常</li>
+<li>缺页异常的处理过程，操作系统立即阻塞该进程，并将硬盘里对应的页换入内存，然后使该进程就绪，如果内存已经满了，没有空地方了，那就找一个页覆盖，至于具体覆盖的哪个页，就需要看操作系统的页面置换算法是怎么设计的了</li>
 </ol>
 
-<p>而当对象没有了所有者 就会被销毁</p>
+<p><strong>因此进程工作流程为:</strong><br/>
+当进程创建时，内核会为进程分配4G虚拟内存，当进程还没开始时，这只是内存布局。实际上并不立即把内存对应位置的程序数据和代码(比如.text .data段)拷贝到物理内存中，只是建立好虚拟内存和磁盘文件之间的映射就好（叫做存储器映射）。这个时候数据和代码还是在磁盘上的。当运行到对应的程序时，进程去寻找页表，发现页表中地址没有存放在物理内存上，而是在磁盘上，于是发生缺页异常，于是将磁盘上的数据拷贝到物理内存中。</p>
 
-<p>示例如下:</p>
+<p>另外在进程运行过程中，要通过malloc来动态分配内存时，也只是分配了虚拟内存，即为这块虚拟内存对应的页表项做相应设置，当进程真正访问到此数据时，才引发缺页异常。</p>
 
-<pre><code class="language-objectivec">//1.
-{
-    //取得非自己生成并持有的对象
-    id __strong obj = [NSMutableArray array];
-    //因为obj为强引用 所以自己持有对象
+<p>可以认为虚拟空间都被映射到了磁盘空间中（事实上也是按需要映射到磁盘空间上，通过mmap，mmap是用来建立虚拟空间和磁盘空间的映射关系的）</p>
+
+<h2 id="toc_2">iOS内存是怎么工作的</h2>
+
+<p><strong>1. iOS怎么监测内存的</strong></p>
+
+<p>iOS会开启一个优先级最高的线程<code>vm_pressure_monitor</code>来监控系统的内存压力情况，并通过一个堆栈来维护所有App的进程。另外，iOS还会维护一个内存快照表，用于保存每个进程内存也的消耗情况。当系统监测发现某个app内存有压力了，就会发出通知，内存有压力的App就会执行代理<code>didReceiveMemoryWarning</code>代理。通过这个代理，可以获得最后一个编写代码释放内存的机会。通过这段代码的执行，可以避免App被系统强杀</p>
+
+<p><strong>2. 为什么iOS上内存占用过大会被系统强杀呢</strong>?(在其他系统或者MacOS就不会)</p>
+
+<p>上面提到了交换空间来作为虚拟内存，但是苹果公司考虑到手持设备的存储空间小的问题，并没有使用交换空间，这样虚拟内存就没法记录到外部存储。因此，苹果引入了MemoryStatus机制</p>
+
+<p><code>MemoryStatus</code>机制的主要思路就是，在iOS系统上弹出尽可能多的内存供当前应用使用。因此其机制就是先强杀后台应用，如果内存还不够就强杀掉当前应用。<br/>
+<code>MemoryStatus</code>机制，会开启一个<code>memorystatus_jetsam_thread</code>线程。这个线程和内存压力监测线程<code>vm_pressure_monitor</code>没有联系，只负责强杀应用和记录日志，不会发送消息，所以内存压力检测线程无法获取到强杀应用的消息</p>
+
+<p><strong><em>3. 系统强杀App时，怎么判断优先级</em></strong><br/>
+iOS系统内核中有一个数组，专门用于维护线程优先级。优先级规定:内核占用线程的优先级最高，操作系统次之，App的优先级最后。并且前台App的优先级高于后台运次那个优先级；COU使用多的线程优先级降低</p>
+
+<p><strong>iOS系统在因为内存问题强杀掉App之前，至少有6秒钟时间用来做优先级判断。同时来生成<code>JetSamEvent</code>日志</strong></p>
+
+<h2 id="toc_3">获取内存</h2>
+
+<p>获取当前进程占用内存:</p>
+
+<pre><code class="language-objectivec">struct mach_task_basic_info info;
+mach_msg_type_number_t size = sizeof(info);
+kern_return_t kl = task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t)&amp;info, &amp;size);
+    
+NSString *memStr;
+if (kl == KERN_SUCCESS) {
+    memStr = [NSString stringWithFormat:@&quot;used %llu MB \n&quot;,info.resident_size / (1024 * 1024)];
 }
-//此时变量obj超出作用域被废弃时，强引用失效，所以自动释放自己持有的对象
+NSLog(@&quot;%@&quot;, memStr);
 
-//2.
-{
-    //取得自己生成并持有的对象
-    id __strong obj = [[NSObject alloc] init];
-    //因为obj为强引用 所以自己持有对象
-}
-/*
-* 此时变量obj超出作用域，强引用失效，所以自动释放自己持有的对象
-* 对象所有者不存在，因此废弃该对象
-*/ 
-
-//3. 
-
-id __strong obj0 = [[NSObject alloc] init];
-//obj0强引用对象A
-id __strong obj1 = [[NSObject alloc] init];
-//obj1强引用对象B
-obj0 = 0bj1;
-//obj0强引用对象B，此时对对象A强引用失效，对象A没有所有者因此废弃对象A
-obj0 = nil;
-//因为obj0被赋值nil，因此其对对象B的强引用失效 此时对象B的强引用只剩下obj1
+//
+struct mach_task_basic_info {
+    mach_vm_size_t  virtual_size;   //虚拟内存      mach_vm_size_t  resident_size;   //物理内存     mach_vm_size_t  resident_size_max;  /* maximum resident memory size (bytes) */
+    time_value_t    user_time;          /* total user run time for
+                                         *  terminated threads */
+    time_value_t    system_time;        /* total system run time for
+                                         *  terminated threads */
+    policy_t        policy;             /* default policy for new threads */
+    integer_t       suspend_count;      /* suspend count for task */
+};
 </code></pre>
 
-<p>OC的类成员变量和方法参数上也可以附有__strong修饰符的变量</p>
+<p>这种方法检测到的物理内存值与<code>Xcode</code>或者<code>Instrument</code>值差异较大<br/>
+为与Xcode的内存值检测相同可以使用<code>task_vm_info</code>中的<code>phys_footprint</code>值</p>
 
-<pre><code class="language-objectivec">@interface Test: NSObject 
-{
-    id __strong obj_;
-}
-
-- (void)setObject:(id __strong)obj；
-
-@implementation Test
-...
-@end
-</code></pre>
-
-<blockquote>
-<p>注意：</p>
-
-<p>__ strong、__weak、__autoreleasing修饰符，会将修饰符修饰的变量自动初始化为nil</p>
-</blockquote>
-
-<h2 id="toc_2">__weak修饰符</h2>
-
-<p>主要用来避免使用强引用导致的循环引用</p>
-
-<p>循环引用很容易发生内存泄漏，内存泄漏就是应当废弃的对象在吃啊出其生存周期后继续存在</p>
-
-<p><code>__weak</code>提供弱引用，并不持有对象实例</p>
-
-<p>错误使用:</p>
-
-<pre><code class="language-objectivec">id __weak obj = [[NSObject alloc] init]; //编译器会报警高
-//这种情况下 obj并不持有生成的对象，而是持有对象的弱引用，所以对象会立即释放
-</code></pre>
-
-<p>正确使用</p>
-
-<pre><code class="language-objectivec">{
-    id __strong obj = [[NSObject alloc] init];
-    id __weak obj1 = obj;
+<pre><code class="language-objectivec">    struct task_vm_info info;
+    mach_msg_type_number_t size = sizeof(info);
+    kern_return_t kl = task_info(mach_task_self(), TASK_VM_INFO, (task_info_t) &amp;info, &amp;size);
+    NSString *memStr;
+    if (kl == KERN_SUCCESS) {
+        memStr = [NSString stringWithFormat:@&quot;used %llu MB \n&quot;,info.phys_footprint / (1024 * 1024)];
 }
 </code></pre>
-
-<p><code>__weak</code>修饰符修饰的变量当持有某个对象的弱引用时，若该对象被废弃(没有了持有者)，则弱引用<strong>自动失效并处于值为nil</strong>状态</p>
-
-<h2 id="toc_3">__ unsafe__unretained修饰符</h2>
-
-<p>是不安全的修饰符。因为<code>__weak</code>只能用在iOS5之上的版本，所以在iOS4就只能使用<code>__unsafe__retained</code>修饰符</p>
-
-<p><code>__unsafe__unretained</code>变量修饰的对象不属于编译器的内存管理对象</p>
-
-<pre><code class="language-objectivec">//__unsafe__retained与__weak类似，并不持有生成对象所以对象会立即释放
-id __weak obj = [[NSObject alloc] init]; //编译器会报警高
-</code></pre>
-
-<p><strong>unsafe</strong>retained变量修饰的对象当销毁时不会自动置nil，因此有可能访问悬空指针</p>
-
-<p>因此，不要使用这个修饰符</p>
-
-<h2 id="toc_4">__autoreleasing修饰符</h2>
-
-<p>在arc有效的情况下 即将autorelease方法变为``</p>
-
-<pre><code class="language-objectivec">//非ARC环境下
-NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-id obj = [[NSObject alloc] init]; 
-[obj autorelease];
-[pool drain];
-//ARC环境下
-@autoreleasepool {
-    id __autoreleasing obj = [[NSObject alloc] init];
-}
-</code></pre>
-
-<blockquote>
-<p>注意</p>
-
-<p>@autoreleasepool {}在非ARC环境下也能使用 推荐@autoreleasepool来表示自动释放池，提高程序的可读性</p>
-</blockquote>
-
-<p>就像我们几乎不显式的写<code>__strong</code>修饰符一样 我们也几乎不显式的附加<code>__autoreleasing</code>修饰符。编译器会自动帮我们添加<code>__autoreleasing</code>修饰符，例如以下情况：</p>
-
-<ol>
-<li><p>编译器会自动将返回值注册到autorelease pool</p>
-<p>编译器会检查方法名，如果使用<code>alloc/new/copy/mutableCopy</code>以外开头的方法，则自动将返回值注册到`autorelease pool中</p>
-<pre><code class="language-objectivec">+ (id)array {
-return [[NSMutableArray alloc] init]<br/>
-}<br/>
-//等效于<br/>
-+ (id)array {<br/>
-id __strong obj = [[NSMutableArray alloc] init];<br/>
-return obj;<br/>
-}
-</code></pre>
-<p>obj由于return会使对象变量超出作用域，所以自己持有的强引用被释放，但该函数以对象作为返回值，编译器会自动帮其注册到autorelease pool中</p></li>
-<li><p>访问__weak修饰的变量一定要访问注册的到autoreleapool的对象</p>
-<p>因为<code>__weak</code>只持有对象弱引用，在访问过程中，对象有可能销毁，而把对象注册到<code>autorelease pool</code>就能保证对象在访问结束前不会被销毁</p>
-<pre><code class="language-objectivec">id __weak obj0 = obj1;
-NSLog(@&quot;class = %@&quot;, [obj0 class]);<br/>
-//等效于<br/>
-id __weak obj0 = obj1;<br/>
-id __autoreleasing tmp = obj1;<br/>
-NSLog(@&quot;class = %@&quot;, [tmp class]);
-</code></pre></li>
-<li><p>id的指针或者对象指针会默认加上__autoreleasing修饰符<br/>
-id的指针<code>id *obj</code>和<code>NSObject **obj</code>在没有显式指定时会被附加上<code>__autoreleasing</code>修饰符</p>
-<p>例如:</p>
-<pre><code class="language-obj"> - (nullable instancetype)dataWithContentsOfFile:(NSString *)path ... error:(NSError **)errorPtr;
-//相当于<br/>
-- (nullable instancetype)dataWithContentsOfFile:(NSString *)path... error:(NSError * __autoreleasing *)errorPtr;
-</code></pre>
-<p>使用__autoreleasing修饰的变量作为对象取得参数就和用非自己生成对象方法取得返回值的对象完全一样，会注册到<code>autorelease pool</code>中</p>
-<pre><code class="language-objectivec">//源码应该类似这个样子
-- (nullable instancetype)dataWithContentsOfFile:(NSString *)path... error:(NSError * __autoreleasing *)errorPtr {<br/>
-    *error = [[NSError alloc] initWithDomain:MyAppDomin code:errorCode userInfo:nil];<br/>
-}
-</code></pre>
-<p>在使用过程中应该注意，保持赋值互相对象的修饰符一致:</p>
-<pre><code class="language-objectivec">NSError * __autoreleasing error;//修改修饰符为__autoreleasing保持一致进行赋值
-NSError **pError = &amp;error;<br/>
-//或者<br/>
-NSError * error;<br/>
-NSError * __strong *pError = &amp;error;
-</code></pre>
-<p>在下面的NSError **参数赋值了一个__strong对象变量也没报错，是因为编译器自动帮我们做了转换</p>
-<pre><code class="language-objectivec">NSError * error;
-    id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;error];<br/>
-//编译器帮我们转化为了<br/>
-NSError __strong *error;<br/>
-NSError __autoreleasing *tmp = error;<br/>
-id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;tmp];
-</code></pre></li>
-</ol>
 
 
 		</div>
@@ -317,8 +191,10 @@ id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;tmp];
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -332,7 +208,7 @@ id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;tmp];
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -428,31 +304,31 @@ id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;tmp];
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

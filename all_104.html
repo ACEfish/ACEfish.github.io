@@ -82,68 +82,272 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15331933928026.html">正则表达式</a></h1>
-			<p class="meta"><time datetime="2018-08-02T15:03:12+08:00" 
-			pubdate data-updated="true">2018/8/2</time></p>
+		  	<h1 class="entry-title"><a href="15459662586152.html">ReactiveObjC</a></h1>
+			<p class="meta"><time datetime="2018-12-28T11:04:18+08:00" 
+			pubdate data-updated="true">2018/12/28</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">re模块</h2>
+		  	<h2 id="toc_0">基础知识</h2>
 
-<h3 id="toc_1">匹配</h3>
+<p>常用的 <code>RACSignal</code>为冷信号  <code>RACSubject</code>为热信号<br/>
+冷信号 即为订阅之后才开始执行的消息，订阅几次 就执行几次<br/>
+热信号 为创建信号就开始执行的消息 无需订阅</p>
 
-<p><code>Python</code>中提供了<code>re</code>模块，包含了所有正则表达式的功能</p>
+<h2 id="toc_1">常用类</h2>
 
-<blockquote>
-<p>由于python字符串和正则表达式都使用<code>\</code>作为转义符，为了避免麻烦,我们推荐用<code>r</code>前缀来写<code>python</code>字符串就不用考虑转义问题</p>
-</blockquote>
+<h3 id="toc_2">RCASignal信号</h3>
 
-<pre><code class="language-python">
-import re
-result1=re.match(r&#39;^\d{3}\-\d{3,8}$&#39;, &#39;010-12345&#39;)
-# 匹配成功返回 Match对象 否则返回None
-print(result1) # &lt;_sre.SRE_Match object; span=(0, 9), match=&#39;010-12345&#39;&gt;
+<pre><code class="language-objectivec">//1.创建信号 
 
-result2=re.match(r&#39;^\d{3}\-\d{3,8}$&#39;, &#39;0qq10-12345&#39;)
-print(result2) #None
-if result2:
-    print(&quot;匹配成功&quot;)
-else: 
-    print(&quot;匹配失败&quot;)
+//可以在创建信号中立即发送信号 但是不能在block结束返回前销毁该信号
+RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+        [subscriber sendNext:@&quot;发送的消息内容&quot;];
+        return nil;
+}];
+//立即发送给定的错误信息
+NSError *error = [[NSError alloc] init];
+[RACSignal error:error];
+//返回一个信号 该信号立即发送给定值 然后 complete
+[RACSignal return:@&quot;value&quot;];
+//返回信号 该信号直接 complete
+[RACSignal empty];
+
+//2.信号处理
+
+//2.1 concat 返回一个信号signal3 当signal1 complete时订阅信号就signal2信号变化 我们可以通过订阅 signal3 来收到信号两个信号的值变化
+RACSignal *signal3 = [signal1 concat:signal2]
+
+//2.2  flattenMap 串联信号 当收到第一个消息的值变化时 开始执行第二个信号 此时我们订阅信号2  只会收到信号2值改变信号
+RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(10 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [subscriber sendNext:@&quot;发送的消息内容&quot;];
+        });
+        return nil;
+    }];
+RACSignal *signal2 = [signal flattenMap:^__kindof RACSignal * _Nullable(id  _Nullable value) {
+    return  [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+        [subscriber sendNext:@&quot;signal2 发送的消息内容&quot;];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [subscriber sendNext:@&quot;signal2 3秒后发送的消息内容&quot;];
+        });
+        return nil;
+    }];
+}];
+
+//2.2 map 对信号1中收到的值进行处理返回信号2 
+RACSignal *signal2 = [signal map:^id _Nullable(NSString *  _Nullable value) {
+    return [value substringFromIndex:2];
+}];
+
+//2.3 filter 过滤信号值
+RACSignal *signal2 = [signal filter:^BOOL(NSString *  _Nullable value) {
+    return YES;
+}];
+
+//2.4 ignore 忽略特定值的信号
+RACSignal *signal2 = [signal ignore:@&quot;发送的消&quot;];
+
+//2.5 startwith: 将这个值 拼接到信号值开头 返回新的信号 
+RACSignal *signal2 = [signal startWith:@&quot;start with发送的消息内容&quot;];
+
+//2.6 skip: 忽略开始的count个信号值改变
+RACSignal *signal2 = [signal skip:1];
+
+//2.7 take: 返回一个只接收前count个信号的信号值改变  其后发送的信号会失败
+RACSignal *signal2 = [signal take:2];
+
+//2.8  scanWithStart: reduce: 遍历信号1值变化 block中next即为信号1的信号值  
+//      running为累计值 初始为start值 
+RACSignal *signal2 = [signal scanWithStart:@&quot;1&quot; reduce:^NSString * _Nullable(NSString *  _Nullable running, NSString *  _Nullable next) {
+    running = [[NSMutableString stringWithFormat:@&quot;%@%@&quot;, running, next] copy];
+    return running;
+}];
+
+//2.9 takeUntilBlock: 忽略这符合条件的信号以及之后的信号
+//     takeWhileBlock: 返回符合条件的信号值
+//      skipUntilBlock: 只返回符合条件以及之后的信号
+//      skipWhileBlock: 忽略符合条件的信号
+RACSignal *signal2 = [signal takeUntilBlock:^BOOL(NSString *  _Nullable x) {
+    return [x hasPrefix:@&quot;3秒&quot;];
+}];
+
+//2.10 distinctUntilChanged 只返回值不一样的信号
+RACSignal *signal2 = [signal distinctUntilChanged];
+
+
+//3. 订阅
+
+//subscribeNext： 订阅信号值改变  error 订阅错误信号 completed 订阅完成信号 
+RACDisposable *disposable = [signal3 subscribeNext:^(NSString *  _Nullable x) {
+    NSLog(@&quot;signal3收到订阅值:%@&quot;, x);
+} error:^(NSError * _Nullable error) {
+    NSLog(@&quot;signal3收到错误订阅:%@,&quot; error);
+} completed:^{
+    NSLog(@&quot;signal3收到成功订阅;&quot;);
+}];
+
+//取消订阅
+[disposable dispose];
+
+
 </code></pre>
 
-<h3 id="toc_2">切分字符串</h3>
+<h3 id="toc_3">RACSubject信号</h3>
 
-<pre><code class="language-python"># 用任意多个空格切分字符串
-re.split(r&#39;\s+&#39;, &#39;a b   c&#39;) # [&#39;a&#39;, &#39;b&#39;, &#39;c&#39;]
+<pre><code class="language-objectivec">//RACSubject 继承于 RACSignal 使用这个对象 可以直接发送和接收信号值改变  而不需要关心 创建信号和注销订阅问题
+RACSubject *subject = [RACSubject subject];
 
-# 用空格或者空格加逗号分隔字符串
-re.split(r&#39;[\s\,]+&#39;, &#39;a,b, c  d&#39;) # [&#39;a&#39;, &#39;b&#39;, &#39;c&#39;, &#39;d&#39;]
+[subject subscribeNext:^(NSString *x) {
+    NSLog(@&quot;接受新值%@&quot;, x);
+} completed:^{
+    NSLog(@&quot;接受完成情况&quot;);
+}];
+
+[subject sendNext:@&quot;新的值1&quot;];
+
 </code></pre>
 
-<h3 id="toc_3">分组</h3>
+<h3 id="toc_4">RACTuple 元组</h3>
 
-<p>正则表达式的分组功能，其表达式中的<code>()</code>就是要提取的分组</p>
+<p>元组功能</p>
 
-<pre><code class="language-python">m = re.match(r&#39;^(\d{3})-(\d{3,8})$&#39;, &#39;010-12345&#39;)
+<h3 id="toc_5">NSArray NSDictionary 集合操作</h3>
 
-m.group(0) #&#39;010-12345&#39;
- m.group(1) # &#39;010&#39;
- m.group(2) # &#39;12345&#39;
+<p>RAC扩展了NSArray 和  NSDictionary 拥有 <code>rac_sequence</code>(<code>RACSequence</code>类)属性</p>
+
+<h3 id="toc_6">RACSequence</h3>
+
+<pre><code class="language-objectivec">    //1. 获取一个 发送集合中值改变的信号
+    arr.rac_sequence.signal
+    //2. 用信号来遍历集合
+    [arr.rac_sequence.signal subscribeNext:^(id  _Nullable x) {
+        NSLog(@&quot;%@&quot;, x);
+    }];
+    //3. head
+    NSLog(@&quot;第一个元素%@&quot;, arr.rac_sequence.head);
+    //4. tail
+    NSLog(@&quot;除了第一个元素外的所有元素集合%@&quot;, arr.rac_sequence.tail);
+    
+    //5. 从左侧开始遍历 start: 累计的初始值 accumulator: 累计值 value:当前值 count: 最终值
+    NSNumber *count = [intArr.rac_sequence foldLeftWithStart:@(10) reduce:^NSNumber* (NSNumber *accumulator, NSNumber *value) {
+        NSLog(@&quot;%@--- %@&quot;, accumulator, value);
+
+        return @(accumulator.integerValue + value.integerValue);
+    }];
+    NSLog(@&quot;%@&quot;, count);
+    
+    //6. 同样可以从右边开始遍历
+    
+    //7. 遍历集合 判断是否存在符合条件 当遇到block返回YES 返回YES不再执行
+    BOOL exist = [intArr.rac_sequence any:^BOOL(NSNumber *value) {
+        return value.integerValue == 2;
+    }];
+    NSLog(@&quot;%@&quot;, exist ? @&quot;存在&quot; : @&quot;不存在&quot;); //存在
+    //8. 遍历集合 判断是否所有元素都满足条件
+    BOOL pass = [intArr.rac_sequence all:^BOOL(id  _Nullable value) {
+        return [value isKindOfClass:[NSNumber class]];
+    }];
+    NSLog(@&quot;%@&quot;, pass ? @&quot;通过&quot; : @&quot;不通过&quot;); //存在
+    //9. 遍历集合找到第一个符合条件的元素
+    id obj = [intArr.rac_sequence objectPassingTest:^BOOL(id  _Nullable value) {
+        if ([value isKindOfClass:[NSNumber class]]) {
+            NSNumber *value1 = (NSNumber *)value;
+            if (value1.integerValue % 3 == 0) {
+                return YES;
+            }
+        }
+        return NO;
+    }];
+    NSLog(@&quot;第一个通过测试的是%@&quot;, obj); //9
+    
+    //10. 用户动态生成sequenceh headblock和tailblock只会执行一次
+    //是惰性加载生成的
+    //必须保证headblock和tailblock是线程安全的
+    RACSequence *sequence = [RACSequence sequenceWithHeadBlock:^id _Nullable{
+        return @(11);
+    } tailBlock:^RACSequence * _Nonnull{
+        return [RACSequence sequenceWithHeadBlock:^id _Nullable{
+            return @(11);
+        } tailBlock:^RACSequence * _Nonnull{
+            return [RACSequence sequenceWithHeadBlock:^id _Nullable{
+                return @(22);
+            } tailBlock:^RACSequence * _Nonnull{
+                return @[@(33)].rac_sequence;
+            }];
+        }];
+    }];
+    
+    [sequence.signal subscribeNext:^(id  _Nullable x) {
+        NSLog(@&quot;%@&quot;, x);
+    }];
 </code></pre>
 
-<p><code>group(0)</code>永远是原始字符串</p>
+<h3 id="toc_7">UI操作</h3>
 
-<h3 id="toc_4">贪婪匹配</h3>
+<h4 id="toc_8">UIControl</h4>
 
-<p>正则表达式默认是贪婪匹配,匹配尽可能多的字符创</p>
+<pre><code class="language-objectivec"> RACSignal *signal = [self.btn rac_signalForControlEvents:UIControlEventTouchUpInside];
+[signal subscribeNext:^(UIButton *  _Nullable x) {
+    NSLog(@&quot;&quot;);
+}];
+</code></pre>
 
-<pre><code class="language-python">re.match(r&#39;^(\d+)(0*)$&#39;, &#39;102300&#39;).groups()
-# (&#39;102300&#39;, &#39;&#39;)
-# 因为\d+ 贪婪匹配导致0*匹配到空字符串
+<h4 id="toc_9">UIButton</h4>
 
-re.match(r&#39;^(\d+?)(0*)$&#39;, &#39;102300&#39;).groups() # (&#39;1023&#39;, &#39;00&#39;)
-# 添加了？让\d+处于非贪婪匹配
+<pre><code class="language-objectivec">//当 按钮被点击时 执行 command中的block
+self.btn.rac_command 
+</code></pre>
+
+<h4 id="toc_10">RACCommand</h4>
+
+<pre><code class="language-objectivec">//初始化command 用一个信号
+self.btn.rac_command = [[RACCommand alloc] initWithSignalBlock:^RACSignal * _Nonnull(id  _Nullable input) {
+        return [RACSignal empty];
+    }];
+    
+//executionSignals  属性为 command执行时的信号
+[self.btn.rac_command.executionSignals subscribeNext:^(RACSignal&lt;id&gt; * _Nullable x) {
+    NSLog(@&quot;信号值执行了&quot;);
+}];
+    
+</code></pre>
+
+<h4 id="toc_11">UITextfield</h4>
+
+<pre><code class="language-objectivec">//rac_textSignal 获取textfield内容改变信号
+[self.textfield.rac_textSignal subscribeNext:^(NSString * _Nullable x) {
+    NSLog(@&quot;输出内容%@&quot;, x);
+}];
+</code></pre>
+
+<h3 id="toc_12">NSNotification</h3>
+
+<pre><code class="language-objectivec">//通知事件 无需主动移除通知
+[[[NSNotificationCenter defaultCenter] rac_addObserverForName:@&quot;&quot; object:nil] subscribeNext:^(NSNotification * _Nullable x) {
+    
+}];
+</code></pre>
+
+<h3 id="toc_13">Delegate</h3>
+
+<pre><code class="language-objectivec">[[self.view rac_signalForSelector:@selector(nameBtnDidClick:)] subscribeNext:^(RACTuple * _Nullable x) {
+    
+}];
+</code></pre>
+
+<h3 id="toc_14">KVO</h3>
+
+<pre><code class="language-objectivec">//这样设置KVO 无需主动移除
+//监听btn frame变化 
+[[self.btn rac_valuesForKeyPath:@&quot;frame&quot; observer:self] subscribeNext:^(id  _Nullable x) {
+        
+}];
+
+//使用宏定义快捷设置KVO （推荐）
+[RACObserve(self.btn, frame) subscribeNext:^(id  _Nullable x) {
+    
+}];
 
 </code></pre>
 
@@ -168,8 +372,10 @@ re.match(r&#39;^(\d+?)(0*)$&#39;, &#39;102300&#39;).groups() # (&#39;1023&#39;, 
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -183,7 +389,7 @@ re.match(r&#39;^(\d+?)(0*)$&#39;, &#39;102300&#39;).groups() # (&#39;1023&#39;, 
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -279,31 +485,31 @@ re.match(r&#39;^(\d+?)(0*)$&#39;, &#39;102300&#39;).groups() # (&#39;1023&#39;, 
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

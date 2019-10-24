@@ -1,0 +1,654 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>
+    
+  Layout - ACEfish-Blog
+  
+
+  </title>
+  <meta name="author" content="">
+  <meta name="description" content="学习记录">
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link href="asset/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+  <script src="asset/js/modernizr-2.0.js"></script>
+  <script src="asset/js/jquery.min.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/solarized_light.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  <style type="text/css">
+  .cat-children-p{ padding: 6px 0px;}
+  .hljs{background: none;}
+  </style>
+  <script type="text/javascript">
+  var isAddSildbar = true;
+  </script>
+  <script src="asset/js/octopress.js" type="text/javascript"></script>
+</head>
+<script type="text/javascript">
+//链接新开窗口
+function addBlankTargetForLinks () {
+  $('a[href^="http"]').each(function(){
+      $(this).attr('target', '_blank');
+  });
+}
+$(document).ready(function(event) {
+  addBlankTargetForLinks();
+});
+</script>
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="index.html">ACEfish-Blog</a></h1>
+  
+    <h2>学习记录</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:acefish.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+
+  <li id=""><a target="_self" href="index.html">首页</a></li>
+
+  <li id=""><a target="_self" href="archives.html">归档</a></li>
+
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content"> 
+<div>
+	<article class="hentry" role="article">
+	<header>
+			  	<h1 class="entry-title">Layout</h1>
+				<p class="meta"><time datetime="2019-09-19T21:06:28+08:00" pubdate data-updated="true">2019/9/19</time></p>
+			 </header>
+		  	<div class="entry-content">
+			  	<p>学习自<a href="https://texturegroup.org/docs/layout2-quickstart.html">Texture-Quickstart</a></p>
+
+<p>因为UIKit的<code>Auto Layout</code>框架 在视图层次变得复杂的时候，布局成本会成倍增加。(已经在iOS12中修复)</p>
+
+<p><code>Texture</code>提供的layout的api相比有很多优点</p>
+
+<ol>
+<li>与手动使用layout布局一样快速</li>
+<li>布局可以在后台计算，因此不会影响用户交互</li>
+<li>布局采用了 不可变数据结构声明。</li>
+<li>布局结果是不可变的数据结构，就可以提前预计算并缓存，提高用户体验</li>
+<li>可扩展</li>
+</ol>
+
+<h4 id="toc_0">Layout Specs</h4>
+
+<p><code>layout specs</code>并没有物理呈现。它通过了解这些子布局元素如何相互关联来充当其他布局元素的容器，完成对布局元素的位置排列。</p>
+
+<p><code>Texture</code>提供了一些<code>ASLayoutSpec</code>的子类，包括从插入一个简单的布局规范到在不同堆栈中布置元素的的复杂规范</p>
+
+<h4 id="toc_1">Layout Elements</h4>
+
+<p><code>Layout spec</code>包含<code>Layout Elements</code>，并且对<code>LayoutElements</code>进行整理</p>
+
+<p>所有的<code>ASDisplayNode</code>和<code>ASLayoutSec</code>遵循<code>&lt;ASLayoutElement&gt;</code>协议。意味着我们可以通过不同的node或者layout Specs来组成其它布局规范</p>
+
+<p><code>&lt;ASLayoutElement&gt;</code>协议有一些属性用于创建非常复杂的布局。</p>
+
+<h3 id="toc_2">组合Layout Specs和Layout Elements 进行布局</h3>
+
+<h2 id="toc_3">Layout Specs</h2>
+
+<h3 id="toc_4">ASWrapperLayoutSpec</h3>
+
+<p><code>ASLayoutSpec</code>的一个简单的子类，可以封装一个<code>ASLayoutElement</code>元素并且根据Element上设置的大小计算元素的布局</p>
+
+<p>通常用于在<code>layyoutSpecThatFits:</code>方法中返回一个单一的元素。这个元素可以设置大小布局信息。但是，如果你想设置postion而不仅仅只是大小，可以使用<code>ASAbsoluteLayoutSpec</code></p>
+
+<h3 id="toc_5">ASStackLayoutSpec</h3>
+
+<p>这个<code>spec</code>是最有用的。<code>ASStackLayoutSpec</code>使用flexbox布局算法 决定子元素的位置和大小。</p>
+
+<p><code>ASStackLayoutSpec</code>有7个属性</p>
+
+<ul>
+<li>direction： 指定stack方向。当指定<code>horizontalAligment/verticalAligment</code>属性时，会被重新解析，而造成<code>justifyContent</code>和<code>alignItems</code>相应更新</li>
+<li>spacing：每个子元素的间距</li>
+<li>horizontalAligment：指定子元素如何水平对齐，根据堆栈方向，设置对齐方式会导致<code>justifyContent</code>和<code>alignItems</code>更新。即使direction更改，此属性将会仍然有效。</li>
+<li>verticalAligment</li>
+<li>justifyContent： 指定在主轴上的对齐方式</li>
+<li>aligItems： 横轴上的对齐方式</li>
+<li>flexWrap： 是否子元素被堆栈为单行或者多行。默认为单行</li>
+<li>aligContent：</li>
+</ul>
+
+<blockquote>
+<p>注意</p>
+
+<p>与CSS中的flex 默认方向不同 而且并没有<code>flex</code>参数</p>
+</blockquote>
+
+<h3 id="toc_6">ASInsetLayoutSpec</h3>
+
+<p><code>ASInsetLayoutSpec</code>将其<code>constrainedSize.max</code>减去insets之后得到的<code>CGSize</code>传递给子节点，一旦子节点去定了它的size，<code>insetSpec</code>将最终size作为子节点的<code>size</code>和<code>margin</code></p>
+
+<p>如果将<code>UIEdgeInsets</code>中的一个值设置为INFINITY，则将只使用子节点的固有大小</p>
+
+<h3 id="toc_7">ASOverlayLayoutSpec</h3>
+
+<p><code>ASOverlayLayoutSpec</code>则会将上面子节点延伸，覆盖一个子节点</p>
+
+<p><code>OverlayLayoutSpec</code>的size根据字节点size计算，子节点是被覆盖的底层，然后将子节点的size作为<code>constrainedSize</code>传递给叠加的子节点。因此，被覆盖的子节点必须有固定大小或者明确设置的大小</p>
+
+<h3 id="toc_8">ASBackgroundLayoutSpec</h3>
+
+<p>与<code>ASOverlayLayoutSpec</code>刚好相反，其设置一个子节点内容，并将另外一个子节点拉伸为背景</p>
+
+<p><code>ASBackgroundLayoutSpec</code>的size根据子节点的size确定，子节点size作为<code>constrainedSize</code>传递给背景子节点。因此 自己子节点也必须有固定大小或者明确设置的size</p>
+
+<h3 id="toc_9">ASCenterLayoutSpec</h3>
+
+<p><code>ASCenterLayoutSpec</code>将其子节点的中心设置为最大<code>constrainedSize</code>的中心</p>
+
+<p>如果<code>ASCenterLayoutSpec</code>的宽度和高度没有约定，则会缩放到和子节点高度和宽度一致</p>
+
+<p>属性：</p>
+
+<ul>
+<li>centeringOptions：决定如何在<code>ASCenterLayoutSpec</code>中居中，可选值包括<code>NONE  X  Y  XY</code></li>
+<li>sizingOptions: 决定<code>ASCenterLayoutSpec</code>占用 多少空间，可选值为<code>Default,  minimun X, minimun Y, minimun XY</code></li>
+</ul>
+
+<h3 id="toc_10">ASRatioLayoutSpec</h3>
+
+<p>以固定的宽高比来缩放子节点。这个规则必须传一个高度或者宽度给他作为<code>constrainedSize</code>，进行计算</p>
+
+<p>使用<code>ASRatioLayoutSpec</code>为<code>ASNetworkImageNode</code>和<code>ASVideoNode</code>提供固有大小是非常常见的，因为两者在内容从服务器返回之前没有固定大小</p>
+
+<h3 id="toc_11">ASRelativeLayoutSpec</h3>
+
+<h3 id="toc_12">ASAbsoluteLayoutSpec</h3>
+
+<p>通过设置他们的<code>layoutPosition</code>属性来指定其子节点的横纵坐标。</p>
+
+<p>属性：</p>
+
+<ul>
+<li>sizing： 确定<code>ASAbsoluteLayoutSpec</code>将占用多少空间，可选值<code>Default, Size to Fit</code> </li>
+</ul>
+
+<h3 id="toc_13">ASLayoutSpec</h3>
+
+<p>所有布局规则的父类，负责处理和管理所有的子类，也可以用来创建自定义布局规则。不建议自定义子类，如果有这方面需求可以将提供的布局规则进行组合来实现</p>
+
+<p><code>ASLayoutSpec</code>中应用了<code>.flexShrink</code>和<code>.flexGrow</code>，在<code>ASStackLayoutSpec</code>作为一个<code>spacer</code>和其它节点一起使用</p>
+
+<h2 id="toc_14">Layout Element 属性</h2>
+
+<h3 id="toc_15">ASStackLayoutElement 属性</h3>
+
+<p>只有在<code>ASStackLayout</code>的<code>subnode</code>上生效</p>
+
+<ul>
+<li><p><code>.style.spacingBefore</code> </p>
+<p>CGFloat类型，direction与前一个node的间隔</p></li>
+<li><p><code>.style.spacingAfter</code></p>
+<p><code>CGFloat</code>类型，direction与后一个node的间隔</p></li>
+<li><p><code>.style.flexGrow</code></p>
+<p><code>Bool</code>类型，子节点尺寸总和小于minimum 即存在剩余空间时，是否放大</p></li>
+<li><p><code>style.flexShrink</code></p>
+<p><code>Bool</code>类型，子节点综合大于maximum，即空间不足时，是否缩小</p></li>
+<li><p><code>.style.flexBasis</code><br/>
+<code>ASDimension</code>类型，在应用<code>flexGrow/flexShrink</code>属性 并且分配剩余空间之前，以堆栈水平或垂直尺寸指定此对象的初始大小</p></li>
+<li><p><code>.style.alignSelf</code><br/>
+<code>ASStackLayoutAlignSelf</code>类型， 指定对象在次轴方向上的布局，会覆盖<code>alignItems</code>。可选值有<code>ASStackLayoutAlignSelfAuto, ASStackLayoutAlignSelfStart, ASStackLayoutAlignSelfEnd, ASStackLayoutAlignSelfCenter, ASStackLayoutAlignSelfStretch</code></p></li>
+<li><p><code>.style.ascender</code><br/>
+<code>CGFloat</code>类型，用于基线对齐，描述对象从顶部到其基线的距离</p></li>
+<li><p><code>.style.descender</code><br/>
+<code>CGFloat</code>类型，英语基线对齐，描述对象从基线到底部距离</p></li>
+</ul>
+
+<h3 id="toc_16">ASAbsoluteLayoutElement Properties</h3>
+
+<p>只在<code>ASAbsolute</code>的subnode中才能生效</p>
+
+<p><code>.style.layoutPosition</code></p>
+
+<p><code>CGFloat</code>类型，描述该对象在<code>ASAbsoluteLayoutSpec</code>父规则中的位置</p>
+
+<h3 id="toc_17">ASLayoutElement Properties</h3>
+
+<p>适用于所有布局元素</p>
+
+<ul>
+<li><p><code>.style.width</code><br/>
+<code>ASDimension</code>类型，width描述内容区域的宽度。默认值为<code>ASDimensionAuto</code><br/>
+<code>minWidth</code>和<code>maxWidth</code>属性会覆盖<code>width</code></p></li>
+<li><p><code>.style.height</code><br/>
+<code>ASDImension</code>类型，height描述内容区域的高度。默认值为<code>ASDimensionAuto</code>。<br/>
+<code>minHeight</code>和<code>maxHeight</code>属性会覆盖<code>height</code></p></li>
+<li><p><code>style.minWidth</code><br/>
+<code>ASDImension</code>类型，用于设置一个特定布局元素的最小宽度。默认值为<code>ASDimensionAuto</code>。</p></li>
+<li><p><code>style.maxWidth</code><br/>
+<code>ASDImension</code>类型，用于设置一个特定布局元素的最大宽度。默认值为<code>ASDimensionAuto</code>。</p></li>
+<li><p><code>.style.minHeight</code><br/>
+<code>ASDImension</code>类型，用于设置一个特定布局元素的最小高度。默认值为<code>ASDimensionAuto</code>。</p></li>
+<li><p><code>.style.maxHeight</code><br/>
+<code>ASDImension</code>类型，用于设置一个特定布局元素的最大高度。默认值为<code>ASDimensionAuto</code>。</p></li>
+<li><p><code>.style.preferredSize</code><br/>
+<code>CGSize</code>类型， 建议布局元素的size。minSize和maxSize会限制和覆盖该属性。如果未提供，默认会使用<code>calculateSizeThatFits:</code>方法提供的固有大小</p>
+<p>该属性是可选的，但是对于没有固定大小或需要用于固有大小不同的size进行布局的节点，则必须指定<code>preferredSize</code>或<code>preferredLayoutSize</code>中一个，比如这个属性可以在<code>ASImageNode</code>上设置，使这个节点的size和图片的size不同</p>
+<blockquote>
+<p>注意</p>
+<p>当size的宽度和高度时相对值时  调用getter进行断言</p>
+</blockquote></li>
+<li><p><code>.style.minSize</code><br/>
+<code>CGSize</code>类型，可选属性，为布局元素提供最小尺寸，</p></li>
+<li><p><code>.style.maxSize</code><br/>
+<code>CGSize</code>类型，可选属性，为布局元素提供最大尺寸</p></li>
+<li><p><code>.style.preferredLayoutSize</code><br/>
+<code>ASLayoutSize</code>类型，为布局提供建议的size。<br/>
+使用百分比而不是点来指定布局。</p></li>
+<li><p><code>.style.minLayoutSize</code><br/>
+<code>ASLayoutSize</code>类型，可选属性，为布局提供最小相对尺寸</p></li>
+<li><p><code>.style.maxLayoutSize</code><br/>
+<code>ASLayoutSize</code>类型，可选属性，为布局提供最大相对尺寸</p></li>
+</ul>
+
+<h2 id="toc_18">Layout API Sizing</h2>
+
+<h3 id="toc_19">ASDimension</h3>
+
+<p>为一个<code>CGFloat</code>表示一个pt值、一个百分比或者一个自动值,这个单位允许一个API同时使用固定值或者相对值</p>
+
+<pre><code class="language-objectivec">// 返回一个相对值
+ASDimensionMake(&quot;50%&quot;)
+ASDimensionMakeWithFraction(0.5)
+
+// 返回一个 pt 值
+ASDimensionMake(&quot;70pt&quot;)
+ASDimensionMake(70)
+ASDimensionMakeWithPoints(70)
+</code></pre>
+
+<h3 id="toc_20">CGSize、ASLayoutSize</h3>
+
+<p><code>ASLayoutSize</code>类似于<code>CGSize</code>，只是其高度和宽度可以同时使用pt值或百分比，宽度和高度是独立的，它们的值类型可以不同。</p>
+
+<p>允许同一个的API采用绝对值和相对值</p>
+
+<pre><code class="language-objectivec">ASLayoutSizeMake(ASDimension width, ASDimension height);
+
+//例如
+ASDimension width = ASDimensionMake(ASDimensionUnitAuto, 0);  
+ASDimension height = ASDimensionMake(@&quot;50%&quot;);
+layoutElement.style.preferredLayoutSize = ASLayoutSizeMake(width, height);
+</code></pre>
+
+<p>也可以使用<code>preferredSize、minSize、maxSize</code>属性</p>
+
+<pre><code class="language-objectivec">layoutElement.style.preferredSize = CGSize(width: 30, height: 60)
+</code></pre>
+
+<p>但是大多数情况下，不需要限制宽度和高度。如果需要，可以使用<code>ASDimension</code>值单独设置布局的size属性</p>
+
+<pre><code class="language-objectivec">layoutElement.style.width     = ASDimensionMake(&quot;50%&quot;)
+layoutElement.style.minWidth  = ASDimensionMake(&quot;50%&quot;)
+layoutElement.style.maxWidth  = ASDimensionMake(&quot;50%&quot;)
+
+layoutElement.style.height    = ASDimensionMake(&quot;50%&quot;)
+layoutElement.style.minHeight = ASDimensionMake(&quot;50%&quot;)
+layoutElement.style.maxHeight = ASDimensionMake(&quot;50%&quot;)
+</code></pre>
+
+<h3 id="toc_21">ASSizeRange</h3>
+
+<p>因为在UIKit并没有提供机制 绑定最大和最小的Size，因此，为了支持，创建了<code>ASSizeRange</code></p>
+
+<p><code>ASSizeRange</code>通常用于layout的API内部，作为输入传递给layoutSpecThatFits：的constrainedSize值是ASSizeRange</p>
+
+<pre><code class="language-objectivec">- (ASLayoutSpec *)layoutSpecThatFits:(ASSizeRange)constrainedSize;
+</code></pre>
+
+<p>传递的<code>constrainedSize</code>是node最合适的最大和最小尺寸，constrainedSize中包含的最小和最大CGSize可用于调整节点的布局元素的大小</p>
+
+<h2 id="toc_22">Layout Transition API</h2>
+
+<p><a href="https://texturegroup.org/docs/layout-transition-api.html">参考Layout Transition API</a></p>
+
+<p>帮助我们使所有动画 变得简单，甚至将一个试图集转为另外一个完全不同的视图集</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>使用<code>Layout Transition API</code>必须使用<code>自动节点管理功能</code></p>
+</blockquote>
+
+<h3 id="toc_23">Layout 之间的动画</h3>
+
+<p>在这个过程中没有使用<code>addSubnode:</code>或<code>removeFromSupernode:</code>。 Layout Transition API 会分析旧布局和新布局之间节点层次结构的差异，通过自动子节点管理隐式的执行节点插入和删除。</p>
+
+<p>通过更新属性，来让展示不同的lauout specs。并且，调用<code>transitionLayoutWithAnimation：</code>调用动画方法。默认实现的API中，布局会重新计算布局，并且调整子节点的大小和位置，而不设置动画。此时我们需要自定义动画block，当通过<code>transitionLayoutWithAnimation</code>计算出新的布局后，会调用<code>- (void)animateLayoutTransition:(id&lt;ASContextTransitioning&gt;)context</code>我们在其中自定义动画</p>
+
+<pre><code class="language-objectivec">- (void)animateLayoutTransition:(id&lt;ASContextTransitioning&gt;)context
+{
+  if (self.fieldState == SignupNodeName) {
+    CGRect initialNameFrame = [context initialFrameForNode:self.ageField];
+    initialNameFrame.origin.x += initialNameFrame.size.width;
+    self.nameField.frame = initialNameFrame;
+    self.nameField.alpha = 0.0;
+    CGRect finalAgeFrame = [context finalFrameForNode:self.nameField];
+    finalAgeFrame.origin.x -= finalAgeFrame.size.width;
+    [UIView animateWithDuration:0.4 animations:^{
+      self.nameField.frame = [context finalFrameForNode:self.nameField];
+      self.nameField.alpha = 1.0;
+      self.ageField.frame = finalAgeFrame;
+      self.ageField.alpha = 0.0;
+    } completion:^(BOOL finished) {
+      [context completeTransition:finished];
+    }];
+  } else {
+    CGRect initialAgeFrame = [context initialFrameForNode:self.nameField];
+    initialAgeFrame.origin.x += initialAgeFrame.size.width;
+    self.ageField.frame = initialAgeFrame;
+    self.ageField.alpha = 0.0;
+    CGRect finalNameFrame = [context finalFrameForNode:self.ageField];
+    finalNameFrame.origin.x -= finalNameFrame.size.width;
+    [UIView animateWithDuration:0.4 animations:^{
+      self.ageField.frame = [context finalFrameForNode:self.ageField];
+      self.ageField.alpha = 1.0;
+      self.nameField.frame = finalNameFrame;
+      self.nameField.alpha = 0.0;
+    } completion:^(BOOL finished) {
+      [context completeTransition:finished];
+    }];
+  }
+}
+</code></pre>
+
+<p><code>ASContextTransitioning</code>中包含了过渡前和过度后的node状态信息。<br/>
+动画完成后必须调用<code>[context completeTransition:finished];</code>,这会使其内部执行必要步骤，将计算的布局变为当前布局</p>
+
+<p>在实现animateLayoutTransition：之前插入了节点，这是在开始动画之前手动管理层次结构的好地方。在context对象上调用completeTransition：之后，将在didCompleteLayoutTransition：中执行删除。如果您需要手动执行删除，请覆盖didCompleteLayoutTransition：并执行自定义操作。请注意，这将覆盖默认行为，建议调用super或遍历上下文对象中的RemovedSubnodes getter以执行清理。</p>
+
+<p>将NO传递给<code>transitionLayoutWithAnimation：</code>仍将通过<code>[context isAnimated]</code>属性设置为NO的<code>animateLayoutTransition：</code>和<code>didCompleteLayoutTransition：</code>实现运行。您可以选择如何处理此案件（如果有的话）。提供默认实现的一种简单方法是调用super</p>
+
+<pre><code class="language-objectivec">- (void)animateLayoutTransition:(id&lt;ASContextTransitioning&gt;)context
+{
+  if ([context isAnimated]) {
+    // perform animation
+  } else {
+    [super animateLayoutTransition:context];
+  }
+}
+</code></pre>
+
+<h3 id="toc_24">限制大小更改动画</h3>
+
+<p>当只是想对node的边界更改作出相应，并为其重新计算layout 动画效果。此时可以在节点上调用<code>transitionLayoutWithSizeRange:animated:</code></p>
+
+<p>与<code>transitionLayoutWithAnimation:</code>类似，但是如果传递的ASSizeRange和当前的相同，则不会触发动画，这对旋转视图好更改控制器大小非常有效果：</p>
+
+<pre><code class="language-objectivec">- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id&lt;UIViewControllerTransitionCoordinator&gt;)coordinator
+{
+  [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+  [coordinator animateAlongsideTransition:^(id&lt;UIViewControllerTransitionCoordinatorContext&gt;  _Nonnull context) {
+    [self.node transitionLayoutWithSizeRange:ASSizeRangeMake(size, size) animated:YES];
+  } completion:nil];
+}
+</code></pre>
+
+			</div>
+
+		
+	  
+		<footer>
+		 <p class="meta">
+
+			<strong>Categories:</strong>&nbsp; 
+			<span class="categories">
+			
+			    <a class='category' href='AsyncDisplayKit.html'>AsyncDisplayKit</a>&nbsp;
+			 
+			</span>
+		    </p>
+		    <p class="meta">
+		      
+		 </p>
+	    
+		<div class="sharing">
+		  
+          
+
+          
+
+		</div>
+
+	    <p class="meta">
+	    
+	        <a class="basic-alignment left" href="15693141187091.html" 
+	        title="Previous Post: Teture的便捷性">&laquo; Teture的便捷性</a>
+	    
+	    
+	        <a class="basic-alignment right" href="15686206334500.html" 
+	        title="Next Post: 子类">子类 &raquo;</a>
+	    
+	    </p>
+	  </footer>
+	</article>
+</div>
+ <aside class="sidebar"> 
+
+	<section>
+	  <h1>Categories</h1>
+	  <ul id="recent_posts">
+	  
+	      <li class="post">
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&Block.html">内存管理&Block&nbsp;(18)</a>&nbsp;&nbsp;
+	        
+	        	<a href="RunTime.html">runtime&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Concurrent-Programming.html">多线程&nbsp;(19)</a>&nbsp;&nbsp;
+	        
+	        	<a href="GPU&&%E6%B8%B2%E6%9F%93.html">GPU&&渲染&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E6%B5%8B%E8%AF%95.html">调试&&测试&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Cocoapods.html">Cocoapods&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E6%A8%A1%E5%9D%97%E5%8C%96%E7%9F%A5%E8%AF%86%E5%AD%A6%E4%B9%A0.html">模块化知识学习&nbsp;(26)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Instrument%E5%AD%A6%E4%B9%A0.html">Instrument学习&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E7%82%B9.html">知识点&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E8%A1%A5%E5%85%85-1.html">补充&nbsp;(9)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E9%9D%A2%E8%AF%95.html">面试&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Swift.html"><strong>Swift初学笔记&nbsp;(28)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="Swift-BaseLearning.html">Swift基础知识&nbsp;(28)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Computer-programming.html"><strong>计算机编程&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="iOSDevelop.html"><strong>iOSDevelop&nbsp;(27)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html">iOS 小知识&nbsp;(14)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86.html">iOS开发知识&nbsp;(12)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html">知识普及&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Flex.html">Flex&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
+	        
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="React-Native.html"><strong>React-Native&nbsp;(6)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Python.html"><strong>Python&nbsp;(14)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E5%AD%A6%E4%B9%A0.html"><strong>算法学习&nbsp;(2)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">算法读书笔记&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	   
+	  </ul>
+	</section>
+	<section>
+	  <h1>Recent Posts</h1>
+	  <ul id="recent_posts">
+	  
+	      
+		      <li class="post">
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710248960458.html">Layout Specs</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707800044047.html">Node Lifecycle</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707737201639.html">线程</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15698393226216.html">Nodes</a>
+		      </li>
+	     
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	   
+	  </ul>
+	</section>
+	
+</aside> </div></div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 -  -
+  <span class="credit">Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a> &nbsp;&nbsp; Theme by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+
+  
+    
+
+
+
+
+</body>
+</html>

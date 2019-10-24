@@ -82,29 +82,71 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15541064037153.html">Swift编译流</a></h1>
-			<p class="meta"><time datetime="2019-04-01T16:13:23+08:00" 
-			pubdate data-updated="true">2019/4/1</time></p>
+		  	<h1 class="entry-title"><a href="15042543172572.html">嵌套类型</a></h1>
+			<p class="meta"><time datetime="2017-09-01T16:25:17+08:00" 
+			pubdate data-updated="true">2017/9/1</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>Swift编译流和Clang一样都是编译前端，和 Clang 一样代码会被解析成语法数 AST，接下来会比 Clang 多一步，通过 SILGen 生成 SIL 这一次方便做些 Swift 特定的优化，SIL 会被传递给 IR 生成阶段生成 LLVM IR，最后由 LLVM 解决余下事情。</p>
+		  	<p><strong>嵌套类型:</strong>在支持的类型中定义嵌套的枚举、类和结构体</p>
 
-<pre><code class="language-swift">//生成程序
-swiftc toy.swift
+<p>要在一个类型中嵌套另一个类型,将嵌套类型的定义写在其外部类型的<code>{}</code>内，而且可以根据需要定义多级嵌套</p>
 
-//生成检查 AST
-swiftc -dump-ast toy.swift
+<h2 id="toc_0">嵌套类型实践</h2>
 
-//可以还原之前函数名
-swiftc -emit-silgen toy.swift | xcrun swift-demangle
+<pre><code class="language-swift">struct BlackjackCard {
+    //嵌套的 Suit 枚举//牌的花色
+    enum Suit: Character {
+        case Spades = &quot;块&quot;, Hearts = &quot;心&quot;, Diamonds = &quot;*&quot;, Clubs = &quot;额&quot;
+    }
+    //嵌套的 Rank 枚举
+    enum Rank: Int {
+        case Two = 2, Three, Four, Five, Six, Seven, Eight, Nine, Ten
+        case Jack, Queen, King, Ace
+        struct Values {//用于反应Ace有两种值，而其他只有一个
+            let first: Int, second: Int?
+        }
+        var values: Values {
+            switch self {
+                case .Ace:
+                    return Values(first: 1, second: 11)
+                case .Jack, .Queen, .King:
+                    return Values(first: 10, second: nil)
+                default:
+                    return Values(first: self.rawValue, second: nil)
+            }
+        }
+    }
+    // BlackjackCard 的属性和方法
+    let rank: Rank, suit: Suit
+    var description: String {
+        var output = &quot;suit is \(suit.rawValue),&quot;
+        output += &quot; value is \(rank.values.first)&quot;
+        if let second = rank.values.second {
+            output += &quot; or \(second)&quot;
+        }
+        return output
+    }
+}
+</code></pre>
 
-//llvm ir 和汇编的生成
-swiftc -emit-ir toy.swift
-swiftc -emit-assembly toy.swift
+<p><code>BlackjackCard</code>结构体有默认的成员构造器,可以用默认构造器去初始化常量:</p>
 
-//生成可执行的脚本
-xcrun -sdk macosx swiftc toy.swift -o toy
+<pre><code class="language-swift">/**
+尽管Rank和Suit嵌套在BlackjackCard中,类型可以从上下文推断出来,
+因此可以用`.Ace 和.Spades`引用枚举实例
+*/
+let theAceOfSpades = BlackjackCard(rank: .Ace, suit: .Spades)
+print(&quot;theAceOfSpades: \(theAceOfSpades.description)&quot;)
+// 打印 “theAceOfSpades: suit is ?, value is 1 or 11”
+</code></pre>
+
+<h2 id="toc_1">引用嵌套类型</h2>
+
+<p>当想要在外部引用嵌套类型时，在嵌套类型名前加外部类型的类型名作为前缀</p>
+
+<pre><code class="language-swift">let heartsSymbol = BlackjackCard.Suit.Hearts.rawValue
+//红心符号
 </code></pre>
 
 
@@ -128,8 +170,10 @@ xcrun -sdk macosx swiftc toy.swift -o toy
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -143,7 +187,7 @@ xcrun -sdk macosx swiftc toy.swift -o toy
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -239,31 +283,31 @@ xcrun -sdk macosx swiftc toy.swift -o toy
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

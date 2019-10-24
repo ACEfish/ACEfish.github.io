@@ -82,135 +82,200 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15317258769792.html">Python基础</a></h1>
-			<p class="meta"><time datetime="2018-07-16T15:24:36+08:00" 
-			pubdate data-updated="true">2018/7/16</time></p>
+		  	<h1 class="entry-title"><a href="15331955872244.html">常用第三方模块</a></h1>
+			<p class="meta"><time datetime="2018-08-02T15:39:47+08:00" 
+			pubdate data-updated="true">2018/8/2</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">数据类型</h2>
+		  	<h2 id="toc_0">Pillow</h2>
 
-<h3 id="toc_1">字符串</h3>
+<pre><code class="language-python">from PIL import Image, ImageFilter
 
-<p><strong>字符串是不可变的</strong></p>
+image1=Image.open(&quot;/Users/fish/Desktop/pyTestImage.jpg&quot;)
+print(image1)
+print(image1.size)
+print(&quot;图像尺寸为宽%s 高%s&quot; % image1.size)
+(w, h)=image1.size
+image1.thumbnail((w//2, h//2))
+print(&quot;调整后的图片大小%s %s&quot; % image1.size)
+image1.save(&quot;/Users/fish/Desktop/thumbnail.jpg&quot;, &quot;jpeg&quot;)
 
-<ol>
-<li>用<code>&#39;</code>或者<code>&quot;</code>括起来的文本</li>
-<li>可以通过 <code>\</code>转义字符来在文本中转义,进行<code>\n</code>换行 <code>\t</code>制表</li>
-<li>可以通过在文本前加<code>r</code>表示文本不转义</li>
-<li>用三个单引号<code>&#39;&#39;&#39;...&#39;&#39;&#39;</code>的文本可以在内部直接换行而不需要<code>\n</code></li>
-</ol>
 
-<pre><code class="language-python">print(&quot;hello, world&quot;)
-print(&quot;I\&#39;m OK!&quot;)
-print(&quot;\t文本&quot;)
-print(r&#39;&#39;&#39;\\line1
-line2
-line3aaaa&#39;&#39;&#39;)
+image2=Image.open(&quot;/Users/fish/Desktop/pyTestImage.jpg&quot;)
+image2=image2.filter(ImageFilter.BLUR)
+image2.save(&quot;/Users/fish/Desktop/blur.jpg&quot;, &quot;jpeg&quot;)
+
+
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
+import random
+
+#获取随机字母
+def randomChar():
+    return chr(random.randint(65,90))  #获取随机整数
+
+#随机颜色
+def randomColor1():
+    return (random.randint(64,255), random.randint(64,255), random.randint(64,255))
+
+def randomColor2():
+    return (random.randint(32,127), random.randint(32,127), random.randint(32,127))
+
+width=60*4
+height=60
+image=Image.new(&quot;RGB&quot;, (width, height), (255, 255, 255))
+#创建font对象
+font=ImageFont.truetype(&#39;Arial.ttf&#39;, 36,  layout_engine=&quot;LAYOUT_RAQM&quot;)
+#创建Draw对象
+draw=ImageDraw.Draw(image)
+#填充每个像素
+for x in range(width):
+    for y in range(height):
+        draw.point((x,y), fill=randomColor1())
+#输出文字
+
+for t in range(4):
+    draw.text((60*t+10, 10), randomChar(), font=font, fill=randomColor2())
+
+image.save(&quot;/Users/fish/Desktop/randomChar.jpg&quot;, &quot;jpeg&quot;)
 </code></pre>
 
-<blockquote>
-<p>python中的单引号和双引号的用法都是一样的，只是如果字符串中有相同字符时需要转义</p>
-</blockquote>
+<h2 id="toc_1">requests</h2>
 
-<h3 id="toc_2">布尔</h3>
+<pre><code class="language-python">import requests
+r1=requests.get(&quot;http://www.uidt.net/&quot;)
+r1.encoding = &#39;utf-8&#39; 
+print(r1.status_code)
+print(r1.encoding)
+print(r1.headers)
+# 获取网页内容
+with open(&quot;./douban.html&quot;, &quot;w&quot;) as f1:
+    f1.write(r1.text)
 
-<p><code>True</code>  真<br/>
-<code>False</code> 假</p>
 
-<p>布尔运算<br/>
-<code>and</code>  与<br/>
-<code>or</code>   或<br/>
-<code>not</code>  非</p>
+r2 = requests.get(&#39;https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20weather.forecast%20where%20woeid%20%3D%202151330&amp;format=json&#39;)
+# 获取请求的相应内容
+print(r2.json())
 
-<h3 id="toc_3">空值</h3>
-
-<p><code>None</code>表示空值</p>
-
-<h2 id="toc_4">变量</h2>
-
-<p>定义变量<br/>
-<code>a=1</code></p>
-
-<blockquote>
-<p>python是动态语言 因此可以将不同类型的变量赋值给同一变量</p>
-</blockquote>
-
-<pre><code class="language-python">a=False
-a=&quot;aa&quot;
-print(a)
 </code></pre>
 
-<h2 id="toc_5">常量</h2>
+<h2 id="toc_2">chardet</h2>
 
-<p>在python中常用全大写的变量名来表示常量</p>
+<p>用来检测编码 </p>
 
-<blockquote>
-<p>python中除法<code>/</code>的结果为浮点数(即使整除),  <code>//</code>为地板除，两个除法的结果仍为整数</p>
-</blockquote>
+<pre><code class="language-python">import chardet
+# 当获得bytes时 可以推测其所用的编码
 
-<pre><code class="language-python">print(10/3)   3.3333333333333335
-print(10//3)   3
-print(9/3)    3.0
-print(9//3)   3
-print(12.7//5.1)   2.0
-print(1.2/3)    0.39999999999999997
+data = &#39;离离原上草，一岁一枯荣&#39;.encode(&#39;gbk&#39;)
+result=chardet.detect(data)
+print(result)
+# {&#39;encoding&#39;: &#39;GB2312&#39;, &#39;confidence&#39;: 0.7407407407407407, &#39;language&#39;: &#39;Chinese&#39;}
+
 </code></pre>
 
-<h2 id="toc_6">编码</h2>
+<h2 id="toc_3">psutil</h2>
 
-<p><a href="https://www.liaoxuefeng.com/wiki/0014316089557264a6b348958f449949df42a6d3a2e542c000/001431664106267f12e9bef7ee14cf6a8776a479bdec9b9000">https://www.liaoxuefeng.com/wiki/0014316089557264a6b348958f449949df42a6d3a2e542c000/001431664106267f12e9bef7ee14cf6a8776a479bdec9b9000</a></p>
+<p>这个模块可以跨平台使用<br/>
+获取当前系统的CPU信息，内存信息、磁盘信息、网络信息、进程信息</p>
 
-<p>在python3中字符串以Unicode编码，</p>
+<pre><code class="language-text">#!/usr/bin/env python3
 
-<p>可以通过<code>ord()</code>函数获取字符的整数表示<br/>
-可以通过<code>chr()</code>函数将编码转为对应字符</p>
+import psutil
+print(psutil.cpu_count())  #CPU逻辑数量
 
-<pre><code class="language-python">print(ord(&quot;😱&quot;)) //128561
-print(chr(128561)) //😱
-//当知道字符的整数编码,可以用16进制来写str
-print(&#39;\u4e2d\u6587&#39;) //中文
-</code></pre>
+print(psutil.cpu_count(logical=False))  #CPU物理核心数量
 
-<p>Python对bytes类型的数据用带<code>b</code>前缀的单引号或双引号表示:</p>
+print(psutil.cpu_times())  #cpu的用户/系统/空闲时间
+# scputimes(user=7590.65, nice=0.0, system=5399.27, idle=265297.75)
 
-<pre><code class="language-python">x = b&#39;ABC&#39;
-</code></pre>
+# 内存信息
 
-<blockquote>
-<p>python的字符串<code>str</code>在内存中以Unicode表示,当在网上传输或者保存磁盘时,需要将其转为以字节为单位的<code>bytes</code>使用<code>encode()</code>,而当从网络或磁盘读取数据读到的是<code>bytes</code>,将butes转为str，使用<code>decode()</code>方法</p>
-</blockquote>
+vm=psutil.virtual_memory() #获取物理内存
+print(vm)
+# svmem(total=17179869184, available=2889986048, percent=83.2, used=12674203648, free=1946497024, active=8977154048, inactive=943489024, wired=2753560576)
 
-<p>可以通过<code>encode()</code>方法将<code>str</code>编码为指定的<code>bytes</code></p>
+swapm=psutil.swap_memory() # 交换内存
+print(swapm)
+# sswap(total=1073741824, used=176685056, free=897056768, percent=16.5, sin=10144088064, sout=4096)
 
-<pre><code class="language-python">print(&quot;中文&quot;.encode(&quot;utf-8&quot;))  # b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;
-print(b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;.decode(&#39;utf-8&#39;))  #中文
 
-#如果bytes中存在一小部分无效字节,可以添加errors=&#39;ignore&#39;来忽略错误的字节
-b&#39;\xe4\xb8\xad\xff&#39;.decode(&#39;utf-8&#39;, errors=&#39;ignore&#39;)  #中
-</code></pre>
+# 磁盘信息
 
-<p><code>len()</code>函数用来计算<code>str</code>字符串的字符数,对于<code>bytes</code>则计算其字节数:</p>
+disk_part=psutil.disk_partitions() # 磁盘分区信息
+print(disk_part)
+# [sdiskpart(device=&#39;/dev/disk1s1&#39;, mountpoint=&#39;/&#39;, fstype=&#39;apfs&#39;, opts=&#39;rw,local,rootfs,dovolfs,journaled,multilabel&#39;), sdiskpart(device=&#39;/dev/disk1s4&#39;, mountpoint=&#39;/private/var/vm&#39;, fstype=&#39;apfs&#39;, opts=&#39;rw,noexec,local,dovolfs,dontbrowse,journaled,multilabel,noatime&#39;)]
 
-<pre><code class="language-python">&gt;&gt;&gt; len(b&#39;ABC&#39;)
-3
-&gt;&gt;&gt; len(b&#39;\xe4\xb8\xad\xe6\x96\x87&#39;)
-6
-&gt;&gt;&gt; len(&#39;中文&#39;.encode(&#39;utf-8&#39;))
-6
-</code></pre>
+# &quot;/&quot;代表磁盘
+disk_usage=psutil.disk_usage(&quot;/&quot;) # 磁盘使用情况 
+print(disk_usage)
+# sdiskusage(total=499963170816, used=175103643648, free=322010931200, percent=35.2)
 
-<blockquote>
-<p>为避免乱码,请坚持使用UTF-8编码进行转换,因此对于python的源码文件,指定其为UTF-8编码保存,并通过<code># -*- coding: utf-8 -*-</code>告诉编译器按照UTF-8读取源码</p>
-</blockquote>
+disk_io=psutil.disk_io_counters() # 磁盘IO
+print(disk_io)
+# sdiskio(read_count=569221, write_count=820812, read_bytes=17523716096, write_bytes=19005095936, read_time=262887, write_time=473538)
 
-<p><strong><code># -*- coding: utf-8 -*-</code></strong></p>
 
-<h2 id="toc_7">格式化</h2>
+net_io=psutil.net_io_counters() # 获取网络读写字节／包的个数
+print(net_io)
+# snetio(bytes_sent=111684608, bytes_recv=2494911488, packets_sent=1122158, packets_recv=1953957, errin=0, errout=0, dropin=0, dropout=0)
+ 
+net_address=psutil.net_if_addrs() # 获取网络接口信息
+print(net_address)
 
-<pre><code class="language-python"># 格式化
-print(&quot;这是字符串的%s格式化&quot; % (&quot;栗豫塬&quot;))
-print(&quot;my name is %s age is %d height %.2f&quot; % (&quot;栗豫塬&quot;, 24, 17.0))
+net_status=psutil.net_if_stats() # 获取网络接口状态
+print(&quot;所有网络接口状态:&quot;)
+print(net_status)
+
+
+# net_connectinfo=psutil.net_connections() # 需要root权限 sudo执行python
+# print(&quot;当前网络连接信息:&quot;)
+# print(net_connectinfo)
+
+
+all_pid=psutil.pids() #获取所有进程id
+print(all_pid)
+
+process=psutil.Process(11377) # 获取id对应进程
+print(process.name()) # 获取对应进程名字 
+# Python
+
+print(process.exe()) #进程exe路径
+# /usr/local/Cellar/python/3.6.5/Frameworks/Python.framework/Versions/3.6/Resources/Python.app/Contents/MacOS/Python
+
+print(process.cwd()) #进程工作目录
+
+print(process.cmdline()) # 进程启动的命令行
+
+print(process.ppid()) # 父进程的pid
+
+print(process.parent()) # 父进程
+
+print(process.children()) # 子进程列表
+
+print(process.status()) # 进程状态
+
+print(process.username()) # 进程用户名
+
+print(process.create_time()) # 进程创建时间
+
+print(process.terminal()) # 进程终端
+
+print(process.cpu_times()) # 进程使用的cpu时间
+
+print(process.memory_info()) # 进程使用内存
+
+print(process.open_files()) # 进程打开的文件
+
+print(process.connections()) # 进程相关网络连接
+
+print(process.num_threads()) # 进程的线程数量
+
+# print(process.threads()) # 所有线程
+
+print(process.environ()) # 进程环境变量
+
+print(process.terminate()) # 结束进程
+
 </code></pre>
 
 
@@ -234,8 +299,10 @@ print(&quot;my name is %s age is %d height %.2f&quot; % (&quot;栗豫塬&quot;, 
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -249,7 +316,7 @@ print(&quot;my name is %s age is %d height %.2f&quot; % (&quot;栗豫塬&quot;, 
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -345,31 +412,31 @@ print(&quot;my name is %s age is %d height %.2f&quot; % (&quot;栗豫塬&quot;, 
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

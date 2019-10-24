@@ -82,248 +82,241 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15543697527242.html">深入理解RunLoop</a></h1>
-			<p class="meta"><time datetime="2019-04-04T17:22:32+08:00" 
-			pubdate data-updated="true">2019/4/4</time></p>
+		  	<h1 class="entry-title"><a href="15003778819226.html">枚举</a></h1>
+			<p class="meta"><time datetime="2017-07-18T19:38:01+08:00" 
+			pubdate data-updated="true">2017/7/18</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p>学习自Y神的<a href="https://blog.ibireme.com/2015/05/18/runloop/">深入理解RunLoop</a></p>
-
-<h2 id="toc_0">RunLoop的概念</h2>
-
-<p>关键点在于:如何管理事件/消息，如何让线程在没有消息处理时休眠避免资源消耗、而在消息到来时被立刻唤醒</p>
-
-<p>所以,RunLoop实际上就是一个对象，这个对象管理其需要处理的事件和消息，并提供了一个入口函数执行上面EventLoop逻辑，线程处理了这个函数后，就会一直处于函数内部“接收消息-&gt;等待-&gt;处理”的循环中，知道循环结束，函数返回</p>
-
-<p>系统提供了两个对象:<code>NSRunLoop</code>和<code>CFRunLoopRef</code>。CFRunLoopRef是在CoreFoundation框架内的，提供了纯C函数的API，这些API都是线程安全的(内部有加锁操作);NSRunLoop是基于CFRunLoopRef的封装，提供了面对对象的API，但是这些API不是线程安全的</p>
-
-<blockquote>
-<p>线程安全简而言之就是，一个方法或者一个实例在多线程环境中使用而不会出现问题的</p>
-</blockquote>
-
-<h2 id="toc_1">RunLoop和线程的关系</h2>
-
-<p>iOS开发中有两个线程对象pthread和NSThread<br/>
-苹果不允许直接创建RunLoop，但是提供了两个自动获取的函数:<code>CFRunLoopGetMain()</code> 和 <code>CFRunLoopGetCurrent()</code></p>
-
-<p>线程和runloop之间是一一对应的，其关系保存在一个全局的字典之中，线程刚创建的时候是没有runLoop的，如果不主动获取，就一直不会有，其创建发生在第一次获取时，RunnLoop销毁发生在线程结束时。除了主线程，你只能在线程的内部获取其RunLoop</p>
-
-<h2 id="toc_2">RunLoop对外的接口</h2>
-
-<p>在CF中 RunLoop有五个类</p>
-
-<pre><code class="language-text">CFRunLoopRef
-CFRunLoopModeRef
-CFRunLoopSourceRef
-CFRunLoopTimerRef
-CFRunLoopObserverRef
-</code></pre>
-
-<p>一个RunLoop中包含若干个Mode，每个Mode中包含若干个<code>Source/Timer/Observer</code>，每次调用RunLopp的主函数，只能指定其中一个Mode,即currentMode，如果需要切换Mode，只能退出Loop，再重新指定一个Mode进入，这样就可以分割不同组的Source/Timer/observer,互不影响</p>
-
-<p><strong>CFRunLoopSourceRef</strong>是事件产生的地方，source有两个版本：source0和Source1</p>
-
-<ul>
-<li>source0，之所以这么命名是因为上下文结构的版本字段为0，由应用程序管理，只包含了一个回调指针(函数指针)，不能主动触发事件。使用时，需要先调用<code>CFRunLoopSourceSignal(source)</code>将source标记为待处理，然后调用<code>CFRunLoopWakeUp(runloop)</code>来唤醒RunLoop唤醒RunLoop，让其处理这个事件</li>
-<li>source1，由RunLoop和内和管理，包含了一个mach_port和一个回调指针，被用于内核和其他线程互相发送消息。<strong>这种source能主动唤醒RunLoop的线程</strong></li>
-</ul>
-
-<p><strong>CFRunLoopTimerRef</strong>是一个特殊的源，基于时间的触发器，和<code>NSTimer</code>是<code>toll-free bridged</code>的,因此二者是可以混用替代的，包含一个时间长苏和回调指针。加入RunLoop后，RunLoop会注册对应时间点，当时间到了，就会被唤醒执行回调；</p>
-
-<p><strong>CFRunLoopObserverRef</strong>观察者，每个Observer都包含一个回调，当RunLoop状态发生改变是，就通过回调接受到此变化</p>
-
-<pre><code class="language-c">typedef CF_OPTIONS(CFOptionFlags, CFRunLoopActivity) {
-    kCFRunLoopEntry         = (1UL &lt;&lt; 0), // 即将进入Loop
-    kCFRunLoopBeforeTimers  = (1UL &lt;&lt; 1), // 即将处理 Timer
-    kCFRunLoopBeforeSources = (1UL &lt;&lt; 2), // 即将处理 Source
-    kCFRunLoopBeforeWaiting = (1UL &lt;&lt; 5), // 即将进入休眠
-    kCFRunLoopAfterWaiting  = (1UL &lt;&lt; 6), // 刚从休眠中唤醒
-    kCFRunLoopExit          = (1UL &lt;&lt; 7), // 即将退出Loop
-};
-</code></pre>
-
-<p>这三种被统称为mode item，一个item可以被同时加入多个Mode，但是一个item被重复加入同一个mode不会有效果，如果mode中一个item没有就会直接退出，不进入循环</p>
-
-<h2 id="toc_3">RunLoop的Mode</h2>
-
-<p>CFRunLoopMode 和 CFRunLoop 的结构大致如下：</p>
-
-<pre><code class="language-c">struct __CFRunLoopMode {
-    CFStringRef _name;            // Mode Name, 例如 @&quot;kCFRunLoopDefaultMode&quot;
-    CFMutableSetRef _sources0;    // Set
-    CFMutableSetRef _sources1;    // Set
-    CFMutableArrayRef _observers; // Array
-    CFMutableArrayRef _timers;    // Array
-    ...
-};
- 
-struct __CFRunLoop {
-    CFMutableSetRef _commonModes;     // Set
-    CFMutableSetRef _commonModeItems; // Set&lt;Source/Observer/Timer&gt;
-    CFRunLoopModeRef _currentMode;    // Current Runloop Mode
-    CFMutableSetRef _modes;           // Set
-    ...
-};
-</code></pre>
-
-<p>CF中有一种特殊的“假”mode即common mode，允许你将一个item添加到多个mode中；如果要指定commod模式，使用<code>kCFRunLoopCommonModes</code>常量作为模式名； 一个mode可以通过<code>CFRunLoopAddCommonMode</code>将mode的名字添加到commonModes中，每个runLoop都有自己独立的common模式集。每当RunLoop内容发生变化时，RunLoop会自动将_commonModeItems里的item同步到有&quot;common&quot;标记的mode</p>
-
-<p>CFRunLoop对外暴露的管理 Mode 接口</p>
-
-<pre><code class="language-c">CFRunLoopAddCommonMode(CFRunLoopRef runloop, CFStringRef modeName);
-//指定当前线程的CFRunLoop对象 运行的mode
-CFRunLoopRunResult CFRunLoopRunInMode(CFRunLoopMode mode, CFTimeInterval seconds, Boolean returnAfterSourceHandled)
-</code></pre>
-
-<p>Mode中管理Item的接口</p>
-
-<pre><code class="language-objectivec">CFRunLoopAddSource(CFRunLoopRef rl, CFRunLoopSourceRef source, CFStringRef modeName);
-CFRunLoopAddObserver(CFRunLoopRef rl, CFRunLoopObserverRef observer, CFStringRef modeName);
-CFRunLoopAddTimer(CFRunLoopRef rl, CFRunLoopTimerRef timer, CFStringRef mode);
-CFRunLoopRemoveSource(CFRunLoopRef rl, CFRunLoopSourceRef source, CFStringRef modeName);
-CFRunLoopRemoveObserver(CFRunLoopRef rl, CFRunLoopObserverRef observer, CFStringRef modeName);
-CFRunLoopRemoveTimer(CFRunLoopRef rl, CFRunLoopTimerRef timer, CFStringRef mode);
-
-</code></pre>
-
-<p>你只能通过<code>mode name</code>来操作内部的<code>mode</code>，当你传入一个新的<code>mode name</code>,但<code>RunLoop</code>内部没有对应 <code>mode</code>时，RunLoop会自动帮你创建对应的 <code>CFRunLoopModeRef</code>。对于一个<code>RunLoop</code>来说，其内部的<code>mode</code>只能增加不能删除。</p>
-
-<p>苹果公开提供的 Mode 有两个：<code>kCFRunLoopDefaultMode (NSDefaultRunLoopMode)</code> 和 <code>UITrackingRunLoopMode</code>，你可以用这两个Mode Name来操作其对应的Mode。主线程的<code>RunLoop</code>是预置这两个的Mode的</p>
-
-<p>同时苹果还提供了一个操作<code>Common</code>标记的字符串：<code>kCFRunLoopCommonModes (NSRunLoopCommonModes)</code>，你可以用这个字符串来操作<code>Common Items</code>，或标记一个<code>Mode</code>为 “Common”。使用时注意区分这个字符串和其他<code>mode name</code>。</p>
-
-<h2 id="toc_4">RunLoop的内部逻辑</h2>
-
-<p><img src="media/15543697527242/15546895686967.png" alt="" style="width:500px;"/></p>
-
-<p>实际上 RunLoop 就是这样一个函数，其内部是一个 do-while 循环。当你调用 CFRunLoopRun() 时，线程就会一直停留在这个循环里；直到超时或被手动停止，该函数才会返回。</p>
-
-<h2 id="toc_5">底层实现</h2>
-
-<p><img src="media/15543697527242/15547182684191.png" alt="" style="width:300px;"/></p>
-
-<p>应用层: 用户能接触到的图形应用，例如:Spotlight、Aqua、SpringBoard等<br/>
-应用框架层: 开发人员接触到的Cocoa等框架<br/>
-核心框架层: 核心框架、OpenGL等内容<br/>
-<strong>Darwin 即操作系统的核心，包括系统内核、驱动、Shell 等内容</strong>，</p>
-
-<p><img src="media/15543697527242/15547185300035.png" alt="" style="width:300px;"/></p>
-
-<p><strong>在硬件层上面的三个组成部分：Mach、BSD、IOKit (还包括一些上面没标注的内容)，共同组成了 XNU 内核</strong>。<br/>
-XNU 内核的内环被称作 Mach，其作为一个微内核，仅提供了诸如处理器调度、IPC (进程间通信)等非常少量的基础服务。<br/>
-BSD 层可以看作围绕 Mach 层的一个外环，其提供了诸如进程管理、文件系统和网络等功能。<br/>
-IOKit 层是为设备驱动提供了一个面向对象(C++)的一个框架。<br/>
-在 Mach 中，所有的东西都是通过自己的对象实现的，进程、线程和虚拟内存都被称为”对象”。和其他架构不同， Mach 的对象间不能直接调用，只能通过消息传递的方式实现对象间的通信。”消息”是 Mach 中最基础的概念，消息在两个端口 (port) 之间传递，这就是 Mach 的 IPC (进程间通信) 的核心。</p>
-
-<p>为了实现消息的发送和接收，mach_msg() 函数实际上是调用了一个 Mach 陷阱 (trap)，即函数mach_msg_trap()，陷阱这个概念在 Mach 中等同于系统调用。当你在用户态调用 mach_msg_trap() 时会触发陷阱机制，切换到内核态；内核态中内核实现的 mach_msg() 函数会完成实际的工作，</p>
-
-<h2 id="toc_6">苹果用RunLoop实现的功能</h2>
-
-<p>系统默认注册了5个Mode:</p>
-
-<ol>
-<li>kCFRunLoopDefaultMode: App的默认 Mode，通常主线程是在这个 Mode 下运行的。</li>
-<li>UITrackingRunLoopMode: 界面跟踪 Mode，用于 ScrollView 追踪触摸滑动，保证界面滑动时不受其他 Mode 影响</li>
-<li>UIInitializationRunLoopMode: 在刚启动 App 时第进入的第一个 Mode，启动完成后就不再使用</li>
-<li>GSEventReceiveRunLoopMode: 接受系统事件的内部 Mode，通常用不到</li>
-<li>kCFRunLoopCommonModes: 这是一个占位的 Mode，没有实际作用</li>
+		  	<ol>
+<li><p>与C语言类似但不同，<code>Swift</code>中的枚举更加灵活，不必给每一个枚举成员提供一个值。如果给枚举成员提供一个值（称为“原始”值），则该值的类型可以是字符串，字符，或是一个整型值或浮点数。</p></li>
+<li><p>枚举成员可以指定任意类型的关联值存储到枚举成员中</p></li>
+<li><p>在 Swift 中，<strong>枚举类型</strong>是一等（first-class）类型。采用了很多在传统上只被类（class）所支持的特性，例如计算属性（computed properties），用于提供枚举值的附加信息，实例方法（instance methods），用于提供和枚举值相关联的功能。枚举也可以定义构造函数（initializers）来提供一个初始值；可以在原始实现的基础上扩展它们的功能；还可以遵循协议（protocols）来提供标准的功能。</p></li>
 </ol>
 
-<p>APP中常看到的RunLoop函数:</p>
+<h2 id="toc_0">枚举语法</h2>
 
-<pre><code class="language-objectivec">/// 1. 通知Observers，即将进入RunLoop
-    /// 此处有Observer会创建AutoreleasePool: _objc_autoreleasePoolPush();
-    __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopEntry);
-    do {
- 
-        /// 2. 通知 Observers: 即将触发 Timer 回调。
-        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopBeforeTimers);
-        /// 3. 通知 Observers: 即将触发 Source (非基于port的,Source0) 回调。
-        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopBeforeSources);
-        __CFRUNLOOP_IS_CALLING_OUT_TO_A_BLOCK__(block);
- 
-        /// 4. 触发 Source0 (非基于port的) 回调。
-        __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE0_PERFORM_FUNCTION__(source0);
-        __CFRUNLOOP_IS_CALLING_OUT_TO_A_BLOCK__(block);
- 
-        /// 6. 通知Observers，即将进入休眠
-        /// 此处有Observer释放并新建AutoreleasePool: _objc_autoreleasePoolPop(); _objc_autoreleasePoolPush();
-        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopBeforeWaiting);
- 
-        /// 7. sleep to wait msg.
-        mach_msg() -&gt; mach_msg_trap();
-        
- 
-        /// 8. 通知Observers，线程被唤醒
-        __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopAfterWaiting);
- 
-        /// 9. 如果是被Timer唤醒的，回调Timer
-        __CFRUNLOOP_IS_CALLING_OUT_TO_A_TIMER_CALLBACK_FUNCTION__(timer);
- 
-        /// 9. 如果是被dispatch唤醒的，执行所有调用 dispatch_async 等方法放入main queue 的 block
-        __CFRUNLOOP_IS_SERVICING_THE_MAIN_DISPATCH_QUEUE__(dispatched_block);
- 
-        /// 9. 如果如果Runloop是被 Source1 (基于port的) 的事件唤醒了，处理这个事件
-        __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE1_PERFORM_FUNCTION__(source1);
- 
- 
-    } while (...);
- 
-    /// 10. 通知Observers，即将退出RunLoop
-    /// 此处有Observer释放AutoreleasePool: _objc_autoreleasePoolPop();
-    __CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__(kCFRunLoopExit);
+<p>用<code>enum</code>关键字来创建枚举</p>
+
+<pre><code class="language-swift">enum CompassPoint {
+    case north
+    case south
+    case east
+    case west
+}
+
+//多个成员可以在同一行 用 , 隔开
+enum Planet {
+    case mercury, venus, earth, mars, jupiter, saturn, uranus, neptune
+}
 </code></pre>
 
-<h3 id="toc_7">1. AutoreleasePool</h3>
-
-<p>App启动后，苹果在主线程<code>RunLoop</code>中注册了两个Observer，回调为<code>_wrapRunLoopWithAutoreleasePoolHandler()</code></p>
-
-<p>第一个Observer是在进入Loop时(Entry)，回调内部会调用<code>_objc_autoreleasePoolPush（）</code>创建自动释放池，其order是-2147483647，优先级最高，保证自动释放池在其他回调之前</p>
-
-<p>第二个Observer监视两个事件: <code>BeforeWaiting</code>(准备进入休眠) 时调用<code>_objc_autoreleasePoolPop()</code> 和 <code>_objc_autoreleasePoolPush()</code> 释放旧的池并创建新池；<code>Exit</code>(即将退出Loop) 时调用 <code>_objc_autoreleasePoolPop()</code> 来释放自动释放池。这个<code>Observer</code>的<code>order</code>是 2147483647，优先级最低，保证其释放池子发生在其他所有回调之后。</p>
-
-<p>主线程执行的代码，通常写在诸如事件回调、Timer回调内。这些回调会被RunLoop创建的Autorelease环绕，所以不会出现泄漏</p>
-
-<h3 id="toc_8">2.事件响应</h3>
-
-<p>Source1(基于mach port)用来接收系统事件，回调函数为<code>__IOHIDEventSystemClientQueueCallback()</code></p>
-
-<p>当有一个硬件事件(触摸/锁屏/摇晃等)，先由<code>IOKit.framework</code>生成一个<code>IOHIDEvent</code>事件，并由<code>SpringBoard</code>接收<a href="http://iphonedevwiki.net/index.php/IOHIDFamily">详细信息</a>;然后由<code>mach port</code>转发给需要的App进程,runLoop中Source1就会触发回调<code>__IOHIDEventSystemClientQueueCallback()</code>回调内调用Source0，Source0触发<code>_UIApplicationHandleEventQueue()</code>将<code>IOHIDEvent</code>包装为<code>UIEvent</code>进行处理分发。</p>
-
-<p>可以加一个__IOHIDEventSystemClientQueueCallback()的symblol breakpoint看一下<br/>
-<img src="media/15543697527242/15547372542156.jpg" alt="" style="width:420px;"/></p>
-
-<h3 id="toc_9">3.手势识别</h3>
-
-<p>当上面的<code>_UIApplicationHandleEventQueue()</code>识别了一个手势时，其首先会调用<code>Cancel</code>将当前的<code>touchesBegin/Move/End</code>系列回调打断。随后系统将对应的<code>UIGestureRecognizer</code>标记为待处理。</p>
-
-<p>苹果注册了一个Observer来监测<code>BeforeWaiting</code>事件，回调为<code>_UIGestureRecognizerUpdateObserver()</code>会获取所有被标记为未处理的<code>GestureRecognizer</code>，并执行<code>GestureRecognizer</code></p>
-
-<h3 id="toc_10">4.界面更新</h3>
-
-<p>当在操作UI时，当一个UIView/CALayer改变，就会被标记为待处理，提交到全局容器中。<br/>
-苹果注册了一个Observer监听BeforeWating和Exit事件，回调<code>_ZN2CA11Transaction17observer_callbackEP19__CFRunLoopObservermPv()</code>回调内将所有待处理的UIView/CALayer进行绘制或者调整，更新UI界面</p>
-
-<h3 id="toc_11">5.定时器</h3>
-
-<p>一个NSTimer注册到RunLoop后，RunLoop会为其重复的时间点注册好事件。RunLoop为了节省资源，不会再非常准确的时间回调Timer。Timer有<code>Tolerance</code>属性，标识当前时间点到了之后允许多大的误差，如果执行了一个很长的任务，这个时间点被错过，那么这个时间点也会跳过去，不执行。</p>
-
-<p>NSTimer使用XUN内核的<code>mk_timer</code>驱动</p>
-
-<h3 id="toc_12">6.PerformSelector</h3>
-
-<p><code>performSelecter:afterDelay:</code>其实内部也是创建一个Timer添加到RunLoop中，如果当前线程没有RunLoop，则这个方法也会失效</p>
-
-<h3 id="toc_13">7.GCD</h3>
-
-<p><code>dispatch_async(dispatch_get_main_queue(), block)</code>向主线程发送消息时，libDispatch向主线程RunLoop发送消息，主线程被唤醒，从消息中去的block，在<code>__CFRUNLOOP_IS_SERVICING_THE_MAIN_DISPATCH_QUEUE__（）</code>中执行这个block。</p>
+<p>我们使用<code>case</code>来定义一个新的枚举成员值</p>
 
 <blockquote>
-<p>仅限于diapatch到主线程 到其他线程还是呦libDispatch处理</p>
+<p>注意:</p>
+
+<p>与OC不同,Swift枚举成员不会再创建时被赋予一个默认的整型值。这些枚举成员本身就是完备的值，这些值的类型是已经明确定义好的<code>CompassPoint</code>类型</p>
 </blockquote>
 
-<h3 id="toc_14">8.网络请求</h3>
+<p>在<code>Swift</code>中每个枚举定义了一个全新的类型，与Swift中的其他类型一样,名字以大写字母开头</p>
+
+<pre><code class="language-swift">var directionToHead = CompassPoint.west
+//此时directionToHead类型可以被推断出来,我们可以直接使用 . 语法将其设置为另一个枚举值
+directionToHead = .east
+</code></pre>
+
+<p>当 directionToHead 的类型已知时，再次为其赋值可以省略枚举类型名。</p>
+
+<h2 id="toc_1">用switch语句匹配枚举值</h2>
+
+<p>在判断一个枚举类型值时,<code>switch</code>必须穷举所有情况，如果不需要匹配每个成员可以使用<code>default</code>分支</p>
+
+<pre><code class="language-swift">let somePlanet = Planet.earth
+switch somePlanet {
+case .earth:
+    print(&quot;Mostly harmless&quot;)
+default:
+    print(&quot;Not a safe place for humans&quot;)
+}
+// 打印 &quot;Mostly harmless”
+</code></pre>
+
+<h2 id="toc_2">枚举成员的遍历</h2>
+
+<p>有时我们可能会需要得到一个包含所有枚举成员的集合。这时，可以这么实现:</p>
+
+<p>令枚举遵循<code>CaseInterable</code>协议。Swift会生成一个<code>allClass</code>属性，用于表示一个包含枚举所有成员的集合。</p>
+
+<pre><code class="language-swift">enum Beverage: CaseIterable {
+    case coffee, tea, juice
+}
+let numberOfChoices = Beverage.allCases.count
+print(&quot;\(numberOfChoices) beverages available&quot;)
+// 打印“3 beverages available”
+for beverage in Beverage.allCases {
+    print(beverage)
+}
+</code></pre>
+
+<h2 id="toc_3">关联值</h2>
+
+<p>可以使用<code>Swift</code>的枚举来<strong>存储任意类型的关联值</strong>,枚举成员的关联值类型可以不同</p>
+
+<pre><code class="language-swift">enum Barcode {
+    case upc(Int, Int, Int, Int)
+    case qrCode(String)
+}
+</code></pre>
+
+<p>这个枚举的意思是:定义一个枚举类型,其一个成员值是具有 <code>(Int，Int，Int，Int)</code>类型关联值的 upc，另一个是<code>String</code>类型关联值的qrcode。这个定义并不提供和任何Int或String类型的关联值，只是定义了，当Barcode常量和变量等于<code>barcode.upc</code>或<code>barcode.qrCode</code>时，可以存储的关联值类型</p>
+
+<p>比如创建任意条形码类型</p>
+
+<pre><code class="language-swift">//给其赋值关联的元组值
+var productBarcode = Barcode.upc(8, 85909, 51226, 3)
+//赋值新的枚举关联字符串
+productBarcode = .qrCode(&quot;ABCDEFGHIJKLMNOP&quot;)
+//productBarcode同一时间只能存储这两个值中的一个
+</code></pre>
+
+<pre><code class="language-swift">switch productBarcode {
+case .upc(let numberSystem, let manufacturer, let product, let check):
+    print(&quot;UPC: \(numberSystem), \(manufacturer), \(product), \(check).&quot;)
+case .qrCode(let productCode):
+    print(&quot;QR code: \(productCode).&quot;)
+}
+// 打印 &quot;QR code: ABCDEFGHIJKLMNOP.&quot;
+</code></pre>
+
+<p>我们可以提取出来关联值作为常量或变量</p>
+
+<p>如果一个枚举成员的所有关联值都被提取为常量，或者都被提取为变量，为了简洁，你可以只在成员名称前标注一个<code>let</code>或者<code>var</code>：</p>
+
+<pre><code class="language-swift">switch productBarcode {
+case let .upc(numberSystem, manufacturer, product, check):
+    print(&quot;UPC: \(numberSystem), \(manufacturer), \(product), \(check).&quot;)
+case let .qrCode(productCode):
+    print(&quot;QR code: \(productCode).&quot;)
+}
+// 输出 &quot;QR code: ABCDEFGHIJKLMNOP.&quot;
+</code></pre>
+
+<h2 id="toc_4">原始值</h2>
+
+<p>作为关联值的替代选择，枚举成员可以被<strong>默认值（称为原始值）预填充</strong>，这些原始值的类型必须相同。</p>
+
+<pre><code class="language-swift">enum ASCIIControlCharacter: Character {
+    case tab = &quot;\t&quot;
+    case lineFeed = &quot;\n&quot;
+    case carriageReturn = &quot;\r&quot;
+}
+</code></pre>
+
+<p>枚举类型<code>ASCIIControlCharacter</code>的原始值类型被定义为<code>Character</code><br/>
+每个原始值在枚举声明中必须是唯一的。</p>
+
+<blockquote>
+<p>注意：</p>
+
+<p>原始值与关联值的不同，原始值是在定义枚举是预先填充的值，<br/>
+对于特定的枚举成员其原始值不变<br/>
+关联值是创建一个基于枚举成员的常量或变量时才设置的值,枚举成员的关联值可以变化</p>
+</blockquote>
+
+<h3 id="toc_5">原始值的隐式赋值</h3>
+
+<p>当原始值为整数或者字符串类型的枚举时,此时不需要显式的为每个枚举成员设置原始值，Swift会自动为每个枚举成员设置原始值;</p>
+
+<ol>
+<li><p>原始值为整形枚举</p>
+<pre><code class="language-swift">enum Planet: Int {
+    case mercury = 1, venus, earth, mars, jupiter, saturn, uranus, neptune<br/>
+}
+</code></pre>
+<p>当使用整数作为原始值时，隐式赋值的值依次递增1。如果第一个枚举成员没有设置原始值，其原始值将为0</p></li>
+<li><p>原始值为字符串类型</p>
+<pre><code class="language-swift">enum CompassPoint: String {
+    case north, south, east, west<br/>
+}<br/>
+//CompassPoint.south 拥有隐式原始值 south
+</code></pre>
+<p>使用字符串作为枚举类型的原始值时，每个枚举成员的隐式原始值为该枚举成员的名称</p></li>
+</ol>
+
+<p>使用枚举成员的<code>rawValue</code>属性可以访问枚举成员初始值</p>
+
+<pre><code class="language-swift">let earthsOrder = Planet.earth.rawValue
+    // earthsOrder 值为 3
+let sunsetDirection = CompassPoint.west.rawValue
+    // sunsetDirection 值为 &quot;west&quot;
+</code></pre>
+
+<h3 id="toc_6">原始值初始化枚举实例</h3>
+
+<p>定义枚举时使用原始值,会获得一个初始化方法,有一个<code>rawValue</code>类型为原始值类型的参数，返回一个枚举类型或为<code>nil</code></p>
+
+<pre><code class="language-swift">let possiblePlanet = Planet(rawValue: 7)
+// possiblePlanet 类型为 Planet? 值为 Planet.uranus
+//因为不一定都能找到匹配的行星  返回的是可选类型
+let positionToFind = 11
+if let somePlanet = Planet(rawValue: positionToFind) {
+    switch somePlanet {
+    case .earth:
+        print(&quot;Mostly harmless&quot;)
+    default:
+        print(&quot;Not a safe place for humans&quot;)
+    }
+} else {
+    print(&quot;There isn&#39;t a planet at position \(positionToFind)&quot;)
+}
+//找不到11代表的行星
+
+</code></pre>
+
+<blockquote>
+<p>注意：</p>
+
+<p>原始值构造器是一个可失败构造器  因为并不是每个原始值都有与之对应的枚举成员</p>
+</blockquote>
+
+<h2 id="toc_7">递归枚举</h2>
+
+<p><strong>递归枚举</strong>也是是一种枚举类型，只是它<strong>有一个或多个成员使用该枚举类型实例作为关联值</strong><br/>
+在使用递归枚举时，编译器会加上一个间接层。<br/>
+可以在枚举成员前加<code>indirect</code>表示该成员可递归, 或者在枚举类型开头加上<code>indirect</code>关键字来表明它的所有成员都是可递归</p>
+
+<pre><code class="language-swift">enum ArithmeticExpression {
+    case number(Int)
+    indirect case addition(ArithmeticExpression, ArithmeticExpression)
+    indirect case multiplication(ArithmeticExpression, ArithmeticExpression)
+}
+
+indirect enum ArithmeticExpression {
+    case number(Int)
+    case addition(ArithmeticExpression, ArithmeticExpression)
+    case multiplication(ArithmeticExpression, ArithmeticExpression)
+}
+
+//递归枚举使用
+let five = ArithmeticExpression.number(5)
+let four = ArithmeticExpression.number(4)
+let sum = ArithmeticExpression.addition(five, four)
+let product = ArithmeticExpression.multiplication(sum, ArithmeticExpression.number(2))
+
+//递归函数中使用递归枚举
+func evaluate(_ expression: ArithmeticExpression) -&gt; Int {
+    switch expression {
+    case let .number(value):
+        return value
+    case let .addition(left, right):
+        return evaluate(left) + evaluate(right)
+    case let .multiplication(left, right):
+        return evaluate(left) * evaluate(right)
+    }
+}
+print(evaluate(product))//18
+</code></pre>
 
 
 		</div>
@@ -346,8 +339,10 @@ IOKit 层是为设备驱动提供了一个面向对象(C++)的一个框架。<br
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -361,7 +356,7 @@ IOKit 层是为设备驱动提供了一个面向对象(C++)的一个框架。<br
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -457,31 +452,31 @@ IOKit 层是为设备驱动提供了一个面向对象(C++)的一个框架。<br
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

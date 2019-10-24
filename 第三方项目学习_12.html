@@ -82,151 +82,58 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15604257329990.html">RACSignal信号的订阅与发送</a></h1>
-			<p class="meta"><time datetime="2019-06-13T19:35:32+08:00" 
-			pubdate data-updated="true">2019/6/13</time></p>
+		  	<h1 class="entry-title"><a href="15686140907064.html">Node</a></h1>
+			<p class="meta"><time datetime="2019-09-16T14:08:10+08:00" 
+			pubdate data-updated="true">2019/9/16</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<h2 id="toc_0">RACSignal</h2>
+		  	<h2 id="toc_0">Node Containers</h2>
 
-<h4 id="toc_1">订阅信号</h4>
+<ul>
+<li><code>ASCollectionNode</code>  类似UIKit中的<code>UICollectionView</code></li>
+<li><code>ASPagerNode</code>  类似UIKit中的<code>UIPageViewController</code></li>
+<li><code>ASTableNode</code> 类似UIKit中的<code>UITableView</code></li>
+<li><code>ASViewController</code> 类似UIKit中的<code>UIViewController</code></li>
+<li><code>ASNavigationController</code> 类似UIKit中的<code>UINavigationController</code>，遵循了<code>ASVisibility</code>协议</li>
+<li><code>ASTabBarController</code> 类似UIKit中<code>UITabBarController</code> 遵循了<code>ASVisibility</code>协议</li>
+</ul>
 
-<p>订阅信号动作 就是创建一个遵循<code>&lt;RACSubscriber&gt;</code>代理的对象 该对象将接受到信号时要做的动作block保存起来</p>
+<p>节点容器作用：</p>
 
-<pre><code class="language-objectivec">RACSignal subscribeNext:(void (^)(id x))nextBlock error:(void (^)(NSError *error))errorBlock completed:(void (^)(void))completedBlock {
-    
-    RACSubscriber *subscriber = [[self alloc] init];
-    subscriber-&gt;_next = [next copy];
-    subscriber-&gt;_error = [error copy]    
-    subscriber-&gt;_completed = [completed copy];
-    
-    [self subscribe:subscriber];
-    
-}
-</code></pre>
+<p>节点容器自动福安里其子节点实现智能预加载，这意味着节点所有布局计算、数据读取，解码和渲染都将会异步完成，这也是为什么建议将节点放到节点容器中使用的原因。<br/>
+而容器外的node只会在屏幕出现时才开始渲染，类似UIKit的做法，这会导致性能下降和内容闪烁。</p>
 
-<p>具体订阅该信号要做的事情  因为不同子类的信号发送事件不同  需要被子类重写</p>
+<h2 id="toc_1">Node Subclasses</h2>
 
-<pre><code class="language-objectivec">RACSignal subscribe:(id&lt;RACSubscriber&gt;)subscriber {
-    //被子类重写
-}
-</code></pre>
+<p>使用node代替UIKit组件的一个关键优势就是  所有的节点都在主线程之外布局和显示，以便主线程可以立即响应用户事件</p>
 
-<h3 id="toc_2">RACSubscriber<RACSubscriber></h3>
+<p><code>ASDisplayNode</code>   替代<code>UIView</code> ，其为根node，其它node均继承自其</p>
 
-<p>遵循<code>RACSubscriber</code>代理 即可发送信号值</p>
+<p><code>ASCellNode</code> 替代 <code>UITalbeViewCell</code>和<code>UICollectionCell</code>。其被用于<code>ASTableNode、ASCollectionNode、ASPageNode</code></p>
 
-<pre><code class="language-objectivec">- (void)sendNext:(id)value {
-    self.nextBlock(value);
-}
-- (void)sendError:(NSError *)e{
-    self.errorBlock(e);
-}
-- (void)sendCompleted {
-    self.completedBlock();
-}
-</code></pre>
+<p><code>ASScrollNode</code> 替代 <code>UIScrollView</code>   此node用于创建包含其他节点的自定义可滚动区域</p>
 
-<p>发送信号值 即执行保存的执行事件block</p>
+<p><code>ASEditableTextNode</code> 替代 <code>UITextView</code></p>
 
-<h3 id="toc_3">RACDynamicSignal</h3>
+<p><code>ASTextNode</code> 替代 <code>UILabel</code></p>
 
-<p>DynamicSignal 即在创建信号时要发送的的信号值已经设定  而在重写<code>subscribe</code>方法时只需要将其发送的值与 next、error、completed block进行匹配执行即可</p>
+<p><code>ASImageNode、 ASNetworkImageNode、 ASMultiplexImageNode</code> 替代 <code>UIImageView</code></p>
 
-<h4 id="toc_4">创建信号</h4>
+<p><code>ASVideoNode</code> 替代 <code>AVPlayerLayer</code><br/>
+<code>ASVideoPlayerNode</code> 替代 <code>UIMoviePlayer</code></p>
 
-<p><code>DynamicSignal</code>创建信号 创建时已经包含了信号已经要发送的值<br/>
-将<code>id&lt;RACSubscriber&gt;</code>信号发送者要发送的值的事件block 存起来，存到signal的<code>_didSubscribe</code>block属性中</p>
+<p><code>ASControlNode</code> 替代 <code>UIControl</code> </p>
 
-<pre><code class="language-objectivec">RACDynamicSignal createSignal:(RACDisposable * (^)(id&lt;RACSubscriber&gt; subscriber))didSubscribe {
-    RACDynamicSignal *signal = [[self alloc] init];
-      signal-&gt;_didSubscribe = [didSubscribe copy];
-}
-</code></pre>
+<p><code>ASButtonNode</code> 替代 <code>UIButton</code></p>
 
-<h4 id="toc_5">订阅信号</h4>
+<p><code>ASMapNode</code>  替代 <code>MKMapView</code></p>
 
-<p>订阅信号 即 执行创建信号时保存起来的<code>didSubscribe</code> block  send创建信号时发送的值 </p>
+<p>Texture的node相比UIKit的组件通常提供了更加便利的功能。例如，ASNetworkImageNode执行自动加载和缓存管理，甚至支持渐进式jpeg和GIF动画</p>
 
-<pre><code class="language-objectivec">RACDynamicSignal subscribe:(id&lt;RACSubscriber&gt;)subscriber  {
-    self.didSubscribe(subscriber);
-}
-</code></pre>
+<h3 id="toc_2">Node继承关系</h3>
 
-<h2 id="toc_6">RASSubject &lt; RACSubscriber &gt;: RACSignal</h2>
-
-<p><code>Subject</code>维持一个数组保存所有需要sendEvent的<code>Subscriber</code>,当需要发送</p>
-
-<h4 id="toc_7">订阅信号</h4>
-
-<p>因为继承自<code>RACSignal</code> 需要重写<code>subscribe:</code>方法</p>
-
-<pre><code class="language-objectivec">RASSubject )subscribe:(id&lt;RACSubscriber&gt;)subscriber {
-    [self.subscribers addObject:subscriber];
-}
-</code></pre>
-
-<h4 id="toc_8">发送信号</h4>
-
-<p>发送信号值 即 遍历数组中的Subcriber 依次send 然后执行subscriber 中保存的nextBlock事件block</p>
-
-<pre><code class="language-objectivec">- (void)sendNext:(id)value {
-    [self enumerateSubscribersUsingBlock:^(id&lt;RACSubscriber&gt; subscriber) {
-        [subscriber sendNext:value];
-    }];
-}
-</code></pre>
-
-<h3 id="toc_9">RACBehaviorSubject &amp;&amp; RACReplaySubject</h3>
-
-<h4 id="toc_10">RACBehaviorSubject</h4>
-
-<p>在内部的<code>currentValue</code>属性会保存上次发送的值 这样在订阅该信号时即能收到最后发送的信号值，进行初始化</p>
-
-<pre><code class="language-objectivec">+ (instancetype)behaviorSubjectWithDefaultValue:(id)value {
-    RACBehaviorSubject *subject = [self subject];
-    subject.currentValue = value;
-    return subject;
-}
-</code></pre>
-
-<h5 id="toc_11">发送信号</h5>
-
-<p>在发送信号时 保存信号作为最后发送的信号</p>
-
-<pre><code class="language-objectivec">- (void)sendNext:(id)value {
-    self.currentValue = value;
-    [super sendNext:value];
-}
-</code></pre>
-
-<h5 id="toc_12">订阅信号</h5>
-
-<p>重写<code>subscribe</code>方法  在每次订阅信号时 发送当前保存的值即最后发送的信号</p>
-
-<pre><code class="language-objectivec">RACBehaviorSubject  subscribe:(id&lt;RACSubscriber&gt;)subscriber {
-    [super subscribe:subscriber];
-       [subscriber sendNext:self.currentValue];
-}
-</code></pre>
-
-<h4 id="toc_13">RACReplaySubject</h4>
-
-<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) NSMutableArray *valuesReceived;
-</code></pre>
-
-<p>内部有个数组保存了一定量发送过的信号 默认为<code>RACReplaySubjectUnlimitedCapacity</code>（NSUIntegerMax），即保存所有已经发送过的信号，也可以通过<code>initWithCapacity</code>初始化，制动保存多少个已经发送过的信号</p>
-
-<pre><code class="language-objectivec">- (instancetype)initWithCapacity:(NSUInteger)capacity {
-    self = [super init];
-    
-    _capacity = capacity;
-    _valuesReceived = (capacity == RACReplaySubjectUnlimitedCapacity ? [NSMutableArray array] : [NSMutableArray arrayWithCapacity:capacity]);
-    
-    return self;
-}
-</code></pre>
+<p><img src="media/15686140907064/15686201072605.png" alt=""/></p>
 
 
 		</div>
@@ -249,8 +156,10 @@ $(document).ready(function(event) {
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -264,7 +173,7 @@ $(document).ready(function(event) {
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -360,31 +269,31 @@ $(document).ready(function(event) {
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  

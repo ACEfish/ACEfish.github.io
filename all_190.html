@@ -82,204 +82,140 @@ $(document).ready(function(event) {
 
 	<article>
 		 <header>
-		  	<h1 class="entry-title"><a href="15034731740974.html">错误处理</a></h1>
-			<p class="meta"><time datetime="2017-08-23T15:26:14+08:00" 
-			pubdate data-updated="true">2017/8/23</time></p>
+		  	<h1 class="entry-title"><a href="14861704124969.html">iOS 滤镜</a></h1>
+			<p class="meta"><time datetime="2017-02-04T09:06:52+08:00" 
+			pubdate data-updated="true">2017/2/4</time></p>
 		 </header>
 	  	<div class="entry-content">
 		  	
-		  	<p><strong>错误处理</strong>就是响应错误以及从错误中回复的过程</p>
+		  	<hr/>
 
-<p><code>Swift</code>提供了运行时对可恢复错误的抛出、捕获、传递和操作等的支持<br/>
-通常用来区分失败情况,让程序解决并处理某些错误，把解决不了的错误报告给用户</p>
+<h3 id="toc_0">CIFilter实现滤镜效果</h3>
 
-<h2 id="toc_0">表示并抛出错误</h2>
+<p>参考网址:<a href="http://www.jianshu.com/p/98ba256b034a" title="CoreImage滤镜学习 - 简书">CoreImage滤镜学习</a> </p>
 
-<p><code>Swift</code>中 错误用符合<code>Error</code>协议的类型值来表示，这个空协议表明该类型可以用于错误处理</p>
+<h5 id="toc_1">CoreImage框架介绍</h5>
 
-<p>通常用枚举类型来构建一组相关的错误状态,枚举的关联值可以提供错误状态的额外信息</p>
+<p>1.是一个图片框架 基于<code>OpenGL</code>顶层创建，底层用着色器来处理图像<br/><br/>
+2.利用GPU基于硬件加速来处理图像<br/><br/>
+3.CoreImage中有很多滤镜<br/><br/>
+4.它们能够一次给予一张图像或者视频帧多种视觉效果 -&gt; 滤镜链<br/><br/>
+5.滤镜可以连接起来组成一个滤镜链 把滤镜效果叠加起来处理图像</p>
 
-<p>使用关键字<code>throw</code>关键字来抛出一个错误，表示有意外发生</p>
+<h5 id="toc_2">CIFilter使用介绍</h5>
 
-<pre><code class="language-swift">enum VendingMachineError: Error {
-    case invalidSelection //选择无效
-    case insufficientFunds(coinsNeeded: Int) //金额不足
-    case outOfStock //缺货
-}
-
-throw VendingMachineError.insufficientFunds(coinsNeeded: 5)
-</code></pre>
-
-<h2 id="toc_1">处理错误</h2>
-
-<p><code>Swift</code>中有<code>4</code>种处理错误的方式<br/>
-1.把函数抛出的错误传递给调用此函数的代码<br/>
-2.用<code>do-catch</code>语句处理错误<br/>
-3.将错误作为可选类型处理<br/>
-4.断言此错误根本不会发生</p>
-
-<p>当一个函数抛出错误是，程序流程发生改变，所以重要的是能迅速识别代码中抛出错误的地方。为了标识这些地方，在调用一个能跑出错误的函数、方法或者构造器之前，加上<code>try</code>关键字，或者<code>try?</code>或<code>try!</code>这种变体。</p>
-
-<blockquote>
-<p>注意:</p>
-
-<p>Swift中的错误处理和其他语言的<code>try</code>、<code>catch</code>、<code>throw</code>进行异常处理很像。但是和其他语言(包括OC)的异常处理不同的是<code>swift</code>的错误处理不涉及解除调用栈，这是一个计算代价高昂的过程。就此而言，<code>throw</code>语句的性能特点是可以和<code>return</code>语句相媲美的</p>
-</blockquote>
-
-<h3 id="toc_2">用throwing函数传递错误</h3>
-
-<p>在函数声明的参数列表后加上<code>throws</code>关键字，表明可以抛出错误，这个函数就称为<code>throwing</code>函数<br/>
-如果这个函数指明了返回值类型，<code>throws</code>关键词需要写在箭头（<code>-&gt;</code>）的前面</p>
-
-<p>throw语句执行会立即退出方法</p>
-
-<pre><code class="language-swift">func canThrowErrors() throws -&gt; String
-func cannotThrowErrors() -&gt; String
-</code></pre>
-
-<p><code>throwing</code>函数可以在其内部抛出错误，并将错误传递到函数被调用时的作用域。</p>
-
-<blockquote>
-<p>注意:</p>
-
-<p>对于<code>throwing</code>函数可以传递错误,非<code>throwing</code>函数抛出的错误只能在函数内部处理</p>
-</blockquote>
-
-<pre><code class="language-swift">struct Item {
-    var price: Int
-    var count: Int
-}
-class VendingMachine {
-    var inventory = [
-                     &quot;Candy Bar&quot;: Item(price: 12, count: 7),
-                     &quot;Chips&quot;: Item(price: 10, count: 4),
-                     &quot;Pretzels&quot;: Item(price: 7, count: 11)
-                     ]
-    var coinsDeposited = 0
-    func dispenseSnack(snack: String) {
-        print(&quot;Dispensing \(snack)&quot;)
-    }
-    //throwing函数 会抛出VendingMachineError错误
-    func vend(itemNamed name: String) throws {
-        guard let item = inventory[name] else {
-            throw VendingMachineError.InvalidSelection
-        }
-        guard item.count &gt; 0 else {
-            throw VendingMachineError.OutOfStock
-        }
-        guard item.price &lt;= coinsDeposited else {
-            throw VendingMachineError.InsufficientFunds(coinsNeeded: item.price - coinsDeposited)
-        }
-        coinsDeposited -= item.price
-        var newItem = item
-        newItem.count -= 1
-        inventory[name] = newItem
-        print(&quot;Dispensing \(name)&quot;)
-    }
+<ol>
+<li><p><code>CIFilter</code>滤镜类中有很多的滤镜效果 这里不一一列举，可以按住command 点击CIFilter 进入接口文件 找到第128行-148行全部都是 效果分类  </p></li>
+<li><p>常用效果<br/><br/>
+我们使用时需要先找到需要的效果类型 比如我们使用<code>kCICategoryDistortionEffect</code>失真的效果类型，有了效果类型我们需要找到里面我们需要的效果.<br/><br/>
+<code>NSLog -&gt; [CIFilter filterNamesInCategory:刚才拷贝的分类];</code><br/><br/>
+比如<code>CIColorMonochrome </code>,然后就可以使用这个滤镜效果<br/><br/>
+<code>CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome”];</code><br/><br/>
+然后打印这个效果中包含了那些属性:<br/><br/>
+<code>NSLog(@&quot;%@&quot;,filter.attributes);</code><br/><br/>
+在里面我们可以看到好多属性，里面是多个字典的形式，找到我们想要修改的属性(key值) 然后在他对应的value里面查看一下他的属性类型，比如我们打印的CIColorMonochrome里面有一个inputColor，他是一个CIColor类型的，有默认值，这里我们写了一个CIColor来给他进行赋值.<br/><br/>
+赋值时需要用kvc的方式:<br/><br/>
+<code>[filter setValue:colorforKey:kCIInputColorKey];</code><br/><br/>
+<img src="media/14861704124969/DraggedImage.png" alt="DraggedImage"/></p></li>
+<li><p>实现滤镜效果代码<br/><br/>
+首先我们创建一个全局变量的UIImageView，然后让他初始化出来,这个就是我们要处理的图片 一般我们从手机相册中取出来:<br/><br/>
+ @interface ViewController ()&lt;UINavigationControllerDelegate,UIImagePickerControllerDelegate&gt;<br/>
+    {<br/>
+         UIImageView *imageView;<br/>
+    }<br/>
+    @end<br/>
+    然后我们需要从相册中取出一张图片,保存起来:<br/>
+    //跳转相册的触发方法<br/>
+    - (void)doit{<br/>
+    UIImagePickerController *vc = [[UIImagePickerController alloc]init];<br/>
+    vc.delegate = self;<br/>
+    [self presentViewController:vc animated:YES completion:nil];</p>
+<pre><code class="language-text">}
+//让图片显示在VC上面的方法<br/>
+- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary&lt;NSString *,id&gt; *)info<br/>
+{<br/>
+NSLog(@&quot;%@&quot;,info);<br/>
+//获得选中的图像<br/>
+UIImage *chooseImage = info[UIImagePickerControllerOriginalImage];<br/>
+//先是在试图空间上<br/>
+imageView.image = chooseImage;<br/>
+[self dismissViewControllerAnimated:YES completion:nil];<br/>
 }
 </code></pre>
-
-<p>使用了<code>guard</code>语句来提前退出方法，因为<code>throw</code>语句会立即退出方法，保证只有在满足所有条件时才成功卖出商品</p>
-
-<p><code>vend(itemNamed:)</code>会传递它抛出的所有错误,因此在跳用这个方法时，要么直接处理这些错误(<code>do-catch</code>语句,<code>try?</code>或<code>try!</code>)，要么类似下面函数将错误继续传递下去</p>
-
-<pre><code class="language-swift">let favoriteSnacks = [
-    &quot;Alice&quot;: &quot;Chips&quot;,
-    &quot;Bob&quot;: &quot;Licorice&quot;,
-    &quot;Eve&quot;: &quot;Pretzels&quot;,
-]
-func buyFavoriteSnack(person: String, vendingMachine: VendingMachine) throws {
-    let snackName = favoriteSnacks[person] ?? &quot;Candy Bar&quot;
-    try vendingMachine.vend(itemNamed: snackName)
-}
-//传似抛出的错误
+<p><strong>接下来就是对图片进行滤镜处理:</strong><br/>
+    - (void)addColorFilter{<br/>
+    //CIImage 保存图像数据的类<br/>
+    CIImage <em>inputImage = [CIImage imageWithCGImage:imageView.image.CGImage];<br/>
+    //先打印NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);进去找到需要设置的属性(查询效果分类中都有什么效果)  可以设置什么效果<br/>
+    //然后通过[CIFilter filterWithName:@&quot;&quot;];找到属性   具体效果的属性<br/>
+    //然后通过KVC的方式设置属性<br/>
+    NSLog(@&quot;%@&quot;,[CIFilter filterNamesInCategory:kCICategoryDistortionEffect]);<br/>
+    /</em><br/>
+     1.查询 效果分类中 包含什么效果：filterNamesInCategory:<br/>
+     2.查询 使用的效果中 可以设置什么属性（KVC） attributes</p>
+<pre><code class="language-text"> 使用步骤
+ 1.需要添加滤镜的源图<br/>
+ 2.初始化一个滤镜 设置滤镜（根据查询到的属性来设置）<br/>
+ 3.把滤镜 输出的图像 和滤镜  合并 CIContext -&gt; 得到一个合成之后的图像<br/>
+ 4.展示<br/>
+ */<br/>
+//CIFilter 滤镜类  图片属性进行细节处理的类<br/>
+CIFilter *filter = [CIFilter filterWithName:@&quot;CIColorMonochrome&quot;];<br/>
+NSLog(@&quot;%@&quot;,filter.attributes);<br/>
+//这个属性是必须赋值的，假如你处理的是图片的话<br/>
+[filter setValue:inputImage forKey:kCIInputImageKey];<br/>
+CIColor *color = [CIColor colorWithRed:1.000 green:0.759 blue:0.592 alpha:1];<br/>
+[filter setValue:color forKey:kCIInputColorKey];<br/>
+//CIContext 上下文是实现对图像处理的具体对象 用来把滤镜和图片合成成为一张图片 滤镜对象输出的图像并不是合成之后的图像，需要使用图片处理的上下文 合并输出图像<br/>
+    CIContext *context = [CIContext contextWithOptions:nil];<br/>
+CIImage *outPutImage = filter.outputImage;<br/>
+//CGImageRef-&gt;图像中的数据<br/>
+    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+    imageView.image = [UIImage imageWithCGImage:image];<br/>
+ }
 </code></pre>
-
-<p><code>buyFavoriteSnack</code>方法会查找某人最喜欢的零食，并通过调用<code>vend(itemNamed:)</code>方法尝试购买,通过在<code>vend(itemNamed:)</code>方法前加<code>try</code>关键字</p>
-
-<p><code>throwing</code>构造器和<code>throwing</code>一样可以传递错误</p>
-
-<pre><code class="language-swift">struct PurchasedSnack {
-    let name: String
-    init(name: String, vendingMachine: VendingMachine) throws {
-        try vendingMachine.vend(itemNamed: name)
-        self.name = name
-    }
-}
-</code></pre>
-
-<h3 id="toc_3">用Do-Catch处理错误</h3>
-
-<p><strong><code>do-catch</code>语句运行一段<code>闭包</code>代码来处理错误</strong></p>
-
-<p>在<code>do</code>语句抛出一个错误,与<code>catch</code>中的字句匹配</p>
-
-<pre><code class="language-swift">do {
-    try expression
-    statements
-} catch pattern 1 {
-    statements
-} catch pattern 2 where condition {
-    statements
-}
-</code></pre>
-
-<p><code>catch</code>后面写一个匹配模式来表明这个子句能处理什么样的错误.如果<code>catch</code>没有指定错误模式，那就可以匹配任何错误，并且把错误绑定到名字为<code>error</code>的局部变量</p>
-
-<p><code>catch</code>不必处理抛出的所有错误,错误可以传递到周围,但是必须被处理，可以使外围的<code>do-catch</code>语句 或者是一个<code>throwing</code>函数进行处理</p>
-
-<p>注意:<br/>
-在<code>do</code>语句中的<code>try</code>如果有抛出错误就立刻执行<code>catch</code>语句,并判断这个错误是否要被继续传递下去,否则执行<code>do</code>子句中余下的语句</p>
-
-<h3 id="toc_4">将错误转换成可选值</h3>
-
-<p>通过<code>try?</code>将错误转换为一个可选值,如果表达式有错误抛出,那么表达式的值就为<code>nil</code></p>
-
-<pre><code class="language-swift">func someThrowingFunction() throws -&gt; Int {
-    // ...
-}
-
-let x = try? someThrowingFunction()
-//等效于
-let y: Int?
-do {
-    y = try someThrowingFunction()
-} catch {
-    y = nil
+<p>注意：<br/><br/>
+对滤镜进行赋值之后图片就有了，但是我们这个时候拿出这个图片的时候发现他并没有发生变化，因为它只是单一进行了滤镜处理，还没有和原图片进行一个糅合。使用CIContext找到上下文对他进行糅合：<br/><br/>
+//extent得到图像的尺寸    合并一个包含源图   滤镜效果的图片<br/>
+    //1 滤镜输出的图像    2.合成之后图像的尺寸   图像.extent<br/>
+    CGImageRef imageRef = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+注意:<br/><br/>
+假如你的图片消失了，请检查一下，第一步获取图片的时候一定要获得图片的CGImage再来来获取，不要直接使用imageView.image.CGImage。</p></li>
+<li><p>滤镜链:<br/><br/>
+在给一张图片添加多种滤镜效果的时候，我们把它称为<code>滤镜链</code>，我们再添加滤镜链的时候，就是把图片添加一层滤镜，然后，和原图片糅合处理，然后在处理之后的图片上再添加一层滤镜，并不是直接给一张图片添加了两层路径，所以称为滤镜链。<br/><br/>
+我们继续使用这个图片，在它添加第一层滤镜的时候做一些修改:  </p>
+<pre><code class="language-text">//上接给效果属性赋值
+//把下面注释的给注释掉，然后添加一个方法<br/>
+    //CIContext<br/>
+//    CIContext *context = [CIContext contextWithOptions:nil];<br/>
+CIImage *outPutImage = filter.outputImage;<br/>
+[self addFilterLinkerWithImage:outPutImage];<br/>
+//    CGImageRef image = [context createCGImage:outPutImage fromRect:outPutImage.extent];<br/>
+//    imageView.image = [UIImage imageWithCGImage:image];<br/>
+//再次添加滤镜  -&gt;  形成滤镜链<br/>
+- (void)addFilterLinkerWithImage:(CIImage *)image<br/>
+{<br/>
+CIFilter *filter = [CIFilter filterWithName:@&quot;CISepiaTone&quot;];<br/>
+[filter setValue:image forKey:kCIInputImageKey];<br/>
+CIContext *context = [CIContext contextWithOptions:nil];<br/>
+CGImageRef resultImage = [context createCGImage:filter.outputImage fromRect:filter.outputImage.extent];<br/>
+imageView.image = [UIImage imageWithCGImage:resultImage];<br/>
+//把添加好滤镜效果的图片   保存到相册<br/>
+//不可以直接保存 outputImage  -&gt;  这是一个没有吧滤镜效果和源图合成的图像<br/>
+UIImageWriteToSavedPhotosAlbum(imageView.image, self, @selector(image:didFinishSavingWithError:contextInfo:), nil);<br/>
+ }<br/>
+//保存图片回调<br/>
+- (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo<br/>
+{<br/>
+    NSLog(@&quot;保存成功&quot;);<br/>
 }
 </code></pre>
+<p>这样就是一个双重的滤镜效果,同时保存到了相册.</p></li>
+</ol>
 
-<p>此时不论<code>someThrowingFunction()</code>返回值是什么类型,x，y就是该返回值类型的可选类型</p>
+<hr/>
 
-<h3 id="toc_5">禁用错误传递</h3>
-
-<p>当我们确定知道某个<code>throwing</code>函数在运行时是不会抛出错误的,那么可以用<code>tr<br/>
-y!</code>来禁用错误传递，它会将调用包装在一个不会有错误抛出的运行时断言中</p>
-
-<h2 id="toc_6">指定清理操作</h2>
-
-<p><code>defer</code>语句在即将离开当前代码块时执行一系列语句，来执行一些必要的清理工作，而不管你是由于哪种方式离开代码块</p>
-
-<ul>
-<li><code>defer</code>语句将代码执行延迟到当前作用域退出之前。</li>
-<li>该语句由<code>defer</code>关键字和要延时执行的语句组成</li>
-<li>延迟执行的语句不能包含任何控制转移语句例如return、break，或是抛出一个错误。</li>
-<li>延时执行的操作会按照他们被指定时的顺序的相反顺序执行(第一条<code>defer</code>语句中的代码会在第二条<code>defer</code>语句中的代码被执行之后才执行)</li>
-</ul>
-
-<pre><code class="language-swift">func processFile(filename: String) throws {
-    if exists(filename) {
-        let file = open(filename)
-        defer {
-            close(file)
-        }
-        while let line = try file.readline() {
-            // 处理文件。
-        }
-        // close(file) 会在这里被调用，即作用域的最后。
-    }
-}
-</code></pre>
+<h3 id="toc_3">系统自带简单的滤镜效果</h3>
 
 
 		</div>
@@ -302,8 +238,10 @@ y!</code>来禁用错误传递，它会将调用包装在一个不会有错误�
 	  <ul id="recent_posts">
 	  
 	      <li class="post">
-	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(172)</strong></a>
+	        <a href="iOS%20%E5%BC%80%E5%8F%91%E6%A8%A1%E5%9D%97%E7%9F%A5%E8%AF%86.html"><strong>iOS 开发模块知识&nbsp;(188)</strong></a>
 	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E7%BD%91%E7%BB%9C.html">网络&nbsp;(2)</a>&nbsp;&nbsp;
 	        
 	        	<a href="iOS%E7%BC%96%E8%AF%91.html">iOS编译&nbsp;(20)</a>&nbsp;&nbsp;
 	        
@@ -317,7 +255,7 @@ y!</code>来禁用错误传递，它会将调用包装在一个不会有错误�
 	        
 	        	<a href="%E6%9E%B6%E6%9E%84%E5%AD%A6%E4%B9%A0.html">架构学习&nbsp;(8)</a>&nbsp;&nbsp;
 	        
-	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(20)</a>&nbsp;&nbsp;
+	        	<a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0.html">第三方项目学习&nbsp;(34)</a>&nbsp;&nbsp;
 	        
 	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(10)</a>&nbsp;&nbsp;
 	        
@@ -413,31 +351,31 @@ y!</code>来禁用错误传递，它会将调用包装在一个不会有错误�
 	  
 	      
 		      <li class="post">
-		        <a href="15680194937623.html">AFSecurityPolicy</a>
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15680125238227.html">AFNetworkReachabilityManager</a>
+		        <a href="15710248960458.html">Layout Specs</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15677400518331.html">AFURLSerialization</a>
+		        <a href="15707800044047.html">Node Lifecycle</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15676621460215.html">AFURLSessionManager</a>
+		        <a href="15707737201639.html">线程</a>
 		      </li>
 	     
 	  
 	      
 		      <li class="post">
-		        <a href="15675682575589.html">AFNetworking</a>
+		        <a href="15698393226216.html">Nodes</a>
 		      </li>
 	     
 	  
