@@ -1,0 +1,1297 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>
+    
+  内存管理&&block - ACEfish-Blog
+  
+
+  </title>
+  <meta name="author" content="">
+  <meta name="description" content="学习记录">
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link href="asset/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+  <script src="asset/js/modernizr-2.0.js"></script>
+  <script src="asset/js/jquery.min.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/solarized_light.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  <style type="text/css">
+  .cat-children-p{ padding: 6px 0px;}
+  .hljs{background: none;}
+  </style>
+  <script type="text/javascript">
+  var isAddSildbar = true;
+  </script>
+  <script src="asset/js/octopress.js" type="text/javascript"></script>
+</head>
+<script type="text/javascript">
+//链接新开窗口
+function addBlankTargetForLinks () {
+  $('a[href^="http"]').each(function(){
+      $(this).attr('target', '_blank');
+  });
+}
+$(document).ready(function(event) {
+  addBlankTargetForLinks();
+});
+</script>
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="index.html">ACEfish-Blog</a></h1>
+  
+    <h2>学习记录</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:acefish.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+
+  <li id=""><a target="_self" href="index.html">首页</a></li>
+
+  <li id=""><a target="_self" href="archives.html">归档</a></li>
+
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content"> 
+<div class="blog-index">
+
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15668021082247.html">Blocks的实现</a></h1>
+			<p class="meta"><time datetime="2019-08-26T14:48:28+08:00" 
+			pubdate data-updated="true">08/26/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">Block的实质</h2>
+
+<p>通过<code>-rewrite-objc</code>将Block语法转为C++源代码</p>
+
+<pre><code class="language-objectivec">//源代码
+void(^blk)(void) = ^{
+    printf(&quot;Block\n&quot;)
+}
+</code></pre>
+
+<ol>
+<li><p>block是&quot;带有自动变量值的匿名函数&quot;，</p>
+<pre><code class="language-objectivec">static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    printf(&quot;Block\n&quot;)<br/>
+}
+</code></pre>
+<p>可以看到其执行内容会按照普通的C函数处理，并且Block会根据所属的函数名(main函数)和该block出现的顺序值(为0)进行命名。并且其函数的执行参数即为<code>__cself</code>也就是指向该block的机构体的指针</p></li>
+<li><p>Block其实是<code>Object-C</code>对象</p>
+<p>block转换为结构体后其结构如下:</p>
+<pre><code class="language-objectivec">struct __main_block_impl_0 {
+    struct __block_impl impl;<br/>
+    struct __main_block_desc_0 *Desc;<br/>
+    //结构体初始化函数<br/>
+    __main_block_impl_0(void *fp, strct __main_block_desc_0, int flags=0) {<br/>
+        impl.isa = &amp; NSConcreatStackBlock;<br/>
+        impl.Flags = flags;<br/>
+        impl.FuncPtr = fp;<br/>
+        Desc = desc;<br/>
+    }<br/>
+}<br/>
+struct __block_impl {<br/>
+    void *isa;<br/>
+    int Flags;<br/>
+    int Reserved;<br/>
+    void *FunctionPtr;<br/>
+}<br/>
+struct __main_block_desc_0 {<br/>
+    unsigned long reserved; //今后版本升级所需的区域<br/>
+    unsigned long Block_size; //block的大小<br/>
+}
+</code></pre>
+<p>因此将block结构体展开的话，其初始化结构如下:</p>
+<pre><code class="language-objectivec">static struct __main_block_desc_0 __main_block_desc_0_DATA = {
+    0,<br/>
+    sizeof(struct __main_block_impl_0) //block大小<br/>
+}<br/>
+//初始化<br/>
+isa = &amp;_NSConcreatStackBlock;<br/>
+Flags=0;<br/>
+Reserved=0;<br/>
+FuncPtr=__main_block_func_0;<br/>
+Desc= &amp;__main_block_desc_0_DATA;
+</code></pre>
+<p>当执行该block时,即执行block中的FuncPtr函数，然后将block结构体指针作为参数传入：</p>
+<pre><code class="language-objectivec">((void(*)(struct __block_impl *))((struct __block_impl *)blk)-&gt;FuncPtr)((struct _block_impl*)blk)
+</code></pre>
+<blockquote>
+<p>注意</p>
+<p>对于<code>isa=&amp;_NSConcreatStackBlock;</code>因为block也是一个对象，因此与其它OC对象类型，其isa指针指向其类结构体，即block的类信息就放在<code>_NSConcreatStackBlock</code>中</p>
+</blockquote></li>
+</ol>
+
+<h2 id="toc_1">截获自动变量</h2>
+
+<p>所谓的&quot;截获自动变量值&quot;其实是在执行block时，Block语法表达式所使用的自动变量被保存到Block的结构体实例中</p>
+
+<p>截获了自动变量的结构体</p>
+
+<pre><code class="language-objectivec">struct __main_block_impl_0 {
+    struct __block_impl impl;
+    struct __main_block_desc_0 *Desc;
+    const char *fmt; //自动变量值
+    int val; //自动变量值
+        //结构体初始化函数
+     __main_block_impl_0(void *fp, strct __main_block_desc_0, const char*_fmt, int _val, int flags=0) : fmt(_fmt), val(_val) {
+        impl.isa = &amp; NSConcreatStackBlock;
+        impl.Flags = flags;
+        impl.FuncPtr = fp;
+        Desc = desc;
+    }
+}
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>block只会捕获使用到的变量，表达式中没有使用到的变量不会被自动追加</p>
+</blockquote>
+
+<h2 id="toc_2">__block说明符</h2>
+
+<p>看到上面👆捕获变量的源码，可以看出来，block中捕获的自动变量仅捕获自动变量的值。因此在block内部重写该自动变量也不会改变原来捕获的自动变量值，因此，当我们给捕获的自动变量赋值时 就会产生编译错误</p>
+
+<h3 id="toc_3">静态变量、静态全局变量、全局变量</h3>
+
+<p>我们可以在block中直接访问或修改静态全局变量/全局变量 这是没有任何改变的，因此可以在block转换后的函数中直接使用，而无需在结构体中保留、变量</p>
+
+<p>但是对于静态变量，因为block转换后的函数已经在静态变量所处的函数之外，出了访问的作用域</p>
+
+<pre><code class="language-objectivec">//结构体中
+__main_block_impl_0 {
+    ...
+    int * static_val; //block内部保留 静态变量的指针地址
+}
+
+//执行函数
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    (*static_val) *= 3 //
+}
+</code></pre>
+
+<p>因此 block将静态变量的指针传递给<code>__main_block_impl_0</code>结构体的构造函数，并保留在结构体中，这是超出作用范围最简单的访问方法了</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>对于自动变量为什么没有采用类似静态变量的访问方式呢??<br/>
+Block可以截获超过作用域被截获的对象的自动变量，变量作用域结束的，原来的自动变量被废弃，因此block中超过变量作用域的对象就如同静态变量一样，无法通过指针进行访问了</p>
+</blockquote>
+
+<h3 id="toc_4">__block修饰符</h3>
+
+<p>在OC中存在以下几种存储域类说明符:</p>
+
+<ul>
+<li>typedef</li>
+<li>extern</li>
+<li>static</li>
+<li>auto</li>
+<li>register</li>
+</ul>
+
+<p><code>__block</code>就类似static、auto、register说明符，用于指定将变量设置到哪个存储区域中。(auto表示作为自动变量存储到栈中、static作为静态变量存储到数据区)</p>
+
+<pre><code class="language-objectivec">//源代码
+__block int val = 10
+void(^blk)(void) = ^{val = 1}
+</code></pre>
+
+<p>block结构体持有了指向__block变量结构体指针</p>
+
+<pre><code class="language-objectivec">struct __main_block_impl_0 {
+    struct __block_impl impl;
+    struct __main_block_desc_0 *Desc;
+    __Block_byref_val_0 *val;
+        //结构体初始化函数
+     __main_block_impl_0(void *fp, strct __main_block_desc_0, __Block_byref_val_0 *_val, int flags=0) : val(_val-&gt;_forwarding) {
+        impl.isa = &amp; NSConcreatStackBlock;
+        impl.Flags = flags;
+        impl.FuncPtr = fp;
+        Desc = desc;
+    }
+}
+</code></pre>
+
+<p>__block变量<br/>
+__block变量如同block一般变为<code>__Block_byref_val_0</code>结构体实例</p>
+
+<pre><code class="language-objectivec">struct __Block_byref_val_0 {
+    void *__isa;
+    __Block_byref_val_0 *__forwarding;
+    int __flags;
+    int __size;
+    int val; //相当于原自动变量
+}
+//其初始化
+__Block_byref_val_0 val = {
+    0,
+    &amp;val,
+    0,
+    sizeof(__Block_byref_val_0),
+    10
+}
+</code></pre>
+
+<p>结构体持有了相当持有原自动变量的成员变量,  <code>__Block_byref_val_0</code>结构体实例的成员变量<code>__forwarding</code>持有指向该实例自身的指针。通过 <code>__forwarding</code>访问成员变量val。(成员变量val相当于原自动变量)</p>
+
+<p>函数</p>
+
+<pre><code class="language-objectivec">^{val=1}
+    
+//源代码转换为
+static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    __Block_byref_val_0 *val = _cself-&gt;val;
+    
+    (val-&gt;__forwarding-&gt;val) = 1
+}
+</code></pre>
+
+<blockquote>
+<p>注意：</p>
+
+<ol>
+<li>为什么将__block变量写为单独的结构体而不写在block结构体中? 因是为了可以在多个block中使用相同的__block变量</li>
+<li>为了什么使用了__block变量 就可以改写值？  因为当变量添加了__block前缀，此时声明的就直接是一个结构体 我们之后访问、修改不论是在block内外 都是用的这个结构体</li>
+</ol>
+</blockquote>
+
+<p>本章忽略内容：</p>
+
+<ul>
+<li>Block超出变量作用域存在原因</li>
+<li><strong>block变量结构体成员</strong>forwading存在理由</li>
+</ul>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15553848940482.html">NSCopying && NSMutableCopying</a></h1>
+			<p class="meta"><time datetime="2019-04-16T11:21:34+08:00" 
+			pubdate data-updated="true">04/16/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15554670188763.html">ARC使用规则</a></h1>
+			<p class="meta"><time datetime="2019-04-17T10:10:18+08:00" 
+			pubdate data-updated="true">04/17/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">1. ARC有效时 禁止使用retain或者release代码</h2>
+
+<h2 id="toc_1">2. 不能使用NSAllocateObject/NSDeallocObject代码</h2>
+
+<pre><code class="language-text">使用alloc方法会通过`NSAllocateObject`函数生成并持有对象，但是在ARC有效时禁止使用类似函数
+</code></pre>
+
+<h2 id="toc_2">3. 要遵守内存管理命名规则</h2>
+
+<ol>
+<li>在ARC和非ARC环境下，以<code>alloc</code>、<code>new</code>、<code>copy</code>、<code>mutableCopy</code>开头的方法 应该返回调用者应当持有的对象</li>
+<li>在ARC环境下 以<code>init</code>开头的方法必须为构造器方法</li>
+</ol>
+
+<h2 id="toc_3">4. 不要显式调用dealloc</h2>
+
+<pre><code class="language-text">在ARC有效时，不需要调用`super dealloc`
+</code></pre>
+
+<h2 id="toc_4">5. 用@autoreleasepool 代替 NSAutoreleasePool</h2>
+
+<p>在ARC无效时也推荐使用@autoreleasepool block</p>
+
+<h2 id="toc_5">6. 不能使用NSZone</h2>
+
+<h2 id="toc_6">7. 对象型变量不能作为C语言结构体成员</h2>
+
+<pre><code class="language-text">因为OC变量由编译器负责ARC的生命周期，但是C语言中没有对结构体成员的生存周期。因此，如果要在结构体中使用OC变量，可以将变量显式转换为`void *`类型（见下一条），或者使用`__unsafe__retained`修饰符(使用此修饰符表示其不属于编译器内存管理的对象)
+</code></pre>
+
+<h2 id="toc_7">8. 显式转换id和void *</h2>
+
+<p>详情见CoreFoundation和Foundation对象转换</p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15671439508053.html">Block存储</a></h1>
+			<p class="meta"><time datetime="2019-08-30T13:45:50+08:00" 
+			pubdate data-updated="true">08/30/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">Block存储区域</h2>
+
+<p>在之前我们看到了block的<code>isa</code>指向的为<code>_NSConcreteStackBlock</code> 其实 除此之外还还有其他两种:</p>
+
+<ul>
+<li><code>_NSConcreteStackBlock</code>：该类对象被设置到栈上</li>
+<li><code>_NSConcreteGlobalBlock</code>：与全局变量类似，被设置在城区的数据区域<code>.data区</code> 中</li>
+<li><code>_NSConcreteMallocBlock</code>：设置在由malloc函数分配的内存块(堆)中</li>
+</ul>
+
+<p>block为<code>_NSConcreteGlobalBlock</code>的情况:</p>
+
+<ol>
+<li><p>记述全局变量的地方有Block语法时<br/>
+block写在全局变量区，此时转换源代码可以看到<code>impl.isa=&amp;_NSConcreteGloabalBlock</code>。因为在全局变量区中不能使用自动变量，所以不存在对自动变量的截获，因此整个程序只需要一个实例即可，故将Block用结构体实例设置在全局变量相同的数据区</p></li>
+<li><p>Block语法的表示式中不使用截获的自动变量时</p>
+<pre><code class="language-objectivec">typedef int(^blk_t)(int)
+for(int rate=0; rate&lt;10; ++rate) {<br/>
+    blk_t blk = ^(int count){<br/>
+        return count<br/>
+    }<br/>
+}
+</code></pre>
+<p>即使在函数内部，不在全局变量区域使用Block语法，只要Block不截获自动变量，就可以将Block用结构体实例设置在数据区域</p></li>
+</ol>
+
+<h3 id="toc_1">Block在超出变量作用域还能存在的原因</h3>
+
+<p>对于配置在全局数据区的block 超出变量作用区可以安全使用。<br/>
+设置在栈上的block和__block变量，是在栈上，当作用域结束，会被废弃，可以通过将<code>block</code>和<code>__block</code>变量复制到堆上解决此问题</p>
+
+<p>当将block复制到堆上后，其<code>isa=&amp;_NSConceteMallocBlock</code></p>
+
+<p>在ARC情况下，编译器大多会自动判断，生成将block从栈到堆上的代码</p>
+
+<pre><code class="language-objectivec">typedef int(^blk_t)(int)
+blk_t func(int rate) {
+    return ^(int count) {
+        return rate*count
+    }
+}
+
+//转换为源代码
+blk_t func(int rate) {
+    blk_t tmp = &amp;_func_block_impl_0(_func_block_func_0, &amp;__func_block_desc_0_DATA, rate)
+    tmp = objc_retainBlock(tmp) //等效于 tmp = Block_Copy(tmp)
+    return objc_autoreleaseReturnValue(tmp)
+}
+</code></pre>
+
+<p><code>tmp = objc_retainBlock(tmp)</code>其实就是执行了<code>Block_Copy</code>函数</p>
+
+<p>虽然大多时候编译器会自动判断，但是特殊情况，我们需要手动<code>copy</code>，将其从栈复制到堆上</p>
+
+<ol>
+<li><p>当向方法或者函数的参数中传递Block时，需要手动copy<br/>
+但是如果在方法或者函数中对复制了传递过来的参数，就不需要在调用函数之前手动复制了<br/>
+以下为不需要手动复制情况：</p>
+<ul>
+<li>Cocoa框架中的方法，并且方法名字中含有<code>usingBlock</code>时</li>
+<li>GCD的API中</li>
+</ul>
+<pre><code class="language-objectivec">//例如
+- (id)getBlockArray {<br/>
+    int val = 10<br/>
+    return [[NSArray alloc] initWithObjects: [^{NSLog(@&quot;blk0:%d&quot;, val);} copy], nil]; <br/>
+}<br/>
+//作为参数传递的block需要copy  否则block在出了该函数作用区域就被废弃
+</code></pre></li>
+</ol>
+
+<p>不论block&#39;在何处，对其执行copy方法都不会有任何问题</p>
+
+<ul>
+<li>对栈上的block copy  将其从栈上复制到堆上</li>
+<li>对数据区的block copy  什么也不做</li>
+<li>对堆上的block copy   引用计数增加</li>
+</ul>
+
+<blockquote>
+<p>注意</p>
+
+<p>对block多次调用 copy 也是不会有任何问题的 [[[[blk copy] copy] copy] copy]</p>
+</blockquote>
+
+<h2 id="toc_2">__block变量存储区域</h2>
+
+<p>当Block从栈复制到堆上时，其使用的__block变量也会复制到堆上，此时Block会持有__block变量</p>
+
+<p>当多个block使用__block变量时，当第一个block从栈复制到堆上时，__block变量就复制到堆上，并被改block持有，而其他block再从栈复制到堆上时，只是对该__block的引用计数增加了而已</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>在栈上的block只是对__block变量使用 而并不会持有</p>
+</blockquote>
+
+<h3 id="toc_3"><strong>block使用</strong>forwarding原因</h3>
+
+<p>这样设计的主要原因是: 为了不论__block变量是在栈还是堆上都能够正确访问</p>
+
+<p>因为在将__block从栈复制到堆上之后，我们就有两个可访问:栈上的__block变量和堆上的__block变量<br/>
+此时访问该变量的方法均为<code>++(val-&gt;__forwarding-&gt;val)</code>  将变量从栈复制到堆上时，就将成员变量<code>__forwarding</code>的值替换为了指向了堆上的<code>__block</code>变量结构体实例的地址</p>
+
+<h2 id="toc_4">截获对象</h2>
+
+<p>当block内部使用的是 id类型或者对象类型变量时，</p>
+
+<pre><code class="language-objectivec">blk_t blk;
+{
+    id array = [[NSMutableArray alloc] init]
+    blk = [^(id objc){
+        [array addObject: obj]
+        NSLog(&quot;%ld&quot;, [array count])
+    } copy]
+}
+blk([[NSObject alloc] init]) //1
+blk([[NSObject alloc] init]) //2
+blk([[NSObject alloc] init]) //3
+</code></pre>
+
+<p>此时array在变量作用域结束或 依旧存在</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>必须在block后执行copy方法，因为只有调用了_Block_Copy方法才能持有截获的__strong类型对象。否则不调用<code>_Block_Copy</code>函数的话，即使截获了对象，也会随着变量作用域的结束而被废弃</p>
+</blockquote>
+
+<pre><code class="language-objectivec">//转换源码
+struct __main_block_impl_0 {
+    struct __block_impl impl;
+    struct __main_block_desc_0 *Desc;
+    id __strong array; //id __strong修饰符的成员变量
+    //结构体初始化函数
+    __main_block_impl_0(void *fp, strct __main_block_desc_0, id __strong _array, int flags=0): array(_array) {
+        impl.isa = &amp; NSConcreatStackBlock;
+        impl.Flags = flags;
+        impl.FuncPtr = fp;
+        Desc = desc;
+    }
+}
+</code></pre>
+
+<p>可以看到 array被截获成为block结构体的成员变量 </p>
+
+<p>内存管理中说C语言的结构体中不能含有附有<code>__strong</code>修饰符的成员变量。因为编译器不知道何时能进行C语言结构体的初始化和废弃操作，不能很好的管理内存。但是<code>Object-C</code>的运行时 能帮助<mark>准确掌握Block从栈复制到堆上以及堆上的block被废弃的时机，因此在Block的结构体中即使有__strong或者__weak的修饰符的变量，也可以恰当的进行初始化和废弃。</mark>为此需要在<code>_main_block_des_0</code>中增加成员变量copy和dispose，以及作为指针赋值给该成员变量的<code>_main_block_copy_0</code>和<code>_main_block_dispose_0</code>函数</p>
+
+<pre><code class="language-objectivec">static void __main_block_copy_0(struct __main_block_impl_0 *dst, struct _main_block_impl_0 *src) {
+    _Block_object_assign(&amp;det-&gt;array, src-&gt;array, BLOCK_FIFLD_IS_OBJECT)
+}
+
+static void __main_block_dispose_0(struct _main_block_impl_0 *src) {
+    _Block_object_dispose(src-&gt;array, BLOCK_FIFLD_IS_OBJECT)
+}
+
+static struct __main_block_desc_0 {
+    unsigned long reserved; 
+    unsigned long Block_size; 
+    void (*copy)(struct __main_block_impl_0 *)
+    void (*dispose)(struct __main_block_impl_0 *)
+}
+</code></pre>
+
+<p>使用<code>_Block_object_assign</code>将对象类型赋值给block结构体的成员变量并持有该对象。相当于调用了<code>retain</code>方法<br/>
+使用<code>_Block_object_dispose</code>来释放在block中的结构体变量中的成员变量，相当于<code>release</code>实例方法<br/>
+当block复制到堆上时调用copy函数，当堆上的block被废弃时调用<code>dispose</code>函数</p>
+
+<p>Block复制到堆上的时机？</p>
+
+<ul>
+<li>调用Block的copy实例方法时</li>
+<li>Block作为函数返回值返回时</li>
+<li>将Block赋值给附有__strong修饰符id类型的类或者Block类型的成员变量时</li>
+<li>在方法名中含有<code>usingBlock</code>的Cocoa框架方法或者GCD的API中传递Block时</li>
+</ul>
+
+<p>根据block存储区域的学习可知，其实就是当<code>__Block_copy</code>方法被调用时，Block从栈复制到堆上<br/>
+当释放block谁都不持有时，调用<code>dispose</code>函数，相当于调用dealloc实例方法</p>
+
+<h3 id="toc_5">__block &lt;==&gt; 对象</h3>
+
+<p>我们在使用<code>__block</code>变量时 与 截获对象类型相似 </p>
+
+<pre><code class="language-objectivec">static void __main_block_copy_0(struct __main_block_impl_0 *dst, struct _main_block_impl_0 *src) {
+    _Block_object_assign(&amp;det-&gt;val, src-&gt;val, BLOCK_FIFLD_IS_BYREF)
+}
+
+static void __main_block_dispose_0(struct _main_block_impl_0 *src) {
+    _Block_object_dispose(src-&gt;val, BLOCK_FIFLD_IS_BYREF)
+}
+</code></pre>
+
+<p>通过<code>BLOCK_FIFLD_IS_BYREF/BLOCK_FIFLD_IS_OBJECT</code>区分是__block变量还是对象类型。<br/>
+与对象相同 copy函数持有__block变量 dispose释放持有的__block变量，因为都被block持有，因此与block类似可以在超出其变量作用域而存在</p>
+
+<h2 id="toc_6">__block对象变量</h2>
+
+<pre><code class="language-objectivec">__block id obj = [[NSObject alloc] init]
+
+
+__block id __strong obj = [[NSObject alloc] init]
+</code></pre>
+
+<p>源代码转换如下:</p>
+
+<pre><code class="language-objectivec">struct __Block_byref_obj_0 {
+    void *__isa;
+    __Block_byref_val_0 *__forwarding;
+    int __flags;
+    int __size;
+    void (* __Block_byref_id_object_copy)(void *, void*)
+    void (* __Object_object_dispose)(void *)
+    __strong id obj;
+}
+
+static void __Block_byref_id_object_copy_131(void *dst, void *src) {
+    _Object_object_assign((char *)det + 40, *(void **) ((char *)src + 40), 131);
+}
+
+static void __Block_byref_id_object_dispose_131(void *src) {
+    _Object_object_dispose( *(void **) ((char *)src + 40), 131);
+}
+</code></pre>
+
+<p>__block声明</p>
+
+<pre><code class="language-objectivec">__Block_byref_obj_0 obj = {
+    0,
+    &amp;obj,
+    0x20000000,
+    sizeof(__Block_byref_obj_0),
+    __Block_byref_id_object_copy_131,
+    __Block_byref_id_object_dispose_131,
+    [[NSObject alloc] init],
+}
+</code></pre>
+
+<p>与之前Block截获__strong或者id类型的过程相同，当__block变量从栈复制到堆上的时候，使用<code>_Object_object_assign</code>函数，持有赋值给<code>__block</code>变量的对象，当<code>__block</code>变量被废弃时，使用<code>_Object_object_dispose</code>函数，释放赋值给__block变量的对象。因此，只要__block变量在堆上继续存在，那么该变量就会处于被持有状态</p>
+
+<p>对于__weak修饰符，即使附加了__block修饰符 当变量被释放时，<code>nil</code>也会被附加到<code>__weak</code>修饰符的变量中</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>因为不存在__autorelasing修饰符和__block修饰符同时存在的必要，因此 同时指定会引起编译错误</p>
+</blockquote>
+
+<h2 id="toc_7">Block循环引用</h2>
+
+<p>如果在block中使用__strong类型修饰符的变量，因为会随着从栈复制到堆上，该对象被block持有而引起循环引用</p>
+
+<pre><code class="language-objectivec">typedef blk_t blk;
+@interface MyObject: NSObject 
+{
+    blk_t blk_;
+    id obj_;
+}
+@end
+
+@implementation MyObject 
+- (id)init {
+    self = [super init]
+    blk_ = ^{
+        NSLog(@&quot;%@&quot;, obj_);
+    };
+    return self;
+}
+@end
+</code></pre>
+
+<p>实际上<br/>
+<code>blk_=^{NSLog(@&quot;obj_=%@&quot;, self-&gt;obj_);}</code>block内部捕获了self</p>
+
+<p>对于该实例 将不会<code>dealloc</code>,因为 blk_是该实例成员成员变量，而且blk_因为赋值给成员变量也会从栈复制到堆，blk_持有其附有的__strong修饰符的id类型变量self</p>
+
+<h3 id="toc_8">使用__weak避免循环引用</h3>
+
+<pre><code class="language-objectivec">- (id)init {
+    self = [super init]
+    id __weak obj = obj_;
+    blk_ = ^{
+        NSLog(@&quot;%@&quot;, self);
+    };
+    return self;
+}
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>因为此时此时Block存在 持有其值的对象必定存在 因此也不需要进行判断是否为nil</p>
+</blockquote>
+
+<h3 id="toc_9">使用__block避免循环引用</h3>
+
+<pre><code class="language-objectivec">- (id)init {
+    self = [super init]
+    __block id tmp = self
+    blk_ = {
+        NSLog(@&quot;%@&quot;, tmp)
+        tmp = nil;
+    };
+}
+
+...
+
+int main() {
+    id o = [[NSObject alloc] init]
+    [o execBlock];
+}
+</code></pre>
+
+<p>此时代码并没有引起循环引用，但是如果不调用<code>execBlock</code>即执行成员变量<code>blk_</code>就会循环引用，造成内存泄漏</p>
+
+<p>当执行了该block后，<code>__Block</code>变量不再持有该对象，而block虽然持有__block变量但是也就不再造成循环引用了</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>使用__block避免循环引用必须执行block</p>
+</blockquote>
+
+<h3 id="toc_10">copy/release</h3>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15553079699012.html">dealloc何时调用</a></h1>
+			<p class="meta"><time datetime="2019-04-15T13:59:29+08:00" 
+			pubdate data-updated="true">04/15/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>参考资料:<br/>
+<a href="https://zhongwuzw.github.io/2017/09/21/%E8%81%8A%E8%81%8Adealloc/">聊聊dealloc</a></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15553988088853.html">ARC的修饰符</a></h1>
+			<p class="meta"><time datetime="2019-04-16T15:13:28+08:00" 
+			pubdate data-updated="true">04/16/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>在ARC有效的环境下，其内存管理规则和手动计数相同</p>
+
+<ul>
+<li>自己生成对象，自己持有</li>
+<li>非自己生成对象，自己也能持有</li>
+<li>自己持有的对象不再需要时释放</li>
+<li>非自己持有的对象无法释放</li>
+</ul>
+
+<h2 id="toc_0">所有权修饰符</h2>
+
+<p>OC中的变量类型有对象类型(即指向OC类的指针<code>NSObject *</code>)和<code>id</code>类型(用于隐藏对象类型类名部分，相当于C语言中的void *)</p>
+
+<p>在ARC有效时，id类型和对象类型与C语言的其他类型不同，必须加上所有权修饰符</p>
+
+<ul>
+<li>__strong 修饰符</li>
+<li>__weak修饰符</li>
+<li>__unsafe __unretained修饰符</li>
+<li>__autoreleasing修饰符</li>
+</ul>
+
+<h2 id="toc_1">__strong修饰符</h2>
+
+<p><code>__strong</code>修饰符是id类型和对象类型的默认修饰符,即</p>
+
+<pre><code class="language-objectivec">id obj = [[NSObject alloc] init];
+//等效于
+id __strong obj = [[NSObject alloc] init];
+//或者
+__strong id obj = [[NSObject alloc] init];
+</code></pre>
+
+<p>__strong修饰符的内存管理:</p>
+
+<ol>
+<li><code>__strong</code>修饰符的变量赋值对象，即可完成对自己生成或非自己生成对象的强引用</li>
+<li>当变量超出作用域被废弃、变量所属对象废弃(赋值nil)或者变量赋值即会释放对原有对象的强引用，相当于对对象执行release操作</li>
+</ol>
+
+<p>而当对象没有了所有者 就会被销毁</p>
+
+<p>示例如下:</p>
+
+<pre><code class="language-objectivec">//1.
+{
+    //取得非自己生成并持有的对象
+    id __strong obj = [NSMutableArray array];
+    //因为obj为强引用 所以自己持有对象
+}
+//此时变量obj超出作用域被废弃时，强引用失效，所以自动释放自己持有的对象
+
+//2.
+{
+    //取得自己生成并持有的对象
+    id __strong obj = [[NSObject alloc] init];
+    //因为obj为强引用 所以自己持有对象
+}
+/*
+* 此时变量obj超出作用域，强引用失效，所以自动释放自己持有的对象
+* 对象所有者不存在，因此废弃该对象
+*/ 
+
+//3. 
+
+id __strong obj0 = [[NSObject alloc] init];
+//obj0强引用对象A
+id __strong obj1 = [[NSObject alloc] init];
+//obj1强引用对象B
+obj0 = 0bj1;
+//obj0强引用对象B，此时对对象A强引用失效，对象A没有所有者因此废弃对象A
+obj0 = nil;
+//因为obj0被赋值nil，因此其对对象B的强引用失效 此时对象B的强引用只剩下obj1
+</code></pre>
+
+<p>OC的类成员变量和方法参数上也可以附有__strong修饰符的变量</p>
+
+<pre><code class="language-objectivec">@interface Test: NSObject 
+{
+    id __strong obj_;
+}
+
+- (void)setObject:(id __strong)obj；
+
+@implementation Test
+...
+@end
+</code></pre>
+
+<blockquote>
+<p>注意：</p>
+
+<p>__ strong、__weak、__autoreleasing修饰符，会将修饰符修饰的变量自动初始化为nil</p>
+</blockquote>
+
+<h2 id="toc_2">__weak修饰符</h2>
+
+<p>主要用来避免使用强引用导致的循环引用</p>
+
+<p>循环引用很容易发生内存泄漏，内存泄漏就是应当废弃的对象在吃啊出其生存周期后继续存在</p>
+
+<p><code>__weak</code>提供弱引用，并不持有对象实例</p>
+
+<p>错误使用:</p>
+
+<pre><code class="language-objectivec">id __weak obj = [[NSObject alloc] init]; //编译器会报警高
+//这种情况下 obj并不持有生成的对象，而是持有对象的弱引用，所以对象会立即释放
+</code></pre>
+
+<p>正确使用</p>
+
+<pre><code class="language-objectivec">{
+    id __strong obj = [[NSObject alloc] init];
+    id __weak obj1 = obj;
+}
+</code></pre>
+
+<p><code>__weak</code>修饰符修饰的变量当持有某个对象的弱引用时，若该对象被废弃(没有了持有者)，则弱引用<strong>自动失效并处于值为nil</strong>状态</p>
+
+<h2 id="toc_3">__ unsafe__unretained修饰符</h2>
+
+<p>是不安全的修饰符。因为<code>__weak</code>只能用在iOS5之上的版本，所以在iOS4就只能使用<code>__unsafe__retained</code>修饰符</p>
+
+<p><code>__unsafe__unretained</code>变量修饰的对象不属于编译器的内存管理对象</p>
+
+<pre><code class="language-objectivec">//__unsafe__retained与__weak类似，并不持有生成对象所以对象会立即释放
+id __weak obj = [[NSObject alloc] init]; //编译器会报警高
+</code></pre>
+
+<p><strong>unsafe</strong>retained变量修饰的对象当销毁时不会自动置nil，因此有可能访问悬空指针</p>
+
+<p>因此，不要使用这个修饰符</p>
+
+<h2 id="toc_4">__autoreleasing修饰符</h2>
+
+<p>在arc有效的情况下 即将autorelease方法变为``</p>
+
+<pre><code class="language-objectivec">//非ARC环境下
+NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+id obj = [[NSObject alloc] init]; 
+[obj autorelease];
+[pool drain];
+//ARC环境下
+@autoreleasepool {
+    id __autoreleasing obj = [[NSObject alloc] init];
+}
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>@autoreleasepool {}在非ARC环境下也能使用 推荐@autoreleasepool来表示自动释放池，提高程序的可读性</p>
+</blockquote>
+
+<p>就像我们几乎不显式的写<code>__strong</code>修饰符一样 我们也几乎不显式的附加<code>__autoreleasing</code>修饰符。编译器会自动帮我们添加<code>__autoreleasing</code>修饰符，例如以下情况：</p>
+
+<ol>
+<li><p>编译器会自动将返回值注册到autorelease pool</p>
+<p>编译器会检查方法名，如果使用<code>alloc/new/copy/mutableCopy</code>以外开头的方法，则自动将返回值注册到`autorelease pool中</p>
+<pre><code class="language-objectivec">+ (id)array {
+return [[NSMutableArray alloc] init]<br/>
+}<br/>
+//等效于<br/>
++ (id)array {<br/>
+id __strong obj = [[NSMutableArray alloc] init];<br/>
+return obj;<br/>
+}
+</code></pre>
+<p>obj由于return会使对象变量超出作用域，所以自己持有的强引用被释放，但该函数以对象作为返回值，编译器会自动帮其注册到autorelease pool中</p></li>
+<li><p>访问__weak修饰的变量一定要访问注册的到autoreleapool的对象</p>
+<p>因为<code>__weak</code>只持有对象弱引用，在访问过程中，对象有可能销毁，而把对象注册到<code>autorelease pool</code>就能保证对象在访问结束前不会被销毁</p>
+<pre><code class="language-objectivec">id __weak obj0 = obj1;
+NSLog(@&quot;class = %@&quot;, [obj0 class]);<br/>
+//等效于<br/>
+id __weak obj0 = obj1;<br/>
+id __autoreleasing tmp = obj1;<br/>
+NSLog(@&quot;class = %@&quot;, [tmp class]);
+</code></pre></li>
+<li><p>id的指针或者对象指针会默认加上__autoreleasing修饰符<br/>
+id的指针<code>id *obj</code>和<code>NSObject **obj</code>在没有显式指定时会被附加上<code>__autoreleasing</code>修饰符</p>
+<p>例如:</p>
+<pre><code class="language-obj"> - (nullable instancetype)dataWithContentsOfFile:(NSString *)path ... error:(NSError **)errorPtr;
+//相当于<br/>
+- (nullable instancetype)dataWithContentsOfFile:(NSString *)path... error:(NSError * __autoreleasing *)errorPtr;
+</code></pre>
+<p>使用__autoreleasing修饰的变量作为对象取得参数就和用非自己生成对象方法取得返回值的对象完全一样，会注册到<code>autorelease pool</code>中</p>
+<pre><code class="language-objectivec">//源码应该类似这个样子
+- (nullable instancetype)dataWithContentsOfFile:(NSString *)path... error:(NSError * __autoreleasing *)errorPtr {<br/>
+    *error = [[NSError alloc] initWithDomain:MyAppDomin code:errorCode userInfo:nil];<br/>
+}
+</code></pre>
+<p>在使用过程中应该注意，保持赋值互相对象的修饰符一致:</p>
+<pre><code class="language-objectivec">NSError * __autoreleasing error;//修改修饰符为__autoreleasing保持一致进行赋值
+NSError **pError = &amp;error;<br/>
+//或者<br/>
+NSError * error;<br/>
+NSError * __strong *pError = &amp;error;
+</code></pre>
+<p>在下面的NSError **参数赋值了一个__strong对象变量也没报错，是因为编译器自动帮我们做了转换</p>
+<pre><code class="language-objectivec">NSError * error;
+    id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;error];<br/>
+//编译器帮我们转化为了<br/>
+NSError __strong *error;<br/>
+NSError __autoreleasing *tmp = error;<br/>
+id obj = [NSData dataWithContentsOfFile:@&quot;&quot; options:0 error:&amp;tmp];
+</code></pre></li>
+</ol>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15651698942201.html">Block值捕获和__block总结</a></h1>
+			<p class="meta"><time datetime="2019-08-07T17:24:54+08:00" 
+			pubdate data-updated="true">08/07/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<ol>
+<li><p>block的值捕获<br/>
+block可以捕获调用处的局部变量，在block内部使用<br/>
+因为block对变量进行了值copy，将其从栈区拷贝到堆区，当然对于本来就在堆区的对象只是进行了引用计数加1，然后作为参数传递到block内部进行使用，苹果做了限制，无法修改其指向的内存地址，因此无法修改其值</p></li>
+<li><p>__block<br/>
+ <code>__block</code>其实是新建了一个struct结构体，结构体内指向了局部变量值，将结构体作为参数传递给block，这样就可以通过该结构体访问和修改值了</p></li>
+</ol>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15541369129721.html">Block</a></h1>
+			<p class="meta"><time datetime="2019-04-02T00:41:52+08:00" 
+			pubdate data-updated="true">04/02/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">Block的循环引用、如何解决、原理</h2>
+
+<h2 id="toc_1">三种Block</h2>
+
+<h2 id="toc_2">Block和delegate的比较</h2>
+
+
+		</div>
+
+		
+
+	</article>
+  
+	<div class="pagination">
+	 <a class="prev" href="内存管理&&block_2.html">&larr; Older</a> 
+<a href="archives.html">Blog Archives</a>
+	 <a class="next" href="内存管理&&block.html">Newer &rarr;</a>  
+	    
+	</div>
+</div>
+ <aside class="sidebar"> 
+
+	<section>
+	  <h1>Categories</h1>
+	  <ul id="recent_posts">
+	  
+	      <li class="post">
+	        <a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B&&Runloop.html"><strong>多线程&&Runloop&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="RunLoop.html">RunLoop&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B.html">多线程&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8&&%E9%94%81.html">线程安全&&锁&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="KVC&&KVO.html">KVC&&KVO&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="runtime%E5%AD%A6%E4%B9%A0.html"><strong>runtime学习&nbsp;(9)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&&block.html"><strong>内存管理&&block&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="OC%E9%AB%98%E7%BA%A7%E7%BC%96%E7%A8%8B-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">OC高级编程-内存管理&nbsp;(6)</a>&nbsp;&nbsp;
+	        
+	        	<a href="block%E5%AD%A6%E4%B9%A0.html">block学习&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%AE%98%E6%96%B9%E6%96%87%E6%A1%A3-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">官方文档-内存管理&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-%E6%8B%BE%E9%81%97.html">内存管理-拾遗&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BD%91%E7%BB%9C.html"><strong>网络&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="GPU&&%E6%B8%B2%E6%9F%93.html"><strong>GPU&&渲染&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F&&%E7%BB%84%E4%BB%B6%E5%8C%96.html"><strong>设计模式&&组件化&nbsp;(8)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E6%9E%B6%E6%9E%84%E8%B0%88(%E6%91%98%E5%BD%95).html">设计模式架构谈(摘录)&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BB%84%E4%BB%B6%E5%8C%96%E5%BC%80%E5%8F%91%E5%AD%A6%E4%B9%A0.html">组件化开发学习&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BC%96%E8%AF%91&&dyld&&Mach-O.html"><strong>编译&&dyld&&Mach-O&nbsp;(19)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html">iOS编译流程&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="dyld(%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8).html">dyld(程序启动)&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Mach-O%E6%96%87%E4%BB%B6%E4%BA%86%E8%A7%A3.html">Mach-O文件了解&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%A8%A1%E5%9D%97%E5%8C%96%E7%9F%A5%E8%AF%86.html"><strong>模块化知识&nbsp;(26)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS-CoreAnimation.html">iOS-CoreAnimation&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="CoreGraphic.html">CoreGraphic&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ARKit.html">ARKit&nbsp;(7)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%E5%92%8C%E4%BD%BF%E7%94%A8.html"><strong>第三方项目学习和使用&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="AFNetworking.html">AFNetworking&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="AsyncDisplayKit.html">AsyncDisplayKit&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ReactnativeCocoa.html">ReactnativeCocoa&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="PromiseKit.html">PromiseKit&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7%E5%92%8C%E4%BC%98%E5%8C%96.html"><strong>项目监控和优化&nbsp;(10)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="APP%E4%BD%93%E7%A7%AF%E4%BC%98%E5%8C%96.html">APP体积优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%90%AF%E5%8A%A8%E4%BC%98%E5%8C%96.html">启动优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%B0%83%E8%AF%95&&%E6%B5%8B%E8%AF%95.html"><strong>调试&&测试&nbsp;(6)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="Instrument%E5%AD%A6%E4%B9%A0.html">Instrument学习&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="LLDB.html">LLDB&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95.html">自动化测试&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%B7%A5%E5%85%B7.html"><strong>工具&nbsp;(5)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="git.html">git&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Cocoapods.html">Cocoapods&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%8B%BE%E9%81%97.html"><strong>拾遗&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%9D%A2%E8%AF%95.html">面试&nbsp;(12)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">iOS开发知识点拾遗&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">知识点拾遗&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html">iOS 小知识&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Swift-BaseLearning.html"><strong>Swift基础知识&nbsp;(28)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Computer-programming.html"><strong>计算机编程&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html">知识普及&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Flex.html">Flex&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
+	        
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="React-Native.html"><strong>React-Native&nbsp;(6)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Python.html"><strong>Python&nbsp;(14)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html"><strong>算法读书笔记&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	   
+	  </ul>
+	</section>
+	<section>
+	  <h1>Recent Posts</h1>
+	  <ul id="recent_posts">
+	  
+	      
+		      <li class="post">
+		        <a href="15718858302183.html">官方文档</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710248960458.html">Layout Specs</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707800044047.html">Node Lifecycle</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707737201639.html">线程</a>
+		      </li>
+	     
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	   
+	  </ul>
+	</section>
+	
+</aside> </div></div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 -  -
+  <span class="credit">Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a> &nbsp;&nbsp; Theme by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+
+  
+    
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,1041 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>
+    
+  iOS编译流程 - ACEfish-Blog
+  
+
+  </title>
+  <meta name="author" content="">
+  <meta name="description" content="学习记录">
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link href="asset/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+  <script src="asset/js/modernizr-2.0.js"></script>
+  <script src="asset/js/jquery.min.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/solarized_light.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  <style type="text/css">
+  .cat-children-p{ padding: 6px 0px;}
+  .hljs{background: none;}
+  </style>
+  <script type="text/javascript">
+  var isAddSildbar = true;
+  </script>
+  <script src="asset/js/octopress.js" type="text/javascript"></script>
+</head>
+<script type="text/javascript">
+//链接新开窗口
+function addBlankTargetForLinks () {
+  $('a[href^="http"]').each(function(){
+      $(this).attr('target', '_blank');
+  });
+}
+$(document).ready(function(event) {
+  addBlankTargetForLinks();
+});
+</script>
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="index.html">ACEfish-Blog</a></h1>
+  
+    <h2>学习记录</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:acefish.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+
+  <li id=""><a target="_self" href="index.html">首页</a></li>
+
+  <li id=""><a target="_self" href="archives.html">归档</a></li>
+
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content"> 
+<div class="blog-index">
+
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15539605071421.html">Clang Static Analyzer静态代码分析</a></h1>
+			<p class="meta"><time datetime="2019-03-30T23:41:47+08:00" 
+			pubdate data-updated="true">03/30/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>学习自 <a href="https://github.com/ming1016/study/wiki/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90-iOS-%E7%BC%96%E8%AF%91-Clang---LLVM">深入剖析iOS编译</a></p>
+
+<h4 id="toc_0">词法分析：</h4>
+
+<p>静态分析前会对diamante进行<code>词法分析</code>，生成<code>Token</code>，Token包括以下几类，</p>
+
+<ul>
+<li>关键字： 语法中的关键字 if、else、while for等</li>
+<li>标识符： 变量名</li>
+<li>字面量： 值、数字、字符串</li>
+<li>特殊符号： 加减乘除符号
+<code>
+clang -fmodules -E -Xclang -dump-tokens main.m
+</code>
+可以查看生成的token，其中还包括了代码位置等信息</li>
+</ul>
+
+<h4 id="toc_1">语法分析</h4>
+
+<p>词法分析后进行语法分析，将token按照语法组合成语义生成ValDecl节点，将这些节点按照层级关系生成抽象语法树<code>Abstract Syntax Tree(AST)</code></p>
+
+<pre><code class="language-text">clang -fmodules -fsyntax-only -Xclang -ast-dump main.m
+</code></pre>
+
+<p>以<code>TranslationUnitDecl</code>根节点开始，表示一个源文件<br/>
+其中，Decl表示一个生命、Expr表示表达式、Literal表示特殊字面量、Stmt表示语句</p>
+
+<h3 id="toc_2">静态分析原理</h3>
+
+<p>clang 静态分析是通过建立分析引擎和 checkers 所组成的架构，可以通过 <code>clng --analyze</code>命令调用</p>
+
+<p><code>clang static analyzer</code>分为<code>analyzer core</code>分析引擎和checker两部分，而所有的checker是基于底层的分析引擎之上的，也可以通过分析引擎提供的功能编写新的checker</p>
+
+<p>如果想编写自己的<code>checker</code>，可以在 clang 项目的<code>lib / StaticAnalyzer / Checkers</code>目录下找到实例参考，比如 ObjCUnusedIVarsChecker.cpp 用来检查未使用定义过的变量。方便用户扩展对代码的检查规则或对bug类型的扩展，但是每执行完一条语句后，分析引擎就会会遍历所有checker中的回调函数，所以checker越多，速度越慢</p>
+
+<p>通过<code>clang -cc1 -analyzer-checker-help</code>可以列出能调用的 checker<br/>
+<img src="media/15539605071421/15539654466718.jpg" alt="" style="width:830px;"/></p>
+
+<p><code>clang static analyzer</code>引擎大致上分为<code>CFG，MemRegion，SValBuilder，ConstraintManager</code> 和 <code>ExplodedGraph</code> 几个模块,<code>clang static analyzer</code> 本质上就是<code>path-sensitive analysis</code>，要很好的理解<code>clang static analyzer</code>引擎就需要对<code>Data Flow Analysis</code>有所了解，包括迭代数据流分析,<code>path-sensitive</code>，<code>path-insensitive</code> ，<code>flow-sensitive</code>等。</p>
+
+<p>编译的概念（<strong>词法-&gt;语法-&gt;语义-&gt;IR-&gt;优化-&gt;CodeGen</strong>）在 clang static analyzer 里到处可见，例如 Relaxed Live Variables Analysis 可以减少分析中的内存消耗，使用 mark-sweep 实现 Dead Symbols 的删除。</p>
+
+<p>静态检查的一些库以及使用方法：<br/>
+<a href="https://github.com/DeveloperLx/FauxPas_document_translation/blob/master/README.md?from=timeline&amp;isappinstalled=0">FauxPas_document_translation/README.md at master · DeveloperLx/FauxPas_document_translation · GitHub</a></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15539566553487.html">Target在build中的控制</a></h1>
+			<p class="meta"><time datetime="2019-03-30T22:37:35+08:00" 
+			pubdate data-updated="true">03/30/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>在<code>Xcode</code>的<code>Project editor</code>中的<code>Build Setting</code>、<code>Build Phases</code>和<code>Build Rules</code>用来控制整个编译过程</p>
+
+<h2 id="toc_0">Build Phases</h2>
+
+<p>构建可执行文件规则。</p>
+
+<p><code>Target Dependencies</code><br/>
+指定target的依赖项目，在targrt build之前需要先build的依赖</p>
+
+<p><code>Compile Source</code><br/>
+指定所有必须编译的文件,这些文件会根据<code>build Setting</code>和<code>Builsd Rules</code>里的设置来处理</p>
+
+<p><code>Link Binary With Libraries</code><br/>
+列出所有的静态库和动态库，和编译生成文件进行链接</p>
+
+<p><code>Copy Bundle Resources</code><br/>
+指定要copy的资源文件</p>
+
+<h2 id="toc_1">Build Rules</h2>
+
+<p>指定不同文件类型如何编译。每条build rule 指定了该类型怎么处理立即输出在哪。可以增加一条新规则对特定类型文件类型添加处理方法</p>
+
+<h2 id="toc_2">Build Setting</h2>
+
+<p>在<code>build</code>的过程中各个阶段的选项的设置</p>
+
+<h2 id="toc_3">pbxproj工程文件</h2>
+
+<p><code>.xcodeproj</code>包中的工程文件<code>project.pbxproj</code>里包含了build过程中的设置.</p>
+
+<ol>
+<li>在这个文件中，首先找到rootObject的值
+<code>
+rootObject = CFE011DA22409055007FEEDD /* Project object */;
+</code></li>
+<li>根据CFE011DA22409055007FEEDD代表的proect找到这个工程,这里面包括了部分这个工程的信息
+<code>
+/* Begin PBXProject section */<br/>
+    CFE011DA22409055007FEEDD /* Project object */ = {<br/>
+        isa = PBXProject;<br/>
+        attributes = {<br/>
+            LastUpgradeCheck = 1010;<br/>
+            ORGANIZATIONNAME = universalCertification;<br/>
+            TargetAttributes = {<br/>
+                CFE011E122409055007FEEDD = {<br/>
+                    CreatedOnToolsVersion = 10.1;<br/>
+                };<br/>
+            };<br/>
+        };<br/>
+        buildConfigurationList = CFE011DD22409055007FEEDD /* Build configuration list for PBXProject &quot;RSSReader&quot; */;<br/>
+        compatibilityVersion = &quot;Xcode 9.3&quot;;<br/>
+        developmentRegion = en;<br/>
+        hasScannedForEncodings = 0;<br/>
+        knownRegions = (<br/>
+            en,<br/>
+            Base,<br/>
+        );<br/>
+        mainGroup = CFE011D922409055007FEEDD;<br/>
+        productRefGroup = CFE011E322409055007FEEDD /* Products */;<br/>
+        projectDirPath = &quot;&quot;;<br/>
+        projectRoot = &quot;&quot;;<br/>
+        targets = (<br/>
+            CFE011E122409055007FEEDD /* RSSReader */,<br/>
+        );<br/>
+    };<br/>
+/* End PBXProject section */
+</code></li>
+<li>然后根据工程中的<code>targets</code>可以找到对应target
+<code>
+/* Begin PBXNativeTarget section */<br/>
+        CFE011E122409055007FEEDD /* RSSReader */ = {<br/>
+            isa = PBXNativeTarget;<br/>
+            buildConfigurationList = CFE011F822409056007FEEDD /* Build configuration list for PBXNativeTarget &quot;RSSReader&quot; */;<br/>
+            buildPhases = (<br/>
+                47F7B3ABDF3263B6EDCA68AD /* [CP] Check Pods Manifest.lock */,<br/>
+                CFE011DE22409055007FEEDD /* Sources */,<br/>
+                CFE011DF22409055007FEEDD /* Frameworks */,<br/>
+                CFE011E022409055007FEEDD /* Resources */,<br/>
+            );<br/>
+            buildRules = (<br/>
+            );<br/>
+            dependencies = (<br/>
+            );<br/>
+            name = RSSReader;<br/>
+            productName = RSSReader;<br/>
+            productReference = CFE011E222409055007FEEDD /* RSSReader.app */;<br/>
+            productType = &quot;com.apple.product-type.application&quot;;<br/>
+        };<br/>
+/* End PBXNativeTarget section */
+</code></li>
+<li>可以根据这些信息查看更详细的编译信息<br/>
+比如:
+<code>buildConfigurationList</code>指向了debug和release的详细配置信息</li>
+</ol>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15538518127841.html">App程序编译的完整流程</a></h1>
+			<p class="meta"><time datetime="2019-03-29T17:30:12+08:00" 
+			pubdate data-updated="true">03/29/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>本文学习自戴铭老师的<a href="https://github.com/ming1016/study/wiki/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90-iOS-%E7%BC%96%E8%AF%91-Clang---LLVM">深入剖析 iOS 编译 Clang LLVM</a></p>
+
+<h2 id="toc_0">前言</h2>
+
+<p>每次项目编译 不论模拟器还是真机都会在<code>Xcode</code>的<code>DerivedData</code>文件夹下创建一个该次编译需要或者产生文件的文件夹(缓存文件夹)<br/>
+<img src="media/15538518127841/15538525190405.jpg" alt="" style="width:624px;"/></p>
+
+<p>而在build文件夹中就是我们这次编译的主要信息<br/>
+<img src="media/15538518127841/15538525902894.jpg" alt="" style="width:820px;"/><br/>
+其中<code>Intermediates.noindex</code>文件夹中为编译的缓存文件(辅助文件)，主要为辅助文件<code>.yml</code><code>.hamp</code>等<br/>
+product中为我们编译的结果<br/>
+<img src="media/15538518127841/15538527710516.jpg" alt="" style="width:592px;"/><br/>
+包括了pod库打包的.a文件，安装用到的.app文件，.app中还包括资源文件、.plist文件、storybord或者xib编译后的nib文件等</p>
+
+<p><img src="media/15538518127841/15538542741556.jpg" alt="" style="width:203px;"/></p>
+
+<h2 id="toc_1">编译流程</h2>
+
+<p>在本文中我们编译一个cocopoda程序来做演示</p>
+
+<h3 id="toc_2">1. 编译信息写入辅助文件，创建文件架构.app文件</h3>
+
+<p>创建.app文件夹,用来存放最后生成.app文件的信息<br/>
+<img src="media/15538518127841/15538531245953.jpg" alt="" style="width:837px;"/></p>
+
+<p>辅助文件用于辅助编译，暂时不知道有什么其他用？？？？</p>
+
+<p>写入辅助文件.yaml文件<br/>
+<img src="media/15538518127841/15538520286678.jpg" alt="" style="width:824px;"/></p>
+
+<p>写入辅助文件.hamp文件<br/>
+<img src="media/15538518127841/15538520549132.jpg" alt="" style="width:838px;"/><br/>
+写入辅助文件Entitlements.plist 和 Entitlements-Simulated.plist<br/>
+<img src="media/15538518127841/15538536658391.jpg" alt="" style="width:818px;"/></p>
+
+<h3 id="toc_3">2. 处理文件的打包信息</h3>
+
+<p>1.真机打包文件: 真机需要配置文件信息,此时在.app文件夹下为<br/>
+包含了配置文件信息是应用程序能在真机上运行的必须<br/>
+这步即将电脑内存放的开发证书证书直接放置到.app文件夹中<br/>
+<img src="media/15538518127841/15538540868414.jpg" alt="" style="width:879px;"/><br/>
+见上图中<code>embedded.mobileprovision</code>文件</p>
+
+<p>1.2 模拟器打包文件<br/>
+模拟器的配置文件信息，是app能在模拟器上运行的必须<br/>
+<img src="media/15538518127841/15538544375164.jpg" alt="" style="width:1098px;"/></p>
+
+<p>2.打包文件的实体信息 .app.xcent 主要为Entilements，信息  （不论模拟器或者真机都有）真机的文件信息中 包括了app信息，开发者信息、app用到的权限信息等<br/>
+ <img src="media/15538518127841/15538542169158.jpg" alt="" style="width:840px;"/></p>
+
+<h3 id="toc_4">3. 执行 CocoaPod 编译前脚本，checkPods Manifest.lock</h3>
+
+<p>默认是在这一步执行，这和你放置这个脚本的位置有关</p>
+
+<p><img src="media/15538518127841/15538558869448.jpg" alt="" style="width:684px;"/></p>
+
+<p><img src="media/15538518127841/15538547657710.jpg" alt="" style="width:834px;"/></p>
+
+<p><img src="media/15538518127841/15538547101237.jpg" alt="" style="width:701px;"/></p>
+
+<p>执行脚本比较这两个.lock文件 判断是否差异</p>
+
+<h3 id="toc_5">4.编译.m文件，使用 CompileC 和 clang 命令</h3>
+
+<p>编译所有的.m文件，包括自己项目的和pod库中的,（为什么没有.h文件呢？因为在预编译的时候都进了其它.m文件啊）</p>
+
+<p>编译后生成.o文件</p>
+
+<p><img src="media/15538518127841/15538550281496.jpg" alt="" style="width:864px;"/></p>
+
+<p>首先对任务进行描述</p>
+
+<pre><code class="language-text">CompileC /Users/fish/Library/Developer/Xcode/DerivedData/AlipayDemo-bqmyunxtybyzyecoutybsvekthlo/Build/...
+</code></pre>
+
+<p>接下来对会更新工作路径</p>
+
+<pre><code class="language-text">cd /Users/fish/Desktop/AlipayDemo
+export LANG=en_US.US-ASCII
+</code></pre>
+
+<p>接下来就是实际的编译命令</p>
+
+<pre><code class="language-text">//调用了clang命名
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x objective-c -arch arm64 -fmessage-length=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit=0 -std=gnu11 -fobjc-arc -fobjc-weak -fmodules -gmodules -fmodules-cache-path=/Users/fi....
+</code></pre>
+
+<pre><code class="language-text">//将pch文件一起编译
+-include /Users.../Application/PrefixHeader.pch
+</code></pre>
+
+<p>将文件都编译完成后,会将所有的.o文件写入一个辅助文件 <code>.LinkFileList</code>文件中，便于下一步链接</p>
+
+<p>clang常用命令参数</p>
+
+<pre><code class="language-text">-x 编译语言比如objective-c
+-arch 编译的架构，比如arm7
+-f 以-f开头的。
+-W 以-W开头的，可以通过这些定制编译警告
+-D 以-D开头的，指的是预编译宏，通过这些宏可以实现条件编译
+-iPhoneSimulator10.1.sdk 编译采用的iOS SDK版本
+-I 把编译信息写入指定的辅助文件
+-c 标识符指明需要运行预处理器，语法分析，类型检查，LLVM生成优化以及汇编代码生成.o文件
+-F 需要的Framework
+-L 连接静态库
+-o 编译结果
+-inclue 将文件include一起编译(当我们添加的有prefix文件时，就会在这这一步一起编译)
+</code></pre>
+
+<h3 id="toc_6">5.将cocoapods中的pod生成.a静态库</h3>
+
+<p><img src="media/15538518127841/15538703095401.jpg" alt="" style="width:1031px;"/></p>
+
+<p>使用<code>libTool</code>命令,<br/>
+<code>-fileList</code>指定上一步编译的所有.o文件等，其记录在一个AFNetworking.LinkFileList的文件中<br/>
+<code>-framework</code>指定需要依赖的framework <br/>
+打包为一个.a静态库</p>
+
+<blockquote>
+<p>swift的话，因为其pod不支持静态库，我们一般podfile中指定 userFramework？？？</p>
+</blockquote>
+
+<h3 id="toc_7">6.链接需要的 Framework和library</h3>
+
+<p><img src="media/15538518127841/15538692299741.jpg" alt="" style="width:1050px;"/></p>
+
+<p>采用 clang <br/>
+-L 链接静态库<br/>
+-framework 添加需要的依赖系统库库<br/>
+-F 链接framework</p>
+
+<p>链接的内容包括:</p>
+
+<ol>
+<li>pod库生成的.a文件 即libPods-[ProjectName].a文件</li>
+<li>pod库打包生成的.a文件,例如libAFNetworking.a等链接到工程</li>
+<li>需要的外部framework文件</li>
+<li>-fileList 将上一步编译生成的所有.o文件 记录在.buile/.LinkFileList中,链接所以工程文件</li>
+<li>以及其他的一些辅助文件</li>
+<li>链接需要的系统库</li>
+</ol>
+
+<p>生成项目程序的可执行文件就是一个脚本文件</p>
+
+<h3 id="toc_8">7. 处理资源文件</h3>
+
+<h4 id="toc_9">编译 ImageAssets</h4>
+
+<p>即使多个.xcassets也是一起编译的，而不是分开编译多次</p>
+
+<p><img src="media/15538518127841/15538746736648.jpg" alt="" style="width:1078px;"/></p>
+
+<p>使用<code>actool</code>命令 这个命令只用于这个地方<br/>
+<code>--output-format human-readable-text</code><br/>
+<code>--export-dependency-info</code> 将编译后的生成的文件信息记录在.build文件夹下的assetcatalog_dependencies文件中,包括.xcassets文件、appIcon图片、launchImage图片、生成的唯一.car文件、记录信息的.plist文件</p>
+
+<p><code>--output-partial-info-plist</code> 生成一个.build/assetcatalog_generated_info.plist ,主要记录了appIcon和launchImage信息<br/>
+<img src="media/15538518127841/15538756202833.jpg" alt="" style="width:702px;"/></p>
+
+<p><code>--app-icon AppIcon</code><br/>
+<code>--launch-image LaunchImage</code><br/>
+<code>--compress-pngs --enable-on-demand-resources YES</code></p>
+
+<p><code>--filter-for-device-model iPhone10,3 --filter-for-device-os-version 12.2 --target-device iphone</code> 当前的设备信息</p>
+
+<p><code>--target-device iphone --minimum-deployment-target 8.0</code><br/>
+<code>--compile</code>  将编译生成的.car信息直接放入.app文件夹中<br/>
+将appIcon、LaunchImage图片文件放入.app文件中</p>
+
+<h4 id="toc_10">编译 xib</h4>
+
+<p>xib编译</p>
+
+<p><code>ibtool</code>命令<br/>
+<code>--module</code>指定所属模块名称<br/>
+<code>--target-device</code>指定面向设备，iPhone/iPad<br/>
+<code>--auto-activate-custom-fonts</code><br/>
+<code>--minimum-deployment-target 8.0</code> 最低支持目标设备系统</p>
+
+<p><code>--output-partial-info-plist</code> 生成一个-PartialInfo.plist文件 放置在.build文件的辅助文件中</p>
+
+<p><code>--output-format human-readable-text</code><br/>
+<code>--compile</code> 编译生成一个nib文件,直接放置在.app文件中</p>
+
+<p><img src="media/15538518127841/15538725620996.jpg" alt="" style="width:834px;"/></p>
+
+<h4 id="toc_11">编译 storyBoard</h4>
+
+<p><img src="media/15538518127841/15538729971749.jpg" alt="" style="width:905px;"/></p>
+
+<p>类似编译xib<br/>
+<code>ibtool</code>命令<br/>
+<code>--module</code>指定所属模块名称<br/>
+<code>--output-partial-info-plist</code> 生成一个 <code>/Base.lproj/Name-SBPartialInfo.plist</code>文件 存放在<code>.build</code>文件夹中<br/>
+<code>--target-device iphone --target-device ipad</code><br/>
+<code>--minimum-deployment-target 8.0</code><br/>
+<code>--output-format human-readable-text</code> <br/>
+<code>--compilation-directory</code> 编译生成.storyboardc文件,放在<code>.build</code>文件中<br/>
+<img src="media/15538518127841/15538719624665.jpg" alt="" style="width:630px;"/></p>
+
+<h4 id="toc_12">链接storyBoard文件</h4>
+
+<p><img src="media/15538518127841/15538732881268.jpg" alt="" style="width:887px;"/></p>
+
+<p>使用<code>ibtool</code>命令<br/>
+指定一些信息<br/>
+<code>--module</code>指定所属模块名称<br/>
+<code>--target-device iphone --target-device ipad --minimum-deployment-target 8.0</code><br/>
+<code>--output-format human-readable-text</code><br/>
+<code>--link</code>将项目模块中所有上一步生成的<code>.storyboardc</code>文件连接到 .app文件夹中</p>
+
+<h4 id="toc_13">拷贝xib、资源文件</h4>
+
+<p>拷贝一些资源文件到我们创建.app文件中</p>
+
+<h4 id="toc_14">处理 info.plist文件</h4>
+
+<p><img src="media/15538518127841/15538764050221.jpg" alt="" style="width:958px;"/></p>
+
+<p><code>-genpkginfo</code> 在.app文件夹下，生成了PkgInfo文件 ???<br/>
+<code>-additionalcontentfile</code>加入多个前面生成的plist文件<br/>
+<code>-o</code>将合并信息 生成为info.plist,放置在.app文件夹下</p>
+
+<h3 id="toc_15">8. 生成符号表文件(GenerateDSYMFile)</h3>
+
+<p>利用可执行文件中的符号表 生成 符号表文件 .dSYM<br/>
+当设置build setting中-&gt;build option -&gt; dysm 符号表为 -&gt; dwarf-dYSM时会生产该文件 默认debug不生成 release生成<br/>
+<img src="media/15538518127841/15560737675622.jpg" alt="" style="width:871px;"/></p>
+
+<h3 id="toc_16">9. 裁剪掉app文件中的符号表</h3>
+
+<p>这是只在archive app中才会执行这一步<br/>
+<img src="media/15538518127841/15560737281876.jpg" alt="" style="width:885px;"/></p>
+
+<h3 id="toc_17">8. 执行 一些自定义 脚本</h3>
+
+<pre><code class="language-text">这个地方可以执行一些自定义脚本，具体执行位置还是要看 在`build Phases`中的自定义顺序
+</code></pre>
+
+<h3 id="toc_18">9. 签名 验证</h3>
+
+<p>主要用于真机<br/>
+使用<code>codesign</code>命令,利用我们之前生成的.app.xcent信息 进行应用签名</p>
+
+<h3 id="toc_19">10. 创建 .app 文件</h3>
+
+<p>生成.app文件 即最终的可安装文件<br/>
+<img src="media/15538518127841/15538768732306.jpg" alt="" style="width:1057px;"/></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15537643467312.html">iOS 编译 Clang 和 LLVM</a></h1>
+			<p class="meta"><time datetime="2019-03-28T17:12:26+08:00" 
+			pubdate data-updated="true">03/28/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>本文学习自戴铭老师的<a href="https://github.com/ming1016/study/wiki/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90-iOS-%E7%BC%96%E8%AF%91-Clang---LLVM">深入剖析 iOS 编译 Clang LLVM</a></p>
+
+<h2 id="toc_0">LLVM</h2>
+
+<p>LLVM( Low Level Virtual Machine)是swift之父开发的一款编译器开发工具套件，可以用于常规编译器，JIT编译器（JIT是一种提高程序运行效率的方法）、汇编器、调试器、静态分析工具等。其后来又开发了clang，</p>
+
+<p>iOS开发中的OC就是用Clang/LLVM来编译的</p>
+
+<p>Swift是swift/LLVM,其中Swift前端会多出来SIL optimizer（SIL优化器），把.swift生成的中间代码 .sil，因为swift在编译期间就完成了方法绑定直接通过地址调用属于强类型语言，方法调用不再需要像OC那样的消息发送，这样编译器可以获得更多信息在后面的后端优化上</p>
+
+<p>LLVM是一个模块化和可重用的编译器和工具链技术的集合，Clang是LLVM的子集，是C、C++、Object-C的编译器，用来专门给Apple使用提供比GCC更快的编译速度。Clang提供了<code>clang static analyzer</code>即analyzer分析工具用于进行语法分析，语义分析和生成中间代码，这个过程会对代码进行检查，出错的和需要警告的会标注出来。<code>lld</code>是Clang/LLVM内置的链接器，clang必须调用链接器来产生可执行文件</p>
+
+<p>LLVM 比较有特色的一点是它能提供一种代码编写良好的中间表示 IR（IR寄存器？），这意味着它可以作为多种语言的后端，这样就能够提供语言无关的优化同时还能够方便的针对多种 CPU 的代码生成</p>
+
+<h2 id="toc_1">编译流程</h2>
+
+<p>先写一个简单的例子程序来看一下程序如何运行</p>
+
+<pre><code class="language-objectivec">#import &lt;Foundation/Foundation.h&gt;
+#define DEFINEEight 8
+int main(int argc, char * argv[]) {
+    @autoreleasepool {
+#pragma mark - Mark--
+        int eight = DEFINEEight;
+        int six = 6;
+        char a = &#39;a&#39;;
+        char *str = &quot;strTest&quot;;
+        NSString *site = [[NSString alloc] initWithUTF8String:&quot;starming&quot;];
+        int rank = eight + six;
+        NSLog(@&quot;%@ rank %d&quot;, site, rank);
+        printf(&quot;%s and %c&quot;, str, a);
+//        return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
+    }
+//    return 0;
+}
+</code></pre>
+
+<p>查看<code>clang</code>编译的阶段</p>
+
+<pre><code class="language-text">//在终端输入命令
+clang -ccc-print-phases main.m
+
+//总共有7步骤，
+0: input, “main.m”, objective-c //输入文件
+1: preprocessor, {0}, objective-c-cpp-output //预编译
+2: compiler, {1}, ir //优化编译为中间代码IR,前端的输出、后端的输入
+3: backend, {2}, assembler //编译为汇编语言
+4: assembler, {3}, object //汇编为目标程序
+5: linker, {4}, image //链接为可执行文件
+6: bind-arch, “x86_64”, {5}, image 
+</code></pre>
+
+<p>查看OC代码的C语言实现:<br/>
+<code>clang -rewrite-objc main.m</code>会生成一个main.cpp的C语言文件</p>
+
+<pre><code class="language-c">//在文件的最后可以看到我们代码的实现
+int main(int argc, char * argv[]) {
+    /* @autoreleasepool */ { __AtAutoreleasePool __autoreleasepool; 
+        int eight = 8;
+        int six = 6;
+        char a = &#39;a&#39;;
+        char *str = &quot;strTest&quot;;
+        NSString *site = ((NSString * _Nullable (*)(id, SEL, const char * _Nonnull))(void *)objc_msgSend)((id)((NSString *(*)(id, SEL))(void *)objc_msgSend)((id)objc_getClass(&quot;NSString&quot;), sel_registerName(&quot;alloc&quot;)), sel_registerName(&quot;initWithUTF8String:&quot;), (const char *)&quot;starming&quot;);
+        int rank = eight + six;
+        NSLog((NSString *)&amp;__NSConstantStringImpl__var_folders_m7_58pb6m6x3dqbv727djzdvbvw0000gn_T_main_3cf008_mi_0, site, rank);
+        printf(&quot;%s and %c&quot;, str, a);
+
+    }
+
+}
+</code></pre>
+
+<p>查看操作内部命令，可以使用 -### 命令<br/>
+clang -### main.m -o main</p>
+
+<ol>
+<li><p>查看clang的的预编译实现:<br/>
+<code>clang -E main.m</code> 查看预编译的结果</p>
+<pre><code class="language-objectivec">
+//在预编译文件的最后可以看到我们代码的预编译结果<br/>
+# 1 &quot;/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/System/Library/Frameworks/Foundation.framework/Headers/FoundationLegacySwiftCompatibility.h&quot; 1 3<br/>
+# 185 &quot;/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/System/Library/Frameworks/Foundation.framework/Headers/Foundation.h&quot; 2 3<br/>
+# 12 &quot;main.m&quot; 2<br/>
+int main(int argc, char * argv[]) {<br/>
+    @autoreleasepool {<br/>
+        UIView *view = [[UIView alloc] init];<br/>
+        view.backgroundColor = [UIColor redColor];<br/>
+        int eight = 8;<br/>
+        int six = 6;<br/>
+        char a = &#39;a&#39;;<br/>
+        char *str = &quot;strTest&quot;;<br/>
+        NSString *site = [[NSString alloc] initWithUTF8String:&quot;starming&quot;];<br/>
+        int rank = eight + six;<br/>
+        NSLog(@&quot;%@ rank %d&quot;, site, rank);<br/>
+        printf(&quot;%s and %c&quot;, str, a);<br/>
+    }<br/>
+}
+</code></pre>
+<p>在预编译的过程中做的事情有:</p>
+<ul>
+<li><code>#define</code>宏的替换</li>
+<li><code>#include</code><code>#import</code>文件的导入</li>
+<li><code>#indef</code></li>
+<li>注释的去除</li>
+<li><code>#pragma</code>的去除</li>
+</ul></li>
+<li><p>在预处理完成后进行词法分析，把代码编程一个个的token，比如大小括号，等于号还有字符串等,格式化代码<br/>
+<code>clang -fmodules -fsyntax-only -Xclang -dump-tokens main.m</code></p></li>
+<li><p>然后语法分析，验证语法是否正确，将所有节点组成抽象语法树AST<br/>
+<code>clang -fmodules -fsyntax-only -Xclang -ast-dump main.m</code></p>
+<p>下面为部分简单语句的AST结构:<br/>
+//<code>int eight = 8;</code><br/>
+<img src="media/15537643467312/15538400757623.jpg" alt="" style="width:880px;"/> <br/>
+    //<code>char a = &#39;a&#39;;</code><br/>
+<img src="media/15537643467312/15538401099554.jpg" alt="" style="width:840px;"/><br/>
+    //<code>char *str = &quot;strTest&quot;;</code><br/>
+<img src="media/15537643467312/15538401215169.jpg" alt="" style="width:878px;"/><br/>
+    // <code>NSString *site = [[NSString alloc]  initWithUTF8String:&quot;starming&quot;];</code><br/>
+<img src="media/15537643467312/15538401867042.jpg" alt="" style="width:880px;"/><br/>
+//<code>NSLog(@&quot;%@ rank %d&quot;, site, rank);</code><br/>
+<img src="media/15537643467312/15538403856423.jpg" alt="" style="width:830px;"/></p></li>
+<li><p>完成这些步骤之后，就可以开始中间代码的生成了</p>
+<p><code>CodeGen</code>会负责将语法树自上向下逐步翻译成<code>LLVM IR</code>，IR就是编译过程前端的输出、后端的输入</p>
+<p>用命令行:<br/>
+<code>clang -S -fobjc-arc -emit-llvm main.m -o main.ll</code><br/>
+生成.ll文件即为IR中间代码<br/>
+LLVM会在这一步做一些优化的事情，我们也可以在Xcode中设置优化级别<br/>
+<img src="media/15537643467312/15538506827890.jpg" alt="" style="width:902px;"/><br/>
+<img src="media/15537643467312/15538508218589.jpg" alt="" style="width:465px;"/></p>
+<p>默认为在debug模式下为-O0.Release模式下为-Os</p>
+<p>我们也可以使用命令行指定优化级别:</p>
+<pre><code class="language-text">//指定优化级别为-O3
+clang -O3 -S -fobjc-arc -emit-llvm main.m -o main.ll<br/>
+最直接的结果,就是这两个优化命令，对我们的程序产生的IR文件分别为//108行代码 和81行代码
+</code></pre>
+<p>Pass 是 LLVM 优化工作的一个节点，一个节点做些事，一起加起来就构成了 LLVM 完整的优化和转化。</p>
+<p>如果开启了<code>bitcode</code>苹果会做进一步的优化，有新的后端架构还是可以用这份优化过的 bitcode 去生成。</p>
+<p><code>clang -emit-llvm -c main.m -o main.bc</code></p></li>
+<li><p>编译生成汇编文件</p>
+<pre><code class="language-text">//生成汇编文件 main.s
+clang -S -fobjc-arc main.m -o main.s
+</code></pre>
+<p>下面是部分main.s汇编文件内容<br/>
+<img src="media/15537643467312/15538515406816.jpg" alt="" style="width:638px;"/></p></li>
+<li><p>汇编之后生成目标文件</p>
+<pre><code class="language-text">//生成目标文件 main.o 此时内容就是一堆二进制了
+clang -fmodules -c main.m -o main.o
+</code></pre></li>
+<li><p>链接后生成可执行文件</p>
+<pre><code class="language-text">clang main.o -o main
+</code></pre></li>
+<li><p>执行可执行文件</p>
+<pre><code class="language-text">执行
+./main<br/>
+输出<br/>
+starming rank 14
+</code></pre></li>
+</ol>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15538277002309.html">基础知识</a></h1>
+			<p class="meta"><time datetime="2019-03-29T10:48:20+08:00" 
+			pubdate data-updated="true">03/29/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">编译过程</h2>
+
+<p>从源代码文件到可执行文件</p>
+
+<p>以C语言程序为例子:<br/>
+<img src="media/15538277002309/15538277527739.jpg" alt="" style="width:963px;"/></p>
+
+<p>程序经历了预处理、编译、汇编、链接<br/>
+编译后为汇编文件、汇编之后的文件即为<code>.o</code>文件（二进制文件）,经过链接后即变为可执行文件（二进制文件）</p>
+
+<p>编译将高级语言翻译为汇编语言<br/>
+汇编即将语言翻译为机器语言指令，并打包为可重定位目标程序，即.o文件</p>
+
+<h2 id="toc_1">LLVM和Clang的历史</h2>
+
+<h3 id="toc_2">GCC</h3>
+
+<p>是GUN开发的编程语言编译器，是自由类的Unix和苹果电脑Mac OS X操作系统标准编译器，原本用来处理C语言，后来扩展为可以处理C++、Fortran、Pascal、Objective-C、Java, 以及 Ada与其他语言</p>
+
+<h3 id="toc_3">LLVM</h3>
+
+<p>LLVM 是 Low Level Virtual Machine 的简称，这个库提供了与编译器相关的支持，能够进行程序语言的编译期优化、链接优化、在线编译优化、代码生成。简而言之，就是可以作为多种语言编译器的<strong>后台</strong>使用</p>
+
+<p>Clang是C++编写的、基于LLVM的C/C++/Objective C/Objective C++ 编译器，其目标就是超越GCC</p>
+
+<p>LLVM历史:<br/>
+Apple早期是用GCC作为官方编译器，但是苹果给Object-C新增了很多特性，但是GCC开发者并不愿意给Apple实现，因此Apple就找到了毕业的Chris Lattner，其在学校就突出了一整套的完整的在编译时、链接时、运行时、甚至是在闲置时优化程序的编译思想，即为LLVM，其用GCC作为前端来对于用户程序进行语意分析产生IF（Intermidiate Format中间格式）然后用LLVM分析完成代码的优化和生成</p>
+
+<p>Clang历史:<br/>
+Apple吸收了Chris Lattner后，觉得GCC庞大而且笨重，然而自己OC语言在gcc中的优先级很低，再加上一些许可证方面的要求。Apple决定写一个只支C、C++、Object-C语言的前端Clang，来完全替代GCC</p>
+
+
+		</div>
+
+		
+
+	</article>
+  
+	<div class="pagination">
+	
+<a href="archives.html">Blog Archives</a>
+	 <a class="next" href="iOS编译流程.html">Newer &rarr;</a>  
+	    
+	</div>
+</div>
+ <aside class="sidebar"> 
+
+	<section>
+	  <h1>Categories</h1>
+	  <ul id="recent_posts">
+	  
+	      <li class="post">
+	        <a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B&&Runloop.html"><strong>多线程&&Runloop&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="RunLoop.html">RunLoop&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B.html">多线程&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8&&%E9%94%81.html">线程安全&&锁&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="KVC&&KVO.html">KVC&&KVO&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="runtime%E5%AD%A6%E4%B9%A0.html"><strong>runtime学习&nbsp;(9)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&&block.html"><strong>内存管理&&block&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="OC%E9%AB%98%E7%BA%A7%E7%BC%96%E7%A8%8B-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">OC高级编程-内存管理&nbsp;(6)</a>&nbsp;&nbsp;
+	        
+	        	<a href="block%E5%AD%A6%E4%B9%A0.html">block学习&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%AE%98%E6%96%B9%E6%96%87%E6%A1%A3-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">官方文档-内存管理&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-%E6%8B%BE%E9%81%97.html">内存管理-拾遗&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BD%91%E7%BB%9C.html"><strong>网络&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="GPU&&%E6%B8%B2%E6%9F%93.html"><strong>GPU&&渲染&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F&&%E7%BB%84%E4%BB%B6%E5%8C%96.html"><strong>设计模式&&组件化&nbsp;(8)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E6%9E%B6%E6%9E%84%E8%B0%88(%E6%91%98%E5%BD%95).html">设计模式架构谈(摘录)&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BB%84%E4%BB%B6%E5%8C%96%E5%BC%80%E5%8F%91%E5%AD%A6%E4%B9%A0.html">组件化开发学习&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BC%96%E8%AF%91&&dyld&&Mach-O.html"><strong>编译&&dyld&&Mach-O&nbsp;(19)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html">iOS编译流程&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="dyld(%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8).html">dyld(程序启动)&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Mach-O%E6%96%87%E4%BB%B6%E4%BA%86%E8%A7%A3.html">Mach-O文件了解&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%A8%A1%E5%9D%97%E5%8C%96%E7%9F%A5%E8%AF%86.html"><strong>模块化知识&nbsp;(26)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS-CoreAnimation.html">iOS-CoreAnimation&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="CoreGraphic.html">CoreGraphic&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ARKit.html">ARKit&nbsp;(7)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%E5%92%8C%E4%BD%BF%E7%94%A8.html"><strong>第三方项目学习和使用&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="AFNetworking.html">AFNetworking&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="AsyncDisplayKit.html">AsyncDisplayKit&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ReactnativeCocoa.html">ReactnativeCocoa&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="PromiseKit.html">PromiseKit&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7%E5%92%8C%E4%BC%98%E5%8C%96.html"><strong>项目监控和优化&nbsp;(10)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="APP%E4%BD%93%E7%A7%AF%E4%BC%98%E5%8C%96.html">APP体积优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%90%AF%E5%8A%A8%E4%BC%98%E5%8C%96.html">启动优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%B0%83%E8%AF%95&&%E6%B5%8B%E8%AF%95.html"><strong>调试&&测试&nbsp;(6)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="Instrument%E5%AD%A6%E4%B9%A0.html">Instrument学习&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="LLDB.html">LLDB&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95.html">自动化测试&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%B7%A5%E5%85%B7.html"><strong>工具&nbsp;(5)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="git.html">git&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Cocoapods.html">Cocoapods&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%8B%BE%E9%81%97.html"><strong>拾遗&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%9D%A2%E8%AF%95.html">面试&nbsp;(12)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">iOS开发知识点拾遗&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">知识点拾遗&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html">iOS 小知识&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Swift-BaseLearning.html"><strong>Swift基础知识&nbsp;(28)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Computer-programming.html"><strong>计算机编程&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html">知识普及&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Flex.html">Flex&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
+	        
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="React-Native.html"><strong>React-Native&nbsp;(6)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Python.html"><strong>Python&nbsp;(14)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html"><strong>算法读书笔记&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	   
+	  </ul>
+	</section>
+	<section>
+	  <h1>Recent Posts</h1>
+	  <ul id="recent_posts">
+	  
+	      
+		      <li class="post">
+		        <a href="15718858302183.html">官方文档</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710248960458.html">Layout Specs</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707800044047.html">Node Lifecycle</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707737201639.html">线程</a>
+		      </li>
+	     
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	   
+	  </ul>
+	</section>
+	
+</aside> </div></div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 -  -
+  <span class="credit">Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a> &nbsp;&nbsp; Theme by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+
+  
+    
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,2132 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>
+    
+  ACEfish-Blog
+  
+
+  </title>
+  <meta name="author" content="">
+  <meta name="description" content="学习记录">
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link href="asset/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+  <script src="asset/js/modernizr-2.0.js"></script>
+  <script src="asset/js/jquery.min.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/solarized_light.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  <style type="text/css">
+  .cat-children-p{ padding: 6px 0px;}
+  .hljs{background: none;}
+  </style>
+  <script type="text/javascript">
+  var isAddSildbar = true;
+  </script>
+  <script src="asset/js/octopress.js" type="text/javascript"></script>
+</head>
+<script type="text/javascript">
+//链接新开窗口
+function addBlankTargetForLinks () {
+  $('a[href^="http"]').each(function(){
+      $(this).attr('target', '_blank');
+  });
+}
+$(document).ready(function(event) {
+  addBlankTargetForLinks();
+});
+</script>
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="index.html">ACEfish-Blog</a></h1>
+  
+    <h2>学习记录</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:acefish.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+
+  <li id=""><a target="_self" href="index.html">首页</a></li>
+
+  <li id=""><a target="_self" href="archives.html">归档</a></li>
+
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content"> 
+<div class="blog-index">
+
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15031302948355.html">可选链式调用</a></h1>
+			<p class="meta"><time datetime="2017-08-19T16:11:34+08:00" 
+			pubdate data-updated="true">08/19/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p><strong>可选链式调用</strong>是在当前值可能为<code>nil</code>的可选值上请求和调用属性、方法以及下标的方法。如果可选值不为空,调用成功,否则如果可选值为<code>nil</code>，那么调用将返回<code>nil</code>。多个调用可以结合为一个调用链,若任何一个节点为<code>nil</code>。整个调用链都会失败</p>
+
+<h2 id="toc_0">可选链式调用代替强制展开</h2>
+
+<p>在想调用的属性、方法、下标的可选值后加上<code>?</code>来定义一个可选链。</p>
+
+<blockquote>
+<p>很像在可选值后面放一个叹号（<code>!</code>）来强制展开它的值。它们的主要区别在于当可选值为空时可选链式调用只会调用失败，然而强制展开将会触发运行时错误</p>
+</blockquote>
+
+<p>可选链式调用,不论调用的属性、方法及下标返回值的类型,返回结果都是具有相同类型的可选值,可以利用这个可选返回值来判断链式调用是否成功,有值则返回成功，<code>nil</code>表示调用失败</p>
+
+<pre><code class="language-swift">class Person {
+    var residence: Residence?
+}
+class Residence {
+    var numberOfRooms = 1
+}
+let john = Person()
+</code></pre>
+
+<p>我们直接<code>let roomCount = john.residence!.numberOfRooms</code>因为<code>residence</code>为<code>nil</code>强制展开的话是会触发运行时错误的</p>
+
+<p>这时我们可以采用可选链式调用来访问<code>numberOfRooms</code>用<code>?</code>代替<code>!</code></p>
+
+<pre><code class="language-swift">if let roomCount = john.residence?.numberOfRooms {
+    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
+} else {
+    print(&quot;Unable to retrieve the number of rooms.&quot;)
+}
+</code></pre>
+
+<p><strong>添加问号之后，Swift 就会在<code>residence</code>不为<code>nil</code>的情况下访问<code>numberOfRooms</code></strong></p>
+
+<p>即使<code>numberOfRooms</code>是非可选类型<code>Int</code>，只要使用可选链式调用就意味着<code>numberOfRooms</code>会返回<code>Int?</code>而不是<code>Int</code></p>
+
+<h2 id="toc_1">为可选链式调用定义模型类</h2>
+
+<h2 id="toc_2">通过可选链式调用访问属性</h2>
+
+<p>通过可选链式调用<strong>访问可能不存在实例的属性</strong>:</p>
+
+<pre><code class="language-swift">//john.residence实例可能为nil
+let john = Person()
+if let roomCount = john.residence?.numberOfRooms {
+    print(&quot;John&#39;s residence has \(roomCount) room(s).&quot;)
+} else {
+    print(&quot;Unable to retrieve the number of rooms.&quot;)
+}
+</code></pre>
+
+<p>通过可选链式调用<strong>设置属性值</strong></p>
+
+<pre><code class="language-swift">//john.residence实例可能为nil
+let someAddress = Address()
+john.residence?.address = someAddress
+</code></pre>
+
+<blockquote>
+<p>注意:</p>
+
+<p>可以通过可选属性值 设置属性值</p>
+</blockquote>
+
+<p>对于这种可选链式调用的赋值,如果<code>john.residence</code>为<code>nil</code>，获取<code>address</code>属性失败，那么右侧的代码是不会被执行的</p>
+
+<h2 id="toc_3">通过可选链式调用调用方法</h2>
+
+<p>对于<code>Residence</code>类中定义的方法</p>
+
+<pre><code class="language-swift">func printNumberOfRooms() {
+    print(&quot;The number of rooms is \(numberOfRooms)&quot;)
+}
+</code></pre>
+
+<p>这个方法没有返回值,那就是具有隐式的返回值<code>Void</code><br/>
+那么如果用可选链式调用这个方法，返回值就为<code>Void?</code></p>
+
+<pre><code class="language-swift">//john.residence 为Residence类 可能为nil的实例
+if john.residence?.printNumberOfRooms() != nil {
+    print(&quot;It was possible to print the number of rooms.&quot;)
+} else {
+    print(&quot;It was not possible to print the number of rooms.&quot;)
+}
+//可以根据返回值是否为nil 判断调用是否成功
+</code></pre>
+
+<p>对实例中的属性赋值 也会返回一个可选类型</p>
+
+<pre><code class="language-swift">if (john.residence?.address = someAddress) != nil {
+print(&quot;It was possible to set the address.&quot;)
+} else {
+print(&quot;It was not possible to set the address.&quot;)
+}
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>没有返回值的函数可选链式调用后返回的时 <code>void?</code></p>
+</blockquote>
+
+<h2 id="toc_4">通过可选链式调用访问下标</h2>
+
+<p>可以在一个可选值上访问下标,判断下标是否成功</p>
+
+<pre><code class="language-swift">//john.residence可能为nil
+//问号放在下标前面表示john.residence是可选值
+if let firstRoomName = john.residence?[0].name {
+    print(&quot;The first room name is \(firstRoomName).&quot;)
+} else {
+    print(&quot;Unable to retrieve the first room name.&quot;)
+}
+</code></pre>
+
+<blockquote>
+<p>注意:</p>
+
+<p>可选链式调用访问可选值下标时，将问号放在下标方括号的前面而不是后面</p>
+</blockquote>
+
+<pre><code class="language-swift">john.residence?[0] = Room(name: &quot;Bathroom&quot;)
+</code></pre>
+
+<p><code>john.residence</code>为nil时，赋值仍然会失败</p>
+
+<h3 id="toc_5">访问可选类型的下标</h3>
+
+<p>如果下标返回可选类型值,可以在下标的结尾括号后面放一个问号来在其可选返回值上进行可选链式调用</p>
+
+<pre><code class="language-swift">var testScores = [&quot;Dave&quot;: [86, 82, 84], &quot;Bev&quot;: [79, 94, 81]]
+testScores[&quot;Dave&quot;]?[0] = 91
+testScores[&quot;Bev&quot;]?[0] += 1
+testScores[&quot;Brian&quot;]?[0] = 72
+</code></pre>
+
+<p>定义一个字典,包含两个键值对，因为字典下标返回的是可选类型值,对于<code>testScores[&quot;Brian&quot;]</code>因为字典中没有这个键，所以返回为<code>nil</code>，调用失败</p>
+
+<blockquote>
+<p>注意:</p>
+
+<p>如果下表返回可选类型值，可以在下标结尾括号后放<code>?</code></p>
+</blockquote>
+
+<h2 id="toc_6">连接多层可选链式调用</h2>
+
+<p>可以连接多个可选链式调用在更深模型层级中访问属性、方法、下标，但是是不会增加返回值的可选层级的</p>
+
+<ul>
+<li>通过可选链式调用访问一个 Int 值，将会返回 Int? ，无论使用了多少层可选链式调用</li>
+<li>通过可选链式调用访问 Int? 值，依旧会返回 Int? 值，并不会返回 Int??</li>
+</ul>
+
+<pre><code class="language-swift">if let johnsStreet = john.residence?.address?.street {
+    print(&quot;John&#39;s street name is \(johnsStreet).&quot;)
+} else {
+    print(&quot;Unable to retrieve the address.&quot;)
+}
+</code></pre>
+
+<p><code>john.residence.address</code>为<code>nil</code>因此调用失败<br/>
+尽管<code>street</code>属性为<code>String？</code>  返回值仍然为<code>String?</code></p>
+
+<h2 id="toc_7">在方法的可选返回值上进行可选链式调用</h2>
+
+<pre><code class="language-swift">if let buildingIdentifier = john.residence?.address?.buildingIdentifier() {
+    print(&quot;John&#39;s building identifier is \(buildingIdentifier).&quot;)
+}
+</code></pre>
+
+<p>在可选值的基础上调用<code>buildingIdentifier()</code>方法  返回<code>String?</code>类型值</p>
+
+<pre><code class="language-swift">if let beginsWithThe =
+john.residence?.address?.buildingIdentifier()?.hasPrefix(&quot;The&quot;) {
+    if beginsWithThe {
+        print(&quot;John&#39;s building identifier begins with \&quot;The\&quot;.&quot;)
+    } else {
+        print(&quot;John&#39;s building identifier does not begin with \&quot;The\&quot;.&quot;)
+    }
+}
+</code></pre>
+
+<p>在方法的返回值基础上进行可选链式调用 </p>
+
+<blockquote>
+<p>在方法的圆括号后面加上问号即可</p>
+</blockquote>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="14892022301750.html">图层几何学、视觉效果</a></h1>
+			<p class="meta"><time datetime="2017-03-11T11:17:10+08:00" 
+			pubdate data-updated="true">03/11/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>遗忘点:</p>
+
+<ol>
+<li>用作mask的layer不一定非要静态的,只要有layer的都可以作为蒙版</li>
+</ol>
+
+<p>2.<code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；我们常用这个方法获取点击位置的视图（判断点击在了哪个视图）</p>
+
+<pre><code class="language-text">CALayer *layer = [self.layerView.layer hitTest:point];
+</code></pre>
+
+<h2 id="toc_0">图层几何学</h2>
+
+<h3 id="toc_1">布局</h3>
+
+<p>UIView布局属性:<code>frame</code> <code>bounds</code> <code>center</code><br/><br/>
+与之对应<br/>
+CALayer布局属性:<code>frame</code> <code>bounds</code> <code>position</code><br/>
+center和postion是一样的值，都代表了相对于父图层 <code>anchorPoint</code> 所在的位置</p>
+
+<p>视图的布局属性仅仅是存取方法，对其进行改变其实是改变视图下方CALayer的frame  </p>
+
+<p>视图或者图层的frame是根据其bounds，position和transform计算而来的，其中任意一值发生改变都会导致其frame改变  </p>
+
+<p><img src="media/14892022301750/14892031426669.jpg" alt=""/></p>
+
+<h3 id="toc_2">锚点</h3>
+
+<p>视图的<code>center</code>属性和图层的<code>position</code>属性都指定了<code>anchorPoint</code>相对于父图层的位置。</p>
+
+<p><code>anchorPoint</code>是用来移动图层的把柄</p>
+
+<p>默认<code>anchorPoint</code>是在图层的中心,这个属性UIView并没有暴露出来,这也是视图的<code>position</code>属性被叫做“center”的原因。但是图层的锚点可以移动，锚点的移动会导致frame的改变即位置改变</p>
+
+<p><img src="media/14892022301750/14893741880682.jpg" alt=""/></p>
+
+<p>anchorPoint也是单位坐标，默认是{0.5，0.5}，可以通过指定大于或者小于1，使其在图层范围之外</p>
+
+<p>改变<code>anchorPoint</code>常用于做不随着中心点做动画的动画使用,比如 时钟的表针旋转</p>
+
+<p><strong>注意</strong><br/>
+中心和锚点（即position或者center和anchorPoint没有任何关系），锚点的改变不会影响中心点位置，只会影响frame</p>
+
+<pre><code class="language-objectivec">position.x = frame.origin.x + anchorPoint.x * bounds.size.width；  
+position.y = frame.origin.y + anchorPoint.y * bounds.size.height；
+
+frame.origin.x = position.x - anchorPoint.x * bounds.size.width；  
+frame.origin.y = position.y - anchorPoint.y * bounds.size.height；
+</code></pre>
+
+<h3 id="toc_3">坐标系转换</h3>
+
+<p>CALayer提供了转换坐标系的方法（视图也有）</p>
+
+<pre><code class="language-objectivec">- (CGPoint)convertPoint:(CGPoint)point fromLayer:(CALayer *)layer;
+- (CGPoint)convertPoint:(CGPoint)point toLayer:(CALayer *)layer;
+- (CGRect)convertRect:(CGRect)rect fromLayer:(CALayer *)layer;
+- (CGRect)convertRect:(CGRect)rect toLayer:(CALayer *)layer;
+</code></pre>
+
+<h3 id="toc_4">Z坐标</h3>
+
+<p>UIView是二维坐标 而CALayer则是三维的<br/><br/>
+因此CALayer还有两个属性:<code>zPosition</code> <code>anchorPointZ</code> 在Z轴上描述图层位置的浮点类型<br/>
+<code>zPosition</code>最实用的功能就是改变图层的显示顺序了，一般给图层增加<code>1.f</code>就可以控制显示顺序了</p>
+
+<h3 id="toc_5">HIT Testing</h3>
+
+<p><code>CALayer</code>并不关心任何响应链事件，所以不能直接处理触摸事件或者手势。但是它有一系列的方法帮你处理事件：<code>-containsPoint:</code>和<code>-hitTest:</code>。    </p>
+
+<p><code>-containsPoint:</code> 接受一个在本图层坐标系吓得一个CGPoint，如果这个点在图层frame内就返回YES。注意必须将这个点转为每个图层坐标系下的坐标</p>
+
+<p><code>-hitTest:</code>同样接受一个 CGPoint 类型参数,返回的是图层本身或者包含这个坐标点的叶子节点图层.如果这个点在最爱曾图层范围外,返回nil；</p>
+
+<pre><code class="language-objectivec">//举个栗子
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    //get touch position
+    CGPoint point = [[touches anyObject] locationInView:self.view];
+    //get touched layer
+    //获取这个点击的layer
+    CALayer *layer = [self.layerView.layer hitTest:point];
+    //get layer using hitTest
+    if (layer == self.blueLayer) {
+        [[[UIAlertView alloc] initWithTitle:@&quot;Inside Blue Layer&quot; message:nil delegate:nil cancelButtonTitle:@&quot;OK&quot; otherButtonTitles:nil] show];
+    } else if (layer == self.layerView.layer) {
+        [[[UIAlertView alloc] initWithTitle:@&quot;Inside White Layer&quot;
+        message:nil
+        delegate:nil
+        cancelButtonTitle:@&quot;OK&quot;
+        otherButtonTitles:nil] show];
+    }
+}
+
+</code></pre>
+
+<p><strong>注意</strong></p>
+
+<ol>
+<li>当调用图层的<code>-hitTest:</code>方法时，测算的顺序严格依赖于图层树当中的图层顺序（和<code>UIView</code>处理事件类似）。之前提到的<code>zPosition</code>属性可以明显改变屏幕上图层的顺序，但不能改变事件传递的顺序。<br/></li>
+<li>这两个方法是layer的实例方法 我们可以直接用layer调用而不需要作为系统判断方法</li>
+</ol>
+
+<h3 id="toc_6">自动布局</h3>
+
+<p>对于UIView如果想要自动布局我们可以使用<code>UIViewAutoresizingMask</code>  和<code>NSLayoutConstraint</code>API<br/><br/>
+CALayer没有自动布局办法<br/>
+如果想要随意控制CALayer的布局，我们可以用CALayerDelegate方法:  </p>
+
+<pre><code class="language-objectivec">- (void)layoutSublayersOfLayer:(CALayer *)layer;
+/**当图层的 bounds 发生改变，或者图层的 -setNeedsLayout 方法被调用的时候，这个函数将会被执
+行。（但是也没法做大自适应屏幕等自动布局,这也是为什么我们用UIView来布局）*/
+</code></pre>
+
+<h2 id="toc_7">视觉效果</h2>
+
+<h3 id="toc_8">圆角</h3>
+
+<p>CALayer有一个叫做<code>conrnerRadius</code>的属性控制着图层角的曲率。它是一个浮点数，默认为0（为0的时候就是直角）,默认这个值不影响背景图片或者子图层,但是如果设置<code>maskToBounds</code>为<code>YES</code>,图层中东西都会被截取.</p>
+
+<h3 id="toc_9">图层边框</h3>
+
+<p><code>borderWidth</code>和<code>borderColor</code>，这条线（stroke）沿着图层的bounds绘制,同时也包含图层的角.<br/>
+<code>borderWith</code>以点为单位的浮点数<br/><br/>
+<code>borderColor</code>边框的颜色默认黑色,<code>CGColorRef</code>类型，不是UIColor所以不是<code>Cocoa</code>内置对象  </p>
+
+<pre><code class="language-objectivec">// CGColorRef 属性即便是强引用也只能通过assign关键字来声明
+@property(nullable) CGColorRef borderColor;
+</code></pre>
+
+<p><strong>注意</strong></p>
+
+<ol>
+<li>边框是绘制在图层边界里面的，而且在所有子内容之前，也在子图层之前。（这个之前是显示最前而不是在最前绘制被遮盖）</li>
+<li>边框是跟随图层的边界变化的，而不是图层里面的内容</li>
+<li>
+<img src="media/14892022301750/14893838391060.jpg" alt=""/></li>
+</ol>
+
+<h3 id="toc_10">阴影</h3>
+
+<p><code>shadowOpacity</code>默认0。他是一个必须在<code>0.0</code>（不可见）和<code>1.0</code>（完全不透明）之间的浮点数。  </p>
+
+<p>阴影的另外三个属性:<br/><br/>
+<code>shadowColor</code>控制阴影的颜色，和 borderColor 和 backgroundColor 一样，它的类型也是 CGColorRef，默认黑色<br/><br/>
+<code>shadowOffset</code>阴影的方向和距离 CGSize类型，宽度为阴影横向位移，高度为纵向位移，默认{0,-3},即相对Y轴有3个点的向上位移<br/><br/>
+<code>shadowRadius</code>控制着阴影的模糊度，当它的值是0的时候，阴影就和视图一样有一个非常确定的边界线。我们推荐为大于0的值,值越大阴影越模糊,图层层次更明显.</p>
+
+<p><img src="media/14892022301750/14893848191222.jpg" alt=""/></p>
+
+<h4 id="toc_11">阴影裁剪</h4>
+
+<p>与边框不同,图层的阴影继承自内容的外形，CoreAnimation会将寄宿图（包括子视图）来结合图层形状创建一个阴影。<br/><br/>
+但是由于他们的不同,我们在包括子图层创建阴影后,如果按照边框进行裁剪就会导致部分阴影没有了，这时候我们只能额外创建一个裁剪后的图层形状的阴影图层（可以作为最外层的父图层）来实现效果。</p>
+
+<h3 id="toc_12">shadowPath属性</h3>
+
+<p>因为实时计算阴影是非常消耗资源的,我们可以通过事先指定<code>shadowPath</code>来提高性能.<code>shadowPath</code>是一个<code>CGPathRef</code>类型（一个指向<code>CGPath</code>的指针）。<code>CGPath</code> 是一个<code>Core Graphics</code>对象，用来指定任意的一个矢量图形。我们可以用这个属性在图层形状之外指定阴影形状.  </p>
+
+<p>举个栗子:</p>
+
+<pre><code class="language-objectivec">
+CGMutablePathRef squarePath = CGPathCreateMutable();
+CGPathAddRect(squarePath, NULL, self.layerView1.bounds);
+self.layerView1.layer.shadowPath = squarePath;
+//需要我们手动释放
+CGPathRelease(squarePath);
+//create a circular shadow
+CGMutablePathRef circlePath = CGPathCreateMutable();
+CGPathAddEllipseInRect(circlePath, NULL, self.layerView2.bounds);
+self.layerView2.layer.shadowPath = circlePath; 
+CGPathRelease(circlePath);
+</code></pre>
+
+<p><code>CGPath</code>适合搭建比较简单的形状,比如举行或者圆,但是如果是复杂的图形推荐<strong>使用<code>UIBezierPath</code></strong>，它是一个由UIKit提供的在<code>CGPath</code>基础上的<code>Objective-C</code>包装类</p>
+
+<h3 id="toc_13">图层蒙版</h3>
+
+<p>CALayer的<code>mask</code>属性是一个CALayer类型,它类似于一个自图层，mask图层定义了父图层的可见区域。  </p>
+
+<p>mask图层的color没用,轮廓才是重要的。对于mask图层中的部分会保留下来,其他部分会被抛弃（对于视图View其实你可以看做其他部分还在只不过颜色为透明色,但是这部分还会拦截点击事件）  </p>
+
+<p>这个<code>Mask</code><strong>不仅仅局限于静态图</strong>，任何有图层的构成都可以作为Mask，因此我们甚至可以用一个动画的layer作为蒙版.</p>
+
+<h3 id="toc_14">拉伸过滤</h3>
+
+<p>这里牵涉到<code>minificationFilter</code>和<code>magnificationFilter</code>属性。  </p>
+
+<p>当图片需要显示不同大小的时候,这种拉伸算法就起到作用。它作用于原图的像素上并根据需要生成新的像素显示在屏幕上。</p>
+
+<p><code>CALayer</code>提供给我们三种拉伸过滤方法:</p>
+
+<ul>
+<li>kCAFilterLinear </li>
+<li>kCAFilterNearest</li>
+<li>kCAFilterTrilinear</li>
+</ul>
+
+<p><code>minification</code>（缩小图片）和<code>magnification</code>（放大图片）默认的过滤器都是<code>kCAFilterLinear</code></p>
+
+<p><code>kCAFilterLinear</code>双线性滤波，大多数情况下表现良好，但是当放大倍数较大时会比较模糊不清  </p>
+
+<p><code>kCAFilterTrilinear</code>和<code>kCAFilterLinear</code>很相似，是三线性滤波<br/>
+<img src="media/14892022301750/14893953542514.jpg" alt=""/></p>
+
+<p><code>kCAFilterNearest</code> 最近过滤 ，就是取样最近的单像素点而不管其他的颜色。总的来说，对于比较小的图或者是差异特别明显，极少斜线的大图，最近过滤算法会保留这种差异明显的特质以呈现更好的结果。但是对于大多数的图尤其是有很多斜线或是曲线轮廓的图片来说，最近过滤算法会导致更差的结果。换句话说，线性过滤保留了形状，最近过滤则保留了像素的差异。<br/>
+<img src="media/14892022301750/14893958244715.jpg" alt=""/></p>
+
+<h3 id="toc_15">组透明</h3>
+
+<p>UIView用<code>alpha</code>属性设置透明度<br/>
+CALayy用<code>opacity</code>设置图层透明度<br/>
+这两个属性都是影响子层级的，比如我们设置一个图层透明度为50%，图层的每个像素都会一半显示自己的颜色，另一半显示图层下面的颜色。。但是如果图层包含一个同样显示50%透明的子图层时，你所看到的视图，50%来自子视图，25%来了图层本身的颜色，另外的25%则来自背景色。因此经常导致我们我们视图颜色的不协调。</p>
+
+<p>这时候我们可以<br/><br/>
+方法一：<br/><br/>
+通过设置<code>Info.plist</code>文件中的 <code>UIViewGroupOpacity</code>为<code>YES</code>来达到这个效果，但是这个设置会影响到这个应用，整个app可能会受到不良影响。</p>
+
+<p>方法二：（推荐）<br/><br/>
+设置CALayer的一个叫做<code>shouldRasterize</code>属性来实现组透明的效果，如果它被设置为YES，在应用透明度之前，图层及其子图层都会被整合成一个整体的图片，这样就没有透明度混合的问题了</p>
+
+<p>为了启用<code>shouldRasterize</code>属性，我们设置了图层的<code>rasterizationScale</code>属性。默认情况下，所有图层拉伸都是1.0， 所以如果你使用了<code>shouldRasterize</code>属性，你就要确保你设置了 <code>rasterizationScale</code> 属性去匹配屏幕，以防止出现Retina屏幕像素化的问题。</p>
+
+<pre><code class="language-objectivec">button2.layer.shouldRasterize = YES;
+button2.layer.rasterizationScale = [UIScreen mainScreen].scale;
+</code></pre>
+
+<p><strong>注意</strong><br/>
+当<code>shouldRasterize</code>和<code>UIViewGroupOpacity</code>一起的时候，会出现性能问题（但是好像影响不大）</p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15025006795297.html">析构过程</a></h1>
+			<p class="meta"><time datetime="2017-08-12T09:17:59+08:00" 
+			pubdate data-updated="true">08/12/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>只适用类类型,当类的实例被释放时,析构器会被立即调用。<br/>
+<code>deinit</code>关键字标示析构器</p>
+
+<h2 id="toc_0">析构过程原理</h2>
+
+<p>自动释放不需要的实例来释放资源,通过自动引用计数来管理内存。实例被释放时会自动清理,但是使用自己的资源需要进行额外的清理(比如自己打开一个文件管理类，需要在类被释放前手动关闭该文件).</p>
+
+<p>在类的定义中,每个类最多只能有一个析构器,不带任何参数</p>
+
+<pre><code class="language-swift">deinit {
+    // 执行析构过程
+}
+</code></pre>
+
+<p>析构器在实例被释放前被调用,不能主动调用析构器。子类继承了父类的析构器，并且在子类析构器实现的最后，父类的析构器会被自动调用。</p>
+
+<p>直到实例的析构器被调用后，实例才会被释放,所以析构器可以访问实例的所有属性，并且可以根据那些属<br/>
+性可以修改它的行为(比如查找一个需要被关闭的文件)</p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="14883679213714.html">图层树和寄宿图</a></h1>
+			<p class="meta"><time datetime="2017-03-01T19:32:01+08:00" 
+			pubdate data-updated="true">03/01/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>注意点:</p>
+
+<ol>
+<li><code>contentsScale</code> 并不关心屏幕的拉伸因素而总是默认为1.0。如果我们想以Retina的质量来渲染图层，我们就得手动设置图层的 contentsScale 属性。</li>
+</ol>
+
+<p><code>textLayer.contentsScale = [UIScreen mainScreen].scale;</code></p>
+
+<ol>
+<li></li>
+</ol>
+
+<h2 id="toc_0">图层、视图</h2>
+
+<p>iOS中所有的视图都从UIView中派生而来。<code>UIView</code> 可以处理触摸事件，可以支持基于<code>Core Graphics</code>绘图，可以做仿射变换（例如旋转或者缩放），或者简单的类似于滑动或者渐变的动画。</p>
+
+<p><em><code>CALay</code>与UIView最大的不同是不处理用户的交互</em>，并不清楚具体的响应链（iOS通过视图层级关系用来传送触摸事件的机制），于是它并不能够响应事件，即使它提供了一些方法来判断是否一个触点在图层的范围之内</p>
+
+<p>每一个 UIView 都有一个 CALayer 实例的图层属性，视图的职责就是创建并管理这个图层，以确保当子视图在层级关系中添加或者被移除的时候，他们关联的图层也同样对应在层级关系树当中有相同的操作<br/>
+实际上视图的这些背后关联的图层才是真正用来在屏幕上显示和做动画， UIView 仅仅是对它的一个封装，提供了一些iOS类似于处理触摸的具体功能，以及<code>CoreAnimation</code>底层方法的高级接口。</p>
+
+<p>实际上，这里并不是两个层级关系，而是四个，每一个都扮演不同的角色，<strong>除了<br/>
+视图层级和图层树之外，还存在呈现树和渲染树</strong>。</p>
+
+<p>我们用CALayer处理UIView没有暴露出来的功能(UIView没有响应的高级接口，我们只能介入底层):</p>
+
+<ul>
+<li>阴影，圆角，带颜色的边框</li>
+<li>3D变换</li>
+<li>非矩形范围</li>
+<li>透明遮罩</li>
+<li>多级非线性动画</li>
+</ul>
+
+<p>标准的<code>Xcode</code>项目模板并没有包含<code>Core Animation</code>相关头文件。所以如果我们不给项目添加合适的库，是不能够使用任何图层相关的方法或者访问它的属性。所以首先需要添加<code>QuartzCore</code>框架</p>
+
+<p><strong>视图中的子视图就是图层中的子图层</strong></p>
+
+<h2 id="toc_1">寄宿图</h2>
+
+<p>CALayer的寄宿图（即<strong>图层中包含的图</strong>）</p>
+
+<h3 id="toc_2">contents属性</h3>
+
+<p>CALayer 有一个属性叫做<code>contents</code>，这个属性的类型被定义为<code>id</code>，意味着它可以是任何类型的对象。但是,在实践中，如果你给<code>contents</code>赋的不是<code>CGImage</code>，那么你得到的图层将是空白的。<br/>
+实际上真正应该赋值的类型是<code>CGImageRef</code>,它是指向<code>CGImage</code>的指针。<br/>
+UIImage有一个<code>CGImage</code>属性，它返回一个&quot;<code>CGImageRef</code>&quot;,如果你想把这个值直接赋值给<code>CALayer</code>的 <code>contents</code> ，那你将会得到一个编译错误。因为<code>CGImageRef</code>并不是一个真正的<code>Cocoa</code>对象，而是一个<code>Core Foundation</code>类型。</p>
+
+<pre><code class="language-objectivec">/**
+尽管Core Foundation类型跟Cocoa对象在运行时貌似很像（被称作toll-freebridging），
+他们并不是类型兼容的，不过你可以通过bridged关键字转换。
+*/
+layer.contents = (__bridge id)image.CGImage;
+/**
+    利用CALayer在一个普通的UIView中显示了一张图片。这不是一个UIImageView，它不是我们通常用来展示图片的方法。
+*/
+</code></pre>
+
+<h4 id="toc_3">contentGravity</h4>
+
+<p>我们这样设置的图片也会适应视图拉伸，CALay也有个属性<code>contentsGravity</code>,它是个NSString类型，<br/>
+类似于UIView的<code>contentMode</code>，<code>contentsGravity</code> 的目的是为了决定内容在图层的边界<br/>
+中怎么对齐，我们将使用<code>kCAGravityResizeAspect</code>，它的效果等同于<br/>
+<code>UIViewContentModeScaleAspectFit</code>.</p>
+
+<pre><code class="language-objectivec">self.layerView.layer.contentsGravity = kCAGravityResizeAspect;
+</code></pre>
+
+<h4 id="toc_4">contentScale</h4>
+
+<p><code>contentsScale</code>属性其实属于支持高分辨率（又称Hi-DPI或Retina）屏幕机制的一部分。它用来判断在绘制图层的时候应该为寄宿图创建的空间大小，和需要显示的图片的拉伸度（假设并没有设置<code>contentsGravity</code>属性）。UIView有一个类似功能但是非常少用到的<code>contentScaleFactor</code>属性。<br/>
+如果<code>contentsScale</code>设置为1.0，将会以每个点1个像素绘制图片，如果设置为2.0，则会以每个点2个像素绘制图片，这就是我们熟知的<code>Retina</code>屏幕。这并不会对我们在使用<code>kCAGravityResizeAspect</code>时产生任何影响，因为它就是拉伸图片以适应图层而已，根本不会考虑到分辨率问题。但是如果我们把<code>contentsGravity</code>设置为<code>kCAGravityCenter</code>（这个值并不会拉伸图片），那将会有很明显的变化</p>
+
+<pre><code class="language-objectivec">self.layerView.layer.contentsGravity = kCAGravityCenter;
+self.layerView.layer.contentsScale = image.scale;
+
+/**
+当用代码的方式来处理寄宿图的时候，一定要记住要手动的设置图层的 contentsScale 属性
+，否则，你的图片在Retina设备上就显示得不正确啦
+*/
+layer.contentsScale = [UIScreen mainScreen].scale;
+</code></pre>
+
+<h4 id="toc_5">maskToBounds</h4>
+
+<p>UIView有一个叫做<code>clipsToBounds</code>的属性可以用来决定是否显示超出边界的内容，CALayer对应的属性叫做<code>masksToBounds</code></p>
+
+<h4 id="toc_6">contentRect</h4>
+
+<p>CALayer的 <code>contentsRect</code> 属性允许我们在图层边框里显示寄宿图的一个子域。<br/>
+它使用单位坐标,指定0到1之间是一个相对值（像素和点就是绝对值）,相对于寄宿图的尺寸</p>
+
+<p>默认<code>contentRect</code>是{0，0，1，1},着整个寄宿图默认都是可见的，如果我们指定一个小一点的矩形，图片就会被裁剪<br/>
+事实上给 contentsRect 设置一个负数的原点或是大于{1, 1}的尺寸也是可以的。这种情况下，最外面的像素会被拉伸以填充剩下的区域。</p>
+
+<p><strong>iOS中的坐标系统:</strong></p>
+
+<ul>
+<li>点 —— 在iOS和Mac OS中最常见的坐标体系。点就像是虚拟的像素，也被称作逻辑像素。在标准设备上，一个点就是一个像素，但是在Retina设备上，一个点等于2*2个像素。iOS用点作为屏幕的坐标测算体系就是为了在Retina设备和普通设备上能有一致的视觉效果。</li>
+<li>像素 —— 物理像素坐标并不会用来屏幕布局，但是仍然与图片有相对关系。UIImage是一个屏幕分辨率解决方案，所以指定点来度量大小。但是一些底层的图片表示如CGImage就会使用像素，所以你要清楚在Retina设备和普通设备上，他们表现出来了不同的大小。</li>
+<li>单位 —— 对于与图片大小或是图层边界相关的显示，单位坐标是一个方便的度量方式， 当大小改变的时候，也不需要再次调整。单位坐标在OpenGL这种纹理坐标系统中用得很多，Core Animation中也用到了单位坐标。</li>
+</ul>
+
+<h4 id="toc_7">contentsCenter</h4>
+
+<p><code>contentsCenter</code>是一个CGRect,定义了一个固定的边框和一个在图层上可拉伸的区域.</p>
+
+<p>默认是{0，0，1，1},即当视图大小改变时会均匀大小的拉伸,但是当我们改变这个rect后,横向或者纵向拉伸图片时就只会拉伸我们选定的区域（是rect的区域被拉伸而不是rect之外区域被拉伸）</p>
+
+<p>工作起来的效果和<code>UIImage</code>里的<code>-resizableImageWithCapInsets:</code>方法效果非常类似，只是它可以运用到任何寄宿图，甚至包括在Core Graphics运行时绘制的图形</p>
+
+<p><strong>注意</strong><br/>
+这个属性我们是可以在xib中直接设置的:<br/>
+<img src="media/14883679213714/14891971745538.jpg" alt=""/></p>
+
+<h4 id="toc_8">Custom Drawing</h4>
+
+<p>当然我们设置寄宿图的方法不仅仅只有给<code>content</code>赋值CGImage，我们也可以用Core Grapic直接绘制。我们可以通过继承UIView并且重写<code>-drawRect:</code>方法进行自定义绘制  </p>
+
+<p><code>drawRect</code>方法并没有默认实现，因为对于UIView来说,寄宿图并不是必须的，但是当UIView检测到<code>-drawRect:</code>被调用就会为视图分配一个寄宿图，寄宿图的像素尺寸等于视图大小乘以 <code>contentsScale</code>的值。如果不需要寄宿图就没必要创建这个方法会造成cpu、内存浪费，空的方法也不行.  </p>
+
+<p>当视图在屏幕上出现的时候 <code>-drawRect:</code>方法就会被自动调用。<code>-drawRect:</code> 方法里面的代码利用<code>Core Graphics</code>去绘制一个寄宿图，然后内容就会被缓存起来直到它需要被更新(通常是因为开发者调用了<code>-setNeedsDisplay</code>方法,尽管影响到表现效果属性值被更改时，视图类型会自动重绘，如bounds属性)。  </p>
+
+<p>虽然<code>-drawRect:</code>方法是一个UIView方法，事实上都是底层的<code>CALayer</code>安排了重绘工作和保存了因此产生的图片。</p>
+
+<h4 id="toc_9">CALayeDelegate</h4>
+
+<p><strong>CALaye的代理</strong></p>
+
+<p><strong>这个并不常用</strong></p>
+
+<p>实现了 <code>CALayerDelegate</code> 协议，当<code>CALayer</code>需要一个内容特定的信息时，就会从协议中请求.<br/>
+当需要被重绘的时候，CALayer会请求他的代理给他一个寄宿图来显示.</p>
+
+<pre><code class="language-objectivec">//如果想直接设置contents属性时,可以这样
+-(void)displayLayer:(CALayerCALayer *)layer;
+//如果代理不实现 -displayLayer: 方法 就会调用
+- (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx;
+/**
+    在调用这个方法之前CALayer创建一个合适尺寸的空寄宿图（尺寸由bounds
+    和contentScale决定）和一个coreGraphic绘制的上下文环境ctx
+*/ 
+</code></pre>
+
+<p>举个栗子:</p>
+
+<pre><code class="language-objectivec">CALayer *blueLayer = [CALayer layer];
+[self.layerView.layer addSublayer:blueLayer];
+[blueLayer display];//强制layer重绘
+
+//代理
+- (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx
+{
+    //draw a thick red circle
+    CGContextSetLineWidth(ctx, 10.0f);
+    CGContextSetStrokeColorWithColor(ctx, [UIColor redColor].CGColor);
+    CGContextStrokeEllipseInRect(ctx, layer.bounds);
+}
+
+</code></pre>
+
+<p><strong>注意</strong><br/>
+我们在blueLayer上显式地调用了<code>-display</code>。不同于UIView，当图层显示在屏幕上时，CALayer不会自动重绘它的内容。它把重绘的决定权交给了开发者。</p>
+
+<p>除非你创建了一个单独的图层，你几乎没有机会用到CALayerDelegate协议,因为当UIView创建了它的宿主图层时，它就会自动地把图层的<code>delegate</code>设置为它自己，并提供了一个<code>-displayLayer:</code>的实现</p>
+
+<p>当使用寄宿了视图的图层的时候，你也不必实现<code>-displayLayer:</code>和<code>-drawLayer:inContext:</code>方法来绘制你的寄宿图。通常做法是实现UIView的<code>-drawRect:</code>方法，UIView就会帮你做完剩下的工作，包括在需要重绘的时候调用<code>-display</code>方法。</p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15020961612430.html">构造过程</a></h1>
+			<p class="meta"><time datetime="2017-08-07T16:56:01+08:00" 
+			pubdate data-updated="true">08/07/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>在类、结构体、枚举实例可用前必须执行<strong>构造过程，用来设置存储属性的初始值和其他的设置或初始化任务</strong></p>
+
+<p>通过定义<strong>构造器</strong>来实现构造过程，构造器是用来创建特定类型新实例的特殊方法。</p>
+
+<p>类的实例也可以通过定义析构器在实例释放之前执行特定的清除工作</p>
+
+<blockquote>
+<p>注意:</p>
+
+<p>与OC不同,swift的构造器无序返回值,只需保证实例在第一次使用前完成正确的初始化</p>
+</blockquote>
+
+<h2 id="toc_0">存储属性的初始化赋值</h2>
+
+<p>类和结构体在创建实例时,存储属性必须有合适的值<br/>
+可以在构造器中为存储型属性赋值,也可以在定义属性值时设置默认值,两种方法</p>
+
+<blockquote>
+<p>注意:<br/>
+当你为存储型属性分配默认值或者在构造器中为设置初始值时，它们的值是被直接设置的,不会触发任何属性观察者</p>
+</blockquote>
+
+<h3 id="toc_1">构造器</h3>
+
+<pre><code class="language-swift">//最简单形式
+init() {
+    // 在此处执行构造过程
+}
+</code></pre>
+
+<h3 id="toc_2">默认属性值</h3>
+
+<pre><code class="language-swift">struct Fahrenheit {
+    var temperature = 32.0
+}
+</code></pre>
+
+<h2 id="toc_3">自定义构造过程</h2>
+
+<p>可以通过输入形参和可选属性类型来自定义构造过程，也可以在构造过程中分配常量属性</p>
+
+<h3 id="toc_4">构造参数</h3>
+
+<p>自定义构造过程，在定义中提供<strong>构造参数</strong></p>
+
+<pre><code class="language-swift">struct Celsius {
+    var temperatureInCelsius: Double
+    init(fromFahrenheit fahrenheit: Double) {
+        temperatureInCelsius = (fahrenheit - 32.0) / 1.8
+    }
+    init(fromKelvin kelvin: Double) {
+        temperatureInCelsius = kelvin - 273.15
+    }
+}
+let boilingPointOfWater = Celsius(fromFahrenheit: 212.0)
+// boilingPointOfWater.temperatureInCelsius 是 100.0
+let freezingPointOfWater = Celsius(fromKelvin: 273.15)
+// freezingPointOfWater.temperatureInCelsius 是 0.0
+</code></pre>
+
+<h3 id="toc_5">参数的内部名称和外部名称</h3>
+
+<p>构造器并没有可区分的名字,都为<code>init</code>，因此需要构造器中的参数名和类型来确定应该被调用的构造器,因此外部名称很重要。</p>
+
+<pre><code class="language-swift">struct Color {
+    let red, green, blue: Double
+    init(red: Double, green: Double, blue: Double) {
+        self.red = red
+        self.green = green
+        self.blue = blue
+    }
+    init(white: Double) {
+        red = white
+        green = white
+        blue = white
+    }
+}
+
+let magenta = Color(red: 1.0, green: 0.0, blue: 1.0)
+let halfGray = Color(white: 0.5)
+
+//只要构造器定义了外部名称就必须使用,否则报错
+let veryGreen = Color(0.0, 1.0, 0.0)//报编译时错误，需要外部名称
+</code></pre>
+
+<blockquote>
+<p>注意：</p>
+
+<p>如果不通过实参标签传值，这个构造器是没法调用的。<br/>
+如果构造器定义了实参标签，就必须使用它，忽略会导致编译器错误</p>
+</blockquote>
+
+<h3 id="toc_6">不带外部名的构造器参数</h3>
+
+<p>使用下划线来<code>_</code>来不为构造器某个参数提供外部名称</p>
+
+<pre><code class="language-swift">struct Celsius {
+    var temperatureInCelsius: Double
+    init(_ celsius: Double){
+        temperatureInCelsius = celsius
+    }
+}
+
+let bodyTemperature = Celsius(37.0)
+// bodyTemperature.temperatureInCelsius 为 37.0
+</code></pre>
+
+<p>此时构造器意图明确 可以不需要外部参数名称</p>
+
+<h3 id="toc_7">可选属性类型</h3>
+
+<p>在类型中包含一个逻辑上允许为空的存储型属性,要将其定义为<code>可选类型</code>,可选类型属性在初始化时自动初始化为<code>nil</code></p>
+
+<pre><code class="language-swift">class SurveyQuestion {
+    var text: String
+    var response: String?
+    init(text: String) {
+        self.text = text
+    }
+    func ask() {
+        print(text)
+    }
+}
+let cheeseQuestion = SurveyQuestion(text: &quot;Do you like cheese?&quot;)
+cheeseQuestion.ask()
+// 打印 &quot;Do you like cheese?&quot;
+cheeseQuestion.response = &quot;Yes, I do like cheese.&quot;
+</code></pre>
+
+<p>定义一个可选类型<code>response</code>因为答案在问题之前是无法确定,所以设为<code>String?</code>类型，在实例初始化是,自动赋值为<code>nil</code></p>
+
+<h3 id="toc_8">构造过程中常量属性的修改</h3>
+
+<p>在构造过程中任意时间点都可以给常量属性指定值,直到构造过程结束为一个确定的值,一旦常量属性赋值就永不能更改</p>
+
+<blockquote>
+<p>注意：</p>
+
+<p>对于类的实例来说，它的常量属性只能在定义它的类的构造过程中修改；不能在子类中修改。</p>
+</blockquote>
+
+<pre><code class="language-swift">class SurveyQuestion {
+    let text: String
+    var response: String?
+    init(text: String) {
+        self.text = text
+    }
+    func ask() {
+        print(text)
+    }
+}
+</code></pre>
+
+<h2 id="toc_9">默认构造器</h2>
+
+<p>如果结构体或者类的所有属性都有默认值,那么<code>Swift</code>会提供一个默认构造器,将所有值设置为默认值</p>
+
+<pre><code class="language-swift">class ShoppingListItem {
+    var name: String?
+    var quantity = 1
+    var purchased = false
+}
+var item = ShoppingListItem()
+</code></pre>
+
+<h3 id="toc_10">结构体的逐一成员构造器</h3>
+
+<p>在<em>结构体</em>中,如果没有提供任何自定义构造器，会自动获得逐一成员构造器</p>
+
+<pre><code class="language-swift">struct Size {
+    var width = 0.0, height = 0.0
+}
+let twoByTwo = Size(width: 2.0, height: 2.0)
+</code></pre>
+
+<h2 id="toc_11">值类型的构造器代理</h2>
+
+<p>构造器可以通过调用其他构造器来完成实例的部分构造过程,即<strong>构造器代理</strong></p>
+
+<p>构造器代理的实现规则和形式在值类型和类类型中有所不同。<br/>
+值类型（结构体或者枚举）不支持继承,所以构造代理只能代理自己的其他构造器<br/>
+类类型可以继承,需要保证其所有继承的存储型属性在构造时也能正确的初始化</p>
+
+<p>值类型,可以使用也只能用<code>self.init</code>在构造器中内部引用同类型的其他构造器</p>
+
+<blockquote>
+<p>注意：</p>
+
+<p>如果为某个值类型定义一个自定义构造器,将无法访问默认构造器(如果是结构体也无法访问逐一构造器),这种限制防止在给值类型增加一个复杂的自定义构造器后仍然有人使用自动生成的构造器</p>
+
+<p>假如希望默认构造器、逐一成员构造器和自定义的构造器都能用来创建实例。可以通过将自定义的构造器写在扩展中,而不是写在值类型原始定义中</p>
+</blockquote>
+
+<h2 id="toc_12">类的继承和构造过程</h2>
+
+<p>类里面的所有存储属性,包括所有继承自父类的属性，都必须在构造过程中设置初始值</p>
+
+<p>Swift提供了两种构造器来确保所有存储属性都能获取初始值:  <strong>指定构造器</strong> <strong>便利构造器</strong></p>
+
+<h3 id="toc_13">指定构造器和便利构造器</h3>
+
+<p>指定构造器初始化类中提供的所有属性,并根据父类链向上条用父类构造器实现父类的初始化<br/>
+每个类都必须至少有一个指定构造器,可以通过继承父类的指定构造器来满足条件;</p>
+
+<p>便利构造器是次要、辅助的构造器，定义便利构造器来调用同一个类中的指定构造器，并为其参数提供默认值。应该只在必要时候为类提供便利构造器。你也可以定义便利构造器来创建一个特殊用途或特定输入值的实例。</p>
+
+<h3 id="toc_14">指定构造器、便利构造器语法</h3>
+
+<p>类的指定构造器语法与值类型简单构造器相同:</p>
+
+<pre><code class="language-swift">init(parameters) {
+    statements
+}
+</code></pre>
+
+<p>便利构造器在<code>init</code>关键字前加<code>convenience</code>关键字</p>
+
+<pre><code class="language-swift">convenience init(parameters) {
+    statements
+}
+</code></pre>
+
+<h3 id="toc_15">类的构造器代理规则</h3>
+
+<p>构造器之间代理调用限制:</p>
+
+<ol>
+<li>指定构造器必须调用其直接父类的指定构造器</li>
+<li>便利构造器必须调用同类中定义的其它构造器</li>
+<li>便利构造器必须最终导致一个指定构造器被调用</li>
+</ol>
+
+<h3 id="toc_16">两段式构造过程</h3>
+
+<p>Swift中类的构造过程包含两个阶段:<br/>
+第一阶段: 存储属性指定一个初始值<br/>
+第二阶段: 进一步定制它们的存储型属性</p>
+
+<p>可以防止属性值在初始化前被访问和被另外的构造器意外赋其他值</p>
+
+<p>两段式构造过程的构造流程:</p>
+
+<p>阶段1:</p>
+
+<ul>
+<li>某个指定构造器或便利构造器被调用。</li>
+<li>完成新实例内存的分配，但此时内存还没有被初始化。</li>
+<li>指定构造器确保其所在类引入的所有存储型属性都已赋初值。存储型属性所属的内存完成初始化。</li>
+<li>指定构造器将调用父类的构造器，完成父类属性的初始化。</li>
+<li>这个调用父类构造器的过程沿着构造器链一直往上执行，直到到达构造器链的最顶部</li>
+<li>当到达了构造器链最顶部，且已确保所有实例包含的存储型属性都已经赋值，这个实例的内存被认为已经完全初始化，阶段1结束</li>
+</ul>
+
+<p>阶段2：</p>
+
+<ul>
+<li>从顶部构造器链一直往下，每个构造器链中类的指定构造器都有机会进一步定制实例。构造器此时可以访问<code>self</code>、修改它的属性并调用实例方法等等</li>
+<li>最终，任意构造器链中的便利构造器可以有机会定制实例和使用 self</li>
+</ul>
+
+<blockquote>
+<p>注意：</p>
+
+<p>构造器在第一阶段完成之前，不能调用任何实例方法，不能读取任何实例属性的值，不能引用self作为一个值</p>
+</blockquote>
+
+<h3 id="toc_17">构造器的继承和重写</h3>
+
+<p>与<code>OC</code>不同,<strong><code>swift</code>的子类默认情况下不继承父类构造器</strong>，以防止父类的简单构造器被一个更精细的子类继承，并被错误地用来创建子类的实例</p>
+
+<p>假如希望自定义子类能提供一个或多个和父类相同的构造器，可以在子类中提供这些构造器的自定义实现<br/>
+当编写一个和父类指定构造器相匹配的子类构造器，实际上是重写父类的指定构造器。因此必须在子类构造器前加上<code>override</code>修饰符。即使重写的是系统提供的默认构造器,也需要带上<code>override</code></p>
+
+<blockquote>
+<p>注意：</p>
+
+<p>重写一个父类的指定构造器时，你总是需要写<code>override</code>修饰符，即使你的子类将父类的指定构造器重写为了便利构造器</p>
+</blockquote>
+
+<p>但是，在子类中写一个和父类相同的便利构造器,因为子类不能直接调用父类的便利构造器,因此严格意义上来说，子类并未对并未对其进行重写，因此也不需要加上<code>override</code>前缀</p>
+
+<pre><code class="language-swift">class Vehicle {
+    var numberOfWheels = 0
+    var description: String {
+        return &quot;\(numberOfWheels) wheel(s)&quot;
+    }
+}
+</code></pre>
+
+<p>因为存储属性有默认值,因此会自动获得一个默认构造器</p>
+
+<pre><code class="language-swift">class Bicycle: Vehicle {
+    override init() {
+        super.init()//可以确保继承的属性 numberOfWheels 能被 Vehicle 类初始化
+        numberOfWheels = 2
+    }
+}
+//子类可以在初始化时修改继承来的变量属性，但是不能修改继承来的常量属性。
+</code></pre>
+
+<p>如果子类构造器没有在阶段2过程中做自定义操作，并且父类有一个无参数的指定构造器，可以再所有子类的存储属性赋值后省略<code>super.init()</code>调用</p>
+
+<h3 id="toc_18">构造器的自动继承</h3>
+
+<p>默认子类不继承父类构造器,但是如果满足特定条件是可以被自动继承的</p>
+
+<p>如果为子类引用的新属性都提供了默认值:</p>
+
+<ol>
+<li>如果子类没有定义任何<strong>指定构造器</strong>,将自动继承<strong>所有父类</strong>的指定构造器</li>
+<li>如果子类提供了所有父类指定构造器的实现——无论是通过规则1继承过来的，还是提供了自定义实现——它将自动继承所有父类的便利构造器</li>
+</ol>
+
+<blockquote>
+<p>注意：</p>
+
+<p>子类可以将父类的指定构造器实现为便利构造器来满足规则2</p>
+</blockquote>
+
+<h3 id="toc_19">指定构造器和便利构造器实践</h3>
+
+<pre><code class="language-swift">class Food {
+    var name: String
+    init(name: String) {
+        self.name = name
+    }
+    convenience init() {
+        self.init(name: &quot;[Unnamed]&quot;)
+    }
+}
+
+let namedMeat = Food(name: &quot;Bacon&quot;)
+// namedMeat 的名字是 &quot;Bacon”
+let mysteryMeat = Food()
+// mysteryMeat 的名字是 [Unnamed]
+</code></pre>
+
+<pre><code class="language-swift">class RecipeIngredient: Food {
+    var quantity: Int
+    init(name: String, quantity: Int) {
+        self.quantity = quantity
+        super.init(name: name)
+    }
+    //便利构造器重写了父类的指定构造器
+    override convenience init(name: String) {
+        self.init(name: name, quantity: 1)
+    }
+}
+let oneMysteryItem = RecipeIngredient() //会继承父类的便利构造器
+let oneBacon = RecipeIngredient(name: &quot;Bacon&quot;)
+let sixEggs = RecipeIngredient(name: &quot;Eggs&quot;, quantity: 6)
+</code></pre>
+
+<pre><code class="language-swift">class ShoppingListItem: RecipeIngredient {
+    var purchased = false
+    var description: String {
+        var output = &quot;\(quantity) x \(name)&quot;
+        output += purchased ? &quot; ?&quot; : &quot; ?&quot;
+        return output
+    }
+}
+/**
+    子类引用的属性都提供了默认值,并且没有自定义构造器,将自动继承所有父类中指定和便利
+    构造器
+*/
+</code></pre>
+
+<h2 id="toc_20">可失败构造器</h2>
+
+<p>如果类、结构体、枚举类型对象在构造时可能会失败,则为其定义一个<strong>可失败构造器</strong></p>
+
+<p>可失败构造器通过在<code>init</code>关键字后添加<code>?</code></p>
+
+<blockquote>
+<p>注意:</p>
+
+<p>可失败构造器的参数名和参数类型不能与其他非可失败构造器参数名及参数类型相同</p>
+
+<p>严格来说，构造器都不支持返回值。因为构造器本身的作用，之确保对象能正确构造。因此只是通过<code>return nil</code>来表示可失败构造器构造失败，因此也不用return来表示构造成功</p>
+</blockquote>
+
+<pre><code class="language-swift">struct Animal {
+    let species: String
+    init?(species: String) {
+        if species.isEmpty { return nil }
+        self.species = species
+    }
+}
+
+let anonymousCreature = Animal(species: &quot;&quot;)
+// anonymousCreature 的类型是 Animal?, 而不是 Animal
+if anonymousCreature == nil {
+    print(&quot;The anonymous creature could not be initialized&quot;)
+}
+// 打印 &quot;The anonymous creature could not be initialized&quot;
+</code></pre>
+
+<h3 id="toc_21">枚举类型的可失败构造器</h3>
+
+<p>通过提供的参数来获取特定的枚举成员,如果参数无法匹配任何枚举成员,则构造失败</p>
+
+<pre><code class="language-swift">enum TemperatureUnit {
+    case Kelvin, Celsius, Fahrenheit
+    init?(symbol: Character) {
+        switch symbol {
+        case &quot;K&quot;:
+            self = .Kelvin
+        case &quot;C&quot;:
+            self = .Celsius
+        case &quot;F&quot;:
+            self = .Fahrenheit
+        default:
+            return nil
+        }
+    }
+}
+</code></pre>
+
+<h3 id="toc_22">带原始值的枚举类型可失败构造器</h3>
+
+<p>带原始值的枚举类型会自带可失败构造器 <code>init?(rawValue:)</code>，参数<code>rawvalue</code>的和枚举类型原始值类型相同,如果能和枚举成员原始值匹配则构造响应枚举成员,否则构造失败</p>
+
+<pre><code class="language-swift">enum TemperatureUnit: Character {
+    case Kelvin = &quot;K&quot;, Celsius = &quot;C&quot;, Fahrenheit = &quot;F&quot;
+}
+</code></pre>
+
+<h3 id="toc_23">构造失败的传递</h3>
+
+<p>类，结构体，枚举的可失败构造器可以横向代理到类型中的其他可失败构造器，也能向上代理到父类可失败构造器<br/>
+如果在代理的<br/>
+其他可失败构造器触发构造失败，构造过程立即终止,接下来构造代码不执行</p>
+
+<blockquote>
+<p>注意；</p>
+
+<p>可失败构造器也可以代理到其他的不可失败构造器。通过这种方式，可以增加一个可能的失败状态到现有的构造过程</p>
+</blockquote>
+
+<pre><code class="language-swift">class Product {
+    let name: String
+    init?(name: String) {
+        if name.isEmpty { return nil }
+        self.name = name
+    }
+}
+class CartItem: Product {
+    let quantity: Int
+    init?(name: String, quantity: Int) {
+        if quantity &lt; 1 { return nil }
+        self.quantity = quantity
+        super.init(name: name)
+    }
+}
+//尝试用空name初始化CarItem导致父类构造过程失败
+if let oneUnnamed = CartItem(name: &quot;&quot;, quantity: 1) {
+    print(&quot;Item: \(oneUnnamed.name), quantity: \(oneUnnamed.quantity)&quot;)
+} else {
+    print(&quot;Unable to initialize one unnamed product&quot;)
+}
+// 打印 &quot;Unable to initialize one unnamed product”
+
+</code></pre>
+
+<h3 id="toc_24">可失败构造器重写</h3>
+
+<p>可以在子类中重写父类的可失败构造器。<br/>
+可以用子类的非可失败构造器重写一个父类的可失败构造器</p>
+
+<blockquote>
+<p>注意：</p>
+
+<p>当你用子类的非可失败构造器重写父类的可失败构造器时，向上代理到父类的可失败构造器的唯一方法是对父类的可失败构造器的返回值进行强制解包</p>
+
+<p>不能用子类的可失败构造器重写非可失败构造器</p>
+</blockquote>
+
+<pre><code class="language-swift">class Document {
+    var name: String?
+    // 该构造器创建了一个 name 属性的值为 nil 的 document 实例
+    init() {}
+    // 该构造器创建了一个 name 属性的值为非空字符串的 document 实例
+    init?(name: String) {
+        self.name = name
+        if name.isEmpty { return nil }
+    }
+}
+
+class AutomaticallyNamedDocument: Document {
+    override init() {
+        super.init()
+        self.name = &quot;[Untitled]&quot;
+    }
+    //用非可失败构造器 init(name:) 重写了父类的可失败构造器 init?(name:)
+    override init(name: String) {
+        super.init()
+        if name.isEmpty {
+            self.name = &quot;[Untitled]&quot;
+        } else {
+            self.name = name
+        }
+    }
+}
+
+//或者可以写为
+
+class UntitledDocument: Document {
+    override init() {
+    //通过强制解包调用父类的可失败构造器
+        super.init(name: &quot;[Untitled]&quot;)!
+    }
+}
+</code></pre>
+
+<h3 id="toc_25">可失败构造器 init!</h3>
+
+<p>可以通过在<code>init</code>后加上<code>!</code>定义一个可失败构造器，会构造一个对应类型的隐式解包可选类型对象</p>
+
+<p>可以在<code>init?</code>中代理到<code>init!</code>，反之亦然。你也可以用<code>init?</code>重写<code>init!</code>，反之亦然。你还可以用 <code>init</code>代理到<code>init!</code>，不过，一旦<code>init!</code>构造失败，则会触发一个断言</p>
+
+<h2 id="toc_26">必要构造器</h2>
+
+<p>类的构造器前添加<code>required</code>修饰符表明所有该类的<code>子类</code>都必须实现该构造器</p>
+
+<pre><code class="language-swift">class SomeClass {
+    required init() {
+        // 构造器的实现代码
+    }
+}
+</code></pre>
+
+<p>在子类重写父类的必要构造器时，必须在子类的构造器前也添加<code>required</code>修饰符,不需要添加<code>override</code>修饰符</p>
+
+<pre><code class="language-swift">class SomeSubclass: SomeClass {
+    required init() {
+        // 构造器的实现代码
+    }
+}
+</code></pre>
+
+<blockquote>
+<p>注意：</p>
+
+<p>如果在子类继承的构造器能满足必要构造器的要求,则无须在子类中显式提供必要构造器的实现</p>
+</blockquote>
+
+<h2 id="toc_27">用闭包或函数设置属性默认值</h2>
+
+<p>如果某个存储型属性默认值需要一些自定义或设置，可以使用闭包或全局函数为其提供定制的默认值。当该属性所在的类型实例被构造时，对应闭包或函数会被调用,他们的返回值会作为这个属性的默认值</p>
+
+<pre><code class="language-swift">class SomeClass {
+    let someProperty: SomeType = {
+        // 在这个闭包中给 someProperty 创建一个默认值
+        // someValue 必须和 SomeType 类型相同
+        return someValue
+    }()
+}
+</code></pre>
+
+<p>闭包结尾的必须需要一对空的<code>小括号</code>.表明<code>swift</code><strong>立即执行闭包</strong>，将闭包的返回值赋值给属性，如果没有括号就相当于将闭包作为值赋值给属性</p>
+
+<blockquote>
+<p>注意:</p>
+
+<p>在使用闭包来初始化属性时,在闭包被执行时，实例其他部分还没有被初始化,因此不能再闭包中访问其他属性，即使有默认值。也不能隐式使用<code>self</code>或者调用任何实例方法</p>
+</blockquote>
+
+<p>闭包初始化存储属性</p>
+
+<pre><code class="language-swift">struct Checkerboard {
+//设置100个bool颜色的数组
+    let boardColors: [Bool] = {
+        var temporaryBoard = [Bool]()
+        var isBlack = false
+        for i in 1...8 {
+            for j in 1...8 {
+                temporaryBoard.append(isBlack)
+                isBlack = !isBlack
+            }
+            isBlack = !isBlack
+        }
+        return temporaryBoard
+    }()
+    
+    //返回某一行或列的颜色
+    func squareIsBlackAtRow(row: Int, column: Int) -&gt; Bool {
+        return boardColors[(row * 8) + column]
+    }
+}
+
+let board = Checkerboard()
+print(board.squareIsBlackAtRow(0, column: 1))
+// 打印 &quot;true&quot;
+</code></pre>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="14894054496048.html">变换</a></h1>
+			<p class="meta"><time datetime="2017-03-13T19:44:09+08:00" 
+			pubdate data-updated="true">03/13/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h3 id="toc_0">仿射变换</h3>
+
+<p><code>UIView</code>的<code>transform</code>属性是一个<code>CGAffineTransform</code>类型，用于二维空间的旋转，缩放和平移.  </p>
+
+<p><code>CGAffineTransform</code>是一个可以和二维空间向量（例如 CGPoint ）做乘法的3X2的矩阵；</p>
+
+<p><img src="media/14894054496048/14894062959368.jpg" alt=""/></p>
+
+<p>上图中的灰色数值只是为了保证<code>左边列数与右边行数相同</code>可以做矩阵运算，其计算结果不保留也没有任何意义  </p>
+
+<h4 id="toc_1">CGAffineTransform</h4>
+
+<pre><code class="language-objectivec">CGAffineTransformMakeRotation(CGFloat angle)
+CGAffineTransformMakeScale(CGFloat sx, CGFloat sy)
+CGAffineTransformMakeTranslation(CGFloat tx, CGFloat ty)
+/**
+旋转和缩放变换都可以很好解释--分别旋转或者缩放一个向量的值。平移变换是指
+每个点都移动了向量指定的x或者y值--所以如果向量代表了一个点，那它就平移了
+这个点的距离。
+*/
+</code></pre>
+
+<p><strong>注意</strong><br/><br/>
+<code>UIView</code>可以通过设置<code>tranform</code>属性变换,它只是封装了内部的图层变换  </p>
+
+<p><code>CALayer</code>也有<code>transfrom</code>属性，它的类型是<code>CATransfrom3D</code>并不是<code>CGAffiTransfrom</code>  </p>
+
+<p><code>CALayer</code>对应UIView的<code>transform</code>属性的是<code>affineTransform</code>  </p>
+
+<p><code>CGAffiTransfrom</code>一看名字就是基于<code>Core Graphics</code>的</p>
+
+<pre><code class="language-objectivec">#define RADIANS_TO_DEGREES(x) ((x)/M_PI*180.0)
+//一个pi代表180°
+CGAffineTransform transform = CGAffineTransformMakeRotation(M_PI_4);
+self.layerView.layer.affineTransform = transform;
+</code></pre>
+
+<h4 id="toc_2">混合变换</h4>
+
+<p><code>Core Graphics</code>提供了可在一个一个变换基础上做其他变化的函数  </p>
+
+<pre><code class="language-objectivec">CGAffineTransformRotate(CGAffineTransform t, CGFloat angle)
+CGAffineTransformScale(CGAffineTransform t, CGFloat sx, CGFloat sy)
+CGAffineTransformTranslate(CGAffineTransform t, CGFloat tx, CGFloat ty)
+</code></pre>
+
+<p>还有一个例外的：<br/><br/>
+<code>CGAffineTransformIdentity</code>这是一个什么都不做的变换, <code>CGAffineTransform</code> 类型的空值,即单位矩阵。</p>
+
+<pre><code class="language-objectivec">//要混合两个已经存在的变换矩阵，做一个新的变换
+CGAffineTransformConcat(CGAffineTransform t1, CGAffineTransform t2);
+</code></pre>
+
+<p><strong>注意</strong><br/><br/>
+当我们按顺序进行一些列变换的时候，变换的顺序是会影响结果的，比如旋转之后的平移和平移之后的旋<br/>
+转结果可能不同。</p>
+
+<h3 id="toc_3">3D变换</h3>
+
+<p><code>CGAffineTransform</code> 类型属于<code>Core Graphics</code>框架.因为<code>Core Graphics</code>是一套2D绘图的API，因此仅仅对2D变换有效.  </p>
+
+<p>CALayer的<code>transform</code>属性(<code>CATransform3D</code>类型),可以让图层进行3D移动或者旋转  </p>
+
+<p>和CGAffiTranform类似,<code>CATransform3D</code>也是一个矩阵（在3维空间做变换的4*4矩阵）  </p>
+
+<p><img src="media/14894054496048/14894686780778.jpg" alt=""/></p>
+
+<p><code>Core  Animation</code>框架也有为我们提供一系列方法来创建和组合<code>CATransform3D</code>类型的矩阵，与CGAffiTransform不同的是其平移和缩放多了参数<code>z</code> 旋转 多了<code>x.y.z</code></p>
+
+<pre><code class="language-objectivec">CATransform3DMakeRotation(CGFloat angle, CGFloat x, CGFloat y, CGFloat z)
+CATransform3DMakeScale(CGFloat sx, CGFloat sy, CGFloat sz)
+CATransform3DMakeTranslation(Gloat tx, CGFloat ty, CGFloat tz)
+</code></pre>
+
+<p>举个栗子:  </p>
+
+<pre><code class="language-objectivec">//绕Y轴旋转45度
+CATransform3D transform = CATransform3DMakeRotation(M_PI_4, 0, 1, 0);
+self.layerView.layer.transform = transform;
+</code></pre>
+
+<p><img src="media/14894054496048/14894705472205.jpg" alt=""/></p>
+
+<p><strong>这样的效果看起来并没有旋转而只是水平方向的压缩,这是因为我们用斜的视角看它，并不是透视</strong></p>
+
+<h4 id="toc_4">透视投影</h4>
+
+<p>我们在上面做的变换是等距投影：远处的物体和近处的物体保持同样的缩放比例  </p>
+
+<p>正常情况是物体远离我们由于视角原因会变小才对  我们需要引入<code>投影变换（z变换）</code>来对矩阵做一些修改，<code>Core Animation</code>并没有提供<code>透视变换</code>函数，我们需要手动改动矩阵(easy):  </p>
+
+<p><img src="media/14894054496048/14894710925730.jpg" alt=""/></p>
+
+<p>**m34 默认为0，我们可以设置其为<code>-1/d</code>来应用透视效果(d为视角和屏幕距离,估算测试一下就ok了,大概500-1000,值越小透视效果越明显但是太小会失真，太大又几乎失去透视效果) **</p>
+
+<p>举个栗子:</p>
+
+<pre><code class="language-objectivec">CATransform3D transform = CATransform3DIdentity;
+//apply perspective  我曹 真的直接m34就行了
+transform.m34 = - 1.0 / 500.0;
+//rotate by 45 degrees along the Y axis
+transform = CATransform3DRotate(transform, M_PI_4, 0, 1, 0);
+//apply to layer
+self.layerView.layer.transform = transform;
+</code></pre>
+
+<h4 id="toc_5">灭点</h4>
+
+<p>在透视绘图时我们说当远离视角的物体会变小,当远到一个极限的时候就会变陈一个点,最终所有物体都会汇聚消失在这同一个点.  即<strong>灭点</strong></p>
+
+<p>在现实中，这个点通常是视图的中心,或者至少是包含所有3D对象的视图中心 </p>
+
+<p><code>Core Animation</code>定义了这个点位于变换图层的<code>anchorPoint</code>（通常位于图层中心，但也有例外）<br/><br/>
+这就是说，当图层发生变换时，这个点永远位于图层变换之前<code>anchorPoint</code>的位置。</p>
+
+<p><img src="media/14894054496048/14894744252171.jpg" alt=""/></p>
+
+<p><strong>注意</strong><br/><br/>
+当改变一个图层的<code>position</code>，你也改变了它的灭点，做3D变换的时候要时刻记住这一点，当你视图通过调整 <code>m34</code> 来让它更加有3D效果，应该首先把它放置于屏幕中央，然后通过平移来把它移动到指定位置（做平移变换是不会改变position的）（而不是直接改变它的<code>position</code>）灭点会处于变化之前的位置,这样的话就能保证所有的3D图层都共享一个灭点。</p>
+
+<h4 id="toc_6">sublayerTransform</h4>
+
+<p>根据上面知识,如果我们多个视图做3D变换,我们需要分别改变其M34并且确保在变换前同一个<code>position</code>,而且我们不能直接在xib中摆放视图,这样就很麻烦了   </p>
+
+<p>CALayer有个属性<code>sublayerTransform</code>.也是<code>CATransform3D</code>类型的,但是它会影响到所有子图层,即我们可以通过设置图层的这个属性来使所有子视图做同样的变换，而且确保了所有子图层灭点在容器图层的中点处.</p>
+
+<p><strong>容器图层做变换时其上图层也都会做变换的,只不过我们如果不设置容器图层的<code>sublayerTransform</code>属性的话，子图层要在做3D变换的话还要再设置m34而且要保证灭点，也就是这个属性作用就只是保证其上的子图层的m34和灭点与父图层一致</strong><br/>
+<strong>这个属性对于容器视图来说与transform属性没有什么区别，都是做一个变换</strong></p>
+
+<p><strong>注意</strong><br/><br/>
+我们通常设置最大视图的<code>sublayerTransform</code>为<code>CATransform3DIdentity;</code> 这样在其上的子视图可以随意进行3D变换都可保证其灭点位置在同一个位置.  </p>
+
+<h4 id="toc_7">背面</h4>
+
+<p>因为我们做的变换是透视的，我们可以从背面观察这张图像，发现其背面为正面图片的镜像图片,可以知道图层是<code>双面绘制的</code><br/>
+有时候我们是永远都看不到图层的背面,所以我们没必要浪费<code>CPU</code>来绘制  </p>
+
+<p><code>CALayer</code>有一个叫做 <code>doubleSided</code> 的属性来控制图层的背面是否要被绘制。<code>BOOL</code>类型,当设置为NO时，如果图层正面从视角中消失，这个图层将不会被绘制.</p>
+
+<p><img src="media/14894054496048/14895754324911.jpg" alt=""/></p>
+
+<h4 id="toc_8">扁平化图层</h4>
+
+<p>我们在做二维变换（用CATranform3D绕z轴旋转也是二维变换）知道当我们做个相反变换的时候是可以将图层或视图恢复原状的。</p>
+
+<p><img src="media/14894054496048/14895772744163.jpg" alt=""/><br/>
+如上图,外部图层旋转45度后内部图层反向旋转45度是可以恢复正常状态的  </p>
+
+<p>那么对于3D变换：</p>
+
+<p>我们将外面图层绕Y旋转,然后将内图层绕Y反向旋转<br/><br/>
+结果:<br/>
+<img src="media/14894054496048/14895796219311.jpg" alt=""/></p>
+
+<p>我们可以看到,内部的图层仍然向左侧旋转，并且发生了扭曲。</p>
+
+<p>这是因为<code>Core Animation</code>内的图层并不都存在同一个3D空间.<strong>每个图层的3D场景其实是扁平化的</strong>，你所看到的3D场景只是绘制在图层表面。</p>
+
+<p>也是因为如此:用<code>Core Animation</code>创建非常复杂的3D场景变得十分困难。你不能够使用图层树去创建一个3D结构的层级关系--在相同场景下的任何3D表面必须和同样的图层保持一致，这是因为每个的父视图都把它的子视图扁平化了。在之后我们会用<code>CATransformLayer</code>的子类来解决这个问题</p>
+
+<h3 id="toc_9">固体对象</h3>
+
+<p>一个固态的3D对象  </p>
+
+<p>我们来创建一个固体对象:</p>
+
+<pre><code class="language-objectivec">//创建固体对象
+
+- (void)three_dimensionaObject {
+    CATransform3D perspective = CATransform3DIdentity;
+    perspective.m34 = -1.0 / 500.0;
+    perspective = CATransform3DRotate(perspective, -M_PI_4, 1, 0, 0);
+    perspective = CATransform3DRotate(perspective, -M_PI_4, 0, 1, 0);
+    self.containView.layer.sublayerTransform = perspective;
+    //add cube face 1
+    CATransform3D transform = CATransform3DMakeTranslation(0, 0, 100);
+    [self addFaceWith:0 transform:transform];
+    
+    transform = CATransform3DMakeTranslation(100, 0, 0);
+    transform = CATransform3DRotate(transform, M_PI_2, 0, 1, 0);
+    [self addFaceWith:1 transform:transform];
+    
+    transform = CATransform3DMakeTranslation(-100, 0, 0);
+    transform = CATransform3DRotate(transform, -M_PI_2, 0, 1, 0);
+    [self addFaceWith:2 transform:transform];
+    
+    transform = CATransform3DMakeTranslation(0, 100, 0);
+    transform = CATransform3DRotate(transform, -M_PI_2, 1, 0, 0);
+    [self addFaceWith:3 transform:transform];
+    
+    transform = CATransform3DMakeTranslation(0, -100, 0);
+    transform = CATransform3DRotate(transform, M_PI_2, 1, 0, 0);
+    [self addFaceWith:4 transform:transform];
+    
+    transform = CATransform3DMakeTranslation(0, 0, -100);
+    [self addFaceWith:5 transform:transform];
+}
+
+- (void)addFaceWith:(NSInteger)index transform:(CATransform3D)transform {
+    UIView *layV = [self.layViewCollection objectAtIndex:index];
+    [self.containView addSubview:layV];
+    CGSize containerSize = self.containView.bounds.size;
+    layV.center = CGPointMake(containerSize.width / 2.0, containerSize.height/2);
+    layV.bounds = CGRectMake(0, 0, 200, 200);
+    layV.layer.transform = transform;
+}
+</code></pre>
+
+<h4 id="toc_10">光亮和阴影</h4>
+
+<p>由于我们只是简单几个图层的拼接,所以这个立体对光线并没有概念(没有棱角).我们需要自己做这个立体的阴影效果.  </p>
+
+<ul>
+<li>我们可以直接以通过改变每个面的背景颜色或者直接用带光亮效果的图片来调整。<br/></li>
+<li>如果需要动态地创建光线效果，可以根据每个视图的方向应用不同的alpha值做出半透明的阴影图层.但为了计算阴影图层的不透明度，你需要得到每个面的正太向量（垂直于表面的向量），然后根据一个想象的光源计算出两个向量叉乘结果。叉乘代表了光源和图层之间的角度，从而决定了它有多大程度上的光亮。</li>
+</ul>
+
+<p>为了达到第二种效果:<br/><br/>
+我们这里用<code>GLKit框架</code>来做向量的计算.(需要引入<code>GLKit</code>库来运行代码)每个面的<code>CATransform3D</code>都被转换成<code>GLKMatrix4</code>，然后通过<code>GLKMatrix4GetMatrix3</code>函数得出一个3×3的旋转矩阵。这个旋转矩阵指定了图层的方向，然后可以用它来得到正太向量的值</p>
+
+<h4 id="toc_11">点击事件</h4>
+
+<p><img src="media/14894054496048/14896328584294.jpg" alt=""/></p>
+
+<p>我们对于上面的固体对象,并不能点击3触发事件,这是因为我们添加视图时4.5.6是在3之前添加的,点击事件的处理由视图在父视图中的顺序决定，而不是3D空间的z轴顺序.因此即使我们此时看不到4.5.6,但是荏苒会拦截点击事件.  </p>
+
+<p><code>doubleSided</code>属性可以控制是否绘制视图后面的内容,但是设置这个属性为NO不起作用，因为即使背对相机而隐藏的视图仍然会响应点击事件(这和通过设置 hidden 属性或者设置 alpha 为0而隐藏的视图不同，那两种方式将不会响应事件).</p>
+
+<p>我们正确方式是:</p>
+
+<ul>
+<li>把除了表面3的其他视图 userInteractionEnabled 属性都设置成 NO 来禁止事件传递</li>
+<li>简单通过代码把视图3覆盖在视图6上</li>
+<li>等等</li>
+</ul>
+
+<p><strong>视图中图层添加的层级顺序会比屏幕上显示的顺序更有意义</strong></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15018175799489.html">继承</a></h1>
+			<p class="meta"><time datetime="2017-08-04T11:32:59+08:00" 
+			pubdate data-updated="true">08/04/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>类可以继承父类的方法、属性和其他特征</p>
+
+<p>swift中，类可以调用和访问超类的方法，属性和下标，并且可以重写这些方法、属性和下标来优化或修改它们的行为。Swift会检查你的重写定义在超类中是够有匹配的定义，确保重写行为的正确</p>
+
+<p>可以为类中继承的属性添加属性观察器，来检查属性改变。可以为任何属性添加属性观察期，无论原来被定为存储属性还是计算属性</p>
+
+<h2 id="toc_0">定义一个基类</h2>
+
+<p>不继承于其它类的类,称之为基类</p>
+
+<blockquote>
+<p>注意:</p>
+
+<p><code>Swift</code>中类并不是从一个通用类继承而来.如果没有为定义的类制定一个超类的话,这个类自动成为一个基类</p>
+</blockquote>
+
+<p>创建一个<code>Vehicle</code>的基类，来描述通用车辆</p>
+
+<pre><code class="language-swift">class Vehicle {
+    var currentSpeed = 0.0
+    var description: String {
+        return &quot;traveling at \(currentSpeed) miles per hour&quot;
+    }
+    func makeNoise() {
+        // 什么也不做-因为车辆不一定会有噪音
+    }
+}
+</code></pre>
+
+<h2 id="toc_1">子类生成</h2>
+
+<pre><code class="language-swift">//定义一个自行车Bicycle继承自Vehicle
+class Bicycle: Vehicle {
+    var hasBasket = false
+}
+</code></pre>
+
+<p>除了继承自父类的方法、属性外，还定义了一个默认值为<code>false</code>的存储属性<code>hasBasket</code></p>
+
+<pre><code class="language-swift">let bicycle = Bicycle()
+bicycle.hasBasket = true
+//修改继承的属性
+bicycle.currentSpeed = 15.0
+print(&quot;Bicycle: \(bicycle.description)&quot;)
+// 打印 &quot;Bicycle: traveling at 15.0 miles per hour&quot;
+</code></pre>
+
+<h2 id="toc_2">重写</h2>
+
+<p>为继承来的实例方法、类方法、实例属性、下标提供自己的实现,即为<strong>重写</strong></p>
+
+<p>通过在在重写定义前加上 <code>override</code>关键字表明重写,否则即为错误的提供了相同的定义</p>
+
+<p>任何缺少<code>override</code>关键字的的重写都会在编译时被认为错误</p>
+
+<h3 id="toc_3">访问父类的方法、属性和下标</h3>
+
+<p>通过<code>super</code>前缀来访问父类版本中的方法、属性或下标</p>
+
+<ul>
+<li>在方法 someMethod() 的重写实现中，可以通过 super.someMethod() 来调用超类版本的 someMethod() 方法</li>
+<li>在属性 someProperty 的 getter 或 setter 的重写实现中，可以通过 super.someProperty 来访问超类版本的someProperty 属性</li>
+<li>在下标的重写实现中，可以通过 super[someIndex] 来访问超类版本中的相同下标</li>
+</ul>
+
+<h3 id="toc_4">重写方法</h3>
+
+<pre><code class="language-swift">class Train: Vehicle {
+    override func makeNoise() {
+        print(&quot;Choo Choo&quot;)
+    }
+}
+</code></pre>
+
+<h3 id="toc_5">重写属性</h3>
+
+<p>重写继承来的实例或者类型属性，提供自己定制的<code>getter</code>或者<code>setter</code>，或添加属性观察器来观察属性值的改变</p>
+
+<h4 id="toc_6">重写属性的setter和getter</h4>
+
+<p>子类并不知道继承来的属性是存储型还是计算型,重写时要提供属性名称和类型来让编译器去查找父类同名同类型的属性</p>
+
+<p>可以把继承的只读属性重写为可读写,但是没有办法把可读写的重写为只读属性</p>
+
+<blockquote>
+<p>注意:</p>
+
+<p>如果你在重写属性中提供了<code>setter</code>，那么你也一定要提供<code>getter</code>。如果你不想在重写版本中的<br/>
+<code>getter</code>里修改继承来的属性值，你可以直接通过<code>super.someProperty</code>来返回继承来的值</p>
+</blockquote>
+
+<pre><code class="language-swift">class Car: Vehicle {
+    var gear = 1
+    //重写description属性
+    override var description: String {
+        return super.description + &quot; in gear \(gear)&quot;
+    }
+}
+
+let car = Car()
+car.currentSpeed = 25.0
+car.gear = 3
+print(&quot;Car: \(car.description)&quot;)//返回自定义描述
+// 打印 &quot;Car: traveling at 25.0 miles per hour in gear 3&quot;
+</code></pre>
+
+<h4 id="toc_7">重写属性观察器</h4>
+
+<p>可以通过重写来为集成来的属性添加属性观察器。这样一来，无论被继承属性原本如何实现，当其属性值发生改变时，就会被通知到。</p>
+
+<blockquote>
+<p>注意:</p>
+
+<ol>
+<li>不能为继承来的常量存储型属性或继承来的只读计算型属性添加属性观察器,因为这些属性不能被设置的</li>
+<li>不能同时提供重写的<code>setter</code>和重写的属性观察器。因为此时我们可以直接在setter中观察值的变化</li>
+</ol>
+</blockquote>
+
+<pre><code class="language-swift">class AutomaticCar: Car {
+    override var currentSpeed: Double {
+        didSet {
+            gear = Int(currentSpeed / 10.0) + 1(后向下取得最接近的整数值在加1)
+        }
+    }
+}
+</code></pre>
+
+<p>为属性<code>currentSpeed</code>添加观察器，设置速度时就会自动选择合适的档位</p>
+
+<h2 id="toc_8">防止重写</h2>
+
+<p>通过把方法、属性或下标 前加关键字<code>final</code>关键字就可以来防止被重写,例如:<code>final var</code> ， <code>final func</code> ， <code>final class func</code> ，以及 <code>final subscript</code></p>
+
+<p>任何试图对<code>finial</code>标记的方法、属性或下标进行重写的代码，都会在编译时报错。</p>
+
+<p>在类扩展中的方法、属性或下标也可以在扩展的定义中标记<code>finial</code></p>
+
+<p>通过在关键字<code>class</code>前添加关键字<code>final</code>表示这个类是不可被继承的</p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15541067561617.html">Link Map File && dSYM</a></h1>
+			<p class="meta"><time datetime="2019-04-01T16:19:16+08:00" 
+			pubdate data-updated="true">04/01/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>学习自 <a href="https://github.com/ming1016/study/wiki/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90-iOS-%E7%BC%96%E8%AF%91-Clang---LLVM">深入剖析iOS编译</a></p>
+
+<h2 id="toc_0">编译后生成的二进制内容 Link Map File</h2>
+
+<p>在<code>build Setting</code>里设置<code>Write Link Map File</code>为Yes后，每次编译都会在指定目录生成这样一个文件。文件内容包含了<code>Object files</code>，<code>Sections</code>，<code>Symbols</code></p>
+
+<h3 id="toc_1">Object files</h3>
+
+<p>这部分内容都是.m编译后的.o和需要link的.a文件。前面是文件编号，后面是文件路径</p>
+
+<pre><code class="language-c">[  2] /Users/fish/Library/Developer/Xcode/DerivedData/RSSReader-dguiqpuhzqvuwbewcrithsiyuewj/Build/Intermediates.noindex/RSSReader.build/Debug-iphonesimulator/RSSReader.build/Objects-normal/x86_64/UIView+Extension.o
+...
+...
+...
+[160] /Users/fish/Library/Developer/Xcode/DerivedData/RSSReader-dguiqpuhzqvuwbewcrithsiyuewj/Build/Products/Debug-iphonesimulator/libPods-RSSReader.a(Pods-RSSReader-dummy.o)
+</code></pre>
+
+<h3 id="toc_2">Sections</h3>
+
+<p>描述每个Section在可执行文件中的位置和大小。每个Section的Segment类型分为__TEXT代码段和__DATA数据段两种</p>
+
+<p><img src="media/15541067561617/15541075745329.jpg" alt="" style="width:698px;"/><br/>
+.data数据段里面保存的都是初始化过的全局静态变量和局部静态变量。.rodata段存放的是只读数据，一般都是const修饰的变量和字符串常量。.bss段存放的是未初始化的全局变量和局部静态变量。代码段就在.text段。</p>
+
+<h3 id="toc_3">Symbols</h3>
+
+<p>symbols对Sections进行了再划分。这里会描述所有的method、ivar和字符串，以及对应的地址、大小、文件编号信息等</p>
+
+<p><img src="media/15541067561617/15541077442023.jpg" alt="" style="width:650px;"/><br/>
+<img src="media/15541067561617/15541077540760.jpg" alt="" style="width:732px;"/></p>
+
+<h2 id="toc_4">每次编译后生成的dSYM文件</h2>
+
+<p>在每次编译后都会生成dSYM文件，程序在执行中通过地址来调用方法函数，而dSYM文件里存储了函数地址映射，这样调用栈里的地址可以通过dSYM这个映射表获取具体函数的位置。常用来处理crash时获取到的调用栈.crash文件，将其符号化</p>
+
+<p>可以通过 Xcode 进行符号化，将 .crash 文件，.dSYM 和 .app 文件放到同一个目录下，打开 Xcode 的 Window 菜单下的 organizer，再点击 Device tab，最后选中左边的 Device Logs。选择 import 将 .crash 文件导入就可以看到 crash 的详细 log 了。</p>
+
+<p>还可以通过命令行工具 symbolicatecrash 来手动符号化 crash log。同样先将 .crash 文件，.dSYM 和 .app 文件放到同一个目录下，然后输入下面的命令</p>
+
+<pre><code class="language-objectivec">export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+symbolicatecrash appName.crash appName.app &gt; appName.log
+</code></pre>
+
+<blockquote>
+<p>debug环境默认不生成dsym文件，release环境才会生成</p>
+</blockquote>
+
+
+		</div>
+
+		
+
+	</article>
+  
+	<div class="pagination">
+	 <a class="prev" href="all_22.html">&larr; Older</a> 
+<a href="archives.html">Blog Archives</a>
+	 <a class="next" href="all_20.html">Newer &rarr;</a>  
+	    
+	</div>
+</div>
+ <aside class="sidebar"> 
+
+	<section>
+	  <h1>Categories</h1>
+	  <ul id="recent_posts">
+	  
+	      <li class="post">
+	        <a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B&&Runloop.html"><strong>多线程&&Runloop&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="RunLoop.html">RunLoop&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B.html">多线程&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8&&%E9%94%81.html">线程安全&&锁&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="KVC&&KVO.html">KVC&&KVO&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="runtime%E5%AD%A6%E4%B9%A0.html"><strong>runtime学习&nbsp;(9)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&&block.html"><strong>内存管理&&block&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="OC%E9%AB%98%E7%BA%A7%E7%BC%96%E7%A8%8B-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">OC高级编程-内存管理&nbsp;(6)</a>&nbsp;&nbsp;
+	        
+	        	<a href="block%E5%AD%A6%E4%B9%A0.html">block学习&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%AE%98%E6%96%B9%E6%96%87%E6%A1%A3-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">官方文档-内存管理&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-%E6%8B%BE%E9%81%97.html">内存管理-拾遗&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BD%91%E7%BB%9C.html"><strong>网络&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="GPU&&%E6%B8%B2%E6%9F%93.html"><strong>GPU&&渲染&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F&&%E7%BB%84%E4%BB%B6%E5%8C%96.html"><strong>设计模式&&组件化&nbsp;(8)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E6%9E%B6%E6%9E%84%E8%B0%88(%E6%91%98%E5%BD%95).html">设计模式架构谈(摘录)&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BB%84%E4%BB%B6%E5%8C%96%E5%BC%80%E5%8F%91%E5%AD%A6%E4%B9%A0.html">组件化开发学习&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BC%96%E8%AF%91&&dyld&&Mach-O.html"><strong>编译&&dyld&&Mach-O&nbsp;(19)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html">iOS编译流程&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="dyld(%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8).html">dyld(程序启动)&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Mach-O%E6%96%87%E4%BB%B6%E4%BA%86%E8%A7%A3.html">Mach-O文件了解&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%A8%A1%E5%9D%97%E5%8C%96%E7%9F%A5%E8%AF%86.html"><strong>模块化知识&nbsp;(26)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS-CoreAnimation.html">iOS-CoreAnimation&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="CoreGraphic.html">CoreGraphic&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ARKit.html">ARKit&nbsp;(7)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%E5%92%8C%E4%BD%BF%E7%94%A8.html"><strong>第三方项目学习和使用&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="AFNetworking.html">AFNetworking&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="AsyncDisplayKit.html">AsyncDisplayKit&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ReactnativeCocoa.html">ReactnativeCocoa&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="PromiseKit.html">PromiseKit&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7%E5%92%8C%E4%BC%98%E5%8C%96.html"><strong>项目监控和优化&nbsp;(10)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="APP%E4%BD%93%E7%A7%AF%E4%BC%98%E5%8C%96.html">APP体积优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%90%AF%E5%8A%A8%E4%BC%98%E5%8C%96.html">启动优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%B0%83%E8%AF%95&&%E6%B5%8B%E8%AF%95.html"><strong>调试&&测试&nbsp;(6)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="Instrument%E5%AD%A6%E4%B9%A0.html">Instrument学习&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="LLDB.html">LLDB&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95.html">自动化测试&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%B7%A5%E5%85%B7.html"><strong>工具&nbsp;(5)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="git.html">git&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Cocoapods.html">Cocoapods&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%8B%BE%E9%81%97.html"><strong>拾遗&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%9D%A2%E8%AF%95.html">面试&nbsp;(12)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">iOS开发知识点拾遗&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">知识点拾遗&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html">iOS 小知识&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Swift-BaseLearning.html"><strong>Swift基础知识&nbsp;(28)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Computer-programming.html"><strong>计算机编程&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html">知识普及&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Flex.html">Flex&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
+	        
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="React-Native.html"><strong>React-Native&nbsp;(6)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Python.html"><strong>Python&nbsp;(14)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html"><strong>算法读书笔记&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	   
+	  </ul>
+	</section>
+	<section>
+	  <h1>Recent Posts</h1>
+	  <ul id="recent_posts">
+	  
+	      
+		      <li class="post">
+		        <a href="15718858302183.html">官方文档</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710248960458.html">Layout Specs</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707800044047.html">Node Lifecycle</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707737201639.html">线程</a>
+		      </li>
+	     
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	   
+	  </ul>
+	</section>
+	
+</aside> </div></div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 -  -
+  <span class="credit">Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a> &nbsp;&nbsp; Theme by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+
+  
+    
+
+
+
+
+</body>
+</html>

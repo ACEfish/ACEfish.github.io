@@ -1,0 +1,487 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>
+    
+  模块化知识 - ACEfish-Blog
+  
+
+  </title>
+  <meta name="author" content="">
+  <meta name="description" content="学习记录">
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link href="asset/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+  <script src="asset/js/modernizr-2.0.js"></script>
+  <script src="asset/js/jquery.min.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/solarized_light.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  <style type="text/css">
+  .cat-children-p{ padding: 6px 0px;}
+  .hljs{background: none;}
+  </style>
+  <script type="text/javascript">
+  var isAddSildbar = true;
+  </script>
+  <script src="asset/js/octopress.js" type="text/javascript"></script>
+</head>
+<script type="text/javascript">
+//链接新开窗口
+function addBlankTargetForLinks () {
+  $('a[href^="http"]').each(function(){
+      $(this).attr('target', '_blank');
+  });
+}
+$(document).ready(function(event) {
+  addBlankTargetForLinks();
+});
+</script>
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="index.html">ACEfish-Blog</a></h1>
+  
+    <h2>学习记录</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:acefish.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+
+  <li id=""><a target="_self" href="index.html">首页</a></li>
+
+  <li id=""><a target="_self" href="archives.html">归档</a></li>
+
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content"> 
+<div class="blog-index">
+
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="14892022094971.html">Core Animation</a></h1>
+			<p class="meta"><time datetime="2017-03-11T11:16:49+08:00" 
+			pubdate data-updated="true">03/11/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>Core Animation是一个复合引擎，它的职责就是尽可能快地组合屏幕上不同的可<br/>
+视内容，这个内容是被分解成独立的图层，存储在一个叫做图层树的体系之中。于<br/>
+是这个树形成了UIKit以及在iOS应用程序当中你所能在屏幕上看见的一切的基础。</p>
+
+<p><img src="media/14892022094971/14903531605425.jpg" alt=""/></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="14925128921601.html">常用动画示例</a></h1>
+			<p class="meta"><time datetime="2017-04-18T18:54:52+08:00" 
+			pubdate data-updated="true">04/18/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h3 id="toc_0">1.地震动画</h3>
+
+<p>适合一整个大视图的突然晃动</p>
+
+<pre><code class="language-objectivec">- (void)earthquake:(UIView*)itemView {
+    CGFloat t = 2.0;
+    CGAffineTransform leftQuake  = CGAffineTransformTranslate(CGAffineTransformIdentity, t, 0);
+    CGAffineTransform rightQuake = CGAffineTransformTranslate(CGAffineTransformIdentity, -t, 0); //水平晃动
+
+    itemView.transform = leftQuake;  // starting point
+
+    [UIView beginAnimations:@&quot;earthquake&quot; context:(__bridge void *)(itemView)];
+    [UIView setAnimationRepeatAutoreverses:YES]; // 如果不加这一句 整个动画感觉不连贯
+    [UIView setAnimationRepeatCount:5];
+    [UIView setAnimationDuration:0.07];
+    [UIView setAnimationDelegate:self];
+    [UIView setAnimationDidStopSelector:@selector(earthquakeEnded:finished:context:)];
+
+    itemView.transform = rightQuake; // end here &amp; auto-reverse
+
+    [UIView commitAnimations];
+}
+
+- (void)earthquakeEnded:(NSString *)animationID finished:(NSNumber *)finished context:(void *)context {
+    if ([finished boolValue]) {
+        UIView* item = (__bridge UIView *)context;
+        item.transform = CGAffineTransformIdentity;
+    }
+}
+</code></pre>
+
+<h3 id="toc_1">2.图标的抖动效果</h3>
+
+<pre><code class="language-objectivec">//开始抖动
+-(void)BeginWobble
+{
+
+    srand([[NSDate date] timeIntervalSince1970]);
+    float rand=(float)random();
+    CFTimeInterval t=rand*0.0000000001;
+
+    [UIView animateWithDuration:0.1 delay:t options:0  animations:^
+     {
+         要抖动的视图.transform=CGAffineTransformMakeRotation(-0.05);
+     } completion:^(BOOL finished)
+     {
+         [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionRepeat|UIViewAnimationOptionAutoreverse|UIViewAnimationOptionAllowUserInteraction  animations:^
+          {
+              要抖动的视图.transform=CGAffineTransformMakeRotation(0.05);
+          } completion:^(BOOL finished) {}];
+     }];
+}
+//停止抖动
+-(void)EndWobble
+{
+
+    [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionAllowUserInteraction|UIViewAnimationOptionBeginFromCurrentState animations:^
+     {
+         要抖动的视图.transform=CGAffineTransformIdentity;
+     } completion:^(BOOL finished) {}];
+}
+
+</code></pre>
+
+
+		</div>
+
+		
+
+	</article>
+  
+	<div class="pagination">
+	
+<a href="archives.html">Blog Archives</a>
+	 <a class="next" href="模块化知识_2.html">Newer &rarr;</a>  
+	    
+	</div>
+</div>
+ <aside class="sidebar"> 
+
+	<section>
+	  <h1>Categories</h1>
+	  <ul id="recent_posts">
+	  
+	      <li class="post">
+	        <a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B&&Runloop.html"><strong>多线程&&Runloop&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="RunLoop.html">RunLoop&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B.html">多线程&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8&&%E9%94%81.html">线程安全&&锁&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="KVC&&KVO.html">KVC&&KVO&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="runtime%E5%AD%A6%E4%B9%A0.html"><strong>runtime学习&nbsp;(9)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&&block.html"><strong>内存管理&&block&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="OC%E9%AB%98%E7%BA%A7%E7%BC%96%E7%A8%8B-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">OC高级编程-内存管理&nbsp;(6)</a>&nbsp;&nbsp;
+	        
+	        	<a href="block%E5%AD%A6%E4%B9%A0.html">block学习&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%AE%98%E6%96%B9%E6%96%87%E6%A1%A3-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">官方文档-内存管理&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-%E6%8B%BE%E9%81%97.html">内存管理-拾遗&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BD%91%E7%BB%9C.html"><strong>网络&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="GPU&&%E6%B8%B2%E6%9F%93.html"><strong>GPU&&渲染&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F&&%E7%BB%84%E4%BB%B6%E5%8C%96.html"><strong>设计模式&&组件化&nbsp;(8)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E6%9E%B6%E6%9E%84%E8%B0%88(%E6%91%98%E5%BD%95).html">设计模式架构谈(摘录)&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BB%84%E4%BB%B6%E5%8C%96%E5%BC%80%E5%8F%91%E5%AD%A6%E4%B9%A0.html">组件化开发学习&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BC%96%E8%AF%91&&dyld&&Mach-O.html"><strong>编译&&dyld&&Mach-O&nbsp;(19)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html">iOS编译流程&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="dyld(%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8).html">dyld(程序启动)&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Mach-O%E6%96%87%E4%BB%B6%E4%BA%86%E8%A7%A3.html">Mach-O文件了解&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%A8%A1%E5%9D%97%E5%8C%96%E7%9F%A5%E8%AF%86.html"><strong>模块化知识&nbsp;(26)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS-CoreAnimation.html">iOS-CoreAnimation&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="CoreGraphic.html">CoreGraphic&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ARKit.html">ARKit&nbsp;(7)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%E5%92%8C%E4%BD%BF%E7%94%A8.html"><strong>第三方项目学习和使用&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="AFNetworking.html">AFNetworking&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="AsyncDisplayKit.html">AsyncDisplayKit&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ReactnativeCocoa.html">ReactnativeCocoa&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="PromiseKit.html">PromiseKit&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7%E5%92%8C%E4%BC%98%E5%8C%96.html"><strong>项目监控和优化&nbsp;(10)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="APP%E4%BD%93%E7%A7%AF%E4%BC%98%E5%8C%96.html">APP体积优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%90%AF%E5%8A%A8%E4%BC%98%E5%8C%96.html">启动优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%B0%83%E8%AF%95&&%E6%B5%8B%E8%AF%95.html"><strong>调试&&测试&nbsp;(6)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="Instrument%E5%AD%A6%E4%B9%A0.html">Instrument学习&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="LLDB.html">LLDB&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95.html">自动化测试&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%B7%A5%E5%85%B7.html"><strong>工具&nbsp;(5)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="git.html">git&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Cocoapods.html">Cocoapods&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%8B%BE%E9%81%97.html"><strong>拾遗&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%9D%A2%E8%AF%95.html">面试&nbsp;(12)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">iOS开发知识点拾遗&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">知识点拾遗&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html">iOS 小知识&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Swift-BaseLearning.html"><strong>Swift基础知识&nbsp;(28)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Computer-programming.html"><strong>计算机编程&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html">知识普及&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Flex.html">Flex&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
+	        
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="React-Native.html"><strong>React-Native&nbsp;(6)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Python.html"><strong>Python&nbsp;(14)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html"><strong>算法读书笔记&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	   
+	  </ul>
+	</section>
+	<section>
+	  <h1>Recent Posts</h1>
+	  <ul id="recent_posts">
+	  
+	      
+		      <li class="post">
+		        <a href="15718858302183.html">官方文档</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710248960458.html">Layout Specs</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707800044047.html">Node Lifecycle</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707737201639.html">线程</a>
+		      </li>
+	     
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	   
+	  </ul>
+	</section>
+	
+</aside> </div></div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 -  -
+  <span class="credit">Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a> &nbsp;&nbsp; Theme by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+
+  
+    
+
+
+
+
+</body>
+</html>

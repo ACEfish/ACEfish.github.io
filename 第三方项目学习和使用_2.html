@@ -1,0 +1,1929 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>
+    
+  第三方项目学习和使用 - ACEfish-Blog
+  
+
+  </title>
+  <meta name="author" content="">
+  <meta name="description" content="学习记录">
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link href="asset/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+  <script src="asset/js/modernizr-2.0.js"></script>
+  <script src="asset/js/jquery.min.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/solarized_light.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  <style type="text/css">
+  .cat-children-p{ padding: 6px 0px;}
+  .hljs{background: none;}
+  </style>
+  <script type="text/javascript">
+  var isAddSildbar = true;
+  </script>
+  <script src="asset/js/octopress.js" type="text/javascript"></script>
+</head>
+<script type="text/javascript">
+//链接新开窗口
+function addBlankTargetForLinks () {
+  $('a[href^="http"]').each(function(){
+      $(this).attr('target', '_blank');
+  });
+}
+$(document).ready(function(event) {
+  addBlankTargetForLinks();
+});
+</script>
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="index.html">ACEfish-Blog</a></h1>
+  
+    <h2>学习记录</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:acefish.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+
+  <li id=""><a target="_self" href="index.html">首页</a></li>
+
+  <li id=""><a target="_self" href="archives.html">归档</a></li>
+
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content"> 
+<div class="blog-index">
+
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15680194937623.html">AFSecurityPolicy</a></h1>
+			<p class="meta"><time datetime="2019-09-09T16:58:13+08:00" 
+			pubdate data-updated="true">09/09/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">AFSSLPinningMode</h2>
+
+<pre><code class="language-objectivec">typedef NS_ENUM(NSUInteger, AFSSLPinningMode) {
+    AFSSLPinningModeNone,
+    AFSSLPinningModePublicKey,
+    AFSSLPinningModeCertificate,
+};
+</code></pre>
+
+<p>设置了3中验证服务器是否受信任的方式</p>
+
+<ul>
+<li>AFSSLPinningModeNone： 默认的认证方式，只会在系统的信任证书列表中对服务器返回的证书进行验证</li>
+<li>AFSSLPinningModePublicKey：需要客户端预先保存服务器的证书</li>
+<li>AFSSLPinningModeCertificate： 需要客户端事先保存服务器端发送的证书，但是只会验证证书中的公钥是否正确</li>
+</ul>
+
+<h2 id="toc_1">AFSecurityPolicy初始化</h2>
+
+<pre><code class="language-objectivec">+ (instancetype)policyWithPinningMode:(AFSSLPinningMode)pinningMode withPinnedCertificates:(NSSet *)pinnedCertificates {
+    AFSecurityPolicy *securityPolicy = [[self alloc] init];
+    securityPolicy.SSLPinningMode = pinningMode;
+
+    [securityPolicy setPinnedCertificates:pinnedCertificates];
+
+    return securityPolicy;
+}
+
+
+- (void)setPinnedCertificates:(NSSet *)pinnedCertificates {
+    _pinnedCertificates = pinnedCertificates;
+
+    if (self.pinnedCertificates) {
+        NSMutableSet *mutablePinnedPublicKeys = [NSMutableSet setWithCapacity:[self.pinnedCertificates count]];
+        for (NSData *certificate in self.pinnedCertificates) {
+            id publicKey = AFPublicKeyForCertificate(certificate);
+            if (!publicKey) {
+                continue;
+            }
+            [mutablePinnedPublicKeys addObject:publicKey];
+        }
+        self.pinnedPublicKeys = [NSSet setWithSet:mutablePinnedPublicKeys];
+    } else {
+        self.pinnedPublicKeys = nil;
+    }
+}
+
+</code></pre>
+
+<p>初始化Policy<br/>
+在调用<code>PinnedCertificates</code>的setter方法时，调用了<code>AFPublicKeyForCertificate</code>C函数，对证书进行操作获取公钥，取出全部的公钥保存到<code>pinnedPublicKeys</code>属性中</p>
+
+<h2 id="toc_2">操作 SecTrustRef</h2>
+
+<p>对<code>SecTrustRef</code>的操作都是C的API，定义在<code>Security</code>模块中</p>
+
+<pre><code class="language-objectivec">static id AFPublicKeyForCertificate(NSData *certificate) {
+    //初始化临时变量
+    id allowedPublicKey = nil;
+    SecCertificateRef allowedCertificate;
+    SecPolicyRef policy = nil;
+    SecTrustRef allowedTrust = nil;
+    SecTrustResultType result;
+    //通过`DER`表示的数据生成一个`secCertificateRef`
+    allowedCertificate = SecCertificateCreateWithData(NULL, (__bridge CFDataRef)certificate);
+    //判断返回值是否为空
+    __Require_Quiet(allowedCertificate != NULL, _out);
+
+    //创建一个默认的符合 X509 标准的 SecPolicyRef
+    policy = SecPolicyCreateBasicX509();
+    //通过默认的SecPolicyRef和证书创建一个SecTrustRef用于信任评估，对该对象进行信任评估，确认生成的 SecTrustRef 是值得信任的
+    __Require_noErr_Quiet(SecTrustCreateWithCertificates(allowedCertificate, policy, &amp;allowedTrust), _out);
+    //确认生成的对象是值得信任的
+    __Require_noErr_Quiet(SecTrustEvaluate(allowedTrust, &amp;result), _out);
+    //获取公钥
+    allowedPublicKey = (__bridge_transfer id)SecTrustCopyPublicKey(allowedTrust);
+
+_out:
+    //释放指针
+    if (allowedTrust) {
+        CFRelease(allowedTrust);
+    }
+
+    if (policy) {
+        CFRelease(policy);
+    }
+
+    if (allowedCertificate) {
+        CFRelease(allowedCertificate);
+    }
+
+    return allowedPublicKey;
+}
+</code></pre>
+
+<blockquote>
+<p>注意</p>
+
+<p>每个SecTrustRef对象都包含多个<code>SecCertificateRef</code>和<code>SecPolicyRef</code>。其中<code>SecCertificateRef</code>可以使用DER进行表示，并且其中存储着公钥信息</p>
+</blockquote>
+
+<p>除此之外 还有操作还有<code>AFCertificateTrustChainForServerTrust</code>和<code>AFPublicKeyTrustChainForServerTrust</code>函数<br/>
+但是调用了几乎相同的API</p>
+
+<ul>
+<li><code>SecTrustGetCertificateAtIndex</code> 获取SecTrustRef中的证书</li>
+<li><p><code>SecCertificateCopyData</code> 从证书或者DER中表示的数据</p>
+<pre><code class="language-objectivec">static NSArray * AFCertificateTrustChainForServerTrust(SecTrustRef serverTrust) {
+    CFIndex certificateCount = SecTrustGetCertificateCount(serverTrust);<br/>
+    NSMutableArray *trustChain = [NSMutableArray arrayWithCapacity:(NSUInteger)certificateCount];<br/>
+    for (CFIndex i = 0; i &lt; certificateCount; i++) {<br/>
+        SecCertificateRef certificate = SecTrustGetCertificateAtIndex(serverTrust, i);<br/>
+        [trustChain addObject:(__bridge_transfer NSData *)SecCertificateCopyData(certificate)];<br/>
+    }<br/>
+    return [NSArray arrayWithArray:trustChain];<br/>
+}<br/>
+static NSArray * AFPublicKeyTrustChainForServerTrust(SecTrustRef serverTrust) {<br/>
+    SecPolicyRef policy = SecPolicyCreateBasicX509();<br/>
+    CFIndex certificateCount = SecTrustGetCertificateCount(serverTrust);<br/>
+    NSMutableArray *trustChain = [NSMutableArray arrayWithCapacity:(NSUInteger)certificateCount];<br/>
+    for (CFIndex i = 0; i &lt; certificateCount; i++) {<br/>
+        SecCertificateRef certificate = SecTrustGetCertificateAtIndex(serverTrust, i);<br/>
+        SecCertificateRef someCertificates[] = {certificate};<br/>
+        CFArrayRef certificates = CFArrayCreate(NULL, (const void **)someCertificates, 1, NULL);<br/>
+        SecTrustRef trust;<br/>
+        __Require_noErr_Quiet(SecTrustCreateWithCertificates(certificates, policy, &amp;trust), _out);<br/>
+        SecTrustResultType result;<br/>
+        __Require_noErr_Quiet(SecTrustEvaluate(trust, &amp;result), _out);<br/>
+        [trustChain addObject:(__bridge_transfer id)SecTrustCopyPublicKey(trust)];<br/>
+    _out:<br/>
+        if (trust) {<br/>
+            CFRelease(trust);<br/>
+        }<br/>
+        if (certificates) {<br/>
+            CFRelease(certificates);<br/>
+        }<br/>
+        continue;<br/>
+    }<br/>
+    CFRelease(policy);<br/>
+    return [NSArray arrayWithArray:trustChain];<br/>
+}
+</code></pre></li>
+</ul>
+
+<h2 id="toc_3">验证服务端是否受信</h2>
+
+<p>通过<code>[AFSecurityPolicy evaluateServerTrust:forDomain:]</code>来验证服务器端是否受信</p>
+
+<pre><code class="language-objectivec">- (BOOL)evaluateServerTrust:(SecTrustRef)serverTrust
+                  forDomain:(NSString *)domain {
+
+    #1: 不能隐式的信任自己签发的证书
+    #2: 设置policy
+    #3: 验证证书是否有效
+    #4: 根据SSLPinningMode对服务端进行验证
+    
+    return NO；
+}
+</code></pre>
+
+<ol>
+<li><p>不能隐式的信任自己签发的证书</p>
+<pre><code class="language-objectivec">if (domain &amp;&amp; self.allowInvalidCertificates &amp;&amp; self.validatesDomainName &amp;&amp; (self.SSLPinningMode == AFSSLPinningModeNone || [self.pinnedCertificates count] == 0)) {
+NSLog(@&quot;In order to validate a domain name for self signed certificates, you MUST use pinning.&quot;);<br/>
+return NO;<br/>
+}
+</code></pre>
+<p>因此如果没有提供证书或者不验证证书，并且还设置<code>allowInvalidCertificates</code>为真，满足上面所有条件 说明这次验证是不安全的  返回NO</p></li>
+<li><p>设置Policy</p>
+<pre><code class="language-objectivec">NSMutableArray *policies = [NSMutableArray array];
+if (self.validatesDomainName) {<br/>
+    [policies addObject:(__bridge_transfer id)SecPolicyCreateSSL(true, (__bridge CFStringRef)domain)];<br/>
+} else {<br/>
+    [policies addObject:(__bridge_transfer id)SecPolicyCreateBasicX509()];<br/>
+}
+</code></pre>
+<p>如果要验证域名的话，就以域名为参数创建一个SecPolicyRef，否则会创建一个符合X509标注的默认<code>DecPlocyRef</code>对象</p></li>
+<li><p>验证证书有效性</p>
+<pre><code class="language-objectivec">if (self.SSLPinningMode == AFSSLPinningModeNone) {
+    return self.allowInvalidCertificates || AFServerTrustIsValid(serverTrust);<br/>
+} else if (!AFServerTrustIsValid(serverTrust) &amp;&amp; !self.allowInvalidCertificates) {<br/>
+    return NO;<br/>
+}
+</code></pre>
+<ul>
+<li>如果只根据信任列表中证书进行验证，即<code>self.SSLPinningMode == AFSSLPinningModeNone</code>。如果允许无效的证书 就返回YES。不允许的话就对服务端进行验证</li>
+<li>如果服务器信任无效，并且不允许无效证书，就返回NO</li>
+</ul></li>
+<li><p>根据<code>SSLPingMode</code>对服务器信任进行验证</p>
+<pre><code class="language-objectivec">
+</code></pre>
+<ul>
+<li><code>AFSSLPinningModeNone</code>直接返回NO</li>
+<li><p><code>AFSSLPinningModeCertificate</code></p>
+<pre><code class="language-objectivec">case AFSSLPinningModeCertificate: {
+    NSMutableArray *pinnedCertificates = [NSMutableArray array];<br/>
+    for (NSData *certificateData in self.pinnedCertificates) {<br/>
+        [pinnedCertificates addObject:(__bridge_transfer id)SecCertificateCreateWithData(NULL, (__bridge CFDataRef)certificateData)];<br/>
+    }<br/>
+    SecTrustSetAnchorCertificates(serverTrust, (__bridge CFArrayRef)pinnedCertificates);<br/>
+    if (!AFServerTrustIsValid(serverTrust)) {<br/>
+        return NO;<br/>
+    }<br/>
+    // obtain the chain after being validated, which *should* contain the pinned certificate in the last position (if it&#39;s the Root CA)<br/>
+    NSArray *serverCertificates = AFCertificateTrustChainForServerTrust(serverTrust);<br/>
+    for (NSData *trustChainCertificate in [serverCertificates reverseObjectEnumerator]) {<br/>
+        if ([self.pinnedCertificates containsObject:trustChainCertificate]) {<br/>
+            return YES;<br/>
+        }<br/>
+    }<br/>
+    return NO;<br/>
+}
+</code></pre>
+<p>a. 从<code>self.pinnedCertificates</code>中获取DER表示的数据<br/>
+b. 使用<code>SecTrustSetAnchorCertigicates</code>为服务器信任设置证书<br/>
+c. 判断服务器信任的有效性<br/>
+d. 使用<code>AFCertificateTrustChainForServerTrust</code>获取服务器信任中的全部DER表示的整数<br/>
+e. 如果pinnedCertificated中有相同的整数，就会返回YES</p></li>
+<li><p><code>AFSSLPinningModePublicKey</code></p>
+<pre><code class="language-objectivec">case AFSSLPinningModePublicKey: {
+    NSUInteger trustedPublicKeyCount = 0;<br/>
+    NSArray *publicKeys = AFPublicKeyTrustChainForServerTrust(serverTrust);<br/>
+    for (id trustChainPublicKey in publicKeys) {<br/>
+        for (id pinnedPublicKey in self.pinnedPublicKeys) {<br/>
+            if (AFSecKeyIsEqualToKey((__bridge SecKeyRef)trustChainPublicKey, (__bridge SecKeyRef)pinnedPublicKey)) {<br/>
+                trustedPublicKeyCount += 1;<br/>
+            }<br/>
+        }<br/>
+    }<br/>
+    return trustedPublicKeyCount &gt; 0;<br/>
+}
+</code></pre>
+<p>与<code>AFSSLPinningModeCertificate</code>的不同点在于:</p>
+<ul>
+<li>从服务器信任中获取公钥</li>
+<li><code>pinnedPublicKeys</code>中的公钥与服务器信任中的公钥相同的属性大于0 返回真</li>
+</ul></li>
+</ul></li>
+</ol>
+
+<h2 id="toc_4">与 AFURLSessionManager 协作</h2>
+
+<p>在<code>NSURLSessionDelegate</code>代理方法中 调用运行这段代码</p>
+
+<pre><code class="language-objectivec"> - (void)URLSession:(NSURLSession *)session
+didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
+ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential))completionHandler
+{
+    NSURLSessionAuthChallengeDisposition disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+    __block NSURLCredential *credential = nil;
+
+    if (self.sessionDidReceiveAuthenticationChallenge) {
+        disposition = self.sessionDidReceiveAuthenticationChallenge(session, challenge, &amp;credential);
+    } else {
+        if ([challenge.protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust]) {
+            if ([self.securityPolicy evaluateServerTrust:challenge.protectionSpace.serverTrust forDomain:challenge.protectionSpace.host]) {
+                credential = [NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust];
+                if (credential) {
+                    disposition = NSURLSessionAuthChallengeUseCredential;
+                } else {
+                    disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+                }
+            } else {
+                disposition = NSURLSessionAuthChallengeCancelAuthenticationChallenge;
+            }
+        } else {
+            disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+        }
+    }
+
+    if (completionHandler) {
+        completionHandler(disposition, credential);
+    }
+}
+</code></pre>
+
+<p><code>NSURLAuthenticationChallenge</code>表示一个认证的挑战，提供了关于这次认证的全部信息。<br/>
+ 其中的<code>protectionSpace</code>属性，保存了需要认证的保护空间，每个<code>NSURLProtectionSpace</code>对象都保存了主机地址、端口和认证方法等重要信息</p>
+
+<p>如果保护空间的认证方法为<code>NSURLAuthenticationMethodServerTrust</code>，那么就会使用在上面提到的方法<code>- [AFSecurityPolicy evaluateServerTrust:forDomain:]</code> 对保护空间的<code>serverTrust</code>以及域名<code>host</code>进行认证</p>
+
+<p>根据认证的结果，在<code>completionHandler</code>中传入不同的<code>disposition</code>和<code>credential</code>参数</p>
+
+<h2 id="toc_5">小结</h2>
+
+<p>AFSecurityPolicy 同样也作为一个即插即用的模块，在 AFNetworking 中作为验证 HTTPS 证书是否有效的模块存在    </p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15680125238227.html">AFNetworkReachabilityManager</a></h1>
+			<p class="meta"><time datetime="2019-09-09T15:02:03+08:00" 
+			pubdate data-updated="true">09/09/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">AFNetworkReachabilityManager的使用</h2>
+
+<h3 id="toc_1">初始化 AFNetworkReachabilityManager</h3>
+
+<p>在初始化方法中使用<code>SCNetworkReachabilityCreateWithAddress</code>或者<code>SCNetworkReachabilityCreateWithName</code>生成一个<code>SCNetworkReachabilityRef</code>的引用</p>
+
+<pre><code class="language-objectivec">+ (instancetype)managerForDomain:(NSString *)domain {
+    SCNetworkReachabilityRef reachability = SCNetworkReachabilityCreateWithName(kCFAllocatorDefault, [domain UTF8String]);
+    AFNetworkReachabilityManager *manager = [[self alloc] initWithReachability:reachability];
+    CFRelease(reachability);
+    return manager;
+}
+
++ (instancetype)managerForAddress:(const void *)address {
+    SCNetworkReachabilityRef reachability = SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, (const struct sockaddr *)address);
+    AFNetworkReachabilityManager *manager = [[self alloc] initWithReachability:reachability];
+    CFRelease(reachability);
+    return manager;
+}
+
+- (instancetype)initWithReachability:(SCNetworkReachabilityRef)reachability {
+    self = [super init];
+    if (!self) {
+        return nil;
+    }
+
+    _networkReachability = CFRetain(reachability);
+    self.networkReachabilityStatus = AFNetworkReachabilityStatusUnknown;
+
+    return self;
+}
+</code></pre>
+
+<ol>
+<li>这两个方法通过 域名 或者有个 <code>sockaddr_in</code>指针 生成了一个<code>SCNetworkReachabilityRef</code></li>
+<li>调用<code>- [AFNetworkReachabilityManager initWithReachability:]</code>将生成的<code>SCNetworkReachabilityRef</code>传入</li>
+<li>设置默认<code>networkReachabilityStatus</code></li>
+</ol>
+
+<h3 id="toc_2">监控网络状态</h3>
+
+<p>在初始化了manager之后，我们需要调用<code>startMonitoring</code>来开始监控网络状态</p>
+
+<pre><code class="language-objectivec">- (void)startMonitoring {
+    [self stopMonitoring];
+    if (!self.networkReachability) {
+        return;
+    }
+    __weak __typeof(self)weakSelf = self;
+    AFNetworkReachabilityStatusBlock callback = ^(AFNetworkReachabilityStatus status) {
+        __strong __typeof(weakSelf)strongSelf = weakSelf;
+
+        strongSelf.networkReachabilityStatus = status;
+        if (strongSelf.networkReachabilityStatusBlock) {
+            strongSelf.networkReachabilityStatusBlock(status);
+        }
+
+    };
+
+    SCNetworkReachabilityContext context = {0, (__bridge void *)callback, AFNetworkReachabilityRetainCallback, AFNetworkReachabilityReleaseCallback, NULL};
+    SCNetworkReachabilitySetCallback(self.networkReachability, AFNetworkReachabilityCallback, &amp;context);
+    SCNetworkReachabilityScheduleWithRunLoop(self.networkReachability, CFRunLoopGetMain(), kCFRunLoopCommonModes);
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0),^{
+        SCNetworkReachabilityFlags flags;
+        if (SCNetworkReachabilityGetFlags(self.networkReachability, &amp;flags)) {
+            AFPostReachabilityStatusChange(flags, callback);
+        }
+    });
+}
+</code></pre>
+
+<p>在该方法中创建了每次网络状态改变时的回调<code>AFNetworkReachabilityStatusBlock</code>，当回调发生时，重新设置status属性，调用设置的<code>networkReachabilityStatusBlock</code>属性</p>
+
+<p>监控网络状态核心代码</p>
+
+<ol>
+<li><p>创建一个<code>SCNetworkReachabilityContext</code></p>
+<pre><code class="language-objectivec">typedef struct {
+    CFIndex     version;<br/>
+    void *      __nullable info;<br/>
+    const void  * __nonnull (* __nullable retain)(const void *info);<br/>
+    void        (* __nullable release)(const void *info);<br/>
+    CFStringRef __nonnull (* __nullable copyDescription)(const void *info);<br/>
+} SCNetworkReachabilityContext;<br/>
+SCNetworkReachabilityContext context = {<br/>
+ 0,<br/>
+ (__bridge void *)callback,<br/>
+ AFNetworkReachabilityRetainCallback, <br/>
+ AFNetworkReachabilityReleaseCallback, <br/>
+ NULL<br/>
+};
+</code></pre></li>
+<li><p>当目标状态改变时 调用传入的回调</p>
+<pre><code class="language-objectivec">SCNetworkReachabilitySetCallback(self.networkReachability, AFNetworkReachabilityCallback, &amp;context);
+static void AFNetworkReachabilityCallback(SCNetworkReachabilityRef __unused target, SCNetworkReachabilityFlags flags, void *info) {<br/>
+    AFPostReachabilityStatusChange(flags, (__bridge AFNetworkReachabilityStatusBlock)info);<br/>
+}<br/>
+static void AFPostReachabilityStatusChange(SCNetworkReachabilityFlags flags, AFNetworkReachabilityStatusBlock block) {<br/>
+    AFNetworkReachabilityStatus status = AFNetworkReachabilityStatusForFlags(flags);<br/>
+    dispatch_async(dispatch_get_main_queue(), ^{<br/>
+        if (block) {<br/>
+            block(status);<br/>
+        }<br/>
+        NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];<br/>
+        NSDictionary *userInfo = @{ AFNetworkingReachabilityNotificationStatusItem: @(status) };<br/>
+        [notificationCenter postNotificationName:AFNetworkingReachabilityDidChangeNotification object:nil userInfo:userInfo];<br/>
+    });<br/>
+}
+</code></pre>
+<ol>
+<li>当网络状态改变时 会将<code>context</code>作为参数 回调<code>AFNetworkReachabilityCallback</code></li>
+<li>在<code>AFNetworkReachabilityCallback</code>中，将context中的block，以及作为状态的flags作为参数调用了 <code>AFPostReachabilityStatusChange</code>状态改变方法</li>
+<li>利用<code>AFNetworkReachabilityStatusForFlags</code>函数将flags转变为网络状态status</li>
+<li>在主线程中执行<code>block(status)</code> 并发送状态改变的通知</li>
+</ol></li>
+<li><p>在MainRunLoop中监控网络状态</p>
+<pre><code class="language-objectivec">SCNetworkReachabilityScheduleWithRunLoop(self.networkReachability, CFRunLoopGetMain(), kCFRunLoopCommonModes);
+</code></pre></li>
+<li><p>获取当前网络状态 调用callback</p>
+<pre><code class="language-objectivec"> dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0),^{
+    SCNetworkReachabilityFlags flags;<br/>
+    if (SCNetworkReachabilityGetFlags(self.networkReachability, &amp;flags)) {<br/>
+        AFPostReachabilityStatusChange(flags, callback);<br/>
+    }<br/>
+});
+</code></pre></li>
+</ol>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15677400518331.html">AFURLSerialization</a></h1>
+			<p class="meta"><time datetime="2019-09-06T11:20:51+08:00" 
+			pubdate data-updated="true">09/06/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>在对请求和接收响应的过程中有两个序列化的模块:</p>
+
+<ul>
+<li>AFURLRequestSerialization</li>
+<li>AFURLResponseSerialization</li>
+</ul>
+
+<p><code>AFURLRequestSerialization</code>主要用于修改请求(主要是HTTP请求)的头部，提供了一些语义明确的接口设置HTTP头部字段</p>
+
+<p><code>AFURLResponseSerialization</code>将请求返回的数据解析为对应的格式</p>
+
+<h2 id="toc_0">AFURLResponseSerialization</h2>
+
+<p><code>AFURLResponseSerialization</code>其实只是一个协议</p>
+
+<pre><code class="language-objectivec">@protocol AFURLResponseSerialization &lt;NSObject, NSSecureCoding, NSCopying&gt;
+- (nullable id)responseObjectForResponse:(nullable NSURLResponse *)response
+                           data:(nullable NSData *)data
+                          error:(NSError * _Nullable __autoreleasing *)error NS_SWIFT_NOTHROW;
+
+@end
+</code></pre>
+
+<p>当遵循了这个协议类的同时也要遵循NSObject、NSSecureCoding、NSCopying，用以实现安全编码、拷贝等OC对象的基本行为</p>
+
+<p>该模块中的父类为<code>AFHTTPResponseSerializer</code>并且继承了<code>AFURLResponseSerialization</code>，其子类有<code>AFJSONResponseSerializer</code>、<code>AFXMLDocumentResponseSerializer</code>、<code>AFPropertyListResponseSerializer</code>等</p>
+
+<h3 id="toc_1">AFHTTPResponseSerializer</h3>
+
+<p>这是该模块中的父类 也是最重要的类</p>
+
+<pre><code class="language-objectivec">- (instancetype)init {
+    self = [super init];
+    if (!self) {
+        return nil;
+    }
+    self.acceptableStatusCodes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(200, 100)];
+    self.acceptableContentTypes = nil;
+    return self;
+}
+</code></pre>
+
+<p>初始化 设置<code>acceptableStatusCodes</code>接受的状态码为<code>200-299</code>只有在这个范围内 才表示获取了有效响应</p>
+
+<h4 id="toc_2">验证有效性</h4>
+
+<p>在<code>AFHTTPResponseSerializer</code> 最重要的方法就是<code>- [AFHTTPResponseSerializer validateResponse:data:error:]</code></p>
+
+<pre><code class="language-objectivec">- (BOOL)validateResponse:(NSHTTPURLResponse *)response
+                    data:(NSData *)data
+                   error:(NSError * __autoreleasing *)error
+{
+    BOOL responseIsValid = YES;
+    NSError *validationError = nil;
+
+    if (response &amp;&amp; [response isKindOfClass:[NSHTTPURLResponse class]]) {
+        if (self.acceptableContentTypes &amp;&amp; ![self.acceptableContentTypes containsObject:[response MIMEType]] &amp;&amp;
+            !([response MIMEType] == nil &amp;&amp; [data length] == 0)) {
+            ...
+            //返回的类型 contentType无效
+            responseIsValid = NO;
+        }
+
+        if (self.acceptableStatusCodes &amp;&amp; ![self.acceptableStatusCodes containsIndex:(NSUInteger)response.statusCode] &amp;&amp; [response URL]) {
+                    ...
+                    //返回的状态码无效
+                    responseIsValid = NO;
+        }
+    }
+
+    if (error &amp;&amp; !responseIsValid) {
+        *error = validationError;
+    }
+
+    return responseIsValid;
+}
+</code></pre>
+
+<p>这个方法中根据 <code>acceptableContentTypes</code>和<code>acceptab;leStatusCodes</code>来判断当前响应是否有效</p>
+
+<p>通过<code>AFErrorWithUnderlyingError</code>生成格式化的错误</p>
+
+<pre><code class="language-objectivec">if ([data length] &gt; 0 &amp;&amp; [response URL]) {
+                NSMutableDictionary *mutableUserInfo = [@{
+                                                          NSLocalizedDescriptionKey: [NSString stringWithFormat:NSLocalizedStringFromTable(@&quot;Request failed: unacceptable content-type: %@&quot;, @&quot;AFNetworking&quot;, nil), [response MIMEType]],
+                                                          NSURLErrorFailingURLErrorKey:[response URL],
+                                                          AFNetworkingOperationFailingURLResponseErrorKey: response,
+                                                        } mutableCopy];
+                if (data) {
+                    mutableUserInfo[AFNetworkingOperationFailingURLResponseDataErrorKey] = data;
+                }
+
+                validationError = AFErrorWithUnderlyingError([NSError errorWithDomain:AFURLResponseSerializationErrorDomain code:NSURLErrorCannotDecodeContentData userInfo:mutableUserInfo], validationError);
+            }
+</code></pre>
+
+<h4 id="toc_3">协议实现</h4>
+
+<p>对于协议只是简单的调用了上面的对返回数据做了验证</p>
+
+<pre><code class="language-objectivec">- (id)responseObjectForResponse:(NSURLResponse *)response
+                           data:(NSData *)data
+                          error:(NSError *__autoreleasing *)error
+{
+    [self validateResponse:(NSHTTPURLResponse *)response data:data error:error];
+
+    return data;
+}
+</code></pre>
+
+<h3 id="toc_4">AFJSONResponseSerializer</h3>
+
+<p><code>AFJSONResponseSerializer</code>继承自<code>AFHTTPResponseSerializer</code> </p>
+
+<h4 id="toc_5">初始化</h4>
+
+<pre><code class="language-objectivec">- (instancetype)init {
+    ...
+    self.acceptableContentTypes = [NSSet setWithObjects:@&quot;application/json&quot;, @&quot;text/json&quot;, @&quot;text/javascript&quot;, nil];
+    return self;
+}
+
++ (instancetype)serializerWithReadingOptions:(NSJSONReadingOptions)readingOptions {
+    AFJSONResponseSerializer *serializer = [[self alloc] init];
+    serializer.readingOptions = readingOptions;
+    return serializer;
+}
+</code></pre>
+
+<p>设置了<code>acceptableContentTypes</code>属性</p>
+
+<h4 id="toc_6">重写协议实现</h4>
+
+<pre><code class="language-objectivec">- (id)responseObjectForResponse:(NSURLResponse *)response
+                           data:(NSData *)data
+                          error:(NSError *__autoreleasing *)error
+{
+    #1: 验证请求
+    if (![self validateResponse:(NSHTTPURLResponse *)response data:data error:error]) {
+        if (!error || AFErrorOrUnderlyingErrorHasCodeInDomain(*error, NSURLErrorCannotDecodeContentData, AFURLResponseSerializationErrorDomain)) {
+            return nil;
+        }
+    }
+    #2: 解决一个由只包含一个空格的响应引起的 bug, 略
+    BOOL isSpace = [data isEqualToData:[NSData dataWithBytes:&quot; &quot; length:1]];
+    
+    if (data.length == 0 || isSpace) {
+        return nil;
+    }
+    #3: 序列化 JSON
+       NSError *serializationError = nil;
+    
+    id responseObject = [NSJSONSerialization JSONObjectWithData:data options:self.readingOptions error:&amp;serializationError];
+
+    if (!responseObject)
+    {
+        if (error) {
+            *error = AFErrorWithUnderlyingError(serializationError, *error);
+        }
+        return nil;
+    }
+    #4: 移除 JSON 中的 null
+       if (self.removesKeysWithNullValues) {
+        return AFJSONObjectByRemovingKeysWithNullValues(responseObject, self.readingOptions);
+    }
+
+    if (error) {
+        *error = AFErrorWithUnderlyingError(serializationError, *error);
+    }
+    return responseObject;
+}
+</code></pre>
+
+<p>其中移除JSON中null的函数是一个递归调用的函数</p>
+
+<pre><code class="language-objectivec">static id AFJSONObjectByRemovingKeysWithNullValues(id JSONObject, NSJSONReadingOptions readingOptions) {
+    if ([JSONObject isKindOfClass:[NSArray class]]) {
+        NSMutableArray *mutableArray = [NSMutableArray arrayWithCapacity:[(NSArray *)JSONObject count]];
+        for (id value in (NSArray *)JSONObject) {
+            [mutableArray addObject:AFJSONObjectByRemovingKeysWithNullValues(value, readingOptions)];
+        }
+
+        return (readingOptions &amp; NSJSONReadingMutableContainers) ? mutableArray : [NSArray arrayWithArray:mutableArray];
+    } else if ([JSONObject isKindOfClass:[NSDictionary class]]) {
+        NSMutableDictionary *mutableDictionary = [NSMutableDictionary dictionaryWithDictionary:JSONObject];
+        for (id &lt;NSCopying&gt; key in [(NSDictionary *)JSONObject allKeys]) {
+            id value = (NSDictionary *)JSONObject[key];
+            if (!value || [value isEqual:[NSNull null]]) {
+                [mutableDictionary removeObjectForKey:key];
+            } else if ([value isKindOfClass:[NSArray class]] || [value isKindOfClass:[NSDictionary class]]) {
+            //移除value为null 的键值对
+                mutableDictionary[key] = AFJSONObjectByRemovingKeysWithNullValues(value, readingOptions);
+            }
+        }
+
+        return (readingOptions &amp; NSJSONReadingMutableContainers) ? mutableDictionary : [NSDictionary dictionaryWithDictionary:mutableDictionary];
+    }
+
+    return JSONObject;
+}
+</code></pre>
+
+<h2 id="toc_7">AFURLRequestSerialization</h2>
+
+<p><code>AFURLRequestSerialization</code>主要工作是对发出的HTTP请求进行处理</p>
+
+<ol>
+<li>处理查询的URL参数</li>
+<li>设置HTTP头部字段</li>
+<li>设置请求的属性</li>
+<li>分块上传</li>
+</ol>
+
+<h3 id="toc_8">处理查询参数</h3>
+
+<p>处理查询参数组要通过<code>AFQueryStringPair</code>类，以及一些C函数共同完成。<br/>
+<code>AFQueryStringPair</code>中存储了两个属性</p>
+
+<pre><code class="language-objectivec">@property (readwrite, nonatomic, strong) id field;
+@property (readwrite, nonatomic, strong) id value;
+</code></pre>
+
+<p>对应HTTP请求中查询URL中的参数</p>
+
+<pre><code class="language-objectivec">- (instancetype)initWithField:(id)field value:(id)value {
+    self = [super init];
+    if (!self) {
+        return nil;
+    }
+
+    self.field = field;
+    self.value = value;
+
+    return self;
+}
+
+- (NSString *)URLEncodedStringValue {
+    if (!self.value || [self.value isEqual:[NSNull null]]) {
+        return AFPercentEscapedStringFromString([self.field description]);
+    } else {
+        return [NSString stringWithFormat:@&quot;%@=%@&quot;, AFPercentEscapedStringFromString([self.field description]), AFPercentEscapedStringFromString([self.value description])];
+    }
+}
+</code></pre>
+
+<p>使用<code>AFPercentEscapedStringFromString</code>C函数来对filed和value进行处理，使用URL形式，将特殊字符转为百分号表示形式。返回<code>key=value</code>这种形式</p>
+
+<p>使用C函数<code>AFQueryStringPairsFromKeyAndValue</code>将参数字典转为<code>AFQueryStringPair</code>对象数组，然后使用<code>AFQueryStringFromParameters</code>用&amp;拼接参数，返回<code>username=dravenss&amp;password=123456&amp;hello[world]=helloworld<br/>
+</code>形式</p>
+
+<h3 id="toc_9">设置HTTP头部字段</h3>
+
+<p><code>AFHTTPRequestSerializer</code>帮助我们设置HTTP请求头，在内部提供了<code>- (void)setValue:(NSString *)valueforHTTPHeaderField:(NSString *)field</code>方法来设置HTTP头部，它的实现基于<code>mutableHTTPRequestHeaders</code>属性</p>
+
+<pre><code class="language-objectivec">@property (readwrite, nonatomic, strong) NSMutableDictionary *mutableHTTPRequestHeaders;
+
+- (void)setValue:(NSString *)value
+forHTTPHeaderField:(NSString *)field
+{
+    dispatch_barrier_async(self.requestHeaderModificationQueue, ^{
+        [self.mutableHTTPRequestHeaders setValue:value forKey:field];
+    });
+}
+</code></pre>
+
+<p>当我们设置请求头时都会设置到<code>mutableHTTPRequestHeaders</code>这个可变字典中，当真正使用时，通过<code>HTTPRequestHeaders</code>方法来获取对应版本的不可变字典</p>
+
+<pre><code class="language-objectivec">- (NSDictionary *)HTTPRequestHeaders {
+    NSDictionary __block *value;
+    dispatch_sync(self.requestHeaderModificationQueue, ^{
+        value = [NSDictionary dictionaryWithDictionary:self.mutableHTTPRequestHeaders];
+    });
+    return value;
+}
+</code></pre>
+
+<h4 id="toc_10">AFHTTPRequestSerializer设置常用的HTTP头</h4>
+
+<p>在初始化时，根据编译平台  设置了<code>userAgent</code>字符串</p>
+
+<pre><code class="language-objectivec">#if TARGET_OS_IOS
+    // User-Agent Header; see http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.43
+    userAgent = [NSString stringWithFormat:@&quot;%@/%@ (%@; iOS %@; Scale/%0.2f)&quot;, [[NSBundle mainBundle] infoDictionary][(__bridge NSString *)kCFBundleExecutableKey] ?: [[NSBundle mainBundle] infoDictionary][(__bridge NSString *)kCFBundleIdentifierKey], [[NSBundle mainBundle] infoDictionary][@&quot;CFBundleShortVersionString&quot;] ?: [[NSBundle mainBundle] infoDictionary][(__bridge NSString *)kCFBundleVersionKey], [[UIDevice currentDevice] model], [[UIDevice currentDevice] systemVersion], [[UIScreen mainScreen] scale]];
+    
+    if (userAgent) {
+        if (![userAgent canBeConvertedToEncoding:NSASCIIStringEncoding]) {
+            NSMutableString *mutableUserAgent = [userAgent mutableCopy];
+            if (CFStringTransform((__bridge CFMutableStringRef)(mutableUserAgent), NULL, (__bridge CFStringRef)@&quot;Any-Latin; Latin-ASCII; [:^ASCII:] Remove&quot;, false)) {
+                userAgent = mutableUserAgent;
+            }
+        }
+        [self setValue:userAgent forHTTPHeaderField:@&quot;User-Agent&quot;];
+    }
+</code></pre>
+
+<p>设置账号 密码等验证字段</p>
+
+<pre><code class="language-objectivec">- (void)setAuthorizationHeaderFieldWithUsername:(NSString *)username
+                                       password:(NSString *)password
+{
+    NSData *basicAuthCredentials = [[NSString stringWithFormat:@&quot;%@:%@&quot;, username, password] dataUsingEncoding:NSUTF8StringEncoding];
+    NSString *base64AuthCredentials = [basicAuthCredentials base64EncodedStringWithOptions:(NSDataBase64EncodingOptions)0];
+    [self setValue:[NSString stringWithFormat:@&quot;Basic %@&quot;, base64AuthCredentials] forHTTPHeaderField:@&quot;Authorization&quot;];
+}
+
+- (void)clearAuthorizationHeader {
+    dispatch_barrier_async(self.requestHeaderModificationQueue, ^{
+        [self.mutableHTTPRequestHeaders removeObjectForKey:@&quot;Authorization&quot;];
+    });
+}
+</code></pre>
+
+<h3 id="toc_11">设置请求的属性</h3>
+
+<p><code>AFNetworking</code>提供了这些属性来设置</p>
+
+<pre><code class="language-objectivec">@property (nonatomic, assign) BOOL allowsCellularAccess;
+
+@property (nonatomic, assign) NSURLRequestCachePolicy cachePolicy;
+
+@property (nonatomic, assign) BOOL HTTPShouldHandleCookies;
+
+@property (nonatomic, assign) BOOL HTTPShouldUsePipelining;
+
+@property (nonatomic, assign) NSURLRequestNetworkServiceType networkServiceType;
+
+@property (nonatomic, assign) NSTimeInterval timeoutInterval;
+</code></pre>
+
+<p>存储在数组中</p>
+
+<pre><code class="language-objectivec">static NSArray * AFHTTPRequestSerializerObservedKeyPaths() {
+    static NSArray *_AFHTTPRequestSerializerObservedKeyPaths = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&amp;onceToken, ^{
+        _AFHTTPRequestSerializerObservedKeyPaths = @[NSStringFromSelector(@selector(allowsCellularAccess)), NSStringFromSelector(@selector(cachePolicy)), NSStringFromSelector(@selector(HTTPShouldHandleCookies)), NSStringFromSelector(@selector(HTTPShouldUsePipelining)), NSStringFromSelector(@selector(networkServiceType)), NSStringFromSelector(@selector(timeoutInterval))];
+    });
+
+    return _AFHTTPRequestSerializerObservedKeyPaths;
+}
+</code></pre>
+
+<p>当这些属性被设置时  会触发KVO，将新的属性存储在一个名字为<code>mutableObservedChangedKeyPaths</code>中</p>
+
+<pre><code class="language-objectivec">- (void)observeValueForKeyPath:(NSString *)keyPath
+                      ofObject:(__unused id)object
+                        change:(NSDictionary *)change
+                       context:(void *)context
+{
+    if (context == AFHTTPRequestSerializerObserverContext) {
+        if ([change[NSKeyValueChangeNewKey] isEqual:[NSNull null]]) {
+            [self.mutableObservedChangedKeyPaths removeObject:keyPath];
+        } else {
+            [self.mutableObservedChangedKeyPaths addObject:keyPath];
+        }
+    }
+}
+</code></pre>
+
+<p>然后在生成request时 设置这些属性</p>
+
+<pre><code class="language-objectivec">for (NSString *keyPath in AFHTTPRequestSerializerObservedKeyPaths()) {
+        if ([self.mutableObservedChangedKeyPaths containsObject:keyPath]) {
+            [mutableRequest setValue:[self valueForKeyPath:keyPath] forKey:keyPath];
+        }
+    }
+</code></pre>
+
+<h3 id="toc_12">流程</h3>
+
+<p><code>AFHTTPRequestSerializer</code>会在<code>Manager</code>初始化之后进行一些初始化，它会根据当前系统环境预设置一些HTTP头部字段<code>Accept-Language</code>、<code>User-Agent</code>等</p>
+
+<p>在完成了HTTP 请求头和属性的设置后，</p>
+
+<p>在调用请求的方法时，会调用到序列化的这个方法</p>
+
+<pre><code class="language-objectivec">- (NSMutableURLRequest *)requestWithMethod:(NSString *)method
+                                 URLString:(NSString *)URLString
+                                parameters:(id)parameters
+                                     error:(NSError *__autoreleasing *)error
+{
+    NSParameterAssert(method);
+    NSParameterAssert(URLString);
+
+    NSURL *url = [NSURL URLWithString:URLString];
+
+    NSParameterAssert(url);
+
+    NSMutableURLRequest *mutableRequest = [[NSMutableURLRequest alloc] initWithURL:url];
+    mutableRequest.HTTPMethod = method;
+
+    for (NSString *keyPath in AFHTTPRequestSerializerObservedKeyPaths()) {
+        if ([self.mutableObservedChangedKeyPaths containsObject:keyPath]) {
+            [mutableRequest setValue:[self valueForKeyPath:keyPath] forKey:keyPath];
+        }
+    }
+
+    mutableRequest = [[self requestBySerializingRequest:mutableRequest withParameters:parameters error:error] mutableCopy];
+
+    return mutableRequest;
+}
+</code></pre>
+
+<p>这个方法完成了一下几件事</p>
+
+<ol>
+<li>对参数进行检查</li>
+<li>设置HTTP方法</li>
+<li>通过<code>mutableObservedChangedKeyPaths</code>设置<code>NSMutableRequest</code>的属性</li>
+<li><p>调用了<code>[AFHTTPRequestSerializer requestBySerializingRequest:withParameters:error:]</code>方法来设置HTTP头部字段和查询参数</p>
+<p>在这个方法中做了两件事</p>
+<ol>
+<li>设置HTTP头部</li>
+<li>调用<code>AFQueryStringFromParameters</code>将参数转为查询参数</li>
+<li><p>将params添加到url或者http body中</p>
+<pre><code class="language-objectivec">- (NSURLRequest *)requestBySerializingRequest:(NSURLRequest *)request
+                           withParameters:(id)parameters<br/>
+                                    error:(NSError *__autoreleasing *)error<br/>
+{<br/>
+    NSParameterAssert(request);<br/>
+    NSMutableURLRequest *mutableRequest = [request mutableCopy];<br/>
+    [self.HTTPRequestHeaders enumerateKeysAndObjectsUsingBlock:^(id field, id value, BOOL * __unused stop) {<br/>
+        if (![request valueForHTTPHeaderField:field]) {<br/>
+            [mutableRequest setValue:value forHTTPHeaderField:field];<br/>
+        }<br/>
+    }];<br/>
+    NSString *query = nil;<br/>
+    if (parameters) {<br/>
+        if (self.queryStringSerialization) {<br/>
+            NSError *serializationError;<br/>
+            query = self.queryStringSerialization(request, parameters, &amp;serializationError);<br/>
+            if (serializationError) {<br/>
+                if (error) {<br/>
+                    *error = serializationError;<br/>
+                }<br/>
+                return nil;<br/>
+            }<br/>
+        } else {<br/>
+            switch (self.queryStringSerializationStyle) {<br/>
+                case AFHTTPRequestQueryStringDefaultStyle:<br/>
+                    query = AFQueryStringFromParameters(parameters);<br/>
+                    break;<br/>
+            }<br/>
+        }<br/>
+    }<br/>
+    if ([self.HTTPMethodsEncodingParametersInURI containsObject:[[request HTTPMethod] uppercaseString]]) {<br/>
+        if (query &amp;&amp; query.length &gt; 0) {<br/>
+            mutableRequest.URL = [NSURL URLWithString:[[mutableRequest.URL absoluteString] stringByAppendingFormat:mutableRequest.URL.query ? @&quot;&amp;%@&quot; : @&quot;?%@&quot;, query]];<br/>
+        }<br/>
+    } else {<br/>
+        // #2864: an empty string is a valid x-www-form-urlencoded payload<br/>
+        if (!query) {<br/>
+            query = @&quot;&quot;;<br/>
+        }<br/>
+        if (![mutableRequest valueForHTTPHeaderField:@&quot;Content-Type&quot;]) {<br/>
+            [mutableRequest setValue:@&quot;application/x-www-form-urlencoded&quot; forHTTPHeaderField:@&quot;Content-Type&quot;];<br/>
+        }<br/>
+        [mutableRequest setHTTPBody:[query dataUsingEncoding:self.stringEncoding]];<br/>
+    }<br/>
+    return mutableRequest;<br/>
+}
+</code></pre></li>
+</ol></li>
+<li><p>最后这方法会返回一个<code>NSMutableURLRequest</code></p></li>
+</ol>
+
+<h3 id="toc_13">AFPropertyListRequestSerializer AFJSONRequestSerializer</h3>
+
+<p><code>AFJSONRequestSerializer</code> 、 <code>AFPropertyListRequestSerializer</code><br/>
+均继承自AFHTTPRequestSerializer  </p>
+
+<p>其重写了<code>- (NSURLRequest *)requestBySerializingRequest:(NSURLRequest *)request withParameters:(id)parameters error:(NSError *__autoreleasing *)error</code>方法，主要内部修改了contentType和设置的httpBody的数据格式化</p>
+
+<p>我们只需要在请求时设置manager 的 requestSerializer为<code>[AFJSONRequestSerializer serializer]</code></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15676621460215.html">AFURLSessionManager</a></h1>
+			<p class="meta"><time datetime="2019-09-05T13:42:26+08:00" 
+			pubdate data-updated="true">09/05/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>根据作者:<br/>
+<code>AFURLSessionManager</code>是基于一个指定的<code>NSURLSessionConfiguration</code>对象创建的用于管理<code>NSURLSession</code>对象。 其遵循了<code>NSURLSessionTaskDelegate、NSURLSessionDataDelegate、NSURLSessionDownloadDelegate、NSURLSessionDelegate</code>协议</p>
+
+<pre><code class="language-objectivec">## NSURLSession &amp; NSURLSessionTask Delegate Methods
+
+ `AFURLSessionManager` implements the following delegate methods:
+
+ ### `NSURLSessionDelegate`
+
+ - `URLSession:didBecomeInvalidWithError:`
+ - `URLSession:didReceiveChallenge:completionHandler:`
+ - `URLSessionDidFinishEventsForBackgroundURLSession:`
+
+ ### `NSURLSessionTaskDelegate`
+
+ - `URLSession:willPerformHTTPRedirection:newRequest:completionHandler:`
+ - `URLSession:task:didReceiveChallenge:completionHandler:`
+ - `URLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:`
+ - `URLSession:task:needNewBodyStream:`
+ - `URLSession:task:didCompleteWithError:`
+
+ ### `NSURLSessionDataDelegate`
+
+ - `URLSession:dataTask:didReceiveResponse:completionHandler:`
+ - `URLSession:dataTask:didBecomeDownloadTask:`
+ - `URLSession:dataTask:didReceiveData:`
+ - `URLSession:dataTask:willCacheResponse:completionHandler:`
+
+ ### `NSURLSessionDownloadDelegate`
+
+ - `URLSession:downloadTask:didFinishDownloadingToURL:`
+ - `URLSession:downloadTask:didWriteData:totalBytesWritten:totalBytesWritten:totalBytesExpectedToWrite:`
+ - `URLSession:downloadTask:didResumeAtOffset:expectedTotalBytes:`
+
+ If any of these methods are overridden in a subclass, they _must_ call the `super` implementation first.
+
+</code></pre>
+
+<h2 id="toc_0">基本功能</h2>
+
+<ol>
+<li>创建和管理<code>NSURLSession</code></li>
+<li>管理<code>NSURLSessionTask</code></li>
+<li>实现<code>NSURLSessionDelegate</code>等协议中的代理方法</li>
+<li>使用<code>AFURLSessionManagerTaskDelegate</code>管理进度</li>
+<li>使用<code>_AFURLSessionTaskSwizzling</code>调剂方法</li>
+<li>引入<code>AFSecurityPolicy</code>保证请求的安全</li>
+<li>引入<code>AFNetworkReachabilityManager</code>监控网络状态</li>
+</ol>
+
+<h2 id="toc_1">创建和管理NSURLSession</h2>
+
+<p>初始化方法</p>
+
+<pre><code class="language-objectivec">- (instancetype)initWithSessionConfiguration:(NSURLSessionConfiguration *)configuration {
+
+    //配置会话设置
+    if (!configuration) {
+        configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
+    }
+    self.sessionConfiguration = configuration;
+    
+    self.operationQueue = [[NSOperationQueue alloc] init];
+    self.operationQueue.maxConcurrentOperationCount = 1;
+    
+    //设置NSURLSessionDelegate代理 和 代理queue
+    self.session = [NSURLSession sessionWithConfiguration:self.sessionConfiguration delegate:self delegateQueue:self.operationQueue];
+    
+    //初始化响应序列
+    self.responseSerializer = [AFJSONResponseSerializer serializer];
+    
+    //初始化安全认证
+    self.securityPolicy = [AFSecurityPolicy defaultPolicy];
+    
+    #if !TARGET_OS_WATCH
+    //初始化网络监测状态
+    self.reachabilityManager = [AFNetworkReachabilityManager sharedManager];
+    #endif
+
+    //初始化保存dataTask的字典
+    self.mutableTaskDelegatesKeyedByTaskIdentifier = [[NSMutableDictionary alloc] init];
+    
+    self.lock = [[NSLock alloc] init];
+    self.lock.name = AFURLSessionManagerLockName;
+    
+    //为已有task设置代理  
+    [self.session getTasksWithCompletionHandler:^(NSArray *dataTasks, NSArray *uploadTasks, NSArray *downloadTasks) {
+        for (NSURLSessionDataTask *task in dataTasks) {
+            [self addDelegateForDataTask:task uploadProgress:nil downloadProgress:nil completionHandler:nil];
+        }
+
+        for (NSURLSessionUploadTask *uploadTask in uploadTasks) {
+            [self addDelegateForUploadTask:uploadTask progress:nil completionHandler:nil];
+        }
+
+        for (NSURLSessionDownloadTask *downloadTask in downloadTasks) {
+            [self addDelegateForDownloadTask:downloadTask progress:nil destination:nil completionHandler:nil];
+        }
+    }];
+}
+</code></pre>
+
+<h2 id="toc_2">NSURLSessionTask</h2>
+
+<p><code>AFURLSessionManager</code>中提供了一系列的获取dataTask的方法</p>
+
+<pre><code class="language-objectivec">//upload 
+- (NSURLSessionUploadTask *)uploadTaskWithRequest:(NSURLRequest *)request
+                                         fromFile:(NSURL *)fileURL
+                                         progress:(void (^)(NSProgress *uploadProgress)) uploadProgressBlock
+                                completionHandler:(void (^)(NSURLResponse *response, id responseObject, NSError *error))completionHandler
+
+//download                                
+- (NSURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request
+                                             progress:(void (^)(NSProgress *downloadProgress)) downloadProgressBlock
+                                          destination:(NSURL * (^)(NSURL *targetPath, NSURLResponse *response))destination
+                                    completionHandler:(void (^)(NSURLResponse *response, NSURL *filePath, NSError *error))completionHandler
+
+
+//
+- (NSURLSessionDataTask *)dataTaskWithRequest:(NSURLRequest *)request
+                               uploadProgress:(nullable void (^)(NSProgress *uploadProgress)) uploadProgressBlock
+                             downloadProgress:(nullable void (^)(NSProgress *downloadProgress)) downloadProgressBlock
+                            completionHandler:(nullable void (^)(NSURLResponse *response, id _Nullable responseObject,  NSError * _Nullable error))completionHandler {
+
+    __block NSURLSessionDataTask *dataTask = nil;
+    url_session_manager_create_task_safely(^{
+        dataTask = [self.session dataTaskWithRequest:request];
+    });
+
+    [self addDelegateForDataTask:dataTask uploadProgress:uploadProgressBlock downloadProgress:downloadProgressBlock completionHandler:completionHandler];
+
+    return dataTask;
+}
+</code></pre>
+
+<p>使用<code>url_session_manager_create_task_safely</code>的原因是 苹果的框架的<a href="https://github.com/AFNetworking/AFNetworking/issues/2093">bug</a>，在并行队列中创建task时，因为可能返回的taskIdentifier，先前的complectionHandel被替换为新的，即对第二个任务调用第一个响应.（在iOS8之后问题已修复）</p>
+
+<p>调用了<code>addDelegateForDataTask: uploadProgress: downloadProgress: completionHandler:</code>方法</p>
+
+<pre><code class="language-objectivec">- (void)addDelegateForDataTask:(NSURLSessionDataTask *)dataTask
+                uploadProgress:(nullable void (^)(NSProgress *uploadProgress)) uploadProgressBlock
+              downloadProgress:(nullable void (^)(NSProgress *downloadProgress)) downloadProgressBlock
+             completionHandler:(void (^)(NSURLResponse *response, id responseObject, NSError *error))completionHandler
+{
+    AFURLSessionManagerTaskDelegate *delegate = [[AFURLSessionManagerTaskDelegate alloc] initWithTask:dataTask];
+    delegate.manager = self;
+    delegate.completionHandler = completionHandler;
+
+    dataTask.taskDescription = self.taskDescriptionForSessionTasks;
+    [self setDelegate:delegate forTask:dataTask];
+
+    delegate.uploadProgressBlock = uploadProgressBlock;
+    delegate.downloadProgressBlock = downloadProgressBlock;
+}
+
+- (void)setDelegate:(AFURLSessionManagerTaskDelegate *)delegate
+            forTask:(NSURLSessionTask *)task
+{
+    NSParameterAssert(task);
+    NSParameterAssert(delegate);
+
+    [self.lock lock];
+    self.mutableTaskDelegatesKeyedByTaskIdentifier[@(task.taskIdentifier)] = delegate;
+    [self addNotificationObserverForTask:task];
+    [self.lock unlock];
+}
+
+- (void)addNotificationObserverForTask:(NSURLSessionTask *)task {
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(taskDidResume:) name:AFNSURLSessionTaskDidResumeNotification object:task];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(taskDidSuspend:) name:AFNSURLSessionTaskDidSuspendNotification object:task];
+}
+</code></pre>
+
+<p>创建了一个<code>AFURLSessionManagerTaskDelegate</code>对象 <br/>
+并在其内部执行了<code>setDelegate</code>来设置代理</p>
+
+<p><code>AFURLSessionManager</code>就是通过字典<code>mutableTaskDelegatesKeyedByTaskIdentifier</code>来存储和管理每一个<code>NSURLSessionTask</code>，它以<code>taskIdentifier</code>为键存储task</p>
+
+<h2 id="toc_3">NSURLSessionDelegate</h2>
+
+<p>前面说过<code>AFURLSessionManager</code>遵循了一下代理</p>
+
+<ul>
+<li>NSURLSessionDelegate</li>
+<li>NSURLSessionTaskDelegate</li>
+<li>NSURLSessionDataDelegate</li>
+<li>NSURLSessionDownloadDelegate</li>
+</ul>
+
+<p>我们在使用<code>AFURLSessionManager</code>的初始化方法时 设置 session的delegate为self</p>
+
+<pre><code class="language-objectivec">- (void)URLSession:(NSURLSession *)session didBecomeInvalidWithError:(NSError *)error {
+    if (self.sessionDidBecomeInvalid) {
+        self.sessionDidBecomeInvalid(session, error);
+    }
+
+    [[NSNotificationCenter defaultCenter] postNotificationName:AFURLSessionDidInvalidateNotification object:session];
+}
+
+- (void)URLSession:(NSURLSession *)session
+didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
+ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential))completionHandler {
+    
+ }
+</code></pre>
+
+<p>遵循这些协议实现其方法，然后将其提供更简洁的block接口<br/>
+将block存在对应属性中，当代理方法调用时，执行对应的block</p>
+
+<pre><code class="language-objectivec">- (void)setSessionDidBecomeInvalidBlock:(void (^)(NSURLSession *session, NSError *error))block {
+    self.sessionDidBecomeInvalid = block;
+}
+
+- (void)setSessionDidReceiveAuthenticationChallengeBlock:(NSURLSessionAuthChallengeDisposition (^)(NSURLSession *session, NSURLAuthenticationChallenge *challenge, NSURLCredential * __autoreleasing *credential))block {
+    self.sessionDidReceiveAuthenticationChallenge = block;
+}
+</code></pre>
+
+<h2 id="toc_4">AFURLSessionManagerTaskDelegate管理进度</h2>
+
+<p>主要为task提供进度管理功能，并在task结束时回调，即调用<code>completionHandel</code></p>
+
+<pre><code class="language-objectivec">- (instancetype)initWithTask:(NSURLSessionTask *)task {
+    _mutableData = [NSMutableData data];
+    _uploadProgress = [[NSProgress alloc] initWithParent:nil userInfo:nil];
+    _downloadProgress = [[NSProgress alloc] initWithParent:nil userInfo:nil];
+    
+    __weak __typeof__(task) weakTask = task;
+    for (NSProgress *progress in @[ _uploadProgress, _downloadProgress ])
+    {
+        progress.totalUnitCount = NSURLSessionTransferSizeUnknown;
+        progress.cancellable = YES;
+        progress.cancellationHandler = ^{
+            [weakTask cancel];
+        };
+        progress.pausable = YES;
+        progress.pausingHandler = ^{
+            [weakTask suspend];
+        };
+#if AF_CAN_USE_AT_AVAILABLE
+        if (@available(iOS 9, macOS 10.11, *))
+#else
+        if ([progress respondsToSelector:@selector(setResumingHandler:)])
+#endif
+        {
+            progress.resumingHandler = ^{
+                [weakTask resume];
+            };
+        }
+        
+        [progress addObserver:self
+                   forKeyPath:NSStringFromSelector(@selector(fractionCompleted))
+                      options:NSKeyValueObservingOptionNew
+                      context:NULL];
+    }
+    return self;
+}
+</code></pre>
+
+<p>主要设置了<code>uploadProgress</code>和<code>downloadProgress</code>的回调，当NSProgress的状态改变时，调用相应的task方法，如：resume和suspend来改变task状态</p>
+
+<h3 id="toc_5">代理方法 URLSession:task:didCompleteWithError:</h3>
+
+<p>当sessionManager收到代理,将消息转发给task对应的<code>AFURLSessionManagerTaskDelegate</code></p>
+
+<pre><code class="language-objectivec">- (void)URLSession:(NSURLSession *)session
+              task:(NSURLSessionTask *)task
+didCompleteWithError:(NSError *)error {
+    if (delegate) {
+        [delegate URLSession:session task:task didCompleteWithError:error];
+        [self removeDelegateForTask:task];
+    }
+
+    if (self.taskDidComplete) {
+        self.taskDidComplete(session, task, error);
+    }
+}
+</code></pre>
+
+<p><code>AFURLSessionManagerTaskDelegate</code>主要调用传入的<code>completionHandle</code>,然后发出<code>AFNetworkingTaskDidCompleteNotification</code>通知</p>
+
+<pre><code class="language-objectivec">- (void)URLSession:(__unused NSURLSession *)session
+              task:(NSURLSessionTask *)task
+didCompleteWithError:(NSError *)error {
+    __strong AFURLSessionManager *manager = self.manager;
+    //从mutableData取出数据 设置UserInfo
+    __block NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+    userInfo[AFNetworkingTaskDidCompleteResponseSerializerKey] = manager.responseSerializer;
+    NSData *data = nil;
+    if (self.mutableData) {
+        data = [self.mutableData copy];
+        self.mutableData = nil;
+    }
+    if (self.downloadFileURL) {
+        userInfo[AFNetworkingTaskDidCompleteAssetPathKey] = self.downloadFileURL;
+    } else if (data) {
+        userInfo[AFNetworkingTaskDidCompleteResponseDataKey] = data;
+    }
+    //使用 complectionGroup或者complectionQueue 否则创建一个group和主线程调用completionHandler，并在主线程发出通知
+    if (error) {
+        dispatch_group_async(manager.completionGroup, manager.completionQueue, ^{
+            self.completionHandler(task.response, responseObject, error);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[NSNotificationCenter defaultCenter] postNotificationName:AFNetworkingTaskDidCompleteNotification object:task userInfo:userInfo];
+            });
+        })
+    } else {
+        dispatch_async(url_session_manager_processing_queue(), ^{
+            responseObject = [manager.responseSerializer responseObjectForResponse:task.response data:data error:&amp;serializationError];
+            dispatch_group_async(manager.completionGroup, manager.completionQueue, ^{
+            self.completionHandler(task.response, responseObject, error);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[NSNotificationCenter defaultCenter] postNotificationName:AFNetworkingTaskDidCompleteNotification object:task userInfo:userInfo];
+            });
+        })
+        }
+    }
+
+}
+</code></pre>
+
+<h3 id="toc_6">代理方法 URLSession:dataTask:didReceiveData: 和 - URLSession:downloadTask:didFinishDownloadingToURL:</h3>
+
+<pre><code class="language-objectivec">//在收到数据时调用
+- (void)URLSession:(__unused NSURLSession *)session
+          dataTask:(__unused NSURLSessionDataTask *)dataTask
+    didReceiveData:(NSData *)data
+{
+    self.downloadProgress.totalUnitCount = dataTask.countOfBytesExpectedToReceive;
+    self.downloadProgress.completedUnitCount = dataTask.countOfBytesReceived;
+
+    [self.mutableData appendData:data];
+}
+
+//在下载对应文件时调用
+- (void)URLSession:(NSURLSession *)session
+      downloadTask:(NSURLSessionDownloadTask *)downloadTask
+didFinishDownloadingToURL:(NSURL *)location
+{
+    self.downloadFileURL = nil;
+
+    if (self.downloadTaskDidFinishDownloading) {
+        self.downloadFileURL = self.downloadTaskDidFinishDownloading(session, downloadTask, location);
+        if (self.downloadFileURL) {
+            NSError *fileManagerError = nil;
+
+            if (![[NSFileManager defaultManager] moveItemAtURL:location toURL:self.downloadFileURL error:&amp;fileManagerError]) {
+                [[NSNotificationCenter defaultCenter] postNotificationName:AFURLSessionDownloadTaskDidFailToMoveFileNotification object:downloadTask userInfo:fileManagerError.userInfo];
+            }
+        }
+    }
+}
+</code></pre>
+
+<h2 id="toc_7">_AFURLSessionTaskSwizzling调剂方法</h2>
+
+<p><code>_AFURLSessionTaskSwizzling</code>功能就是修改<code>NSURLSessionTask</code>的<code>resume</code>和<code>suspend</code>方法，替换原有的实现</p>
+
+<pre><code class="language-objectivec">- (void)af_resume {
+    NSAssert([self respondsToSelector:@selector(state)], @&quot;Does not respond to state&quot;);
+    NSURLSessionTaskState state = [self state];
+    [self af_resume];
+    
+    if (state != NSURLSessionTaskStateRunning) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:AFNSURLSessionTaskDidResumeNotification object:self];
+    }
+}
+
+- (void)af_suspend {
+    NSAssert([self respondsToSelector:@selector(state)], @&quot;Does not respond to state&quot;);
+    NSURLSessionTaskState state = [self state];
+    [self af_suspend];
+    
+    if (state != NSURLSessionTaskStateSuspended) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:AFNSURLSessionTaskDidSuspendNotification object:self];
+    }
+}
+</code></pre>
+
+<p>这是为了在调用方法时 发出通知</p>
+
+<p>在load时执行方法替换操作，但是因为NSURLSessionTask在iOS7和8的实现有所不同 导致以下代码有点复杂</p>
+
+<p>在iOS7上，<code>localDataTask</code>是一个<code>__NSCFLocalDataTask</code>，它继承自<code>__NSCFLocalSessionTask</code>，它继承自<code>__NSCFURLSessionTask</code><br/>
+在iOS8上，<code>localDataTask</code>是一个<code>__NSCFLocalDataTask</code>，它继承自<code>__NSCFLocalSessionTask</code>，它继承自<code>NSURLSessionTask</code><br/>
+在iOS7上，<code>__ NSCFLocalSessionTask</code>和<code>__NSCFURLSessionTask</code>是唯一具有自己的<code>resume</code>和<code>suspend</code>实现的两个类，而__NSCFLocalSessionTask<code>则不会调用超级。这意味着两个类都需要调整。<br/>
+在iOS 8上，</code>NSURLSessionTask<code>是唯一实现</code>resume<code>和</code>suspend`的类。这意味着这是唯一需要调整的类。</p>
+
+<p>因为<code>NSURLSession</code>是使用类群实现的，因此从API请求的类并不是将获得的类的类型.所以直接简单的使用<code>[NSURLSessionTask class]</code>将不起作用的。需要用<code>NSURLSession</code>来实际创建一个对象，并从该对象处获取该类</p>
+
+<p>因此实现方案如下</p>
+
+<ol>
+<li>通过获取<code>NSURLSession</code>实例来获取<code>_NSCFLocalDataTask</code>实例</li>
+<li>获取指向<code>af_resume</code>的原始实现指针</li>
+<li>检查当前类是否有<code>resume</code>实现 如果有继续执行步骤4</li>
+<li>获取当前类的父类</li>
+<li>获取父类的<code>resume</code>实现指针</li>
+<li>获取当前类的<code>resume</code>实现指针</li>
+<li>加入当前类的resume实现与父类不同，并且当前类的resume实现和<code>af_resume</code>实现不同，则替换两个方法实现</li>
+<li>设置当前类为父类 重复步骤3-8</li>
+</ol>
+
+<pre><code class="language-objectivec">+ (void)load {
+    if (NSClassFromString(@&quot;NSURLSessionTask&quot;)) {
+        NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration ephemeralSessionConfiguration];
+        NSURLSession * session = [NSURLSession sessionWithConfiguration:configuration];
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored &quot;-Wnonnull&quot;
+        NSURLSessionDataTask *localDataTask = [session dataTaskWithURL:nil];
+#pragma clang diagnostic pop
+        IMP originalAFResumeIMP = method_getImplementation(class_getInstanceMethod([self class], @selector(af_resume)));
+        Class currentClass = [localDataTask class];
+        
+        while (class_getInstanceMethod(currentClass, @selector(resume))) {
+            Class superClass = [currentClass superclass];
+            IMP classResumeIMP = method_getImplementation(class_getInstanceMethod(currentClass, @selector(resume)));
+            IMP superclassResumeIMP = method_getImplementation(class_getInstanceMethod(superClass, @selector(resume)));
+            if (classResumeIMP != superclassResumeIMP &amp;&amp;
+                originalAFResumeIMP != classResumeIMP) {
+                [self swizzleResumeAndSuspendMethodForClass:currentClass];
+            }
+            currentClass = [currentClass superclass];
+        }
+        
+        [localDataTask cancel];
+        [session finishTasksAndInvalidate];
+    }
+}
+</code></pre>
+
+<h2 id="toc_8">引入AFSecurityPolicy来保证请求的安全</h2>
+
+<p>调用了<code>-[AFSecurityPolicy evaluateServerTrust:forDomain:]</code>方法来判断当前服务器是否被信任</p>
+
+<h2 id="toc_9">引入AFNetworkReachabilityManager监控网络状态</h2>
+
+<p><code>AFURLSessionManager</code>的网络状态由<code>AFNetworkReachabilityManager</code>监控，并持有一个该对象</p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15675682575589.html">AFNetworking</a></h1>
+			<p class="meta"><time datetime="2019-09-04T11:37:37+08:00" 
+			pubdate data-updated="true">09/04/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">NSURLSession</h2>
+
+<p><code>NSURLSession</code>获取HTTP请求数据步骤：</p>
+
+<ol>
+<li>实例化一个<code>NSURLRequest/NSMutalbeRequest</code>,设置要请求的url</li>
+<li>获取NSUrlSession实例</li>
+<li>通过<code>dataWithRequest:completionHandle:</code>返回一个<code>dataTask</code></li>
+<li>向该对象发送消息<code>resume</code>执行这个任务</li>
+<li>在<code>completion</code>中 将对象编码 返回字符串</li>
+</ol>
+
+<pre><code class="language-objectivec">NSMutableURLRequest *request = [[NSMutableURLRequest alloc] initWithURL:[[NSURL alloc] initWithString:@&quot;https://github.com&quot;]];
+NSURLSession *session = [NSURLSession sharedSession];
+NSURLSessionDataTask *task = [session dataTaskWithRequest:request
+                                       completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+                                           NSString *dataStr = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+                                           NSLog(@&quot;%@&quot;, dataStr);
+                                       }];
+[task resume];
+</code></pre>
+
+<h2 id="toc_1">AFNetworking</h2>
+
+<pre><code class="language-objectivec">AFHTTPSessionManager *manager = [[AFHTTPSessionManager alloc] initWithBaseURL:[[NSURL alloc] initWithString:@&quot;hostname&quot;]];
+[manager GET:@&quot;relative_url&quot; parameters:nil progress:nil
+    success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        NSLog(@&quot;%@&quot; ,responseObject);
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        NSLog(@&quot;%@&quot;, error);
+    }];
+</code></pre>
+
+<p>AFNetworking默认接收json格式的响应，如果想要其它格式的 设置<code>acceptableContentTypes</code></p>
+
+<h2 id="toc_2">AFNetworking的调用栈</h2>
+
+<ol>
+<li><p><code>AFHTTPSessionManager</code>的初始化方法<code>- initWithBaseURL:</code></p>
+<pre><code class="language-objectivec">- [AFHTTPSessionManager initWithBaseURL:]
+    - [AFHTTPSessionManager initWithBaseURL:sessionConfiguration:]<br/>
+        - [AFURLSessionManager initWithSessionConfiguration:]<br/>
+            - [NSURLSession sessionWithConfiguration:delegate:delegateQueue:]<br/>
+            - [AFJSONResponseSerializer serializer] // 负责序列化响应<br/>
+            - [AFSecurityPolicy defaultPolicy] // 负责身份认证<br/>
+            - [AFNetworkReachabilityManager sharedManager] // 查看网络连接情况<br/>
+        - [AFHTTPRequestSerializer serializer] // 负责序列化请求<br/>
+        - [AFJSONResponseSerializer serializer] // 负责序列化响应
+</code></pre>
+<ul>
+<li>其中<code>AFURLSessionManager</code>是<code>AFHTTPSessionManager</code>的父类</li>
+<li><code>AFURLSessionManager</code>负责生成<code>NSURLSession</code>实例，并且管理<code>AFSecurityPolicy</code>和<code>AFNetworkReachabilityManager</code>，来保证请求的安全和查看网络连接情况，<code>AFJSONResponseSerializer</code>实例用来序列号HTTP响应</li>
+<li><code>AFHTTPSessionManager</code>有自己的<code>AFHTTPRequestSerializer</code>和<code>AFJSONResponseSerializer</code>来管理请求和响应的序列化，同时依赖父类提供的接口保证安全、监控网络状态，实现发送HTTP</li>
+</ul></li>
+<li><p><code>GET:Params:progress:success:</code>的调用栈</p>
+<pre><code class="language-objectivec">- [AFHTTPSessionManager GET:parameters:process:success:failure:]
+    - [AFHTTPSessionManager dataTaskWithHTTPMethod:parameters:uploadProgress:downloadProgress:success:failure:] // 返回 NSURLSessionDataTask #1<br/>
+        - [AFHTTPRequestSerializer requestWithMethod:URLString:parameters:error:] // 返回 NSMutableURLRequest<br/>
+        - [AFURLSessionManager dataTaskWithRequest:uploadProgress:downloadProgress:completionHandler:] // 返回 NSURLSessionDataTask #2<br/>
+            - [NSURLSession dataTaskWithRequest:] // 返回 NSURLSessionDataTask #3<br/>
+            - [AFURLSessionManager addDelegateForDataTask:uploadProgress:downloadProgress:completionHandler:]<br/>
+                - [AFURLSessionManagerTaskDelegate init]<br/>
+                - [AFURLSessionManager setDelegate:forTask:]<br/>
+    - [NSURLSessionDataTask resume]
+</code></pre>
+<p>在#3出调用了系统的请求方法，返回dataTask 然后调用<code>resume</code>方法执行请求，并在某些实践之星时通知代理<code>AFURLSessionManagerTaskDelegate</code></p></li>
+</ol>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15647325396059.html">Reactive Cocoa Tutorial</a></h1>
+			<p class="meta"><time datetime="2019-08-02T15:55:39+08:00" 
+			pubdate data-updated="true">08/02/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>学习地址  sunnyxx<a href="http://blog.sunnyxx.com/2014/03/06/rac_1_macros/">Reactive Cocoa Tutorial</a></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15645543599204.html">AsyncDisplayKit</a></h1>
+			<p class="meta"><time datetime="2019-07-31T14:25:59+08:00" 
+			pubdate data-updated="true">07/31/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>即刻团队的 <a href="https://medium.com/jike-engineering/asyncdisplaykit%E4%BB%8B%E7%BB%8D-%E4%B8%80-6b871d29e005">AsyncDisplayKit介绍</a></p>
+
+<p><a href="https://texturegroup.org/docs/getting-started.html">AsyncDisplayKit-TextTrue</a></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15611008346251.html">RACDelegateProxy</a></h1>
+			<p class="meta"><time datetime="2019-06-21T15:07:14+08:00" 
+			pubdate data-updated="true">06/21/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>将代理用<code>RACDelegateProxy</code>实现</p>
+
+<pre><code class="language-objectivec">RACDelegateProxy *proxy = [[RACDelegateProxy alloc] initWithProtocol:@protocol(UITableViewDelegate)];
+objc_setAssociatedObject(self, _cmd, proxy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+proxy.rac_proxiedDelegate = self;
+[[proxy rac_signalForSelector:@selector(tableView:didSelectRowAtIndexPath:)]
+ subscribeNext:^(RACTuple *value) {
+     [value.first deselectRowAtIndexPath:value.second animated:YES];
+ }];
+self.tableView.delegate = (id&lt;UITableViewDelegate&gt;)proxy;
+
+//等效于
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+}
+</code></pre>
+
+
+		</div>
+
+		
+
+	</article>
+  
+	<div class="pagination">
+	 <a class="prev" href="第三方项目学习和使用_3.html">&larr; Older</a> 
+<a href="archives.html">Blog Archives</a>
+	 <a class="next" href="第三方项目学习和使用_1.html">Newer &rarr;</a>  
+	    
+	</div>
+</div>
+ <aside class="sidebar"> 
+
+	<section>
+	  <h1>Categories</h1>
+	  <ul id="recent_posts">
+	  
+	      <li class="post">
+	        <a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B&&Runloop.html"><strong>多线程&&Runloop&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="RunLoop.html">RunLoop&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B.html">多线程&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8&&%E9%94%81.html">线程安全&&锁&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="KVC&&KVO.html">KVC&&KVO&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="runtime%E5%AD%A6%E4%B9%A0.html"><strong>runtime学习&nbsp;(9)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&&block.html"><strong>内存管理&&block&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="OC%E9%AB%98%E7%BA%A7%E7%BC%96%E7%A8%8B-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">OC高级编程-内存管理&nbsp;(6)</a>&nbsp;&nbsp;
+	        
+	        	<a href="block%E5%AD%A6%E4%B9%A0.html">block学习&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%AE%98%E6%96%B9%E6%96%87%E6%A1%A3-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">官方文档-内存管理&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-%E6%8B%BE%E9%81%97.html">内存管理-拾遗&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BD%91%E7%BB%9C.html"><strong>网络&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="GPU&&%E6%B8%B2%E6%9F%93.html"><strong>GPU&&渲染&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F&&%E7%BB%84%E4%BB%B6%E5%8C%96.html"><strong>设计模式&&组件化&nbsp;(8)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E6%9E%B6%E6%9E%84%E8%B0%88(%E6%91%98%E5%BD%95).html">设计模式架构谈(摘录)&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BB%84%E4%BB%B6%E5%8C%96%E5%BC%80%E5%8F%91%E5%AD%A6%E4%B9%A0.html">组件化开发学习&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BC%96%E8%AF%91&&dyld&&Mach-O.html"><strong>编译&&dyld&&Mach-O&nbsp;(19)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html">iOS编译流程&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="dyld(%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8).html">dyld(程序启动)&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Mach-O%E6%96%87%E4%BB%B6%E4%BA%86%E8%A7%A3.html">Mach-O文件了解&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%A8%A1%E5%9D%97%E5%8C%96%E7%9F%A5%E8%AF%86.html"><strong>模块化知识&nbsp;(26)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS-CoreAnimation.html">iOS-CoreAnimation&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="CoreGraphic.html">CoreGraphic&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ARKit.html">ARKit&nbsp;(7)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%E5%92%8C%E4%BD%BF%E7%94%A8.html"><strong>第三方项目学习和使用&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="AFNetworking.html">AFNetworking&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="AsyncDisplayKit.html">AsyncDisplayKit&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ReactnativeCocoa.html">ReactnativeCocoa&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="PromiseKit.html">PromiseKit&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7%E5%92%8C%E4%BC%98%E5%8C%96.html"><strong>项目监控和优化&nbsp;(10)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="APP%E4%BD%93%E7%A7%AF%E4%BC%98%E5%8C%96.html">APP体积优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%90%AF%E5%8A%A8%E4%BC%98%E5%8C%96.html">启动优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%B0%83%E8%AF%95&&%E6%B5%8B%E8%AF%95.html"><strong>调试&&测试&nbsp;(6)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="Instrument%E5%AD%A6%E4%B9%A0.html">Instrument学习&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="LLDB.html">LLDB&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95.html">自动化测试&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%B7%A5%E5%85%B7.html"><strong>工具&nbsp;(5)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="git.html">git&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Cocoapods.html">Cocoapods&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%8B%BE%E9%81%97.html"><strong>拾遗&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%9D%A2%E8%AF%95.html">面试&nbsp;(12)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">iOS开发知识点拾遗&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">知识点拾遗&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html">iOS 小知识&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Swift-BaseLearning.html"><strong>Swift基础知识&nbsp;(28)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Computer-programming.html"><strong>计算机编程&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html">知识普及&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Flex.html">Flex&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
+	        
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="React-Native.html"><strong>React-Native&nbsp;(6)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Python.html"><strong>Python&nbsp;(14)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html"><strong>算法读书笔记&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	   
+	  </ul>
+	</section>
+	<section>
+	  <h1>Recent Posts</h1>
+	  <ul id="recent_posts">
+	  
+	      
+		      <li class="post">
+		        <a href="15718858302183.html">官方文档</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710248960458.html">Layout Specs</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707800044047.html">Node Lifecycle</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707737201639.html">线程</a>
+		      </li>
+	     
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	   
+	  </ul>
+	</section>
+	
+</aside> </div></div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 -  -
+  <span class="credit">Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a> &nbsp;&nbsp; Theme by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+
+  
+    
+
+
+
+
+</body>
+</html>

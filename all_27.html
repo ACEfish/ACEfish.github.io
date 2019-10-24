@@ -1,0 +1,1534 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>
+    
+  ACEfish-Blog
+  
+
+  </title>
+  <meta name="author" content="">
+  <meta name="description" content="学习记录">
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link href="asset/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+  <script src="asset/js/modernizr-2.0.js"></script>
+  <script src="asset/js/jquery.min.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/solarized_light.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  <style type="text/css">
+  .cat-children-p{ padding: 6px 0px;}
+  .hljs{background: none;}
+  </style>
+  <script type="text/javascript">
+  var isAddSildbar = true;
+  </script>
+  <script src="asset/js/octopress.js" type="text/javascript"></script>
+</head>
+<script type="text/javascript">
+//链接新开窗口
+function addBlankTargetForLinks () {
+  $('a[href^="http"]').each(function(){
+      $(this).attr('target', '_blank');
+  });
+}
+$(document).ready(function(event) {
+  addBlankTargetForLinks();
+});
+</script>
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="index.html">ACEfish-Blog</a></h1>
+  
+    <h2>学习记录</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:acefish.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+
+  <li id=""><a target="_self" href="index.html">首页</a></li>
+
+  <li id=""><a target="_self" href="archives.html">归档</a></li>
+
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content"> 
+<div class="blog-index">
+
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15560068598022.html">线程回溯和符号化</a></h1>
+			<p class="meta"><time datetime="2019-04-23T16:07:39+08:00" 
+			pubdate data-updated="true">04/23/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">参考资料:</h2>
+
+<p><a href="http://jianli2017.top/wiki/IOS/crash/1_system_Crash_Type/#%E7%BA%BF%E7%A8%8B%E5%9B%9E%E6%BA%AF">系统crash日志介绍</a></p>
+
+<p><a href="http://jianli2017.top/wiki/IOS/crash/2_Collection_Crash/#%E8%8E%B7%E5%8F%96%E6%9E%84%E6%9E%B6%E3%80%81%E9%95%9C%E5%83%8F%E5%8A%A0%E8%BD%BD%E5%9C%B0%E5%9D%80">收集崩溃日志方法</a></p>
+
+<p><a href="http://foggry.com/blog/2015/08/10/ru-he-shou-dong-jie-xi-crashlogzhi-yuan-li-pian/">手动解析CrashLog之----原理篇</a></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15665293554942.html">ARC的实现</a></h1>
+			<p class="meta"><time datetime="2019-08-23T11:02:35+08:00" 
+			pubdate data-updated="true">08/23/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>苹果官方说明中称，ARC是由编译器进行内存管理，但实际上只有编译器是无法完全胜任的，还需要<code>Object-C</code>运行时库的协助</p>
+
+<h3 id="toc_0">__strong修饰符实现</h3>
+
+<p>赋值给<code>__strong</code>修饰符在程序中实际运行</p>
+
+<pre><code class="language-objectivec">{
+    id __strong obj = [[NSObject alloc] init]
+}
+//编译器的模拟代码
+id obj =  objc_msgSend(NSObject, @selector(alloc))
+objc_msgSend(obj, @selector(init))
+objc_release(obj)
+</code></pre>
+
+<p>编译器在变量超出作用域时  自动插入了release方法</p>
+
+<p>调用<code>alloc/new/copy/mutableCopy</code>以外开头的方法，</p>
+
+<pre><code class="language-objectivec">+(id) array {
+    return [[NSMUtableArray alloc] init]
+}
+
+//编译器的模拟代码
++ (id)array {
+    id obj = objc_msgSend(NSMutableArray, @selector(alloc))
+    objc_msgSend(obj, @selector(init))
+    return objc_autoreleaseReturnValue(obj)
+}
+</code></pre>
+
+<pre><code class="language-objectivec">{
+    id __strong obj = [NSMutableArray  array];
+}
+
+//编译器的模拟代码
+id obj = objc_msgSend(NSMutableArray, @selector(array))
+objc_retainAutoreleasedReturnValue(obj)
+objc_release(obj)
+</code></pre>
+
+<p><code>objc_retainAutoreleasedReturnValue()</code>和<code>objc_autoreleaseReturnValue()</code>是成对存在的，用于最优化程序运行</p>
+
+<p><code>objc_autoreleaseReturnValue</code>与<code>objc_autorelease</code>函数不同，其功能不仅仅是指注册对象到<code>autoreleasepool</code>中，而是会检查使用该函数的方法或函数调用方的执行命令列表，如果调用方在调用了该函数时接着调用了<code>objc_retainAutoreleaseReturnValue()</code>函数，那么就不将函数注册到autoreleasepool中，而是直接传递到方法或函数的调用方。</p>
+
+<p><code>objc_retainAutoreleasedReturnValue</code>函数与<code>objc_retain</code>函数不通过，即使不注册到autoreleasepool中而返回对象也能正确获取函数</p>
+
+<h3 id="toc_1">__weak修饰符</h3>
+
+<pre><code class="language-objectivec">{
+    id __weak obj1 = obj;
+}
+
+//模拟源代码
+id obj1；
+objc_initWeak(&amp;obj1, obj)
+objc_destroyWeak(&amp;obj1)
+</code></pre>
+
+<p>initWeak初始化附有__weak修饰符的变量，其等效于</p>
+
+<pre><code class="language-objectivec">objc_initWeak(&amp;obj1, obj)
+//等效于 将__weak修饰符变量初始化为0后，调用storeWeak
+obj1 = 0
+objc_storeWeak(&amp;obj1, obj)
+</code></pre>
+
+<p>objc_destroryWeak 函数 释放该变量 等效于</p>
+
+<pre><code class="language-objectivec">objc_destroyWeak(&amp;obj1)
+//等效于 
+objc_storeWeak(&amp;obj1, 0)
+</code></pre>
+
+<p><code>objc_storeWeak()</code>函数 将第二参数的赋值对象的地址作为键值，将第一参数附有__weak修饰符的变量地址注册到<code>weak</code>表中。如果第二参数为0 则将变量的地址从weak表中删除</p>
+
+<p>weak表与引用计数表相同 作为hash表(散列表)实现。由于一个对象可以同时赋值给多个附有__weak修饰符的变量，因此将废弃地址的键值进行搜索就能高速获取所有对应的__weak修饰变量的地址</p>
+
+<h4 id="toc_2">1. 若附有__weak修饰符的变量所引用的对象被废弃，则将nil赋值给该变量</h4>
+
+<p>当废弃没人持有的对象时，对象通过objc_release函数释放，流程</p>
+
+<ol>
+<li>objc_release</li>
+<li>引用计数为0所以执行dealloc</li>
+<li>_objc_rootDealloc</li>
+<li>objc_dispose</li>
+<li>objc_destructInstance</li>
+<li>objc_clear_deallocating</li>
+</ol>
+
+<p>其中<code>objc_clear_deallocating</code>函数的动作如下:</p>
+
+<ol>
+<li>从表中获取废弃对象的地址为键值的记录</li>
+<li>将包含在记录中的所有附有__weak修饰符变量的地址，赋值为nil</li>
+<li>从weak表中删除该记录</li>
+<li>从引用计数表中删除废弃对象的地址为键值的记录</li>
+</ol>
+
+<p>此时，当附有__weak修饰符引用的独享被废弃时，该变量会被自动置空为nil</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>由上面步骤可知，当大量使用附有 __weak修饰符的变量时，会消耗相应的cpu资源。因此尽量在只需要避免循环引用时使用 __weak修饰符</p>
+</blockquote>
+
+<h4 id="toc_3">2. 使用附有__weak修饰符变量，即是访问注册到autoreleasepool中的对象</h4>
+
+<pre><code class="language-objectivec">{
+    id __weak obj1 = obj;
+    NSLog(@“%@”， obj1)
+}
+
+//模拟代码
+id obj1;
+objc_initWeak(&amp;obj1, obj)
+id tmp = objc_loadWeakRetained(&amp;obj1)
+objc_autorelease(tmp)
+NSLog(@&quot;%@&quot;, tmp)
+objc_destroyWeak(&amp;obj1)
+</code></pre>
+
+<p>在使用__weak修饰符的变量时，增加了</p>
+
+<ol>
+<li><code>objc_loadWeakRetained</code>函数 取出__weak修饰的变量并且retain</li>
+<li><code>objc_autorelease</code>函数将对象注册到autoreleasepool中</li>
+</ol>
+
+<p>因此在使用__weak修饰的变量所引用的对象，被注册到autorelasepool中，在@autorelase结束之前都可以放心使用</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>当 大量使用 weak修饰修饰的对象时，就会大量注册到autorelasepool中对象，因此在使用__weak修饰符修饰的对象时，尽量先赋值给 __strong修饰符的对象再使用，这样就只注册到autoreleasepool中一次</p>
+</blockquote>
+
+<h4 id="toc_4">3. 特殊的不能使用__weak的情况</h4>
+
+<ol>
+<li>NSMachPort类不支持__weak修饰符 这些类重写了retain/relesase并且实现独自的引用计数</li>
+<li>不支持__weak修饰符的类，其类声明中 附加了<code>__attribute__((objc_arc_weak_reference_unavailabel))</code></li>
+<li>类自己实现了 <code>allocsWeakReference</code>方法返回NO  则不能使用__weak修饰符</li>
+<li>类自己实现<code>retainWeakReference</code>方法 返回NO 则该变量为nil</li>
+</ol>
+
+<h3 id="toc_5">__autoreleasing修饰符</h3>
+
+<p>将对象赋值给附有__autoreleasing修饰符 相当于ARC无效时调用对象的autorelase方法</p>
+
+<pre><code class="language-objectivec">@autoreleasepool{
+    id __autorelasing obj = [[NSObject alloc] init]
+}
+
+//模拟源代码
+id pool = objc_autoreleasePoolPush()
+id obj = objc_msgSend(NSObject, @selector(alloc))
+objc_msgSend(obj, @selector(init))
+objc_autorelase(obj)
+objc_autoreleasepoolPop(pool)
+</code></pre>
+
+<p>调用<code>alloc/new/copy/mutableCopy</code>之外的方法</p>
+
+<pre><code class="language-objectivec">@autorelasepool{
+    id __autoreleasing obj = [NSMutableArray array]
+}
+
+//编译器的模拟代码
+id pool = objc_autoreleasePoolPush()
+id obj = objc_msgSend(NSMutableArray, @selector(array))
+objc_retainAutoreleaseReturnValue(obj)
+objc_autorelase(objc)
+objc_autoreleasepoolPop(pool)
+</code></pre>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="14873195104181.html">RunLoop使用示例</a></h1>
+			<p class="meta"><time datetime="2017-02-17T16:18:30+08:00" 
+			pubdate data-updated="true">02/17/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h3 id="toc_0">1.将定时器添加到NSRunLoopCommonModes中，避免在UITrackingRunLoopMode无法执行</h3>
+
+<p>滑动ScrollView后系统把RunLoop切换为UITrackingRunLoopMode,因此加载默认模式中的定时器并不会执行,只有滚动停止回到默认模式才会继续执行。我们可以把定时器设为 <code>NSRunLoopCommonModes</code>的模式，并添加到 run loop 中；<br/>
+<code>[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];</code></p>
+
+
+
+		</div>
+
+		 
+		 <footer>
+      	<a rel="full-article" href="14873195104181.html#more">read more &rarr;</a>
+    	</footer>
+    	
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="14878317569666.html">方法与消息</a></h1>
+			<p class="meta"><time datetime="2017-02-23T14:35:56+08:00" 
+			pubdate data-updated="true">02/23/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>运行时中的<strong>消息处理机制</strong>消息的发送及消息的转发</p>
+
+<p>补充:类的方法链表中存储的是Method链表 而一个Method也是一个结构体指针,这个指针包含<br/>
+一个方法 Method，其包含一个方法选标 SEL – 表示该方法的名称，一个types – 表示该方法参数的类型，一个 IMP  - 指向该方法的具体实现的函数指针。</p>
+
+
+
+		</div>
+
+		 
+		 <footer>
+      	<a rel="full-article" href="14878317569666.html#more">read more &rarr;</a>
+    	</footer>
+    	
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="14924196525709.html">性能调优</a></h1>
+			<p class="meta"><time datetime="2017-04-17T17:00:52+08:00" 
+			pubdate data-updated="true">04/17/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h3 id="toc_0">CPU &amp;&amp; GPU</h3>
+
+<p>绘图和动画处理方式:<code>CPU</code>(中央处理器)和<code>GPU</code>(图形处理器).<code>CPU</code>所做的工作都在软件层面，而<code>GPU</code>在硬件层面。</p>
+
+<p>我们可以用<code>CPU</code>做任何事情，但是对于图像处理，使用硬件更快，因为<code>GPU</code>使用图像对高度并行浮点运算做了优化。但是<code>GPU</code>也不是无限制使用的,一旦资源用完的性能就下降了(即使CPU没有完全占用)</p>
+
+<p>我们的优化就是智能使用<code>GPU</code>和<code>CPU</code>使他们都不会超过负荷,我们需要先了解这两个处理器分配工作的逻辑</p>
+
+<h4 id="toc_1">动画的舞台</h4>
+
+<p><strong>动画和屏幕上组合的图层实际上被一个单独的进程管理，而不是你的应用程序。这个进程就是所谓的渲染服务。</strong>在iOS6之后的版本中叫做<code>BackBoard</code>。</p>
+
+<p>当运行一段动画时,整个过程会分为4个阶段：</p>
+
+<ul>
+<li>布局 - 这是准备你的视图/图层的层级关系，以及设置图层属性（位置，背景色，边框等等）的阶段。</li>
+<li>显示 - 这是图层的寄宿图片被绘制的阶段。绘制有可能涉及你的<code>- drawRect:</code>和<code>-drawLayer:inContext:</code>方法的调用路径。</li>
+<li>准备 - 这是<code>Core Animation</code>准备发送动画数据到渲染服务的阶段。这同时也是<code>Core Animation</code>将要执行一些别的事务例如解码动画过程中将要显示的图片的时间点。</li>
+<li>提交 - 这是最后的阶段，<code>Core Animation</code>打包所有图层和动画属性，然后通过<code>IPC</code>（内部处理通信）发送到渲染服务进行显示。</li>
+</ul>
+
+<p>这些仅仅只是发生在应用程序内内,在动画在屏幕上显示之前仍然有其他工作，一旦打包的图层和动画到了渲染服务进程，他们会被<em>反序列化</em>形成一个叫做<strong>渲染树</strong>的图层树,使用这个树状结构，渲染服务对动画的每一帧做出如下工作：</p>
+
+<ul>
+<li>对所有的图层属性计算中间值，设置<code>OpenGL</code>几何形状（纹理化的三角形）来执行渲染</li>
+<li>在屏幕上渲染可见的三角形</li>
+</ul>
+
+<p>所以一共有六个阶段；最后两个阶段在动画过程中不停地重复。前五个阶段都在软件层面处理（通过CPU），只有最后一个被GPU执行。而且，你真正只能控制前两个阶段：布局和显示。Core Animation框架在内部处理剩下的事务，你也控制不了它。</p>
+
+<p>我们<br/>
+<strong>在布局和显示阶段，可以决定哪些由CPU执行，哪些交给GPU去做。</strong></p>
+
+<h4 id="toc_2">GPU相关操作</h4>
+
+<p>GPU为一个具体的任务做了优化：它用来采集图片和形状（三角形），运行变换，应用纹理和混合然后把它们输送到屏幕上。现代iOS设备上可编程的GPU在这些操作的执行上又很大的灵活性，但是<code>Core Animation</code>并没有暴露出直接的接口。除非你想绕开<code>Core Animation</code>并编写你自己的<code>OpenGL着色器</code>，从根本上解决硬件加速的问题，那么剩下的所有都还是需要在<code>CPU</code>的软件层面上完成。</p>
+
+<p>宽泛的说，<strong>大多数<code>CALayer</code>的属性都是用<code>GPU</code>来绘制</strong>。<br/>
+比如如果你设置图层背景或者边框的颜色，那么这些可以通过着色的三角板实时绘制出来。如果对一个<code>contents</code> 属性设置一张图片，然后裁剪它 - 它就会被纹理的三角形绘制出来，而不需要软件层面做任何绘制。</p>
+
+<p>但是有一些事情会降低（基于GPU）图层绘制:</p>
+
+<ul>
+<li>太多的几何结构<br/>
+太多的几何结构就需要太多的三角板来做变换,并不是GPU处理不了这么多几何结构,而是显示之前通过IPC发送到渲染服务器(图层实际上是由很多小物体组成的特别重量级的对象)时，会引起CPU的瓶颈，这就限制了一次展示的图层个数</li>
+<li><p>重绘</p>
+<p>主要由重叠的半透明图层引起。GPU的填充比率（用颜色填充像素的比率）是有限的，所以需要避免重（每一帧用相同的像素填充多次）的发生。</p></li>
+<li><p>离屏绘制<br/>
+发生在当不能直接在屏幕上绘制，并且必须绘制到离屏图片的上下文中的时候。离屏绘制发生在基于CPU或者是GPU的渲染，或者是为离屏图片分配额外内存，以及切换绘制上下文，这些都会降低<code>GPU</code>性能。对于特定图层效果的使用，比如圆角，图层遮罩，阴影或者是图层光栅化都会强制<code>Core Animation</code>提前渲染图层的离屏绘制。但这不意味着你需要避免使用这些效果，只是要明白这会带来性能的负面影响。</p></li>
+<li><p>过大的图片<br/>
+如果视图绘制超出GPU支持的<code>2048x2048</code>或者<code>4096x4096</code>尺寸的纹理，就必须要用CPU在图层每次显示之前对图片预处理，同样也会降低性能。</p></li>
+</ul>
+
+<h4 id="toc_3">CPU相关的操作</h4>
+
+<p>CPU的工作对于<code>Core Animation</code>发生在动画开始前。所以不会影响到帧率,但是会延时动画开始时间，让界面看起来比较迟钝</p>
+
+<p>延迟动画的开始时间的CPU操作:</p>
+
+<ul>
+<li><p>布局计算:<br/>
+视图层级过于复杂,视图修改或者呈现时计算图层帧率会消耗一部分时间</p></li>
+<li><p>视图懒加载<br/>
+iOS只会当视图控制器的视图显示到屏幕上时才会加载它。这对内存使用和程序启动时间很有好处，但是当呈现到屏幕上之前，按下按钮导致的许多工作都会不能被及时响应。比如控制器从数据库中获取数据，或者视图从一个nib文件中加载，或者涉及IO的图片显示（见后续“IO相关操作”），都会比CPU正常操作慢得多。</p></li>
+<li><p>Core Graphics绘制</p>
+<p>如果对视图实现了 -drawRect: 方法，或者 CALayerDelegate 的 -drawLayer:inContext: 方法，那么在绘制任何东西之前都会产生一个巨大的性能开销。为了支持对图层内容的任意绘制，Core Animation必须创建一个内存中等大小的寄宿图片。然后一旦绘制结束之后，必须把图片数据通过IPC传到渲染服务器。在此基础上，Core Graphics绘制就会变得十分缓慢，所以在一个对性能十分挑剔的场景下这样做十分不好。</p></li>
+<li><p>解压图片<br/>
+PNG或者JPEG压缩之后的图片文件会比同质量的位图小得多。为了节省内存，iOS通常直到真正绘制的时候才去解码图片，根据你加载图片的方式，第一次对图层内容赋值的时候，或者把它绘制<code>Core Graphics</code>中,需要解压,这样对于比较大的图片会占用时间</p></li>
+</ul>
+
+<p>当图层被成功打包，发送到渲染服务器之后，CPU仍然要做如下工作:<br/>
+为了显示屏幕上的图层，<code>Core Animation</code>必须对渲染树种的每个可见图层通过<code>OpenGL</code>循环转换成纹理三角板。由于GPU并不知晓<code>Core Animation</code>图层的任何结构，所以必须要由<code>CPU</code>做这些事情。CPU涉及的工作和图层个数成正比，所以如果在你的层级关系中有太多的图层，就会导致CPU每一帧的渲染，</p>
+
+<h4 id="toc_4">IO相关操作</h4>
+
+<p>上下文中的IO（输入/输出）指的是例如闪存或者网络接口的硬件访问。一些动画可能需要从闪存（甚至是远程URL）来加载。一个典型的例子就是两个视图控制器之间的过渡效果，这就需要从一个nib文件或者是它的内容中懒加载，或者一个旋转的图片，可能在内存中尺寸太大，需要动态滚动来加载。</p>
+
+<p>IO比内存访问更慢，所以如果动画涉及到IO，就是一个大问题。总的来说，这就需要使用聪敏但尴尬的技术，也就是多线程，缓存和投机加载（提前加载当前不需要的资源，但是之后可能需要用到）。</p>
+
+<h3 id="toc_5">测量，而不是猜测</h3>
+
+<p>有很多种诡计来优化动画，但如果盲目使用的话，可能会造成更多性能上的问题，而不是修复。<br/>
+我们需要正确测量性能</p>
+
+<h4 id="toc_6">真机测试，而不是模拟器</h4>
+
+<ol>
+<li>真机</li>
+<li>性能测试一定要用发布配置，而不是调试模式。因为当用发布环境打包的时候，编译器会引入一系列提高性能的优化，例如去掉调试符号或者移除并重新组织代码。你也可以自己做到这些，例如在发布环境禁用NSLog语句。你只关心发布性能，那才是你需要测试的点。</li>
+<li>最好在你支持的设备中性能最差的设备上测试.可能的话，测试不同的设备和iOS版本，因为苹果在不同的iOS版本和设备中做了一些改变，这也可能影响到一些性能。</li>
+</ol>
+
+<h4 id="toc_7">保持一致的帧率</h4>
+
+<p>我们可以在程序中用<code>CADisplayLink</code>来测量帧率,在屏幕上显示出来,但是应用内的FPS并不能完全真实的测量出<code>Core Animation</code>性能,它仅仅测出应用内的帧率.但是我们知道很多动画都在应用外发生(在渲染服务器进程中处理),当然应用内的<code>FPS</code>可以对一些性能问题提供参考,发现问题后,我们可以通过<strong><code>Instruments</code>工具集</strong>获取更多数据.</p>
+
+<h3 id="toc_8">Instruments</h3>
+
+<p><code>Instruments</code>中的<code>Leaks</code>工具来检测循环引用,</p>
+
+<p>应该始终将程序设置成发布选项。幸运的是，配置文件默认就是发布选项，所以你不需要在分析的时候调整编译策略。</p>
+
+<p>工具:<br/>
+1.时间分析器(timer profile)-用来测量被方法/函数打断的CPU使用情况<br/>
+2.Core Animation - 用来调试各种Core Animation性能问题。<br/>
+3.OpenGL ES驱动 - 用来调试GPU性能问题,这个工具在编写<code>Open GL</code>代码的时候很有用，但有时也用来处理<code>Core Animation</code>的工作。</p>
+
+<h4 id="toc_9">时间分析器</h4>
+
+<p>检测CPU使用情况,告诉我们程序中那个方法消耗大量CPU时间.查看CPU时间对于判断性能是不是和CPU相关，以及定位到函数都很有帮助</p>
+
+<p>我们可以通过选择一些选项来定位到我们关心的方法:</p>
+
+<ul>
+<li>通过线程分离 - 这可以通过执行的线程进行分组。如果代码被多线程分离的话，那么就可以判断到底是哪个线程造成了问题。</li>
+<li>隐藏系统库 - 可以隐藏所有苹果的框架代码，来帮助我们寻找哪一段代码造成了性能瓶颈。</li>
+<li>只显示Obj-C代码 - - 隐藏除了<code>Objective-C</code>之外的所有代码。大多数内部的<code>Core Animation</code>代码都是用<code>C</code>或者<code>C++</code>函数，所以这对我们集中精力到我们代码中显式调用的方法就很有用。</li>
+</ul>
+
+<h4 id="toc_10">Core Animation</h4>
+
+<p>这个工具用来检测<code>Core Animation</code>性能。给我们提供了周期性FPS，并考虑到了发生在程序之外的动画</p>
+
+<p>提供的调试选项:</p>
+
+<ul>
+<li>Color Blended Layers - 这个选项基于渲染程度对屏幕中的混合区域进行绿到红的高亮（也就是多个半透明图层的叠加）。由于重绘的原因，混合对GPU性能会有影响，同时也是滑动或者动画帧率下降的罪魁祸首之一。</li>
+<li>ColorHitsGreenandMissesRed - 当使用<code>shouldRasterizep</code>属性的时候，耗时图层会被缓存,然后当做扁平化的图片呈现.当缓存再生时，这个选项用红色对栅格化图层进行了高亮。如果频繁再生就意味着栅格化可能会有负面的性能影响</li>
+<li>Color Copied Images - 有时候寄宿图片的生成意味着Core Animation被强制生成一些图片，然后发送到渲染服务器，而不是简单的指向原始指针。这个选项把这些图片渲染成蓝色。复制图片对内存和CPU使用来说都是一项非常昂贵的操作，所以应该尽可能的避免</li>
+<li>Color Immediately - 通常<code>Core Animation</code> <code>Instruments</code>以每毫秒10次的频率更新图层调试颜色，我们可以通过勾选这个选项来设置每帧都更新（可能影响性能）</li>
+<li>Color Misaligned Images - 会高亮那些被缩放或者拉伸以及没有正确对齐到像素边界的图片</li>
+<li>Color Offscreen-Rendered Yellow - 会把那些需要离屏渲染的图层高亮成黄色。这些图层很可能需要用<code>shadowPath</code>或者<code>shouldRasterize</code>来优化。</li>
+<li>Color OpenGL Fast Path Blue - 会对任何直接使用<code>OpenGL</code>绘制的图层进行高亮。</li>
+<li>Flash Updated Regions - 这个选项会对重绘的内容高亮成黄色（也就是任何在软件层面使用Core Graphics绘制的图层）。这种绘图速度很慢,频繁发生的话说明有个隐藏bug或者通过增加缓存或者使用替代方案会有提升性能的空间。</li>
+</ul>
+
+<h4 id="toc_11">OpenGL ES驱动</h4>
+
+<p><code>OpenGL ES</code>驱动工具可以帮你测量GPU的利用率，是一个很好的判断和GPU相关动画性能的指示器.它类似<code>Core Animation</code>也提供显示<code>FPS</code>的工具</p>
+
+<p>其侧边栏选项卡中和性能相关的有:</p>
+
+<ul>
+<li>Renderer Utilization - 如果这个值超过了~50%，就意味着你的动画可能对帧率有所限制，很可能因为离屏渲染或者是重绘导致的过度混合。</li>
+<li>Tiler Utilization - 如果这个值超过了~50%，就意味着你的动画可能限制于几何结构方面，也就是在屏幕上有太多的图层占用了。</li>
+</ul>
+
+<h4 id="toc_12">一个找到性能瓶颈的实例</h4>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="14978615246204.html">集合类型</a></h1>
+			<p class="meta"><time datetime="2017-06-19T16:38:44+08:00" 
+			pubdate data-updated="true">06/19/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p><code>Swift</code>语言提供<code>Array</code>(有序数据集)、<code>Set</code>(无序不重复数据集)和<code>Dictionary</code>(无序键值对)三种基本的集合类型用来存储集合数据</p>
+
+<p><code>Arrays</code>、<code>Sets</code>和<code>Dictionaries</code>中存储的数据值类型必须明确<br/>
+Swift 的Arrays、Sets和Dictionaries类型被实现为<code>泛型集合</code>。</p>
+
+<blockquote>
+<p>数组类型<code>Array&lt;Int&gt;</code> 简化形式 <code>[Int]</code><br/>
+集合类型<code>Set&lt;Int&gt;</code> 无简化形式<br/>
+字典类型<code>Dictionary&lt;Int, String&gt;</code> 简化 <code>[Int: String]</code><br/>
+Array继承<code>RangeReplaceableCollection</code>协议 因此可以使用我们前面说的<code>index索引</code>和<code>insert方法</code><br/>
+创建空的集合数据 就是 <code>类型()</code></p>
+</blockquote>
+
+<h2 id="toc_0">集合可变性</h2>
+
+<p>当集合为变量，集合是可变的,当不需要集合改变时建议创建为不可变的let,有利于优化</p>
+
+<h2 id="toc_1">数组Array</h2>
+
+<p>存储同一类型值,可以重复</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>Swift 的Array类型被桥接到Foundation中的NSArray类</p>
+
+<h3 id="toc_2">创建空数组</h3>
+</blockquote>
+
+<pre><code class="language-swift">var someInts = [Int]()//创建空数组
+通过构造函数的类型，数组可以推断为[Int]
+//创建特定数据类型的空数组
+var someInt1 = [[Int]]()//创建类型为整形数组的空数组
+</code></pre>
+
+<blockquote>
+<p>数组的类型表达为 [Int]  表示一个类型为[Int]的数组</p>
+</blockquote>
+
+<pre><code class="language-swift">someInts.append(3)
+//可以从上面推断出数组为Int类型数组,因此可以直接创建空数组
+someInts = []
+//直接创建空数组
+</code></pre>
+
+<h3 id="toc_3">带有默认值的数组</h3>
+
+<p>创建特定大小并且所有数据都被默认构造数组方法</p>
+
+<pre><code class="language-swift">var threeDoubles = Array(repeating: 0.0, count: 3)
+// threeDoubles 是一种 [Double] 数组，等价于 [0.0, 0.0, 0.0]
+</code></pre>
+
+<h3 id="toc_4">通过两个数组相加创建一个数组</h3>
+
+<p>可以用<code>+</code>将两种相同数据类型数组组合为一个新的数组,新的数组类型与这两个数组类型相同</p>
+
+<pre><code class="language-swift">var anotherThreeDoubles = Array(repeating: 2.5, count: 3)
+// anotherThreeDoubles 被推断为 [Double]，等价于 [2.5, 2.5, 2.5]
+
+var sixDoubles = threeDoubles + anotherThreeDoubles
+// sixDoubles 被推断为 [Double]，等价于 [0.0, 0.0, 0.0, 2.5, 2.5, 2.5]
+</code></pre>
+
+<h3 id="toc_5">用数组字面量构造数组</h3>
+
+<p>用数组字面量来进行数组构造,这是用一个或者多个数值构造数组</p>
+
+<pre><code class="language-swift">[value 1, value 2, value 3]
+// shoppingList 已经被构造并且拥有两个初始项。
+var shoppingList: [String] = [&quot;Eggs&quot;, &quot;Milk&quot;]
+var shoppingList = [&quot;Eggs&quot;, &quot;Milk&quot;] //可以不用声明类型 可以推断为String类型
+</code></pre>
+
+<h3 id="toc_6">访问和修改数组</h3>
+
+<ol>
+<li>使用数组的只读<code>count</code>属性来获取数组中数据项数量</li>
+<li><p>用布尔<code>isEmpty</code>检查数组是否为空 即<code>count</code>属性是否为<code>0</code></p>
+<pre><code class="language-swift">if shoppingList.isEmpty {
+    print(&quot;The shopping list is empty.&quot;)<br/>
+} else {<br/>
+    print(&quot;The shopping list is not empty.&quot;)<br/>
+}<br/>
+// 打印“The shopping list is not empty.”（shoppinglist 不是空的）
+</code></pre></li>
+<li><p>使用<code>append(_:)</code>方法在数组后添加一个新的数组项</p>
+<pre><code class="language-swift">shoppingList.append(&quot;Flour&quot;) //只能添加一项
+</code></pre></li>
+<li><p>用加法赋值运算符<code>+=</code>在数组后添加一个或多个相同类型数据项<br/>
+<code>shoppingList += [&quot;Chocolate Spread&quot;, &quot;Cheese&quot;, &quot;Butter&quot;]</code></p></li>
+<li><p>用下标来获取数组中数据项</p>
+<pre><code class="language-swift">var firstItem = shoppingList[0]//获取数组中第一项
+</code></pre></li>
+<li><p>用下标改变一个或多个下标索引对应色数据值</p>
+<pre><code class="language-swift">shoppingList[0] = &quot;Six eggs&quot;//
+shoppingList[4...6] = [&quot;Bananas&quot;, &quot;Apples&quot;]//改变一系列值 即使新数据和原 有数据的数量不一致
+</code></pre>
+<blockquote>
+<p>注意:</p>
+<p>不能用下标访问的形式在数组尾部添加新项</p>
+</blockquote></li>
+<li><p>用<code>insert(_:at:)</code>方法在某个索引之前添加新的数据项</p></li>
+<li><p>移除<br/>
+使用<code>remove(at:)</code>方法来移除数组中的某一项,并返回被移除的值</p>
+<pre><code class="language-swift">let mapleSyrup = shoppingList.remove(at: 0)
+// 索引值为0的数据项被移除<br/>
+// mapleSyrup 常量的值等于被移除数据项“Maple Syrup”
+</code></pre>
+<p><code>removeLast()</code>移除数组最后一项<br/>
+<code>removeFirst()</code>移除数组最后一项</p>
+<blockquote>
+<p>注意</p>
+<p>通过约见执行访问或修改数组数据，会引起运行期错误</p>
+</blockquote></li>
+</ol>
+
+<h3 id="toc_7">遍历数组</h3>
+
+<p>用<code>for-in</code>进行遍历</p>
+
+<pre><code class="language-swift">for item in shoppingList {
+    print(item)//单独的变量或常量可以直接print
+}
+</code></pre>
+
+<p>用数组的<code>enumerated()</code>,在遍历时获取每个数据项的索引和值,返回由索引和数组值组成的元组</p>
+
+<pre><code class="language-swift">for (index, value) in shoppingList.enumerated() {
+    print(&quot;Item \(String(index + 1)): \(value)&quot;)
+}
+/*
+    shoppingList.enumerated()返回就是一个sorted后 以元组形式返回
+*/
+</code></pre>
+
+<blockquote>
+<p>数组也继承了<code>collection</code>协议</p>
+</blockquote>
+
+<h2 id="toc_8">集合Set</h2>
+
+<p>存储相同类型并且没有确定顺序的值</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>Swift的Set类型被桥接到Foundation中的NSSet类</p>
+</blockquote>
+
+<h3 id="toc_9">集合类型的哈希值</h3>
+
+<p>一个类型为了存储在集合中，该类型必须是可哈希化的,即该类型必须提供一个方法来计算它的哈希值(哈希值是<code>Int</code>类型的)，相等对象的哈希值必须相同(<code>a==b因此a.hashValue == b.hashValue</code>).</p>
+
+<p>Swift 的所有基本类型(比如<code>String , Int , Double 和 Bool</code>)默认都是可哈希化的，可以作为集合的值的类型或者字典的键的类型。没有关联值的枚举成员值默认也是可哈希化的。</p>
+
+<blockquote>
+<p>注意</p>
+
+<p>可以自定义一个遵循<code>Hashable</code>协议的自定义类型，作为集合值类型或者字典键的类型。这个协议需要提供一个<code>Int</code>的可读属性<code>hashValue</code>.<code>hashValue</code>属性返回的值并不需要在同一程序的不同执行周期或者不同程序之间保持相同。<br/>
+其次，因为<code>Hashable</code>协议符合<code>Equatable</code>协议，所以遵循该协议的类型也必须提供一个&quot;是否相等&quot;运算符(<code>==</code>)的实现。</p>
+</blockquote>
+
+<h3 id="toc_10">集合类型写法/表达</h3>
+
+<p>Swift 中的<code>Set</code>类型被写为 <code>Set&lt;Element&gt;</code>(<code>Element</code>表示<code>Set</code>中允许存储的类型)，它并没有类似数组的等价简化形式</p>
+
+<h3 id="toc_11">空的集合</h3>
+
+<pre><code class="language-swift">var letters = Set&lt;Character&gt;()
+</code></pre>
+
+<pre><code class="language-swift">letters.insert(&quot;a&quot;)//通过这 我们可以推断出为一个Set&lt;Character&gt;类型集合
+letters = []//我们可以直接设置其为空的Set  其类型还是Set&lt;Character&gt; 
+</code></pre>
+
+<h3 id="toc_12">用数组字面量创建集合</h3>
+
+<pre><code class="language-swift">//有三个初始值
+var favoriteGenres: Set&lt;String&gt; = [&quot;Rock&quot;, &quot;Classical&quot;, &quot;Hip hop&quot;]
+</code></pre>
+
+<p>我们用数组字面量的形式初始化这个<code>Set</code>.我们从数组字面量没有办法推断出为<code>Set</code>类型,因此必须显示声明,但是可以推断出Set中元素类型,因此我们可以简化为</p>
+
+<pre><code class="language-swift">var favoriteGenres: Set = [&quot;Rock&quot;, &quot;Classical&quot;, &quot;Hip hop&quot;]
+</code></pre>
+
+<h3 id="toc_13">访问和修改一个集合</h3>
+
+<p>1.只读属性<code>count</code>获取集合中个数</p>
+
+<p>2.布尔属性<code>isEmpty</code>作为一个缩写形式去检查<code>count</code>属性是否为 0</p>
+
+<p>3.<code>insert(_:)</code>方法来添加一个新元素</p>
+
+<pre><code class="language-swift">favoriteGenres.insert(&quot;Jazz&quot;)
+/**
+    返回一个元组(inserted: Bool, memberAfterInserted: String)
+*/
+</code></pre>
+
+<p>4.<code>remove(_:)</code>方法去删除一个元素<br/><br/>
+    如果删除的是集合中的一个元素，则删除并返回它，但是如果集合中不包含它，就返回<code>nil</code><br/>
+    <code>removeAll()</code>删除所有元素</p>
+
+<p>5.<code>contains(_:)</code>方法去检查<code>Set</code>中是否包含一个特定的值</p>
+
+<pre><code class="language-swift">    if favoriteGenres.contains(&quot;Funk&quot;) {
+        print(&quot;I get up on the good foot.&quot;)
+    } else {
+        print(&quot;It&#39;s too funky in here.&quot;)
+    }
+</code></pre>
+
+<p>6.用<code>for-in</code>遍历</p>
+
+<pre><code class="language-swift">    for genre in favoriteGenres {
+        print(&quot;\(genre)&quot;)
+    }
+</code></pre>
+
+<p>7.排序<br/>
+<code>Set</code>类型没有确定的顺序，为了按照特定顺序来遍历一个<code>Set</code>中的值可以使用<code>sorted()</code>方法，它将返回一个有序数组，这个数组的元素排列顺序由操作符<code>&#39;&lt;&#39;</code>对元素进行比较的结果来确定</p>
+
+<pre><code class="language-swift">    for genre in favoriteGenres.sorted() {
+        print(&quot;(genre)&quot;)
+    }
+</code></pre>
+
+<blockquote>
+<p>sorted()后返回的是数组<br/>
+sorted()返回排序后数组 数据源不变 sort()不返回数组将数据源变为排序后的数组(Set没有这方法,Array有)</p>
+</blockquote>
+
+<h2 id="toc_14">集合操作</h2>
+
+<h3 id="toc_15">基本集合操作</h3>
+
+<p>用<code>intersection(_:)</code>计算两个集合相交部分 ---- 交集<br/>
+用<code>symmetricDifference(_:)</code>计算两个集合中不同部分 ---- <br/>
+用<code>union(_:)</code>方法合并两个集合 --- 并集<br/>
+用<code>subtracting(_:)</code>方法根据在本集合不在另外集合中的部分 --- 补集</p>
+
+<pre><code class="language-swift">let oddDigits: Set = [1, 3, 5, 7, 9]
+let evenDigits: Set = [0, 2, 4, 6, 8]
+let singleDigitPrimeNumbers: Set = [2, 3, 5, 7]
+oddDigits.union(evenDigits).sort()
+// [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+oddDigits.intersection(evenDigits).sorted()
+// []
+oddDigits.subtracting(singleDigitPrimeNumbers).sorted()
+// [1, 9]
+oddDigits. symmetricDifference(singleDigitPrimeNumbers).sorted()
+// [1, 2, 9]
+</code></pre>
+
+<h3 id="toc_16">集合成员关系以及相等</h3>
+
+<ol>
+<li>用<code>==</code>判断两个集合是否包含完全相同的值</li>
+<li>用<code>isSubset(of:)</code>判断是不是两外一个集合的子集</li>
+<li>用<code>isSuperset(of:)</code>判断另外一个集合是不是本集合的子集</li>
+<li>用<code>isStrictSubset(of:)</code>或<code>isStrictSuperset(of:)</code>判断一个集合是否是另外一个集合的子集合或者父集合并且两个集合并不相等</li>
+<li>用<code>isDisjoint(with:)</code>判断两个集合是否没有交集（没有相同的值）</li>
+</ol>
+
+<h2 id="toc_17">字典</h2>
+
+<p>存储多个相同类型的值的容器</p>
+
+<h3 id="toc_18">字典类型表达语法</h3>
+
+<p><code>Swift</code>的字典使用<code>Dictionary&lt;Key, Value&gt;</code>定义，<code>Key</code>是键的类型,<code>Value</code>是值所对应的数据类型<br/>
+<code>[Key: Value]</code>通常我们使用这种简化形式</p>
+
+<blockquote>
+<p>一个字典的 Key 类型必须遵循<code>Hashable</code>协议，就像<code>Set</code>的值类型,因为在字典中键也是唯一的,需要利用哈希值进行判断相等</p>
+</blockquote>
+
+<h3 id="toc_19">创建一个空字典</h3>
+
+<pre><code class="language-swift">var namesOfIntegers = [Int: String]()//创建一个[Int: String] 类型的空字典
+</code></pre>
+
+<p>如果上下文已经知道类型信息</p>
+
+<pre><code class="language-swift">namesOfIntegers = [:]//创建一个[Int: String] 类型的空字典
+</code></pre>
+
+<h3 id="toc_20">用字典字面量创建字典</h3>
+
+<pre><code class="language-swift">var airports: [String: String] = [&quot;YYZ&quot;: &quot;Toronto Pearson&quot;, &quot;DUB&quot;: &quot;Dublin&quot;]
+//因为swift可以推断出为[String : String]类型 因此可以不同显示声明
+var airports = [&quot;YYZ&quot;: &quot;Toronto Pearson&quot;, &quot;DUB&quot;: &quot;Dublin&quot;]
+</code></pre>
+
+<h3 id="toc_21">访问和修改字典</h3>
+
+<p>1.只读属性<code>count</code>来获取字典的数据项数量</p>
+
+<pre><code class="language-swift">print(&quot;The dictionary of airports contains (airports.count) items.&quot;)
+// 打印 &quot;The dictionary of airports contains 2 items.&quot;（这个字典有两个数据项）
+</code></pre>
+
+<p>2.<code>isEmpty</code>作为一个缩写形式去检查<code>count</code>属性是否为 0 </p>
+
+<p>3.可以在字典中使用下标语法来添加新的数据项<br/>
+4.在字典中使用下标语法来改变特定键对应的值</p>
+
+<pre><code class="language-swift">airports[&quot;LHR&quot;] = &quot;London&quot;
+//若不存在键&quot;LHR&quot; 即为添加新的数据项 否则为改变键对应值
+</code></pre>
+
+<p>5.<code>updateValue(_:forKey:)</code>方法作为替代下标语法的方式，可以设置或者更新特定键对应的值(当存在键时即为更新值 否则为设置值)<br/>
+<code>updateValue(_:forKey:)</code>方法会返回更新值之前的原值，所以对应值的类型的可选值(因为可能没有oldvalue)，可以根据此来判断更新是否成功</p>
+
+<pre><code class="language-swift">if let oldValue = airports.updateValue(&quot;Dublin Airport&quot;, forKey: &quot;DUB&quot;) {
+    print(&quot;The old value for DUB was (oldValue).&quot;)
+}
+// 输出 &quot;The old value for DUB was Dublin.&quot;
+</code></pre>
+
+<p>6.下标语法来在字典中检索特定键对应的值,因为可能不存在这个键，因此返回的为可选类型</p>
+
+<pre><code class="language-swift">if let airportName = airports[&quot;DUB&quot;] {
+    print(&quot;The name of the airport is (airportName).&quot;)
+} else {
+    print(&quot;That airport is not in the airports dictionary.&quot;)
+}
+</code></pre>
+
+<p>7.通过给某个键的对应值赋值为<code>nil</code>来从字典里移除一个键值对</p>
+
+<pre><code class="language-swift">airports[&quot;APL&quot;] = &quot;Apple Internation&quot;
+// &quot;Apple Internation&quot; 不是真的 APL 机场, 删除它
+airports[&quot;APL&quot;] = nil
+// APL 现在被移除了
+</code></pre>
+
+<p>8.<code>removeValue(forKey:)</code>也可以用来在字典中移除键值对<br/>
+在键值对存在的情况下会移除该键值对并且返回被移除的值 或者在没有值的情况下返回<code>nil</code></p>
+
+<pre><code class="language-swift">if let removedValue = airports.removeValue(forKey: &quot;DUB&quot;) {
+    print(&quot;The removed airport&#39;s name is (removedValue).&quot;)
+} else {
+    print(&quot;The airports dictionary does not contain a value for DUB.&quot;)
+}
+</code></pre>
+
+<h3 id="toc_22">字典遍历</h3>
+
+<p><code>for-in</code>遍历字典中的键值对，字典中的数据项都以<code>(key, value)</code>元组形式返回</p>
+
+<pre><code class="language-swift">for (airportCode, airportName) in airports {
+    print(&quot;\(airportCode): \(airportName)&quot;)
+}
+</code></pre>
+
+<p>通过访问<code>keys</code>或者<code>values</code>属性，我们也可以遍历字典的键或者值</p>
+
+<pre><code class="language-swift">for airportCode in airports.keys {
+    print(&quot;Airport code: (airportCode)&quot;)
+}
+for airportName in airports.values {
+print(&quot;Airport name: (airportName)&quot;)
+}
+</code></pre>
+
+<p>我们可以直接使用<code>keys</code>或者<code>values</code>属性构造一个新数组</p>
+
+<pre><code class="language-swift">let airportCodes: [String] = airports.keys
+// airportCodes 是 [&quot;YYZ&quot;, &quot;LHR&quot;]
+let airportNames: [String] = airports.values
+// airportNames 是 [&quot;Toronto Pearson&quot;, &quot;London Heathrow&quot;]
+let airportCodes = airports.keys.sorted()
+
+//创建键或者值的新数组
+</code></pre>
+
+<blockquote>
+<p><code>Swift</code>的字典类型是无序集合类型。为了以特定的顺序遍历字典的键或值，可以对字典的<code>keys</code>或<code>values</code>属性使用<code>sorted()</code>方法</p>
+</blockquote>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15331791133617.html">NetworkExtension</a></h1>
+			<p class="meta"><time datetime="2018-08-02T11:05:13+08:00" 
+			pubdate data-updated="true">08/02/2018</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>Network Extension框架包含可用于定制和扩展iOS和macOS核心网络功能的API。</p>
+
+<h2 id="toc_0">常用功能:</h2>
+
+<ol>
+<li><p>Network Extension Hotspot Entitlements<br/>
+当需要使用<code>NEHotspotHelper</code>这个类时,这个就是必须的 需要向apple申请，也是这边文章重点</p></li>
+<li><p>Personal VPN<br/>
+<code>NEVPNManager</code>API 帮助app创建个人VPN，通常用于向用户提供服务,保护其因特网浏览活动。</p></li>
+<li><p>About Always-on VPN<br/>
+Always-on VPN </p></li>
+<li><p>Network Tunneling Protocol Client<br/>
+<code>NETunnelProvider</code>系列API将iOS和macOS设备连接到使用非标准网络隧道协议的VPN服务器，例如SSL-VPN服务器。<br/>
+帮助app自定义vpn服务</p></li>
+<li><p>Wi-Fi Hotspot Authentication and Configuration<br/>
+<code>NEFilterProvider</code>API帮助过滤网络服务内容</p></li>
+<li><p>Wi-Fi Hotspot Authentication and Configuration<br/>
+<code>NEHotspotHelper</code>API使您的应用能够为Wi-Fi热点执行自定义身份验证<br/>
+<code>NEHotspotConfiguration</code>API可让您的应用配置这些热点。</p></li>
+</ol>
+
+<h2 id="toc_1">常用类</h2>
+
+<p>本文只介绍和<code>NEHotspotHelper</code>相关类</p>
+
+<ol>
+<li><p>NEHotspotHelper<br/>
+注册本app为网络助手应用</p></li>
+<li><p>NEHotspotHelperCommand<br/>
+app要处理的命令类</p></li>
+<li><p>NEHotspotHelperResponse<br/>
+对<code>NEHotspotHelperCommand</code>命令的响应</p></li>
+<li><p>NEHotspotNetwork<br/>
+NEHotspotNetwork将有关网络的信息传达给Hotspot Helper应用程序。</p></li>
+</ol>
+
+<h2 id="toc_2">NEHotspotHelper</h2>
+
+<p>帮助app参与wifi热点过程成为热点帮助程序,<code>Hotspot Helper</code>要在后台接收命令，参与wifi状态变化处理,参考<a href="https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/Hotspot_Network_Subsystem_Guide/Contents/Introduction.html#//apple_ref/doc/uid/TP40016639">Hotspot Network Subsystem Programming Guide.</a></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15538518127841.html">App程序编译的完整流程</a></h1>
+			<p class="meta"><time datetime="2019-03-29T17:30:12+08:00" 
+			pubdate data-updated="true">03/29/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>本文学习自戴铭老师的<a href="https://github.com/ming1016/study/wiki/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90-iOS-%E7%BC%96%E8%AF%91-Clang---LLVM">深入剖析 iOS 编译 Clang LLVM</a></p>
+
+<h2 id="toc_0">前言</h2>
+
+<p>每次项目编译 不论模拟器还是真机都会在<code>Xcode</code>的<code>DerivedData</code>文件夹下创建一个该次编译需要或者产生文件的文件夹(缓存文件夹)<br/>
+<img src="media/15538518127841/15538525190405.jpg" alt="" style="width:624px;"/></p>
+
+<p>而在build文件夹中就是我们这次编译的主要信息<br/>
+<img src="media/15538518127841/15538525902894.jpg" alt="" style="width:820px;"/><br/>
+其中<code>Intermediates.noindex</code>文件夹中为编译的缓存文件(辅助文件)，主要为辅助文件<code>.yml</code><code>.hamp</code>等<br/>
+product中为我们编译的结果<br/>
+<img src="media/15538518127841/15538527710516.jpg" alt="" style="width:592px;"/><br/>
+包括了pod库打包的.a文件，安装用到的.app文件，.app中还包括资源文件、.plist文件、storybord或者xib编译后的nib文件等</p>
+
+<p><img src="media/15538518127841/15538542741556.jpg" alt="" style="width:203px;"/></p>
+
+<h2 id="toc_1">编译流程</h2>
+
+<p>在本文中我们编译一个cocopoda程序来做演示</p>
+
+<h3 id="toc_2">1. 编译信息写入辅助文件，创建文件架构.app文件</h3>
+
+<p>创建.app文件夹,用来存放最后生成.app文件的信息<br/>
+<img src="media/15538518127841/15538531245953.jpg" alt="" style="width:837px;"/></p>
+
+<p>辅助文件用于辅助编译，暂时不知道有什么其他用？？？？</p>
+
+<p>写入辅助文件.yaml文件<br/>
+<img src="media/15538518127841/15538520286678.jpg" alt="" style="width:824px;"/></p>
+
+<p>写入辅助文件.hamp文件<br/>
+<img src="media/15538518127841/15538520549132.jpg" alt="" style="width:838px;"/><br/>
+写入辅助文件Entitlements.plist 和 Entitlements-Simulated.plist<br/>
+<img src="media/15538518127841/15538536658391.jpg" alt="" style="width:818px;"/></p>
+
+<h3 id="toc_3">2. 处理文件的打包信息</h3>
+
+<p>1.真机打包文件: 真机需要配置文件信息,此时在.app文件夹下为<br/>
+包含了配置文件信息是应用程序能在真机上运行的必须<br/>
+这步即将电脑内存放的开发证书证书直接放置到.app文件夹中<br/>
+<img src="media/15538518127841/15538540868414.jpg" alt="" style="width:879px;"/><br/>
+见上图中<code>embedded.mobileprovision</code>文件</p>
+
+<p>1.2 模拟器打包文件<br/>
+模拟器的配置文件信息，是app能在模拟器上运行的必须<br/>
+<img src="media/15538518127841/15538544375164.jpg" alt="" style="width:1098px;"/></p>
+
+<p>2.打包文件的实体信息 .app.xcent 主要为Entilements，信息  （不论模拟器或者真机都有）真机的文件信息中 包括了app信息，开发者信息、app用到的权限信息等<br/>
+ <img src="media/15538518127841/15538542169158.jpg" alt="" style="width:840px;"/></p>
+
+<h3 id="toc_4">3. 执行 CocoaPod 编译前脚本，checkPods Manifest.lock</h3>
+
+<p>默认是在这一步执行，这和你放置这个脚本的位置有关</p>
+
+<p><img src="media/15538518127841/15538558869448.jpg" alt="" style="width:684px;"/></p>
+
+<p><img src="media/15538518127841/15538547657710.jpg" alt="" style="width:834px;"/></p>
+
+<p><img src="media/15538518127841/15538547101237.jpg" alt="" style="width:701px;"/></p>
+
+<p>执行脚本比较这两个.lock文件 判断是否差异</p>
+
+<h3 id="toc_5">4.编译.m文件，使用 CompileC 和 clang 命令</h3>
+
+<p>编译所有的.m文件，包括自己项目的和pod库中的,（为什么没有.h文件呢？因为在预编译的时候都进了其它.m文件啊）</p>
+
+<p>编译后生成.o文件</p>
+
+<p><img src="media/15538518127841/15538550281496.jpg" alt="" style="width:864px;"/></p>
+
+<p>首先对任务进行描述</p>
+
+<pre><code class="language-text">CompileC /Users/fish/Library/Developer/Xcode/DerivedData/AlipayDemo-bqmyunxtybyzyecoutybsvekthlo/Build/...
+</code></pre>
+
+<p>接下来对会更新工作路径</p>
+
+<pre><code class="language-text">cd /Users/fish/Desktop/AlipayDemo
+export LANG=en_US.US-ASCII
+</code></pre>
+
+<p>接下来就是实际的编译命令</p>
+
+<pre><code class="language-text">//调用了clang命名
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x objective-c -arch arm64 -fmessage-length=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit=0 -std=gnu11 -fobjc-arc -fobjc-weak -fmodules -gmodules -fmodules-cache-path=/Users/fi....
+</code></pre>
+
+<pre><code class="language-text">//将pch文件一起编译
+-include /Users.../Application/PrefixHeader.pch
+</code></pre>
+
+<p>将文件都编译完成后,会将所有的.o文件写入一个辅助文件 <code>.LinkFileList</code>文件中，便于下一步链接</p>
+
+<p>clang常用命令参数</p>
+
+<pre><code class="language-text">-x 编译语言比如objective-c
+-arch 编译的架构，比如arm7
+-f 以-f开头的。
+-W 以-W开头的，可以通过这些定制编译警告
+-D 以-D开头的，指的是预编译宏，通过这些宏可以实现条件编译
+-iPhoneSimulator10.1.sdk 编译采用的iOS SDK版本
+-I 把编译信息写入指定的辅助文件
+-c 标识符指明需要运行预处理器，语法分析，类型检查，LLVM生成优化以及汇编代码生成.o文件
+-F 需要的Framework
+-L 连接静态库
+-o 编译结果
+-inclue 将文件include一起编译(当我们添加的有prefix文件时，就会在这这一步一起编译)
+</code></pre>
+
+<h3 id="toc_6">5.将cocoapods中的pod生成.a静态库</h3>
+
+<p><img src="media/15538518127841/15538703095401.jpg" alt="" style="width:1031px;"/></p>
+
+<p>使用<code>libTool</code>命令,<br/>
+<code>-fileList</code>指定上一步编译的所有.o文件等，其记录在一个AFNetworking.LinkFileList的文件中<br/>
+<code>-framework</code>指定需要依赖的framework <br/>
+打包为一个.a静态库</p>
+
+<blockquote>
+<p>swift的话，因为其pod不支持静态库，我们一般podfile中指定 userFramework？？？</p>
+</blockquote>
+
+<h3 id="toc_7">6.链接需要的 Framework和library</h3>
+
+<p><img src="media/15538518127841/15538692299741.jpg" alt="" style="width:1050px;"/></p>
+
+<p>采用 clang <br/>
+-L 链接静态库<br/>
+-framework 添加需要的依赖系统库库<br/>
+-F 链接framework</p>
+
+<p>链接的内容包括:</p>
+
+<ol>
+<li>pod库生成的.a文件 即libPods-[ProjectName].a文件</li>
+<li>pod库打包生成的.a文件,例如libAFNetworking.a等链接到工程</li>
+<li>需要的外部framework文件</li>
+<li>-fileList 将上一步编译生成的所有.o文件 记录在.buile/.LinkFileList中,链接所以工程文件</li>
+<li>以及其他的一些辅助文件</li>
+<li>链接需要的系统库</li>
+</ol>
+
+<p>生成项目程序的可执行文件就是一个脚本文件</p>
+
+<h3 id="toc_8">7. 处理资源文件</h3>
+
+<h4 id="toc_9">编译 ImageAssets</h4>
+
+<p>即使多个.xcassets也是一起编译的，而不是分开编译多次</p>
+
+<p><img src="media/15538518127841/15538746736648.jpg" alt="" style="width:1078px;"/></p>
+
+<p>使用<code>actool</code>命令 这个命令只用于这个地方<br/>
+<code>--output-format human-readable-text</code><br/>
+<code>--export-dependency-info</code> 将编译后的生成的文件信息记录在.build文件夹下的assetcatalog_dependencies文件中,包括.xcassets文件、appIcon图片、launchImage图片、生成的唯一.car文件、记录信息的.plist文件</p>
+
+<p><code>--output-partial-info-plist</code> 生成一个.build/assetcatalog_generated_info.plist ,主要记录了appIcon和launchImage信息<br/>
+<img src="media/15538518127841/15538756202833.jpg" alt="" style="width:702px;"/></p>
+
+<p><code>--app-icon AppIcon</code><br/>
+<code>--launch-image LaunchImage</code><br/>
+<code>--compress-pngs --enable-on-demand-resources YES</code></p>
+
+<p><code>--filter-for-device-model iPhone10,3 --filter-for-device-os-version 12.2 --target-device iphone</code> 当前的设备信息</p>
+
+<p><code>--target-device iphone --minimum-deployment-target 8.0</code><br/>
+<code>--compile</code>  将编译生成的.car信息直接放入.app文件夹中<br/>
+将appIcon、LaunchImage图片文件放入.app文件中</p>
+
+<h4 id="toc_10">编译 xib</h4>
+
+<p>xib编译</p>
+
+<p><code>ibtool</code>命令<br/>
+<code>--module</code>指定所属模块名称<br/>
+<code>--target-device</code>指定面向设备，iPhone/iPad<br/>
+<code>--auto-activate-custom-fonts</code><br/>
+<code>--minimum-deployment-target 8.0</code> 最低支持目标设备系统</p>
+
+<p><code>--output-partial-info-plist</code> 生成一个-PartialInfo.plist文件 放置在.build文件的辅助文件中</p>
+
+<p><code>--output-format human-readable-text</code><br/>
+<code>--compile</code> 编译生成一个nib文件,直接放置在.app文件中</p>
+
+<p><img src="media/15538518127841/15538725620996.jpg" alt="" style="width:834px;"/></p>
+
+<h4 id="toc_11">编译 storyBoard</h4>
+
+<p><img src="media/15538518127841/15538729971749.jpg" alt="" style="width:905px;"/></p>
+
+<p>类似编译xib<br/>
+<code>ibtool</code>命令<br/>
+<code>--module</code>指定所属模块名称<br/>
+<code>--output-partial-info-plist</code> 生成一个 <code>/Base.lproj/Name-SBPartialInfo.plist</code>文件 存放在<code>.build</code>文件夹中<br/>
+<code>--target-device iphone --target-device ipad</code><br/>
+<code>--minimum-deployment-target 8.0</code><br/>
+<code>--output-format human-readable-text</code> <br/>
+<code>--compilation-directory</code> 编译生成.storyboardc文件,放在<code>.build</code>文件中<br/>
+<img src="media/15538518127841/15538719624665.jpg" alt="" style="width:630px;"/></p>
+
+<h4 id="toc_12">链接storyBoard文件</h4>
+
+<p><img src="media/15538518127841/15538732881268.jpg" alt="" style="width:887px;"/></p>
+
+<p>使用<code>ibtool</code>命令<br/>
+指定一些信息<br/>
+<code>--module</code>指定所属模块名称<br/>
+<code>--target-device iphone --target-device ipad --minimum-deployment-target 8.0</code><br/>
+<code>--output-format human-readable-text</code><br/>
+<code>--link</code>将项目模块中所有上一步生成的<code>.storyboardc</code>文件连接到 .app文件夹中</p>
+
+<h4 id="toc_13">拷贝xib、资源文件</h4>
+
+<p>拷贝一些资源文件到我们创建.app文件中</p>
+
+<h4 id="toc_14">处理 info.plist文件</h4>
+
+<p><img src="media/15538518127841/15538764050221.jpg" alt="" style="width:958px;"/></p>
+
+<p><code>-genpkginfo</code> 在.app文件夹下，生成了PkgInfo文件 ???<br/>
+<code>-additionalcontentfile</code>加入多个前面生成的plist文件<br/>
+<code>-o</code>将合并信息 生成为info.plist,放置在.app文件夹下</p>
+
+<h3 id="toc_15">8. 生成符号表文件(GenerateDSYMFile)</h3>
+
+<p>利用可执行文件中的符号表 生成 符号表文件 .dSYM<br/>
+当设置build setting中-&gt;build option -&gt; dysm 符号表为 -&gt; dwarf-dYSM时会生产该文件 默认debug不生成 release生成<br/>
+<img src="media/15538518127841/15560737675622.jpg" alt="" style="width:871px;"/></p>
+
+<h3 id="toc_16">9. 裁剪掉app文件中的符号表</h3>
+
+<p>这是只在archive app中才会执行这一步<br/>
+<img src="media/15538518127841/15560737281876.jpg" alt="" style="width:885px;"/></p>
+
+<h3 id="toc_17">8. 执行 一些自定义 脚本</h3>
+
+<pre><code class="language-text">这个地方可以执行一些自定义脚本，具体执行位置还是要看 在`build Phases`中的自定义顺序
+</code></pre>
+
+<h3 id="toc_18">9. 签名 验证</h3>
+
+<p>主要用于真机<br/>
+使用<code>codesign</code>命令,利用我们之前生成的.app.xcent信息 进行应用签名</p>
+
+<h3 id="toc_19">10. 创建 .app 文件</h3>
+
+<p>生成.app文件 即最终的可安装文件<br/>
+<img src="media/15538518127841/15538768732306.jpg" alt="" style="width:1057px;"/></p>
+
+
+		</div>
+
+		
+
+	</article>
+  
+	<div class="pagination">
+	 <a class="prev" href="all_28.html">&larr; Older</a> 
+<a href="archives.html">Blog Archives</a>
+	 <a class="next" href="all_26.html">Newer &rarr;</a>  
+	    
+	</div>
+</div>
+ <aside class="sidebar"> 
+
+	<section>
+	  <h1>Categories</h1>
+	  <ul id="recent_posts">
+	  
+	      <li class="post">
+	        <a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B&&Runloop.html"><strong>多线程&&Runloop&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="RunLoop.html">RunLoop&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B.html">多线程&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8&&%E9%94%81.html">线程安全&&锁&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="KVC&&KVO.html">KVC&&KVO&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="runtime%E5%AD%A6%E4%B9%A0.html"><strong>runtime学习&nbsp;(9)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&&block.html"><strong>内存管理&&block&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="OC%E9%AB%98%E7%BA%A7%E7%BC%96%E7%A8%8B-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">OC高级编程-内存管理&nbsp;(6)</a>&nbsp;&nbsp;
+	        
+	        	<a href="block%E5%AD%A6%E4%B9%A0.html">block学习&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%AE%98%E6%96%B9%E6%96%87%E6%A1%A3-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">官方文档-内存管理&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-%E6%8B%BE%E9%81%97.html">内存管理-拾遗&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BD%91%E7%BB%9C.html"><strong>网络&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="GPU&&%E6%B8%B2%E6%9F%93.html"><strong>GPU&&渲染&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F&&%E7%BB%84%E4%BB%B6%E5%8C%96.html"><strong>设计模式&&组件化&nbsp;(8)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E6%9E%B6%E6%9E%84%E8%B0%88(%E6%91%98%E5%BD%95).html">设计模式架构谈(摘录)&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BB%84%E4%BB%B6%E5%8C%96%E5%BC%80%E5%8F%91%E5%AD%A6%E4%B9%A0.html">组件化开发学习&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BC%96%E8%AF%91&&dyld&&Mach-O.html"><strong>编译&&dyld&&Mach-O&nbsp;(19)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html">iOS编译流程&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="dyld(%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8).html">dyld(程序启动)&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Mach-O%E6%96%87%E4%BB%B6%E4%BA%86%E8%A7%A3.html">Mach-O文件了解&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%A8%A1%E5%9D%97%E5%8C%96%E7%9F%A5%E8%AF%86.html"><strong>模块化知识&nbsp;(26)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS-CoreAnimation.html">iOS-CoreAnimation&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="CoreGraphic.html">CoreGraphic&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ARKit.html">ARKit&nbsp;(7)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%E5%92%8C%E4%BD%BF%E7%94%A8.html"><strong>第三方项目学习和使用&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="AFNetworking.html">AFNetworking&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="AsyncDisplayKit.html">AsyncDisplayKit&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ReactnativeCocoa.html">ReactnativeCocoa&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="PromiseKit.html">PromiseKit&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7%E5%92%8C%E4%BC%98%E5%8C%96.html"><strong>项目监控和优化&nbsp;(10)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="APP%E4%BD%93%E7%A7%AF%E4%BC%98%E5%8C%96.html">APP体积优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%90%AF%E5%8A%A8%E4%BC%98%E5%8C%96.html">启动优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%B0%83%E8%AF%95&&%E6%B5%8B%E8%AF%95.html"><strong>调试&&测试&nbsp;(6)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="Instrument%E5%AD%A6%E4%B9%A0.html">Instrument学习&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="LLDB.html">LLDB&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95.html">自动化测试&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%B7%A5%E5%85%B7.html"><strong>工具&nbsp;(5)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="git.html">git&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Cocoapods.html">Cocoapods&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%8B%BE%E9%81%97.html"><strong>拾遗&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%9D%A2%E8%AF%95.html">面试&nbsp;(12)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">iOS开发知识点拾遗&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">知识点拾遗&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html">iOS 小知识&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Swift-BaseLearning.html"><strong>Swift基础知识&nbsp;(28)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Computer-programming.html"><strong>计算机编程&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html">知识普及&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Flex.html">Flex&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
+	        
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="React-Native.html"><strong>React-Native&nbsp;(6)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Python.html"><strong>Python&nbsp;(14)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html"><strong>算法读书笔记&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	   
+	  </ul>
+	</section>
+	<section>
+	  <h1>Recent Posts</h1>
+	  <ul id="recent_posts">
+	  
+	      
+		      <li class="post">
+		        <a href="15718858302183.html">官方文档</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710248960458.html">Layout Specs</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707800044047.html">Node Lifecycle</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707737201639.html">线程</a>
+		      </li>
+	     
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	   
+	  </ul>
+	</section>
+	
+</aside> </div></div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 -  -
+  <span class="credit">Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a> &nbsp;&nbsp; Theme by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+
+  
+    
+
+
+
+
+</body>
+</html>

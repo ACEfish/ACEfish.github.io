@@ -1,0 +1,606 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>
+    
+  编译&&dyld&&Mach-O - ACEfish-Blog
+  
+
+  </title>
+  <meta name="author" content="">
+  <meta name="description" content="学习记录">
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link href="asset/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+  <script src="asset/js/modernizr-2.0.js"></script>
+  <script src="asset/js/jquery.min.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/solarized_light.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  <style type="text/css">
+  .cat-children-p{ padding: 6px 0px;}
+  .hljs{background: none;}
+  </style>
+  <script type="text/javascript">
+  var isAddSildbar = true;
+  </script>
+  <script src="asset/js/octopress.js" type="text/javascript"></script>
+</head>
+<script type="text/javascript">
+//链接新开窗口
+function addBlankTargetForLinks () {
+  $('a[href^="http"]').each(function(){
+      $(this).attr('target', '_blank');
+  });
+}
+$(document).ready(function(event) {
+  addBlankTargetForLinks();
+});
+</script>
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="index.html">ACEfish-Blog</a></h1>
+  
+    <h2>学习记录</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:acefish.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+
+  <li id=""><a target="_self" href="index.html">首页</a></li>
+
+  <li id=""><a target="_self" href="archives.html">归档</a></li>
+
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content"> 
+<div class="blog-index">
+
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15541213204265.html">dyld动态链接</a></h1>
+			<p class="meta"><time datetime="2019-04-01T20:22:00+08:00" 
+			pubdate data-updated="true">04/01/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>生成可执行文件后，就是在启动时进行动态链接了,进行符号和地址的绑定。首先会加载所依赖的<code>dylibs</code>，修正地址偏移，因为iOS会用 ASLR 来做地址偏移避免攻击，确定<code>Non-Lazy Pointer</code>地址进行符号地址绑定，加载所有类，最后执行<code>load</code>方法和<code>clang attribute</code> 的<code>constructor</code>修饰函数。</p>
+
+<p>每个函数、全局变量和类都是通过符号的形式来定义和使用的，当把目标文件链接为一个执行文件时，链接器在目标文件和动态库之间对符号做解析处理</p>
+
+<p>查看一个可链接文件的符号表<br/>
+<code>xcrun nm -nm SayHi.o</code></p>
+
+<pre><code class="language-c">                 (undefined) external _OBJC_CLASS_$_Foo
+                 (undefined) external _objc_autoreleasePoolPop
+                 (undefined) external _objc_autoreleasePoolPush
+                 (undefined) external _objc_msgSend
+0000000000000000 (__TEXT,__text) external _main
+</code></pre>
+
+<ul>
+<li><code>OBJC_CLASS$_Foo</code>表示<code>Foo</code>的<code>OC</code>符号</li>
+<li><code>(undefined) external</code>表示未实现非私有，如果是私有就是<code>non-external</code></li>
+<li><code>external _main</code> 表示<code>main()</code>函数，处理<code>0</code>地址，将要到 <strong>TEXT,</strong>text section</li>
+</ul>
+
+<pre><code class="language-text">xcrun nm -nm Foo.o
+</code></pre>
+
+<pre><code class="language-c">                 (undefined) external _NSLog
+                 (undefined) external _OBJC_CLASS_$_NSObject
+                 (undefined) external _OBJC_METACLASS_$_NSObject
+                 (undefined) external ___CFConstantStringClassReference
+                 (undefined) external __objc_empty_cache
+0000000000000000 (__TEXT,__text) non-external -[Foo say]
+0000000000000060 (__DATA,__objc_const) non-external l_OBJC_METACLASS_RO_$_Foo
+00000000000000a8 (__DATA,__objc_const) non-external l_OBJC_$_INSTANCE_METHODS_Foo
+00000000000000c8 (__DATA,__objc_const) non-external l_OBJC_CLASS_RO_$_Foo
+0000000000000110 (__DATA,__objc_data) external _OBJC_METACLASS_$_Foo
+0000000000000138 (__DATA,__objc_data) external _OBJC_CLASS_$_Foo
+</code></pre>
+
+<p>undefine符号表示该文件类未实现的，所以在目标文件和<code>Function framework</code>动态库做链接处理时，链接器尝试解析所有的undefined符号</p>
+
+<p>链接器通过动态库解析成符号会记录是通过哪个动态库解析的，路径也会一起记录。对比下a.out符号表，看看可执行文件是怎么解析符号的</p>
+
+<pre><code class="language-text">xcrun nm -nm a.out
+</code></pre>
+
+<pre><code class="language-c">                 (undefined) external _NSLog (from Foundation)
+                 (undefined) external _OBJC_CLASS_$_NSObject (from CoreFoundation)
+                 (undefined) external _OBJC_METACLASS_$_NSObject (from CoreFoundation)
+                 (undefined) external ___CFConstantStringClassReference (from CoreFoundation)
+                 (undefined) external __objc_empty_cache (from libobjc)
+                 (undefined) external _objc_autoreleasePoolPop (from libobjc)
+                 (undefined) external _objc_autoreleasePoolPush (from libobjc)
+                 (undefined) external _objc_msgSend (from libobjc)
+                 (undefined) external dyld_stub_binder (from libSystem)
+0000000100000000 (__TEXT,__text) [referenced dynamically] external __mh_execute_header
+0000000100000e90 (__TEXT,__text) external _main
+0000000100000f10 (__TEXT,__text) non-external -[Foo say]
+0000000100001130 (__DATA,__objc_data) external _OBJC_METACLASS_$_Foo
+0000000100001158 (__DATA,__objc_data) external _OBJC_CLASS_$_Foo
+</code></pre>
+
+<p>undefined 符号 有了更多信息，可以知道在哪个库能够找到<br/>
+通过otool可以找到所需要的库在哪</p>
+
+<pre><code class="language-text">xcrun otool -L a.out
+</code></pre>
+
+<pre><code class="language-text">a.out:
+    /System/Library/Frameworks/Foundation.framework/Versions/C/Foundation (compatibility version 300.0.0, current version 1349.25.0)
+    /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1238.0.0)
+    /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation (compatibility version 150.0.0, current version 1348.28.0)
+    /usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
+</code></pre>
+
+<p>dylib这种格式表示是动态链接的，即动态库，编译时不会被编译到执行文件中，在程序执行时才link，这样就不用算到包的大小中,而且也能够不更新执行程序就能更新库</p>
+
+<p>打印什么库被加载了</p>
+
+<pre><code class="language-text">(export DYLD_PRINT_LIBRARIES=; ./a.out )
+</code></pre>
+
+<pre><code class="language-text">dyld: loaded: /Users/didi/Downloads/./a.out
+dyld: loaded: /System/Library/Frameworks/Foundation.framework/Versions/C/Foundation
+dyld: loaded: /usr/lib/libSystem.B.dylib
+dyld: loaded: /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation
+…
+</code></pre>
+
+<p>因为Fundation库依赖一些其他库,其他库还会依赖更多，因此为了减少处理的时间,系统上的动态链接器会共享缓存,共享的缓存在<code>/var/db/dyld/</code>，这样，当加载Mach-O文件时动态链接器会先检查共享内存是否有。每个进程都会有自己地址空间映射这些共享缓存，可以优化启动速度</p>
+
+<h3 id="toc_0">dyld做了什么事情</h3>
+
+<ul>
+<li>kernel做启动程序初始准备,开始由dyld负责</li>
+<li>基于非常简单的原始栈为kernel设置进程来启动自身</li>
+<li>使用共享缓存来处理递归依赖带来的性能问题,ImageLoader会读取二进制文件,其中包含了我们的类,方法等各种符号</li>
+<li>立即绑定non-lazy的符号并设置用于lazy bind的必要表，将这些库link到执行文件里</li>
+<li>为可执行文件运行静态初始化</li>
+<li>设置参数到可执行文件的 main 函数并调用它</li>
+<li>在执行期间，<strong>通过绑定符号处理对<code>lazily-bound</code>符号存根的调用提供runtime动态加载服务(通过 dl*() 这个 API ），并为gdb和其它调试器提供钩子以获得关键信息。runtime会调用map_images做解析和处理,load_images来调用call_load_methods方法遍历所有加载了的Class，按照继承层级依次调用+load方法；</strong></li>
+<li>在main函数返回后运行 static terminator</li>
+<li>在某些情况下,一旦main函数返回就需要调用<code>libSystem</code>的_exit</li>
+</ul>
+
+<p>查看运行时的调用 map_images 和 调用 +load 方法的相关 runtime 处理可以通过 RetVal 的可debug 的 objc/runtime<a href="https://github.com/RetVal/objc-runtime">RetVal/objc-runtime: objc runtime 706</a> 来进行断点查看调用的runtime方法具体实现。在 debug-objc 下创建一个类，在 +load 方法里断点查看走到这里调用的堆栈如下：</p>
+
+<pre><code class="language-objectivec">0 +[someclass load]
+1  call_class_loads()
+2  ::call_load_methods
+3  ::load_images(const char *path __unused, const struct mach_header *mh)
+4  dyld::notifySingle(dyld_image_states, ImageLoader const*, ImageLoader::InitializerTimingList*)
+11 _dyld_start
+</code></pre>
+
+<p>在<code>load_images</code>方法里断点 p path 可以打印出所有加载的动态链接库，这个方法的<code>hasLoadMethods</code>用于快速判断是否有<code>+load</code>方法。</p>
+
+<p><code>prepare_load_methods</code>这个方法会获取所有类的列表然后收集其中的<code>+load</code>方法，在代码里可以发现<code>Class</code>的<code>+load</code>是先执行的，然后执行<code>Category</code>的<code>+load</code>方法。为什么这样做，原因可以通过<code>prepare_load_methods</code>这个方法看出，在遍历<code>Class</code>的<code>+load</code>方法时会执行<code>schedule_class_load</code>这个方法，这个方法会递归到根节点来满足<code>Class</code>收集完整关系树的需求。<br/>
+最后<code>call_load_methods</code>会创建一个<code>autoreleasePool</code>使用函数指针来动态调用类和<code>Category</code>的<code>+load</code>方法</p>
+
+<p>如果想了解<code>Cocoa</code>的<code>Fundation</code>库可以通过<a href="https://github.com/AaronYi/gnustep-base">GNUStep</a>源码来学习。比如 NSNotificationCenter 发送通知是按什么顺序发送的可以查看 NSNotificationCenter.m 里的 addObserver 方法和 postNotification 方法，看看观察者是怎么添加的和怎么被遍历通知到的</p>
+
+<p>dyld 是开源的： <a href="https://github.com/opensource-apple/dyld**">GitHub - opensource-apple/dyld</a></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15542163059530.html">静态库与动态库</a></h1>
+			<p class="meta"><time datetime="2019-04-02T22:45:05+08:00" 
+			pubdate data-updated="true">04/02/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">库</h2>
+
+<p>库(library)就是一堆对象文档(.o文件)的归档，是一段编译好的二进制代码,加上头文件来供别人使用。</p>
+
+<p>使用库的情况:</p>
+
+<ol>
+<li>当我们想封装代码给别人使用而不想别人看到源码</li>
+<li>当代码不会经常改动，可以将其打包成库，减少编译时间</li>
+</ol>
+
+<h2 id="toc_1">静态库</h2>
+
+<p>静态库:在静态链接时会被直接复制目标程序中，这样在编译完成后程序并没有外部依赖，但是目标程序会变大</p>
+
+<p>静态库在windows中为<code>.lib</code> mac和linux下为<code>.a</code> mac下还有 <code>.framework</code></p>
+
+<h2 id="toc_2">动态库</h2>
+
+<p>动态库:动态库在静态链接时并不会被拷贝到目标程序中，目标程序只会存储指向动态库的引用，程序运行时，动态库才会真正加载进来，动态库不需要拷贝到程序中，不影响程序体积，同一份库可以被多个程序使用，但是使目标程序依赖于外部环境</p>
+
+<p>动态库在windows下为<code>.dll</code> mac为<code>.dylib和.framework</code> linux下为<code>.so</code> (系统提供的framework都是动态库)</p>
+
+<p>在Xcode7之后，<code>.dylib</code>文件替换为了<code>.tbd</code>文件</p>
+
+<p>动态库好处:</p>
+
+<ul>
+<li>代码共用: 在磁盘中只需要一份，可以让多个程序共用依赖链接</li>
+<li>易于维护: 因为是程序执行时才link的，因此lib很容易更新替换</li>
+<li>减少可执行文件体积: 不需要打包进可执行文件，因此执行文件体积就小了很多</li>
+</ul>
+
+<h3 id="toc_3">.dylib与.tbd</h3>
+
+<p><code>.tbd</code>是基于文本的，因此只是包含在项目中的文本文件，其作用是指向所需的<code>.dylib</code>二进制文件链接。因为文本文件比二进制文件小很多，因此可以减少其下载大小(在实际动态链接时，仍然链接的为.dylib文件)</p>
+
+<h3 id="toc_4">.framwork</h3>
+
+<p>在iOS开发中还会用到<code>Framework</code>，在iOS8之前 只能使用苹果的framework动态库，而在iOS8之后，开发者可以自己打包framework，但是自己开发的framework还是类似静态库，需要拷贝到app中，苹果又把这种 Framework 称为 Embedded Framework</p>
+
+<h3 id="toc_5">系统的.framework与.dylib</h3>
+
+<p>系统为什么提供了.dylib动态库还有.framework动态库<br/>
+个人觉得是因为他们层级不一样,.dylib是系统操作<strong>系统内置库</strong>，底层的；.framework是开发的应用层级<strong>框架</strong></p>
+
+<h2 id="toc_6">参考资料</h2>
+
+<p><a href="http://www.cnblogs.com/Jenaral/p/5530383.html">iOS 静态库，动态库与 Framework 浅析</a></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15559005276972.html">Mach-O文件结构</a></h1>
+			<p class="meta"><time datetime="2019-04-22T10:35:27+08:00" 
+			pubdate data-updated="true">04/22/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>参考资料:<br/>
+<a href="http://jianli2017.top/wiki/IOS/MachO/MachO_FileStructure/">Mach-O文件结构理解</a></p>
+
+
+		</div>
+
+		
+
+	</article>
+  
+	<div class="pagination">
+	
+<a href="archives.html">Blog Archives</a>
+	 <a class="next" href="编译&&dyld&&Mach-O_1.html">Newer &rarr;</a>  
+	    
+	</div>
+</div>
+ <aside class="sidebar"> 
+
+	<section>
+	  <h1>Categories</h1>
+	  <ul id="recent_posts">
+	  
+	      <li class="post">
+	        <a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B&&Runloop.html"><strong>多线程&&Runloop&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="RunLoop.html">RunLoop&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B.html">多线程&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8&&%E9%94%81.html">线程安全&&锁&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="KVC&&KVO.html">KVC&&KVO&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="runtime%E5%AD%A6%E4%B9%A0.html"><strong>runtime学习&nbsp;(9)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&&block.html"><strong>内存管理&&block&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="OC%E9%AB%98%E7%BA%A7%E7%BC%96%E7%A8%8B-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">OC高级编程-内存管理&nbsp;(6)</a>&nbsp;&nbsp;
+	        
+	        	<a href="block%E5%AD%A6%E4%B9%A0.html">block学习&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%AE%98%E6%96%B9%E6%96%87%E6%A1%A3-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">官方文档-内存管理&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-%E6%8B%BE%E9%81%97.html">内存管理-拾遗&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BD%91%E7%BB%9C.html"><strong>网络&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="GPU&&%E6%B8%B2%E6%9F%93.html"><strong>GPU&&渲染&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F&&%E7%BB%84%E4%BB%B6%E5%8C%96.html"><strong>设计模式&&组件化&nbsp;(8)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E6%9E%B6%E6%9E%84%E8%B0%88(%E6%91%98%E5%BD%95).html">设计模式架构谈(摘录)&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BB%84%E4%BB%B6%E5%8C%96%E5%BC%80%E5%8F%91%E5%AD%A6%E4%B9%A0.html">组件化开发学习&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BC%96%E8%AF%91&&dyld&&Mach-O.html"><strong>编译&&dyld&&Mach-O&nbsp;(19)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html">iOS编译流程&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="dyld(%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8).html">dyld(程序启动)&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Mach-O%E6%96%87%E4%BB%B6%E4%BA%86%E8%A7%A3.html">Mach-O文件了解&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%A8%A1%E5%9D%97%E5%8C%96%E7%9F%A5%E8%AF%86.html"><strong>模块化知识&nbsp;(26)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS-CoreAnimation.html">iOS-CoreAnimation&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="CoreGraphic.html">CoreGraphic&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ARKit.html">ARKit&nbsp;(7)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%E5%92%8C%E4%BD%BF%E7%94%A8.html"><strong>第三方项目学习和使用&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="AFNetworking.html">AFNetworking&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="AsyncDisplayKit.html">AsyncDisplayKit&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ReactnativeCocoa.html">ReactnativeCocoa&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="PromiseKit.html">PromiseKit&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7%E5%92%8C%E4%BC%98%E5%8C%96.html"><strong>项目监控和优化&nbsp;(10)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="APP%E4%BD%93%E7%A7%AF%E4%BC%98%E5%8C%96.html">APP体积优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%90%AF%E5%8A%A8%E4%BC%98%E5%8C%96.html">启动优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%B0%83%E8%AF%95&&%E6%B5%8B%E8%AF%95.html"><strong>调试&&测试&nbsp;(6)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="Instrument%E5%AD%A6%E4%B9%A0.html">Instrument学习&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="LLDB.html">LLDB&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95.html">自动化测试&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%B7%A5%E5%85%B7.html"><strong>工具&nbsp;(5)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="git.html">git&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Cocoapods.html">Cocoapods&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%8B%BE%E9%81%97.html"><strong>拾遗&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%9D%A2%E8%AF%95.html">面试&nbsp;(12)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">iOS开发知识点拾遗&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">知识点拾遗&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html">iOS 小知识&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Swift-BaseLearning.html"><strong>Swift基础知识&nbsp;(28)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Computer-programming.html"><strong>计算机编程&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html">知识普及&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Flex.html">Flex&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
+	        
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="React-Native.html"><strong>React-Native&nbsp;(6)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Python.html"><strong>Python&nbsp;(14)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html"><strong>算法读书笔记&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	   
+	  </ul>
+	</section>
+	<section>
+	  <h1>Recent Posts</h1>
+	  <ul id="recent_posts">
+	  
+	      
+		      <li class="post">
+		        <a href="15718858302183.html">官方文档</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710248960458.html">Layout Specs</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707800044047.html">Node Lifecycle</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707737201639.html">线程</a>
+		      </li>
+	     
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	   
+	  </ul>
+	</section>
+	
+</aside> </div></div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 -  -
+  <span class="credit">Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a> &nbsp;&nbsp; Theme by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+
+  
+    
+
+
+
+
+</body>
+</html>

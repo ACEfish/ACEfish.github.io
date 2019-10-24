@@ -1,0 +1,1017 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>
+    
+  ACEfish-Blog
+  
+
+  </title>
+  <meta name="author" content="">
+  <meta name="description" content="学习记录">
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link href="asset/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+  <script src="asset/js/modernizr-2.0.js"></script>
+  <script src="asset/js/jquery.min.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/solarized_light.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  <style type="text/css">
+  .cat-children-p{ padding: 6px 0px;}
+  .hljs{background: none;}
+  </style>
+  <script type="text/javascript">
+  var isAddSildbar = true;
+  </script>
+  <script src="asset/js/octopress.js" type="text/javascript"></script>
+</head>
+<script type="text/javascript">
+//链接新开窗口
+function addBlankTargetForLinks () {
+  $('a[href^="http"]').each(function(){
+      $(this).attr('target', '_blank');
+  });
+}
+$(document).ready(function(event) {
+  addBlankTargetForLinks();
+});
+</script>
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="index.html">ACEfish-Blog</a></h1>
+  
+    <h2>学习记录</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:acefish.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+
+  <li id=""><a target="_self" href="index.html">首页</a></li>
+
+  <li id=""><a target="_self" href="archives.html">归档</a></li>
+
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content"> 
+<div class="blog-index">
+
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15604257329990.html">RACSignal信号的订阅与发送</a></h1>
+			<p class="meta"><time datetime="2019-06-13T19:35:32+08:00" 
+			pubdate data-updated="true">06/13/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">RACSignal</h2>
+
+<h4 id="toc_1">订阅信号</h4>
+
+<p>订阅信号动作 就是创建一个遵循<code>&lt;RACSubscriber&gt;</code>代理的对象 该对象将接受到信号时要做的动作block保存起来</p>
+
+<pre><code class="language-objectivec">RACSignal subscribeNext:(void (^)(id x))nextBlock error:(void (^)(NSError *error))errorBlock completed:(void (^)(void))completedBlock {
+    
+    RACSubscriber *subscriber = [[self alloc] init];
+    subscriber-&gt;_next = [next copy];
+    subscriber-&gt;_error = [error copy]    
+    subscriber-&gt;_completed = [completed copy];
+    
+    [self subscribe:subscriber];
+    
+}
+</code></pre>
+
+<p>具体订阅该信号要做的事情  因为不同子类的信号发送事件不同  需要被子类重写</p>
+
+<pre><code class="language-objectivec">RACSignal subscribe:(id&lt;RACSubscriber&gt;)subscriber {
+    //被子类重写
+}
+</code></pre>
+
+<h3 id="toc_2">RACSubscriber<RACSubscriber></h3>
+
+<p>遵循<code>RACSubscriber</code>代理 即可发送信号值</p>
+
+<pre><code class="language-objectivec">- (void)sendNext:(id)value {
+    self.nextBlock(value);
+}
+- (void)sendError:(NSError *)e{
+    self.errorBlock(e);
+}
+- (void)sendCompleted {
+    self.completedBlock();
+}
+</code></pre>
+
+<p>发送信号值 即执行保存的执行事件block</p>
+
+<h3 id="toc_3">RACDynamicSignal</h3>
+
+<p>DynamicSignal 即在创建信号时要发送的的信号值已经设定  而在重写<code>subscribe</code>方法时只需要将其发送的值与 next、error、completed block进行匹配执行即可</p>
+
+<h4 id="toc_4">创建信号</h4>
+
+<p><code>DynamicSignal</code>创建信号 创建时已经包含了信号已经要发送的值<br/>
+将<code>id&lt;RACSubscriber&gt;</code>信号发送者要发送的值的事件block 存起来，存到signal的<code>_didSubscribe</code>block属性中</p>
+
+<pre><code class="language-objectivec">RACDynamicSignal createSignal:(RACDisposable * (^)(id&lt;RACSubscriber&gt; subscriber))didSubscribe {
+    RACDynamicSignal *signal = [[self alloc] init];
+      signal-&gt;_didSubscribe = [didSubscribe copy];
+}
+</code></pre>
+
+<h4 id="toc_5">订阅信号</h4>
+
+<p>订阅信号 即 执行创建信号时保存起来的<code>didSubscribe</code> block  send创建信号时发送的值 </p>
+
+<pre><code class="language-objectivec">RACDynamicSignal subscribe:(id&lt;RACSubscriber&gt;)subscriber  {
+    self.didSubscribe(subscriber);
+}
+</code></pre>
+
+<h2 id="toc_6">RASSubject &lt; RACSubscriber &gt;: RACSignal</h2>
+
+<p><code>Subject</code>维持一个数组保存所有需要sendEvent的<code>Subscriber</code>,当需要发送</p>
+
+<h4 id="toc_7">订阅信号</h4>
+
+<p>因为继承自<code>RACSignal</code> 需要重写<code>subscribe:</code>方法</p>
+
+<pre><code class="language-objectivec">RASSubject )subscribe:(id&lt;RACSubscriber&gt;)subscriber {
+    [self.subscribers addObject:subscriber];
+}
+</code></pre>
+
+<h4 id="toc_8">发送信号</h4>
+
+<p>发送信号值 即 遍历数组中的Subcriber 依次send 然后执行subscriber 中保存的nextBlock事件block</p>
+
+<pre><code class="language-objectivec">- (void)sendNext:(id)value {
+    [self enumerateSubscribersUsingBlock:^(id&lt;RACSubscriber&gt; subscriber) {
+        [subscriber sendNext:value];
+    }];
+}
+</code></pre>
+
+<h3 id="toc_9">RACBehaviorSubject &amp;&amp; RACReplaySubject</h3>
+
+<h4 id="toc_10">RACBehaviorSubject</h4>
+
+<p>在内部的<code>currentValue</code>属性会保存上次发送的值 这样在订阅该信号时即能收到最后发送的信号值，进行初始化</p>
+
+<pre><code class="language-objectivec">+ (instancetype)behaviorSubjectWithDefaultValue:(id)value {
+    RACBehaviorSubject *subject = [self subject];
+    subject.currentValue = value;
+    return subject;
+}
+</code></pre>
+
+<h5 id="toc_11">发送信号</h5>
+
+<p>在发送信号时 保存信号作为最后发送的信号</p>
+
+<pre><code class="language-objectivec">- (void)sendNext:(id)value {
+    self.currentValue = value;
+    [super sendNext:value];
+}
+</code></pre>
+
+<h5 id="toc_12">订阅信号</h5>
+
+<p>重写<code>subscribe</code>方法  在每次订阅信号时 发送当前保存的值即最后发送的信号</p>
+
+<pre><code class="language-objectivec">RACBehaviorSubject  subscribe:(id&lt;RACSubscriber&gt;)subscriber {
+    [super subscribe:subscriber];
+       [subscriber sendNext:self.currentValue];
+}
+</code></pre>
+
+<h4 id="toc_13">RACReplaySubject</h4>
+
+<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) NSMutableArray *valuesReceived;
+</code></pre>
+
+<p>内部有个数组保存了一定量发送过的信号 默认为<code>RACReplaySubjectUnlimitedCapacity</code>（NSUIntegerMax），即保存所有已经发送过的信号，也可以通过<code>initWithCapacity</code>初始化，制动保存多少个已经发送过的信号</p>
+
+<pre><code class="language-objectivec">- (instancetype)initWithCapacity:(NSUInteger)capacity {
+    self = [super init];
+    
+    _capacity = capacity;
+    _valuesReceived = (capacity == RACReplaySubjectUnlimitedCapacity ? [NSMutableArray array] : [NSMutableArray arrayWithCapacity:capacity]);
+    
+    return self;
+}
+</code></pre>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15578383647199.html">RACSignal</a></h1>
+			<p class="meta"><time datetime="2019-05-14T20:52:44+08:00" 
+			pubdate data-updated="true">05/14/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>本文学习自<a href="https://github.com/halfrost/Analyze/blob/master/contents/ReactiveObjC/RACSignal.md">『状态』驱动的世界：ReactiveCocoa</a></p>
+
+<p><code>RACSignal</code>继承自<code>RACStream</code>，对该抽象类的方法进行了重写实现</p>
+
+<h3 id="toc_0"><code>return</code>方法</h3>
+
+<pre><code class="language-objectivec">+ (RACSignal *)return:(id)value {
+    return [RACReturnSignal return:value];
+}
+/**
+RACReturnSignal *signal = [[self alloc] init];
+signal-&gt;_value = value;
+*/
+</code></pre>
+
+<h3 id="toc_1"><code>-bind</code>方法</h3>
+
+<pre><code class="language-objectivec">
+/**
+实现过程
+1. 订阅原始信号值
+2. 当原信号发送值时，使用bindblock对其进行转换
+3. 如果bindblock返回一个信号，订阅该信号，并在收到该信号值时，将所有值传递给接收者subscriber
+4. 如果bindblock请求终止就向原信号发出`-sendError:`消息
+5. 当所有信号完成，向订阅者发送`-sendCompleted`
+6. 无论何时 当信号发生错误，向订阅者发送-sendError: 消息
+*/
+
+- (RACSignal *)bind:(RACSignalBindBlock (^)(void))block
+</code></pre>
+
+<p><code>-bind</code>方法在原始信号每次发出消息时，执行<code>RACSignalBindBlock</code>对其进行变换生成一个新的信号</p>
+
+<p>示例:</p>
+
+<pre><code class="language-objectivec">//示例1：
+RACSignal *signal = [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+    [subscriber sendNext:@1];
+    [subscriber sendNext:@2];
+    [subscriber sendNext:@3];
+    [subscriber sendNext:@4];
+    [subscriber sendCompleted];
+    return nil;
+}];
+RACSignal *bindSignal = [signal bind:^RACSignalBindBlock _Nonnull{
+    return ^(NSNumber *value, BOOL *stop) {
+        //简单的利用bind将 原始信号的值进行了一个变换
+        value = @(value.integerValue * value.integerValue);
+        return [RACSignal return:value];
+    };
+}];
+[signal subscribeNext:^(id  _Nullable x) {
+    NSLog(@&quot;signal: %@&quot;, x);
+}];
+[bindSignal subscribeNext:^(id  _Nullable x) {
+    NSLog(@&quot;bindSignal: %@&quot;, x);
+}];
+</code></pre>
+
+<h3 id="toc_2">-concat方法</h3>
+
+<pre><code class="language-objectivec">- (RACSignal *)concat:(RACSignal *)signal {
+    return [[RACSignal createSignal:^(id&lt;RACSubscriber&gt; subscriber) {
+
+        [self subscribeNext:^(id x) {
+            [subscriber sendNext:x];
+        } error:^(NSError *error) {
+            [subscriber sendError:error];
+        } completed:^{
+            [signal subscribe:subscriber];
+        }];
+    }] setNameWithFormat:@&quot;[%@] -concat: %@&quot;, self.name, signal];
+}
+</code></pre>
+
+<p>当原始信号<code>completed</code>后 subcribe contact的信号</p>
+
+<h3 id="toc_3">-zipWith方法</h3>
+
+<ul>
+<li>(RACSignal *)zipWith:(RACSignal *)signal<br/>
+将两个信号值进行zip 即每次发出一个为<code>RACTuple</code>值为[signal1value, signal2value]的值 当其中一个error或者completed即停止zipSignal</li>
+</ul>
+
+<h2 id="toc_4">信号的创建</h2>
+
+<p>RACSignal的<code>createSignal</code>方法</p>
+
+<pre><code class="language-objectivec">//RACSignal
++ (RACSignal *)createSignal:(RACDisposable * (^)(id&lt;RACSubscriber&gt; subscriber))didSubscribe {
+    return [RACDynamicSignal createSignal:didSubscribe];
+}
+
+//RACDynamicSignal
++ (RACSignal *)createSignal:(RACDisposable * (^)(id&lt;RACSubscriber&gt; subscriber))didSubscribe {
+    RACDynamicSignal *signal = [[self alloc] init];
+    signal-&gt;_didSubscribe = [didSubscribe copy];
+    return [signal setNameWithFormat:@&quot;+createSignal:&quot;];
+}
+</code></pre>
+
+<p>signal保存了<code>didSubscribe</code>并在每次有订阅者订阅当前信号时 都会执行一遍，向订阅者发送消息</p>
+
+<h3 id="toc_5">RACSignal类簇</h3>
+
+<p><code>RACSignal</code>拥有不同功能的子类</p>
+
+<ol>
+<li><p><code>RACDynamicSignal</code>：用于 <code>+ createSignal:</code></p></li>
+<li><p><code>RACEmptySignal</code> 用于 <code>+ empty</code></p>
+<pre><code class="language-objectivec">+ (RACSignal *)empty {
+    return [[[self alloc] init] setNameWithFormat:@&quot;+empty&quot;];<br/>
+}<br/>
+- (RACDisposable *)subscribe:(id&lt;RACSubscriber&gt;)subscriber {<br/>
+    return [RACScheduler.subscriptionScheduler schedule:^{<br/>
+        [subscriber sendCompleted];<br/>
+    }];<br/>
+}
+</code></pre></li>
+<li><p><code>RACReturnSignal</code>  用于 <code>+ return</code></p>
+<pre><code class="language-objectivec">+ (RACSignal *)return:(id)value {
+    RACReturnSignal *signal = [[self alloc] init];<br/>
+      signal-&gt;_value = value;<br/>
+      return signal;<br/>
+}<br/>
+//将value简单保存 在有其它订阅者时 向订阅者发送value<br/>
+- (RACDisposable *)subscribe:(id&lt;RACSubscriber&gt;)subscriber {<br/>
+        NSCParameterAssert(subscriber != nil);<br/>
+        return [RACScheduler.subscriptionScheduler schedule:^{<br/>
+            [subscriber sendNext:self.value];<br/>
+            [subscriber sendCompleted];<br/>
+        }];<br/>
+}
+</code></pre></li>
+<li><p><code>RACErrorSignal</code>  用于 <code>+ error</code></p>
+<pre><code class="language-objectivec">+ (RACSignal *)error:(NSError *)error {
+    RACErrorSignal *signal = [[self alloc] init];<br/>
+    signal-&gt;_error = error;<br/>
+#ifdef DEBUG<br/>
+    [signal setNameWithFormat:@&quot;+error: %@&quot;, error];<br/>
+#else<br/>
+    signal.name = @&quot;+error:&quot;;<br/>
+#endif<br/>
+    return signal;<br/>
+}<br/>
+- (RACDisposable *)subscribe:(id&lt;RACSubscriber&gt;)subscriber {<br/>
+       return [RACScheduler.subscriptionScheduler schedule:^{<br/>
+    [subscriber sendError:self.error];<br/>
+}];<br/>
+}
+</code></pre></li>
+</ol>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15578193513091.html">RACStream</a></h1>
+			<p class="meta"><time datetime="2019-05-14T15:35:51+08:00" 
+			pubdate data-updated="true">05/14/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p><code>RACStream</code>是继承自NSObject最基础的类，其它的子类例如<code>RCSignal</code>、<code>RACSequence</code>均继承自该类</p>
+
+<p><code>RACStream</code>作为一个抽象类存在，本身并不提供任何方法的实现，内部方法均为抽象方法，在调用时抛出异常</p>
+
+<pre><code class="language-objectivec">+ (__kindof RACStream *)empty {
+    NSString *reason = [NSString stringWithFormat:@&quot;%@ must be overridden by subclasses&quot;, NSStringFromSelector(_cmd)];
+    @throw [NSException exceptionWithName:NSInternalInconsistencyException reason:reason userInfo:nil];
+}
+- (__kindof RACStream *)bind:(RACStreamBindBlock (^)(void))block
+// return 根据该value 返回一个RACStream对象
++ (__kindof RACStream *)return:(id)value
+- (__kindof RACStream *)concat:(RACStream *)stream
+- (__kindof RACStream *)zipWith:(RACStream *)stream
+
+</code></pre>
+
+<p>但是在RACStream的Operations分类<code>RACStream (Operations)</code>提供了更丰富的方法</p>
+
+<pre><code class="language-objectivec">//对信号的值进行map映射
+- (__kindof RACStream *)flattenMap:(__kindof RACStream * (^)(id value))block {
+    Class class = self.class;
+
+    return [[self bind:^{
+        return ^(id value, BOOL *stop) {
+            id stream = block(value) ?: [class empty];
+            NSCAssert([stream isKindOfClass:RACStream.class], @&quot;Value returned from -flattenMap: is not a stream: %@&quot;, stream);
+
+            return stream;
+        };
+    }] setNameWithFormat:@&quot;[%@] -flattenMap:&quot;, self.name];
+}
+- (__kindof RACStream *)flatten
+- (__kindof RACStream *)map:(id (^)(id value))block
+- (__kindof RACStream *)mapReplace:(id)object
+
+//根据规则过滤
+- (__kindof RACStream *)filter:(BOOL (^)(id value))block
+- (__kindof RACStream *)ignore:(id)value
+
+//对RACTuple中每个值进行处理 
+- (__kindof RACStream *)reduceEach:(RACReduceBlock)reduceBlock
+
+//将RACStream 前拼上一个新的值
+- (__kindof RACStream *)startWith:(id)value
+
+//跳过固定个数的值
+- (__kindof RACStream *)skip:(NSUInteger)skipCount
+//接收前固定个数的值
+- (__kindof RACStream *)take:(NSUInteger)count
+
+//将一组Stream按照block的规则合并为一个  
++ (__kindof RACStream *)join:(id&lt;NSFastEnumeration&gt;)streams block:(RACStream * (^)(id, id))block
++ (__kindof RACStream *)zip:(id&lt;NSFastEnumeration&gt;)streams
++ (__kindof RACStream *)zip:(id&lt;NSFastEnumeration&gt;)streams reduce:(RACGenericReduceBlock)reduceBlock
+
+//一组Stream contact(连接)
++ (__kindof RACStream *)concat:(id&lt;NSFastEnumeration&gt;)streams
+
+//用初始值开始reduce 返回每次block之后的结果
+- (__kindof RACStream *)scanWithStart:(id)startingValue reduceWithIndex:(id (^)(id, id, NSUInteger))reduceBlock
+
+//忽略不符合条件的
+- (__kindof RACStream *)takeUntilBlock:(BOOL (^)(id x))predicate
+- (__kindof RACStream *)takeWhileBlock:(BOOL (^)(id x))predicate
+
+//忽略不符合条件的 直到第一个符合条件的
+- (__kindof RACStream *)skipUntilBlock:(BOOL (^)(id x))predicate
+- (__kindof RACStream *)skipWhileBlock:(BOOL (^)(id x))predicate
+
+//忽略未改变值的改变
+- (__kindof RACStream *)distinctUntilChanged
+</code></pre>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15560883411509.html">MatrixiOS学习</a></h1>
+			<p class="meta"><time datetime="2019-04-24T14:45:41+08:00" 
+			pubdate data-updated="true">04/24/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">学习到的知识点</h2>
+
+<h4 id="toc_1">1.使用协议和继承进行规范开发</h4>
+
+<p>在项目中定义了plugin的基类<code>MatrixPlugin</code>继承自协议<code>MatrixPluginProtocol</code>，而接下来的组件开发，只需要继承自<code>MatrixPlugin</code>，然后实现协议中的方法即可</p>
+
+<p>而当回调时，也不需要知道具体是哪个<code>plugin</code>，只需指定其实一个继承了协议的插件即可:<br/>
+<code>- (void)onInit:(id&lt;MatrixPluginProtocol&gt;)plugin</code>,就可以使用其在协议中指定的方法</p>
+
+<h4 id="toc_2">2.利用运行时实现NSCoding协议</h4>
+
+<p>利用运行时方法获取对象类以及父类的所有属性变量属性变量，执行<code>encodeObject</code>和<code>decodeObjectForKey</code>方法</p>
+
+<p><a href="media/15560883411509/MatrixBaseModel.mm">MatrixBaseMode</a></p>
+
+<h4 id="toc_3">3. 对于app中常用文件路径可以专门写个工具类，为避免每次都访问使用单例</h4>
+
+<pre><code class="language-objectivec">+ (NSString *)matrixCacheRootPath
+{
+    static NSString *s_rootPath;
+    static dispatch_once_t onceToken;
+    dispatch_once(&amp;onceToken, ^{
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+        s_rootPath = [paths[0] stringByAppendingString:@&quot;/Matrix&quot;];
+        if ([[NSFileManager defaultManager] fileExistsAtPath:s_rootPath] == NO) {
+            [[NSFileManager defaultManager] createDirectoryAtPath:s_rootPath withIntermediateDirectories:YES attributes:nil error:nil];
+        }
+    });
+    return s_rootPath;
+}
+</code></pre>
+
+<h4 id="toc_4">4.判断app是否处于调试环境下</h4>
+
+<pre><code class="language-objectivec">+ (BOOL)isBeingDebugged
+{
+    // Returns true if the current process is being debugged (either
+    // running under the debugger or has a debugger attached post facto).
+    int                 junk;
+    int                 mib[4];
+    struct kinfo_proc   info;
+    size_t              size;
+    
+    // Initialize the flags so that, if sysctl fails for some bizarre
+    // reason, we get a predictable result.
+    
+    info.kp_proc.p_flag = 0;
+    
+    // Initialize mib, which tells sysctl the info we want, in this case
+    // we&#39;re looking for information about a specific process ID.
+    
+    mib[0] = CTL_KERN;
+    mib[1] = KERN_PROC;
+    mib[2] = KERN_PROC_PID;
+    mib[3] = getpid();
+    
+    // Call sysctl.
+    
+    /**
+     *int sysctl(int *name, u_int namelen, void *old, size_t *oldlen, void *newp, size_t newlen);
+     *name参数是一个用以指定查询的信息数组；
+     *namelen用以指定name数组的元素个数；
+     *old是用以函数返回的缓冲区；
+     *oldlen用以指定oldp缓冲区长度；
+     *newp和newlen在设置时使用；
+     *当进程被调试器依附时，kinfo_proc结构下有一个kp_proc结构域，
+     kp_proc的p_flag的被调试标识将被设置，即会进行类似如下的设置：
+     kinfo_proc.kp_proc.p_flag&amp;P_TRACED
+     其中P_TRACED的定义如下：
+     #define P_TRACED        0x00000800
+     */
+    
+    
+    size = sizeof(info);
+    junk = sysctl(mib, sizeof(mib) / sizeof(*mib), &amp;info, &amp;size, NULL, 0);
+    assert(junk == 0);
+    
+    // We&#39;re being debugged if the P_TRACED flag is set.
+    return ((info.kp_proc.p_flag &amp; P_TRACED) != 0);
+}
+</code></pre>
+
+<p>以及一些获取app基本信息的方法<br/>
+<a href="media/15560883411509/MatrixDeviceInfo.mm">MatrixDeviceInfo</a></p>
+
+<h4 id="toc_5">5. atexit(func)在app正常退出时调用函数</h4>
+
+<p><code>atexit</code>函数是一个特殊的函数，它在正常退出程序时调用的函数<br/>
+atexit设置的函数会在exit过程中被调用，exit调用终止处理函数的顺序和atexit登记的顺序相反</p>
+
+<p>进程终止的方式有8种:</p>
+
+<ol>
+<li>从main函数返回</li>
+<li>调⽤用exit函数</li>
+<li>调⽤用_exit或_Exit； </li>
+<li>最后⼀一个线程从启动例程返回；</li>
+<li>最后⼀一个线程调⽤用pthread_exit</li>
+<li>调⽤用abort函数； </li>
+<li>接到一个信号并终⽌； </li>
+<li>最后⼀一个线程对取消请求做出响应<br/>
+其中前5种为正常终止，而后3种为异常终止</li>
+</ol>
+
+<p><code>_exit</code>和<code>_Exit</code>立即进入内核，而exit会进行一些清理工作<br/>
+exit函数运行时首先会执行由atexit()函数登记的函数，然后会做一些自身的清理工作，同时刷新所有输出流、关闭所有打开的流并且关闭通过标准I/O函数tmpfile()创建的临时文件。 </p>
+
+<h4 id="toc_6">6. 使用dispatch_block_cancel()来取消执行某些未来执行的block</h4>
+
+<h4 id="toc_7">7. MatrixAppRebootAnalyzer中对App启动和关闭状态的监控</h4>
+
+<p>Matrix中对应用被杀原因检测<br/>
+<img src="media/15560883411509/15562491518956.jpg" alt="" style="width:500px;"/></p>
+
+<h4 id="toc_8">8.获取CPU</h4>
+
+<p><code>WCCPUHandler</code>文件中对于CPU usage的计算</p>
+
+<h4 id="toc_9">9.获取线程信息</h4>
+
+<p><code>WCGetMainThreadUtil</code>文件中使用基于KSCrash获取堆栈</p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15556625620569.html">pod repo update</a></h1>
+			<p class="meta"><time datetime="2019-04-19T16:29:22+08:00" 
+			pubdate data-updated="true">04/19/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>我们平时开发pod update或者pod install , 这里其实 pod的工作就是根据pod库名在master/Specs/中找到对应的库，若指定版本则找到指定版本的podspec,否则找最高版本的podspec，找到后根据podsepc文件中的配置下载指定的库资源。</p>
+
+<p>那么pod repo update 的工作就是更新pod资源目录，也就是master下的资源，简单说 如果有一个第三方库发布了一个最新的版本，如果你不执行pod repo update，那么你的本地是不会知道有一个最新版本的，还会一直以你本地的资源目录为准。那么你永远都拿不到这个库的最新版本。</p>
+
+<p>使用pod update是默认会执行一遍pod repo update ，所以会发现如果你的pod库引用多了，每次pod update都很慢，网络如果不好更是经常会断掉，就是因为你在更新pod时，也更新了资源目录</p>
+
+<p>pod update 工作流程 :</p>
+
+<ul>
+<li>先拉取远程最新目录，再根据目录中的资源重新更新一遍pod</li>
+<li>如果你的podfile中每个库都指定了版本还好，如果没有，那么每次都是拉一遍最新库， 这时候就要用到命令
+<code>
+pod update --no-repo-update
+</code></li>
+</ul>
+
+<p>有些时候会引用一些私有库 ， <code>pod repo update</code> 会把<code>~/.cocoapods/repos/</code>这个目录下所有的资源库目录都更新一遍，有时候不想更新master，只想更新某个具体的私有库 可以使用<code>pod repo update ~/.cocoapods/repos/***/</code></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15554889031358.html">otool命令</a></h1>
+			<p class="meta"><time datetime="2019-04-17T16:15:03+08:00" 
+			pubdate data-updated="true">04/17/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15553150729300.html">Instruments Help</a></h1>
+			<p class="meta"><time datetime="2019-04-15T15:57:52+08:00" 
+			pubdate data-updated="true">04/15/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>官方文档<a href="https://help.apple.com/instruments/mac/current/#//apple_ref/doc/uid/TP40004652-CH5">Instruments Help</a></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15543692800437.html">网络安全、本地存储安全和逆向</a></h1>
+			<p class="meta"><time datetime="2019-04-04T17:14:40+08:00" 
+			pubdate data-updated="true">04/04/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	
+
+		</div>
+
+		
+
+	</article>
+  
+	<div class="pagination">
+	 <a class="prev" href="all_5.html">&larr; Older</a> 
+<a href="archives.html">Blog Archives</a>
+	 <a class="next" href="all_3.html">Newer &rarr;</a>  
+	    
+	</div>
+</div>
+ <aside class="sidebar"> 
+
+	<section>
+	  <h1>Categories</h1>
+	  <ul id="recent_posts">
+	  
+	      <li class="post">
+	        <a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B&&Runloop.html"><strong>多线程&&Runloop&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="RunLoop.html">RunLoop&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B.html">多线程&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8&&%E9%94%81.html">线程安全&&锁&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="KVC&&KVO.html">KVC&&KVO&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="runtime%E5%AD%A6%E4%B9%A0.html"><strong>runtime学习&nbsp;(9)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&&block.html"><strong>内存管理&&block&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="OC%E9%AB%98%E7%BA%A7%E7%BC%96%E7%A8%8B-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">OC高级编程-内存管理&nbsp;(6)</a>&nbsp;&nbsp;
+	        
+	        	<a href="block%E5%AD%A6%E4%B9%A0.html">block学习&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%AE%98%E6%96%B9%E6%96%87%E6%A1%A3-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">官方文档-内存管理&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-%E6%8B%BE%E9%81%97.html">内存管理-拾遗&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BD%91%E7%BB%9C.html"><strong>网络&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="GPU&&%E6%B8%B2%E6%9F%93.html"><strong>GPU&&渲染&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F&&%E7%BB%84%E4%BB%B6%E5%8C%96.html"><strong>设计模式&&组件化&nbsp;(8)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E6%9E%B6%E6%9E%84%E8%B0%88(%E6%91%98%E5%BD%95).html">设计模式架构谈(摘录)&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BB%84%E4%BB%B6%E5%8C%96%E5%BC%80%E5%8F%91%E5%AD%A6%E4%B9%A0.html">组件化开发学习&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BC%96%E8%AF%91&&dyld&&Mach-O.html"><strong>编译&&dyld&&Mach-O&nbsp;(19)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html">iOS编译流程&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="dyld(%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8).html">dyld(程序启动)&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Mach-O%E6%96%87%E4%BB%B6%E4%BA%86%E8%A7%A3.html">Mach-O文件了解&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%A8%A1%E5%9D%97%E5%8C%96%E7%9F%A5%E8%AF%86.html"><strong>模块化知识&nbsp;(26)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS-CoreAnimation.html">iOS-CoreAnimation&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="CoreGraphic.html">CoreGraphic&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ARKit.html">ARKit&nbsp;(7)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%E5%92%8C%E4%BD%BF%E7%94%A8.html"><strong>第三方项目学习和使用&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="AFNetworking.html">AFNetworking&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="AsyncDisplayKit.html">AsyncDisplayKit&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ReactnativeCocoa.html">ReactnativeCocoa&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="PromiseKit.html">PromiseKit&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7%E5%92%8C%E4%BC%98%E5%8C%96.html"><strong>项目监控和优化&nbsp;(10)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="APP%E4%BD%93%E7%A7%AF%E4%BC%98%E5%8C%96.html">APP体积优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%90%AF%E5%8A%A8%E4%BC%98%E5%8C%96.html">启动优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%B0%83%E8%AF%95&&%E6%B5%8B%E8%AF%95.html"><strong>调试&&测试&nbsp;(6)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="Instrument%E5%AD%A6%E4%B9%A0.html">Instrument学习&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="LLDB.html">LLDB&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95.html">自动化测试&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%B7%A5%E5%85%B7.html"><strong>工具&nbsp;(5)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="git.html">git&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Cocoapods.html">Cocoapods&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%8B%BE%E9%81%97.html"><strong>拾遗&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%9D%A2%E8%AF%95.html">面试&nbsp;(12)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">iOS开发知识点拾遗&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">知识点拾遗&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html">iOS 小知识&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Swift-BaseLearning.html"><strong>Swift基础知识&nbsp;(28)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Computer-programming.html"><strong>计算机编程&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html">知识普及&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Flex.html">Flex&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
+	        
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="React-Native.html"><strong>React-Native&nbsp;(6)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Python.html"><strong>Python&nbsp;(14)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html"><strong>算法读书笔记&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	   
+	  </ul>
+	</section>
+	<section>
+	  <h1>Recent Posts</h1>
+	  <ul id="recent_posts">
+	  
+	      
+		      <li class="post">
+		        <a href="15718858302183.html">官方文档</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710248960458.html">Layout Specs</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707800044047.html">Node Lifecycle</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707737201639.html">线程</a>
+		      </li>
+	     
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	   
+	  </ul>
+	</section>
+	
+</aside> </div></div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 -  -
+  <span class="credit">Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a> &nbsp;&nbsp; Theme by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+
+  
+    
+
+
+
+
+</body>
+</html>

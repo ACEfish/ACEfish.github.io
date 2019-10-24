@@ -1,0 +1,1340 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>
+    
+  ACEfish-Blog
+  
+
+  </title>
+  <meta name="author" content="">
+  <meta name="description" content="学习记录">
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link href="asset/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+  <script src="asset/js/modernizr-2.0.js"></script>
+  <script src="asset/js/jquery.min.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/solarized_light.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  <style type="text/css">
+  .cat-children-p{ padding: 6px 0px;}
+  .hljs{background: none;}
+  </style>
+  <script type="text/javascript">
+  var isAddSildbar = true;
+  </script>
+  <script src="asset/js/octopress.js" type="text/javascript"></script>
+</head>
+<script type="text/javascript">
+//链接新开窗口
+function addBlankTargetForLinks () {
+  $('a[href^="http"]').each(function(){
+      $(this).attr('target', '_blank');
+  });
+}
+$(document).ready(function(event) {
+  addBlankTargetForLinks();
+});
+</script>
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="index.html">ACEfish-Blog</a></h1>
+  
+    <h2>学习记录</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:acefish.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+
+  <li id=""><a target="_self" href="index.html">首页</a></li>
+
+  <li id=""><a target="_self" href="archives.html">归档</a></li>
+
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content"> 
+<div class="blog-index">
+
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15645609012102.html">包大小</a></h1>
+			<p class="meta"><time datetime="2019-07-31T16:15:01+08:00" 
+			pubdate data-updated="true">07/31/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>学习自 <a href="https://time.geekbang.org/column/article/88573">iOS开发高手课-包大小：如何从资源和代码层面实现全方位瘦身？</a></p>
+
+<p>APPStore对大于150M的应用无法再OTA环境下载，这就只能在wifi环境下下载，因此150M就是App的生死线</p>
+
+<p>如果App要兼容iOS7和iOS8的话，苹果规定主二进制 text 段的大小不能超过 60MB，如果没有达到这个标准，甚至无法提交AppStore</p>
+
+<h2 id="toc_0">App Thinning</h2>
+
+<p><code>App Thinning</code>是苹果公司推出的一项可以改善APP下载进程的新技术，主要为解决用户下载APP耗费流量过高，并节省用户iOS设备存储空间</p>
+
+<p>因为iOS设备的屏幕尺寸和分辨率 越来越多样化，就需要更多资源来匹配不同尺寸和分辨率。同时，App也会有32位、64位不同芯片架构的优化版本。如果这些都在同一个包中，那么用户下载包的大小势必就会变得更大</p>
+
+<p>而苹果提供的<code>App Thinning</code>就是针对不同的设备只选择适合当前设备的内容进行下载。比如，iPhone6只下载2x资源，而iPhone6 P则只下载3x图片资源</p>
+
+<p>在之前，每个app包会包含多个芯片的指令集架构文件。在而使用<code>App Thinning</code>后，用户下载时就只会下载一个适合自己设备的芯片指令集架构文件</p>
+
+<p>下图为所有设备的芯片指令集以及支持的最高和最低版本<br/>
+<img src="media/15645609012102/15645634237337.png" alt=""/></p>
+
+<p><strong><code>App Thinning</code>有三种方式，包括： App Slicing、Bitcode、On-Demand Resource</strong></p>
+
+<ul>
+<li>App Slicing：会在你向iTunnes Connrct上传App后，对App做切个，创建不同的变体，来适应不同的设备</li>
+<li>On-Demand Resource，主要是为游戏多关卡场景服务。可以根据用户的关卡进度下载随后关卡资源，并且删除已过关的资源，来减少出装app的大小</li>
+<li>Bitcode， 针对特定设备进行包大小优化，优化并不明显</li>
+</ul>
+
+<h3 id="toc_1">App Thinning的使用</h3>
+
+<p>使用App Thinning很简单，只需要通过Xcode添加 xcassets目录，然后将资源文件放进来即可：</p>
+
+<p>即添加<code>Asset Catalog</code>模板，按照模板添加资源即可，apple会创建不同的变体来减少app安装体积</p>
+
+<h2 id="toc_2">图片资源优化</h2>
+
+<p>图片资源的优化空间主要体现在删除无用图片和图片资源压缩两方面。</p>
+
+<h3 id="toc_3">查找无用图片资源</h3>
+
+<ol>
+<li>通过find获取App安装包中所有资源文件 </li>
+<li>设置用到的资源类型，比如jpg、gif、png、webp</li>
+<li>使用正则表达式匹配在源码中找出使用到的资源名，比如<code>pattern=@&quot;@&quot;(.+?)&quot;&quot;</code></li>
+<li>使用find命令找到所有资源文件，再去掉代码中使用到的资源文件，剩下的就是未使用到的了</li>
+<li>对于按照规则设置的资源名字，我们需要在匹配使用资源的正则表达式里，添加响应的规则，比如<code>image_%d</code></li>
+<li>确认无用资源后，就可以对无用资源执行删除操作了，这个删除操作可以使用<code>NSFileManager</code>系统类功能完成</li>
+</ol>
+
+<p>可以使用一些开源的工具，推荐的为<a href="https://github.com/tinymind/LSUnusedResources">LSUnusedResources</a>,其还可以对使用编号规则的图片，直接添加规则处理</p>
+
+<p><img src="media/15645609012102/15645678390885.gif" alt="" style="width:500px;"/></p>
+
+<h3 id="toc_4">图片资源压缩</h3>
+
+<p>在App中 图片资源总是占大头的。因此我们最好在不损失图片质量的前提下，尽可能的压缩。目前最好的压缩方案就是，将图片转为<a href="https://developers.google.com/speed/webp/">webP</a>(其是谷歌的一个开源项目)。</p>
+
+<ul>
+<li>WebP压缩率高，而且肉眼看不出来差异，同时支持有损和无损两种压缩模式。比如，将Gif专务Anumated WebP，有损模式下会减少64%大小，无损模式下会减少19%大小</li>
+<li>WebP支持Alpha透明和24-bit颜色数，不会像PNG8那样因为颜色不够而出现毛边</li>
+</ul>
+
+<h4 id="toc_5">将图片转为webP</h4>
+
+<p>Google提供了<code>cwebp</code>工具来将其它图片转成WebP。cwebp只需根据图片情况设置相应参数即可：</p>
+
+<pre><code class="language-text">cwebp [options] input_file -o output_file.webp
+
+//比如无损压缩文件命令如下   -lossless表示无损压缩
+cwebp -lossless original.png -o new.webp
+</code></pre>
+
+<p>注意：<br/>
+在图片色值不同的情况下，可以选择用-q参数进行设置，在不损失图片质量情况下进行最大化压缩：</p>
+
+<ul>
+<li>小于256色适合无损压缩，压缩率高，参数使用-lossless -q 100</li>
+<li>大于256色适合用75%的有损压缩，参数使用-q 75</li>
+<li>远大于256色 适合使用75%一下的压缩率，参数-q 50 -m 6</li>
+</ul>
+
+<p>除了使用google提供的cwebp工具外，可以使用企鹅公司开发的<a href="http://isparta.github.io/">iSparta</a>图形化工具，实现PNG到WebP转换，还可以批量处理和记录操作配置。至于其他格式图片，那就先转png再转webP即可</p>
+
+<h4 id="toc_6">显示WebP图片</h4>
+
+<p>在图片压缩完成后，还需要在项目中显示图片，使用<code>libwebp</code>进行解析。可以参考<a href="https://github.com/carsonmcdonald/WebP-iOS-example">这个iOS项目范例</a></p>
+
+<p>当然，因为WebP进行了压缩，因此在CPU消耗和解码时间上是会比PNG大两倍。所以，需要在性能和体积上做出取舍</p>
+
+<p><strong>建议： 如果图片大小超过100K，考虑使用WebP；小于100K时，可以使用网页工具<a href="https://tinypng.com/">TinyPng</a>或者图形化工具<a href="https://imageoptim.com/mac">ImageOptim</a>进行图片压缩。这两种工具的压缩率没有WebP高，不会改变图片压缩方式，相应的解析式对性能损耗也不会增加</strong></p>
+
+<h2 id="toc_7">代码瘦身</h2>
+
+<p>App的安装包之中主要就是资源文件和可执行文件，而我们在掌握了对图片资源的优化之后，就需要学习怎么优化可执行文件了</p>
+
+<p>可执行文件就是一个<code>Mach-O</code>文件了，大小由其代码量决定。通常，<strong>对可执行文件瘦身就是，删除无用代码的过程</strong></p>
+
+<ul>
+<li>首先，找出方法和类的全集</li>
+<li>然后，找到使用过的方法和类</li>
+<li>接下来，取二者的差集即为无用代码</li>
+<li>最后人工确认进行删除</li>
+</ul>
+
+<h3 id="toc_8">LinkMap 结合 Mach-O找到无用代码</h3>
+
+<h4 id="toc_9">LinkMap 来获得所有的代码类和方法的信息</h4>
+
+<p>通过在build setting中打开<code>Write Link Map</code>然后指定其path 可以获得编译后的LinkMapp文件，其主要分为 <code>Object File</code>、<code>Section</code>、<code>Symbols</code></p>
+
+<ul>
+<li>Object File：主要包含了代码工程的所有文件</li>
+<li>Section：描述代码段在生成的Mach-O里的偏移位置和大小</li>
+<li>Symbols会列出每个方法、类、block、以及它们的大小</li>
+</ul>
+
+<h4 id="toc_10">通过Mach-O获取所有使用过的方法和类</h4>
+
+<p>iOS方法都是通过<code>objc_send</code>方法调用的。而，objc_msgSend在Mach-O文件中是通过<code>__objc_selrefs</code>这个section来获取selector这个参数的</p>
+
+<p>因此: <strong>__Objc_selrefs里是调用过的方法。_objc_classrefs里是调用过的类，_objc_superrefs里是调用过super的类。因此，通过_objc_classrefs和_objc_superrefs就可以获取所有使用过的类和子类</strong></p>
+
+<p>想要查看Mach-O文件中的信息 我们可以通过<a href="https://sourceforge.net/projects/machoview/">MachOView这个软件</a>查看文件中的信息，其<a href="https://github.com/gdbinit/MachOView">源码地址</a></p>
+
+<p><img src="media/15645609012102/15646435135341.jpg" alt="" style="width:690px;"/></p>
+
+<p>因为可能存在运行时调用，所以这种方法并不完美，需要做二次确认，而且人工量太大，不适合频繁检测</p>
+
+<h3 id="toc_11">AppCode找出无用代码</h3>
+
+<p>AppCode当代码量过百万时，就无法做静态分析了。但是当项目工程量不大时，是可以直接用<code>AppCode</code>来做静态分析的。毕竟当代码量达到百万行级别的团队，是会自己通过Clang静态分析来开发工具，检查无用的方法和类</p>
+
+<p>使用很简单 在AppCode中选择Code-&gt;Inspect Code就可以进行静态分析<br/>
+静态分析之后，可以再Ununsed Code中看到所有的无用代码<br/>
+<img src="media/15645609012102/15646441469049.jpg" alt="" style="width:538px;"/></p>
+
+<p>其中包括了</p>
+
+<ul>
+<li>无用类：Unused class 无用类，Unused import statement 无用类引用声明， Unused property 无用的属性</li>
+<li>无用方法：Unused method 无用的方法 Unused parameter 无用参数 Unused instance variable无用的实例变量 Unused local variable无用的局部变量 Unused value 无用值</li>
+<li>无用宏： Unused macro 无用的宏</li>
+<li>无用全局： Unused global declation 是无用的全局声明</li>
+</ul>
+
+<p>注意，AppCode检查存在的问题:</p>
+
+<ul>
+<li>JSONModel里定义了未使用的协议会被判定为无用协议</li>
+<li>子类使用了父类的方法，那这个服类方法并不会任务被使用了</li>
+<li>通过点方式使用的属性，该属性会被认为没有使用</li>
+<li>使用performSelector方法调用的方法，是检查不出的</li>
+<li>运行时声明类的情况检查不出来</li>
+</ul>
+
+<p>因此，Appcode检查的无用代码也请 人工二次确认之后才能安全删除</p>
+
+<h3 id="toc_12">运行时检查类是否真的被使用</h3>
+
+<p>通过ObjC的runtime源码，我们可以找到怎么判断一个类是否初始化过的函数:</p>
+
+<pre><code class="language-objectivec">#define RW_INITIALIZED (1&lt;&lt;29)
+bool isInitialized() {
+   return getMeta()-&gt;data()-&gt;flags &amp; RW_INITIALIZED;
+}
+</code></pre>
+
+<p><code>isInitialized</code>的结果会保存到元类的class_rw_t结构体的flags信息里，flags的1&lt;&lt;29位记录的就是这个类是否初始化的信息。而flags的其他位记录的信息</p>
+
+<pre><code class="language-objectivec">// 类的方法列表已修复
+#define RW_METHODIZED         (1&lt;&lt;30)
+
+// 类已经初始化了
+#define RW_INITIALIZED        (1&lt;&lt;29)
+
+// 类在初始化过程中
+#define RW_INITIALIZING       (1&lt;&lt;28)
+
+// class_rw_t-&gt;ro 是 class_ro_t 的堆副本
+#define RW_COPIED_RO          (1&lt;&lt;27)
+
+// 类分配了内存，但没有注册
+#define RW_CONSTRUCTING       (1&lt;&lt;26)
+
+// 类分配了内存也注册了
+#define RW_CONSTRUCTED        (1&lt;&lt;25)
+
+// GC：class 有不安全的 finalize 方法
+#define RW_FINALIZE_ON_MAIN_THREAD (1&lt;&lt;24)
+
+// 类的 +load 被调用了
+#define RW_LOADED             (1&lt;&lt;23)
+</code></pre>
+
+<p>这样就能够找出哪些类是没有初始化的，找到真实环境中没有用到的类并清理。具体实施时，可以线下测试检查所有类，测出那些类没有使用，然后上线针对没有用到的类进行多版本检测，判断合理性后二次确认，并且最终将真正没有用到的类进行删除</p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15645543599204.html">AsyncDisplayKit</a></h1>
+			<p class="meta"><time datetime="2019-07-31T14:25:59+08:00" 
+			pubdate data-updated="true">07/31/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>即刻团队的 <a href="https://medium.com/jike-engineering/asyncdisplaykit%E4%BB%8B%E7%BB%8D-%E4%B8%80-6b871d29e005">AsyncDisplayKit介绍</a></p>
+
+<p><a href="https://texturegroup.org/docs/getting-started.html">AsyncDisplayKit-TextTrue</a></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15644708593081.html">离屏渲染</a></h1>
+			<p class="meta"><time datetime="2019-07-30T15:14:19+08:00" 
+			pubdate data-updated="true">07/30/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>学习自即刻团队的<a href="https://zhuanlan.zhihu.com/p/72653360">离屏渲染</a></p>
+
+<h2 id="toc_0">iOS渲染架构</h2>
+
+<p>在WWDC的Advanced Graphics and Animations for iOS Apps（WWDC14 419，关于UIKit和Core Animation基础的session在早年的WWDC中比较多）中有这样一张图：</p>
+
+<p><img src="media/15644708593081/15644710697530.jpg" alt=""/></p>
+
+<p>可以看到是CPU和GPU协作完成了渲染操作。CPU主要在Application这一层操作，之后在RenderServer线程，CoreAnimation会将具体操作转换成发送GPU的draw calls（以前是call OpenGL 现在有部分转为Metal）,进行渲染</p>
+
+<h2 id="toc_1">离屏渲染</h2>
+
+<p>当需要在屏幕上显示内容时，至少需要一块与屏幕像素数据量一样大的<code>frame buffer</code>，作为像素数据存储区域，而这也是GPU存储渲染结果的地方。如果有时因为面临限制，无法把渲染结果直接写入frame buffer，而是先暂存在另外的内存区域，之后在写入<code>frame buffer</code>，这个过程就被称为<strong>离屏渲染</strong></p>
+
+<h3 id="toc_2">CPU&quot;离屏渲染&quot;？</h3>
+
+<p>在UIView中自己执行的drawRect方法，cpu会申请一块内存区域等待有可能到来的绘画操作。<br/>
+在CPU中进行的光栅化操作（如文字渲染、图片解码）等<br/>
+都无法直接绘制到GPU掌管的frame buffer，只能暂存在另外一块内存中<br/>
+这些发生在CPU中这些“离屏渲染”并不是真正意义上的，而是属于&quot;软件渲染&quot;范畴的</p>
+
+<h3 id="toc_3">GPU离屏渲染</h3>
+
+<p>我们知道，渲染主要由CoreAnimation的Render Server模块，通过调用显卡驱动提供的OpenGL/Metal接口执行。在执行渲染时，<code>Render Server</code>遵循画家算法，layer按照次序输出至frameBuffer，覆盖即刻得到最终的显示结果，然后交由GPU进行渲染显示到屏幕上</p>
+
+<p>但是有部分场景是无法这样实现的，因为GPU虽然可以按照画家算法进行输出，但是无法再某曾渲染完成后，再回头擦除或者改变其中的某部分。这就意味着，对于layer如果不能单词遍历就完成渲染，那就只能另开一块内存，借助这个临时中转区域来完成多次的修改/剪裁操作(这就是离屏渲染了)。</p>
+
+<h3 id="toc_4">常见离屏渲染场景</h3>
+
+<ol>
+<li><strong>corenerRadus+clipsToBounds</strong>
+因为此时子layer也会被裁减，但是在没有统一组合后也是无法获得统一裁剪后的图像，因此需要开辟另外一块内存，在渲染和切角完成后，输出到frame buffer中<br/>
+注意如果没有clipsToBounds，也不会触发离屏渲染了</li>
+<li><strong>shadow</strong>
+原因其实与圆角差不多，在没有将画布上所有内容组合完成之前也是无法知道阴影形状的，因此需要额外的内存空间。<br/>
+当然，如果我们能在整个画布都没有渲染完成之前就知道阴影部分的形状（设置阴影的shadowPath），也可以绘制阴影而不触发离屏渲染</li>
+<li><p><strong>group opacity</strong><br/>
+此时的alpha并不是加到某一层，而是整个layer树，因此只能等渲染完成再加上alpha，最后和底下的其它layer相折叠，得到实际的颜色。因此这也是需要另外开辟存储空间的</p></li>
+<li><p><strong>mask</strong></p>
+<p>mask由layer和其上的子layer组合，而且可能有透明度，因此是会触发离屏渲染的</p></li>
+<li><p><strong>UIBlurEffect</strong><br/>
+<img src="media/15644708593081/15645419693084.jpg" alt="" style="width:500px;"/></p></li>
+</ol>
+
+<h3 id="toc_5">离屏渲染解决方案</h3>
+
+<p>因为离屏渲染开销很大，特别是在滚动视图中，每帧都会触发cell的重绘，因此在无法避免时，就尽量降低性能影响，通过<code>CALayer</code>提供的<code>shouldRasterize</code>设置其为true后，<code>Render Server</code>会强制吧layer的渲染结果(包括其子layer，以及圆角、阴影、group opacity等等)保存在一块内存中，这样接下来就可以被复用，而不会再次离屏渲染了</p>
+
+<p>注意:</p>
+
+<ul>
+<li><code>shouldRasterize</code>主旨在于降低性能损失，但是至少会触发一次离屏渲染，如果layer本不复杂，也没有圆角 阴影等，打开这个只会没必要的多一次离屏渲染</li>
+<li>一旦缓存超过100ms没有被使用，会被自动废弃</li>
+<li>layer的内容必须是静态的，因为一旦发生变化缓存就失效了，就有需要重新离屏渲染，然后缓存，这就需要我们极力避免的情况</li>
+</ul>
+
+<h3 id="toc_6">CPU渲染的使用</h3>
+
+<p>因为GPU对图形处理的更高性能，以及其更好的并行计算能里，我们倾向于让GPU完成渲染任务，而CPU有更多时间来处理复杂的app的复杂逻辑。</p>
+
+<p>但是针对一些特殊情况，比如文字渲染(CoreText),图片渲染(ImageIO),因为此时GPU并不擅长此类工作，因为需要先由CPU处理好之后，将结果作为<a href="https://texturegroup.org/docs/automatic-layout-examples-2.html">texture</a>传给GPU.</p>
+
+<p>比如，我们可以使用<code>CoreGraphic</code>来给图形设置圆角(将圆角以外的部分设置为透明)，这样的话就全部由CPU完成，不再需要使用<code>corerRadius</code>。而且这样的话，我们也可以做到灵活控制裁剪和缓存的时机，避开CPU和GPU繁忙，平衡性能波动</p>
+
+<p>注意：</p>
+
+<ol>
+<li>渲染不是CPU强项，调用CoreGraphics会消耗其相当一部分时间，因此通常将CPU渲染放在后台完成(AsyncDisplayKit的实现思想)。然后再回到主线程，将渲染结果传给CoreAnimation</li>
+<li>CPU渲染性能不够 只能渲染静态的元素，如文字、图片等</li>
+<li>渲染结果的bitmap数据量较大，占用较大内存，应该在使用完成后，及时释放，否则容易OOM</li>
+<li>使用CPU渲染就不要再触发离屏渲染了</li>
+<li>多使用Instuments工具测试性能</li>
+</ol>
+
+<h2 id="toc_7">即刻团队对即刻APP的优化</h2>
+
+<ol>
+<li>即刻大量应用AsyncDisplayKit(Texture)作为主要渲染框架，对于文字和图片的异步渲染操作交由框架来处理。</li>
+<li>对于图片的圆角，统一采用“precomposite”的策略，也就是不经由容器来做剪切，而是预先使用CoreGraphics为图片裁剪圆角</li>
+<li>对于视频的圆角，由于实时剪切非常消耗性能，我们会创建四个白色弧形的layer盖住四个角，从视觉上制造圆角的效果</li>
+<li>对于view的圆形边框，如果没有backgroundColor，可以放心使用cornerRadius来做</li>
+<li>对于所有的阴影，使用shadowPath来规避离屏渲染</li>
+<li>对于特殊形状的view，使用layer mask并打开shouldRasterize来对渲染结果进行缓存</li>
+<li>对于模糊效果，不采用系统提供的UIVisualEffect，而是另外实现模糊效果（CIGaussianBlur），并手动管理渲染结果</li>
+</ol>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15643878437057.html">渲染</a></h1>
+			<p class="meta"><time datetime="2019-07-29T16:10:43+08:00" 
+			pubdate data-updated="true">07/29/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>学习自 <a href="https://time.geekbang.org/column/article/101639">iOS开发高手课</a></p>
+
+<h2 id="toc_0">渲染原理</h2>
+
+<p>App界面是由CPU和GPU共同计算处理</p>
+
+<p>CPU内部流水线结构拥有并行计算能力，一般用于显示内容的计算。而GPU的并行计算能力更强，能够通过计算将图形结果显示到屏幕像素中。<strong>渲染就是将内存中的图形数据经过转换显示到屏幕上的过程。而负责执行这个过程的就是GPU</strong></p>
+
+<p>在渲染的过程中，GPU是需要处理屏幕上的每个像素点，并保证这些像素点的更新时流畅的</p>
+
+<p>GPU的主要工作就是将3D坐标转换为2D坐标，再把2D坐标转为实际像素，实现的过程分为: <strong>顶点着色器（确定形状的点）、形状装配（确定形状的线）、几何着色器（确定三角形个数）、光栅化（确定屏幕像素点）、片段着色器（对像素点着色）、测试与混合（检查深度和透明度）六个阶段</strong></p>
+
+<p>而我们<code>OpenGL</code>的标准库提供了编程能力，为了更方便的操作控制GPU</p>
+
+<p>在渲染的过程中，<code>CPU</code>主要用来处理渲染内容的计算，比如<em>视图创建、布局、图片解码</em>等，内容计算完成后，再传给GPU进行渲染。CPU和GPU的相互配合，充分利用手机硬件来提升用户使用app的体验。而我们见到的界面卡顿等，就是以内CPU的计算时间超过屏幕刷新率的时间</p>
+
+<blockquote>
+<p>在对比原生、大前端和Flutter谁更流畅，不就是对比在渲染过程中CPU计算内容谁会更快，谁就会更流畅了</p>
+</blockquote>
+
+<h2 id="toc_1">原生渲染流程</h2>
+
+<p>原生的界面渲染，主要分为一下四步:</p>
+
+<ol>
+<li>更新视图树，同步视图树</li>
+<li>CPU计算要显示的内容，包括视图创建（设置Layer属性）、布局计算、视图绘制（创建Lay的Backing Image）、图像解码转换等。当runLoop在<code>BeforeWaiting</code>和<code>Exit</code>时，通知注册的监听，然后对图层打包，打包完成后，将打包数据发送给一个独立负责渲染的进程<code>Render Server</code></li>
+<li>数据在到达renderServer后会被反序列化，得到图层树，按照图层树的图层顺序、RGBA值,图层frame过滤图层中被遮挡的部分，过滤后将图层树转换为渲染树，渲染树的信息会转换为OpenGL ES/Metal。前面CPU所处理的这些事情统称为<code>Commit Transaction</code></li>
+<li><code>Render Server</code>会调用GPU,GPU开始进行前面提到的顶点着色器，形状装配、几何着色、光栅化、片段着色、测试与混合六个阶段。完成这6个阶段后，再将CPU和GPU计算后的数据显示在屏幕的每个像素点上。</li>
+</ol>
+
+<p><img src="media/15643878437057/15644670559791.jpg" alt="" style="width:648px;"/></p>
+
+<p>补充:</p>
+
+<blockquote>
+<p>渲染过程中的<code>Commit Trasaction</code>的布局计算会重载视图的<code>LayoutSubViews</code>方法，以及执行<code>addSubviews</code>方法来添加视图。视图绘制会重载视图的<code>drawReact</code>方法。这个方法都是iOS开发中常用的</p>
+
+<p>我们执行的移动视图、删除视图、隐藏、显示视图、调用setNeedsDispaly或者setNeedsDispalyInRect方法 都会触发界面更新，执行渲染流程</p>
+</blockquote>
+
+<h2 id="toc_2">大前端渲染</h2>
+
+<p>大前端的开发框架主要有两类：基于webView的和类似React Native的</p>
+
+<p>第一类的WebView的大前端渲染，主要在webKit中完成。webKit的渲染层来自以前MacOS的LayerRendering架构，而iOS也基于这一套架构。所以本质上来看WebKit和iOS的原生渲染差别不大</p>
+
+<p>ReactNative渲染直接走的原生渲染</p>
+
+<p>至于我们觉得大前端渲染比原生慢的原因主要是：</p>
+
+<ol>
+<li><p>从第一次内容加载来看，即使本地加载，<strong>大前端也比原生多出脚本代码解析工作</strong>。webView需要额外解析<code>HTML+CSS+Javascript</code>代码，而类React Native方案则需要解析<code>Json+Javascript</code>。 当然<code>HTML+CSS</code>的复杂度要高于<code>JSON</code>,因此解析起来会更加慢一点。即，首次加载时，WebView会比类ReactNative慢</p></li>
+<li><p>从语言的本身解释执行性能来看，<strong>大前端加载后的界面更新会通过Javascript解释执行</strong>，而Javascript解释执行性能要比原生差，特别是解释执行复杂逻辑或大量计算时。所以大前端的运算速度，要比原生慢上不少</p></li>
+<li><p>除了首次加载解析耗时外，js语言本身解释慢导致的性能问题这两点之外，WebView的渲染进程是单独的，每帧的更新都要通过IPC调用GPU进程。而频繁的IPC进程通信也会有性能损耗</p></li>
+<li><p>webView的单独渲染进程还无法访问GPU的context，这样两个进程就么法共享纹理资源。纹理资源无法直接使用GPU的Context光栅化，那就只能通过IPC传给GPU进程，这也导致可GPU无法发挥自身的性能优势。由于WebView的光栅化无法及时同步到GPU，滑动时就容易出现白屏，就很难避免了。</p></li>
+</ol>
+
+<p>相对于原生渲染来说，webView或者类ReactNative都因为脚本语言本身的西恩那个问题而存在性能差距。</p>
+
+<h2 id="toc_3">Flutter渲染</h2>
+
+<p>Flutter界面是由<code>Widget</code>组成，所有的Widget组成<code>Widget Tree</code>，界面更新时会更新<code>Widget Tree</code>，然后再更新<code>Element Tree</code>，最后更新<code>RenderObject Tree</code></p>
+
+<p>接下来的渲染流程，Flutter渲染在FrameWork层会有Build、Widget Tree、Element Tree、RenderObject Tree、Layout、Paint、Composited Layed等几个阶段。将Layer进行组合，生成纹理，使用OpenGL接口像GPU提交渲染内容进行光栅化与合成，是在Flutter的C++层，使用的时<code>Skia</code>库。包括提交到GPU进程后，合成计算，显示屏幕的过程和iOS原生基本是类似的，因此性能相差不多</p>
+
+<p>Flutter的主要优势是在于，它可以同时运行于Android和iOS两个平台。但是苹果公司在WWDC 2019上退出SwiftUI和Preview后，Flutter界面编写和Hot Reload的有事会逐渐降低</p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15611008346251.html">RACDelegateProxy</a></h1>
+			<p class="meta"><time datetime="2019-06-21T15:07:14+08:00" 
+			pubdate data-updated="true">06/21/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>将代理用<code>RACDelegateProxy</code>实现</p>
+
+<pre><code class="language-objectivec">RACDelegateProxy *proxy = [[RACDelegateProxy alloc] initWithProtocol:@protocol(UITableViewDelegate)];
+objc_setAssociatedObject(self, _cmd, proxy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+proxy.rac_proxiedDelegate = self;
+[[proxy rac_signalForSelector:@selector(tableView:didSelectRowAtIndexPath:)]
+ subscribeNext:^(RACTuple *value) {
+     [value.first deselectRowAtIndexPath:value.second animated:YES];
+ }];
+self.tableView.delegate = (id&lt;UITableViewDelegate&gt;)proxy;
+
+//等效于
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+}
+</code></pre>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15609354619260.html">RACChannel</a></h1>
+			<p class="meta"><time datetime="2019-06-19T17:11:01+08:00" 
+			pubdate data-updated="true">06/19/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p><code>RACChannel</code>是一对一的双向的数据流</p>
+
+<h2 id="toc_0">RACChannel</h2>
+
+<p>在channel中向外暴露的有两个属性<code>terminal</code></p>
+
+<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) RACChannelTerminal&lt;ValueType&gt; *leadingTerminal;
+@property (nonatomic, strong, readonly) RACChannelTerminal&lt;ValueType&gt; *followingTerminal;
+</code></pre>
+
+<p>初始化<code>terminal</code>方法 </p>
+
+<pre><code class="language-objectivec">- (instancetype)init {
+    self = [super init];
+
+    RACReplaySubject *leadingSubject = [RACReplaySubject replaySubjectWithCapacity:0];
+    RACReplaySubject *followingSubject = [RACReplaySubject replaySubjectWithCapacity:1];
+    
+    [[leadingSubject ignoreValues] subscribe:followingSubject];
+    [[followingSubject ignoreValues] subscribe:leadingSubject];
+
+    _leadingTerminal = [[RACChannelTerminal alloc] initWithValues:leadingSubject otherTerminal:followingSubject];
+    _followingTerminal = [[RACChannelTerminal alloc] initWithValues:followingSubject otherTerminal:leadingSubject]
+    return self;
+}
+</code></pre>
+
+<ol>
+<li>可以看到<code>leadingSubject</code>是由<code>Capacity:0</code>的<code>RACReplaySubject</code> 而 <code>followingSubject</code>是由<code>Capacity:1</code>的<code>RACReplaySubject</code></li>
+<li><code>ignoreValues</code>通过订阅相互信号的错误信息，当一端出现错误信息能保证相互发送，防止当一方出错时 另外一方还在工作</li>
+<li><code>followingSubject</code>的<code>Capacity</code>为1，有初始值，因此当订阅followingTerminal信息时 可以直接进行初始化状态</li>
+</ol>
+
+<h2 id="toc_1">RACChannelTerminal: RACSignal&lt; RACSubscriber&gt;</h2>
+
+<h3 id="toc_2">初始化</h3>
+
+<p><code>ChannelTerminal</code>初始化,使用一个用于subcribe的<code>RACSignal</code>的value 和一个用于发送值的<code>id&lt;RACSubscriber&gt;</code>的otherTerminal</p>
+
+<p>期指那个<code>value</code>表示当前端点，<code>otherTerminal</code>表示远程端点</p>
+
+<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) RACSignal&lt;ValueType&gt; *values;
+@property (nonatomic, strong, readonly) id&lt;RACSubscriber&gt; otherTerminal;
+
+- (instancetype)initWithValues:(RACSignal *)values otherTerminal:(id&lt;RACSubscriber&gt;)otherTerminal {
+    self = [super init];
+    _values = values;
+    _otherTerminal = otherTerminal;
+    return self;
+}
+</code></pre>
+
+<h3 id="toc_3">订阅信号</h3>
+
+<p>订阅信号 其实订阅和接收的是<code>self.values</code>的信号，即订阅的时当前信号消息</p>
+
+<pre><code class="language-objectivec">- (RACDisposable *)subscribe:(id&lt;RACSubscriber&gt;)subscriber {
+    return [self.values subscribe:subscriber];
+}
+</code></pre>
+
+<h3 id="toc_4">发送</h3>
+
+<p>如果向<code>Terminal</code>发送消息  会被转发到远程端点上，因此当前端点的订阅者并不能接收到当前端点发送的消息</p>
+
+<pre><code class="language-objectivec">- (void)sendNext:(id)value {
+    [self.otherTerminal sendNext:value];
+}
+</code></pre>
+
+<h3 id="toc_5">使用</h3>
+
+<p>我们不应该直接初始化<code>RACChannelTerminal</code>实例，而可以通过 初始化RACChannle的方式生成</p>
+
+<h2 id="toc_6">RACChannel的使用</h2>
+
+<h3 id="toc_7">RACChannel+UIControl</h3>
+
+<pre><code class="language-objectivec">UIControl rac_channelForControlEvents:(UIControlEvents)controlEvents key:(NSString *)key nilValue:(nullable id)nilValue {
+    RACChannel *channel = [[RACChannel alloc] init];
+    
+    RACSignal *eventSignal = [[[self
+        rac_signalForControlEvents:controlEvents]
+        mapReplace:key]
+        takeUntil:[[channel.followingTerminal
+            ignoreValues]
+            catchTo:RACSignal.empty]];
+            
+            [[self
+        rac_liftSelector:@selector(valueForKey:) withSignals:eventSignal, nil]
+        subscribe:channel.followingTerminal];
+        
+        RACSignal *valuesSignal = [channel.followingTerminal
+        map:^(id value) {
+            return value ?: nilValue;
+        }];
+    [self rac_liftSelector:@selector(setValue:forKey:) withSignals:valuesSignal, [RACSignal return:key], nil];
+
+    return channel.leadingTerminal;
+}
+
+</code></pre>
+
+<ol>
+<li><code>eventSignal</code> 获取事件触发的<code>signal</code> 并将error转换为empty信号，发送的值即为key</li>
+<li><code>rac_liftSelector:with:</code> 执行一个<code>selector</code>方法,<code>rac_liftSelector:@selector(valueForKey:)</code>即为获取<code>UIControl</code>的事件的<code>key</code>的值</li>
+<li><code>subscribe:channel.followingTerminal</code> 即为 channel的<code>followingTerminal</code>订阅， 综合起来就是 每次事件触发时 获取<code>key</code>的value值 然后发送<code>followingTerminal</code>  而followTerminal的<code>sendNext</code>，触发leadingSubject的<code>sendNext</code>，即将事件触发时获取到的value值发送给leadingSubject的订阅者 即 leadingTerminal的订阅者</li>
+<li><p><code>valueSignal</code> 订阅<code>followingTerminal</code>即 订阅 followSubject的消息，即为收到leadingTerminal发送的消息</p></li>
+<li><p><code>[self rac_liftSelector:@selector(setValue:forKey:) withSignals:valuesSignal, [RACSignal return:key], nil];</code>  收到<code>leadingTerminal</code>发送的消息后将收到的值传给当前的控件，保证数据同步</p></li>
+</ol>
+
+<p>综合起来来说，就是在<code>controlEvent</code>事件发生时，将key的value值发送给<code>followingTerminal</code>，并在接收来自<code>leadingTerminal</code>消息后，更新控件的key属性对应的value值</p>
+
+<h4 id="toc_8">UITextField+TextChannel</h4>
+
+<pre><code class="language-objectivec">- (RACChannelTerminal *)rac_newTextChannel {
+    return [self rac_channelForControlEvents:UIControlEventAllEditingEvents key:@keypath(self.text) nilValue:@&quot;&quot;];
+}
+</code></pre>
+
+<h3 id="toc_9">RACChannel+KVO</h3>
+
+<p>RACChannel提供了<code>RACKVOChannel</code>来实现对象的某个属性值进行观测， 常可以用来进行与UIKit组件或者其他对象属性进行高效的双向绑定</p>
+
+<h4 id="toc_10">RACKVOChannel :RACChannel</h4>
+
+<p>在KVO的channel中 我们常通过<code>RACChannelTo</code>宏定义来直接使用，观测某对象属性</p>
+
+<pre><code class="language-objectivec">//参数分别为 对象、属性和默认值
+#define RACChannelTo_(TARGET, KEYPATH, NILVALUE)
+
+    [[RACKVOChannel alloc] initWithTarget:(TARGET) 
+    keyPath:@keypath(TARGET, KEYPATH) nilValue:(NILVALUE)]
+    [@keypath(RACKVOChannel.new, followingTerminal)]
+</code></pre>
+
+<p>例如：</p>
+
+<pre><code class="language-objectivec">RACChannelTerminal *integerChannel = [[RACKVOChannel alloc] initWithTarget:self keyPath:@&quot;integerProperty&quot; nilValue:@42][@&quot;followingTerminal&quot;];
+</code></pre>
+
+<p>先来看<code>RACKVOChannel</code>的初始化方法</p>
+
+<pre><code class="language-objectivec">- (instancetype)initWithTarget:(__weak NSObject *)target keyPath:(NSString *)keyPath nilValue:(id)nilValue {
+
+    //KVO对象属性值并发送
+    [strongTarget rac_observeKeyPath:keyPath options:NSKeyValueObservingOptionInitial observer:nil block:^(id value, NSDictionary *change, BOOL causedByDealloc, BOOL affectedOnlyLastComponent) {
+        [self.leadingTerminal sendNext:value];
+    }]
+    
+    // 收到订阅值 并设置对象的属性值
+    [[self.leadingTerminal
+        finally:^{
+            [observationDisposable dispose];
+        }]
+        subscribeNext:^(id x) {
+            NSObject *object = (keyPathComponentsCount &gt; 1 ? [self.target valueForKeyPath:keyPathByDeletingLastKeyPathComponent] : self.target);
+            if (object == nil) return;
+            [object setValue:x ?: nilValue forKey:lastKeyPathComponent];
+        } error:^(NSError *error) {
+        }];
+    
+}
+</code></pre>
+
+<p>使用RACKVOChannel的初始化方法即获得了一个Channel对象，对此对象执行 <code>[@keypath(RACKVOChannel.new, followingTerminal)]</code>来获取terminal对象是因为重写了以下两个方法:</p>
+
+<pre><code class="language-objectivec">- (RACChannelTerminal *)objectForKeyedSubscript:(NSString *)key {
+    RACChannelTerminal *terminal = [self valueForKey:key];
+    return terminal;
+}
+
+- (void)setObject:(RACChannelTerminal *)otherTerminal forKeyedSubscript:(NSString *)key {
+    RACChannelTerminal *selfTerminal = [self objectForKeyedSubscript:key];
+    [otherTerminal subscribe:selfTerminal];
+    [[selfTerminal skip:1] subscribe:otherTerminal];
+}
+</code></pre>
+
+<p>重写这两个方法 就会使在调用<code>setObject: forKeyedSubscript:</code>时执行<code>-subscribe:</code>方法完成双向绑定</p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15609234167437.html">RACMulticastConnection: NSObject</a></h1>
+			<p class="meta"><time datetime="2019-06-19T13:50:16+08:00" 
+			pubdate data-updated="true">06/19/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p><code>RACMulticastConnection</code>用于信号的一对多传播</p>
+
+<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) RACSignal&lt;ValueType&gt; *signal;
+{
+RACSubject *_signal;
+}
+@property (nonatomic, readonly, strong) RACSignal *sourceSignal;
+
+</code></pre>
+
+<p>这个signal属性即为对外开发的信号，其实现是使用RACSubject对象，而<code>sourceSignal</code>即为订阅的原信号</p>
+
+<p>在初始化方法中初始化这两个对象:</p>
+
+<pre><code class="language-objectivec">- (instancetype)initWithSourceSignal:(RACSignal *)source subject:(RACSubject *)subject { 
+    _sourceSignal = source;
+    _signal = subject;
+}
+</code></pre>
+
+<h2 id="toc_0">使用</h2>
+
+<p>我们不应该直接初始化<code>RACMulticastConnection</code>对象  使用<code>RACSignal</code>的实例化方法初始化这个实例对象:</p>
+
+<pre><code class="language-objectivec">- (RACMulticastConnection *)publish {
+    RACSubject *subject = [RACSubject subject];
+    RACMulticastConnection *connection = [self multicast:subject];
+    return connection;
+}
+
+- (RACMulticastConnection *)multicast:(RACSubject *)subject {
+    RACMulticastConnection *connection = [[RACMulticastConnection alloc] initWithSourceSignal:self subject:subject];
+    return connection;
+}
+</code></pre>
+
+<p>可以很简单的看出来这两个方法只是简单的声明了<code>RACSubject</code>对象，并初始化一个<code>RACMulticastConnection</code>对象并返回</p>
+
+<h2 id="toc_1">connect &amp;&amp; autoconnect</h2>
+
+<p>具体信号的订阅是在connect方法中，只有执行了connect方法 才会订阅该信号 才能接收信号</p>
+
+<pre><code class="language-objectivec">- (RACDisposable *)connect {
+    self.serialDisposable.disposable = [self.sourceSignal subscribe:_signal];
+}
+</code></pre>
+
+<p><code>autoconnect</code>方法返回一个信号  当订阅了该信号时就会执行connect方法 订阅<code>sourceSignal</code>从而收到信号值</p>
+
+<pre><code class="language-objectivec">- (RACSignal *)autoconnect {
+
+    return [RACSignal
+        createSignal:^(id&lt;RACSubscriber&gt; subscriber) {
+            RACDisposable *subscriptionDisposable = [self.signal subscribe:subscriber];
+            [self connect];
+            }];
+        }]
+}
+</code></pre>
+
+<h2 id="toc_2">补充</h2>
+
+<p>当使用<code>publish</code>方法返回的<code>RACMulticastConnection</code>对象时，只有当<code>connect</code>之前订阅的才能收到消息，而在connect之后订阅的对象并不能收到消息</p>
+
+<p>因此此时我们可以使用<code>RACReplaySubject</code>对象，可以通过<code>[RACSignal replay]</code>方法实现</p>
+
+<pre><code class="language-objectivec">- (RACSignal *)replay {
+    RACReplaySubject *subject = [RACReplaySubject subject];
+    RACMulticastConnection *connection = [self multicast:subject];
+    [connection connect];
+    return connection.signal;
+}
+</code></pre>
+
+<p>除此之外 还有</p>
+
+<p>Capacity:1 的ReplaySubject</p>
+
+<pre><code class="language-objectivec">- (RACSignal *)replayLast {
+    RACReplaySubject *subject = [RACReplaySubject replaySubjectWithCapacity:1];
+    RACMulticastConnection *connection = [self multicast:subject];
+    [connection connect];
+    return connection.signal;
+}
+</code></pre>
+
+<p>只有在返回的信号在被第一次订阅时 才会执行connect方法</p>
+
+<pre><code class="language-objectivec">- (RACSignal *)replayLazily {
+    RACMulticastConnection *connection = [self multicast:[RACReplaySubject subject]];
+    return [RACSignal
+        defer:^{
+            [connection connect];
+            return connection.signal;
+        }];
+}
+</code></pre>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15608261485816.html">RACCommand: NSObject</a></h1>
+			<p class="meta"><time datetime="2019-06-18T10:49:08+08:00" 
+			pubdate data-updated="true">06/18/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p><code>RACCommand</code> 继承自<code>NSObject</code> 用于管理<code>RACSignal</code>信号</p>
+
+<h2 id="toc_0">RACCommand使用示例</h2>
+
+<pre><code class="language-objectivec">RACCommand *command = [[RACCommand alloc] initWithSignalBlock:^RACSignal * _Nonnull(id  _Nullable input) {
+        return [RACSignal createSignal:^RACDisposable * _Nullable(id&lt;RACSubscriber&gt;  _Nonnull subscriber) {
+            NSInteger integer = [input integerValue];
+            for (NSInteger i = 0; i &lt; integer; i++) {
+                [subscriber sendNext:@(i)];
+            }
+            [subscriber sendCompleted];
+            return [RACDisposable disposableWithBlock:^{
+                NSLog(@&quot;信号销毁了&quot;);
+            }];
+        }];
+    }];
+    
+    [[command.executionSignals switchToLatest] subscribeNext:^(id  _Nullable x) {
+        NSLog(@&quot;收到消息---%@&quot;,x);
+    } error:^(NSError * _Nullable error) {
+        NSLog(@&quot;error了&quot;);
+    } completed:^{
+        NSLog(@&quot;completed了&quot;);
+    }];
+    
+    [command execute:@1];
+    [RACScheduler.mainThreadScheduler afterDelay:0.1
+                                        schedule:^{
+                                            [command execute:@2];
+                                        }];
+    [RACScheduler.mainThreadScheduler afterDelay:0.2
+                                        schedule:^{
+                                            [command execute:@3];
+                                        }];
+                                        
+                            
+    //log结果
+    收到消息---0
+    信号销毁了
+    收到消息---0
+    收到消息---1
+    信号销毁了
+    收到消息---0
+    收到消息---1
+    收到消息---2
+    信号销毁了
+    completed了
+</code></pre>
+
+<ol>
+<li>通过<code>switchToLatest</code>方法来获取信号中的信号</li>
+<li>因为默认情况下<code>RACCommand</code>是不支持并发操作的，需要在上次命令发送完成后，再发送下次信号</li>
+</ol>
+
+<pre><code class="language-objectivec">@property (nonatomic, strong, readonly) RACSignal&lt;RACSignal&lt;ValueType&gt; *&gt; *executionSignals;
+</code></pre>
+
+<p>通过以上示例可以看出整个流程中，传入一个block，这个block通过传入值生成对应的<code>signal</code>, 而command属性<code>executionSignals</code>即为这些信号的信号</p>
+
+<p>通过 <code>execute</code>方法 出入值 </p>
+
+<h2 id="toc_1">RACCommand</h2>
+
+<p>在<code>Command</code>内部 是由几个很重要的信号组成的</p>
+
+<h3 id="toc_2">初始化</h3>
+
+<p>初始化方法需要传入<code>signalBlock</code>， 该block通过input传入值 生成一个<code>RACSignal</code><br/>
+ 在初始化方法中初始化了重要的信号</p>
+
+<pre><code class="language-objectivec"> RACCommand initWithEnabled:(RACSignal *)enabledSignal signalBlock:(RACSignal&lt;id&gt; * (^)(id input))signalBlock {
+    _addedExecutionSignalsSubject = [RACSubject new];
+    _allowsConcurrentExecutionSubject = [RACSubject new];
+    _signalBlock = [signalBlock copy];
+    _executionSignals =...
+    _errors = ...
+    _executing = ...
+    _immediateEnabled = ...
+    _enabled = ...
+ }
+</code></pre>
+
+<h3 id="toc_3">addedExecutionSignalsSubject</h3>
+
+<p><code>addedExecutionSignalsSubject</code>即为包含信号的信号 当传入值时通过signalblock生成的signal即包含在改信号中</p>
+
+<p><code>addedExecutionSignalsSubject</code>信号在<code>execute:</code>执行时，对信号进行订阅和发送</p>
+
+<pre><code class="language-objectivec">- (RACSignal *)execute:(id)input { 
+    BOOL enabled = [[self.immediateEnabled first] boolValue];
+    if (!enabled) {
+        return [RACSignal error:error];
+    }
+    RACSignal *signal = self.signalBlock(input);
+    //订阅信号
+    RACMulticastConnection *connection = [[signal
+        subscribeOn:RACScheduler.mainThreadScheduler]
+        multicast:[RACReplaySubject subject]];
+    //发送信号
+    [self.addedExecutionSignalsSubject sendNext:connection.signal];
+    [connection connect];
+    return connection.signal;
+}
+</code></pre>
+
+<h3 id="toc_4">immediateExecuting &amp;&amp; _executing 表示当前有操作执行的信号</h3>
+
+<p>immediateExecuting的逻辑是：<br/>
+    1. <code>catchTo</code>捕获<code>addedExecutionSignalsSubject</code>信号中的error信号，转换为empty<br/>
+    2. <code>flattenMap:</code>将每个信号的开始和结束时间点转为1和-1信号（<code>start为1 then为-1</code>）<br/>
+    3. <code>scanWithStart:@0 reduce:</code> 将上一步得到的1和-1进行叠加得到0 或者 非0<br/>
+        1. <code>map:</code>将0/非0 转为 NO/YES 表示当前是否有信号正在处理</p>
+
+<pre><code class="language-objectivec">RACSignal *immediateExecuting = [[[[self.addedExecutionSignalsSubject
+        flattenMap:^(RACSignal *signal) {
+            return [[[signal
+                catchTo:[RACSignal empty]]
+                then:^{
+                    return [RACSignal return:@-1];
+                }]
+                startWith:@1];
+        }]
+        scanWithStart:@0 reduce:^(NSNumber *running, NSNumber *next) {
+            return @(running.integerValue + next.integerValue);
+        }]
+        map:^(NSNumber *count) {
+            return @(count.integerValue &gt; 0);
+        }]
+        startWith:@NO];
+</code></pre>
+
+<p>将immediateExecuting 信号进行优化  <strong>表示当前是否有任务执行</strong></p>
+
+<pre><code class="language-objectivec">_executing = [[[[immediateExecuting
+        deliverOn:RACScheduler.mainThreadScheduler]
+        // This is useful before the first value arrives on the main thread.
+        startWith:@NO]
+        distinctUntilChanged]
+        replayLast]
+</code></pre>
+
+<h3 id="toc_5">moreExecutionsAllowed  表示是否允许更多信号执行</h3>
+
+<p>简单来看就是 当不允许并发时（默认不允许并发），<code>[immediateExecuting not]</code></p>
+
+<pre><code class="language-objectivec">RACSignal *moreExecutionsAllowed = [RACSignal
+        if:[self.allowsConcurrentExecutionSubject startWith:@NO]
+        then:[RACSignal return:@YES]
+        else:[immediateExecuting not]];
+</code></pre>
+
+<h3 id="toc_6">executionSignals</h3>
+
+<pre><code class="language-objectivec"> @property (nonatomic, strong, readonly) RACSignal&lt;RACSignal&lt;ValueType&gt; *&gt; *executionSignals;
+</code></pre>
+
+<p><code>executionSignals</code>是一个包含信号的信号<br/>
+executionSignals 只是简单的将<code>self.addedExecutionSignalsSubject</code>信号中的所有错误信号<code>NSError</code>转换为了<code>empty</code>信号</p>
+
+<pre><code class="language-objectivec">_executionSignals = [[self.addedExecutionSignalsSubject
+        map:^(RACSignal *signal) {
+            return [signal catchTo:[RACSignal empty]];
+        }]
+        deliverOn:RACScheduler.mainThreadScheduler]
+</code></pre>
+
+<h3 id="toc_7">_enabled 信号 表示当前命令是否可以被再次执行</h3>
+
+<pre><code class="language-objectivec">RACSignal *enabledSignal = [RACSignal return:@YES];
+
+_immediateEnabled = [[[[RACSignal
+    combineLatest:@[ enabledSignal, moreExecutionsAllowed ]]
+    and]
+    takeUntil:self.rac_willDeallocSignal]
+    replayLast];
+    
+//保证信号中的第一个值在订阅线程，而其他值在主线程派发
+_enabled = [[[[self.immediateEnabled
+    take:1]
+    concat:[[self.immediateEnabled skip:1] deliverOn:RACScheduler.mainThreadScheduler]]
+    distinctUntilChanged]
+    replayLast]
+</code></pre>
+
+
+		</div>
+
+		
+
+	</article>
+  
+	<div class="pagination">
+	 <a class="prev" href="all_4.html">&larr; Older</a> 
+<a href="archives.html">Blog Archives</a>
+	 <a class="next" href="all_2.html">Newer &rarr;</a>  
+	    
+	</div>
+</div>
+ <aside class="sidebar"> 
+
+	<section>
+	  <h1>Categories</h1>
+	  <ul id="recent_posts">
+	  
+	      <li class="post">
+	        <a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B&&Runloop.html"><strong>多线程&&Runloop&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="RunLoop.html">RunLoop&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B.html">多线程&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8&&%E9%94%81.html">线程安全&&锁&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="KVC&&KVO.html">KVC&&KVO&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="runtime%E5%AD%A6%E4%B9%A0.html"><strong>runtime学习&nbsp;(9)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&&block.html"><strong>内存管理&&block&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="OC%E9%AB%98%E7%BA%A7%E7%BC%96%E7%A8%8B-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">OC高级编程-内存管理&nbsp;(6)</a>&nbsp;&nbsp;
+	        
+	        	<a href="block%E5%AD%A6%E4%B9%A0.html">block学习&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%AE%98%E6%96%B9%E6%96%87%E6%A1%A3-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">官方文档-内存管理&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-%E6%8B%BE%E9%81%97.html">内存管理-拾遗&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BD%91%E7%BB%9C.html"><strong>网络&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="GPU&&%E6%B8%B2%E6%9F%93.html"><strong>GPU&&渲染&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F&&%E7%BB%84%E4%BB%B6%E5%8C%96.html"><strong>设计模式&&组件化&nbsp;(8)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E6%9E%B6%E6%9E%84%E8%B0%88(%E6%91%98%E5%BD%95).html">设计模式架构谈(摘录)&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BB%84%E4%BB%B6%E5%8C%96%E5%BC%80%E5%8F%91%E5%AD%A6%E4%B9%A0.html">组件化开发学习&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BC%96%E8%AF%91&&dyld&&Mach-O.html"><strong>编译&&dyld&&Mach-O&nbsp;(19)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html">iOS编译流程&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="dyld(%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8).html">dyld(程序启动)&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Mach-O%E6%96%87%E4%BB%B6%E4%BA%86%E8%A7%A3.html">Mach-O文件了解&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%A8%A1%E5%9D%97%E5%8C%96%E7%9F%A5%E8%AF%86.html"><strong>模块化知识&nbsp;(26)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS-CoreAnimation.html">iOS-CoreAnimation&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="CoreGraphic.html">CoreGraphic&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ARKit.html">ARKit&nbsp;(7)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%E5%92%8C%E4%BD%BF%E7%94%A8.html"><strong>第三方项目学习和使用&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="AFNetworking.html">AFNetworking&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="AsyncDisplayKit.html">AsyncDisplayKit&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ReactnativeCocoa.html">ReactnativeCocoa&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="PromiseKit.html">PromiseKit&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7%E5%92%8C%E4%BC%98%E5%8C%96.html"><strong>项目监控和优化&nbsp;(10)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="APP%E4%BD%93%E7%A7%AF%E4%BC%98%E5%8C%96.html">APP体积优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%90%AF%E5%8A%A8%E4%BC%98%E5%8C%96.html">启动优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%B0%83%E8%AF%95&&%E6%B5%8B%E8%AF%95.html"><strong>调试&&测试&nbsp;(6)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="Instrument%E5%AD%A6%E4%B9%A0.html">Instrument学习&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="LLDB.html">LLDB&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95.html">自动化测试&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%B7%A5%E5%85%B7.html"><strong>工具&nbsp;(5)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="git.html">git&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Cocoapods.html">Cocoapods&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%8B%BE%E9%81%97.html"><strong>拾遗&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%9D%A2%E8%AF%95.html">面试&nbsp;(12)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">iOS开发知识点拾遗&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">知识点拾遗&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html">iOS 小知识&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Swift-BaseLearning.html"><strong>Swift基础知识&nbsp;(28)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Computer-programming.html"><strong>计算机编程&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html">知识普及&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Flex.html">Flex&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
+	        
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="React-Native.html"><strong>React-Native&nbsp;(6)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Python.html"><strong>Python&nbsp;(14)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html"><strong>算法读书笔记&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	   
+	  </ul>
+	</section>
+	<section>
+	  <h1>Recent Posts</h1>
+	  <ul id="recent_posts">
+	  
+	      
+		      <li class="post">
+		        <a href="15718858302183.html">官方文档</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710248960458.html">Layout Specs</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707800044047.html">Node Lifecycle</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707737201639.html">线程</a>
+		      </li>
+	     
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	   
+	  </ul>
+	</section>
+	
+</aside> </div></div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 -  -
+  <span class="credit">Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a> &nbsp;&nbsp; Theme by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+
+  
+    
+
+
+
+
+</body>
+</html>

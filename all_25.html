@@ -1,0 +1,1117 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>
+    
+  ACEfish-Blog
+  
+
+  </title>
+  <meta name="author" content="">
+  <meta name="description" content="学习记录">
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <link href="asset/css/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="atom.xml" rel="alternate" title="ACEfish-Blog" type="application/atom+xml">
+  <script src="asset/js/modernizr-2.0.js"></script>
+  <script src="asset/js/jquery.min.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/solarized_light.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+
+  <style type="text/css">
+  .cat-children-p{ padding: 6px 0px;}
+  .hljs{background: none;}
+  </style>
+  <script type="text/javascript">
+  var isAddSildbar = true;
+  </script>
+  <script src="asset/js/octopress.js" type="text/javascript"></script>
+</head>
+<script type="text/javascript">
+//链接新开窗口
+function addBlankTargetForLinks () {
+  $('a[href^="http"]').each(function(){
+      $(this).attr('target', '_blank');
+  });
+}
+$(document).ready(function(event) {
+  addBlankTargetForLinks();
+});
+</script>
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="index.html">ACEfish-Blog</a></h1>
+  
+    <h2>学习记录</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:acefish.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+
+  <li id=""><a target="_self" href="index.html">首页</a></li>
+
+  <li id=""><a target="_self" href="archives.html">归档</a></li>
+
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content"> 
+<div class="blog-index">
+
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15540299299293.html">CodeGen IR LLVM</a></h1>
+			<p class="meta"><time datetime="2019-03-31T18:58:49+08:00" 
+			pubdate data-updated="true">03/31/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">CodeGen生成IR代码</h2>
+
+<p>将语法树翻译成LLVM IR中间代码，作为LLVM Backend输入的桥接语言。方便LLVM Backend可以做到与语言无关的优化</p>
+
+<p><strong>这个过程还会与runtime进行桥接</strong></p>
+
+<ul>
+<li>各种类、方法、成员变量等的结构体的生成，将其放到对应的Mach-O的Section中</li>
+<li>Non-Fragile ABI合成OBJC_IVAR_$_偏移值常量</li>
+<li>ObjCMessageExpr(AST树结构)翻译生成相应版本的objc_msgSend、super翻译生成objc_msgSendSuper</li>
+<li>strong、weak、copy、atomic、nonatomic、readwrite等合成@property自动实现setter和getter</li>
+<li>@synthesize 的处理</li>
+<li>生成block_layout数据结构(即block对应的结构体)</li>
+<li><strong>block和</strong>weak处理</li>
+<li>_block_invoke</li>
+<li>ARC的处理，即插入objc_storeStrong和objc_storeWeak等ARC代码;ObjCAutoreleasePoolStmt 转 objc_autorealeasePoolPush / Pop;自动添加 [super dealloc];给每个 ivar 的类合成 .cxx_destructor 方法自动释放类的成员变量</li>
+</ul>
+
+<p><strong>不管编译的语言时 Objective-C 还是 Swift 也不管对应机器是什么，亦或是即时编译，LLVM 里唯一不变的是中间语言 LLVM IR</strong></p>
+
+<h3 id="toc_1">LLVM IR</h3>
+
+<p>LLVM IR有三种表示格式，第一种是bitcode这样的存储格式，以.bc做后缀；第二种是可读的.ll；第三种是用于开发是操作LLVM IR的内存格式</p>
+
+<p>一个编译单元即一个文件在IR里就是一个<code>Module</code>，Module里有<code>Global variable</code>和<code>Function</code>，在Function里有<code>Basic Block</code>，<code>Basic Block</code>里有指令<code>Instructions</code><br/>
+这样的话，如果想要开发一门新的语言只需要完成语法解析后，通过LLVM提供的丰富接口在内存中生成IR就可以直接运行在各个不同的平台</p>
+
+<h3 id="toc_2">LLVM IR的优化</h3>
+
+<p>选择不同的O2、O3这样的优化回调用对应的Pass进行处理，比如死代码清理、内联化、表达式重组、循环变量移动等这样的Pass，可以通过命令<code>llvm -opt</code>调用LLVM优化相关的库</p>
+
+<h3 id="toc_3">SSA</h3>
+
+<p>LLVM IR是SSA形式的，维护双向def-use信息，user-def是通过普通指针实现信息维护，def-user通过内存跳表和链表来实现，便于forward dataflow analysis和backward dataflow analysis。</p>
+
+<p>llc 编译器是专门编译 LLVM IR 的编译器用来生成汇编文件。</p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15541369430724.html">Autorelease pool的实现原理</a></h1>
+			<p class="meta"><time datetime="2019-04-02T00:42:23+08:00" 
+			pubdate data-updated="true">04/02/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15547801359492.html">GCD任务和队列</a></h1>
+			<p class="meta"><time datetime="2019-04-09T11:22:15+08:00" 
+			pubdate data-updated="true">04/09/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">任务和队列</h2>
+
+<p><strong>任务</strong>： 就是执行操作的意思<br/>
+执行任务有两种方式:同步和异步执行，区别在“是否等待队列中的任务结束，以及是否能开启新线程”</p>
+
+<blockquote>
+<p>异步执行，虽然有开启新线程能力，但是并不一定开启新线程。和任务的队列类型有关</p>
+</blockquote>
+
+<p><strong>队列</strong>:执行任务的等待队列，用来存放任务；FIFO；<br/>
+两种队列:</p>
+
+<ul>
+<li>串行队列：每次只有一个任务执行（只在一个线程中）</li>
+<li>并行队列：多个任务并发执行（可以开启多个线程，同时执行任务）</li>
+</ul>
+
+<blockquote>
+<p>并发队列只在异步函数中才有效</p>
+</blockquote>
+
+
+
+		</div>
+
+		 
+		 <footer>
+      	<a rel="full-article" href="15547801359492.html#more">read more &rarr;</a>
+    	</footer>
+    	
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="14877303400153.html">类与对象</a></h1>
+			<p class="meta"><time datetime="2017-02-22T10:25:40+08:00" 
+			pubdate data-updated="true">02/22/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h2 id="toc_0">Class</h2>
+
+<p>Objective-C类是由Class类型来表示的，它实际上是一个指向<code>objc_class</code>结构体的指针。</p>
+
+
+
+		</div>
+
+		 
+		 <footer>
+      	<a rel="full-article" href="14877303400153.html#more">read more &rarr;</a>
+    	</footer>
+    	
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="14939015823586.html">高效绘图</a></h1>
+			<p class="meta"><time datetime="2017-05-04T20:39:42+08:00" 
+			pubdate data-updated="true">05/04/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</p>
+
+<p>关于绘制的性能<br/>
+提高绘制性能或者减少需要绘制的数量</p>
+
+<h3 id="toc_0">软件绘图</h3>
+
+<p>在<code>Core Animation</code>中的绘图通常是指<strong>软件绘图</strong><br/>
+在iOS中，软件绘图通常是由<code>Core Graphics</code>框架完成来完成。但是，在一些必要的情况下，相比<code>Core Animation</code>和<code>OpenGL</code>，<code>Core Graphics</code>要慢了不少。</p>
+
+<p>软件绘图不仅效率很低 而且很耗内存.CALayer只需要和自己相关的内存,只有他的寄宿图会消耗一点内存控件，即使直接赋给<code>contents</code>属性一张图片,也不需要增加额外的照片存储大小,如果相同的一张图片被多个图层作为<code>contents</code>属性，那么他们将会共用同一块内存，而不是复制内存块。</p>
+
+<p><strong>但是如果实现了<code>CALayerDelegate</code>协议中的<code>- srawLayer:inContext:</code>方法或者<code>UIView</code>的<code>- drawRect</code>方法（其实就是前者的包装）,图层创建了一个绘制上下文，需要的内存大小就是<code>图层宽*图层高*4字节(宽高单位是像素)</code>,图层每次绘制都需要抹掉内存重新分配</strong></p>
+
+<p><strong>绘图代价很大，尽量避免重绘你的视图</strong></p>
+
+<h3 id="toc_1">矢量图形</h3>
+
+<p>我们用的矢量绘图包含:</p>
+
+<ul>
+<li>任意多边形</li>
+<li>斜线或曲线</li>
+<li>文本</li>
+<li>渐变</li>
+</ul>
+
+<p>实现一个划线应用:将用户的触摸手势转换成一个 UIBezierPath 上的点，然后绘制成视图。</p>
+
+<p>1.用<code>Core Graphic</code>基于<code>drawRect</code>绘制</p>
+
+<pre><code class="language-objectivec">- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    CGPoint point = [[touches anyObject] locationInView:self];
+    [self.path addLineToPoint:point];
+    [self setNeedsDisplay];
+}
+- (void)drawRect:(CGRect)rect
+{
+    [[UIColor clearColor] setFill];
+    [[UIColor redColor] setStroke];
+    [self.path stroke];
+}
+</code></pre>
+
+<p><code>[self setNeedsDisplay];</code>可以重绘视图,再次走<code>drawRect</code>方法,但是如果一直重绘而且绘制工作量增大就会导致帧数下降.</p>
+
+<p>2.用<code>CAShaperLayer</code>绘制</p>
+
+<pre><code class="language-objectivec">+ (Class)layerClass
+{
+    return [CAShapeLayer class];
+}
+</code></pre>
+
+<p><code>Core Animation</code>为这些图层类型提供了专门的类，并提供了硬件支持,比如<code>CAShapeLayer</code>可以绘制多边形，直线和曲线。 <code>CATextLayer</code>可以绘制文本。<code>CAGradientLayer</code>用来绘制渐变。这些总体上都比<code>Core Graphics</code>更快，同时他们也避免了创造一个寄宿图。(<strong>这些图层是CA提供的,而我们的绘图用的是CG</strong>)</p>
+
+<p>因此对于绘制矢量图层我们可以重写<code>UIView</code>的<code>layer</code>然后只需要将绘制的<code>path</code>赋值<code>CAShapeLayer</code>的<code>path</code>即可绘制，虽然性能依然下降但不明显几乎感觉不到帧率差异</p>
+
+<h3 id="toc_2">脏矩形</h3>
+
+<p>有时候我们没办法用<code>CAShapeLayer</code>等图层来代替<code>Core Graphics</code>，对于上面的例子,我们为了进一步提高性能,我们用一个“线刷”图片粘贴到用户手指触碰的地方</p>
+
+<p>我们如果在用户手指移动就重绘视图将图片粘贴到用户手指移动过的所有点,这样绘制越多就越慢,仍会引起性能问题</p>
+
+<p>为了减少不必要的绘制,Mac OS和iOS设备将会把屏幕区分为需要重绘的区域和不需要重绘的区域。<strong>那些需要重绘的部分被称作『脏区域』。</strong>为了方便我们通常指出包含需要重绘的视图的矩形位置,就是<strong>脏矩形</strong></p>
+
+<p>只改变了视图的部分区域的,重绘整个整个寄宿图就太浪费了,我们可以通过提供重绘区域.</p>
+
+<p>当检测到需要重绘的区域时通过<code>setNeedsDisplayInRect:</code>标记,这样就会在一次试图刷新时调用调用视图的<code>- drawRect:</code>（或图层代理的<code>- drawLayer:inContext:</code>方法）</p>
+
+<p>传入<code>- drawLayer:inContext:</code>的<code>CGContext</code>参数会自动被裁切以适应对应的矩形。为了确定矩形的尺寸大小，你可以用<code>CGContextGetClipBoundingBox()</code>方法来从上下文获得大小。调用<code>- drawRect()</code>会更简单，因为<code>CGRect</code>会作为参数直接传入。</p>
+
+<p>当然如果你的裁剪逻辑相当复杂,那还是是让<code>Core Graphics</code>来为你重绘吧，</p>
+
+<pre><code class="language-objectivec">- (void)addBrushStrokeAtPoint:(CGPoint)point
+{
+    //add brush stroke to array
+    [self.strokes addObject:[NSValue valueWithCGPoint:point]];
+    //set dirty rect
+    [self setNeedsDisplayInRect:[self brushRectForPoint:point]];
+}
+- (CGRect)brushRectForPoint:(CGPoint)point
+{
+    return CGRectMake(point.x - BRUSH_SIZE/2, point.y - BRUSH_SIZE/2, BRUSH_SIZE, BRUSH_SIZE);
+}
+- (void)drawRect:(CGRect)rect
+{
+    //redraw strokes
+    for (NSValue *value in self.strokes) {
+        //get point
+        CGPoint point = [value CGPointValue];
+        //get brush rect
+        CGRect brushRect = [self brushRectForPoint:point];
+        //only draw brush stroke if it intersects dirty rect
+        if (CGRectIntersectsRect(rect, brushRect)) {
+        //draw brush stroke
+        [[UIImage imageNamed:@&quot;Chalk.png&quot;] drawInRect:brushRect];
+        }
+    }
+}
+</code></pre>
+
+<h3 id="toc_3">异步绘制</h3>
+
+<p><code>UIKit</code>的单线程天性意味着寄宿图通畅要在主线程上更新，这意味着绘制会打断用户交互，甚至让整个<code>app</code>看起来处于无响应状态。</p>
+
+<p>为了可以避免用户等待绘制：</p>
+
+<h4 id="toc_4">CATiledLayer</h4>
+
+<p><code>CATiledLayer</code>除了将图层再次分割成独立更新的小块外<br/>
+<code>CATiledLayer</code>还有一个有趣的特性：在多个线程中为每个小块同时调用<code>- drawLayer:inContext:</code>方法。<br/>
+这就避免了阻塞用户交互而且能够利用多核心新片来更快地绘制。只有一个小块的<code>CATiledLayer</code>是实现异步更新图片视图的简单方法。</p>
+
+<h4 id="toc_5">drawsAsynchronously</h4>
+
+<p>苹果为<code>CALayer</code>引入了这个令人好奇的属性，<code>drawsAsynchronously</code>属性对传入<code>-drawLayer:inContext:</code>的<code>CGContext</code>进行改动，允许<code>CGContext</code>延缓绘制命令的执行以至于不阻塞用户交互。</p>
+
+<p>它与<code>CATiledLayer</code>使用的异步绘制并不相同。它自己的 <code>- drawLayer:inContext:</code>方法只会在主线程调用，但是<code>CGContext</code>并不等待每个绘制命令的结束。相反地，它会将命令加入队列，当方法返回时，在后台线程逐个执行真正的绘制。</p>
+
+<p>根据苹果的说法。这个特性在需要频繁重绘的视图上效果最好（比如我们的绘图应用，或者诸如UITableViewCell 之类的），对那些只绘制一次或很少重绘的图层内容来说没什么太大的帮助。</p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="14986177362678.html">函数 Functions</a></h1>
+			<p class="meta"><time datetime="2017-06-28T10:42:16+08:00" 
+			pubdate data-updated="true">06/28/2017</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>在<code>Swift</code>中，每个函数都有一个由函数的参数值类型和返回值类型组成的类型。可以把函数类型当做任何其他<br/>
+普通变量类型一样处理，这样就可以更简单地把函数当做别的函数的参数，也可以从其他函数中返回函数。函数<br/>
+的定义可以写在其他函数定义中，这样可以在嵌套函数范围内实现功能封装。</p>
+
+<h2 id="toc_0">函数的定义与调用</h2>
+
+<pre><code class="language-swift">func greet(person: String) -&gt; String {
+    let greeting = &quot;Hello, &quot; + person + &quot;!&quot;
+    return greeting
+}
+</code></pre>
+
+<p>定义一个函数,以<code>func</code>为前缀，定义了一个输入参数一个叫<code>person</code>的<code>String</code>值，用<code>-&gt;</code>来指定函数返回类型一个<code>String</code>类型返回值</p>
+
+<blockquote>
+<p><code>print(_:separator:terminator:)</code>这个函数第一个参数为<code>_</code>即并没有设置标签,其他参数设置了标签并且有默认值因此是可选的 </p>
+</blockquote>
+
+<h2 id="toc_1">函数参数与返回值</h2>
+
+<p>在函数参数名称为<code>_</code>即不设置名称 </p>
+
+<h3 id="toc_2">无参函数</h3>
+
+<pre><code class="language-swift">func sayHelloWorld() -&gt; String {
+    return &quot;hello, world&quot;
+}
+print(sayHelloWorld())
+// 打印 &quot;hello, world&quot;
+</code></pre>
+
+<p><strong>注意:</strong><br/>
+即使这个函数没有参数,但是定义中在函数名后还是<strong>需要一对圆括号</strong>。当被调用时，也需要<strong>在函数名后写一对圆括号</strong>与C语言函数相同</p>
+
+<h3 id="toc_3">多参函数</h3>
+
+<pre><code class="language-swift">func greet(person: String, alreadyGreeted: Bool) -&gt; String {
+    if alreadyGreeted {
+        return greetAgain(person: person)
+    } else {
+        return greet(person: person)
+    }
+}
+print(greet(person: &quot;Tim&quot;, alreadyGreeted: true))
+// 打印 &quot;Hello again, Tim!&quot;
+</code></pre>
+
+<p>传递多个参数,之前用<code>,</code>隔开,这个函数与前面函数虽然名称相同 但是参数不同因此是不同的两个函数</p>
+
+<blockquote>
+<p>重载:指两个函数的函数名相同,函数的参数列表不同(包括参数个数和参数类型)，至于返回类型可同可不同<br/>
+OC不完全支持重载,即OC支持参数个数不同的函数重载,Swift是完全支持重载的</p>
+</blockquote>
+
+<h3 id="toc_4">无返回值函数</h3>
+
+<pre><code class="language-swift">func greet(person: String) {
+    print(&quot;Hello, \(person)!&quot;)
+}
+greet(person: &quot;Dave&quot;)
+// 打印 &quot;Hello, Dave!&quot;
+</code></pre>
+
+<blockquote>
+<p>虽然没有定义返回值,其实返回了一个特殊的<code>Void</code>值,这是<strong>一个空的元组</strong>，没有任何元素,可以写为()</p>
+</blockquote>
+
+<h3 id="toc_5">多重返回值函数</h3>
+
+<p>我们可以用元组让多个值作为一个复合值从函数中返回</p>
+
+<pre><code class="language-swift">func minMax(array: [Int]) -&gt; (min: Int, max: Int) {
+    var currentMin = array[0]
+    var currentMax = array[0]
+    for value in array[1..&lt;array.count] {
+        if value &lt; currentMin {
+            currentMin = value
+        } else if value &gt; currentMax {
+            currentMax = value
+        }
+    }
+    return (currentMin, currentMax)
+}
+
+let bounds = minMax(array: [8, -6, 2, 109, 3, 71])
+print(&quot;min is \(bounds.min) and max is \(bounds.max)&quot;)
+// 打印 &quot;min is -6 and max is 109&quot;
+</code></pre>
+
+<blockquote>
+<p>注意：</p>
+
+<p>在返回元组时不需要给元组命名，因为它们的名字在函数返回类型中就已经确定了</p>
+</blockquote>
+
+<h3 id="toc_6">可选元组返回值</h3>
+
+<p>如果函数返回的元组类型有可能整个元组都“没有值”,可以使用可选元组返回类型来说明元组可能为<code>nil</code></p>
+
+<blockquote>
+<p>注意:</p>
+
+<p>可选元组类型如 (Int, Int)? 与元组包含可选类型如 (Int?, Int?) 是不同的.可选的元组类型，整个元组是可选的，而不只是元组中的每个元素值。</p>
+</blockquote>
+
+<p>对于上面的数组我们添加一个空数组检查,当传入的数组为空时返回<code>nil</code>:</p>
+
+<pre><code class="language-swift">func minMax(array: [Int]) -&gt; (min: Int, max: Int)? {
+    if array.isEmpty { return nil }
+    var currentMin = array[0]
+    var currentMax = array[0]
+    for value in array[1..&lt;array.count] {
+        if value &lt; currentMin {
+            currentMin = value
+        } else if value &gt; currentMax {
+            currentMax = value
+        }
+    }
+    return (currentMin, currentMax)
+}
+
+//用可选类型绑定来检查函数返回的是一个存在的元组还是一个nil
+if let bounds = minMax(array: [8, -6, 2, 109, 3, 71]) {
+    print(&quot;min is \(bounds.min) and max is \(bounds.max)&quot;)
+}
+// 打印 &quot;min is -6 and max is 109&quot;
+
+</code></pre>
+
+<h2 id="toc_7">函数参数标签和参数名称</h2>
+
+<p>每个函数参数都有一个<code>参数标签</code>以及一个<code>参数名称</code>.<br/>
+<code>参数标签</code>在调用函数的时候使用:调用时需要将函数的参数标签写在对应参数前<br/>
+<code>参数名称</code>在函数的实现中使用。默认,函数参数使用参数名称来作为参数标签</p>
+
+<h3 id="toc_8">指定参数标签</h3>
+
+<p>在参数名称前指定它的参数标签，中间以空格分隔:</p>
+
+<pre><code class="language-swift">//参数标签使函数在调用时更有表达力,保持可读性
+//argumentLabel参数标签  parameterName参数名称
+func someFunction(argumentLabel parameterName: Int) {
+    // 在函数体内，parameterName 代表参数值
+}
+func greet(person: String, from hometown: String) -&gt; String {
+    return &quot;Hello \(person)! Glad you could visit from \(hometown).&quot;
+}
+print(greet(person: &quot;Bill&quot;, from: &quot;Cupertino&quot;))
+</code></pre>
+
+<h3 id="toc_9">忽略参数标签</h3>
+
+<p>我们用下划线来忽略 不设置参数标签</p>
+
+<pre><code class="language-swift">func someFunction(_ firstParameterName: Int, secondParameterName: Int) {
+    // 在函数体内，firstParameterName 和 secondParameterName 代表参数中的第一个和第二个参数值
+}
+someFunction(1, secondParameterName: 2)
+</code></pre>
+
+<blockquote>
+<p>如果一个参数有标签,那么在调用时必须使用标签来标记这个参数</p>
+</blockquote>
+
+<h3 id="toc_10">默认参数值</h3>
+
+<p>可以在函数体重通过给参数赋值来为任意一个参数定义默认值. 如果定义了默认值，可以在调用这个函数时忽略这个参数:</p>
+
+<pre><code class="language-swift">func someFunction(parameterWithoutDefault: Int, parameterWithDefault: Int = 12) {
+    // 如果你在调用时候不传第二个参数，parameterWithDefault 会值为 12 传入到函数体中。
+}
+someFunction(parameterWithoutDefault: 3, parameterWithDefault: 6) // parameterWithDefault = 6
+someFunction(parameterWithoutDefault: 4) // parameterWithDefault = 12
+</code></pre>
+
+<p>我们通常将不带默认值的参数放在函数参数列表最前。因为一般没有默认值参数更重要，将不带默认值的参数放在最前保证在函数调用时，非默认参数的顺序是一致的，同时也使得相同的函数在不同情况下调用时显得更为清晰。</p>
+
+<h3 id="toc_11">可变参数</h3>
+
+<p>通过在变量类型名后加上<code>...</code>的方式来定义可变参数<br/>
+可变参数可以接受零个或多个值,我们用其来指定函数传入不确定数量的输入值</p>
+
+<p>我们在函数体中将可变参数传入值变为数组来使用</p>
+
+<pre><code class="language-swift">func arithmeticMean(_ numbers: Double...) -&gt; Double {
+    var total: Double = 0
+    for number in numbers {
+        total += number
+    }
+    return total / Double(numbers.count)
+}
+arithmeticMean(1, 2, 3, 4, 5)
+// 返回 3.0, 是这 5 个数的平均数。
+arithmeticMean(3, 8.25, 18.75)
+// 返回 10.0, 是这 3 个数的平均数。
+</code></pre>
+
+<blockquote>
+<p>注意:</p>
+
+<p>一个函数最多只能有一个可变参数</p>
+</blockquote>
+
+<h3 id="toc_12">输入输出参数</h3>
+
+<p>参考<a href="http://www.csdn.net/article/2015-01-20/2823635-swift-pointer">Swift中的指针操作及使用</a></p>
+
+<p>函数参数默认为常量,因此在函数体中修改会导致编译错误。如果想要在函数中修改某个参数值,并且这些修改在函数调用后仍然有效，那么需要把这个参数定义为输入输出参数</p>
+
+<p>在参数定义前加上<code>inout</code>关键字来定以输入输出参数，这个值被函数修改然后被传出函数替换原来的值.</p>
+
+<p>只能传递变量给输入输出参数,不能传入常量或字面量，调用时当传入的参数作为输入输出参数时,需要在参数名前加<code>&amp;</code>表示这个值可被修改</p>
+
+<pre><code class="language-swift">func swapTwoInts(_ a: inout Int, _ b: inout Int) {
+    let temporaryA = a
+    a = b
+    b = temporaryA
+}
+var someInt = 3
+var anotherInt = 107
+swapTwoInts(&amp;someInt, &amp;anotherInt)
+print(&quot;someInt is now \(someInt), and anotherInt is now \(anotherInt)&quot;)
+// 打印 &quot;someInt is now 107, and anotherInt is now 3&quot;
+</code></pre>
+
+<p><strong>可以参考C语言中函数的 指针参数</strong></p>
+
+<blockquote>
+<p>注意:</p>
+
+<p>输入输出参数不能有默认值，而且可变参数不能用<code>inout</code>标记</p>
+</blockquote>
+
+<h2 id="toc_13">函数类型</h2>
+
+<p>每个函数都有 由<code>函数的参数类型</code>和<code>返回类型</code> 组成<code>函数类型</code></p>
+
+<pre><code class="language-swift">func addTwoInts(_ a: Int, _ b: Int) -&gt; Int {
+    return a + b
+}
+</code></pre>
+
+<p>函数类型为<code>(Int, Int) -&gt; Int</code></p>
+
+<pre><code class="language-swift">func printHelloWorld() {
+    print(&quot;hello, world&quot;)
+}
+</code></pre>
+
+<p>函数类型为<code>() -&gt; Void</code></p>
+
+<h3 id="toc_14">函数类型的使用</h3>
+
+<p>在<code>Swift</code>中使用函数类型和使用其他类型一样。</p>
+
+<pre><code class="language-swift">var mathFunction: (Int, Int) -&gt; Int = addTwoInts
+</code></pre>
+
+<p>定义一个类型是‘一个有两个Int型的参数并返回一个Int型的值的<code>mathFunction</code>变量，指向<code>addTwoInts</code>函数</p>
+
+<p>函数类型与其他类型一样可以通过赋值让<code>Swift</code>推断其函数类型</p>
+
+<h3 id="toc_15">函数类型作为参数类型</h3>
+
+<pre><code class="language-swift">func printMathResult(_ mathFunction: (Int, Int) -&gt; Int, _ a: Int, _ b: Int) {
+    print(&quot;Result: \(mathFunction(a, b))&quot;)
+}
+
+//调用
+printMathResult({ (a, b) -&gt; Int in
+    return a*b
+}, 10, 20)
+</code></pre>
+
+<p><code>printMathResult(_:_:_:)</code>函数的作用就是输出另一个适当类型的数学函数的调用结果。它不关心传入函数是如何实现的，只关心传入的函数是不是一个正确的类型。这使得<code>printMathResult(_:_:_:)</code>能以一种类型安全（type-safe）的方式将一部分功能转给调用者实现。</p>
+
+<h3 id="toc_16">函数类型作为返回类型</h3>
+
+<p>我们可以将函数类型作为另一个函数的返回类型</p>
+
+<pre><code class="language-swift">func stepForward(_ input: Int) -&gt; Int {
+    return input + 1
+}
+func stepBackward(_ input: Int) -&gt; Int {
+    return input - 1
+}
+
+func chooseStepFunction(backward: Bool) -&gt; (Int) -&gt; Int {
+    return backward ? stepBackward : stepForward
+}
+
+//执行
+var currentValue = 3
+let moveNearerToZero = chooseStepFunction(backward: currentValue &gt; 0)
+// moveNearerToZero 现在指向 stepBackward() 函数。
+</code></pre>
+
+<p>上面例子获取一个整形接近0应该用的函数</p>
+
+<pre><code class="language-swift">print(&quot;Counting to zero:&quot;)
+// Counting to zero:
+while currentValue != 0 {
+    print(&quot;\(currentValue)... &quot;)
+    currentValue = moveNearerToZero(currentValue)
+}
+print(&quot;zero!&quot;)
+// 3...
+// 2...
+// 1...
+// zero!
+</code></pre>
+
+<h2 id="toc_17">嵌套函数</h2>
+
+<p>前面定义的所有函数都为<code>全局函数</code><br/>
+我们可以把函数定义在其他函数中,这就是<code>嵌套函数</code><br/>
+默认情况下，嵌套函数是对外界不可见的，但是可以被它们的外围函数（enclosing function）调用。一个外围函数也可以返回它的某一个嵌套函数，使得这个函数可以在其他域中被使用。</p>
+
+<blockquote>
+<p>OC中是不支持在一个函数中定义另外一个函数</p>
+</blockquote>
+
+<p>我们用返回嵌套方式重写<code>chooseStepFunction(backward:)</code>函数</p>
+
+<pre><code class="language-swift">func chooseStepFunction(backward: Bool) -&gt; (Int) -&gt; Int {
+    //我们在函数中定义另外函数
+    func stepForward(input: Int) -&gt; Int { return input + 1 }
+    func stepBackward(input: Int) -&gt; Int { return input - 1 }
+    //返回嵌套函数
+    return backward ? stepBackward : stepForward
+}
+var currentValue = -4
+let moveNearerToZero = chooseStepFunction(backward: currentValue &gt; 0)
+while currentValue != 0 {
+print(&quot;\(currentValue)... &quot;)
+currentValue = moveNearerToZero(currentValue)
+}
+print(&quot;zero!&quot;)
+// -4...
+// -3...
+// -2...
+// -1...
+// zero!
+</code></pre>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15539605071421.html">Clang Static Analyzer静态代码分析</a></h1>
+			<p class="meta"><time datetime="2019-03-30T23:41:47+08:00" 
+			pubdate data-updated="true">03/30/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<p>学习自 <a href="https://github.com/ming1016/study/wiki/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90-iOS-%E7%BC%96%E8%AF%91-Clang---LLVM">深入剖析iOS编译</a></p>
+
+<h4 id="toc_0">词法分析：</h4>
+
+<p>静态分析前会对diamante进行<code>词法分析</code>，生成<code>Token</code>，Token包括以下几类，</p>
+
+<ul>
+<li>关键字： 语法中的关键字 if、else、while for等</li>
+<li>标识符： 变量名</li>
+<li>字面量： 值、数字、字符串</li>
+<li>特殊符号： 加减乘除符号
+<code>
+clang -fmodules -E -Xclang -dump-tokens main.m
+</code>
+可以查看生成的token，其中还包括了代码位置等信息</li>
+</ul>
+
+<h4 id="toc_1">语法分析</h4>
+
+<p>词法分析后进行语法分析，将token按照语法组合成语义生成ValDecl节点，将这些节点按照层级关系生成抽象语法树<code>Abstract Syntax Tree(AST)</code></p>
+
+<pre><code class="language-text">clang -fmodules -fsyntax-only -Xclang -ast-dump main.m
+</code></pre>
+
+<p>以<code>TranslationUnitDecl</code>根节点开始，表示一个源文件<br/>
+其中，Decl表示一个生命、Expr表示表达式、Literal表示特殊字面量、Stmt表示语句</p>
+
+<h3 id="toc_2">静态分析原理</h3>
+
+<p>clang 静态分析是通过建立分析引擎和 checkers 所组成的架构，可以通过 <code>clng --analyze</code>命令调用</p>
+
+<p><code>clang static analyzer</code>分为<code>analyzer core</code>分析引擎和checker两部分，而所有的checker是基于底层的分析引擎之上的，也可以通过分析引擎提供的功能编写新的checker</p>
+
+<p>如果想编写自己的<code>checker</code>，可以在 clang 项目的<code>lib / StaticAnalyzer / Checkers</code>目录下找到实例参考，比如 ObjCUnusedIVarsChecker.cpp 用来检查未使用定义过的变量。方便用户扩展对代码的检查规则或对bug类型的扩展，但是每执行完一条语句后，分析引擎就会会遍历所有checker中的回调函数，所以checker越多，速度越慢</p>
+
+<p>通过<code>clang -cc1 -analyzer-checker-help</code>可以列出能调用的 checker<br/>
+<img src="media/15539605071421/15539654466718.jpg" alt="" style="width:830px;"/></p>
+
+<p><code>clang static analyzer</code>引擎大致上分为<code>CFG，MemRegion，SValBuilder，ConstraintManager</code> 和 <code>ExplodedGraph</code> 几个模块,<code>clang static analyzer</code> 本质上就是<code>path-sensitive analysis</code>，要很好的理解<code>clang static analyzer</code>引擎就需要对<code>Data Flow Analysis</code>有所了解，包括迭代数据流分析,<code>path-sensitive</code>，<code>path-insensitive</code> ，<code>flow-sensitive</code>等。</p>
+
+<p>编译的概念（<strong>词法-&gt;语法-&gt;语义-&gt;IR-&gt;优化-&gt;CodeGen</strong>）在 clang static analyzer 里到处可见，例如 Relaxed Live Variables Analysis 可以减少分析中的内存消耗，使用 mark-sweep 实现 Dead Symbols 的删除。</p>
+
+<p>静态检查的一些库以及使用方法：<br/>
+<a href="https://github.com/DeveloperLx/FauxPas_document_translation/blob/master/README.md?from=timeline&amp;isappinstalled=0">FauxPas_document_translation/README.md at master · DeveloperLx/FauxPas_document_translation · GitHub</a></p>
+
+
+		</div>
+
+		
+
+	</article>
+ 
+	<article>
+		 <header>
+		  	<h1 class="entry-title"><a href="15548649461552.html">dispatch_block_t</a></h1>
+			<p class="meta"><time datetime="2019-04-10T10:55:46+08:00" 
+			pubdate data-updated="true">04/10/2019</time></p>
+		 </header>
+	  	<div class="entry-content">
+		  	
+		  	<h4 id="toc_0">dispatch_block_t</h4>
+
+<p><code>typedef void (^dispatch_block_t)(void);</code></p>
+
+<p>注意:<br/>
+声明的block是分配在stack上的</p>
+
+<pre><code class="language-objectivec">//下面写法是错误的
+dispatch_block_t block;
+if (x) {
+block = ^{ printf(&quot;true\n&quot;); };
+} else {
+block = ^{ printf(&quot;false\n&quot;); };
+}
+block();
+</code></pre>
+
+<p>block是在栈上的，当<code>{}</code>退出时，block就无效了</p>
+
+
+
+		</div>
+
+		 
+		 <footer>
+      	<a rel="full-article" href="15548649461552.html#more">read more &rarr;</a>
+    	</footer>
+    	
+
+	</article>
+  
+	<div class="pagination">
+	 <a class="prev" href="all_26.html">&larr; Older</a> 
+<a href="archives.html">Blog Archives</a>
+	 <a class="next" href="all_24.html">Newer &rarr;</a>  
+	    
+	</div>
+</div>
+ <aside class="sidebar"> 
+
+	<section>
+	  <h1>Categories</h1>
+	  <ul id="recent_posts">
+	  
+	      <li class="post">
+	        <a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B&&Runloop.html"><strong>多线程&&Runloop&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="RunLoop.html">RunLoop&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%A4%9A%E7%BA%BF%E7%A8%8B.html">多线程&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8&&%E9%94%81.html">线程安全&&锁&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="KVC&&KVO.html">KVC&&KVO&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="runtime%E5%AD%A6%E4%B9%A0.html"><strong>runtime学习&nbsp;(9)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86&&block.html"><strong>内存管理&&block&nbsp;(18)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="OC%E9%AB%98%E7%BA%A7%E7%BC%96%E7%A8%8B-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">OC高级编程-内存管理&nbsp;(6)</a>&nbsp;&nbsp;
+	        
+	        	<a href="block%E5%AD%A6%E4%B9%A0.html">block学习&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%AE%98%E6%96%B9%E6%96%87%E6%A1%A3-%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.html">官方文档-内存管理&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86-%E6%8B%BE%E9%81%97.html">内存管理-拾遗&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BD%91%E7%BB%9C.html"><strong>网络&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="GPU&&%E6%B8%B2%E6%9F%93.html"><strong>GPU&&渲染&nbsp;(3)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F&&%E7%BB%84%E4%BB%B6%E5%8C%96.html"><strong>设计模式&&组件化&nbsp;(8)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E6%9E%B6%E6%9E%84%E8%B0%88(%E6%91%98%E5%BD%95).html">设计模式架构谈(摘录)&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%BB%84%E4%BB%B6%E5%8C%96%E5%BC%80%E5%8F%91%E5%AD%A6%E4%B9%A0.html">组件化开发学习&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%BC%96%E8%AF%91&&dyld&&Mach-O.html"><strong>编译&&dyld&&Mach-O&nbsp;(19)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B.html">iOS编译流程&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="dyld(%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8).html">dyld(程序启动)&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Mach-O%E6%96%87%E4%BB%B6%E4%BA%86%E8%A7%A3.html">Mach-O文件了解&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%A8%A1%E5%9D%97%E5%8C%96%E7%9F%A5%E8%AF%86.html"><strong>模块化知识&nbsp;(26)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="iOS-CoreAnimation.html">iOS-CoreAnimation&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="CoreGraphic.html">CoreGraphic&nbsp;(3)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ARKit.html">ARKit&nbsp;(7)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AC%AC%E4%B8%89%E6%96%B9%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0%E5%92%8C%E4%BD%BF%E7%94%A8.html"><strong>第三方项目学习和使用&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="AFNetworking.html">AFNetworking&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="AsyncDisplayKit.html">AsyncDisplayKit&nbsp;(16)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ReactnativeCocoa.html">ReactnativeCocoa&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="PromiseKit.html">PromiseKit&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7%E5%92%8C%E4%BC%98%E5%8C%96.html"><strong>项目监控和优化&nbsp;(10)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%A1%B9%E7%9B%AE%E7%9B%91%E6%8E%A7.html">项目监控&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	        	<a href="APP%E4%BD%93%E7%A7%AF%E4%BC%98%E5%8C%96.html">APP体积优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E5%90%AF%E5%8A%A8%E4%BC%98%E5%8C%96.html">启动优化&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E8%B0%83%E8%AF%95&&%E6%B5%8B%E8%AF%95.html"><strong>调试&&测试&nbsp;(6)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="Instrument%E5%AD%A6%E4%B9%A0.html">Instrument学习&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="LLDB.html">LLDB&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E8%87%AA%E5%8A%A8%E5%8C%96%E6%B5%8B%E8%AF%95.html">自动化测试&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E5%B7%A5%E5%85%B7.html"><strong>工具&nbsp;(5)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="git.html">git&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Cocoapods.html">Cocoapods&nbsp;(4)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E6%8B%BE%E9%81%97.html"><strong>拾遗&nbsp;(35)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E9%9D%A2%E8%AF%95.html">面试&nbsp;(12)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%E5%BC%80%E5%8F%91%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">iOS开发知识点拾遗&nbsp;(5)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E7%82%B9%E6%8B%BE%E9%81%97.html">知识点拾遗&nbsp;(13)</a>&nbsp;&nbsp;
+	        
+	        	<a href="iOS%20%E5%B0%8F%E7%9F%A5%E8%AF%86.html">iOS 小知识&nbsp;(8)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Swift-BaseLearning.html"><strong>Swift基础知识&nbsp;(28)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Computer-programming.html"><strong>计算机编程&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="JavaScript%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0.html"><strong>JavaScript学习笔记&nbsp;(41)</strong></a>
+	         <p class="cat-children-p"> 
+	        
+	        	<a href="%E5%9F%BA%E7%A1%80.html">基础&nbsp;(11)</a>&nbsp;&nbsp;
+	        
+	        	<a href="%E7%9F%A5%E8%AF%86%E6%99%AE%E5%8F%8A.html">知识普及&nbsp;(1)</a>&nbsp;&nbsp;
+	        
+	        	<a href="Flex.html">Flex&nbsp;(2)</a>&nbsp;&nbsp;
+	        
+	        	<a href="ES6.html">ES6&nbsp;(17)</a>&nbsp;&nbsp;
+	        
+	        	<a href="React.html">React&nbsp;(10)</a>&nbsp;&nbsp;
+	        
+	         </p> 
+	      </li>
+	  
+	      <li class="post">
+	        <a href="React-Native.html"><strong>React-Native&nbsp;(6)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="Python.html"><strong>Python&nbsp;(14)</strong></a>
+	        
+	        
+	        
+	      </li>
+	  
+	      <li class="post">
+	        <a href="%E7%AE%97%E6%B3%95%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html"><strong>算法读书笔记&nbsp;(2)</strong></a>
+	        
+	        
+	        
+	      </li>
+	   
+	  </ul>
+	</section>
+	<section>
+	  <h1>Recent Posts</h1>
+	  <ul id="recent_posts">
+	  
+	      
+		      <li class="post">
+		        <a href="15718858302183.html">官方文档</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710288132412.html">Collections and asynchronous updates</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15710248960458.html">Layout Specs</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707800044047.html">Node Lifecycle</a>
+		      </li>
+	     
+	  
+	      
+		      <li class="post">
+		        <a href="15707737201639.html">线程</a>
+		      </li>
+	     
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	  
+	      
+	   
+	  </ul>
+	</section>
+	
+</aside> </div></div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 -  -
+  <span class="credit">Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a> &nbsp;&nbsp; Theme by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+
+  
+    
+
+
+
+
+</body>
+</html>
