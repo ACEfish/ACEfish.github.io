@@ -307,7 +307,7 @@
         <li><label>AsyncDisplayKit</label></li>
 
           
-            <li><a title="Collections and asynchronous updates" href="15710288132412.html">Collections and asynchronous updates</a></li>
+            <li><a title="Collections and asynchronous updates" href="15719000093976.html">Collections and asynchronous updates</a></li>
           
             <li><a title="Layout Specs" href="15710248960458.html">Layout Specs</a></li>
           
@@ -932,7 +932,7 @@
                     
                       <li class="side-title"><span>AsyncDisplayKit</span></li>
                         
-                          <li><a title="Collections and asynchronous updates" href="15710288132412.html">Collections and asynchronous updates</a></li>
+                          <li><a title="Collections and asynchronous updates" href="15719000093976.html">Collections and asynchronous updates</a></li>
                         
                           <li><a title="Layout Specs" href="15710248960458.html">Layout Specs</a></li>
                         
@@ -1284,9 +1284,58 @@
 
 	
 		<div class="markdown-body">
-		<h1>官方文档</h1>
+		<h1>Collections and asynchronous updates</h1>
 
-		<p><a href="https://github.com/mxcl/PromiseKit/blob/master/Documentation/GettingStarted.md">官方文档学习地址</a></p>
+		<h2 id="toc_0">概述</h2>
+
+<p>ASCollectionNode和ASTableNode使用相同的内部类(ASRangeController和ASDataController)来简化大多数的操作。</p>
+
+<p><code>ASRangeController</code>负责确定哪些Collection cell node 是在一定范围内并且为cell node以及其子节点设置正确的 interface state</p>
+
+<p><code>ASDataController</code>是支持UICollectionView的真实数据源。负责处理批处理更新，以线程安全的方式将其转发到bacKing View.</p>
+
+<h2 id="toc_1">批量更新</h2>
+
+<p><code>UICollectionView</code>允许客户端提交单个编辑而不需要包装在批处理更新中。<code>ASCollectionNode</code>虽然也允许这么做，但是在后台操作会自动捆绑到批处理更新中，因此也叫做<code>change set(更改集 _ASHierarchyChangeSet)</code>。批处理操作也可以嵌套，最后是单个的更改集<br/>
+值得注意的是，在其生命周期开始，UICollectionView需要执行初始数据加载。可以简单的通过调用<code>-reladData</code>实现,这也包装在ASCollectionNode的更改集中。因此，初始数据加载只是另一个更改集，就像其它更改一样。</p>
+
+<h2 id="toc_2">改变集 处理流程</h2>
+
+<p><code>ASCollectionNode</code>不接受也不处理单个的编辑操作。其<code>ASDataController</code>公开的主要数据更新方法为<code>-updateWithChangeSet:（_ ASHierarchyChangeSet *）changeSet</code>，并且在通过此方法提交之前，必须将编辑操作包装在更改集中，可以将这个方法是为处理更改集的通道</p>
+
+<p>通道在开始处理主线程的更改集之前，切换到后台线程执行昂贵的操作，最后返回到主线程将其转发到UICollectionView</p>
+
+<h3 id="toc_3">内部队列和数据集</h3>
+
+<p>由于通道在多个线程上运行，因此每个改变集都需要通过通道确保数据的一致性，不仅与数据源而且与backing View保持一致。在内部，<code>ASDataController</code>使用两个队列和数据集来简化通道</p>
+
+<p>这两个队列称为<code>_editingTransactionQueue</code>和<code>_mainSerialQueue</code>。前者为串行后台dispatch_queue,后者为<code>ASMainSerialQueue</code></p>
+
+<p>两个数据集为<code>pendingMap</code>和<code>visibleMap</code>。它们每个都是ASElementMap实例，<code>ASElementMap</code>是不可变的、主线程的<code>ASCollectionElement</code>的集合</p>
+
+<p>每一个<code>ASCollectionElement</code>代表colletion视图中的item或者supplementary视图。它具有足够的信息帮助ASDataController来初始化和测量backing ASCellNode以及最终要的nodeblock。这个block是在进程开始时被data source返回的，并且被element引用直到该block被执行。在首次调用<code>-[ASCollectionElement node]</code>被调用时 该block被执行。一旦被执行，<code>ASCellNode</code>将会被element强应用并且block被释放。这意味着任何给定时间，element要不具有node block 要不具有node instance，不能同时拥有两者。如果caller想要获取node，只有在node已经被初始化的情况下，此时应该调用<code>-nodeIfAllocated</code></p>
+
+<h2 id="toc_4">Data Source index space VS UIKit index space</h2>
+
+<p>由于每个改变集都是异步处理，因此可能需要支持多个<code>UICollectionView</code>在多个主线程run loop中使用改变集。</p>
+
+<p>在任何给定时间，ASDataController的pendingMap是从数据源获取的最新map，因此它位于数据源索引空间中。另一方面，visibleMap是UICollectionView当前显示的元素的集合。结果，它在UIKit索引空间中。</p>
+
+<h3 id="toc_5">工作的五个步骤</h3>
+
+<p>每个改变集都会执行这5个步骤</p>
+
+<ol>
+<li>该进程从主线程开始。此时pendingMap和visibleMap是同一个。制作一个pendingMap的mutalbe copy，然后根据改变集来进行更新。这包括，移除旧的items，向数据源查询插入新的items。在这步结束时，将会更新<code>pendingMap</code>反应data source的整体视图</li>
+<li>这是一个可选的步骤，仅当layout delegate设置为data controller时执行。默认，data controller一次性的初始化和测量所有的items(步骤3)。具有layout delegate时可以使其他类自定义此行为，例如，ASCollectionLayout仅初始化和测量足够的cell填充可见口。当用户滚动时，将按需分配更多cell，为此，layout delegate可能需要构造一个上下文，该上下文必须在同一主线程runloop上发生，</li>
+<li>在<code>_editingTransactionQueue</code>，分配和测量<code>pendingMap</code>的所有element，或者调用layout delegate让其决定。在此步骤结束时，element已经准备好被backing view使用</li>
+<li>在block中计划执行下一步，通过<code>_mainSerialQueue</code>将其添加到主线程队列中。如果在此点之前还有其他尚未调度到队列的block被调度，执行步骤5</li>
+<li>通知ASRangeController，colletionView的布局协调器，更重要的时，向collection发送有关更改集的信息。ASColelctionView调用其超类来执行批处理更新，在批处理中，pendingMap被更改为visibleMap。 UICollectionView要求将新数据集部署在-[UICollectionView performBatchUpdates：completion：]的更新块中。它还要求编辑操作必须按照特定的顺序进行，并由步骤1之前的更改集验证</li>
+</ol>
+
+<h2 id="toc_6">动画</h2>
+
+<h2 id="toc_7">移动操作</h2>
 
 
 		</div>
