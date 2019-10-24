@@ -4,14 +4,25 @@
   <title><![CDATA[ACEfish-Blog]]></title>
   <link href="https://acefish.github.io/atom.xml" rel="self"/>
   <link href="https://acefish.github.io/"/>
-  <updated>2019-10-24T10:11:50+08:00</updated>
+  <updated>2019-10-24T11:07:14+08:00</updated>
   <id>https://acefish.github.io/</id>
   <author>
     <name><![CDATA[]]></name>
     
   </author>
-  <generator uri="http://www.coderforart.com/">CoderForArt</generator>
+  <generator uri="http://www.mweb.im">MWeb</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[官方文档]]></title>
+    <link href="https://acefish.github.io/15718858302183.html"/>
+    <updated>2019-10-24T10:57:10+08:00</updated>
+    <id>https://acefish.github.io/15718858302183.html</id>
+    <content type="html"><![CDATA[
+<p><a href="https://github.com/mxcl/PromiseKit/blob/master/Documentation/GettingStarted.md">官方文档学习地址</a></p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Collections and asynchronous updates]]></title>
@@ -3385,83 +3396,6 @@ didFinishDownloadingToURL:(NSURL *)location
 <h2 id="toc_9">引入AFNetworkReachabilityManager监控网络状态</h2>
 
 <p><code>AFURLSessionManager</code>的网络状态由<code>AFNetworkReachabilityManager</code>监控，并持有一个该对象</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[AFNetworking]]></title>
-    <link href="https://acefish.github.io/15675682575589.html"/>
-    <updated>2019-09-04T11:37:37+08:00</updated>
-    <id>https://acefish.github.io/15675682575589.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">NSURLSession</h2>
-
-<p><code>NSURLSession</code>获取HTTP请求数据步骤：</p>
-
-<ol>
-<li>实例化一个<code>NSURLRequest/NSMutalbeRequest</code>,设置要请求的url</li>
-<li>获取NSUrlSession实例</li>
-<li>通过<code>dataWithRequest:completionHandle:</code>返回一个<code>dataTask</code></li>
-<li>向该对象发送消息<code>resume</code>执行这个任务</li>
-<li>在<code>completion</code>中 将对象编码 返回字符串</li>
-</ol>
-
-<pre><code class="language-objectivec">NSMutableURLRequest *request = [[NSMutableURLRequest alloc] initWithURL:[[NSURL alloc] initWithString:@&quot;https://github.com&quot;]];
-NSURLSession *session = [NSURLSession sharedSession];
-NSURLSessionDataTask *task = [session dataTaskWithRequest:request
-                                       completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
-                                           NSString *dataStr = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-                                           NSLog(@&quot;%@&quot;, dataStr);
-                                       }];
-[task resume];
-</code></pre>
-
-<h2 id="toc_1">AFNetworking</h2>
-
-<pre><code class="language-objectivec">AFHTTPSessionManager *manager = [[AFHTTPSessionManager alloc] initWithBaseURL:[[NSURL alloc] initWithString:@&quot;hostname&quot;]];
-[manager GET:@&quot;relative_url&quot; parameters:nil progress:nil
-    success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
-        NSLog(@&quot;%@&quot; ,responseObject);
-    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
-        NSLog(@&quot;%@&quot;, error);
-    }];
-</code></pre>
-
-<p>AFNetworking默认接收json格式的响应，如果想要其它格式的 设置<code>acceptableContentTypes</code></p>
-
-<h2 id="toc_2">AFNetworking的调用栈</h2>
-
-<ol>
-<li><p><code>AFHTTPSessionManager</code>的初始化方法<code>- initWithBaseURL:</code></p>
-<pre><code class="language-objectivec">- [AFHTTPSessionManager initWithBaseURL:]
-    - [AFHTTPSessionManager initWithBaseURL:sessionConfiguration:]<br/>
-        - [AFURLSessionManager initWithSessionConfiguration:]<br/>
-            - [NSURLSession sessionWithConfiguration:delegate:delegateQueue:]<br/>
-            - [AFJSONResponseSerializer serializer] // 负责序列化响应<br/>
-            - [AFSecurityPolicy defaultPolicy] // 负责身份认证<br/>
-            - [AFNetworkReachabilityManager sharedManager] // 查看网络连接情况<br/>
-        - [AFHTTPRequestSerializer serializer] // 负责序列化请求<br/>
-        - [AFJSONResponseSerializer serializer] // 负责序列化响应
-</code></pre>
-<ul>
-<li>其中<code>AFURLSessionManager</code>是<code>AFHTTPSessionManager</code>的父类</li>
-<li><code>AFURLSessionManager</code>负责生成<code>NSURLSession</code>实例，并且管理<code>AFSecurityPolicy</code>和<code>AFNetworkReachabilityManager</code>，来保证请求的安全和查看网络连接情况，<code>AFJSONResponseSerializer</code>实例用来序列号HTTP响应</li>
-<li><code>AFHTTPSessionManager</code>有自己的<code>AFHTTPRequestSerializer</code>和<code>AFJSONResponseSerializer</code>来管理请求和响应的序列化，同时依赖父类提供的接口保证安全、监控网络状态，实现发送HTTP</li>
-</ul></li>
-<li><p><code>GET:Params:progress:success:</code>的调用栈</p>
-<pre><code class="language-objectivec">- [AFHTTPSessionManager GET:parameters:process:success:failure:]
-    - [AFHTTPSessionManager dataTaskWithHTTPMethod:parameters:uploadProgress:downloadProgress:success:failure:] // 返回 NSURLSessionDataTask #1<br/>
-        - [AFHTTPRequestSerializer requestWithMethod:URLString:parameters:error:] // 返回 NSMutableURLRequest<br/>
-        - [AFURLSessionManager dataTaskWithRequest:uploadProgress:downloadProgress:completionHandler:] // 返回 NSURLSessionDataTask #2<br/>
-            - [NSURLSession dataTaskWithRequest:] // 返回 NSURLSessionDataTask #3<br/>
-            - [AFURLSessionManager addDelegateForDataTask:uploadProgress:downloadProgress:completionHandler:]<br/>
-                - [AFURLSessionManagerTaskDelegate init]<br/>
-                - [AFURLSessionManager setDelegate:forTask:]<br/>
-    - [NSURLSessionDataTask resume]
-</code></pre>
-<p>在#3出调用了系统的请求方法，返回dataTask 然后调用<code>resume</code>方法执行请求，并在某些实践之星时通知代理<code>AFURLSessionManagerTaskDelegate</code></p></li>
-</ol>
 
 ]]></content>
   </entry>
