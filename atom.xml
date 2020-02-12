@@ -4,7 +4,7 @@
   <title><![CDATA[ACEfish-Blog]]></title>
   <link href="https://acefish.github.io/atom.xml" rel="self"/>
   <link href="https://acefish.github.io/"/>
-  <updated>2019-10-31T14:35:27+08:00</updated>
+  <updated>2020-02-12T10:27:20+08:00</updated>
   <id>https://acefish.github.io/</id>
   <author>
     <name><![CDATA[]]></name>
@@ -12,6 +12,2141 @@
   </author>
   <generator uri="http://www.mweb.im">MWeb</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[使用GLKit绘图]]></title>
+    <link href="https://acefish.github.io/15785393114232.html"/>
+    <updated>2020-01-09T11:08:31+08:00</updated>
+    <id>https://acefish.github.io/15785393114232.html</id>
+    <content type="html"><![CDATA[
+<p><code>GLKit framework</code>提供view和viewController，消除了对OpenGL内容绘制和动画必须设置和维护的代码。<br/>
+<code>GLKView class</code>为绘图代码提供位置，<code>GLKViewController class</code>提供渲染循环使<code>GLKit</code>中的OpenGL内容可以平滑动画。<br/>
+<code>GLKit</code>帮助我们主要将精力集中在OpenGL ES渲染代码上，并使app可以快读启动并运行。<br/>
+<code>GLKit</code>还提供了其它功能来简化<code>OpenGL</code>2.0和3.0的开发</p>
+
+<h2 id="toc_0">GLKit View按需绘制OpenGL内容</h2>
+
+<p><code>GLKView</code>提供了基于OpenGL的等效于标准的<code>UIView</code>的绘图周期。类似UIView自动配置其图形上下文，方便我们实现<code>drawRect:</code>方法只需要执行<code>Quartz 2D</code>命令，而<code>GLKView</code>实例自动进行自身配置，一边绘制方法仅需要执行<code>OpenGL</code>绘制命令。<code>GLKView</code>类通过维护了保存OpenGLES绘制命令结果的帧缓冲区对象，然后在绘制方法返回后自动将其呈现给<code>Core Animation</code></p>
+
+<p>像标准的<code>UIKit UIView</code>一样，<code>GLKit View</code>按需呈现其内容。首次显示<code>View</code>时，它会调用您的绘制方法--<code>Core Animation</code>缓存渲染的输出，并在无论何时显示View时将其展示。当您想要更改<code>View</code>的内容时，请调用其<code>setNeedsDisplay</code>方法，然后该视图再次调用您的绘图方法，缓存生成的图像，并将其显示在屏幕上。当用于渲染图像的数据不经常更改或仅响应用户操作而更改时，此方法很有用。通过仅在需要时渲染新的视图内容，可以节省设备的电池电量，并为设备留出更多时间执行其他操作。</p>
+
+<p><img src="media/15785393114232/15785516776768.png" alt="" style="width:500px;"/></p>
+
+<h3 id="toc_1">创建和配置GLKit View</h3>
+
+<p>可以通过代码或者XIB创建<code>GLKView</code>对象，但是在试用其之前必须将其与<code>EAGLContext</code>对象相关联</p>
+
+<ul>
+<li>当以代码方式创建时，请先创建一个context然后将其传递给view的<code>initWithFrame：context:</code>方法</li>
+<li>如果容storyboard中加载视图后，创建一个context并将其设置为视图的context属性值</li>
+</ul>
+
+<p><code>GLKView</code>会自动创建和配置它自己的OpenGL的<code>framebuffer</code>对象和<code>renderbuffer</code>。可以使用<code>drawable</code>属性控制这些对象的属性，如果更改<code>GLKit View</code>的<code>size</code>、<code>scale factor</code>或者<code>drawable</code>属性，则会在下次绘制其内容时自动删除并重新创建适当的<code>framebuffer</code>和<code>renderbuffer</code></p>
+
+<pre><code class="language-objectivec">- (void)viewDidLoad
+{
+    [super viewDidLoad];
+ 
+    // Create an OpenGL ES context and assign it to the view loaded from storyboard
+    GLKView *view = (GLKView *)self.view;
+    view.context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+ 
+    // Configure renderbuffers created by the view
+    view.drawableColorFormat = GLKViewDrawableColorFormatRGBA8888;
+    view.drawableDepthFormat = GLKViewDrawableDepthFormat24;
+    view.drawableStencilFormat = GLKViewDrawableStencilFormat8;
+ 
+    // Enable multisampling
+    view.drawableMultisample = GLKViewDrawableMultisample4X;
+}
+</code></pre>
+
+<p>可以使用<code>drawableMultisample</code>属性为<code>GLKView</code>启用多重采样。多重采样是一种抗锯齿形式，可以平滑锯齿边缘，以占用更多内存和和片段处理为代价，提高大多数3Dapp的图像质量，因此，启用多重采样，需要始终测试应用性能是可接受的</p>
+
+<h3 id="toc_2">使用GLKit绘制</h3>
+
+<p>绘制OpenGL ES内容的3个步骤：</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[创建iOS OpenGL ES应用程序]]></title>
+    <link href="https://acefish.github.io/15784535760978.html"/>
+    <updated>2020-01-08T11:19:36+08:00</updated>
+    <id>https://acefish.github.io/15784535760978.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">配置OpenGL ES上下文</h2>
+
+<p><code>OpenGL ES</code>的每种实现都提供了一种创建渲染上下文的方法，来管理<code>OpenGL ES</code>规范要求的状态。通过将这个状态置于上下文中，多个app可以简单的共享图形硬件，而不会干扰其他状态</p>
+
+<h3 id="toc_1">EAGL是OpenGL ES渲染上下文的iOS实现</h3>
+
+<p>在app调用任何<code>OpenGL ES</code>函数之前，必须初始化<code>EAGLContext</code>对象。其还提供了用于将<code>OpenGL ES</code>和<code>Core Animation</code>集成的方法</p>
+
+<h3 id="toc_2">OpenGL ES函数调用的目标即为 Current Context</h3>
+
+<p>iOS中的每个线程都有其上下文  当调用<code>OpenGL ES</code>函数时，这是其状态被调用更改的上下文</p>
+
+<p>通过<code>EAGLContext 的 setCurrentContext</code>方法设置当前上下文<code>[EAGLContext setCurrentContext: myContext];</code><br/>
+而通过调用<code>EAGLContext</code>的<code>currentContext</code>来检索线程的当前上下文</p>
+
+<blockquote>
+<p>当应用程序在同一线程的两个或者多个上下文间主动切换时，请在将新的上下文设置为当前上下文前，调用<code>glFlush</code>函数，可以确保将先前提交的命名即使交付给图形硬件</p>
+</blockquote>
+
+<p><code>OpenGL ES</code>对当前上下文的<code>EAGLContext</code>对象具有强引用。当设置<code>setCurrentContext</code>时，就不在引用先前的context。因此，如果想context在不是当前上下文时不被dealloc，app就要保持对这些对象的强引用</p>
+
+<h3 id="toc_3">针对特定版本的OpenGL ES有特定的上下文</h3>
+
+<p>一个<code>EAGLContext</code>仅支持OpenGL ES的一个版本。<br/>
+应用会在创建和初始化<code>EAGLContext</code>时决定要支持的<code>OpenGL ES</code>版本。如果设备不支持该版本，则<code>initWithAPI:</code>方法会返回nil，因此应用必须进行测试来确保上下文在使用前已经初始化成功。因此，可以再app中支持多版本的<code>OpenGL ES</code>，先尝试最新版本的渲染上下文，如果返回为nil，则尝试初始化旧版本的上下文</p>
+
+<pre><code class="language-objectivec">EAGLContext* CreateBestEAGLContext()
+{
+   EAGLContext *context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES3];
+   if (context == nil) {
+      context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+   }
+   return context;
+}
+</code></pre>
+
+<p><code>context</code>的<code>API</code>属性<code>@property(readonly) EAGLRenderingAPI API;</code>说明了上下文支持的OpenGL ES版本。app应该测试context的api属性，来选择正确的渲染路径，我们通常为每个渲染路径创建一个类，然后app会在初始化时测试context并创建一次渲染器。</p>
+
+<h3 id="toc_4">EAGL Sharegroup 为上下文管理OpenGL ES对象</h3>
+
+<p>尽管Context保持了OpenGL ES状态，但是并不直接管理OpenGL ES对象。OpenGL ES对象是由<code>EAGLSharegroup</code>对象进行创建和维护。每个context都包含一个<code>EAGLSharegroup</code>对象，将对象的创建委托给该对象</p>
+
+<p>当多个context连接到同一公共共享组时，任一context创建的OpenGL ES对象，在所有context中均是可用的。如果在创建的context与其它context绑定了相同的对象标识符，则就引用相同的OpenGL ES对象。</p>
+
+<blockquote>
+<p>移动设备资源短缺，多个context创建相同内容的多个副本是浪费的，共享资源可以更好地利用设备上的可用图形资源</p>
+</blockquote>
+
+<p><code>sharegroup</code>是不透明对象，并没有app可以调用的属性和方法，使用<code>sharegroup</code>的context对其保持强引用</p>
+
+<p><img src="media/15784535760978/15785376162209.png" alt="" style="width:500px;"/></p>
+
+<p><code>Sharegroups</code>在两种特定情况下很有用</p>
+
+<ul>
+<li>当context之间共享的大多数资源都不变时</li>
+<li>当想要app能在渲染主线程外的其它线程创建新的OpenGL ES对象时。此时，第二个context在单独线程运行，并且用于获取数据和创建加载资源。加载资源后，第一个线程可以绑定到该对象并立即使用它。<code>GLKTextureLoader</code>就是使用这种方式实现异步纹理加载</li>
+</ul>
+
+<p>如果要创建引用同一<code>sharegroup</code>的多个context，可以通过<code>initWithAPI:</code>来初始化第一个context，此时将会自动创建sharegroup。然后通过调用<code>initWithAPI：sharegroup：</code>将其他context初始化为第一个context的共享组。</p>
+
+<blockquote>
+<p>同一sharegroup的所有context必须使用相同的OpenGL ES版本</p>
+</blockquote>
+
+<pre><code class="language-objectivec">EAGLContext* firstContext = CreateBestEAGLContext();
+EAGLContext* secondContext = [[EAGLContext alloc] initWithAPI:[firstContext API] sharegroup: [firstContext sharegroup]];
+</code></pre>
+
+<p>当多个context共享<code>sharegroup</code>时，应用有责任管理<code>OpenGL ES</code>的状态更改，</p>
+
+<ul>
+<li>未修改对象时，app可同时在多个上下文中访问该对象</li>
+<li>通过发送到context的命令修改对象时，不能在其他context中读取或者修改对象</li>
+<li>当修改对象后，所有context必须重新绑定对象来查看其更改。在context对其绑定之前 引用对象，该对象内容是undefined的</li>
+</ul>
+
+<p>应用更新OpenGL ES对象应遵循的步骤：</p>
+
+<ol>
+<li>在可能正在使用该对象的每个context中调用<code>glFlush</code></li>
+<li>在想要修改对象的context中，调用一个或者多个OpenGL ES函数来更改对象</li>
+<li>在收到状态修改命令的上下中调用<code>glFlush</code></li>
+<li>在所有的其它上下文中，重新绑定该对象标识符</li>
+</ol>
+
+<blockquote>
+<p>共享对象的另一种方法是使用单个渲染上下文，但使用多个目标帧缓冲区。在渲染时，您的应用绑定了适当的帧缓冲区并根据需要渲染其帧。由于所有OpenGL ES对象都是从单个上下文中引用的，因此它们将看到相同的OpenGL ES数据。此模式使用的资源较少，但是仅对单线程应用有用，在该应用中您可以仔细控制上下文的状态</p>
+</blockquote>
+
+<h2 id="toc_5">使用GLKit绘图</h2>
+
+<p><code>GLKit framework</code>提供view和viewController，消除了对OpenGL内容绘制和动画必须设置和维护的代码。<br/>
+<code>GLKView class</code>为绘图代码提供位置，<code>GLKViewController class</code>提供渲染循环使<code>GLKit</code>中的OpenGL内容可以平滑动画。<br/>
+<code>GLKit</code>帮助我们主要将精力集中在OpenGL ES渲染代码上，并使app可以快读启动并运行。<br/>
+<code>GLKit</code>还提供了其它功能来简化<code>OpenGL</code>2.0和3.0的开发</p>
+
+<h3 id="toc_6">GLKit View按需绘制OpenGL内容</h3>
+
+<p><code>GLKView</code>提供了基于OpenGL的等效于标准的<code>UIView</code>的绘图周期。类似UIView自动配置其图形上下文，方便我们实现<code>drawRect:</code>方法只需要执行<code>Quartz 2D</code>命令，而<code>GLKView</code>实例自动进行自身配置，一边绘制方法仅需要执行<code>OpenGL</code>绘制命令。<code>GLKView</code>类通过维护了保存OpenGLES绘制命令结果的帧缓冲区对象，然后在绘制方法返回后自动将其呈现给<code>Core Animation</code></p>
+
+<p>像标准的<code>UIKit UIView</code>一样，<code>GLKit View</code>按需呈现其内容。首次显示<code>View</code>时，它会调用您的绘制方法--<code>Core Animation</code>缓存渲染的输出，并在无论何时显示View时将其展示。当您想要更改<code>View</code>的内容时，请调用其<code>setNeedsDisplay</code>方法，然后该视图再次调用您的绘图方法，缓存生成的图像，并将其显示在屏幕上。当用于渲染图像的数据不经常更改或仅响应用户操作而更改时，此方法很有用。通过仅在需要时渲染新的视图内容，可以节省设备的电池电量，并为设备留出更多时间执行其他操作。</p>
+
+<p><img src="media/15785393114232/15785516776768.png" alt="" style="width:500px;"/></p>
+
+<h4 id="toc_7">创建和配置GLKit View</h4>
+
+<p>可以通过代码或者XIB创建<code>GLKView</code>对象，但是在试用其之前必须将其与<code>EAGLContext</code>对象相关联</p>
+
+<ul>
+<li>当以代码方式创建时，请先创建一个context然后将其传递给view的<code>initWithFrame：context:</code>方法</li>
+<li>如果容storyboard中加载视图后，创建一个context并将其设置为视图的context属性值</li>
+</ul>
+
+<p><code>GLKView</code>会自动创建和配置它自己的OpenGL的<code>framebuffer</code>对象和<code>renderbuffer</code>。可以使用<code>drawable</code>属性控制这些对象的属性，如果更改<code>GLKit View</code>的<code>size</code>、<code>scale factor</code>或者<code>drawable</code>属性，则会在下次绘制其内容时自动删除并重新创建适当的<code>framebuffer</code>和<code>renderbuffer</code></p>
+
+<pre><code class="language-objectivec">- (void)viewDidLoad
+{
+    [super viewDidLoad];
+ 
+    // Create an OpenGL ES context and assign it to the view loaded from storyboard
+    GLKView *view = (GLKView *)self.view;
+    view.context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+ 
+    // Configure renderbuffers created by the view
+    view.drawableColorFormat = GLKViewDrawableColorFormatRGBA8888;
+    view.drawableDepthFormat = GLKViewDrawableDepthFormat24;
+    view.drawableStencilFormat = GLKViewDrawableStencilFormat8;
+ 
+    // Enable multisampling
+    view.drawableMultisample = GLKViewDrawableMultisample4X;
+}
+</code></pre>
+
+<p>可以使用<code>drawableMultisample</code>属性为<code>GLKView</code>启用多重采样。多重采样是一种抗锯齿形式，可以平滑锯齿边缘，以占用更多内存和和片段处理为代价，提高大多数3Dapp的图像质量，因此，启用多重采样，需要始终测试应用性能是可接受的</p>
+
+<h4 id="toc_8">使用GLKit绘制</h4>
+
+<p>绘制OpenGL ES内容的3个步骤：</p>
+
+<ul>
+<li>准备OpenGL ES基础结构</li>
+<li>发出绘制命令</li>
+<li>将渲染的内容呈现给CoreAnimation进行显示<br/>
+而<code>GLKView</code>实现了第一和第三步</li>
+</ul>
+
+<pre><code class="language-objectivec">//第二步 绘制示例
+- (void)drawRect:(CGRect)rect
+{
+    // Clear the framebuffer
+    glClearColor(0.0f, 0.0f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+ 
+    // Draw using previously configured texture, shader, uniforms, and vertex array
+    glBindTexture(GL_TEXTURE_2D, _planetTexture);
+    glUseProgram(_diffuseShading);
+    glUniformMatrix4fv(_uniformModelViewProjectionMatrix, 1, 0, _modelViewProjectionMatrix.m);
+    glBindVertexArrayOES(_planetMesh);
+    glDrawElements(GL_TRIANGLE_STRIP, 256, GL_UNSIGNED_SHORT);
+}
+</code></pre>
+
+<blockquote>
+<p><code>glClear</code>函数向<code>OpenGL ES</code>提示可以丢弃任何现有帧缓冲区内容，避免将先前内容加载到内存中的昂贵内存操作。因此，为了确保最佳性能，应始终在绘制之前调用此函数。</p>
+</blockquote>
+
+<p><code>GLKitView</code>类能为<code>OpenGL ES</code>绘图提供一个简单的接口，因为其管理渲染进程的标准部分：</p>
+
+<ul>
+<li>在调用绘图方法之前：
+<ul>
+<li>将其<code>EAGLContext</code>设置为当前上下文</li>
+<li>根据当前size、scale factor和drawable属性创建<code>framebuffer</code>对象和<code>renderbuffer</code></li>
+<li>将<code>framebuffer</code>对象绑定为当前绘图命令的目标</li>
+<li>设置OpenGL ES的Viewport来匹配<code>framebuffer size</code></li>
+</ul></li>
+<li>在绘制方法返回后:
+<ul>
+<li>解析多重采样缓冲区(如果启用了多重采样)</li>
+<li>丢弃不再需要内容的renderbuffers</li>
+<li>将renderbuffer内容呈现给<code>Core Animation</code>进行缓存和显示</li>
+</ul></li>
+</ul>
+
+<h3 id="toc_9">使用Delegate对象渲染</h3>
+
+<p>许多<code>OpenGL ES app</code>在自定义类中实现渲染代码。这种方法的优点是，通过为每个渲染算法定义一个不同的渲染器类，可以轻松支持多种渲染算法。共享通用功能的渲染算法可以从super class继承它。例如，您可能使用不同的渲染器类来支持OpenGL ES 2.0和3.0。或者，您可以使用它们来自定义渲染，以在具有更强大硬件的设备上获得更好的图像质量。</p>
+
+<p><code>GLKit</code>非常适合上面所说的方法，可以使你的渲染对象称为<code>GLKView</code>实例的代理。render class继承<code>GLKViewDelegate</code>协议并且实现<code>glkView:drawRect:</code>方法，而不是子类化<code>GLKView</code>实现<code>drawRect:</code>方法。</p>
+
+<pre><code class="language-objectivec">//在app启动时，基于硬件功能选择渲染器类：
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+{
+    // Create a context so we can test for features
+    EAGLContext *context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+    [EAGLContext setCurrentContext:context];
+ 
+    // Choose a rendering class based on device features
+    GLint maxTextureSize;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &amp;maxTextureSize);
+    if (maxTextureSize &gt; 2048)
+        self.renderer = [[MyBigTextureRenderer alloc] initWithContext:context];
+    else
+        self.renderer = [[MyRenderer alloc] initWithContext:context];
+ 
+    // Make the renderer the delegate for the view loaded from the main storyboard
+    GLKView *view = (GLKView *)self.window.rootViewController.view;
+    view.delegate = self.renderer;
+ 
+    // Give the OpenGL ES context to the view so it can draw
+    view.context = context;
+    return YES;
+}
+</code></pre>
+
+<h3 id="toc_10">GLKit View Controller使OpenGL ES动画内容</h3>
+
+<p>GLKit提供了一个视图控制器，该类维护其管理的<code>GLKView</code>对象的一个动画循环。这个循环遵循在游戏和模拟中常见的设计模式，分为两个阶段：<code>更新和展示</code></p>
+
+<p><img src="media/15784535760978/15785595203233.png" alt=""/></p>
+
+<h4 id="toc_11">动画循环的理解</h4>
+
+<p>在更新阶段，视图控制器调用自己的<code>update</code>方法(或者其delegate的<code>glkViewControllerUpdate:</code>方法)。在这个方法中，应该准备绘画下一帧。也可以使用ViewController的timing属性例如<code>timeSinceLastUpdate</code>来决定下一帧的状态。</p>
+
+<p>在显示阶段，viewController调用view的<code>display</code>方法，其又会调用你的绘制方法。在绘制方法中，将OpenGL ES命令提交给GPU来渲染内容。为了获得最佳性能，应用应该在渲染新帧开始时修改OpenGL ES对象，然后提交绘图命令。</p>
+
+<p><code>animation loop</code>在<code>ViewController</code>的<code>framePerSecond</code>属性指示的速率在两个阶段之间交替。可以使用<code>preferredFramesPerSecond</code>属性设置所需的帧速率，为了优化当前显示的硬件性能，控制器会自动选择接近首选值的最佳帧速率</p>
+
+<h4 id="toc_12">使用GLKit View Controller</h4>
+
+<p>使用<code>GLKViewController</code>和<code>GLKView</code>实例渲染动态OpenGL ES内容</p>
+
+<pre><code class="language-objectivec">@implementation PlanetViewController // subclass of GLKViewController
+ 
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+ 
+    // 加载PlantViewController类 以及标准的GLKView实例 及其可绘制属性
+    GLKView *view = (GLKView *)self.view;
+    //创建和设置context
+    view.context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+ 
+    // 设置动画循环的帧率
+    self.preferredFramesPerSecond = 60;
+ 
+    // Not shown: load shaders, textures and vertex arrays, set up projection matrix
+    [self setupGL];
+}
+ 
+//动画循环的更新阶段
+- (void)update
+{
+    _rotation += self.timeSinceLastUpdate * M_PI_2; // one quarter rotation per second
+ 
+    // 计算旋转的行星所需要变换矩阵
+    GLKMatrix4 modelViewMatrix = GLKMatrix4MakeRotation(_rotation, 0.0f, 1.0f, 0.0f);
+    _normalMatrix = GLKMatrix3InvertAndTranspose(GLKMatrix4GetMatrix3(modelViewMatrix), NULL);
+    _modelViewProjectionMatrix = GLKMatrix4Multiply(_projectionMatrix, modelViewMatrix);
+}
+ 
+ //视图控制器 自动称为其View的delegate  实现动画循环的显示阶段
+ //将计算出来的矩阵提供给着色器程序 并提交绘制
+- (void)glkView:(GLKView *)view drawInRect:(CGRect)rect
+{
+    // Clear the framebuffer
+    glClearColor(0.0f, 0.0f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+ 
+    // Set shader uniforms to values calculated in -update
+    glUseProgram(_diffuseShading);
+    glUniformMatrix4fv(_uniformModelViewProjectionMatrix, 1, 0, _modelViewProjectionMatrix.m);
+    glUniformMatrix3fv(_uniformNormalMatrix, 1, 0, _normalMatrix.m);
+ 
+    // Draw using previously configured texture and vertex array
+    glBindTexture(GL_TEXTURE_2D, _planetTexture);
+    glBindVertexArrayOES(_planetMesh);
+    glDrawElements(GL_TRIANGLE_STRIP, 256, GL_UNSIGNED_SHORT, 0);
+}
+ 
+@end
+</code></pre>
+
+<h3 id="toc_13">使用GLKit开发渲染器</h3>
+
+<p>除了view和viewController结构，GLKit 框架还提供了一些其他特性来简化OpenGL ES的开发</p>
+
+<h4 id="toc_14">处理向量和数学矩阵</h4>
+
+<p>OpenGL ES 2.0及更高版本不提供用于创建或指定转换矩阵的内置函数。而是，可编程着色器提供顶点转换，您可以使用通用的uniform variables指定着色器输入。 GLKit框架包括一个全面的矢量，矩阵类型和函数库，针对iOS硬件上的高性能进行了优化。参考<a href="https://developer.apple.com/documentation/glkit">GLKit Framework Reference.</a></p>
+
+<h4 id="toc_15">从OpenGL ES 1.1固定功能管道迁移</h4>
+
+<h4 id="toc_16">加载纹理数据</h4>
+
+<p>GLKTextureLoader类提供了一种简单的方法，可以将纹理数据从iOS支持的任何图像格式同步或异步加载到OpenGL ES上下文中。 （请参阅<a href="https://developer.apple.com/library/archive/documentation/3DDrawing/Conceptual/OpenGLES_ProgrammingGuide/TechniquesForWorkingWithTextureData/TechniquesForWorkingWithTextureData.html#//apple_ref/doc/uid/TP40008793-CH104-SW10">使用GLKit框架加载纹理数据</a>）</p>
+
+<h2 id="toc_17">绘制到其他渲染目标</h2>
+
+<p>frameBuffer对象是渲染命令的目标。当创建帧缓冲区对象时，可以对其颜色、深度、和模板等数据的存储进行精确控制。可以通过将图像附加到帧缓冲区来提供此存储。最常见的图像附加是<code>renderBuffer</code>对象。也可以将OpenGL ES纹理附加到帧缓冲区的颜色附着点，意味着所有的绘制命令都将渲染到纹理中，之后，纹理可以用作将来渲染命令的输入。还可以在单个渲染上下文中创建多个帧缓冲区对象，这样做，可以在多个帧缓冲区之间共享相同的渲染管道和OpenGL ES资源。</p>
+
+<p><img src="media/15784535760978/15785649848207.png" alt="" style="width:400px;"/><br/>
+所有的这些方法都需要手动创建frameBuffer和renderBuffer对象以存储来自OpenGL ES context的渲染结果，也需要编写额外代码来将其内容呈现到屏幕上，并如果需要的话运行动画循环</p>
+
+<h3 id="toc_18">创建Framebuffer对象</h3>
+
+<p>根据</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[OpenGL ES]]></title>
+    <link href="https://acefish.github.io/15783816080792.html"/>
+    <updated>2020-01-07T15:20:08+08:00</updated>
+    <id>https://acefish.github.io/15783816080792.html</id>
+    <content type="html"><![CDATA[
+<p>参考<a href="https://developer.apple.com/library/archive/documentation/3DDrawing/Conceptual/OpenGLES_ProgrammingGuide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40008793-CH1-SW1">About OpenGL ES</a><br/>
+<a href="https://developer.apple.com/documentation/opengles?language=objc">OpenGL ES Framework Reference</a><br/>
+<a href="https://developer.apple.com/documentation/glkit?language=objc">GLKit</a></p>
+
+<p><code>Open GL(Open Graphic Library)</code>旨在将函数调用转换为可发送到基础图形硬件的图形命令。由于此底层硬件专用于处理图形命令，因此OpenGL绘制通常非常快。<br/>
+<code>Open GL ES</code>是<code>OpenGL</code>的简化版，专门提供了易于学习且易于在移动设备的图形硬件中实现的库<br/>
+<img src="media/15783816080792/15783819600717.png" alt=""/></p>
+
+<h2 id="toc_0">构建适用于iOS的OpenGL ES应用程序</h2>
+
+<p><code>Open GL ES</code>定义了和平台无关的API用于使用GPU硬件渲染图形。<code>OpenGL ES</code>平台提供了用于执行OpenGL ES命令的渲染上下文，用于保存渲染结果的帧缓冲区以及一个或者多个渲染目标以显示帧缓冲区内容。<br/>
+在iOS中<code>EAGLContext</code>用于上下文，iOS仅提供了一种类型的帧缓冲区，以及GLKView和CAEAGLLayer类实现渲染目标。</p>
+
+<p>在iOS中构建<code>OpenGL ES</code>需要考虑因素清单：</p>
+
+<ol>
+<li>确定OpenGL ES版本,然后创建 OpenGL ES的上下文</li>
+<li>在运行时 验证设备是否支持要使用的功能</li>
+<li>选择渲染<code>OpenGL ES</code>内容的位置</li>
+<li>确保app在iOS中正确运行</li>
+<li>实现渲染引擎</li>
+<li>使用Xcode和instrument进行调试 使其获得最大性能</li>
+</ol>
+
+<h3 id="toc_1">选择OpenGL ES版本</h3>
+
+<p>选择app支持的3.0、2.0还是1.1，或者多个版本</p>
+
+<ul>
+<li><code>OpenGL ES 3.0</code>是iOS7中的新功能，添加了许多新功能，实现更高性能</li>
+<li><code>OpenGL ES 2.0</code>是iOS设备的基准配置文件，具有基于可编程着色器的可配置图形管线</li>
+<li><code>OpenGL ES 1.1</code>仅提供基本的固定功能图形流水线，并且在iOS中主要用于向后兼容。
+对于要创建的OpenGL ES对应版本的上下文，可参阅<a href="https://developer.apple.com/library/archive/documentation/3DDrawing/Conceptual/OpenGLES_ProgrammingGuide/WorkingwithOpenGLESContexts/WorkingwithOpenGLESContexts.html#//apple_ref/doc/uid/TP40008793-CH2-SW1">Configuring OpenGL ES Contexts.</a></li>
+</ul>
+
+<h3 id="toc_2">验证功能</h3>
+
+<p><a href="https://developer.apple.com/library/archive/documentation/DeviceInformation/Reference/iOSDeviceCompatibility/Introduction/Introduction.html#//apple_ref/doc/uid/TP40013599">iOS设备兼容性参考</a>中总结了iOS设备上可用的功能和扩展。</p>
+
+<p>我们应该始终在运行时 查询<code>OpenGL ES</code>实现的功能。<br/>
+为了确定对于特定实现的限制，例如最大纹理大小和最大顶点数量，可以<strong>使用正确的<code>glGet</code>函数获取其数据类型</strong>(例如在gl.h标头中找到的MAX_TEXTURE_SIZE或MAX_VERTEX_ATTRIBS)。</p>
+
+<pre><code class="language-objectivec">//检查 OpenGL ES3.0的扩展，使用glGetIntegerv和glGetStringi函数
+BOOL CheckForExtension(NSString *searchName)
+{
+    // 创建一个包含所有扩展名字的set
+    int max = 0;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &amp;max);
+    NSMutableSet *extensions = [NSMutableSet set];
+    for (int i = 0; i &lt; max; i++) {
+        [extensions addObject: @( (char *)glGetStringi(GL_EXTENSIONS, i) )];
+    }
+    return [extensions containsObject: searchName];
+}
+
+</code></pre>
+
+<h3 id="toc_3">选择渲染目标</h3>
+
+<p>在iOS中，帧缓冲区对象存储绘图命令的结果。可以通过多种方式，使用帧缓冲区对象的内容：</p>
+
+<ul>
+<li><code>GLKit</code>框架提供了绘制Open GL内容并管理自己帧缓冲区对象的视图View，以及一个支持对OpenGL内容做动画的视图控制器Controller。使用这个这些类来创建全屏或者适应Open GL内容的UIKit 视图层次</li>
+<li><code>CAEAGLLayer</code>类提供了一种绘制<code>Open GLES</code>内容的方法，作为<code>CoreAnimation</code>图层合成的一部分。使用这个类，必须创建自己的帧缓冲区对象</li>
+<li>也可以使用帧缓冲区进行屏幕外图形处理或者渲染为纹理，以在图形管道的其它地方使用</li>
+</ul>
+
+<h3 id="toc_4">集成在iOS中</h3>
+
+<p>iOS app默认支持多任务，但是在<code>Open GL ES</code>应用中可能需要额外考虑。如果在后台不正确使用，就会导致应用被系统杀死。</p>
+
+<h3 id="toc_5">实现渲染引擎</h3>
+
+<p>设计OpenGL ES绘图代码有多种可能的策略。渲染引擎设计的许多方面对于OpenGL和OpenGL ES的所有实现都是通用的。</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[构造Audio Unit应用]]></title>
+    <link href="https://acefish.github.io/15776919276552.html"/>
+    <updated>2019-12-30T15:45:27+08:00</updated>
+    <id>https://acefish.github.io/15776919276552.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">选择设计模式</h2>
+
+<p>有6种设计模式可以用于iOS应用audio unit。首先选择一种最接近你的app处理音频的模式。<br/>
+其共同特性：</p>
+
+<ul>
+<li>仅有一个I/O unit</li>
+<li>在整个<code>audio processing graph</code>中使用单一音频流格式，尽管格式可能会有变化</li>
+<li>要求在特定位置设置流的格式或者部分流的格式</li>
+</ul>
+
+<blockquote>
+<p>正确设置流格式对于建立音频数据流至关重要</p>
+</blockquote>
+
+<h3 id="toc_1">I/O传递</h3>
+
+<p>将传入的音频直接发送到输出硬件，不需要处理audio data。<br/>
+<img src="media/15776919276552/15776937507092.jpg" alt="" style="width:468px;"/></p>
+
+<p>音频硬件强制<code>Remote I/O unit</code>输入元素的朝外一侧的流格式，而可以在朝内侧指定期望的格式。audio unit执行需要的格式转换。为避免不必要的采样率转换，请定义采样率为硬件设备采样率</p>
+
+<p>利用两个remote I/O元素间的<code>audio unit connection</code>，不需要设置output元素的input scope格式。<code>connection</code>会为传播在输入元素指定的格式</p>
+
+<p>在output 元素的外侧采用硬件流格式，其会自动执行需要的格式转换</p>
+
+<blockquote>
+<p>input 元素默认是禁用的，因此在使用时 需要确保启用</p>
+
+<p>使用这个模式 无需配置任何音频数据缓冲区</p>
+</blockquote>
+
+<h3 id="toc_2">没有渲染回调的I/O</h3>
+
+<p><img src="media/15776919276552/15776943788896.jpg" alt="" style="width:590px;"/></p>
+
+<p>在<code>remote I/O</code>元素间 添加一个或多个audio unit。<br/>
+这种模式 仍然没有回调函数，就说明了，无法直接操作音频</p>
+
+<blockquote>
+<p>无论何时，使用<code>I/O unit</code>外的任何unit，都必须要指定<code>kAudioUnitProperty_MaximumFramesPerSlice</code>属性</p>
+
+<p>要设置<code>Multichannel Mixer unit</code>就必须在混音器的输出上设置流格式的采样率</p>
+
+<p>使用这个模式 类似直通模式 也无需配置任何音频数据缓冲区</p>
+</blockquote>
+
+<h3 id="toc_3">具有渲染回调的I/O</h3>
+
+<p><img src="media/15776919276552/15776953809911.jpg" alt="" style="width:737px;"/></p>
+
+<p>这种模式，在<code>Remote I/O</code>的输入和输出元素间放置渲染回调函数，可以在音频达到输出硬件前对其进行操作。简单可以使用render回调调整音量，复杂的话，可以通过<code>Accelerate framework</code><a href="https://developer.apple.com/documentation/accelerate?language=objc">Accelerate</a>中的<code>Fourier transforms</code>和卷积函数对声音做处理</p>
+
+<p>将回调函数附加到输出元素的输入范围，回调函数通过调用<code>Remote I/O</code>的input元素的渲染回调函数获取新的音频数据</p>
+
+<blockquote>
+<p>此时，当使用渲染回调函数建立从一个audio unit到另一个unit的路径，回调函数将代替<code>audio unit connection</code></p>
+</blockquote>
+
+<h3 id="toc_4">仅有渲染回调函数的 output</h3>
+
+<p>常为音乐游戏和合成器选择这种模式，此时app需要生成声音并最大程度的响应。</p>
+
+<p>简单来说，这个模式将渲染回调函数直接连接到远程I/O unit的输出元素的输入范围<br/>
+<img src="media/15776919276552/15776968166755.jpg" alt="" style="width:603px;"/></p>
+
+<p>可以使用相同模式构造更复杂结构的app<br/>
+<img src="media/15776919276552/15776970706094.jpg" alt="" style="width:644px;"/></p>
+
+<blockquote>
+<p>iPod EQ要求您在输入和输出上都设置完整的流格式</p>
+
+<p>多通道混频器只需要在其输出上设置正确的采样率即可</p>
+
+<p><code>Multichannel Mixer unit inputs</code>通常需要单独考虑每个音频单元的流格式</p>
+</blockquote>
+
+<h3 id="toc_5">其它设计模式</h3>
+
+<p>还有两种其他设计模式：</p>
+
+<ul>
+<li><p>录制或分析音频，创建具有渲染回调功能的仅input  app<br/>
+一般，更好的选择是使用<code>AudioQueue</code>对象(<code>AudioQueueRef</code>),此时将会有更大灵活性，因为其渲染回调并不在实时线程上</p></li>
+<li><p>执行离线音频处理，使用<code>Generic Output unit</code>，此unit并未连接到音频硬件。当使用它向应用程序发送音频时，取决于您app来调用其render方法</p></li>
+</ul>
+
+<h2 id="toc_6">构建你的app</h2>
+
+<p>构建步骤：</p>
+
+<ol>
+<li>配置<code>audio session</code></li>
+<li>指定 <code>audio unit</code></li>
+<li>创建一个<code>audio processing graph</code> 然后获取<code>audio unit</code></li>
+<li>配置<code>audio unit</code></li>
+<li>连接<code>audio unit node</code></li>
+<li>提供用户界面</li>
+<li>初始化 并启动音频处理图</li>
+</ol>
+
+<h3 id="toc_7">配置audio session</h3>
+
+<p>与配置所有iOS音频相同，第一步就是配置<code>audio session</code>。</p>
+
+<p>首先指定在app中采用的采样率：<code>self.graphSampleRate = 44100.0; // Hertz</code><br/>
+接着使用<code>audio session</code>对象 请求系统将您的首选采样率用作设备硬件采样率，来避免app间的采样率转换，这样可以最大化CPU性能和声音质量，并最大程度地减少电池消耗。</p>
+
+<pre><code class="language-objectivec">NSError *audioSessionError = nil;
+//获取对应用程序的单例音频回话
+AVAudioSession *mySession = [AVAudioSession sharedInstance];     // 1
+//请求硬件的采样率，根据设备上其它音频活动，系统可能不会通过请求
+[mySession setPreferredHardwareSampleRate: graphSampleRate       // 2
+                                    error: &amp;audioSessionError];
+//请求音频回话类别，指定&quot;录制和播放&quot;支持音频输入和输出
+[mySession setCategory: AVAudioSessionCategoryPlayAndRecord      // 3
+                                    error: &amp;audioSessionError];
+//请求激活音频回话
+[mySession setActive: YES                                        // 4
+               error: &amp;audioSessionError];
+//激活后 根据系统提供采样率 更新自己采样率
+self.graphSampleRate = [mySession currentHardwareSampleRate];    // 5
+</code></pre>
+
+<p>还有另外一项硬件特性：音频硬件I/O缓冲区持续时间。在44.1kHZ采样率下，默认持续时间为23ms，相当于1024个采样的切片大小。如果I/O延迟在应用中很重要，可以请求更短的持续时间，大约0.005ms(相当于256个样本)</p>
+
+<pre><code class="language-objectivec">self.ioBufferDuration = 0.005;
+[mySession setPreferredIOBufferDuration: ioBufferDuration
+                                  error: &amp;audioSessionError];
+</code></pre>
+
+<p>参阅<a href="https://developer.apple.com/library/archive/documentation/Audio/Conceptual/AudioSessionProgrammingGuide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40007875">Audio Session Programming Guide</a></p>
+
+<h3 id="toc_8">指定所需音频单元</h3>
+
+<p>使用<code>AudioComponentDescription</code>结构指定所需的每个<code>audio unit</code>.</p>
+
+<h3 id="toc_9">构建Audio Processing Graph</h3>
+
+<p>这一步将创建前面所说的设计模式框架。</p>
+
+<pre><code class="language-objectivec">//如何对包含Remote I/O单元和Multichannel Mixer unit的图形执行这些步骤
+AUGraph processingGraph;
+NewAUGraph (&amp;processingGraph);
+
+AUNode ioNode;
+AUNode mixerNode;
+//
+AUGraphAddNode (processingGraph, &amp;ioUnitDesc, &amp;ioNode);
+AUGraphAddNode (processingGraph, &amp;mixerDesc, &amp;mixerNode);
+</code></pre>
+
+<p>此时该graph已实例化，并拥有您将在应用程序中使用的nodes。<br/>
+然后open graph并初始化audio unit</p>
+
+<pre><code class="language-objectivec">AUGraphOpen (processingGraph);
+</code></pre>
+
+<p>然后获取audio unit实例的引用</p>
+
+<pre><code class="language-objectivec">AudioUnit ioUnit;
+AudioUnit mixerUnit;
+ 
+AUGraphNodeInfo (processingGraph, ioNode, NULL, &amp;ioUnit);
+AUGraphNodeInfo (processingGraph, mixerNode, NULL, &amp;mixerUnit);
+</code></pre>
+
+<p>获取了unit对象的引用，就可以配置或者互连这些audio unit</p>
+
+<h3 id="toc_10">配置audio unit</h3>
+
+<p>每个unit都有自己的配置，参阅<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/AudioUnitHostingGuide_iOS/UsingSpecificAudioUnits/UsingSpecificAudioUnits.html#//apple_ref/doc/uid/TP40009492-CH17-SW1">Using Specific Audio Units</a></p>
+
+<p>默认 <code>Remote I/O</code>已启用输出并禁用输入。</p>
+
+<p>除了<code>Remote I/O</code>和<code>Voice-processing I/O</code>单元外，所有iOS音频单元都需要配置<code>kAudioUnitProperty_MaximumFramesPerSlice</code>属性。此属性可确保audio unit准备好响应渲染调用而产生足够数量的音频数据帧。参阅<a href="https://developer.apple.com/documentation/audiounit/audio_unit_properties?language=objc">Audio Unit Properties</a></p>
+
+<p>所有的<code>audio unit</code>都需要在输入或者输出上定义其频流格式。</p>
+
+<h3 id="toc_11">编写和渲染回调函数</h3>
+
+<p>有关示例，请在iOS库中查看各种音频单元示例项目包括<code>MixerHost、aurioTouch、SynthHost</code></p>
+
+<pre><code class="language-objectivec">AURenderCallbackStruct callbackStruct;
+callbackStruct.inputProc        = &amp;renderCallback;
+callbackStruct.inputProcRefCon  = soundStructArray;
+ 
+AudioUnitSetProperty (
+    myIOUnit,
+    kAudioUnitProperty_SetRenderCallback,
+    kAudioUnitScope_Input,
+    0,                 // output element
+    &amp;callbackStruct,
+    sizeof (callbackStruct)
+);
+
+//使用AUGraph 以线程安全的方式
+AURenderCallbackStruct callbackStruct;
+callbackStruct.inputProc        = &amp;renderCallback;
+callbackStruct.inputProcRefCon  = soundStructArray;
+ 
+AUGraphSetNodeInputCallback (
+    processingGraph,
+    myIONode,
+    0,                 // output element
+    &amp;callbackStruct
+);
+// ... some time later
+Boolean graphUpdated;
+AUGraphUpdate (processingGraph, &amp;graphUpdated);
+
+</code></pre>
+
+<h3 id="toc_12">连接 Audio Unit Nodes</h3>
+
+<p>大多数情况下，使用<code>AUdio processing Graph</code>中的API <code>AUGraphConnectNodeInput、AUGraphDisconnectNodeInput</code>函数在audio unit间建立和断开连接，这些函数是线程安全的，而且避免显式定义连接的编码开销</p>
+
+<pre><code class="language-objectivec">AudioUnitElement mixerUnitOutputBus  = 0;
+AudioUnitElement ioUnitOutputElement = 0;
+ 
+AUGraphConnectNodeInput (
+    processingGraph,
+    mixerNode,           // source node
+    mixerUnitOutputBus,  // source node bus
+    iONode,              // destination node
+    ioUnitOutputElement  // desinatation node element
+);
+</code></pre>
+
+<p>不推荐：可以直接使用音频单元属性机制在音频单元之间建立和断开连接。为此，请结合使用<code>AudioUnitSetProperty</code>函数和<code>kAudioUnitProperty_MakeConnection</code>属性。此方法要求您为每个连接定义一个<code>AudioUnitConnection</code>结构，以用作其属性值</p>
+
+<pre><code class="language-objectivec">AudioUnitElement mixerUnitOutputBus  = 0;
+AudioUnitElement ioUnitOutputElement = 0;
+ 
+AudioUnitConnection mixerOutToIoUnitIn;
+mixerOutToIoUnitIn.sourceAudioUnit    = mixerUnitInstance;
+mixerOutToIoUnitIn.sourceOutputNumber = mixerUnitOutputBus;
+mixerOutToIoUnitIn.destInputNumber    = ioUnitOutputElement;
+ 
+AudioUnitSetProperty (
+    ioUnitInstance,                     // connection destination
+    kAudioUnitProperty_MakeConnection,  // property key
+    kAudioUnitScope_Input,              // destination scope
+    ioUnitOutputElement,                // destination element
+    &amp;mixerOutToIoUnitIn,                // connection definition
+    sizeof (mixerOutToIoUnitIn)
+);
+</code></pre>
+
+<h3 id="toc_13">提供用户界面</h3>
+
+<p>参阅<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/AudioUnitHostingGuide_iOS/AudioUnitHostingFundamentals/AudioUnitHostingFundamentals.html#//apple_ref/doc/uid/TP40009492-CH3-SW21">Use Parameters and UIKit to Give Users Control</a></p>
+
+<h3 id="toc_14">初始化并且开始Audio Processing Graph</h3>
+
+<p>开始音频流之前，必须通过调用<code>AUGraphInitialize</code>函数来初始化音频处理图。<br/>
+这一步执行的步骤：</p>
+
+<ul>
+<li>通过自动为每个unit单独调用<code>AudioUnitInitialize</code>函数初始化所有audio unit。</li>
+<li>验证图表的连接和音频数据流格式。</li>
+<li>在音频单元连接之间传播流格式。</li>
+</ul>
+
+<pre><code class="language-objectivec">OSStatus result = AUGraphInitialize (processingGraph);
+// Check for error. On successful initialization, start the graph...
+AUGraphStart (processingGraph);
+ 
+// Some time later
+AUGraphStop (processingGraph)
+</code></pre>
+
+<blockquote>
+<p>如果graph 初始化失败，可以使用<code>CAShow</code>函数，将<code>graph</code>的状态输出到Xcode控制台</p>
+</blockquote>
+
+<h2 id="toc_15">调试</h2>
+
+<p>打印ASBD信息 查看问题</p>
+
+<pre><code class="language-objectivec">- (void) printASBD: (AudioStreamBasicDescription) asbd {
+ 
+    char formatIDString[5];
+    UInt32 formatID = CFSwapInt32HostToBig (asbd.mFormatID);
+    bcopy (&amp;formatID, formatIDString, 4);
+    formatIDString[4] = &#39;\0&#39;;
+ 
+    NSLog (@&quot;  Sample Rate:         %10.0f&quot;,  asbd.mSampleRate);
+    NSLog (@&quot;  Format ID:           %10s&quot;,    formatIDString);
+    NSLog (@&quot;  Format Flags:        %10X&quot;,    asbd.mFormatFlags);
+    NSLog (@&quot;  Bytes per Packet:    %10d&quot;,    asbd.mBytesPerPacket);
+    NSLog (@&quot;  Frames per Packet:   %10d&quot;,    asbd.mFramesPerPacket);
+    NSLog (@&quot;  Bytes per Frame:     %10d&quot;,    asbd.mBytesPerFrame);
+    NSLog (@&quot;  Channels per Frame:  %10d&quot;,    asbd.mChannelsPerFrame);
+    NSLog (@&quot;  Bits per Channel:    %10d&quot;,    asbd.mBitsPerChannel);
+}
+</code></pre>
+
+<h2 id="toc_16">Using Specific Audio Units</h2>
+
+<p><a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/AudioUnitHostingGuide_iOS/UsingSpecificAudioUnits/UsingSpecificAudioUnits.html">Using Specific Audio Units</a></p>
+
+<h3 id="toc_17">Using I/O Units</h3>
+
+<h4 id="toc_18">Remote I/O Unit</h4>
+
+<p>参见示例代码项目<a href="https://developer.apple.com/library/archive/samplecode/aurioTouch/Introduction/Intro.html#//apple_ref/doc/uid/DTS40007770">aurioTouch</a></p>
+
+<h3 id="toc_19">Using Mixer Units</h3>
+
+<h4 id="toc_20">Multichannel Mixer Unit</h4>
+
+<p>示例项目<a href="">Audio Mixer (MixerHost)</a></p>
+
+<p>默认情况下，<code>kAudioUnitProperty_MaximumFramesPerSlice</code>属性设置为值1024，这在屏幕锁定和显示器休眠时是不够的。如果您的应用在锁定屏幕的情况下播放音频，则除非音频输入处于活动状态，否则您必须增加此属性的值。进行如下操作：</p>
+
+<ul>
+<li>如果音频输入处于活动状态，则无需为<code>kAudioUnitProperty_MaximumFramesPerSlice</code>属性设置值。</li>
+<li>如果未激活音频输入，则将此属性设置为4096</li>
+</ul>
+
+<h3 id="toc_21">Using Effect Units</h3>
+
+<p><a href="">Mixer iPodEQ AUGraph Test</a>示例代码项目</p>
+
+<h2 id="toc_22">各种音频单元标识符</h2>
+
+<p><img src="media/15776919276552/15777080977092.jpg" alt="" style="width:879px;"/></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Audio Unit 工作原理]]></title>
+    <link href="https://acefish.github.io/15773512971221.html"/>
+    <updated>2019-12-26T17:08:17+08:00</updated>
+    <id>https://acefish.github.io/15773512971221.html</id>
+    <content type="html"><![CDATA[
+<p>参阅<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/AudioUnitHostingGuide_iOS/Introduction/Introduction.html#//apple_ref/doc/uid/TP40009492-CH1-SW1">Audio Unit Hosting Guide for iOS</a><br/>
+<a href="https://developer.apple.com/documentation/audiounit?language=objc">AudioUnit framework</a></p>
+
+<p><code>Audio Unit</code>用于向应用程序添加复杂的音频处理功能。还可以在宿主应用中创建或者修改audio的<code>Audio unit extension</code>。</p>
+
+<p>iOS 提供了音频处理插件，支持音频混合、均衡、格式转换以及用于录制、播放、离线渲染、实时对话(例如VoiP)的实时输入和输出。可以在iOS应用程序中动态的加载和使用这些插件，这些托管的插件即为<code>audio unit</code></p>
+
+<p>audio unit 通常在 <code>audio processing graph</code>上下文中工作。<br/>
+<img src="media/15773512971221/15775974949411.jpg" alt="" style="width:500px;"/></p>
+
+<p>因为audio unit 是iOS中最底层的音频编程层，因此其需要更深入的了解，因此 除非你需要实时播放同步声音、低延迟的I/O操作或者特定的unit功能呢，否则请先考虑使用<code>Media Player、AV Foundation、OpenAL或Audio Toolbox</code>这些高级结束，参阅<a href="https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/MediaPlaybackGuide/Contents/Resources/en.lproj/Introduction/Introduction.html#//apple_ref/doc/uid/TP40016757">Media Playback Programming Guide</a></p>
+
+<p>Audio unit的生命周期：</p>
+
+<ol>
+<li>在运行时，获取对可动态链接库的引用，库中定义了要使用的 audio unit</li>
+<li>实例化<code>audio unit</code></li>
+<li>根据类型要求配置音频单元，适应自己的应用意图</li>
+<li>初始化audio unit 准备处理音频</li>
+<li>开始音频流</li>
+<li>控制audio unit</li>
+<li>结束后，销毁unit</li>
+</ol>
+
+<p>构建托管音频单元的应用程序的步骤<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/AudioUnitHostingGuide_iOS/ConstructingAudioUnitApps/ConstructingAudioUnitApps.html#//apple_ref/doc/uid/TP40009492-CH16-SW1">Constructing Audio Unit Apps</a>：</p>
+
+<ol>
+<li>配置应用程序的audio session确保应用程序可以在系统和设备硬件的上下文中正常工作</li>
+<li>构造一个<code>audio processing graph(AUGraph)</code>.参阅<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/AudioUnitHostingGuide_iOS/AudioUnitHostingFundamentals/AudioUnitHostingFundamentals.html#//apple_ref/doc/uid/TP40009492-CH3-SW11">Audio Unit Hosting Fundamentals</a></li>
+<li>提供用于控制图的audio unit 的用户接口</li>
+</ol>
+
+<blockquote>
+<p>可以下载iOS开发中心的示例程序<a href="">Audio Mixer(MixerHost)</a></p>
+</blockquote>
+
+<p>参考文档：<br/>
+<a href="https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/MediaPlaybackGuide/Contents/Resources/en.lproj/Introduction/Introduction.html#//apple_ref/doc/uid/TP40016757">Media Playback Programming Guide</a> 学习了解各种音频技术 来检查是否有更高级别技术可以满足您的音频要求</p>
+
+<p><a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/CoreAudioOverview/WhatisCoreAudio/WhatisCoreAudio.html#//apple_ref/doc/uid/TP40003577-CH3-SW11">A Little About Digital Audio and Linear PCM</a> 学习相关音频基础知识 概念</p>
+
+<p><a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Reference/CoreAudioGlossary/Introduction/Introduction.html#//apple_ref/doc/uid/TP40004453">Core Audio Glossary </a> 来查看是否有不懂的专业术语概念</p>
+
+<h2 id="toc_0">Audio unit 基础知识</h2>
+
+<p>iOS中的所有音频技术都是建立在<code>audio unit</code>之上的。<br/>
+<img src="media/15773512971221/15776007315531.jpg" alt="" style="width:444px;"/></p>
+
+<p>因此建议仅当需要以下条件时，可以使用unit，否则请使用高级的API：</p>
+
+<ul>
+<li>低延迟的同步音频I/O(例如 VoIP)</li>
+<li>响应性的播放合成声音，例如 音乐游戏或合成乐器</li>
+<li>使用特定音频单元功能，例如 回升消除、混音或音调均衡</li>
+<li>使用链式处理体系结构，可以让音频处理模块组装到灵活的网中。这是iOS中唯一提供此功能的API</li>
+</ul>
+
+<h3 id="toc_1">iOS中的Audio unit</h3>
+
+<p>iOS中提供了七个unit，按照目的分为4类</p>
+
+<ol>
+<li>Effect： iPod Equalizer</li>
+<li>Mixing： 3D Minxer、Multichannel Mixer</li>
+<li>I/O：Remote I/O、Voice-Processing I/O、Generic Output、</li>
+<li>Format conversion：Formater conversion</li>
+</ol>
+
+<h5 id="toc_2">Effect Unit</h5>
+
+<p>音效单元iPod 均衡器，其与内置的iPod应用程序使用的均衡器相同。此unit提供了一组预设的均衡曲线</p>
+
+<h5 id="toc_3">Mixer Units</h5>
+
+<p>iOS中有两个混音单元。<br/>
+<code>3D Mixer</code>是构建OpenAL的基础(大多数需要3D mixer功能呢最好选择使用 Open AL)，提供了更适合应用程序的更高级的API。<br/>
+<code>Multichannel Mixer unit</code>可以为任意数量的单声道或者立体声流提供混音，并带有立体声输出。可以关闭或者打开每个输入、设置输入增益、设置立体声声像位置。参见示例项目<code>Audio Mixer（MixerHost）</code></p>
+
+<h5 id="toc_4">I/O Units</h5>
+
+<p>iOS中有3个I/O单元</p>
+
+<ol>
+<li><code>Remote I/O</code>是最常用的，连接到输入输出音频硬件，可以低延迟的访问输入输出音频样本值，并用附带的音频转换器单元在硬件音频格式和应欧阳程序音频果然是间提供格式转换。参见项目<a href="https://developer.apple.com/library/archive/samplecode/aurioTouch/Introduction/Intro.html#//apple_ref/doc/uid/DTS40007770">aurioTouch</a></li>
+<li><code>Voice-Processing I/O unit</code>通过添加用于<code>聊天应用或者VoIP</code>的回音消除功能来扩展Remote I/O，还提供了自动增益教正、语音处理质量调整和静音功能</li>
+<li><code>Generic Output unit</code> 不连接到音频硬件，而是提供一种将处理链的输出发送到应用程序的机制。通常，试用期进行离线音频处理</li>
+</ol>
+
+<h5 id="toc_5">Format Converter Unit</h5>
+
+<p>通常通过I/O单元间接使用</p>
+
+<h3 id="toc_6">使用Audio unit两种API</h3>
+
+<p>iOS有可直接使用audio unit的一个API，而另一个API用于处理<code>audio processing graph</code>。当在应用中使用audio unit可以同时使用两个API</p>
+
+<ul>
+<li>直接使用audio unit <a href="https://developer.apple.com/documentation/audiounit/audio_unit_component_services?language=objc">Audio Unit Component Services</a></li>
+<li>创建和配置audio processing graph <a href="https://developer.apple.com/documentation/audiotoolbox/audio_unit_processing_graph_services">Audio Unit Processing Graph Services</a></li>
+</ul>
+
+<p>推荐使用<code>audio processing graph</code>API  使代码更加易于阅读，并且支持动态重新配置</p>
+
+<h3 id="toc_7">指定和获取audio unit</h3>
+
+<p>在运行时查找<code>audio unit</code>，请先在<code>audio component description data</code>结构中指定其类型、子类型和制造商。不论使用audio unit还是graph API都要执行此操作</p>
+
+<pre><code class="language-objectivec">AudioComponentDescription ioUnitDescription;
+ 
+ioUnitDescription.componentType          = kAudioUnitType_Output;
+ioUnitDescription.componentSubType       = kAudioUnitSubType_RemoteIO;
+ioUnitDescription.componentManufacturer  = kAudioUnitManufacturer_Apple;
+ioUnitDescription.componentFlags         = 0;
+ioUnitDescription.componentFlagsMask     = 0;
+</code></pre>
+
+<blockquote>
+<p>所有的iOS音频单元都使用<code>kAudioUnitManufacturer_Apple</code></p>
+
+<p>如果要创建通配符，将字段设置为0.例如为匹配所有的I/O单元，将<code>componentSubType</code>字段设置值为0</p>
+</blockquote>
+
+<p>有了description  就可以使用两个API之一 获取指定音频单元</p>
+
+<pre><code class="language-objectivec">AudioComponent foundIoUnitReference = AudioComponentFindNext (
+                                          NULL,
+                                          &amp;ioUnitDescription
+                                      );
+AudioUnit ioUnitInstance;
+AudioComponentInstanceNew (
+    foundIoUnitReference,
+    &amp;ioUnitInstance
+);
+</code></pre>
+
+<blockquote>
+<p>传递NULL 给第一个参数，表示使用系统定义的顺序来找到和描述匹配的第一个系统音频单元。如果在这个参数传递先前已经找到的音频单元，则会查找下一个匹配的audio unit，这常用于通过重复调用<code>AudioComponentFindNext</code>来获取所偶遇I/O单元引用<br/>
+<code>AudioComponentFindNext</code>函数结果是对定义的audio unit的<code>dynamically-linkable library</code>的引用，将其传递给<code>AudioComponentInstanceNew</code> 实例化音频单元</p>
+</blockquote>
+
+<pre><code class="language-objectivec">// Declare and instantiate an audio processing graph
+AUGraph processingGraph;
+NewAUGraph (&amp;processingGraph);
+ 
+// Add an audio unit node to the graph, then instantiate the audio unit
+AUNode ioNode;
+AUGraphAddNode (
+    processingGraph,
+    &amp;ioUnitDescription,
+    &amp;ioNode
+);
+AUGraphOpen (processingGraph); // 间接执行音频单元的实例化 
+// 获取对新实例化的I/O单元的引用
+AudioUnit ioUnit;
+AUGraphNodeInfo (
+    processingGraph,
+    ioNode,
+    NULL,
+    &amp;ioUnit
+);
+</code></pre>
+
+<p>这种方式引入了<code>AUNode</code>，这是在graph中代表unit的不透明类型。</p>
+
+<h3 id="toc_8">使用scope和element指定Audio Units各部分</h3>
+
+<p><code>audio unit</code>的各部分按scope和element组织。当调用一个函数时配置和控制<code>audio unit</code>，指定scope和element来标识函数的特定目标<br/>
+<img src="media/15773512971221/15776367807541.png" alt="" style="width:300px;"/></p>
+
+<p><code>scope</code>是<code>audio unit</code>的程序化上下文。这些context是绝不会互相嵌套的，可以使用<code>Audio Unit Scopes</code>枚举常量来指定范围</p>
+
+<p><code>element</code>是嵌套在audio unit scope内的程序化上下文。当element是输入输出范围一部分时，类似物理音频设备中的信号总线，因此有时称为总线。 <mark>可以通过0索引的整数值指定element</mark>如果设置应用于整个scope的属性或者参数，指定元素值为0</p>
+
+<p>不同的audio unit可能有不同的架构。<code>global scope</code>适用于所有的audio unit，并且不与特定的特定音频流相关联，它只有一个element 0，而某些属性也只能应用于global scope(kAudioUnitProperty_MaximumFramesPerSlice)。</p>
+
+<p>上图说明了一种音频单元的通用体系结构，其中输入和输出上的元素数量相同。但是，各种音频单元使用各种架构。例如，混音器单元可能有多个输入元素，但只有一个输出元素</p>
+
+<p>输入和输出scope直接参与音频流在audio unit间的流动。可以使用属性或者参数整体应用于输入、输出scope，而其他的属性和参数则适用于特定scope内的element</p>
+
+<h3 id="toc_9">使用属性配置audio unit</h3>
+
+<p><code>audio unit</code>属性是用于配置音频单元的键值对。键为带助记符的枚举整数例如<code>kAudioUnitProperty_MaximumFramesPerSlice = 14</code>。值为指定的数据类型。</p>
+
+<p>使用<code>AudioUnitSetProperty</code>函数设置属性，并指定scope和<code>element</code></p>
+
+<pre><code class="language-objectivec">UInt32 busCount = 2;
+ 
+OSStatus result = AudioUnitSetProperty (
+    mixerUnit,
+    kAudioUnitProperty_ElementCount,   // the property key
+    kAudioUnitScope_Input,             // the scope to set the property on
+    0,                                 // the element to set the property on
+    &amp;busCount,                         // the property value
+    sizeof (busCount)
+);
+</code></pre>
+
+<p>audio unit开发中的一些属性：</p>
+
+<ul>
+<li><code>KAudioOutputUnitProperty_EnableIO</code>:用于启用或禁用I/O单元上的输入和输出。默认，启动输出，但禁用输入</li>
+<li><code>KAudioUnitProperty_ElementCount</code>:配置<code>mixer unit</code>输入元素数量</li>
+<li><code>KAudioUnitProperty_MaximumFramesPerSlice</code>：用于指定audio unit应准备音频数据的最大帧来响应render call。对于大多数音频单元，在大多数情况下，必须按照参考文档中的说明设置此属性。否则，屏幕锁定时，音频将停止。</li>
+<li><code>KAudioUnitProperty_StreamFormat</code>:用于指定特定音频单元输入或输出总线的音频流数据格式。
+参阅<a href="https://developer.apple.com/documentation/audiounit/audio_unit_properties?language=objc">Audio Unit Properties</a></li>
+</ul>
+
+<p>大对数的属性值仅在audio unit未初始化时才能设置，这类属性不能由用户更改。但是对于例如<code>iPod EQ unit</code>中的<code>kAudioUnitProperty_PresentPreset</code>和 <code>Voice-Processing I/O</code>单元中的<code>kAUVoiceIOProperty_MuteOutput</code>属性播放音频时是会被更改的</p>
+
+<p>查找可用属性：</p>
+
+<ul>
+<li><code>AudioUnitGetPropertyInfo</code>：查找属性是否可用，如果是，将提供其值的数据大小以及是否可以更改</li>
+<li><code>AudioUnitGetProperty、AudioUnitSetProperty</code>:用于获取或者设置属性值</li>
+<li><code>AudioUnitAddPropertyListener、AudioUnitRemovePropertyListenerWithUserData</code>:安装或者删除用于监视属性值更改的回调函数</li>
+</ul>
+
+<h3 id="toc_10">使用参数和UIKit 给用户控制</h3>
+
+<p><code>audio unit</code>参数数用户可控制的，在产生音频时可以实时更改，对正在执行的处理实时调整。与属性类似，参数也是键值对，键位枚举常量，但是值是相同类型<code>32位浮点数</code>。具体参数信息可以参阅<a href="https://developer.apple.com/documentation/audiounit/audio_unit_parameters?language=objc">Audio Unit Parameters</a></p>
+
+<p>使用以下函数获取和设置参数值：</p>
+
+<ul>
+<li>AudioUnitGetParameter</li>
+<li>AudioUnitSetParameter</li>
+</ul>
+
+<p>用户可以通过UI界面配置参数值，参见示例项目<code>MixerHost</code></p>
+
+<h3 id="toc_11">I/O unit 基本特征</h3>
+
+<p>I/O单元是每个audio unit应用都必须使用，在一个I/Ounit中包含两个元素</p>
+
+<p><img src="media/15773512971221/15776750118116.jpg" alt="" style="width:500px;"/></p>
+
+<p>我们在应用中常将这两个element看做独立实体。例如根据需要用属性启用或者禁用I/O每个元素</p>
+
+<p><code>element 1</code>的输入范围直接连接到音频输入硬件，这是对开发不透明的，我们首次对音频数据的访问是在element 1的输出范围。同理，<code>element 0</code>的连接到音频输出硬件，这也是不透明的，我们只需要负责将音频传动到输入范围。</p>
+
+<p><code>I/O unit</code>是唯一能够启动或者停止<code>audio processing graph</code>中音频流的audio unit。因此，<code>I/O unit</code>负责audio unit中的音频流</p>
+
+<h3 id="toc_12">Audio Processing Graphs</h3>
+
+<p><code>Audio Processing Graphs</code>就是不透明类型<code>AUGraph</code>，用于构造和管理audio unit的处理链。<br/>
+<code>AUGraph</code>类型增加audio units的线程安全，使您可以动态的重新配置处理链。</p>
+
+<p>在<code>AUGraph</code>中使用又一种不透明类型<code>AUNode</code>来表示图形上下文中的音频单元。此时，我们通常将node作为unit代理与其交互，而不直接与unit交互。</p>
+
+<p>但是，一个图形时，必须通过音频单元API配置每个<code>audio unit</code>。audio unit node是不可配置的。</p>
+
+<p>可以通过定义代表完整音频处理子图的Node，将<code>AUNode</code>作为复杂graph中的实例。此时，子图的末尾I/O必须是<code>Generic Output unit</code>(其不与硬件设备连接)</p>
+
+<p>因此构建graph的任务：</p>
+
+<ol>
+<li>向图中添加子节点</li>
+<li>直接配置节点代表的audio unit</li>
+<li>将node互连</li>
+</ol>
+
+<h4 id="toc_13">一个Audio Processing Graph 有一个 I/O Unit</h4>
+
+<p><code>Audio Processing Graph</code>都有一个I/O unit，其<code>I/O unit</code>可以是各种类型具体取决于应用需求。</p>
+
+<p><code>Graph</code>通过<code>AUGraphStart</code>和<code>AUGraphStop</code>启动和停止音频流。这些函数又通过<code>AudioOutputUnitStart</code>和<code>AudioOutputUnitStop</code>将消息传递给I/O unit。因此，I/O unit将负责graph中的<code>audio stream</code></p>
+
+<h4 id="toc_14">Audio Processing Graphs提供了线程安全</h4>
+
+<h4 id="toc_15">Audio 在Graph 中 通过 pull 流动</h4>
+
+<p>在<code>audio processing graph</code>中，在unit在需要更多数据时调用其provider。这种数据的请求流和音频流方向相反<br/>
+<img src="media/15773512971221/15776864609106.jpg" alt="" style="width:462px;"/><br/>
+对一组数据的每个请求称为render call或者随意的称为pull。render call请求的数据更加恰当的称为<code>audio sample frame</code>。<br/>
+响应render call而提供的一组<code>audio sample frame</code>称为<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Reference/CoreAudioGlossary/Glossary/core_audio_glossary.html#//apple_ref/doc/uid/TP40004453-CH210-SW165">slice</a>。提供slice的函数称为<code>render call back</code>(渲染回调函数)。</p>
+
+<p>整个工作流程</p>
+
+<ol>
+<li>调用AUGraphStart函数后，虚拟输出设备触发<code>Remote I/O</code>输出元素的渲染回调函数。这个函数请求一片处理过的音频数据帧</li>
+<li><code>Remote I/O</code>的回调函数在输入缓冲区查找要处理的音频数据，如果有待处理的数据将使用它，否则它将调用应用程序中连接到其输入的任何内容的渲染回调。在上图中，I/O unit从effct unit中请求以片数据</li>
+<li><code>effect unit</code>行为和I/O unit 相同，当需要数据时，使用了app的渲染回调函数</li>
+<li>app的渲染回调函数是该请求的最终接收者，将请求的帧提供给效果器</li>
+<li>效果单元处理app 回调函数提供的slice。然后将其处理的数据提供给I/O unit</li>
+<li><code>Remote I/O</code>处理slice，然后将已处理数据提供给虚拟输出设备。这样就完成了一个周期</li>
+</ol>
+
+<h3 id="toc_16">渲染回调函数</h3>
+
+<p>使用符合<code>AURenderCallback</code>类型的渲染回调函数，将音频数据从磁盘或内存提供到audio unit输入总线，此时当<code>audio unit</code>需要一片数据时 会调用此回调</p>
+
+<p>渲染回调有严格的性能要求，<code>render callbak</code>在实时优先的线程上，后续的render call会异步到达。因此，渲染回调所做工作都是在这种时间受限的环境中进行。如果在下一个渲染调用到达时，回调仍在响应上一个渲染调用生成sample frames，那么声音就会出现空白。因此不能在回调函数中执行锁、分配内存、访问文件系统、网络连接等耗时任务</p>
+
+<h4 id="toc_17">理解渲染回调函数</h4>
+
+<pre><code class="language-objectivec">static OSStatus MyAURenderCallback (
+    void                        *inRefCon,
+    AudioUnitRenderActionFlags  *ioActionFlags,
+    const AudioTimeStamp        *inTimeStamp,
+    UInt32                      inBusNumber,
+    UInt32                      inNumberFrames,
+    AudioBufferList             *ioData
+) { /* callback body */ }
+</code></pre>
+
+<p><code>inRefCon</code>参数指向您指定的编程上下文。此上下文的目的是为回调函数提供计算给定渲染调用所需的任何音频输入数据或状态信息</p>
+
+<p><code>IoActionFlags</code>参数使回调可以向音频单元提供没有音频要处理的提示。在要为其输出静默的回调调用期间，在回调主体中使用以下语句：<br/>
+<code>*ioActionFlags |= kAudioUnitRenderAction_OutputIsSilence;</code><br/>
+如果要保持静音，还必须将ioData参数指向的缓冲区显示设置为0</p>
+
+<p><code>InTimeStamp</code>表示调用回调时间。其中<code>mSampleTime</code>字段是一个样本帧计数器。每次调用该回调时，mSampleTime字段的值将按<code>inNumberFrames</code>参数中的数字递增。</p>
+
+<p><code>InBusNumber</code>参数指示调用回调的音频单元总线，允许您根据此值在回调中分支。此外，在将回调函数附加到音频单元时，可以为每个总线指定不同的上下文（inRefCon）</p>
+
+<p><code>InNumberFrames</code>参数指示在当前调用中要求回调提供的音频样本帧的数量。您可以将这些帧提供给ioData参数中的缓冲区。</p>
+
+<p><code>IoData</code>参数指向调用回调时必须填充的音频数据缓冲区。您放入这些缓冲区的音频必须符合调用回调的总线的音频流格式。</p>
+
+<h3 id="toc_18">音频流格式启用数据流</h3>
+
+<h4 id="toc_19">AudioStreamBasicDescription 结构</h4>
+
+<p>在app和音频硬件中传递的音频数据为<code>AudioStreamBasicDescription</code>结构。常简称为ASBD</p>
+
+<pre><code class="language-objectivec">struct AudioStreamBasicDescription {
+    Float64 mSampleRate;
+    UInt32  mFormatID;
+    UInt32  mFormatFlags;
+    UInt32  mBytesPerPacket;
+    UInt32  mFramesPerPacket;
+    UInt32  mBytesPerFrame;
+    UInt32  mChannelsPerFrame;
+    UInt32  mBitsPerChannel;
+    UInt32  mReserved;
+};
+typedef struct AudioStreamBasicDescription  AudioStreamBasicDescription;
+
+//示例  定一个立体声流信息
+size_t bytesPerSample = sizeof (AudioUnitSampleType);
+AudioStreamBasicDescription stereoStreamFormat = {0};
+ 
+stereoStreamFormat.mFormatID          = kAudioFormatLinearPCM;
+stereoStreamFormat.mFormatFlags       = kAudioFormatFlagsAudioUnitCanonical;
+stereoStreamFormat.mBytesPerPacket    = bytesPerSample;
+stereoStreamFormat.mBytesPerFrame     = bytesPerSample;
+stereoStreamFormat.mFramesPerPacket   = 1;
+stereoStreamFormat.mBitsPerChannel    = 8 * bytesPerSample;
+stereoStreamFormat.mChannelsPerFrame  = 2;           // 2 indicates stereo
+stereoStreamFormat.mSampleRate        = graphSampleRate;
+</code></pre>
+
+<ol>
+<li>首先，确定采样值数据类型，本示例采用<code>AudioUnitSampleType</code>(在不同平台不同，iOS中代表8.24定点整数)</li>
+<li>初始化ASBD</li>
+<li>为mFormatID指定kAudioFormatLinearPCM。因为audio unit使用未压缩的音频数据</li>
+<li>为大多数unit指定<code>kAudioFormatFlagsAudioUnitCanonical</code>.其负责<code>AudioUnitSampleType</code>类型的线性PCM采样值bit的所有布局细节。<br/>
+注意：对于某些unit采用非典型的数据格式，即使用不同的数据类型<code>mFormatFlags</code>字段使用不同的标志集合。因此，使用特定audio unit请使用正确的数据合适和标志格式</li>
+<li><code>mBytesPerPacket、mBytesPerFrame、mFramesPerPacket、mBitsPerChannel</code>可以参阅<a href="https://developer.apple.com/documentation/coreaudio/audiostreambasicdescription">AudioStreamBasicDescription</a> 和 示例项目<code>Audio Mixer（MixerHost）</code>中ASBD示例</li>
+<li><code>mChannelsPerFrame</code>1为单声道  2为立体声</li>
+<li>根据设置的采样率设置<code>mSampleRate</code></li>
+</ol>
+
+<p>可以使用<code>CAStreamBasicDescription.h</code>文件中提供的方法，而不必每个字段的指定ASBD。使用<code>SetCanonical和SetCanonical</code>方法</p>
+
+<h4 id="toc_20">了解在何处以及如何设置流格式</h4>
+
+<p>必须在<code>processing graph</code>的关键点设置音频流格式。在其他时候，系统设置格式，在其他地方，<code>audio unit connection</code>将流格式从一个audio unit传递到另一个audio unit</p>
+
+<p>IOS设备上的音频输入和输出硬件具有系统确定的音频流格式。这些格式始终是未压缩的，线性PCM格式，并且是交织的。系统将这些格式强加在音频处理图中的I / O单元的朝外侧面上<br/>
+<img src="media/15773512971221/15776914766256.jpg" alt="" style="width:825px;"/></p>
+
+<p>app负责在I/O单元元素的向内侧面建立音频流格式,在app格式和硬件格式间执行必要转换。<br/>
+应用程序还负责在图形中其他需要的地方设置流格式，例如<code>Multichannel Mixer</code>单元的输出处,只需要设置格式的一部分，特别是采样率。</p>
+
+<p><code>audio unit connection</code>:将音频数据流格式从其源音频单元的输出传播到其目标音频单元的输入。这是一个关键点，因此需要强调：流格式的传播是通过音频单元连接进行的，并且仅在一个方向上进行-从源音频单元的输出到目标音频单元的输入。</p>
+
+<blockquote>
+<p>请尽可能使用硬件使用的采样率。当您这样做时，I / O单元无需执行采样率转换。可以最大程度地减少能源消耗,并可以使音频质量最大化 </p>
+</blockquote>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[CoreAudio]]></title>
+    <link href="https://acefish.github.io/15772759555662.html"/>
+    <updated>2019-12-25T20:12:35+08:00</updated>
+    <id>https://acefish.github.io/15772759555662.html</id>
+    <content type="html"><![CDATA[
+<p>Apple官网<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/CoreAudioOverview/Introduction/Introduction.html#//apple_ref/doc/uid/TP40003577-CH1-SW1">Core Audio Overview</a></p>
+
+<p>Core Audio 提供了在iOS和OS X创建的应用中实现音频功能的接口。基于其，我们可以处理音频平台的所有方面。</p>
+
+<p>在iOS中，其包括录制、回放、声音效果、定位、格式转换和文件流解析，以及：</p>
+
+<ul>
+<li>在应用中使用内置的均衡器和混频器</li>
+<li>自动访问音频输入、输出硬件</li>
+<li>提供在接听电话环境中对应用音频方面的管理API</li>
+<li>在不影响音频质量的情况下优化和延长电池寿命</li>
+</ul>
+
+<p><code>Core Audio</code>是将C和Object-C的编程接口与系统机密结合在一起，形成灵活的编程环境，从而在整个信号链中保持较低的延迟</p>
+
+<h2 id="toc_0">What is Core Audio？</h2>
+
+<p>Core Audio是iOS和OS X中的数字音频基础服务。包含一系列满足应用处理音频需求的框架。</p>
+
+<h3 id="toc_1">iOS中的Core Audio</h3>
+
+<p><img src="media/15772759555662/15773276986484.png" alt=""/></p>
+
+<p>可以再<code>Audio Unit</code>和<code>Audio Toolbox</code>framework中找到Core Audio <code>Applicaiton-level</code>服务</p>
+
+<ul>
+<li>使用<code>Audio Queue Service</code>，记录、回放、暂停、循环和同步音频</li>
+<li>使用<code>Audio File Service</code>，从磁盘上读写文件，并且执行音频格式转换</li>
+<li>使用<code>Audio Unit Service</code>和<code>Audio Processing Graph Service</code>继承在应用中管理Audio Unit</li>
+<li>使用<code>System Sound Service</code>播放系统声音和用户界面音效</li>
+<li>使用<code>Audio Session Services</code> 允许在iPhone上下文环境中管理音频行为</li>
+</ul>
+
+<h3 id="toc_2">Audio Units</h3>
+
+<p><code>Audio Units</code>是处理音频数据的软件插件。在OS X中一个音频单元可以用无无限数量的通道和应用程序<br/>
+在iOS中提供了一系列音频单元，并针对移动平台进行优化。可以自己开发<code>Audio Unit</code>在应用程序中使用，此时你必须将自定义的<code>audio unit</code>连接到静态链接到应用中，因此无法被其他应用使用</p>
+
+<p>iOS中提供的<code>audio unit</code>并没有用户界面，他主要用于在应用中提供低延迟音频，请参阅<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/CoreAudioOverview/CoreAudioEssentials/CoreAudioEssentials.html#//apple_ref/doc/uid/TP40003577-CH10-SW10">Core Audio Plug-ins: Audio Units and Codecs.</a></p>
+
+<h3 id="toc_3">硬件抽象层</h3>
+
+<p><code>Core Audio</code>使用应用抽象层(<code>Hardware Abstraction Layer</code>HAL)为应用程序和硬件交互提供了一致并可预测的接口。HAL还提供了时序信息，来建华同步或调整延时</p>
+
+<p>在大多数情况下 我们都不会直接和HAL交互。Apple提供了特殊的<code>audio unit</code>(在OS中称为AUHAL，在iOS中称为<code>AURemoteIO</code>单元),可以将音频从一个人音频单元传递给硬件。同样，来自硬件的输入也会通过其进行传输，并且可供后续的音频单元使用</p>
+
+<p><code>AUHAL/AURemoteIO</code>还负责在<code>audio unit</code>和硬件间转换音频数据所需的 数据转换和声道映射</p>
+
+<h2 id="toc_4">Core Audio Essentials</h2>
+
+<p>Apple采用了分层、协作、以任务为中心方式设计了<code>Core Audio</code>接口。</p>
+
+<hr/>
+
+<p>简要介绍接口以及如何协同工作</p>
+
+<hr/>
+
+<h3 id="toc_5">分层架构</h3>
+
+<p><img src="media/15772759555662/15773486612019.png" alt="" style="width:300px;"/></p>
+
+<p>在low-level</p>
+
+<ul>
+<li>I/O kit 与驱动程序交互</li>
+<li>HAL：硬件抽象层，提供了与设备无关、与驱动无关的接口</li>
+<li>MIDI: 提供了处理MIDI流和设备的软件抽象</li>
+<li>Host Time Services：用于访问计算机时钟<br/>
+我们通常无法访问此层，在Ios中，Core Audio提供了更高层次接口来实现实时音频功能</li>
+</ul>
+
+<p>在mid-level: 包括了用于 格式转换、从磁盘读写、解析流、以及使用插件的服务</p>
+
+<ul>
+<li><code>Audio Converter Service</code>使应用可以使用音频格式转换器</li>
+<li><code>Audio File Services</code> 支持从磁盘读写文件</li>
+<li><code>Audio Unit Service</code>和<code>Audio Processing Graph Service</code>使应用程序可以使用数字信号处理插件，例如均衡器和混响器</li>
+<li><code>Audio File Stream</code>允许构建可解析流应用程序，例如用于播放网络连接流式文件</li>
+<li><code>Core Audio Clock Services</code>支持音频和MIDI同步</li>
+</ul>
+
+<p>在high-level： 包括了结合较低层次功能的简化的界面</p>
+
+<ul>
+<li><code>Audio Queue Services</code>：允许录制、播放、暂停、循环并且同步音频。它会根据需要采用编码器来处理压缩的的音频格式</li>
+<li><code>AVAudioPlayer</code>：提供了简单的OC接口 用于播放和循环音频，来实现倒带和快进功能</li>
+<li><code>Extended Audio File Service</code></li>
+<li><code>Open AL</code>是用于位置音乐的开源Open AL的实现，基于系统提供的<code>3D Mixer audio unit</code>。一般用于游戏开发</li>
+</ul>
+
+<h3 id="toc_6">framework</h3>
+
+<ul>
+<li><code>AudioToolbox.framework</code> 提供了mid-level和high-level服务接口。在iOS中，框架包括了<code>Audio Session</code>服务，这个session接口是用于充当手机等设备的上下文中官路应用程序的音频行为</li>
+<li><code>AudioUnit.framework</code> 使用应用程序可以使用音频插件，包括audio unit和解码器</li>
+<li><code>CoreAudio.framework</code>提供了跨<code>core audio</code>使用的的数据类型以及用于低层服务的接口</li>
+<li><code>CoreAudioKit.framework</code> 提供一个小的接口用于为音频单元创建用户界面(iOS不可用)</li>
+<li><code>CoreMIDI.framework</code>使应用程序可以处理MIDI数据并配置MIDI网络(在iOS中不可用)</li>
+<li><code>CoreMIDIServer.framework</code> 使MIDI驱动程序和OS X MIDI服务器通信。(iOS中不可用)</li>
+<li><code>OpenAL.framework</code> 提供与OpenAL使用的接口</li>
+</ul>
+
+<blockquote>
+<p>注意Core Audio framework并不是其它framework的集合，而是一个框架</p>
+</blockquote>
+
+<hr/>
+
+<p>Core Audio的设计原理，使用模式和编程习惯</p>
+
+<hr/>
+
+<h3 id="toc_7">代理对象</h3>
+
+<p><code>Core Audio</code>使用代理对象(proxy object)的概念来呈现例如：文件、流、audio player对象等。 </p>
+
+<h3 id="toc_8">属性、范围和元素</h3>
+
+<p>大多数的<code>Core Audio</code>接口都使用属性机制来管理对象状态或者重定义对象行为。属性是键值对</p>
+
+<ul>
+<li>属性键通常是带有助记名的常量 例如<code>kAudioFilePropertyFileFormat、kAudioQueueDeviceProperty_NumberChannels</code>等</li>
+<li>属性值为适合该数据类型的特定类型 例如 <code>void *、Float64、AudioChannelLayout结构体</code></li>
+</ul>
+
+<p><code>Core Audio</code>接口使用访问器函数从对象中检索属性值，并在属性可写时，更改属性值。还可以找到第三种访问器函数，用于获取有关属性的信息。例如：<code>Audio Unit Service</code>函数<code>AudioUnitGetPropertyInfo</code>可以获取给定属性值数据类型的大小以及是否可写、<code>Audio Queue Service</code>中的<code>AudioQueueGetPropertySize</code>可以获取指定属性值大小</p>
+
+<p><code>Core Audio</code>提供了一种机制来通知应用程序 属性值已经更改。请参阅<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/CoreAudioOverview/CoreAudioEssentials/CoreAudioEssentials.html#//apple_ref/doc/uid/TP40003577-CH10-SW38">Callback Functions: Interacting with Core Audio.</a></p>
+
+<p>在某些情况下，属性会整体应用于音频对象。<br/>
+而其他的一些Core Audio对象具有内部结构，每部分都可能有自己的属性。例如，在audio unit有输入范围、输出范围以及全局范围。audio unit的输入输出范围由一个或多个元素组成，当调用<code>AudioUnitGetProperty</code>函数获取<code>kAudioUnitProperty_AudioChannelLayout</code>属性，除了要指定那个unit之外，还要指定范围(input为/output)以及元素(0、1、2等)</p>
+
+<h3 id="toc_9">对Core Audio交互的回调函数</h3>
+
+<p>许多<code>Core Audio</code>使用回调函数和应用程序通信</p>
+
+<ul>
+<li>向应用程序交付一组信息的音频数据(例如：用于录制，在回调中将新的数据写入磁盘)</li>
+<li>从应用程序请求一组新的音频数据(例如：用于播放，回调从磁盘读取并提供新数据)</li>
+<li>告诉应用程序 软件的对象状态已经改变</li>
+</ul>
+
+<p>对于回调，操作系统会触发在应用程序中实现的行为。</p>
+
+<ol>
+<li>根据模板实现回调函数</li>
+<li>将回调函数注册到要交互的对象中</li>
+</ol>
+
+<hr/>
+
+<p>Core Audio如何处理文件，流，记录和播放以及插件</p>
+
+<hr/>
+
+<h3 id="toc_10">Audio Data Formats</h3>
+
+<p><code>Core Audio</code> 使无需了解了解音频格式的详细知识。</p>
+
+<blockquote>
+<p>音频数据格式本质上描述了音频数据，包括采样率，位深度和包化等内容<br/>
+音频文件格式描述了声音文件的音频数据，音频元数据和文件系统元数据如何在磁盘上排列。有的文件格式只能包含一种音频数据格式，而其他文件格式可以包含多种音频数据格式</p>
+</blockquote>
+
+<h4 id="toc_11">Core Audio中的通用数据类型</h4>
+
+<p>在Core Audio中可以使用声明在<code>CoreAudioType.h</code>中的结构体<code>AudioStreamBasicDescription</code>和<code>AudioStreamPacketDescription</code>两个通用数据类型来表示任何音频数据格式</p>
+
+<p><code>AudioStreamPacketDescription</code>类型，描述某些压缩的的音频数据格式</p>
+
+<blockquote>
+<p>常将<code>audio stream basic description</code>简写为ASBD</p>
+</blockquote>
+
+<h4 id="toc_12">获取声音文件数据格式</h4>
+
+<p>我们虽然可以手动设置ASBD的成员值，但是可能某些填写会出现问题。我们可以将结构成员值设置为0，然后使用Core Audio接口填充结构体。例如可以使用<code>Audio File Service</code>为磁盘上文件提供完整的ASBD</p>
+
+<h4 id="toc_13">音频数据格式标准</h4>
+
+<p>平台不同，存在一种或者两种 <code>标准的</code>音频数据格式</p>
+
+<p>在Core Audio中的标准格式常用于：</p>
+
+<ul>
+<li>转换的中间格式</li>
+<li>优化Core Audio service 的 格式</li>
+<li>如果在不指定ASBD，则作为默认或者假定的格式</li>
+</ul>
+
+<p>在iOS中的格式标准：</p>
+
+<ul>
+<li>iOS中16bit整数样本的输入和输出的线性PCM</li>
+<li>iOS的audio unit和其它音频处理 8.24bit定点样本的非交错线性PCM</li>
+</ul>
+
+<blockquote>
+<p>8.24有时写为Q8.24或fx8.24。定点采样大小用作iOS中处理线性PCM音频的规范音频采样类型，代替32位浮点采样。在8.24音频样本中，小数点左侧有8位，形成该值的整数（或“幅值”）部分，右侧有24位，构成小数部分</p>
+</blockquote>
+
+<pre><code class="language-objectivec">//44.1kHZ采样率的双通道 标准iPhone audio unit的格式
+
+struct AudioStreamBasicDescription {
+    mSampleRate       = 44100.0;
+    mFormatID         = kAudioFormatLinearPCM;
+    mFormatFlags      = kAudioFormatFlagsAudioUnitCanonical;
+    mBitsPerChannel   = 8 * sizeof (AudioUnitSampleType);                    // 32 bits
+    mChannelsPerFrame = 2;
+    mBytesPerFrame    = mChannelsPerFrame * sizeof (AudioUnitSampleType);    // 8 bytes
+    mFramesPerPacket  = 1;
+    mBytesPerPacket   = mFramesPerPacket * mBytesPerFrame;     // 8 bytes
+    mReserved         = 0;
+};
+//这些常量在 CoreAudioTypes.h 头文件声明
+</code></pre>
+
+<h4 id="toc_14">Magic Cookies</h4>
+
+<p>在Core Audio领域， <code>magic cookie</code>是连接压缩声音文件或流的一系列不透明元数据<br/>
+元数据为解码器提供了解压文件或者流需要的详细信息。<br/>
+可以将magic cookie视为黑盒，依靠<code>Core Audio</code>功能去复制、读取、使用包含的元数据</p>
+
+<pre><code class="language-objectivec">- (void) copyMagicCookieToQueue: (AudioQueueRef) queue fromFile: (AudioFileID) file {
+ 
+    UInt32 propertySize = sizeof (UInt32);
+ 
+    OSStatus result = AudioFileGetPropertyInfo (
+                            file,
+                            kAudioFilePropertyMagicCookieData,
+                            &amp;propertySize,
+                            NULL
+                        );
+ 
+    if (!result &amp;&amp; propertySize) {
+ 
+        char *cookie = (char *) malloc (propertySize);
+ 
+        AudioFileGetProperty (
+            file,
+            kAudioFilePropertyMagicCookieData,
+            &amp;propertySize,
+            cookie
+        );
+ 
+        AudioQueueSetProperty (
+            queue,
+            kAudioQueueProperty_MagicCookie,
+            cookie,
+            propertySize
+        );
+ 
+        free (cookie);
+    }
+}
+
+</code></pre>
+
+<h4 id="toc_15">Audio Data Packets</h4>
+
+<p>数据包是一个或者多个帧的集合，对于给定音频格式，这是最小有意义的帧的集合。因此，它是音频文件中代表时间单位最好的音频数据单元。<br/>
+在<code>Core Audio</code>中通过对数据包进行计数来实现同步功能，可以使用data packets来计算有用的音频数据缓冲区大小</p>
+
+<p>在ASBD中用<code>mBytesPerPacket</code>和<code>mFramesPerPacket</code>成员变量描述有关数据包的基本信息，因为某些数据包并不是恒定不变的，因此对于需要其他额外信息，可以使用<code>audio stream packet description</code><br/>
+三种packet包类型</p>
+
+<ul>
+<li>CBR(contant bit rate)：恒定比特率，所有数据包大小相同</li>
+<li>VBR(variable bit rate):可变比特率，所有数据包帧数相同，但是每个采样值的bit可能不同</li>
+<li>VFR(variable frame rate):数据包具有变化的帧数。这种类型格式并不常用</li>
+</ul>
+
+<p>对于VBR和VFB需要使用<code>AudioStreamPacketDescription</code>结构体进行描述。每个这样的结构体都描述了声音文件中的单个数据包，当需要录制或者播放这样的声音文件，需要这种结构的数组</p>
+
+<p>在<code>Audio File Services 和 Audio File Stream Services</code>中允许使用packet。例如，<code>AudioFile.h</code>文件中的<code>AudioFileReadPackets</code>从磁盘的声音文件中读取一系列的放置在buffer中的packets，同时返回一组<code>AudioStreamPacketDescription</code>结构体描述每个packet</p>
+
+<p>对于常用的CBR和VBR格式中，file或者stream每秒返回包的数量是固定的，包意味着格式的时间单位。在应用程序中计算实际的音频缓冲区大小时，可以使用包。</p>
+
+<h3 id="toc_16">数据格式转换</h3>
+
+<p>要将音频数据从一种格式转换为另一种，可以使用音频转换。<br/>
+可以做一些简单的转换，例如：采样率、交错或非交错编码。当然也可以做复杂一点的转换，例如：编解码音频。</p>
+
+<ul>
+<li>解码音频格式(例如AAC格式)为PCM格式</li>
+<li>将PCM线性数据转换为其他音频格式</li>
+<li>在线性PCM格式之间转换，例如，将16位带服务号整数线性PCM转为8.24定点线性PCM</li>
+</ul>
+
+<p>当使用<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/CoreAudioOverview/CoreAudioEssentials/CoreAudioEssentials.html#//apple_ref/doc/uid/TP40003577-CH10-SW32">Audio Queue Service</a>时，将会自动获得合适的转换器。</p>
+
+<h3 id="toc_17">声音文件</h3>
+
+<p>每当想在应用程序中使用声音文件时，可以使用<code>Audio File Services</code>。其为访问文件中包含的音频数据和元数据以及创建声音文件提供了强大的抽象功能</p>
+
+<p><code>Audio File Services</code> 不仅可以使用基础功能如唯一的file ID和数据格式，还可以使用区域和标记、循环播放、播放方向以及SMPTE时间码等</p>
+
+<p><code>Audio File Services</code>还可以用来发现系统特征。使用的功能为<code>AudioFileGetGlobalInfoSize</code>和<code>AudioFileGetGlobalInfo</code>，在<code>AudioFile.h</code>中声明了一列属性可以获取系统特征：</p>
+
+<ul>
+<li>可读文件类型</li>
+<li>可写文件类型</li>
+<li>对于可写类型，可以将以您数据格式放入文件中</li>
+</ul>
+
+<h4 id="toc_18">创建一个新的声音文件</h4>
+
+<p>当创建一个声音文件进行记录时：</p>
+
+<ul>
+<li>文件的系统路径，以CFURL或者NSURL形式</li>
+<li>要创建的文件类型标识，如<code>AudioFile.h</code>中声明的<code>Audio File Types</code>所示</li>
+<li>放入文件中的ASBD，在大多数情况下，之粗腰提供部分ASBD，然后要求Audio File Service为你填充接下来部分<br/>
+将这三部分作为参数传递给<code>AudioFileCreatWithURL</code>函数，返回一个<code>AudioFileID</code>对象</li>
+</ul>
+
+<pre><code class="language-objectivec">AudioFileCreateWithURL (
+    audioFileURL,
+    kAudioFileCAFType,
+    &amp;audioFormat,
+    kAudioFileFlags_EraseFile,
+    &amp;audioFileID   // the function provides the new file object here
+);
+</code></pre>
+
+<h4 id="toc_19">打开声音文件</h4>
+
+<p>使用<code>AudioFileOpenUrl</code>函数打开文件，为该函数提供文件的URL、文件类型常量。以及使用文件的访问权限。</p>
+
+<p>然后使用属性标识符号和<code>AudioFileGetPropertyInfo</code>和<code>AudioFileGetProperty</code>函数来检索需要的文件信息，常用的属性有</p>
+
+<ul>
+<li><code>kAudioFilePropertyFileFormat</code></li>
+<li><code>kAudioFilePropertyDataFormat</code></li>
+<li><code>kAudioFilePropertyMagicCookieData</code></li>
+<li><code>kAudioFilePropertyChannelLayout</code>
+在<code>Audio File Servie</code>中包含许多类似标识,可以快速获取文件中存在的元数据 例如：区域标记、版权信息、播放速度等</li>
+</ul>
+
+<p>当VBR文件很长时，获取整个数据包表可能会话费大量时间，此时可以使用<code>kAudioFilePropertyPacketSizeUpperBound</code>和<code>kAudioFilePropertyEstimatedDuration</code>。可以使用它们来快读估算VBR声音文件的持续时间和数据包数量，而不需要解析整个文件来获取确切的数量</p>
+
+<h4 id="toc_20">读写声音文件</h4>
+
+<p>在iOS中  通常使用<code>Audio File Services</code>来读写音频文件，其两者是互为镜像操作。两个操作都会阻塞直到完成，并且都可以使用packet和byte操作，但是除非有特殊要求，我们总是使用packets 原因如下：</p>
+
+<ul>
+<li>按包读取和写入是VBR数据的唯一选择</li>
+<li>使用基于数据包的操作可以更轻松地计算持续时间</li>
+</ul>
+
+<p>iOS中 也可以使用<code>Audio File Stream Service</code>从磁盘读取音频数据。参阅<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/CoreAudioOverview/CoreAudioEssentials/CoreAudioEssentials.html#//apple_ref/doc/uid/TP40003577-CH10-SW33">Sound Stream</a></p>
+
+<p><code>Audio Queue Service</code>声明在<code>Audio ToolBox</code>的<code>AudioQueue.h</code>中，用于录制和播放Core Audio 可以参阅<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/CoreAudioOverview/CoreAudioEssentials/CoreAudioEssentials.html#//apple_ref/doc/uid/TP40003577-CH10-SW32">Recording and Playback using Audio Queue Services</a></p>
+
+<h4 id="toc_21">iPhone 支持的音频文件格式</h4>
+
+<p>有关iOS中可用的音频数据格式的信息，请参阅编<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/CoreAudioOverview/CoreAudioEssentials/CoreAudioEssentials.html#//apple_ref/doc/uid/TP40003577-CH10-SW26">解码器</a><br/>
+<img src="media/15772759555662/15774334676700.jpg" alt="" style="width:625px;"/></p>
+
+<h4 id="toc_22">CAF</h4>
+
+<p>CAF是iOS或者OSX 本机音频文件格式(核心音频格式)，可以包含平台支持的任何音频数据格式</p>
+
+<h3 id="toc_23">Sound Streams</h3>
+
+<p>与基于磁盘的声音文件不同，音频文件流无法访问其开始和结束的音频数据。并且流数据也可能是不可靠的，可能存在信号丢失、不连续、暂停的情况，取决于用户的网络状况。</p>
+
+<p>使用<code>Audio File Stream</code>来使应用程序处理流和其复杂情况，并解析。<br/>
+使用<code>Audio File Stream</code>需要创建一个<code>AudioFileStreamID</code>类型的对象来作为流的代理对象。也可以通过该对象属性获取当前流信息(例如，当Audio File Stream Services确定bit rate后，会将其设置到该对象的<code>kAudioFileStreamProperty_BitRate</code>属性)。</p>
+
+<p>因为<code>Audio File Stream</code>执行了解析工作，因此应用程序 需要定义两个回调函数来使应应用程序响应给定的音频数据集合和其他信息</p>
+
+<ol>
+<li><p>需要为stream object对象的属性改变那定义回调。至少，需要这个回调来为<code>kAudioFileStreamProperty_ReadyToProducePackets</code>属性的改变做出响应。此时，我们通常流程如下：</p>
+<ol>
+<li>用户点击播放按钮，请求流开始播放</li>
+<li><code>Audio File Stream Services</code>开始解析流</li>
+<li>当有足够多的音频数据包解析发送到应用程序时，<code>Audio File Stream Services</code>设置streamObject的<code>kAudioFileStreamProperty_ReadyToProducePackets</code>属性为true</li>
+<li>触发应用程序的属性改变回调</li>
+<li>回调函数采取适当的措施，例如设置音频队列来播放流信息</li>
+</ol></li>
+<li><p>需要为音频数据设置回调，无论何时<code>Audio File Stream Services</code>获取到一组完整的音频数据包是都会调用这个回调，通常将其发送到<code>Audio Queue Service</code>立即进行播放。可以参阅<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/CoreAudioOverview/CoreAudioEssentials/CoreAudioEssentials.html#//apple_ref/doc/uid/TP40003577-CH10-SW32">Recording and Playback using Audio Queue Services</a></p></li>
+</ol>
+
+<h3 id="toc_24">Audio Session</h3>
+
+<p>在iOS上，当播放音频时 此时手机可能有更重要的事情 例如打电话，我们需要对这些情况做出正确的应对。</p>
+
+<p><code>Audio Session</code>是应用程序和iOS系统中的中介。每个iPhone应用只有一个<code>Session</code>。将其配置为应用程序的播放音频目的。</p>
+
+<p>可以使用<code>AudioToolBox</code>中的<code>AudioService.h</code>声明的接口来配置应用程序。</p>
+
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>用于标识应用程序的音频行为，将音频意图指示给iOS(例如在锁屏状态是否继续音频)</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>播放中断和播放路线改变</td>
+<td>Audio Session会在音频中断，中断结束，和硬件路由改变(例如插拔耳机)发布通知。这些通知可以优雅响应音频环境更改(例如因为来电而导致的中断)</td>
+</tr>
+<tr>
+<td>硬件特点</td>
+<td>可以查询Audio Session，发现运行应用程序的设备特性，例如硬件采样率，硬件声道数，以及音频输入是否可用</td>
+</tr>
+</tbody>
+</table>
+
+<h4 id="toc_25">默认行为</h4>
+
+<p>在audio session中会自带一些默认行为</p>
+
+<ul>
+<li>当用户在“响铃/静音”之间切换时， 音频也将会静音</li>
+<li>当用户按下“睡眠/唤醒”按钮，或者在“自动锁定”时间到期时， 音频也将会静音</li>
+<li>当你的音频开始播放时，设备上其它音频  将会被静音</li>
+</ul>
+
+<p>这组行为是有默认的<code>audio session category</code>(<code>kAudioSessionCategory_SoloAmbientSound</code>)指定。iOS中提供了广泛的音频需求 分类,可以在应用程序启动和运行时指定需求分类</p>
+
+<p><code>audio session</code>的默认行为足够进行iPhone的音频开发，但是除了特殊情况，默认行为并不适合于正在传输的应用程序</p>
+
+<h4 id="toc_26">中断：暂停和激活</h4>
+
+<p>在默认行为中明显缺少的一项功能是能够在中断后重新激活自身。<br/>
+<code>audio session</code>有两个主要状态：活跃和非活跃状态。而音频仅仅在你的audio session处于活跃状态才会起作用</p>
+
+<p>应用启动后，默认audio session处于活跃状态。但是，加入打来电话，session将立即进入费活跃状态，并且auduo被停止，这即为中断。此时，假如用户选择忽略电话，应用程序将会继续运行，但是audio session处于费活跃状态，音频并不会正常播放</p>
+
+<p>假如在应用中使用OpenAL、I/O audio unit、或者<code>Audio queue Service</code>播放音频，则必须编写<mark>监听中断的回调函数</mark>并且在audio session中断结束时 显示的重新激活。可以参阅<a href="https://developer.apple.com/library/archive/documentation/Audio/Conceptual/AudioSessionProgrammingGuide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40007875">Audio Session Programming Guide</a> 提供的详细信息 和 示例代码<br/>
+假如在应用中使用的时 <code>AVAudioPlayer</code>，则该类或为你重新激活audio session</p>
+
+<h4 id="toc_27">确定音频输入是否可用</h4>
+
+<p>对于一个录制的应用，只能在硬件音频输入设备可用时 进行录制。此时可以使用<code>audio session</code>中的<code>kAudioSessionProperty_AudioInputAvailable</code>属性。</p>
+
+<pre><code class="language-objectivec">UInt32 audioInputIsAvailable;
+UInt32 propertySize = sizeof (audioInputIsAvailable);
+ 
+AudioSessionGetProperty (
+    kAudioSessionProperty_AudioInputAvailable,
+    &amp;propertySize,
+    &amp;audioInputIsAvailable // A nonzero value on output means that
+                           // audio input is available
+);
+</code></pre>
+
+<h4 id="toc_28">使用Audio Session</h4>
+
+<p>一个应用程序 一次仅仅只有一个音频category。因此，在一段时间 所有音频都会遵循这个活动category(当使用<code>System Sound Service</code>时是例外的，此类音频用户将饱和用户界面音效，始终使用优先级最低的category)。可以查看<a href="https://developer.apple.com/library/archive/documentation/Audio/Conceptual/AudioSessionProgrammingGuide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40007875">Audio Session Programming Guide</a> 中的Responding to Interruptions 描述了所有category</p>
+
+<blockquote>
+<p>模拟器不会模拟session  因此请在真机上进行测试</p>
+</blockquote>
+
+<h3 id="toc_29">使用AVAudioPlayer 播放</h3>
+
+<p><code>AVAudioPlayer</code>为音频播放提供了简单的OC接口。如果应用并不需要立体声定位和精确同步，或者也不需要播放网络流，可以受用此类</p>
+
+<p>其提供了以下功能：</p>
+
+<ul>
+<li>播放任何时间长度的声音</li>
+<li>播放磁盘文件或者内存缓存中的声音</li>
+<li>循环播放</li>
+<li>同时播放多种声音</li>
+<li>控制正在播放声音的相对播放级别</li>
+<li>在声音文件中寻找特定点进行播放，支持诸如快进快退等功能</li>
+<li>获取可用于<code>audio level metering</code>的数据</li>
+</ul>
+
+<p><code>AVAudioPlayer</code>可以播放任何iOS中可用的任何音频格式声音。可以参阅<a href="https://developer.apple.com/documentation/avfoundation/avaudioplayer">AVAudioPlayer Class Reference.</a></p>
+
+<p>与<code>I/O audio unit以及OpenAL</code>不同，<code>AVAudioPlayer</code>并不需要使用<code>audio session</code>。其自动会在中断后重新激活，假如想要默认audio session category指定的默认行为，可以将默认的<code>audio session</code>和<code>audio player</code>一起使用</p>
+
+<p>使用<code>AVAudioPlayer</code>需要指定 声音文件，<code>prepare play</code>并指定delegate。可以使用delegate来处理终端，并且在播放完毕后，更新用户界面。可以参阅<a href="https://developer.apple.com/documentation/avfoundation/avaudioplayerdelegate">AVAudioPlayerDelegate Protocol Reference.</a></p>
+
+<h3 id="toc_30">使用Audio Queue Service 播放和录制</h3>
+
+<p><code>Audio Queue Service</code>提供了一种直接、低开销的方式 记录和播放音频。可以使无需访问硬件接口即可使用硬件录制和播放设备。还可以在无需了解编码器工作原理，使用复杂的编解码器。</p>
+
+<p>尽管其为<code>high-level</code>接口，但是也支持一些高级功能，例如：提供了细化的定时控制，支持计划的播放和同步，可以使用其来同步多个音频队列，播放声音，并且让独立控制对个声音的播放音量执行loop。<code>Audio Queue Service</code>和<code>AVAudioPlayer</code>是在iPhone上播放压缩的音频的仅有的方式</p>
+
+<p><strong>我们通常会将 <code>Audio Queue Servie</code>和<code>Audio File Service</code>或者<code>Audio File Stream</code>结合使用</strong></p>
+
+<h4 id="toc_31">Audio Queue 播放和录制功能的回调函数</h4>
+
+<p>对于录音，实现一个回调函数，该函数接收<code>audio queue</code>对象提供的<code>audio data buffer</code>并且并将其存入磁盘，当要有新的录音数据buffer传入时，<code>audio queue</code>对象将会调用回调<br/>
+<img src="media/15772759555662/15775129719772.png" alt="" style="width:400px;"/><br/>
+对于播放则和录制刚好相反。当audio queue对象，需要另外buffer才能播放时，就会调用该函数。然后，回调会从磁盘读取给定数量的<code>audio packet</code>，并将其交给audio queue object buffer。此时<code>audio queue object buffer</code>将会一次播放该buffer</p>
+
+<p><img src="media/15772759555662/15775145378401.png" alt="" style="width:400px;"/></p>
+
+<h4 id="toc_32">创建queue对象</h4>
+
+<p>首先创建一个 audio queue 对象，尽管有两种类型，但类型均为<code>AudioQueueRef</code></p>
+
+<ul>
+<li>录制对象 <code>AudioQueueNewInput</code>函数</li>
+<li>播放对象 <code>AudioQueueNewOutput</code>函数</li>
+</ul>
+
+<p>当创建一个audio queue对象来播放时，需要以下三步</p>
+
+<ol>
+<li>创建一个数据结构来管理audio queue所需的信息，例如：要播放的数据的音频格式</li>
+<li>定义一个用于管理audio queue buffer的回调函数。回调使用<code>Audio File Service</code>来读取要播放的文件</li>
+<li><p>使用<code>AudioQueueNewOutput</code>实例化<code>audio queue</code></p>
+<pre><code class="language-objectivec">static const int kNumberBuffers = 3;
+// Create a data structure to manage information needed by the audio queue<br/>
+struct myAQStruct {<br/>
+AudioFileID                     mAudioFile;<br/>
+CAStreamBasicDescription        mDataFormat;<br/>
+AudioQueueRef                   mQueue;<br/>
+AudioQueueBufferRef             mBuffers[kNumberBuffers];<br/>
+SInt64                          mCurrentPacket;<br/>
+UInt32                          mNumPacketsToRead;<br/>
+AudioStreamPacketDescription    *mPacketDescs;<br/>
+bool                            mDone;<br/>
+};<br/>
+// Define a playback audio queue callback function<br/>
+static void AQTestBufferCallback(<br/>
+void                   *inUserData,<br/>
+AudioQueueRef          inAQ,<br/>
+AudioQueueBufferRef    inCompleteAQBuffer<br/>
+) {<br/>
+myAQStruct *myInfo = (myAQStruct *)inUserData;<br/>
+if (myInfo-&gt;mDone) return;<br/>
+UInt32 numBytes;<br/>
+UInt32 nPackets = myInfo-&gt;mNumPacketsToRead;<br/>
+AudioFileReadPackets (<br/>
+    myInfo-&gt;mAudioFile,<br/>
+    false,<br/>
+    &amp;numBytes,<br/>
+    myInfo-&gt;mPacketDescs,<br/>
+    myInfo-&gt;mCurrentPacket,<br/>
+    &amp;nPackets,<br/>
+    inCompleteAQBuffer-&gt;mAudioData<br/>
+);<br/>
+if (nPackets &gt; 0) {<br/>
+    inCompleteAQBuffer-&gt;mAudioDataByteSize = numBytes;<br/>
+    AudioQueueEnqueueBuffer (<br/>
+        inAQ,<br/>
+        inCompleteAQBuffer,<br/>
+        (myInfo-&gt;mPacketDescs ? nPackets : 0),<br/>
+        myInfo-&gt;mPacketDescs<br/>
+    );<br/>
+    myInfo-&gt;mCurrentPacket += nPackets;<br/>
+} else {<br/>
+    AudioQueueStop (<br/>
+        myInfo-&gt;mQueue,<br/>
+        false<br/>
+    );<br/>
+    myInfo-&gt;mDone = true;<br/>
+}<br/>
+}<br/>
+// Instantiate an audio queue object<br/>
+AudioQueueNewOutput (<br/>
+&amp;myInfo.mDataFormat,<br/>
+AQTestBufferCallback,<br/>
+&amp;myInfo,<br/>
+CFRunLoopGetCurrent(),<br/>
+kCFRunLoopCommonModes,<br/>
+0,<br/>
+&amp;myInfo.mQueue<br/>
+);
+</code></pre></li>
+</ol>
+
+<h4 id="toc_33">控制audio queue播放音量</h4>
+
+<p>有两种方式来控制：</p>
+
+<ol>
+<li>直接设置：使用<code>AudioQueueSetParameter</code>函数和<code>kAudioQueueParam_Volume</code>，更改后立即生效</li>
+<li>也可以使用<code>AudioQueueEnqueueBufferWithParameters</code>函数设置音频队列缓冲区的播放音量。这些更改在缓存区开始播放时生效</li>
+</ol>
+
+<h4 id="toc_34">Indicating Audio Queue Playback Level</h4>
+
+<p>可以通过查询音频对象的<code>kAudioQueueProperty_CurrentLevelMeterDB</code>属性来从音频队列对象获取当前播放级别。此属性的值是<code>AudioQueueLevelMeterState</code>结构的数组，每个通道一个。</p>
+
+<h4 id="toc_35">同时播放多个声音</h4>
+
+<p>要同时播放多个声音，需要为每个声音设置一个audio queue obeject。使用<code>AudioQueueEnqueueBufferWithParameters</code>函数对每个音频队列，将音频的第一个缓冲区设为同时开始</p>
+
+<p>在iPhone上同时播放，音频格式很重要。因为在iOS中某些压缩格式的播放使用了硬件解码器。而一次只能在一下设备上播放以下格式之一的单个实例：</p>
+
+<ul>
+<li>AAC</li>
+<li>ALAC</li>
+<li>MP3<br/>
+结余参阅<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/AudioQueueProgrammingGuide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40005343">Audio Queue Services Programming Guide</a></li>
+</ul>
+
+<h4 id="toc_36">使用OpenAL进行定位播放</h4>
+
+<h3 id="toc_37">系统声音:警报和音效</h3>
+
+<p>当要在不需要设置level、positon、<code>audio session</code>时，播放短声音文件可以使用<code>System Sound Services</code>.其声明在<code>AudioToolBox</code>的<code>AudioServices.h</code>头文件中。在iOS中播放声音时长 不能超过30s</p>
+
+<p>调用<code>AudioServicesPlaySystemSound</code>函数播放指定声效文件。另外，可以在需要提醒用户时，调用<code>AudioServicesPlayAlertSound</code>。当用户设置了静音开关，这两个功能都会引起震动。</p>
+
+<p>也可以在调用<code>AudioServicesPlaySystemSound</code>函数时 使用<code>kSystemSoundID_Vibrate</code>显示调用震动</p>
+
+<p>使用<code>AudioServicesPlaySystemSound</code>需要首先创建sound ID 对象，将声音效果文件注册为系统声音，然后可以播放声音。如果在需要偶尔或者重复播放声音时，请保留声音对象，直到应用退出，如果只使用一次声音的话，可以再播放声音后，在声音完成回调中立即销毁对象，释放内存</p>
+
+<h3 id="toc_38">核心音频插件：Audio unit和解码器</h3>
+
+<p>Core Audio有用于处理音频数据的插件机制。<br/>
+在iOS中，系统提供了这些插件，每个应用程序可以使用多个audio unit或者codec</p>
+
+<h4 id="toc_39">Audio Units</h4>
+
+<p>在iOS中<code>Audio Unit</code>为应用提供了实现低延迟的输入和输出机制，以及某些DSP功能，与OSX不同，audio unit并没有自己的使用视图。</p>
+
+<p>可以再iOS和OSX平台上，都可以在Audio Unit framework的<code>AUCompoment.h</code>头文件找到内置音频单元的程序名称</p>
+
+<p>iOS Audio unit 使用8.24bit 定点线性PCM音频数据来进行输入和输出。(converter unit是一个例外)。<code>iOS audio unit</code>为：</p>
+
+<ul>
+<li>3D mixer unit： 允许任意数量的单声道输入，每一个都可以为8bit或者18bit的线性PCM。提供一个8.24bit定点PCM的立体声输出。<code>3D mixer unit</code> 在输入上执行采样率转换，并对每个输入通道提供很多控制。这些控制包括声音，静音、panning、距离衰减和这些更改的rate控制。这就是<code>kAudioUnitSubType_AU3DMixerEmbedded</code>unit</li>
+<li><code>Multichannel mixer unit</code>:允许任意数量的单声道或者立体声输入，每个输入都可以为16位线性定点PCM。提供一个8.24bit定点PCM的立体声输出。应用可以控制每个通道的静音或非静音，并控制器音量。使用<code>kAudioUnitSubType_MultiChannelMixer</code>单元</li>
+<li><code>Convert unit</code>:提供了采样率、位深以及位格式(线性到定点)的转换。iPhone convert unit的标准格式为8.24定点线性PCM。将转换为该格式 或者从该格式转换。使用<code>kAudioUnitSubType_AUConverter</code> unit</li>
+<li><code>I/O unit</code>:提供了实时的音频输入和输出，并根据俄需要执行采样率的转换。使用<code>kAudioUnitSubType_RemoteIO</code>unit</li>
+<li><code>iPod EQ unit</code>：提供了可在应用中使用的简单均衡器，并有iPhone内置应用的相同预设。使用8.24定点线性PCM作为输入和输出。使用<code>kAudioUnitSubType_AUiPodEQ</code> unit</li>
+</ul>
+
+<p>可以参阅<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/AudioUnitProgrammingGuide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40003278">Audio Unit Programming Guide</a></p>
+
+<p>在iOS中，应用程序使用<code>audio unit service</code>来发现和加在audio unit。每个audio unit呦类型、子类型和制造上代码3元素组合的唯一标识。其中，类型表示设备的通用用途，子类型更加精确的描述音频单元的功能，在编程上来说并不重要，但是当你的公司提供了多个效果unit，那么每个effct unit都必须有一个单独的子类型来与其他效果器分开。制造商代码则将你表示为unit的开发商。</p>
+
+<p><code>audio unit</code>使用属性来描述其功能和配置信息。<br/>
+<code>audio unit</code>使用参数机制进行设置。通常由于用户实时调整,并不是函数参数，而是支持用户调整音频单元行为的机制。</p>
+
+<h4 id="toc_40">解码器</h4>
+
+<p>使用iOS支持的解码器来录制和比方可以平衡音频质量、应用开发灵活性、硬件特性和电池寿命。</p>
+
+<p>iOS中有两组播放编码器。</p>
+
+<ol>
+<li>包括可以不受限制使用的高效格式(可以同时播放每种格式的多个示例)
+<img src="media/15772759555662/15775540518573.jpg" alt="" style="width:402px;"/></li>
+<li>第二组共享一个硬件路径，因此只能一次播放一个
+<img src="media/15772759555662/15775541069889.jpg" alt="" style="width:125px;"/></li>
+</ol>
+
+<p>iOS支持的录制编码器，并不包括AAC和MP3，因为其CPU高的消耗带来的高耗电<br/>
+<img src="media/15772759555662/15775541938605.jpg" alt="" style="width:367px;"/></p>
+
+<h4 id="toc_41">AUGraph</h4>
+
+<p><code>audio processing graph</code>(也可称为<code>AUGraph</code>)定义了一组串在一起执行复杂任务的audio unit 集合。当定义<code>graph</code>时，可以有一个可重用的处理模块，可以在应用程序的信号链中添加和删除模块</p>
+
+<p><code>processing graph</code>通常由<code>I/O unit</code>结束。<code>I/O unit</code>通常通过<code>low-level service</code>和硬件项链，但是这不是必须的，I/O unit可以将其输出发送回应用程序</p>
+
+<p>也可以看到<code>processing graph</code>头结点(node)为I/O单元。<code>I/O unit</code>是唯一可以开始和停止graph中数据流的单元。每个audio unit 都会向其后继者注册一个<code>render callback</code>，允许其后继者向其请求数据，当I/O单元开始数据流时，render方法就会调用其audio unit请求数据，而又会调用其前者的audio unit，以此类推</p>
+
+<p>iOS中只有单一的I/O unit，但是OS X上就多了。</p>
+
+<p><img src="media/15772759555662/15775552612399.jpg" alt="" style="width:391px;"/><br/>
+graph中每个audio unit都可以称为node。通过将一个node的输出附加到拎一个node<br/>
+的输入来建立连接。</p>
+
+<p>可以将<code>audio processing graph</code>组合为一个更大的graph，其中子图在更大图中也额为一个node<br/>
+<img src="media/15772759555662/15775555266441.jpg" alt="" style="width:400px;"/></p>
+
+<blockquote>
+<p>每个graph必须以I/O单元结尾。如果其输出只供应用程序使用，应该使用不与硬件连接的<code>generic I/O unit</code>结尾</p>
+</blockquote>
+
+<h2 id="toc_42">Core Audio Frameworks</h2>
+
+<p>参阅<a href="https://developer.apple.com/library/archive/documentation/MusicAudio/Conceptual/CoreAudioOverview/CoreAudioFrameworks/CoreAudioFrameworks.html#//apple_ref/doc/uid/TP40003577-CH9-SW1">Core Audio Frameworks</a>来查看core audio中的框架以及其核心头文件</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[AST]]></title>
+    <link href="https://acefish.github.io/15771995229810.html"/>
+    <updated>2019-12-24T22:58:42+08:00</updated>
+    <id>https://acefish.github.io/15771995229810.html</id>
+    <content type="html"><![CDATA[
+<p>AST(Abstract syntax tree 抽象语法树) 参见 <a href="https://en.wikipedia.org/wiki/Abstract_syntax_tree">wiki:Abstract syntax tree</a></p>
+
+<h2 id="toc_0">概念</h2>
+
+<p>抽象语法树是源代码语法结构的抽象表示，以树状形式表现编程语言语法结构。 之所以说是抽象的，因为这里的语法并不会表示真实语法中的每个细节。</p>
+
+<p>与其想对应的为具体语法树(分析树)。一般再源代码翻译和编译过程中，语法分析器创建分析树，然后从分析树生成AST。</p>
+
+<p>抽象语法树还可用于程序分析分析和程序转换系统</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[暗黑模式适配]]></title>
+    <link href="https://acefish.github.io/15771854107525.html"/>
+    <updated>2019-12-24T19:03:30+08:00</updated>
+    <id>https://acefish.github.io/15771854107525.html</id>
+    <content type="html"><![CDATA[
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[App启动优化]]></title>
+    <link href="https://acefish.github.io/15771850071304.html"/>
+    <updated>2019-12-24T18:56:47+08:00</updated>
+    <id>https://acefish.github.io/15771850071304.html</id>
+    <content type="html"><![CDATA[
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[isEqual && Hash]]></title>
+    <link href="https://acefish.github.io/15744060179031.html"/>
+    <updated>2019-11-22T15:00:17+08:00</updated>
+    <id>https://acefish.github.io/15744060179031.html</id>
+    <content type="html"><![CDATA[
+<p>在iOS系统中，API提供了自动过滤重复元素的容器<code>NSMutableSet/NSSet</code>。但是对于自定义类，必须要同时实现<code>-(bool)isEqual:</code>和<code>-(NSUInteger)hash</code>两个方法。两者的基本关系:<br/>
+<strong>两个相等的实例，其hash值一定相等，但是hash值相等的实例，其不一定相等</strong></p>
+
+<h2 id="toc_0">isEqual和 ==</h2>
+
+<p>对于基本类型 == 比较的是值 对于对象 == 比较的是对象地址，对于没有重写isEqual方法的 和 == 没有区别</p>
+
+<p>对于<code>Cocoa Framework</code>中的类型，默认已经有实现好的<code>isEqual</code>方法</p>
+
+<h2 id="toc_1">hash方法</h2>
+
+<p>hash方法主要用于在hashTable 中查询成员用的<br/>
+<mark>hash方法在对象被添加到<code>NSSet</code>中 以及 设置对象为<code>NSDictionary</code>的<code>key</code>时被调用</mark><br/>
+这个hash值就是用来查找成员中的位置的</p>
+
+<blockquote>
+<p>为什么数组中没有用到hash值： 因为数组可能存在重复 就会在出现多个相同hash值 查找效率就没那么高了</p>
+</blockquote>
+
+<h2 id="toc_2">hash方法和isEqual方法关系</h2>
+
+<p>在基于hash的<code>NSSet</code>和<code>NSDictionary</code>判断成员是否相等时 会执行一下步骤</p>
+
+<ol>
+<li>集合成员hash值是否和目标的hash值相等 如果相等进行step2  不等直接判断不等</li>
+<li>hash值相同 的情况下 在进行对象判断 作为判断结果</li>
+</ol>
+
+<p>此时 我们应该保证hash方法和isEqual方法的一致性</p>
+
+<p><code>[super hash]</code>是系统默认实现，其返回值和实例所在内存地址值完全一致（注意十六进制和十进制转换后相等）。</p>
+
+<pre><code class="language-objectivec">//hash方法实现
+- (NSUInteger)hash {
+    return [super hash];
+}
+
+//
+Person *person1 = [Person personWithName:kName1 birthday:self.date1];
+Person *person2 = [Person personWithName:kName1 birthday:self.date1];
+NSLog(@&quot;[person1 isEqual:person2] = %@&quot;, [person1 isEqual:person2] ? @&quot;YES&quot; : @&quot;NO&quot;); //yes
+
+NSMutableSet *set = [NSMutableSet set];
+[set addObject:person1];
+[set addObject:person2];
+NSLog(@&quot;set count = %ld&quot;, set.count); //此时有两个元素 就不对了 我们期望是一个元素
+</code></pre>
+
+<p>此时为了保证对一致性 以及对hash值的唯一性<br/>
+<mark>可以对关键属性的hash值进行位或运算</mark></p>
+
+<pre><code class="language-objectivec">- (NSUInteger)hash {
+    return [self.name hash] ^ [self.birthday hash];
+}
+</code></pre>
+
+<blockquote>
+<p>因此，必须同时实现<code>- (BOOL)isEqual:</code>和<code>- (NSUInteger)hash</code>两个方法</p>
+</blockquote>
+
+<h2 id="toc_3">示例</h2>
+
+<pre><code class="language-objectivec">
+@implementation Person
+
+- (id)copyWithZone:(nullable NSZone *)zone {
+    return self;
+}
+
+- (BOOL)isEqual:(id)object {
+    return NO;
+}
+
+- (NSUInteger)hash {
+    NSLog(@&quot;执行对象%p的hash值%ld&quot;, self, self.age);
+    return self.age;
+}
+
+@end
+
+ Person *person1 = [[Person alloc] init];
+person1.age = 11;
+    
+Person *person2 = [[Person alloc] init];
+person2.age = 12;
+    
+Person *person3 = [[Person alloc] init];
+person3.age = 12;
+    
+NSMutableArray *array = [NSMutableArray array];
+[array addObject:person1];
+[array addObject:person2];
+    
+if ([array containsObject:person1]) {
+    NSLog(@&quot;查询到person1&quot;); //查询到person1  直接==判断
+}
+if ([array containsObject:person3]) {
+    NSLog(@&quot;查询到person3&quot;); //  直接判断isEqual 而不判断hash值
+}
+    
+NSMutableSet *set = [NSMutableSet set];
+[set addObject:person1]; //执行对象0x600001690210的hash值11
+NSLog(@&quot;person1添加到set中&quot;);
+if ([set containsObject:person1]) { //执行对象0x600001690210的hash值11
+    NSLog(@&quot;查询到set中的person1&quot;);
+}
+    
+    
+NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+dict[person1] = @&quot;这是1&quot;; //执行对象0x600001690210的hash值11
+dict[person2] = @&quot;这是2&quot;; //执行对象0x600001690220的hash值12
+NSLog(@&quot;查询字典中的值&quot;);
+//执行对象0x600001690210的hash值11
+NSLog(@&quot;找到值  %@&quot;, [dict objectForKey:person1]); //找到值  这是1
+//执行对象0x6000010d4200的hash值12
+NSLog(@&quot;找到值  %@&quot;, [dict objectForKey:person3]); //找到值  (null)  需要先判断hash值 相等 才会决定是否判断isequal
+</code></pre>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[UITest]]></title>
+    <link href="https://acefish.github.io/15738009699255.html"/>
+    <updated>2019-11-15T14:56:09+08:00</updated>
+    <id>https://acefish.github.io/15738009699255.html</id>
+    <content type="html"><![CDATA[
+<p>学习资料<br/>
+<a href="https://developer.apple.com/videos/play/wwdc2015/406/">WWDC 2015 Introduction to UI Tests</a></p>
+
+<p><a href="http://www.mokacoding.com/blog/xcode-7-ui-testing/">A first look into UI Tests</a></p>
+
+<p><a href="http://masilotti.com/ui-testing-xcode-7/">UI Testing in Xcode 7</a></p>
+
+<p><a href="https://github.com/ConfusedVorlon/HSTestingBackchannel">HSTestingBackchannel : ‘Cheat’ by communicating directly with your app</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[WWDC视频]]></title>
+    <link href="https://acefish.github.io/15737184394691.html"/>
+    <updated>2019-11-14T16:00:39+08:00</updated>
+    <id>https://acefish.github.io/15737184394691.html</id>
+    <content type="html"><![CDATA[
+<p><a href="https://developer.apple.com/videos/wwdc2019/">WWDC视频</a></p>
+
+<p><a href="https://developer.apple.com/documentation">官方开发文档</a></p>
+
+<p><a href="https://developer.apple.com/library/archive/navigation/">archive官方文档</a></p>
+
+<p><a href="https://developer.apple.com/library/archive/documentation/">查找官方文档</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Xcode11 调试]]></title>
+    <link href="https://acefish.github.io/15737182379260.html"/>
+    <updated>2019-11-14T15:57:17+08:00</updated>
+    <id>https://acefish.github.io/15737182379260.html</id>
+    <content type="html"><![CDATA[
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Thread Sanitizer]]></title>
+    <link href="https://acefish.github.io/15737170765125.html"/>
+    <updated>2019-11-14T15:37:56+08:00</updated>
+    <id>https://acefish.github.io/15737170765125.html</id>
+    <content type="html"><![CDATA[
+<p><a href="http://mrpeak.cn/blog/thread-sanitizer/">如何使用Thread Sanitizer</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[调试学习]]></title>
+    <link href="https://acefish.github.io/15737169032344.html"/>
+    <updated>2019-11-14T15:35:03+08:00</updated>
+    <id>https://acefish.github.io/15737169032344.html</id>
+    <content type="html"><![CDATA[
+<p><a href="https://devma.cn/blog/2016/11/10/ios-beng-kui-crash-jie-xi/">崩溃Crash解析</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[SDWebImage源码分析]]></title>
+    <link href="https://acefish.github.io/15732813859540.html"/>
+    <updated>2019-11-09T14:36:25+08:00</updated>
+    <id>https://acefish.github.io/15732813859540.html</id>
+    <content type="html"><![CDATA[
+<p>学习自<a href="https://github.com/halfrost/Analyze/blob/master/contents/SDWebImage/iOS%20%E6%BA%90%E4%BB%A3%E7%A0%81%E5%88%86%E6%9E%90%20---%20SDWebImage.md">SDWebImage源码分析</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[fishhook]]></title>
+    <link href="https://acefish.github.io/15731958399871.html"/>
+    <updated>2019-11-08T14:50:39+08:00</updated>
+    <id>https://acefish.github.io/15731958399871.html</id>
+    <content type="html"><![CDATA[
+<p>学习自<a href="https://github.com/halfrost/Analyze/blob/master/contents/fishhook/%E5%8A%A8%E6%80%81%E4%BF%AE%E6%94%B9%20C%20%E8%AF%AD%E8%A8%80%E5%87%BD%E6%95%B0%E7%9A%84%E5%AE%9E%E7%8E%B0.md">动态修改 C 语言函数的实现</a></p>
+
+<p>fishhook是facebook开源的第三方库，主要用于动态修改C语言函数的实现，在框架内部其实只是</p>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[]]></title>
@@ -238,1304 +2373,10 @@
   
   <entry>
     <title type="html"><![CDATA[]]></title>
-    <link href="https://acefish.github.io/15723433400719.html"/>
-    <updated>2019-10-29T18:02:20+08:00</updated>
-    <id>https://acefish.github.io/15723433400719.html</id>
-    <content type="html"><![CDATA[
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[]]></title>
     <link href="https://acefish.github.io/15723307191677.html"/>
     <updated>2019-10-29T14:31:59+08:00</updated>
     <id>https://acefish.github.io/15723307191677.html</id>
     <content type="html"><![CDATA[
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOS面试 -- RunLoop]]></title>
-    <link href="https://acefish.github.io/15723294922603.html"/>
-    <updated>2019-10-29T14:11:32+08:00</updated>
-    <id>https://acefish.github.io/15723294922603.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">RunLoop概念</h2>
-
-<p>RunLoop是通过内部维护<code>事件循环</code>来对事件/消息进行管理的对象</p>
-
-<ol>
-<li>当没有消息处理时，休眠避免资源被占用，此时由用户态切换到内核态</li>
-<li>当有消息需要处理时，立即被唤醒，此时由内核态切换到用户态</li>
-</ol>
-
-<blockquote>
-<p>为什么Main函数不会退出？</p>
-
-<p>UIApplicationMain内部默认开启了主线程的RunLoop，并执行了一段while循环代码</p>
-</blockquote>
-
-<h2 id="toc_1">RunLoop数据结构</h2>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOS面试-NSOperation、自旋和互斥锁]]></title>
-    <link href="https://acefish.github.io/15723153205618.html"/>
-    <updated>2019-10-29T10:15:20+08:00</updated>
-    <id>https://acefish.github.io/15723153205618.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">NSOperationQueue的优点</h2>
-
-<ol>
-<li>可以添加任务以来，方便控制执行顺序</li>
-<li>可以设定操作执行的优先级</li>
-<li>任务执行状态控制：isReady、isExecuting、isFinished、isCancelled</li>
-<li><p>可以设置最大并发量</p></li>
-</ol>
-
-<ul>
-<li><p>NSOperation<br/>
-执行的操作，就是期望在线程中执行的代码。在GCD中是放在放在block中的。而在NSOperation中是使用其子类NSIvocationOperation、NSBlockOperation，或者自定义子类来进行操作的封装</p></li>
-<li><p>NSOperationQueue<br/>
-操作队列，存放操作的队列。和GCD的FIFO不同，NSOperationQueue对于添加到队列中的操作，首先进入准备就绪状态(就绪状态取决于操作之间的依赖关系)，然后对进入就绪状态的操作开始执行顺序（非结束顺序）由操作之间相对的优先级决定(优先级是操作对象自身的属性)<br/>
-操作队列通过设置最大并发数来控制并发、串行。<code>NSOperation</code>为我们提供了两种队列，主队列和自定义队列。主队列运行在主线程之上，而其他队列都在后台运行。’</p></li>
-</ul>
-
-<h2 id="toc_1">NSThread+runloop实现常驻线程</h2>
-
-<p>因为每次开辟子线程都会消耗CPU，当需要频繁使用子线程时，就会消耗大量的CPU，而且因为创建线程都是在任务执行完成后就释放了，不能再次利用，这时可以考虑创建一个常驻线程</p>
-
-<h2 id="toc_2">自旋锁和互斥锁</h2>
-
-<ul>
-<li>自旋锁：<br/>
-用于保护多线程共享资源的锁，与一般互斥锁(mutex)不同之处在于当自旋锁尝试获取锁时以 忙等待的形式不断地循环检查锁是否时可用的。当上一个线程的任务没有执行完毕时被锁住，那么下一个线程会一直等待（不会睡眠），当上一线程的任务完成后，下一个线程才会立即执行<br/>
-在对于多CPU的环境中，对于持有锁的时间较短的程序来说，使用自旋锁代替一般的互斥锁往往能够提高程序的性能</li>
-<li><p>互斥锁：<br/>
-当上一个线程的任务没有完成时 下一个线程会进入睡眠状态等待任务执行完毕，当上一个线程任务执行完毕，下一个线程会自动唤醒 然后执行任务</p></li>
-<li><p>优缺点：<br/>
-优点：自旋锁不会引起调用者睡眠，所以不会进行线程调度，CPU时间片轮转等好事操作。所有如果能在短时间内获得锁，自旋锁的效率远高于 互斥锁<br/>
-缺点：自旋锁会一直占用CPU，在未获得锁的时候，一直运行--&quot;自旋&quot;。所以占用着CPU，如果不能短时间获得锁，无疑会使CPU的效率降低。<mark>自旋锁不能实现递归调用</mark></p></li>
-</ul>
-
-<p>自旋锁：atomic、OSSpinLock、dispatch_semaphore_t<br/>
-互斥锁：pthread_mutex、@synchronized、NSLock、NSConditionLock 、NSCondition、NSRecursiveLock</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOS面试-进程、线程、多进程、多线程、任务]]></title>
-    <link href="https://acefish.github.io/15722324806873.html"/>
-    <updated>2019-10-28T11:14:40+08:00</updated>
-    <id>https://acefish.github.io/15722324806873.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">进程</h2>
-
-<ol>
-<li>进程是具有一个独立功能的程序关于某次数据集合的一次云层活动，是操作系统分配资源的基本单元</li>
-<li>进程是指正在独立运行的一个应用程序，就是一段程序的执行过程，可以理解为手机上的一个打开的app</li>
-<li>进程之间是相互独立的，进程运行在专用并且受保护的内存空间中，拥有独立运行所需要的全部资源</li>
-</ol>
-
-<h2 id="toc_1">线程</h2>
-
-<ol>
-<li>程序执行流的最小单元，线程是进程中的一个实体</li>
-<li>一个进程想要执行任务，必须至少有一条线程，引用程序启动时候，系统会默认开启一条线程，也就是主线程</li>
-</ol>
-
-<h2 id="toc_2">进程和线程关系</h2>
-
-<ol>
-<li>线程是进程的执行单元，进程的所有任务都在线程中执行</li>
-<li>线程是CPU分配资源和调度的最小单位</li>
-<li>一个程序可以对应多个进程，一个进程中可以有多个线程，但是至少要有一条线程</li>
-<li>同一个进程内的线程共享进程资源</li>
-</ol>
-
-<h2 id="toc_3">多进程</h2>
-
-<ul>
-<li>进程是程序在计算机上的一次活动。当运行一个程序时，就启动了一个进程。</li>
-<li>进程分为系统进程和用户进程。用于完成操作系统各种功能的进程就是系统进程，是处于运行状态下的操作系统本身；由用户启动的进程是用户进程，进程是操作系统进行资源分配的单位</li>
-<li>进程可以被细化为线程，就是进程能有多个独立运行的更小单位。在同一个时间里，同一个计算机系统中如果允许两个或两个以上的进程处于运行状态，这便是多进程</li>
-</ul>
-
-<h2 id="toc_4">多线程</h2>
-
-<ol>
-<li>同一时间，一个CPU上只能处理1条线程。而多线程并发执行，其实是CPU快速的在多条线程之间切换</li>
-<li><p>如果线程非常多的话，CPU在多个线程中切换，就会消耗很多的CPU资源，线程被执行的频次会降低</p></li>
-<li><p>多线程优点：</p>
-<ul>
-<li>能适当提高程序执行效率</li>
-<li>能适当提高资源利用率</li>
-</ul></li>
-<li><p>多线程缺点：<br/>
-开启线程是需要占用一定的资源空间的，但是如果开启大量线程，就会占用一定资源空间，降低程序性能</p></li>
-</ol>
-
-<h2 id="toc_5">任务</h2>
-
-<h2 id="toc_6">GCD和NSOperation</h2>
-
-<p>GCD是面向底层的C语言的API，<code>NSOperationQueue</code>是用GCD进行封装构建的，是GCD的高级抽象</p>
-
-<ol>
-<li>GCD执行效率高，而且由于队列中执行的时block构成的任务，因此是一个轻量级的数据结构，写起来其也方便</li>
-<li>GCD只支持FIFO队列，而<code>NSOperationQueue</code>可以通过设置最大并发数，设置优先级，添加依赖关系等调整执行顺序</li>
-<li><code>NSOperationQueue</code>设置可以跨队列设置依赖任务，但是GCD只能通过设置串行队列，或者添加barrier任务，才能控制执行顺序</li>
-<li><code>NSOperationQueue</code>因为面向对象，所以可以支持KVO，可以监测operation的执行状态</li>
-</ol>
-
-<p>当只是简单用到异步操作，没有特别复杂的线程关系管理，推荐使用GCD<br/>
-当考虑到异步操作之间的事务性、顺序性、依赖关系，此时GCD需要自己写更多代码实现，而NSOperationQueue已经内建了这些支持</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[深入理解Tagged Pointer]]></title>
-    <link href="https://acefish.github.io/15722317560486.html"/>
-    <updated>2019-10-28T11:02:36+08:00</updated>
-    <id>https://acefish.github.io/15722317560486.html</id>
-    <content type="html"><![CDATA[
-<p><a href="https://www.jianshu.com/p/c9089494fb6c">深入理解Tagged Pointer</a></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOS面试---内存管理]]></title>
-    <link href="https://acefish.github.io/15721685619236.html"/>
-    <updated>2019-10-27T17:29:21+08:00</updated>
-    <id>https://acefish.github.io/15721685619236.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">内存布局</h2>
-
-<p><img src="media/15721685619236/15721695768950.jpg" alt="" style="width:672px;"/></p>
-
-<ul>
-<li>栈： 方法调用、局部变量 连续地址，从高地址到低地址</li>
-<li>堆：分配的内存对象、是离散的，从低地址到高地址，需要我们手动进行内存管理</li>
-<li>为初始化数据区（bss）：为初始化的全局变量等</li>
-<li>已初始化数据（data区）：已初始化的全局变量等</li>
-<li>代码段（text）：程序代码</li>
-</ul>
-
-<h3 id="toc_1">2. 各个数据类型占据字节空间</h3>
-
-<ul>
-<li>char: 1字节 也就是2<sup>8</sup> 即 256个ASCII字符</li>
-<li>char*：指针变量，(32位机器的寻址为2<sup>32即32bit，就是4字节。对于64位编译器来说就是8字节)</sup></li>
-<li>short int：2字节</li>
-<li>int：4字节</li>
-<li>unsigned int：4字节</li>
-<li>long：在64位编译器下为8字节，在32位下为4字节</li>
-<li>long long：8字节</li>
-<li>unsigned long long: 8字节</li>
-<li>float：4字节</li>
-<li>double：8字节</li>
-</ul>
-
-<h3 id="toc_2">static、const、sizeOf关键字</h3>
-
-<h4 id="toc_3">static关键字</h4>
-
-<p><code>static</code>关键字的主要作用有两个，一个是用于修饰存储类型使其成为静态存储类型，二是用于修饰链接属性使之成为内部链接属性</p>
-
-<ul>
-<li>静态存储类型： <mark>在函数内定义的静态局部变量</mark>，存储在内存的静态存储区，所以即使该函数运行结束，该值也不会被销毁，等待下次运行进行使用。 
-<mark>在函数外定义的静态变量——静态全局变量</mark>，该变量的作用域只能在该变量的文件中，不能被其他文件通过extern引用</li>
-<li>内部链接属性：静态函数只能在声明它的源文件中使用</li>
-</ul>
-
-<h4 id="toc_4">const关键字</h4>
-
-<ol>
-<li>声明常量，使得指定变量不能修改</li>
-<li>修饰函数形参，使得形参在函数内不能修改，表示输入参数</li>
-<li>修饰函数返回值，使得函数返回值不能修改</li>
-</ol>
-
-<h4 id="toc_5">sizeof关键字</h4>
-
-<p>在编译阶段处理，结果为对象或类型所占的内存字节数</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOS-面试  OC语言特性]]></title>
-    <link href="https://acefish.github.io/15721610726321.html"/>
-    <updated>2019-10-27T15:24:32+08:00</updated>
-    <id>https://acefish.github.io/15721610726321.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">分类</h2>
-
-<ol>
-<li>分类的作用<br/>
-声明私有方法，将大体积的类分开，可以将framework中的私有方法公开</li>
-<li>分类的特点<br/>
-是在运行时，才将<code>Category</code>中的实例方法列表、协议列表、属性列表添加到主类上(所以Category中的方法都是在主类的同名方法之前的)，然后才提柜调用所有类的load方法，这些方法都是在main函数之前执行的。</li>
-<li>分类可以添加哪些内容<br/>
-实例方法、类方法、协议、属性(通过添加setter和getter方法，并没有添加实例变量)</li>
-<li>如果有两个分类A和B，分类中有一个同名方法，哪个方法最终会生效？<br/>
-取决于分类的编译顺序，后编译的那个分类的同名方法生效，而之前的会被覆盖(并不是真正的覆盖，因为其与的方法仍然存在只是访问不到，因为在添加类方法是倒序遍历方法列表的，因因此最后编译的分类的方法会在方法列表前面，访问时就会先被访问到。因此，如果生命一个和原类方法同名的方法，也会覆盖原类方法)</li>
-<li>添加了两个同名的分类 会报错的</li>
-<li>分类能添加成员变量吗?<br/>
-分类是不能添加成员变量。只能通过运行时中的关联对象来模拟实现成员变量，实际~~~~是关联内容，所有对象的关联内容都放在同一个全局容器哈希表中:<code>AssociationsHashMap</code>，由于<code>AssociationsManager</code>统一管理</li>
-</ol>
-
-<h2 id="toc_1">扩展</h2>
-
-<ol>
-<li>扩展的作用<br/>
-声明私有属性、声明方法、声明私有成员变量</li>
-<li>扩展的特点<br/>
-编译时决议，只能以声明的形式存在，我们不能为系统类添加扩展</li>
-</ol>
-
-<h2 id="toc_2">代理</h2>
-
-<p>传递方式是一对多的</p>
-
-<h2 id="toc_3">通知</h2>
-
-<p>使用观察者模式来实现跨层传递信息，传递方式是一对多的</p>
-
-<h2 id="toc_4">KVO</h2>
-
-<p>是另外一种观察者模式  </p>
-
-<p>当被观察额peoperty值发生变化时，或者它以来的某个key发生变化时 就会触发<code>observeValueForKeyPath:ofObject:change:context:</code>方法</p>
-
-<p>可以用一下几种方式触发被改变property值：</p>
-
-<ol>
-<li>使用key-value 的 accessor方法</li>
-<li>使用 kvc方法 例如 <code>setValue:forKey:、insertValue:inPropertyWithKey:</code></li>
-<li>使用<code>mutableArrayValueForKey:</code>取得一份代理对象，并操作这个代理对象</li>
-</ol>
-
-<p>我们也可以手动发送<code>change notification</code>。</p>
-
-<pre><code class="language-objectivec">- (void)setValue:(id)value
-{
-    [self willChangeValueForKey:@&quot;key&quot;];
-    
-    [super setValue:value];
-    
-    [self didChangeValueForKey:@&quot;key&quot;];
-}
-</code></pre>
-
-<h2 id="toc_5">KVC</h2>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOS面试-UI、事件传递、图像显示、性能优化]]></title>
-    <link href="https://acefish.github.io/15719721721875.html"/>
-    <updated>2019-10-25T10:56:12+08:00</updated>
-    <id>https://acefish.github.io/15719721721875.html</id>
-    <content type="html"><![CDATA[
-<p>参考<a href="14951065647732.html">图层性能</a></p>
-
-<h2 id="toc_0">时间处理原理</h2>
-
-<p>UIView为CALayer提供内容、负责处理触摸等事件，参与响应链</p>
-
-<p>CALayer虽然不参与响应链 但是有一系列的方法帮助处理事件</p>
-
-<pre><code class="language-objectivec">-containsPoint:  //如果该点在该图层 就返回yes
--hitTest:  //接受一个point作为参数  返回的是图层本身或者包含这个坐标点的子节点图层
-</code></pre>
-
-<p>事件传递过程：<br/>
-点击屏幕后 UIApplication-&gt;UIWindow，通过pointinside方法来判断该方法是否在该视图中</p>
-
-<pre><code class="language-objectivec">- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event;
-</code></pre>
-
-<p>然后在所有子视图中重复该动作  直到找到点击所在区域视图  然后在反向重复进行</p>
-
-<pre><code class="language-objectivec">- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event;
-</code></pre>
-
-<p>找到能处理此事件视图 如果一直传递到UIApplication都没有被处理掉 就会被忽略</p>
-
-<h2 id="toc_1">图像显示原理</h2>
-
-<p>可以参考GPU渲染文档 <a href="15643878437057.html">渲染</a></p>
-
-<p>简单版本的渲染流程</p>
-
-<ol>
-<li>更新视图树</li>
-<li>CPU计算要显示的内容，在runLoop的beforeWatting和Exit时 将更新的视图树打包发送给独立负责渲染的drawRender进程</li>
-<li>数据在Render Server后 会被反序列化 而在的图层树 根据图层树使用画家算法 得到最终的渲染树  渲染树信息转换为<code>OpenGL ES/Metal</code> 发送给GPU进行渲染</li>
-<li>GPU进行渲染和纹理合成<br/></li>
-<li>将结果放到帧缓冲区</li>
-<li>视频控制器根据Vsync信号 指定时间去提取帧缓冲区的屏幕显示</li>
-<li>显示到屏幕上</li>
-</ol>
-
-<p>一般页面为60fps， 即一秒就要更新60帧 </p>
-
-<h2 id="toc_2">滑动优化方案</h2>
-
-<p>针对CPU 将以下操作放到子线程</p>
-
-<ol>
-<li>对象的创建、调整、销毁 放到子线程</li>
-<li>将布局计算、文本计算、高度缓存等 放到子线程</li>
-<li>预渲染(文本的异步绘制、图片解码等)</li>
-</ol>
-
-<p>GPU: 纹理渲染 视图合成</p>
-
-<p>一般遇到性能问题，经常考虑是否发生了一下操作</p>
-
-<ol>
-<li>是否收到CPU和GPU的限制</li>
-<li>是否有不必要的CPU渲染</li>
-<li>是否有太多的离屏渲染</li>
-<li>是否有奇怪的图片格式或者尺寸</li>
-<li>是否有太多图层混合操作</li>
-<li>是否有昂贵的View效果</li>
-<li>View的层次结构是否合理</li>
-</ol>
-
-<h2 id="toc_3">UI绘制的原理</h2>
-
-<p><img src="media/15719721721875/15719869651266.jpg" alt="" style="width:683px;"/></p>
-
-<ul>
-<li>当调用<code>[UIView SetNeedsDisplay]</code>时  并没有立即执行绘制工作，而是执行<code>[View.layer setNeedDisplay]</code>方法  给当前的layer打上“脏”标记</li>
-<li>RunLoop快要结束时 调用layer的display方法 进入当前视图的真正绘制中</li>
-<li>在layer的display内部 系统判断layer的delegate是否实现<code>displayLayer:</code>的delegate方法。如果实现了就执行异步绘制，否则交给系统的绘制流程</li>
-</ul>
-
-<h3 id="toc_4">系统绘制流程</h3>
-
-<p><img src="media/15719721721875/15719878775435.jpg" alt="" style="width:688px;"/></p>
-
-<ul>
-<li>在layer的内部创建一个backing store,即CGContextRef上下文</li>
-<li>如果layer有delegate：<br/>
-执行[layer.delegate drawLayer:incntext]方法(这个方法在系统内部执行)，在方法内部调用view的drawReact方法，也就是重写view的drawRect方法 才会被调用</li>
-<li>如果没有delegate就会调用layer的<code>drawInContext</code>方法 可以重写layer的该放大</li>
-<li>将绘制结果提交给GPU</li>
-</ul>
-
-<p><img src="media/15719721721875/15719888857380.jpg" alt="" style="width:689px;"/></p>
-
-<h2 id="toc_5">iOS视图约束</h2>
-
-<h3 id="toc_6">自动约束方法</h3>
-
-<ol>
-<li><p>updateConstraintsIfNedded<br/>
-触发开始约束更新<br/>
-当有新的布局时，系统调用此方法确保视图和子视图约束信息的更新，系统会自动调用这方法，我们也可以手动调用此方法，来检查最新的约束条件</p></li>
-<li><p>updateConstraints<br/>
-更新约束<br/>
-我们可以通过重写此方法来设置自己的约束，系统在调用layOut布局之前，回调用这个方法，确认在视图的约束<br/>
-当我们的视图有约束变化或者失效，我们可以改变这些约束然后调用<code>setNeedUpdateConstraints</code>标记约束需要更新<br/>
-需要在此方法最后调用<code>super updateConstraints</code></p></li>
-<li><p>-（BOOL）neddUpdateConstrains<br/>
-调用此方法根据此方法的返回 决定是否需要更新约束</p></li>
-<li><p>setNeedsUpdateConstraints<br/>
-当视图需要更新时 我们可以调用此方法，然后在系统决定更新时机</p></li>
-</ol>
-
-<h3 id="toc_7">updateConstranins和layOut方法联系</h3>
-
-<p>AutoLayout在更新显示view之前，会先调用updateContrains和layingOutView，layout和依赖于Contrains，而view的最终显示依赖于layout</p>
-
-<p>第一步：update constrains 进行视图的约束，从俯视图到子视图更新约束信息，可以通过调用<code>setNeedsUpdateConstraints</code>来触发此步骤. 而当我们做出一些改变约束的事情事，可以调用<code>updateConstraintsIfNedded</code>来通知约束改变，可以在<code>updateConstraints</code>方法中重写或者补充一些视图的约束</p>
-
-<p>第二步: lauout 根据上一步的约束结果，从父视图到子视图来设置视图的bounds frame等 确定试图位置，与constrains类似 有<code>setNeedLayout</code> <code>layoutIfNeeded</code> <code>layoutSubviews</code>方法</p>
-
-<p>第三步: 此步骤时 把view展示在屏幕上 此步骤可以通过<code>setNeedDisplay</code>来触发</p>
-
-<p>这三个步骤互相依赖，每一步的触发都依赖于上一步</p>
-
-<h3 id="toc_8">补充</h3>
-
-<p>`UIViewControlle</p>
-
-<pre><code class="language-text">```r`中有`- (void)updateViewConstraints`默认实现是调用UIView的`uodateConstraints`
-
-
-    
-
-</code></pre>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Block、Delegate、Notification]]></title>
-    <link href="https://acefish.github.io/15719108696882.html"/>
-    <updated>2019-10-24T17:54:29+08:00</updated>
-    <id>https://acefish.github.io/15719108696882.html</id>
-    <content type="html"><![CDATA[
-<p>三种常见的回调方式</p>
-
-<p>block和delegate都可以进行通知</p>
-
-<ol>
-<li><p>delegate的运行成本低 block的运行成本高<br/>
-block出栈需要将使用的数据从栈内存拷贝到堆内存，当然对象的话就是加计数，使用完或者block置nil后才消除。对对象的引用 甚至还有可能会拷贝对象 或者 对对象造成循环引用<br/>
-delegate只是保存了一个对象指针，直接回调，没有额外消耗</p></li>
-<li><p>使用场景的区别<br/>
-block更加轻型 使用起来更加方便 常在局部使用 能增加代码的可读性 和 可维护性</p>
-<p>delegate 能减少代码的耦合度，使事件的监听和事件的处理相分离。语法定义清晰，一个代理可以执行多个协议方法 而不需要创建新的代理，减少维护成本。可以同时实现多个代理</p></li>
-</ol>
-
-<h2 id="toc_0">notification</h2>
-
-<p>也是iOS中常用的传值和回调方式</p>
-
-<p>采用单例设计模式<br/>
-使用起来加单，代码精简，可以实现一对多传值</p>
-
-<p>缺点是： </p>
-
-<ul>
-<li>必须要在使用完成后注销通知，否则有可能出现crash</li>
-<li>增加调试难度很难跟踪动作进行</li>
-<li>并不能获取发送通知后的反馈</li>
-<li></li>
-</ul>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[为什么类别具有更高优先级]]></title>
-    <link href="https://acefish.github.io/15719084787065.html"/>
-    <updated>2019-10-24T17:14:38+08:00</updated>
-    <id>https://acefish.github.io/15719084787065.html</id>
-    <content type="html"><![CDATA[
-<p>dyld和runtime结合</p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[iOS面试题]]></title>
-    <link href="https://acefish.github.io/15719057934061.html"/>
-    <updated>2019-10-24T16:29:53+08:00</updated>
-    <id>https://acefish.github.io/15719057934061.html</id>
-    <content type="html"><![CDATA[
-<ol>
-<li><p>OC类可以多继承吗？可以实现多接口吗？Category是什么？重写一个类使用继承好还是分类好？<br/>
-OC不能多继承，可以实现多接口，通过实现多接口可以完成类似多继承。使用Category好，使用Category只会对本分类有效，不会影响到其他类和原有类关系</p></li>
-<li><p>import和#include的区别，@class、#import&lt;&gt;和import“”</p>
-<p>import是OC导入的关键字 include是C和C++导入的关键字,使用#import会保证只导入一次，不重复导入，相当于 #include和#pragma once。@class告诉编译器某个类的声明，当执行时，才去查看类的实现文件，可以解决头文件的相互包含;#import&lt;&gt;用来包含系统的头文件，#import“”用来包含用户头文件。</p></li>
-<li><p>常见的object-c的数据类型有那些， 和C的基本数据类型有什么区别?如：NSInteger和int</p>
-<p>答：object-c的数据类型有NSString，NSNumber，NSArray，NSMutableArray，NSData等等，这些都是class，创建后便是对象，而C语言的基本数据类型int，只是一定字节的内存空间，用于存放数值;NSInteger是基本数据类型，并不是NSNumber的子类，当然也不是NSObject的子类。<mark>NSInteger是基本数据类型Int或者Long的别名(NSInteger的定义typedef long NSInteger)，它的区别在于，NSInteger会根据系统是32位还是64位来决定是本身是int还是Long</mark>。</p></li>
-<li><p>类别的作用？继承和类别在实现中有何不同？<br/>
-类别可以在不获悉，不改变原有代码的情况下，向里面添加新的方法，只能添加不能删除和修改。如果和原有类中方法产生冲突，则类覆盖原来的方法，因为类别具有更高的优先级。</p></li>
-<li><p>为什么说OC是运行时动态语言<br/>
-这里涉及了两个概念： <br/>
-    运行时：将数据类型的确定由编译时，推迟到了运行时，在运行时才去确定一个对象的类别，以及调用该类别对象指定方法。其为动态语言 即为可以在运行时改变其结构<br/>
-    多态：不同对象以自己的方式响应相同的消息能力即为多态。</p>
-<blockquote>
-<p>补充：<br/>
-动态可以为：动态类型(比如经过类型判断可以将类型进行转换)、动态绑定(函数和selector的动态绑定)、动态加载(比如根据不同机型加载不同资源文件)</p>
-</blockquote></li>
-</ol>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Collections and asynchronous updates]]></title>
-    <link href="https://acefish.github.io/15719000093976.html"/>
-    <updated>2019-10-24T14:53:29+08:00</updated>
-    <id>https://acefish.github.io/15719000093976.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">概述</h2>
-
-<p>ASCollectionNode和ASTableNode使用相同的内部类(ASRangeController和ASDataController)来简化大多数的操作。</p>
-
-<p><code>ASRangeController</code>负责确定哪些Collection cell node 是在一定范围内并且为cell node以及其子节点设置正确的 interface state</p>
-
-<p><code>ASDataController</code>是支持UICollectionView的真实数据源。负责处理批处理更新，以线程安全的方式将其转发到bacKing View.</p>
-
-<h2 id="toc_1">批量更新</h2>
-
-<p><code>UICollectionView</code>允许客户端提交单个编辑而不需要包装在批处理更新中。<code>ASCollectionNode</code>虽然也允许这么做，但是在后台操作会自动捆绑到批处理更新中，因此也叫做<code>change set(更改集 _ASHierarchyChangeSet)</code>。批处理操作也可以嵌套，最后是单个的更改集<br/>
-值得注意的是，在其生命周期开始，UICollectionView需要执行初始数据加载。可以简单的通过调用<code>-reladData</code>实现,这也包装在ASCollectionNode的更改集中。因此，初始数据加载只是另一个更改集，就像其它更改一样。</p>
-
-<h2 id="toc_2">改变集 处理流程</h2>
-
-<p><code>ASCollectionNode</code>不接受也不处理单个的编辑操作。其<code>ASDataController</code>公开的主要数据更新方法为<code>-updateWithChangeSet:（_ ASHierarchyChangeSet *）changeSet</code>，并且在通过此方法提交之前，必须将编辑操作包装在更改集中，可以将这个方法是为处理更改集的通道</p>
-
-<p>通道在开始处理主线程的更改集之前，切换到后台线程执行昂贵的操作，最后返回到主线程将其转发到UICollectionView</p>
-
-<h3 id="toc_3">内部队列和数据集</h3>
-
-<p>由于通道在多个线程上运行，因此每个改变集都需要通过通道确保数据的一致性，不仅与数据源而且与backing View保持一致。在内部，<code>ASDataController</code>使用两个队列和数据集来简化通道</p>
-
-<p>这两个队列称为<code>_editingTransactionQueue</code>和<code>_mainSerialQueue</code>。前者为串行后台dispatch_queue,后者为<code>ASMainSerialQueue</code></p>
-
-<p>两个数据集为<code>pendingMap</code>和<code>visibleMap</code>。它们每个都是ASElementMap实例，<code>ASElementMap</code>是不可变的、主线程的<code>ASCollectionElement</code>的集合</p>
-
-<p>每一个<code>ASCollectionElement</code>代表colletion视图中的item或者supplementary视图。它具有足够的信息帮助ASDataController来初始化和测量backing ASCellNode以及最终要的nodeblock。这个block是在进程开始时被data source返回的，并且被element引用直到该block被执行。在首次调用<code>-[ASCollectionElement node]</code>被调用时 该block被执行。一旦被执行，<code>ASCellNode</code>将会被element强应用并且block被释放。这意味着任何给定时间，element要不具有node block 要不具有node instance，不能同时拥有两者。如果caller想要获取node，只有在node已经被初始化的情况下，此时应该调用<code>-nodeIfAllocated</code></p>
-
-<h2 id="toc_4">Data Source index space VS UIKit index space</h2>
-
-<p>由于每个改变集都是异步处理，因此可能需要支持多个<code>UICollectionView</code>在多个主线程run loop中使用改变集。</p>
-
-<p>在任何给定时间，ASDataController的pendingMap是从数据源获取的最新map，因此它位于数据源索引空间中。另一方面，visibleMap是UICollectionView当前显示的元素的集合。结果，它在UIKit索引空间中。</p>
-
-<h3 id="toc_5">工作的五个步骤</h3>
-
-<p>每个改变集都会执行这5个步骤</p>
-
-<ol>
-<li>该进程从主线程开始。此时pendingMap和visibleMap是同一个。制作一个pendingMap的mutalbe copy，然后根据改变集来进行更新。这包括，移除旧的items，向数据源查询插入新的items。在这步结束时，将会更新<code>pendingMap</code>反应data source的整体视图</li>
-<li>这是一个可选的步骤，仅当layout delegate设置为data controller时执行。默认，data controller一次性的初始化和测量所有的items(步骤3)。具有layout delegate时可以使其他类自定义此行为，例如，ASCollectionLayout仅初始化和测量足够的cell填充可见口。当用户滚动时，将按需分配更多cell，为此，layout delegate可能需要构造一个上下文，该上下文必须在同一主线程runloop上发生，</li>
-<li>在<code>_editingTransactionQueue</code>，分配和测量<code>pendingMap</code>的所有element，或者调用layout delegate让其决定。在此步骤结束时，element已经准备好被backing view使用</li>
-<li>在block中计划执行下一步，通过<code>_mainSerialQueue</code>将其添加到主线程队列中。如果在此点之前还有其他尚未调度到队列的block被调度，执行步骤5</li>
-<li>通知ASRangeController，colletionView的布局协调器，更重要的时，向collection发送有关更改集的信息。ASColelctionView调用其超类来执行批处理更新，在批处理中，pendingMap被更改为visibleMap。 UICollectionView要求将新数据集部署在-[UICollectionView performBatchUpdates：completion：]的更新块中。它还要求编辑操作必须按照特定的顺序进行，并由步骤1之前的更改集验证</li>
-</ol>
-
-<h2 id="toc_6">动画</h2>
-
-<h2 id="toc_7">移动操作</h2>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[官方文档]]></title>
-    <link href="https://acefish.github.io/15718858302183.html"/>
-    <updated>2019-10-24T10:57:10+08:00</updated>
-    <id>https://acefish.github.io/15718858302183.html</id>
-    <content type="html"><![CDATA[
-<p><a href="https://github.com/mxcl/PromiseKit/blob/master/Documentation/GettingStarted.md">官方文档学习地址</a></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Layout Specs]]></title>
-    <link href="https://acefish.github.io/15710248960458.html"/>
-    <updated>2019-10-14T11:48:16+08:00</updated>
-    <id>https://acefish.github.io/15710248960458.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">Layout specs</h2>
-
-<h3 id="toc_1">Layout flow</h3>
-
-<p>Layout计算是 通过以下启动触发器来递归完成。一个layout布局完成的启动触发器就是 当父节点改变时。这触发器也在第一次node树被创建时发生。</p>
-
-<p><code>ASDisplayNode</code>第一个重要分支是顶层的<code>[ASDisplayNode calculateLayoutThatFits]</code>，这个方法将会选择布局引擎是<code>Texture布局</code>还是<code>Yoga</code></p>
-
-<pre><code class="language-objectivec">- (ASLayout *)calculateLayoutThatFits:(ASSizeRange)constrainedSize
-{
-  __ASDisplayNodeCheckForLayoutMethodOverrides;
-
-  switch (self.layoutEngineType) {
-    case ASLayoutEngineTypeLayoutSpec:
-      return [self calculateLayoutLayoutSpec:constrainedSize];
-#if YOGA
-    case ASLayoutEngineTypeYoga:
-      return [self calculateLayoutYoga:constrainedSize];
-#endif
-      // If YOGA is not defined but for some reason the layout type engine is Yoga
-      // we explicitly fallthrough here
-    default:
-      break;
-  }
-
-  // If this case is reached a layout type engine was defined for a node that is currently
-  // not supported.
-  ASDisplayNodeAssert(NO, @&quot;No layout type determined&quot;);
-  return nil;
-}
-</code></pre>
-
-<p>基于UIKit系统，Texture在不同阶段遵循以下过程</p>
-
-<ol>
-<li>ASDisplayNode和ASLayout初始化。这是完全独立与UIKit存在。这是当一个布局计算创建时</li>
-<li>UIView/CALayer初始化。遵循UIKit管理惯例，即在布局大小之前创建要显示的UIKit items。然而，它们是在UIKit层次，允许下列的布局触发器</li>
-<li>UIView/CALayer布局。这是UIKit递归操作之后的结果。这和步骤1中的布局计算不同，这是仅仅为了使用已经准备好的布局，并且将其应用到UIView/CALayer中 进行布局调整</li>
-<li>如有必要，在其中渲染CALayer的光栅化。UIKit可以将UIKit层次结构绘制到屏幕上</li>
-</ol>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Node Lifecycle]]></title>
-    <link href="https://acefish.github.io/15707800044047.html"/>
-    <updated>2019-10-11T15:46:44+08:00</updated>
-    <id>https://acefish.github.io/15707800044047.html</id>
-    <content type="html"><![CDATA[
-<p><code>Texture</code>使用ARC，因此对象不再有强引用时就会被dealloc。而对于ASDisplayNode和其子类来说，不同node有不同的生命周期，因此了解其生命周期以及 enter interface和loading state  是很有用的</p>
-
-<h2 id="toc_0">node container 管理node</h2>
-
-<p>node container负责它们管理的node的声明周期。一般来说，<code>node container</code>会在需要时尽快分配节点，并在不需要时释放它们。<code>Texture</code>假设<code>node container</code>完全管理其node，而客户端 不保留这些节点 和/或 修改其生命周期。例如，客户端不应该尝试存储由于<code>ASCollectionNode、ASPageNode或ASTableNode</code>初始化的<code>ASCellNode</code>实例</p>
-
-<p><code>ASCollectionNode</code>和<code>ASTableNode</code>在将<code>ASCellNodes</code>添加到container node立即对其进行初始化，不论是通过reload data或者作为批处理的一部分更新。类似于<code>UICollectionView/UITableView</code>，第一次数据加载都是在没有先前数据集合的基础上重新加载数据。但是又与<code>UICollectionView/UITableView</code>不同，其cell在被显示之前会被重用和重新配置，而<code>ASCollectionNode和ASTableNode</code>不会重用<code>ASCellNode</code>。这就会导致结果，由collection和table管理的<code>ASCellNode</code>数量和截止到那时为止插入的items和rows相同</p>
-
-<p>目前为止，ASCollectionNode和ASTableNode的当前实现会在插入所有cell后立即初始化它们。即，如果客户端执行100个items插入到collection node中的批处理更新，则该collection node将会初始化100个单元节点作为批处理更新的一部分。它还将在每个新的cell node上执行布局结算。因此，在该过程结束时，collection node将会管理100个节点，并且这些节点已经计算出可以使用的布局</p>
-
-<p>由于上面所说的行为，ASCollection和ASTableNode可能需要一段时间才能处理插入大量items的批处理更新。在这种情况下，建议使用<code>node block</code>API，该API允许在主线程外并行初始化。如果仍然需要考虑性能，则使用批处理提取API拆分数据集，并在最终用户滚动时，逐渐向容器节点公开更多数据</p>
-
-<h2 id="toc_1">ASCollectionLayout</h2>
-
-<p>为了解决上面所说的处理大型数据集合的弊端，为<code>ASCollectionNode</code>引入了新的API，使其可以再用户滚动时，延迟初始化和布局cell node。但是，由于某些限制，此功能仅仅适用于知道每个cell node大小的colletion layout。例如，轮播图，分页布局等</p>
-
-<h3 id="toc_2">ASCellNodes的 dealloction</h3>
-
-<p>因为ASCellNode并未重用，因此与<code>UICollectionViewCell或UITableViewCell</code>相比，他们具有更长的生命周期。当不再使用ASCellNodes并将其从容器中删除时，将会释放。这可能发生在重新加载数据 或者 删除批处理数据更新之后，或者在node container不再使用而被释放。</p>
-
-<p>对于后者node container不再被使用而被释放的情况，它们的单元节点不会立即释放。这是因为collection node和table nodes中可能持有大量的cell nodes，并且同时释放他们，这会导致明显的延迟。为了避免这种情况，使用了<code>ASDeallocQueue</code>帮助在后台线程释放。<br/>
-由于<code>ASDataController</code>实例是所有单元节点的真正所有者–它对所有单元节点都有很强的引用.因此，所有这些单元节点也都从主线程中释放。因此，可以预期从释放集合或表视图开始，直到所有单元节点都完全释放并回收其内存为止的延迟。在调试内存泄漏时，请记住这一点，这一点很重要：DataController引用的对象可能需要一点时间才能被<code>Instruments</code>显示为已经dealloc。</p>
-
-<h3 id="toc_3">ASDeallocQueue</h3>
-
-<p><code>ASDeallocQueue</code>通过增加每个对象的引用计数（基本上保留它们并充当其唯一所有者）来帮助延迟分配给它的对象的重新分配，然后稍后在后台线程上释放它们</p>
-
-<h2 id="toc_4">未被Container管理的Node</h2>
-
-<p>这些节点通常由客户端代码直接创建，例如cell node的直接或间接子节点。因为node通常存在于视图结构层次中，整个node视图层次和root node有相同的生命周期。最后，如果root node由node container管理(直接被ASViewController管理，或者间接作为collection或者table的 cell node被管理)，则整个node 视图层次都由node  container管理</p>
-
-<h3 id="toc_5">自动节点管理(ASM)下的声明周期</h3>
-
-<p>ASM允许简单的返回包含给定时间父节点需要的子节点布局规范来操作节点的结构层次。纹理通过比较先前和当前的布局规范计算子节点的插入和删除，并更新节点层次。为了支持两个布局之间的动画，新的节点在动画之前就插入，为新来的动画做准备。新的节点在开始时就被父节点保留，而在动画结束后，删除旧的节点，如果旧节点没有被其他引用或者保留 将将被释放</p>
-
-<h2 id="toc_6">node interface state</h2>
-
-<p>在智能预加载的支持下，ASTableView和ASCollectionView都使用<code>ASRangeController</code>确定他们管理的每个ASCellNode的状态，并将该状态递归设置为层次结构中的每个节点</p>
-
-<h2 id="toc_7">Node loading state</h2>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[线程]]></title>
-    <link href="https://acefish.github.io/15707737201639.html"/>
-    <updated>2019-10-11T14:02:00+08:00</updated>
-    <id>https://acefish.github.io/15707737201639.html</id>
-    <content type="html"><![CDATA[
-<p><code>Texture</code>是对资源的高效利用来给用户提供高帧速的体验。换言之，科学的在线程间分配工作，使默认的runLoop保持精简，实时允许用户的输入事件，并且消耗主队列上安排的工作</p>
-
-<p>遵循以下规定：</p>
-
-<ol>
-<li>使用UIKit API必须通过<code>dispatch_get_main_queue()</code>或者使用<code>ASPerformBlockOnMainThread()</code>在主线程执行</li>
-<li>一般来说 其它任何事情都应该在后台发生</li>
-</ol>
-
-<h2 id="toc_0">Run Loop、Threads and Queues</h2>
-
-<h2 id="toc_1">ASMainSerialQueue</h2>
-
-<p><code>ASMainSerialQueue</code>确保在不中断的情况下在主线程执行工作，其主要区别是，使用<code>dispatch_async(dispatch_get_main_queue, block)</code>会在块的执行之间中断。<br/>
-因此接口将在主线程中的队列中执行所有可能操作，然后再将控制权转移给OS</p>
-
-<p>此接口会调用<code>ASPerformBlockOnMainThread</code>。当其他线程pop block在主线程执行时，该接口就会锁定其他线程，确保其在主调度队列和runloop的其它循环之前</p>
-
-<p>并且由于是同步机制，<code>ASMainSerialQueue</code>是串行的，因此可以确保按照顺序执行。一个示例是将以下块排队: 更改视图属性-&gt;触发布局更新-&gt;动画。 由于ASMainSerialQueue可能会较早执行，因此要比使用<code>dispatch_async（dispatch_get_main_queue（））</code>发送的块较早执行。</p>
-
-<p>这实际上只是主调度队列的缓冲区，为计划工作提供了更多可见性。该接口确保计划的所有内容都将在主线程以同一操作顺兴进行</p>
-
-<h3 id="toc_2">ASRunLoopQueue</h3>
-
-<h3 id="toc_3">Locks and Safety</h3>
-
-<h3 id="toc_4">线程竞争</h3>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Nodes]]></title>
-    <link href="https://acefish.github.io/15698393226216.html"/>
-    <updated>2019-09-30T18:28:42+08:00</updated>
-    <id>https://acefish.github.io/15698393226216.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">ASDisplayNode</h2>
-
-<p><code>ASDisplayNode</code>是UIView和CALayer的主要抽象。与UIView创建和持有<code>CALayer</code>相同，Node创建和持有UIView</p>
-
-<pre><code class="language-objectivec">ASDisplayNode *node = [[ASDisplayNode alloc] init];
-node.backgroundColor = [UIColor orangeColor];
-node.bounds = CGRectMake(0, 0, 100, 100);
-NSLog(@&quot;Underlying view: %@&quot;, node.view);
-</code></pre>
-
-<p>node拥有与<code>UIView</code>相同的所有属性，view和layer的所有属性都会映射到node，非常方便我们使用</p>
-
-<pre><code class="language-objectivec">ASDisplayNode *node = [[ASDisplayNode alloc] init];
-node.clipsToBounds = YES;       // not .masksToBounds
-node.borderColor = [UIColor blueColor];  //layer name when there is no UIView equivalent
-NSLog(@&quot;Backing layer: %@&quot;, node.layer);
-</code></pre>
-
-<p>当与node container一起使用时，node的属性将会在后台线程设置，</p>
-
-<h3 id="toc_1">视图包装器</h3>
-
-<p>有时，我们提供一个视图作为node的backing view。这个视图在block中提供，block中返回视图并进行保存。此时，这些node的展示会同步发生，因为只有node中的<code>_ASDisplayView</code>才会异步显示，在普通包装的UIView并不会异步显示</p>
-
-<pre><code class="language-objectivec">ASDisplayNode *node = [ASDisplayNode alloc] initWithViewBlock:^{
-    SomeView *view  = [[SomeView alloc] init];
-    return view;
-}];
-</code></pre>
-
-<p>我们通常使用这个方法将UIView的子类转换为<code>ASDisplayNode</code>子类，来包装现有视图</p>
-
-<h2 id="toc_2">ASCellNode</h2>
-
-<p>是Texture中的cell类，<code>ASCellNode</code>可以和<code>ASTableNodes</code>、<code>ASCollectionNodes</code>、<code>ASPageNodes</code>一起使用</p>
-
-<h3 id="toc_3">使用cellNode的三种方式</h3>
-
-<h4 id="toc_4">子类化</h4>
-
-<p>与子类化<code>ASDisplayNode</code>几乎相同，需要使用以下方法:</p>
-
-<ul>
-<li>-init</li>
-<li>-layoutSpecThatFits</li>
-<li>-didLoad</li>
-<li>-layout</li>
-</ul>
-
-<h4 id="toc_5">使用ASViewController初始化</h4>
-
-<p>将视图控制器作为视图放入cell的scroll node或者page node</p>
-
-<p>举个例子:<br/>
-编写一个用于管理<code>ASTableNode</code>的视图控制器。将该表作为<code>ASPagenode</code>的页面，使用<code>initWithViewControllerBlock</code></p>
-
-<pre><code class="language-objectivec">- (ASCellNode *)pagerNode:(ASPagerNode *)pagerNode nodeAtIndex:(NSInteger)index
-{
-    NSArray *animals = self.allAnimals[index];
-    
-    ASCellNode *node = [[ASCellNode alloc] initWithViewControllerBlock:^UIViewController * _Nonnull{
-        return [[AnimalTableNodeController alloc] initWithAnimals:animals];
-    } didLoadBlock:nil];
-    node.style.preferredSize = pagerNode.bounds.size;
-    return node;
-}
-</code></pre>
-
-<blockquote>
-<p>注意</p>
-
-<p>使用这个方式设置的node，需要设置其<code>.style.preferredSize</code>。</p>
-</blockquote>
-
-<h4 id="toc_6">使用UIView和CALayer初始化</h4>
-
-<p>当如果有<code>UIView</code>或者<code>CALayer</code>子类 作为cell</p>
-
-<pre><code class="language-objectivec">- (ASCellNode *)pagerNode:(ASPagerNode *)pagerNode nodeAtIndex:(NSInteger)index
-{
-    NSArray *animal = self.animals[index];
-    
-    ASCellNode *node = [[ASCellNode alloc] initWithViewBlock:^UIView * _Nonnull{
-        return [[SomeAnimalView alloc] initWithAnimal:animal];
-    }];
-
-    node.style.preferredSize = pagerNode.bounds.size;
-    
-    return node;
-}
-</code></pre>
-
-<p>虽然可以这么做 但是推荐将现有的UIView类转为ASCellNode的子类 获取异步显示的优势</p>
-
-<h3 id="toc_7">Never Show Placeholders</h3>
-
-<p>通常，如果cell在其到达屏幕之前仍为display完成，将会显示占位符直到绘制内容完成</p>
-
-<p>但是，当如果我们不想要看到placeholder内容，可以将其属性<code>neverShowPlaceholders</code>设置为<code>YES</code></p>
-
-<pre><code class="language-objectivec">node.neverShowPlaceholders = YES;
-</code></pre>
-
-<p>将其设置为yes，则cell的主线程将会被阻塞，直到cell显示完成为止。</p>
-
-<h4 id="toc_8">UITableViewCell的特殊属性</h4>
-
-<p>在<code>ASCellNode</code>中也存在和<code>UITableViewCell</code>中的类似<code>selectionStyle、accessoryType和seperatorInset</code>等我们偶尔可能使用的属性</p>
-
-<h2 id="toc_9">ASButtonNode</h2>
-
-<p>类似UIButton继承自UIControl，而ASButtonNode也继承自<code>ASControlNode</code>。</p>
-
-<h3 id="toc_10">control state</h3>
-
-<pre><code class="language-objectivec">[buttonNode setTitle:@&quot;Button Title Normal&quot; withFont:nil withColor:[UIColor blueColor] forState:ASControlStateNormal];
-
-//可以通过设置Attribute  设置更多自定义属性
-[self.buttonNode setAttributedTitle:attributedTitle forState:ASControlStateNormal];
-</code></pre>
-
-<h3 id="toc_11">Target-Action</h3>
-
-<pre><code class="language-objectivec">[buttonNode addTarget:self action:@selector(buttonPressed:) forControlEvents:ASControlNodeEventTouchUpInside];
-</code></pre>
-
-<h3 id="toc_12">Content Alignment</h3>
-
-<p><code>ASButtonNode</code>提供了<code>contentVerticalAlignment和contentHorizontalAlignment</code>属性，可以轻松设置对齐方式</p>
-
-<pre><code class="language-objectivec">self.buttonNode.contentVerticalAlignment = ASVerticalAlignmentTop;
-self.buttonNode.contentHorizontalAlignment = ASHorizontalAlignmentMiddle;
-</code></pre>
-
-<h3 id="toc_13">注意</h3>
-
-<h2 id="toc_14">ASTextNode</h2>
-
-<p>Texture中的主要文本节点，通常在使用UILabel的情况下使用。拥有完整的富文本支持，并且继承自ASControlNode，</p>
-
-<h3 id="toc_15">使用</h3>
-
-<p>ASTextNode的接口对于使用UILabel的人来说非常熟悉，第一个不同的地方在于node仅使用attribute而不能使用纯文字字符</p>
-
-<pre><code class="language-objectivec">NSDictionary *attrs = @{ NSFontAttributeName: [UIFont fontWithName:@&quot;HelveticaNeue&quot; size:12.0f] };
-NSAttributedString *string = [[NSAttributedString alloc] initWithString:@&quot;Hey, here&#39;s some text.&quot; attributes:attrs];
-
-_node = [[ASTextNode alloc] init];
-_node.attributedText = string;
-</code></pre>
-
-<h3 id="toc_16">截断字符串</h3>
-
-<p>当显示文本的空间小于要显示的文本必须空间，将会尽可能多的显示文本，并且所有被截断字符串将会被截断字符串替换。</p>
-
-<pre><code class="language-objectivec">_textNode = [[ASTextNode alloc] init];
-_textNode.attributedText = string;
-_textNode.truncationAttributedText = [[NSAttributedString alloc]
-</code></pre>
-
-<p>默认情况下，截断字符串为<code>...</code></p>
-
-<h3 id="toc_17">Link Attributes</h3>
-
-<p>为了将文本指定为链接，需要将<code>linkAttribute</code>数组设置为字符串数组，将该数组用作属性字符串中链接的键。在设置attribute时，将这些键指向响应的NSURL</p>
-
-<pre><code class="language-objectivec">_textNode.linkAttributeNames = @[ kLinkAttributeName ];
-
-NSString *blurb = @&quot;kittens courtesy placekitten.com \U0001F638&quot;;
-NSMutableAttributedString *string = [[NSMutableAttributedString alloc] initWithString:blurb];
-[string addAttribute:NSFontAttributeName value:[UIFont fontWithName:@&quot;HelveticaNeue-Light&quot; size:16.0f] range:NSMakeRange(0, blurb.length)];
-[string addAttributes:@{
-                      kLinkAttributeName: [NSURL URLWithString:@&quot;http://placekitten.com/&quot;],
-                      NSForegroundColorAttributeName: [UIColor grayColor],
-                      NSUnderlineStyleAttributeName: @(NSUnderlineStyleSingle | NSUnderlinePatternDot),
-                      }
-              range:[blurb rangeOfString:@&quot;placekitten.com&quot;]];
-_textNode.attributedText = string;
-_textNode.userInteractionEnabled = YES;
-</code></pre>
-
-<h3 id="toc_18">ASTextNodeDelegate</h3>
-
-<p>实现<code>ASTextNodeDelegate</code>允许类对与文本相关联的各种事件做出反应</p>
-
-<p>例如点击事件:</p>
-
-<pre><code class="language-objectivec">- (void)textNode:(ASTextNode *)richTextNode tappedLinkAttribute:(NSString *)attribute value:(NSURL *)URL atPoint:(CGPoint)point textRange:(NSRange)textRange
-{
-  // the link was tapped, open it
-  [[UIApplication sharedApplication] openURL:URL];
-}
-</code></pre>
-
-<p>类似的:</p>
-
-<pre><code class="language-objectivec">– textNode:longPressedLinkAttribute:value:atPoint:textRange:
-
-– textNode:shouldHighlightLinkAttribute:value:atPoint:
-
-– textNode:shouldLongPressLinkAttribute:value:atPoint:
-</code></pre>
-
-<h3 id="toc_19">具有行间距的文本导致不正确的最大行数</h3>
-
-<p>当多行文本中使用<code>NSParagraphStyle</code>修改了非默认的<code>lineSpacing</code>，那么就会导致设置的最大行数不正确</p>
-
-<pre><code class="language-objectivec">NSString *someLongString = @&quot;...&quot;;
-
-NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
-paragraphStyle.lineSpacing = 10.0;
-
-UIFont *font = [UIFont fontWithName:@&quot;SomeFontName&quot; size:15];
-
-NSDictionary *attributes = @{
-    NSFontAttributeName : font,
-    NSParagraphStyleAttributeName: paragraphStyle
-};
-
-ASTextNode *textNode = [[ASTextNode alloc] init];
-textNode.maximumNumberOfLines = 4;
-textNode.attributedText = [[NSAttributedString  alloc] initWithString:someLongString
-</code></pre>
-
-<p>为了暂时解决此问题 可以通过设置<code>truncationMode</code>为<code>NSLineBreakByTruncatingTail</code></p>
-
-<pre><code class="language-objectivec">ASTextNode *textNode = [[ASTextNode alloc] init];
-textNode.maximumNumberOfLines = 4;
-textNode.truncationMode = NSLineBreakByTruncatingTail;
-textNode.attributedText = [[NSAttributedString  alloc] initWithString:someLongString
-</code></pre>
-
-<h2 id="toc_20">ASImageNode</h2>
-
-<p>等效于<code>UIImageView</code>。最基本的区别在于图像默认情况下是异步解码的。并且还有其他功能，例如支持GIF和<code>imageModificationBlocks</code></p>
-
-<h3 id="toc_21">基础使用</h3>
-
-<p>使用方式与imageView 基本相同</p>
-
-<pre><code class="language-objectivec">ASImageNode *imageNode = [[ASImageNode alloc] init];
-imageNode.image = [UIImage imageNamed:@&quot;someImage&quot;];
-imageNode.contentMode = UIViewContentModeScaleAspectFill;
-</code></pre>
-
-<h3 id="toc_22">图像变换和效果</h3>
-
-<p>通过为imageNode设置<code>imageModificationBlock</code>,可以定义需要在imagenode上设置的任何需要图像异步发生的转换，包括圆角、添加边框、覆盖花纹等</p>
-
-<h3 id="toc_23">图像裁剪</h3>
-
-<p>image的默认mode为<code>UIViewContentModeScaleAspectFill</code>，图片将会放大填充内容区域，并且裁剪掉超出的内容部分。</p>
-
-<p>我们可以通过设置<code>cropRect</code>来移动图片，其为单元矩阵，默认值为(0.5,0.5,0,0)，要显示左侧内容，可将其x设置为0，以为这图片原点从{0, 0}开始，而非默认值</p>
-
-<h3 id="toc_24">强制放大</h3>
-
-<p>默认情况下，图像过小而无法放入已设置的imageNode的边界时，将不会在CPU上放大图像。</p>
-
-<p>如果您想更改此事实，可以将forceUpscaling设置为YES。这样做意味着您每次使用小于目标位置的图像时，您的应用程序都会占用更多内存</p>
-
-<h3 id="toc_25">检测图像缩放</h3>
-
-<p>通过使用<code>pixel scaling tool</code>可以方便的查看图片放大或者缩小了多少</p>
-
-<h2 id="toc_26">ASNetworkImageNode</h2>
-
-<p>当需要显示远程的图像时，可以使用<code>ASNetworkImageNode</code>,需要做的就是将.URL属性设置为合适的NSURL实例，图像将会异步加载并呈现</p>
-
-<pre><code class="language-objectivec">ASNetworkImageNode *imageNode = [[ASNetworkImageNode alloc] init];
-imageNode.URL = [NSURL URLWithString:@&quot;https://someurl.com/image_uri&quot;];
-</code></pre>
-
-<h3 id="toc_27">Network Image 布局</h3>
-
-<p>因为<code>ASNetworkImageNode</code>并未限制内容大小，因此必须指定layout的大小</p>
-
-<ol>
-<li>style.preferredSize</li>
-</ol>
-
-<p>当我们想要使用标准尺寸时</p>
-
-<pre><code class="language-objectivec">- (ASLayoutSpec *)layoutSpecThatFits:(ASSizeRange)constraint
-{
-    imageNode.style.preferredSize = CGSizeMake(100, 200);
-    ...
-    return finalLayoutSpec;
-}
-</code></pre>
-
-<ol>
-<li>ASRatioLayoutSpec</li>
-</ol>
-
-<p>使用<code>ASRatioLayoutSpec</code>为图像分配一个比例，当图像加载完成后 将会保持该比例</p>
-
-<pre><code class="language-objectivec">- (ASLayoutSpec *)layoutSpecThatFits:(ASSizeRange)constraint
-{
-    CGFloat ratio = 3.0/1.0;
-    ASRatioLayoutSpec *imageRatioSpec = [ASRatioLayoutSpec ratioLayoutSpecWithRatio:ratio child:self.imageNode];
-    ...
-    return finalLayoutSpec;
-}
-</code></pre>
-
-<h3 id="toc_28">引擎组件</h3>
-
-<p>如果选择没有包括<code>PINRemoteImage</code>和<code>PINCache</code>，那么将失去对<code>jpeg</code>的渐进支持，并且需要自定义实现<code>ASImageCacheProtocol</code>的缓存</p>
-
-<h3 id="toc_29">渐进式JPEG支持</h3>
-
-<p>由于包含了<code>PINRemoteImage</code>，NetworkImageNode现在支持加载渐进式的JPEG。意味着，如果服务器提供了这种jpeg，则图像会将以较低的质量快速显示，并且随着加载更多的数据而扩大</p>
-
-<p>启用渐进加载只需要设置<code>shouldRenderProgressImages</code>为<code>YES</code></p>
-
-<pre><code class="language-objectivec">networkImageNode.shouldRenderProgressImages = YES;
-</code></pre>
-
-<blockquote>
-<p>注意</p>
-
-<p>这种方式是使用一张逐渐加载的图像。如果服务器只能使用常规的JPEG，但是可以提供多个版本来提高质量，那么应该使用<code>ASMultiplexImageNode</code></p>
-</blockquote>
-
-<h3 id="toc_30">自动缓存</h3>
-
-<p>使用<code>PINCache</code>自动缓存网络图像</p>
-
-<h3 id="toc_31">GIF支持</h3>
-
-<p>ASNetworkImageNode通过PINRemoteImage的beta版PINAnimatedImage提供GIF支持。注意！除非shouldCacheImage设置为NO，否则该支持将不适用于本地文件。</p>
-
-<h2 id="toc_32">ASVideoNode</h2>
-
-<p>方便我们在app中展示视频</p>
-
-<blockquote>
-<p>使用<code>ASVideoNode</code>就会连接<code>AVFoundation</code>，因为在内部底层中使用了<code>AVPlayerLayer</code>和<code>AVFoundataion</code></p>
-</blockquote>
-
-<h3 id="toc_33">基础使用</h3>
-
-<p>最简单的方式就是设置一个<code>AVAsset</code>资源</p>
-
-<pre><code class="language-objectivec">ASVideoNode *videoNode = [[ASVideoNode alloc] init];
-
-AVAsset *asset = [AVAsset assetWithURL:[NSURL URLWithString:@&quot;http://www.w3schools.com/html/mov_bbb.mp4&quot;]];
-videoNode.asset = asset;
-</code></pre>
-
-<h3 id="toc_34">自动播放、自动重复、自动静音</h3>
-
-<p>通过一些简单的BOOL属性，设置视频播放</p>
-
-<pre><code class="language-objectivec">//进入可见范围后自动播放
-videoNode.shouldAutoplay = YES;
-//视频无限循环播放
-videoNode.shouldAutorepeat = NO;
-//将静音设置为YES 将会关闭视频声音
-videoNode.muted = YES;
-</code></pre>
-
-<h3 id="toc_35">占位图像</h3>
-
-<p>因为video node继承自<code>ASNetworkImageNode</code>，因此可以使用<code>URL</code>属性设置其占位图像。加入决定不这么做，则视频的第一针将会自动解码并作为占位图像</p>
-
-<h3 id="toc_36">ASVideoNode Delegate</h3>
-
-<p>有很多delegate可以对视频事件作出响应，</p>
-
-<p>例如,当播放状态改变时:</p>
-
-<pre><code class="language-objectivec">- (void)videoNode:(ASVideoNode *)videoNode willChangePlayerState:(ASVideoNodePlayerState)state toState:(ASVideoNodePlayerState)toState;
-</code></pre>
-
-<h2 id="toc_37">ASMapNode</h2>
-
-<p>帮助显示用户地离区域</p>
-
-<h3 id="toc_38">基础使用</h3>
-
-<p>只需要输入要显示位置的坐标即可</p>
-
-<pre><code class="language-objectivec">ASMapNode *mapNode = [[ASMapNode alloc] init];
-mapNode.style.preferredSize = CGSizeMake(300.0, 300.0);
-
-// San Francisco
-CLLocationCoordinate2D coord = CLLocationCoordinate2DMake(37.7749, -122.4194);
-
-// show 20,000 square meters
-mapNode.region = MKCoordinateRegionMakeWithDistance(coord, 20000, 20000);
-</code></pre>
-
-<h3 id="toc_39">MKMapSnapshotOptions</h3>
-
-<p>可以通过option属性 定义<code>node</code>的主要组件部分</p>
-
-<ul>
-<li>MKMapCamera:  相机的高度和仰角</li>
-<li>MKMapRect：CGRect</li>
-<li>MKMapRegion：控制焦点的坐标 以及 焦点周围的大小和显示</li>
-<li>MKMapType：设置为Standard、Satellite(卫星)等</li>
-</ul>
-
-<pre><code class="language-objectivec">MKMapSnapshotOptions *options = [[MKMapSnapshotOptions alloc] init];
-options.mapType = MKMapTypeSatellite;
-options.region = MKCoordinateRegionMakeWithDistance(coord, 20000, 20000);
-mapNode.options = options;
-</code></pre>
-
-<h3 id="toc_40">标记</h3>
-
-<p>设置标记，要做的就是为<code>ASMapNode</code>分配标记数组</p>
-
-<pre><code class="language-objectivec">//在地图中间直接显示图钉标记
-MKPointAnnotation *annotation = [[MKPointAnnotation alloc] init];
-annotation.coordinate = CLLocationCoordinate2DMake(37.7749, -122.4194);
-
-mapNode.annotations = @[annotation];
-</code></pre>
-
-<h3 id="toc_41">实时地图</h3>
-
-<p>将map node从静态的地图转换为可交互的<br/>
-<code>mapNode.liveMap = YES;</code></p>
-
-<p>与UIKit视图一样，实时模式下的MKMapView并不是线程安全的</p>
-
-<h3 id="toc_42">MKMapView Delegate</h3>
-
-<pre><code class="language-text">如果启用了实时地图模式，并且您需要对与地图节点关联的任何事件做出反应，则可以设置mapDelegate属性。该代理应该实现MKMapViewDelegate协议。
-</code></pre>
-
-<h2 id="toc_43">ASControlNode</h2>
-
-<p>ASControlNode与UIControl等效。我们不会直接创建实例，可以子类化其作为自己的控件。<code>ASTextNode、ASImageNode、ASVideoNode、ASMapNode</code>都是ASControlNode的子类</p>
-
-<p>这意味着我们可以将任何文本或者图像作为按钮，而不必像UIKIt中依赖于手势识别器，或使用UIBUtton</p>
-
-<h3 id="toc_44">Control state</h3>
-
-<pre><code class="language-objectivec">typedef NS_OPTIONS(NSUInteger, ASControlState) {
-    ASControlStateNormal       = 0,
-    ASControlStateHighlighted  = 1 &lt;&lt; 0,  // used when isHighlighted is set
-    ASControlStateDisabled     = 1 &lt;&lt; 1,
-    ASControlStateSelected     = 1 &lt;&lt; 2,  // used when isSelected is set
-    ...
-};
-</code></pre>
-
-<h3 id="toc_45">Target-Action 机制</h3>
-
-<p>类似UIControl  ASControlNode中也有一系列事件</p>
-
-<pre><code class="language-objectivec">typedef NS_OPTIONS(NSUInteger, ASControlNodeEvent)
-{
-  /** A touch-down event in the control node. */
-  ASControlNodeEventTouchDown         = 1 &lt;&lt; 0,
-  /** A repeated touch-down event in the control node; for this event the value of the UITouch tapCount method is greater than one. */
-  ASControlNodeEventTouchDownRepeat   = 1 &lt;&lt; 1,
-  /** An event where a finger is dragged inside the bounds of the control node. */
-  ASControlNodeEventTouchDragInside   = 1 &lt;&lt; 2,
-  /** An event where a finger is dragged just outside the bounds of the control. */
-  ASControlNodeEventTouchDragOutside  = 1 &lt;&lt; 3,
-  /** A touch-up event in the control node where the finger is inside the bounds of the node. */
-  ASControlNodeEventTouchUpInside     = 1 &lt;&lt; 4,
-  /** A touch-up event in the control node where the finger is outside the bounds of the node. */
-  ASControlNodeEventTouchUpOutside    = 1 &lt;&lt; 5,
-  /** A system event canceling the current touches for the control node. */
-  ASControlNodeEventTouchCancel       = 1 &lt;&lt; 6,
-  /** All events, including system events. */
-  ASControlNodeEventAllEvents         = 0xFFFFFFFF
-};
-</code></pre>
-
-<h3 id="toc_46">Hit Test Slop</h3>
-
-<p>尽管所有的node均有<code>hitTestSlop</code>属性，但是在control node中最常用</p>
-
-<pre><code class="language-objectivec">CGFloat horizontalDiff = (bounds.size.width - _playButton.bounds.size.width)/2;
-CGFloat verticalDiff = (bounds.size.height - _playButton.bounds.size.height)/2;
-
-_playButton.hitTestSlop = UIEdgeInsetsMake(-verticalDiff, -horizontalDiff, -verticalDiff, -horizontalDiff);
-
-</code></pre>
-
-<h3 id="toc_47">Hit Test Visualization</h3>
-
-<h2 id="toc_48">ASScrollNode</h2>
-
-<p>ASScrollNode是一个<code>ASDisplayNode</code>,其底层是一个<code>UIScrollView</code>.其可以自动采用ASLayoutSpec的大小作为可滚动的contentSize</p>
-
-<h3 id="toc_49">自动管理contentSize</h3>
-
-<p>启用后，由ASSCrollNode布局规范计算的大小将定义滚动视图的<code>.contentSize</code>。在此模式下，滚动视图的边界会填充父级尺寸</p>
-
-<p><code>AutomaticManagesContentSize</code>对于实现了<code>layoutSpecThatFits</code>的ASScrollNode子类很有用，也适用设置了<code>.layoutSpecBlock</code>基类。这两种情况下都通常适用<code>.automaticallyManagesSubnodes</code>属性，以便将layout spec中的node自动添加到可滚动区域</p>
-
-<p>适用这种方法无需捕获布局大小，使用绝对布局规范作为包装器或在代码任何位置设置contentSize，都将会将layout布局更新。通常我们将返回<code>ASStackLayoutSpec</code>，可滚动区域将允许查看所有内容</p>
-
-<h3 id="toc_50">滚动方向</h3>
-
-<p>当使用<code>automaticallyManagersContentSize</code>时，特别因为默认是垂直而你想要水平方向时，这个属性是很有用的</p>
-
-<p>这个属性控制了调整内容大小时的<code>constrainedSize</code></p>
-
-<ul>
-<li>Vertical：constrainedSize的.height是为无限制的(<code>CGFLOAT_MAX</code>)</li>
-<li>Horizontal：</li>
-<li>Vertical&amp;Horizontal：</li>
-</ul>
-
-<h2 id="toc_51">ASEditableTextNode</h2>
-
-<p><code>ASEditableTextNode</code>通常在所有使用<code>UITextView</code>或者<code>UITextField</code>的地方使用。</p>
-
-<p>在后台 使用了专门的UITextView作为其底层视图。当在主线程上操作时，你都可以直接访问和操作该视图</p>
-
-<h3 id="toc_52">基础使用</h3>
-
-<p>如果要默认情况下有文本，则可以将属性字符串分配给<code>attributedText</code>属性</p>
-
-<pre><code class="language-objectivec">ASEditableTextNode *editableTextNode = [[ASEditableTextNode alloc] init];
-editableTextNode.attributedText = [[NSAttributedString alloc] initWithString:@&quot;Lorem ipsum dolor sit amet.&quot;];
-editableTextNode.textContainerInset = UIEdgeInsetsMake(8, 8, 8, 8);
-</code></pre>
-
-<h3 id="toc_53">Placeholder Text</h3>
-
-<p>如果要显示占位符 只需要设置<code>attributedPlaceholderText</code>属性</p>
-
-<pre><code class="language-objectivec">editableTextNode.attributedPlaceholderText = [[NSAttributedString alloc] initWithString:@&quot;Type something here...&quot;];
-</code></pre>
-
-<p>属性<code>isDisplayingPlaceholder</code>最初为YES，当输入文本设置为非空字符串时，又将切换为NO</p>
-
-<h3 id="toc_54">Typing Attributes</h3>
-
-<p>如果要修改用户将在在这text field中输入文字的style，可以设置<code>typingAttributes</code>属性</p>
-
-<pre><code class="language-objectivec">editableTextNode.typingAttributes = @{NSForegroundColorAttributeName: [UIColor blueColor], 
-                                      NSBackgroundColorAttributeName: [UIColor redColor]};
-</code></pre>
-
-<h3 id="toc_55">ASEditableTextNode Delegate</h3>
-
-<p>可以使用一下delegate方法 来实现响应关联事件</p>
-
-<pre><code class="language-objectivec">//
-- (void)editableTextNodeDidBeginEditing:(ASEditableTextNode *)editableTextNode;
-
-- (BOOL)editableTextNode:(ASEditableTextNode *)editableTextNode shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text;
-
-- (void)editableTextNodeDidChangeSelection:(ASEditableTextNode *)editableTextNode fromSelectedRange:(NSRange)fromSelectedRange toSelectedRange:(NSRange)toSelectedRange dueToEditing:(BOOL)dueToEditing;
-
-- (void)editableTextNodeDidUpdateText:(ASEditableTextNode *)editableTextNode;
-- 
-- (void)editableTextNodeDidFinishEditing:(ASEditableTextNode *)editableTextNode;
-
-</code></pre>
-
-<h2 id="toc_56">ASMultiplexImageNode</h2>
 
 ]]></content>
   </entry>
